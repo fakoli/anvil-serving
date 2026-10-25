@@ -1,0 +1,87 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "cancelled-attempt-1",
+  "assembled_at": "2026-10-25T02:18:04.911788+00:00",
+  "source_revision": "6b26ed55285480cd731ae7771f41eea917382f02",
+  "source_sha256": "e1ea8b1a65adb5a7b5b5a107de853a5f231e8c937be2b91aed3a655679a01c66",
+  "complete": false,
+  "status": "cancelled_partial_pilot",
+  "decision": "Retain the failed attempt for harness diagnosis; no model ranking or promotion.",
+  "evidence_labels": [
+    "diagnostic-only",
+    "partial"
+  ],
+  "decision_labels": [
+    "no-promotion"
+  ],
+  "promoted": false,
+  "promotion_authorized": false,
+  "authoritative_public_report": "campaign-report.json",
+  "jobs": {
+    "attempted": {
+      "count": 7,
+      "known_count": 7,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 1,
+      "known_count": 1,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 6,
+      "known_count": 6,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 96,
+      "known_count": 96,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": null,
+      "known_count": 6,
+      "unknown_cells": 1
+    },
+    "submitted": {
+      "count": 7,
+      "known_count": 7,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 89,
+      "known_count": 89,
+      "unknown_cells": 0
+    }
+  },
+  "planned_batches": 60,
+  "released_batches": 7,
+  "unrun_batches": 53,
+  "workload": {
+    "configured": "12 tasks x C1/C4 x 2 repeats x 2 arms; fixed deterministic order; cache uncontrolled. Diagnostic sample, not complete model quality coverage.",
+    "measurement": "Six native C1 jobs completed on the incumbent. First Aider job cancelled before its preflight or model request. Candidate arm unrun."
+  },
+  "controls": {
+    "identity": "identity-control-map.json",
+    "plan": "projections/campaign-control-records-0001.jsonl",
+    "prepared_children": "projections/child-evidence-records-0001.jsonl",
+    "configured_not_measured": "Planned concurrency, token/deadline budgets, runtime settings and GPU counts do not prove achieved concurrency, utilization or capacity."
+  },
+  "failure_diagnostic": "failure-diagnostic.json",
+  "restoration": "restoration.json",
+  "limits": [
+    "The native failed-job count of zero does not erase the harness startup error: the child remained running until managed cancellation.",
+    "First-Aider scoring and one batch interval remain unknown; no completed Aider result exists.",
+    "Six completed cells are not a 6/96 quality success rate. No matched cross-arm population is available.",
+    "Sparse engine-zero samples are not proof of no compute; the separate post-cancel observation does not repair frozen closure.",
+    "Different configured models and GPU counts preclude engine-causal inference. Candidate measurements are absent.",
+    "This diagnostic summary has no serving-comparison metric receipt or completeness claim.",
+    "Private originals remain authoritative; sanitized projections cannot revalidate their native hash chain."
+  ],
+  "publication_status": "Final wrapper review and public matrix publication pending."
+}

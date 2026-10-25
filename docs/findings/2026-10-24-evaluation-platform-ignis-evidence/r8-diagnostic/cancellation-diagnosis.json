@@ -1,0 +1,75 @@
+{
+  "cancellation": {
+    "manifest_sha256": "cdb787ab871e0f19655d34c5add6261a5855478975c0435fbc1663696c84f930",
+    "phase": "stopping_unverified"
+  },
+  "children": [
+    {
+      "cell": "cell-45",
+      "clients_stopped": true,
+      "drain": {
+        "reason": "batch_clients_not_stopped",
+        "status": "unknown"
+      },
+      "finished_at": "2026-10-25T07:19:26.735103Z",
+      "has_cancellation_evidence": true,
+      "has_immutable_artifact": true,
+      "receipt_status": "blocked",
+      "state": "cancelled",
+      "worker_group_stopped_observed_later": true
+    },
+    {
+      "cell": "cell-46",
+      "clients_stopped": false,
+      "drain": {
+        "reason": "awaiting_batch_clients",
+        "status": "unknown"
+      },
+      "finished_at": null,
+      "has_cancellation_evidence": false,
+      "has_immutable_artifact": false,
+      "receipt_status": "blocked",
+      "state": "cancelling",
+      "worker_group_stopped_observed_later": true
+    },
+    {
+      "cell": "cell-47",
+      "clients_stopped": true,
+      "drain": {
+        "reason": "batch_clients_not_stopped",
+        "status": "unknown"
+      },
+      "finished_at": "2026-10-25T07:19:26.769799Z",
+      "has_cancellation_evidence": true,
+      "has_immutable_artifact": true,
+      "receipt_status": "blocked",
+      "state": "cancelled",
+      "worker_group_stopped_observed_later": true
+    },
+    {
+      "cell": "cell-48",
+      "clients_stopped": false,
+      "drain": {
+        "reason": "awaiting_batch_clients",
+        "status": "unknown"
+      },
+      "finished_at": null,
+      "has_cancellation_evidence": false,
+      "has_immutable_artifact": false,
+      "receipt_status": "blocked",
+      "state": "cancelling",
+      "worker_group_stopped_observed_later": true
+    }
+  ],
+  "conclusion": "The frozen traffic deadline triggered cancellation. Two native jobs remain cancelling and recorded stop is unverified, although later read-only recovery found the physical producers absent. The completed cancellation attempt is not progressing; blocked closure remains immutable.",
+  "last_batch": "batch-30",
+  "last_batch_closure_status": "blocked",
+  "last_batch_drain": {
+    "reason": "batch_clients_not_stopped",
+    "status": "unknown"
+  },
+  "observed_at": "2026-10-25T07:22:53.078629+00:00",
+  "schema": "anvil-serving.cancellation-diagnostic-projection/v1",
+  "scope": "Bounded diagnostic extraction; full native projection refused before graph traversal. Do not infer repaired custody or shared drain from later absence.",
+  "source_head": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+}

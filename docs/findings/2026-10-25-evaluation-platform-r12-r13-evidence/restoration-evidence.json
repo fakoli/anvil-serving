@@ -1,0 +1,260 @@
+{
+  "candidate_absent": true,
+  "candidate_benchmark_jobs_submitted": 0,
+  "candidate_created": false,
+  "derivative": true,
+  "exact_recipe_restored": true,
+  "incumbent_status": {
+    "containment_error": null,
+    "health": null,
+    "host_memory": {
+      "current_bytes": 22579896320,
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "exit_code": 0,
+      "limit_bytes": 55834574848,
+      "oom_killed": false,
+      "peak_bytes": 32526630912,
+      "ram_plus_swap_limit_bytes": 55834574849
+    },
+    "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "running": true,
+    "schema": "recipe-container-status/v1",
+    "state": "running"
+  },
+  "limits": [
+    "No candidate comparison, performance ranking, engine causality or promotion.",
+    "Router remote-memory terminal coverage remains UNKNOWN; eight local zero counts do not prove fleet drain.",
+    "Exact admission-time available host RAM and shortfall were not retained.",
+    "Downstream router-to-Pi capture does not establish same-request upstream/router byte equivalence.",
+    "This derivative does not revalidate native private identity bindings; packet size/publication approval remains outstanding."
+  ],
+  "monitoring": {
+    "before_after_bytes_equal": true,
+    "engine": "vllm-b12x-release-10152026",
+    "gpu_count": 2,
+    "gpu_order_matches_original": true,
+    "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "metrics_contract": "vllm",
+    "new_incarnation": true,
+    "observation_scope": "Additional post-Pi monitoring bytes supplied after independent Pi review; equal to retained pre-Pi monitoring. Review original cutoff remains unchanged.",
+    "original_registry_and_recipe_restored": true,
+    "state": "active"
+  },
+  "observed_at": "2026-10-25T11:14:50.679657+00:00",
+  "pi": {
+    "acceptance_scope": "explicit --thinking minimal invocation only",
+    "all_checks_passed": true,
+    "attempts": 1,
+    "capture": {
+      "additional_posts": 0,
+      "http_statuses": [
+        200,
+        200
+      ],
+      "input_bytes_accounted": 7189,
+      "matching_posts": 2,
+      "max_bytes": 8388608,
+      "sse_bytes_retained": 5801,
+      "streams": [
+        {
+          "bytes": 2895,
+          "done_markers": 1,
+          "finish_reasons": [
+            "tool_calls"
+          ],
+          "malformed_events": 0,
+          "ordinal": 1,
+          "parsed_events": 12,
+          "reasoning_chars": 120
+        },
+        {
+          "bytes": 2906,
+          "done_markers": 1,
+          "finish_reasons": [
+            "stop"
+          ],
+          "malformed_events": 0,
+          "ordinal": 2,
+          "parsed_events": 14,
+          "reasoning_chars": 0
+        }
+      ]
+    },
+    "checks": {
+      "activation_byte_identical": true,
+      "capture_complete": true,
+      "capture_hashes_match_execution": true,
+      "configuration_unchanged": true,
+      "controls_exact": true,
+      "deadline_180_seconds": true,
+      "declared_provider_model": true,
+      "exact_final_text": true,
+      "exit_zero": true,
+      "final_stop": true,
+      "fixture_sources_match_plan": true,
+      "fresh_routed_preflight_passed": true,
+      "incumbent_identity_unchanged": true,
+      "launch_argv_exact_plan": true,
+      "native_agent_end_then_settled": true,
+      "one_attempt_no_retry": true,
+      "one_fixed_read_start": true,
+      "one_successful_read_end": true,
+      "pi_binary_unchanged": true,
+      "plan_hash_bound": true,
+      "private_modes": true,
+      "prompt_exact_198_bytes": true,
+      "read_oracle_matches": true,
+      "router_custody_byte_identical": true,
+      "router_transition_byte_identical": true,
+      "sse_complete": true,
+      "stderr_empty": true,
+      "stdin_devnull": true,
+      "two_posts_complete": true
+    },
+    "duration_seconds": 2.419384,
+    "enable_thinking": true,
+    "event_counts": {
+      "agent_end": 1,
+      "agent_settled": 1,
+      "agent_start": 1,
+      "message_end": 4,
+      "message_start": 4,
+      "message_update": 26,
+      "session": 1,
+      "tool_execution_end": 1,
+      "tool_execution_start": 1,
+      "turn_end": 2,
+      "turn_start": 2
+    },
+    "exact_final_text_matches_oracle": true,
+    "exit_code": 0,
+    "finished_at": "2026-10-25T11:10:39.721216+00:00",
+    "persistent_configuration_changed": false,
+    "preserve_thinking": true,
+    "raw_content_disposition": "Prompt, read payload, reasoning, final digest text and raw SSE remain private; exact-match validation and bounded numeric/event facts retained.",
+    "request_reasoning_effort": "low",
+    "retried": false,
+    "started_at": "2026-10-25T11:10:37.301832+00:00",
+    "thinking": "minimal",
+    "thinking_off_or_default_accepted": false
+  },
+  "preserved_failures": [
+    "R13 candidate pre-create host-reserve admission refusal; no candidate generation or benchmark measurement.",
+    "Historical thinking-off Pi strict final-answer failures remain open. This acceptance is only the explicit minimal-thinking invocation.",
+    "Reviewer validation R1 had an accessor-only false negative; R2 corrected offline validation without another live request."
+  ],
+  "promoted": false,
+  "restoration_acceptance_complete": true,
+  "review_cutoff_and_supplement": {
+    "additional_monitoring_matches_before": true,
+    "additional_post_monitoring_snapshot_observed": true,
+    "independent_review_original_sha256": "6f9261e57e0ee04c08387d7c24695ff7223eb3065672054afe4fe7edd90c0b91",
+    "original_limitations": [
+      "No post-Pi monitoring-status snapshot was supplied; exact incumbent status, activation, router transition, router custody, Pi binary, and persistent config were observed unchanged.",
+      "Capture is router-to-Pi downstream evidence and does not establish same-request upstream/router byte equivalence.",
+      "The historical thinking-off failure remains failed and is not rehabilitated."
+    ],
+    "original_post_monitoring_snapshot_observed": false
+  },
+  "reviewer_correction": {
+    "correction": "Reviewer validator read isError from result instead of the event; immutable live evidence is unchanged.",
+    "live_retry": false,
+    "r1_all_checks_passed": false,
+    "r1_checks": {
+      "activation_byte_identical": true,
+      "capture_complete": true,
+      "capture_hashes_match_execution": true,
+      "configuration_unchanged": true,
+      "controls_exact": true,
+      "deadline_180_seconds": true,
+      "declared_provider_model": true,
+      "exact_final_text": true,
+      "exit_zero": true,
+      "final_stop": true,
+      "fixture_sources_match_plan": true,
+      "fresh_routed_preflight_passed": true,
+      "incumbent_identity_unchanged": true,
+      "launch_argv_exact_plan": true,
+      "native_agent_end_then_settled": true,
+      "one_attempt_no_retry": true,
+      "one_fixed_read_start": true,
+      "one_successful_read_end": false,
+      "pi_binary_unchanged": true,
+      "plan_hash_bound": true,
+      "private_modes": true,
+      "prompt_exact_198_bytes": true,
+      "read_oracle_matches": true,
+      "router_custody_byte_identical": true,
+      "router_transition_byte_identical": true,
+      "sse_complete": true,
+      "stderr_empty": true,
+      "stdin_devnull": true,
+      "two_posts_complete": true
+    },
+    "r1_original_sha256": "e37c4732489c1421cb82a2907324ebdf56cf8c6b9188e84bbc7b3a8bd26113e7",
+    "r2_all_checks_passed": true,
+    "r2_original_sha256": "c48e5164decfa7afabc2dba989550f2dc5aec7219f33b8d3b1e55b89e6777ee1",
+    "same_live_artifacts": true
+  },
+  "routed_preflight": {
+    "checks": [
+      "short coding",
+      "structured JSON",
+      "needle at approximately 128000 context",
+      "shared-prefix tools20/20"
+    ],
+    "ended_at": "2026-10-25T11:10:04.076734Z",
+    "existing_execution_reused_without_rerun": true,
+    "exit_code": 0,
+    "passed": true,
+    "source_proof_original_sha256": "39813723092ae1ce0e588e502827fb94636a203f7094523ac79982a962e7b294",
+    "started_at": "2026-10-25T11:09:41.623802Z"
+  },
+  "router": {
+    "counts": {
+      "audio": 0,
+      "chat": 0,
+      "delivery": 0,
+      "internal": 0,
+      "maintenance": 0,
+      "media": 0,
+      "memory": 0,
+      "purpose": 0
+    },
+    "cutover_pending": false,
+    "durable": true,
+    "generation": 29,
+    "state": "admitting"
+  },
+  "router_coverage_limits": {
+    "drained": false,
+    "legacy_coverage": "uninstrumented UNKNOWN",
+    "outcome": "acknowledged_interruption",
+    "remote_memory_terminal": "UNKNOWN"
+  },
+  "router_custody": {
+    "available": true,
+    "before_after_bytes_equal": true,
+    "health_status": null,
+    "image_id": "sha256:6e6a216df049fe0a61041c2a9911bf8ddedb162c43db5a2cb1802367b9ca5d81",
+    "local_reference_matches": true,
+    "restart_count": 0,
+    "running": true
+  },
+  "router_never_transitioned": true,
+  "schema": "t006-final-restoration/v1",
+  "service_restored": true,
+  "source_head": "c0ce1d0633939eaf686bbd1e9e59241f6a0534aa"
+}

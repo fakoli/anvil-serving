@@ -1,0 +1,29 @@
+{
+  "scope": "Fresh postterminal metadata and owned-producer absence cutoff, not repaired historical interval evidence",
+  "observed_at": "2026-10-25T06:01:05.318002+00:00",
+  "original_private_absence_sha256": "f96e2c97cf157653f0ffb01448b0691a3f3dabda3c04e2370654e839ecce203f",
+  "workers": 4,
+  "all_worker_groups_stopped": true,
+  "coordinator_absent": true,
+  "owned_process_matches": 0,
+  "remaining_group_members": 0,
+  "proc_permission_errors": 0,
+  "recorded_test_containers": 8,
+  "all_recorded_test_containers_absent": true,
+  "incumbent": {
+    "status_exit_code": 0,
+    "running": true,
+    "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "oom_killed": false
+  },
+  "observer": {
+    "http_status": 200,
+    "observed_at": "2026-10-25T06:01:05.292287+00:00",
+    "running": 0.0,
+    "waiting": 0.0,
+    "source_timestamp_seconds": 1792908058.5036569
+  },
+  "source_clean_before_after": true
+}

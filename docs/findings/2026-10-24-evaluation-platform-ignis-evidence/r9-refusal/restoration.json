@@ -1,0 +1,22 @@
+{
+  "alias_transition_performed": false,
+  "candidate_created": false,
+  "candidate_requests": 0,
+  "ending_state": "Exact incumbent recipe restored in a new container and monitoring generation; original router configuration remains admitting with eight local counts zero.",
+  "evidence": [
+    "interim-restoration-evidence.json",
+    "routed-preflight-excerpt.json"
+  ],
+  "full_final_restoration_acceptance": false,
+  "historical_cutoff": "admission-refusal.json preserves the earlier reload-in-progress observation.",
+  "observed_at": "2026-10-25T07:51:58.345426+00:00",
+  "pending": [
+    "Full typed long-context preflight after final successor attempt",
+    "Real Pi client smoke after final successor attempt"
+  ],
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "starting_state": "Original incumbent unloaded before candidate admission refusal.",
+  "status": "interim_verified_final_acceptance_pending",
+  "verification_scope": "Interim exact incumbent recipe and bounded routed smoke/JSON/four-tool correctness only.",
+  "verified": true
+}

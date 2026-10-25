@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 
 import pytest
@@ -41,6 +42,17 @@ def _spec(suite: str = "context", parameters: dict | None = None) -> str:
             "parameters": values,
         }
     )
+
+
+@pytest.fixture
+def rejected_store(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs"))
+    monkeypatch.setattr(jobs_cli, "_store", lambda: store)
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: store)
+    monkeypatch.setattr(benchmarks, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid MCP submit launched worker"))
+    yield store
+    for suite in ("context", "agentic", "swe"):
+        assert store.status(f"{suite}-001") is None
 
 
 def test_local_context_job_controls_persist(monkeypatch, tmp_path, capsys):
@@ -242,10 +254,9 @@ def test_submit_dry_run_cli_preview_preserves_normalized_target(monkeypatch, cap
     }, "conflicting_reasoning_controls"),
     ("swe", {"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
 ])
-def test_submit_rejects_invalid_native_controls_before_store_or_launch(
-    monkeypatch, suite, parameters, code,
+def test_submit_rejects_invalid_native_controls_before_run_creation_or_launch(
+    monkeypatch, suite, parameters, code, rejected_store,
 ):
-    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
     monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
     for extra in (["--dry-run"], ["--confirm"]):
         with pytest.raises(BenchmarkJobError) as raised:
@@ -260,8 +271,7 @@ def test_submit_rejects_invalid_native_controls_before_store_or_launch(
     }, "conflicting_reasoning_controls"),
     ("swe", {"force_nonempty_content": True}, "force_nonempty_content_requires_enabled_thinking"),
 ])
-def test_mcp_submit_rejects_invalid_native_controls_before_store(monkeypatch, suite, parameters, code):
-    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+def test_mcp_submit_rejects_invalid_native_controls_before_run_creation(monkeypatch, suite, parameters, code, rejected_store):
     result = mcp.call_tool("benchmark_job_submit", {
         "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
     })
@@ -278,10 +288,9 @@ def test_mcp_submit_rejects_invalid_native_controls_before_store(monkeypatch, su
     ("swe", {"case_ids": ["planning"]}),
     ("swe", {"case_limit": 1}),
 ])
-def test_submit_rejects_suite_incompatible_parameters_before_store_or_launch(
-    monkeypatch, suite, parameters,
+def test_submit_rejects_suite_incompatible_parameters_before_run_creation_or_launch(
+    monkeypatch, suite, parameters, rejected_store,
 ):
-    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("incompatible submit opened job store"))
     monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("incompatible submit launched worker"))
     for extra in (["--dry-run"], ["--confirm"]):
         with pytest.raises(BenchmarkJobError) as raised:
@@ -298,10 +307,9 @@ def test_submit_rejects_suite_incompatible_parameters_before_store_or_launch(
     ("swe", {"case_ids": ["planning"]}),
     ("swe", {"case_limit": 1}),
 ])
-def test_mcp_submit_rejects_suite_incompatible_parameters_before_store(
-    monkeypatch, suite, parameters,
+def test_mcp_submit_rejects_suite_incompatible_parameters_before_run_creation(
+    monkeypatch, suite, parameters, rejected_store,
 ):
-    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("incompatible MCP submit opened job store"))
     result = mcp.call_tool("benchmark_job_submit", {
         "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
     })
@@ -314,10 +322,9 @@ def test_mcp_submit_rejects_suite_incompatible_parameters_before_store(
     _declared_identities(),
     _declared_identities(model="spoofed-scalar"),
 ])
-def test_submit_rejects_malformed_declared_identities_before_store_or_launch(
-    monkeypatch, parameters,
+def test_submit_rejects_malformed_declared_identities_before_run_creation_or_launch(
+    monkeypatch, parameters, rejected_store,
 ):
-    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
     monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
     for extra in (["--dry-run"], ["--confirm"]):
         with pytest.raises(BenchmarkJobError) as raised:
@@ -330,8 +337,7 @@ def test_submit_rejects_malformed_declared_identities_before_store_or_launch(
     _declared_identities(),
     _declared_identities(model="spoofed-scalar"),
 ])
-def test_mcp_submit_rejects_malformed_declared_identities_before_store(monkeypatch, parameters):
-    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
+def test_mcp_submit_rejects_malformed_declared_identities_before_run_creation(monkeypatch, parameters, rejected_store):
     result = mcp.call_tool("benchmark_job_submit", {
         "suite": "context", "spec_json": _spec("context", parameters), "confirm": True,
     })
@@ -356,10 +362,9 @@ def test_remote_submit_dry_run_is_not_dispatched(monkeypatch):
     ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
     ("swe", {"paired_image_repo_digests": []}, "bad_swe_image_policy"),
 ])
-def test_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store_or_launch(
-    monkeypatch, suite, parameters, code,
+def test_submit_rejects_mis_typed_common_or_swe_image_parameters_before_run_creation_or_launch(
+    monkeypatch, suite, parameters, code, rejected_store,
 ):
-    monkeypatch.setattr(jobs_cli, "_store", lambda: pytest.fail("invalid submit opened job store"))
     monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **_kwargs: pytest.fail("invalid submit launched worker"))
     for extra in (["--dry-run"], ["--confirm"]):
         with pytest.raises(BenchmarkJobError) as raised:
@@ -374,12 +379,164 @@ def test_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store_or
     ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
     ("swe", {"paired_image_repo_digests": []}, "bad_swe_image_policy"),
 ])
-def test_mcp_submit_rejects_mis_typed_common_or_swe_image_parameters_before_store(
-    monkeypatch, suite, parameters, code,
+def test_mcp_submit_rejects_mis_typed_common_or_swe_image_parameters_before_run_creation(
+    monkeypatch, suite, parameters, code, rejected_store,
 ):
-    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: pytest.fail("invalid MCP submit opened job store"))
     result = mcp.call_tool("benchmark_job_submit", {
         "suite": suite, "spec_json": _spec(suite, parameters), "confirm": True,
     })
     assert result["ok"] is False
     assert result["error"]["code"] == code
+
+
+@pytest.mark.parametrize("suite", ["aider", "performance"])
+def test_file_inline_and_remote_submission_preserve_one_digest(monkeypatch, tmp_path, suite):
+    from anvil_serving.benchmarking import submission
+
+    spec = json.loads(_spec(suite))
+    spec["profile"] = "pilot-v2"
+    if suite == "performance":
+        spec["parameters"] = {"runner": "lil", "workload": {"input_tokens": 0, "output_tokens": 32}, "request_count": 2}
+    raw = json.dumps(spec, indent=2)
+    file = tmp_path / "job.json"
+    file.write_text(raw, encoding="utf-8")
+    monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
+    monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
+    launches = []
+    monkeypatch.setattr(jobs_cli, "launch_benchmark_job", lambda **kw: launches.append(kw) or {"launched": True})
+    monkeypatch.setattr(benchmarks, "launch_benchmark_job", lambda **kw: pytest.fail("retry relaunched worker"))
+
+    first = jobs_cli.run([suite, "submit", "--spec", str(file), "--confirm"])
+    assert first["disposition"] == "submitted"
+    assert len(launches) == 1
+    path, rest, _, _ = cli._resolve(["eval", "benchmark", suite, "submit", "--spec", str(file)])
+    remote = cli._remote_arguments(path[-1], rest, confirmed=True)
+    assert set(remote) == {"suite", "spec_json", "confirm"}
+    assert json.loads(remote["spec_json"]) == spec
+    assert str(file) not in json.dumps(remote)
+    inline = cli._remote_arguments(path[-1], ["--spec-json", raw], confirmed=True)
+    assert inline == remote
+
+    # Existing records remain readable if the installed profile disappears or drifts.
+    monkeypatch.setattr(submission, "load_profile", lambda *_a, **_kw: pytest.fail("retry read current profile"))
+    retry = jobs_cli.run([suite, "submit", "--spec-json", raw, "--confirm"])
+    remote_retry = mcp.call_tool("benchmark_job_submit", remote)
+    assert remote_retry["ok"] is True
+    for result in (retry, remote_retry["data"]):
+        assert result["disposition"] == "existing"
+        assert result["job"]["spec_sha256"] == first["job"]["spec_sha256"]
+        assert result["worker"]["launched"] is False
+    assert len(launches) == 1
+
+
+@pytest.mark.parametrize("action", ["submit", "preflight"])
+def test_remote_spec_sources_are_exclusive_and_bounded(tmp_path, action):
+    from anvil_serving.benchmarking.limits import MAX_BENCHMARK_JOB_SPEC_BYTES
+
+    file = tmp_path / "job.json"
+    file.write_bytes(b" " * (MAX_BENCHMARK_JOB_SPEC_BYTES + 1))
+    path, _, _, _ = cli._resolve(["eval", "benchmark", "aider", action])
+    for options, code in [
+        ([], "bad_spec_source"),
+        (["--spec", str(file), "--spec-json", "{}"], "bad_spec_source"),
+        (["--spec", str(file)], "spec_too_large"),
+        (["--spec-json", _spec("context")], "suite_mismatch"),
+    ]:
+        with pytest.raises(cli.UsageError) as exc:
+            cli._remote_arguments(path[-1], options, confirmed=action == "submit")
+        assert exc.value.code == code
+
+
+def test_file_preflight_serializes_client_contents(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    file = tmp_path / "job.json"
+    file.write_text(_spec(), encoding="utf-8")
+    monkeypatch.setattr(jobs_cli, "_store", lambda: SimpleNamespace(run_root=str(tmp_path)))
+    monkeypatch.setattr(jobs_cli, "run_benchmark_preflight", lambda spec, **_kw: spec)
+    local = jobs_cli.run(["context", "preflight", "--spec", str(file)])
+    path, rest, _, _ = cli._resolve(["eval", "benchmark", "context", "preflight", "--spec", str(file)])
+    remote = cli._remote_arguments(path[-1], rest, confirmed=False)
+    assert json.loads(remote["spec_json"]) == local
+    assert "spec" not in remote
+
+
+def test_large_job_roundtrips_through_controller_and_reconciles(monkeypatch, tmp_path):
+    from anvil_serving import controller, transports
+    from anvil_serving.benchmarking.jobs import canonical_json_bytes, job_spec_sha256, validate_job_spec
+
+    # Escaped content makes the wire representation larger than its source strings.
+    raw = _spec(parameters={"identities": {"model": {
+        f"part-{index}": '\\"' * 1000 for index in range(48)
+    }}})
+    spec = validate_job_spec(json.loads(raw))
+    assert 64 * 1024 < len(canonical_json_bytes(spec)) < 256 * 1024
+    store = BenchmarkJobStore(str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs"))
+    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: store)
+    launches = []
+    monkeypatch.setattr(benchmarks, "launch_benchmark_job", lambda **kw: launches.append(kw) or {"launched": True})
+    token = "synthetic-roundtrip-token"
+    server = controller.make_server(
+        "127.0.0.1", 0, auth_token_env="TEST_CONTROLLER_TOKEN",
+        env={"TEST_CONTROLLER_TOKEN": token},
+        idempotency_db_path=str(tmp_path / "operations.sqlite3"),
+        call_tool_func=mcp.call_tool, audit_logger=lambda _record: None,
+    )
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        def transport(action):
+            path, _, _, _ = cli._resolve(["eval", "benchmark", "context", action])
+            remote = path[-1].remote_operation
+            assert remote.max_response_bytes == 4 * 1024 * 1024
+            name = cli._command_spec(path).name
+            client = transports.ControllerTransport(
+                f"http://127.0.0.1:{server.server_port}", auth_env="TEST_CONTROLLER_TOKEN",
+                allowed_operations=[name], environment={"TEST_CONTROLLER_TOKEN": token},
+                max_response_bytes=remote.max_response_bytes,
+            )
+            return client, name, remote.tool
+
+        submit, submit_name, submit_tool = transport("submit")
+        operation = transports.Operation(submit_name, {
+            "suite": "context", "spec_json": raw, "confirm": True,
+        }, tool_name=submit_tool)
+        context = {"topology": "test", "execution_host": "worker", "execution_runtime": "native"}
+        first = submit.execute(operation, idempotency_key="large-job-submit", idempotency_context=context)
+        assert first.response_bytes > transports.DEFAULT_MAX_RESPONSE_BYTES
+        assert first.data["data"]["job"]["spec_sha256"] == job_spec_sha256(spec)
+
+        status, status_name, status_tool = transport("status")
+        observed = status.execute(transports.Operation(status_name, {
+            "suite": "context", "run_id": spec["run_id"],
+        }, tool_name=status_tool))
+        assert observed.response_bytes > transports.DEFAULT_MAX_RESPONSE_BYTES
+        assert observed.data["data"]["spec_sha256"] == first.data["data"]["job"]["spec_sha256"]
+        reconciled = submit.operation_status("large-job-submit")
+        assert reconciled.response_bytes > transports.DEFAULT_MAX_RESPONSE_BYTES
+        assert reconciled.data["status"] == "succeeded"
+        assert reconciled.data["result"] == first.data
+        assert reconciled.data["response"] == first.data
+        replay = submit.execute(operation, idempotency_key="large-job-submit", idempotency_context=context)
+        assert replay.data == first.data
+        assert len(launches) == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_benchmark_response_limits_are_scoped_and_within_controller_cap():
+    from anvil_serving.commands import manifest_data
+    from anvil_serving.transports import MAX_CONTROLLER_RESPONSE_BYTES
+
+    for record in manifest_data()["commands"]:
+        remote = record["remote_operation"]
+        if remote and remote["tool"] in {
+            "benchmark_job_submit", "benchmark_job_status", "benchmark_job_logs",
+            "benchmark_job_cancel", "benchmark_job_artifact",
+        }:
+            expected = 8 * 1024 * 1024 if remote["tool"] == "benchmark_job_artifact" else 4 * 1024 * 1024
+            assert remote["max_response_bytes"] == expected <= MAX_CONTROLLER_RESPONSE_BYTES
+    path, _, _, _ = cli._resolve(["router", "status"])
+    assert path[-1].remote_operation.max_response_bytes is None

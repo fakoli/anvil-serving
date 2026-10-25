@@ -1,0 +1,413 @@
+{
+  "all_reference_hashes_and_sizes_match": true,
+  "campaign_id": "mixed-c4-diagnostic",
+  "contract_digests": {
+    "closure_release_sha256": "3fdaf3099436c94fde8de2cdf547701a35789909c3a6baf32dbee83bcca18311",
+    "manifest_canonical_self_excluding": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+    "release_canonical": "3fdaf3099436c94fde8de2cdf547701a35789909c3a6baf32dbee83bcca18311"
+  },
+  "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+  "model_requests": false,
+  "mutations": "research receipt only",
+  "postterminal_input_bindings": {
+    "changed_during_check": [],
+    "count": 24,
+    "receipt_sha256": "f96e2c97cf157653f0ffb01448b0691a3f3dabda3c04e2370654e839ecce203f"
+  },
+  "promoted": false,
+  "reference_count": 41,
+  "references": [
+    {
+      "expected_bytes": 12462,
+      "expected_sha256": "83f5544b1263b108540d1370cb8d21ebe5cf0ea8995bc4b2e121e1489488429b",
+      "expected_source": "freeze receipt",
+      "observed_bytes": 12462,
+      "observed_sha256": "83f5544b1263b108540d1370cb8d21ebe5cf0ea8995bc4b2e121e1489488429b",
+      "path": "private-original/reference-2",
+      "role": "manifest"
+    },
+    {
+      "expected_bytes": 1174,
+      "expected_sha256": "8b800d8b5f3466d42f520115e621e04bd99145b2f9ee631940177fc99ada4fbe",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 1174,
+      "observed_sha256": "8b800d8b5f3466d42f520115e621e04bd99145b2f9ee631940177fc99ada4fbe",
+      "path": "private-original/reference-3",
+      "role": "release"
+    },
+    {
+      "expected_bytes": 5733,
+      "expected_sha256": "06e0eaf7af4c8f89b847a0a005b7a91060503b080b7ea8c4de8def8101fde843",
+      "expected_source": "all four child campaign-execution references",
+      "observed_bytes": 5733,
+      "observed_sha256": "06e0eaf7af4c8f89b847a0a005b7a91060503b080b7ea8c4de8def8101fde843",
+      "path": "private-original/reference-4",
+      "role": "shared_closure"
+    },
+    {
+      "expected_bytes": 2367,
+      "expected_sha256": "829b0ea69f7957e924a81937c915bfd5e989e731849d64310ae25a72dde1d258",
+      "expected_source": "shared closure",
+      "observed_bytes": 2367,
+      "observed_sha256": "829b0ea69f7957e924a81937c915bfd5e989e731849d64310ae25a72dde1d258",
+      "path": "private-original/reference-5",
+      "role": "telemetry_terminal"
+    },
+    {
+      "expected_bytes": 200742,
+      "expected_sha256": "106f98dd2f057df520087019a2060a13526d95b801419f59eb395cff5f26661c",
+      "expected_source": "telemetry terminal",
+      "observed_bytes": 200742,
+      "observed_sha256": "106f98dd2f057df520087019a2060a13526d95b801419f59eb395cff5f26661c",
+      "path": "private-original/reference-6",
+      "role": "telemetry_samples"
+    },
+    {
+      "expected_bytes": 4534,
+      "expected_sha256": "4db2193fea72fba3f1290fb69d977127d068f34708dc4ea0928cfde9ace3e0e4",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 4534,
+      "observed_sha256": "4db2193fea72fba3f1290fb69d977127d068f34708dc4ea0928cfde9ace3e0e4",
+      "path": "private-original/reference-7",
+      "role": "cell-1:artifact"
+    },
+    {
+      "expected_bytes": 3281,
+      "expected_sha256": "e8d86a81bf5737d664726c4e880b73dde0e60b37ade8597a52b2fb86f900898b",
+      "expected_source": "child artifact",
+      "observed_bytes": 3281,
+      "observed_sha256": "e8d86a81bf5737d664726c4e880b73dde0e60b37ade8597a52b2fb86f900898b",
+      "path": "private-original/reference-9",
+      "role": "cell-1:campaign_execution"
+    },
+    {
+      "expected_bytes": 808,
+      "expected_sha256": "c169198048b9f4171ddc678354bc78c92afe5ef75c10aaecf8abcc1a1f3866a0",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 808,
+      "observed_sha256": "c169198048b9f4171ddc678354bc78c92afe5ef75c10aaecf8abcc1a1f3866a0",
+      "path": "private-original/reference-11",
+      "role": "cell-1:evidence:admission"
+    },
+    {
+      "expected_bytes": 573,
+      "expected_sha256": "8d01911babbdb9100ca7ac92131bc4d2b53c8487f8e860cc4967417c6ce31e19",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 573,
+      "observed_sha256": "8d01911babbdb9100ca7ac92131bc4d2b53c8487f8e860cc4967417c6ce31e19",
+      "path": "private-original/reference-13",
+      "role": "cell-1:evidence:asset_preparation"
+    },
+    {
+      "expected_bytes": 2993,
+      "expected_sha256": "807267824431bd4511644d565529af275026c0b3203dfe320425d962ba30f103",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 2993,
+      "observed_sha256": "807267824431bd4511644d565529af275026c0b3203dfe320425d962ba30f103",
+      "path": "private-original/reference-15",
+      "role": "cell-1:evidence:preflight"
+    },
+    {
+      "expected_bytes": 3496,
+      "expected_sha256": "316033bfb77fd5ff547fdaf5218982aa774b025f9dfb329d564f761a81967a5c",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 3496,
+      "observed_sha256": "316033bfb77fd5ff547fdaf5218982aa774b025f9dfb329d564f761a81967a5c",
+      "path": "private-original/reference-17",
+      "role": "cell-1:evidence:agentic"
+    },
+    {
+      "expected_bytes": 4534,
+      "expected_sha256": "ed1bb31c30c570da4e5fa80a906ca259c2ccc0381720f92ca6758d8e837349aa",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 4534,
+      "observed_sha256": "ed1bb31c30c570da4e5fa80a906ca259c2ccc0381720f92ca6758d8e837349aa",
+      "path": "private-original/reference-19",
+      "role": "cell-2:artifact"
+    },
+    {
+      "expected_bytes": 3280,
+      "expected_sha256": "b00fd009e2e26782e24249c900ff99883b620160347602cda798a31c968c9098",
+      "expected_source": "child artifact",
+      "observed_bytes": 3280,
+      "observed_sha256": "b00fd009e2e26782e24249c900ff99883b620160347602cda798a31c968c9098",
+      "path": "private-original/reference-21",
+      "role": "cell-2:campaign_execution"
+    },
+    {
+      "expected_bytes": 808,
+      "expected_sha256": "bef207eaad162bff38716f59f34d41dcbd3cf8d2b3c6f0db7e4fc2ec4a96781a",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 808,
+      "observed_sha256": "bef207eaad162bff38716f59f34d41dcbd3cf8d2b3c6f0db7e4fc2ec4a96781a",
+      "path": "private-original/reference-23",
+      "role": "cell-2:evidence:admission"
+    },
+    {
+      "expected_bytes": 573,
+      "expected_sha256": "0113237d6bf965609a33f94e5a2dd3ca543514647ed7a147a6db995946f99fbe",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 573,
+      "observed_sha256": "0113237d6bf965609a33f94e5a2dd3ca543514647ed7a147a6db995946f99fbe",
+      "path": "private-original/reference-25",
+      "role": "cell-2:evidence:asset_preparation"
+    },
+    {
+      "expected_bytes": 2993,
+      "expected_sha256": "2e0d1b6132e435156ffe069af7f26cd5d0efa42dfceff31db77819e3f6ffd44d",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 2993,
+      "observed_sha256": "2e0d1b6132e435156ffe069af7f26cd5d0efa42dfceff31db77819e3f6ffd44d",
+      "path": "private-original/reference-27",
+      "role": "cell-2:evidence:preflight"
+    },
+    {
+      "expected_bytes": 4674,
+      "expected_sha256": "2d131220827957fe6905a5289e45cd9050cc2a49c0a09cd1480ce579afd34d1a",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 4674,
+      "observed_sha256": "2d131220827957fe6905a5289e45cd9050cc2a49c0a09cd1480ce579afd34d1a",
+      "path": "private-original/reference-29",
+      "role": "cell-2:evidence:agentic"
+    },
+    {
+      "expected_bytes": 5103,
+      "expected_sha256": "ca82fe98a40974b8fdb21cf4d47ca9209f4e12e8e0c5e69157e9e58089ea9c1c",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 5103,
+      "observed_sha256": "ca82fe98a40974b8fdb21cf4d47ca9209f4e12e8e0c5e69157e9e58089ea9c1c",
+      "path": "private-original/reference-31",
+      "role": "cell-3:artifact"
+    },
+    {
+      "expected_bytes": 3280,
+      "expected_sha256": "8ebba220011c7e05276b299fb6d75a5a77c16c06f4675ba26d57091aa63f41bc",
+      "expected_source": "child artifact",
+      "observed_bytes": 3280,
+      "observed_sha256": "8ebba220011c7e05276b299fb6d75a5a77c16c06f4675ba26d57091aa63f41bc",
+      "path": "private-original/reference-33",
+      "role": "cell-3:campaign_execution"
+    },
+    {
+      "expected_bytes": 782,
+      "expected_sha256": "5c57b12cb24a59e4d0ec32110bfa56110b0d2a65d9550ac92729ea6c1776a61a",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 782,
+      "observed_sha256": "5c57b12cb24a59e4d0ec32110bfa56110b0d2a65d9550ac92729ea6c1776a61a",
+      "path": "private-original/reference-35",
+      "role": "cell-3:evidence:admission"
+    },
+    {
+      "expected_bytes": 529280,
+      "expected_sha256": "7072cca3f7791f37a38b4072df0a3a800c408776075319b4ca08df5aa298fd73",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 529280,
+      "observed_sha256": "7072cca3f7791f37a38b4072df0a3a800c408776075319b4ca08df5aa298fd73",
+      "path": "private-original/reference-37",
+      "role": "cell-3:evidence:asset_preparation"
+    },
+    {
+      "expected_bytes": 2963,
+      "expected_sha256": "2015300a461fb1fd021580b4d9a86b6282a79420810afedc513bc129f6ad5d99",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 2963,
+      "observed_sha256": "2015300a461fb1fd021580b4d9a86b6282a79420810afedc513bc129f6ad5d99",
+      "path": "private-original/reference-39",
+      "role": "cell-3:evidence:preflight"
+    },
+    {
+      "expected_bytes": 1845,
+      "expected_sha256": "fe9298a7e1bd80defb045672c1486165e88a5f174ababf941000a5aea998aec9",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 1845,
+      "observed_sha256": "fe9298a7e1bd80defb045672c1486165e88a5f174ababf941000a5aea998aec9",
+      "path": "private-original/reference-41",
+      "role": "cell-3:evidence:aider_retention"
+    },
+    {
+      "expected_bytes": 76832,
+      "expected_sha256": "0d1c07cc3637dcc11d5149b4e24c316cea62297123810a8f169adbaf9b462dd4",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 76832,
+      "observed_sha256": "0d1c07cc3637dcc11d5149b4e24c316cea62297123810a8f169adbaf9b462dd4",
+      "path": "private-original/reference-43",
+      "role": "cell-3:evidence:aider"
+    },
+    {
+      "expected_bytes": 75093,
+      "expected_sha256": "f5848b095b27ab97c6ac64cf3dc45df8f51235b1f5a706ebf5d9df8303cf224a",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 75093,
+      "observed_sha256": "f5848b095b27ab97c6ac64cf3dc45df8f51235b1f5a706ebf5d9df8303cf224a",
+      "path": "private-original/reference-45",
+      "role": "cell-3:aider_result"
+    },
+    {
+      "expected_bytes": 580,
+      "expected_sha256": "d029257bfdf25a50e01b6073ef8779b2acf9c5314e4c892ece02857458f2d074",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 580,
+      "observed_sha256": "d029257bfdf25a50e01b6073ef8779b2acf9c5314e4c892ece02857458f2d074",
+      "path": "private-original/reference-47",
+      "role": "cell-3:adapter_result"
+    },
+    {
+      "expected_bytes": 3629,
+      "expected_sha256": "9f76d702ed3f55505affe21bf43eee428f4867ee567389a54152a3caee2152f0",
+      "expected_source": "Aider result",
+      "observed_bytes": 3629,
+      "observed_sha256": "9f76d702ed3f55505affe21bf43eee428f4867ee567389a54152a3caee2152f0",
+      "path": "private-original/reference-49",
+      "role": "cell-3:request_observations"
+    },
+    {
+      "expected_bytes": 1027,
+      "expected_sha256": "5cf4ac5fe15c580a713b0cec2d998c35ca072eb456304d38150a7ae39cfd2d2e",
+      "expected_source": "Aider result",
+      "observed_bytes": 1027,
+      "observed_sha256": "5cf4ac5fe15c580a713b0cec2d998c35ca072eb456304d38150a7ae39cfd2d2e",
+      "path": "private-original/reference-51",
+      "role": "cell-3:native_grade"
+    },
+    {
+      "expected_bytes": 5103,
+      "expected_sha256": "f3cdea888450be7363f49dd46a1b1a6f3e7f8485a52581aa8aa46c4c89cce9a0",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 5103,
+      "observed_sha256": "f3cdea888450be7363f49dd46a1b1a6f3e7f8485a52581aa8aa46c4c89cce9a0",
+      "path": "private-original/reference-53",
+      "role": "cell-4:artifact"
+    },
+    {
+      "expected_bytes": 3280,
+      "expected_sha256": "314a022d1b86214f29edac346ba87e1dccc07a3bdb0faae3fe1977def0025f93",
+      "expected_source": "child artifact",
+      "observed_bytes": 3280,
+      "observed_sha256": "314a022d1b86214f29edac346ba87e1dccc07a3bdb0faae3fe1977def0025f93",
+      "path": "private-original/reference-55",
+      "role": "cell-4:campaign_execution"
+    },
+    {
+      "expected_bytes": 779,
+      "expected_sha256": "52fa32dfd522b79c1142b8942aec1ada778656308c3ff8f5d6ca0b49acc48e5f",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 779,
+      "observed_sha256": "52fa32dfd522b79c1142b8942aec1ada778656308c3ff8f5d6ca0b49acc48e5f",
+      "path": "private-original/reference-57",
+      "role": "cell-4:evidence:admission"
+    },
+    {
+      "expected_bytes": 529280,
+      "expected_sha256": "995f7344959014107157205f8fc7d4a6b404ca20eca7fa42230eef32c15d58a9",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 529280,
+      "observed_sha256": "995f7344959014107157205f8fc7d4a6b404ca20eca7fa42230eef32c15d58a9",
+      "path": "private-original/reference-59",
+      "role": "cell-4:evidence:asset_preparation"
+    },
+    {
+      "expected_bytes": 2960,
+      "expected_sha256": "53ba08c62393c60fdb7161b7e85699f1c691586ad47920b2d30e84cc8b4f4869",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 2960,
+      "observed_sha256": "53ba08c62393c60fdb7161b7e85699f1c691586ad47920b2d30e84cc8b4f4869",
+      "path": "private-original/reference-61",
+      "role": "cell-4:evidence:preflight"
+    },
+    {
+      "expected_bytes": 1838,
+      "expected_sha256": "2a64dd9e78d8ac8e225660a3219dc01dd659f63766341f90e9ddc32f36b06b8c",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 1838,
+      "observed_sha256": "2a64dd9e78d8ac8e225660a3219dc01dd659f63766341f90e9ddc32f36b06b8c",
+      "path": "private-original/reference-63",
+      "role": "cell-4:evidence:aider_retention"
+    },
+    {
+      "expected_bytes": 75011,
+      "expected_sha256": "af4647fba549f7b490d40ac3c388676c6cdbc57946112aff875e9bbb62e36182",
+      "expected_source": "child artifact evidence stage",
+      "observed_bytes": 75011,
+      "observed_sha256": "af4647fba549f7b490d40ac3c388676c6cdbc57946112aff875e9bbb62e36182",
+      "path": "private-original/reference-65",
+      "role": "cell-4:evidence:aider"
+    },
+    {
+      "expected_bytes": 73279,
+      "expected_sha256": "5882b30faafcd48cee39182718a00fabd9a46347137a2abd024a91e834ac7bc8",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 73279,
+      "observed_sha256": "5882b30faafcd48cee39182718a00fabd9a46347137a2abd024a91e834ac7bc8",
+      "path": "private-original/reference-67",
+      "role": "cell-4:aider_result"
+    },
+    {
+      "expected_bytes": 580,
+      "expected_sha256": "a2ccdd3f2ea273536967534a29ad81e17fd77d31d003c5a09fa1ee3fe910622a",
+      "expected_source": "first reviewer read",
+      "observed_bytes": 580,
+      "observed_sha256": "a2ccdd3f2ea273536967534a29ad81e17fd77d31d003c5a09fa1ee3fe910622a",
+      "path": "private-original/reference-69",
+      "role": "cell-4:adapter_result"
+    },
+    {
+      "expected_bytes": 2978,
+      "expected_sha256": "1c010b0f0c67398f6bca61c8fab1ef995e14041a806f81d73bd4c47dd898ea2e",
+      "expected_source": "Aider result",
+      "observed_bytes": 2978,
+      "observed_sha256": "1c010b0f0c67398f6bca61c8fab1ef995e14041a806f81d73bd4c47dd898ea2e",
+      "path": "private-original/reference-71",
+      "role": "cell-4:request_observations"
+    },
+    {
+      "expected_bytes": 1017,
+      "expected_sha256": "9dff9ed6b5e7cd8ef8125c44d16095165162b0ec1fb98fecd1ddda8c057f7f5b",
+      "expected_source": "Aider result",
+      "observed_bytes": 1017,
+      "observed_sha256": "9dff9ed6b5e7cd8ef8125c44d16095165162b0ec1fb98fecd1ddda8c057f7f5b",
+      "path": "private-original/reference-73",
+      "role": "cell-4:native_grade"
+    },
+    {
+      "expected_bytes": 9477,
+      "expected_sha256": "258bcad1bb1308f9f3088b628a90cae755e71ed7e98d00865ae0df04e1b758d0",
+      "expected_source": "parent terminal capture",
+      "observed_bytes": 9477,
+      "observed_sha256": "258bcad1bb1308f9f3088b628a90cae755e71ed7e98d00865ae0df04e1b758d0",
+      "path": "private-original/reference-75",
+      "role": "native_terminal_report"
+    },
+    {
+      "expected_bytes": 17023,
+      "expected_sha256": "f96e2c97cf157653f0ffb01448b0691a3f3dabda3c04e2370654e839ecce203f",
+      "expected_source": "independent postterminal capture",
+      "observed_bytes": 17023,
+      "observed_sha256": "f96e2c97cf157653f0ffb01448b0691a3f3dabda3c04e2370654e839ecce203f",
+      "path": "private-original/reference-76",
+      "role": "postterminal_absence"
+    }
+  ],
+  "reviewer_role": "independent-sol-high",
+  "schema": "t006-mixed-c4-canary-full-chain-audit/v1",
+  "source": {
+    "expected_head": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+    "expected_source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+    "first_read": {
+      "head": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+      "observed_at": "2026-10-25T06:04:51.199073+00:00",
+      "python_file_count": 447,
+      "reference_sha256": "8012c69c208ed533d665c0f2d2ba1a5b3570c682dd04111d6f00a1f76f5dc406",
+      "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+      "status_porcelain": ""
+    },
+    "second_read": {
+      "head": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+      "observed_at": "2026-10-25T06:04:51.245275+00:00",
+      "python_file_count": 447,
+      "reference_sha256": "8012c69c208ed533d665c0f2d2ba1a5b3570c682dd04111d6f00a1f76f5dc406",
+      "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+      "status_porcelain": ""
+    },
+    "unchanged": true
+  }
+}

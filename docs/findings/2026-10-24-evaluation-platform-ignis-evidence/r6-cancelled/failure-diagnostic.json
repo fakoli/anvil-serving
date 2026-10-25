@@ -1,0 +1,73 @@
+{
+  "schema": "anvil-serving.evaluation-pilot-failure-diagnostic/v1",
+  "attempt": "cancelled-attempt-2",
+  "assembled_at": "2026-10-25T02:59:40.633061+00:00",
+  "source_revision": "890d51987f40cf02cfa8822fcd9f456c419baa7c",
+  "scope": "Two Aider harness launches failed before adapter entry and graded model/quality results; six native cells completed. This is a harness failure diagnostic, not a model-quality judgment.",
+  "adapter_failures": {
+    "children": [
+      "job-0007",
+      "job-0008"
+    ],
+    "failure_class": "broken_harness",
+    "failure_code": "aider_adapter_failed",
+    "process_return_code": 1,
+    "sanitized_stderr": "Error while finding module specification for 'anvil_serving.benchmarking.aider_adapter' (ModuleNotFoundError: No module named 'anvil_serving')",
+    "quality_status": "unknown",
+    "root_cause": "The product checkout contains a colon. POSIX PYTHONPATH split that path into two incorrect import roots. The prepared upstream Python environment correctly had no installed Anvil product.",
+    "evidence": "projections/aider-and-partial-records-0001.jsonl",
+    "closure": {
+      "status": "closed",
+      "fresh_engine_drain": "verified",
+      "complete_telemetry_planes": [
+        "engine",
+        "gpu",
+        "host",
+        "cgroup"
+      ],
+      "scope": "Both failed children, not the entire cancelled campaign. The earlier startup-watchdog/closure repair worked for these failures."
+    }
+  },
+  "terminal_recovery": {
+    "method": "managed campaign cancellation",
+    "state": "cancelled",
+    "coordinator_exit_code": 0,
+    "coordinator_finished_at": "2026-10-25T02:50:55.431585Z",
+    "cancel_exit_code": 0,
+    "cancel_finished_at": "2026-10-25T02:50:55.451583Z",
+    "declared_endpoint_credential_supplied": true,
+    "cancelled_child": "job-0009",
+    "cancelled_before_activation": true,
+    "worker_terminated": true,
+    "campaign_known_active_wall_seconds": 437.0491850050166,
+    "campaign_total_active_wall_seconds": null,
+    "unknown_batch_intervals": 1,
+    "scope": "Successful cancellation command and failed-child closure do not fill the pre-activation cancelled interval."
+  },
+  "separate_post_cancel_observation": {
+    "router_state": "admitting",
+    "router_configuration": "unchanged original configuration",
+    "router_generation": 29,
+    "local_workload_categories": 8,
+    "local_workload_counts_all_zero": true,
+    "source_timestamp_seconds": 1792896685.4442089,
+    "metrics": {
+      "running_metric": 0.0,
+      "waiting_metric": 0.0
+    },
+    "scope": "Independent later sparse observation; not proof of no compute or repair of the unknown campaign interval."
+  },
+  "repair_checkpoint": {
+    "status": "uncommitted repair; independent review pending at this assembly cutoff",
+    "proposed_behavior": "Pass the trusted product root as one argument to an isolated interpreter bootstrap, preserving prepared upstream dependencies and exact command verification.",
+    "focused_checks": {
+      "passed": 212,
+      "skipped": 35,
+      "elapsed_s": 4.16,
+      "scope": "Dirty development-tree tests only; no full-suite, native preparation or live campaign acceptance."
+    },
+    "successor_campaign": "No successor campaign or live proof included."
+  },
+  "provenance": "Selected nonsecret facts transcribed from retained child results/execution records, native cancellation/report and later observer readback, plus the source-backed repair diagnosis. Private provenance and original diagnostic receipt hashes remain outside this bundle; the graph ledger binds its own private originals separately.",
+  "promoted": false
+}

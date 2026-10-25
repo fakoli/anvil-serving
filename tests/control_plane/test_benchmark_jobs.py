@@ -38,7 +38,7 @@ def _spec(run_id: str = "run-001", **changes):
         "run_id": run_id,
         "ownership_id": "campaign-001",
         "suite": "context",
-        "profile": "context-smoke-v1",
+        "profile": "smoke",
         "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "deepseek"},
         "worker": {"id": "ai-laptop-node"},
         "submitted_at": "2026-08-03T12:00:00Z",
@@ -80,6 +80,49 @@ def test_status_and_cursor_logs_survive_restart(tmp_path):
     page = restarted.logs("run-001", cursor=1, limit=1)
     assert [entry["message"] for entry in page["entries"]] == ["worker assigned"]
     assert page["next_cursor"] == 2
+
+
+def test_read_only_store_refuses_absent_state_and_does_not_create_files(tmp_path):
+    database = tmp_path / "state" / "jobs.sqlite3"
+    run_root = tmp_path / "runs"
+    with pytest.raises(BenchmarkJobError, match="read-only benchmark store is unavailable") as exc:
+        BenchmarkJobStore(str(database), run_root=str(run_root), read_only=True)
+    assert exc.value.code == "benchmark_store_unavailable"
+    assert not database.parent.exists()
+    assert not run_root.exists()
+
+
+def test_read_only_store_status_preserves_schema_and_data(tmp_path):
+    writable = _store(tmp_path)
+    writable.submit(_spec())
+    database = tmp_path / "jobs.sqlite3"
+    run_root = tmp_path / "runs"
+    with sqlite3.connect(database) as connection:
+        before_schema = connection.execute("PRAGMA schema_version").fetchone()[0]
+        before_record = connection.execute("SELECT record FROM benchmark_jobs WHERE run_id = 'run-001'").fetchone()[0]
+    reader = BenchmarkJobStore(str(database), run_root=str(run_root), read_only=True)
+    assert reader.status("run-001")["state"] == "queued"
+    with pytest.raises(BenchmarkJobError, match="benchmark store is read-only") as exc:
+        reader.submit(_spec("run-002"))
+    assert exc.value.code == "benchmark_store_read_only"
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA schema_version").fetchone()[0] == before_schema
+        assert connection.execute("SELECT record FROM benchmark_jobs WHERE run_id = 'run-001'").fetchone()[0] == before_record
+
+
+def test_read_only_store_reads_latest_committed_live_wal_row(tmp_path):
+    writable = _store(tmp_path)
+    writable.submit(_spec())
+    database = tmp_path / "jobs.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute(
+            "UPDATE benchmark_jobs SET state = 'running', record = json_set(record, '$.state', 'running')"
+        )
+        connection.commit()
+        assert database.with_name(database.name + "-wal").exists()
+        reader = BenchmarkJobStore(str(database), run_root=str(tmp_path / "runs"), read_only=True)
+        assert reader.status("run-001")["state"] == "running"
 
 
 def test_run_list_uses_a_stable_bounded_snapshot_and_hides_private_bindings(tmp_path):
@@ -1012,3 +1055,97 @@ def test_standalone_benchmark_reader_bad_database_is_unavailable_without_mutatio
     assert result.error is WorkloadErrorCode.UNAVAILABLE
     assert path.read_bytes() == b"not-a-database"
     assert tuple(tmp_path.iterdir()) == (path,)
+
+
+def test_new_unknown_suite_rejected_but_historical_record_readable(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(suite="historical-suite")
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(value)
+    assert exc.value.code == "unknown_suite"
+    assert store.status(value["run_id"]) is None
+    # Seed an old writer's record; current admission must never create it.
+    record = new_job_record(value)
+    with store._connection() as connection:
+        connection.execute(
+            "INSERT INTO benchmark_jobs (run_id, spec_sha256, state, revision, record) VALUES (?, ?, ?, ?, ?)",
+            (value["run_id"], record["spec_sha256"], record["state"], record["revision"], json.dumps(record)),
+        )
+    assert store.status(value["run_id"]) == record
+    assert store.submit(value) == ("existing", record)
+
+
+def test_new_v2_job_checks_budget_before_durable_creation(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(profile="pilot-v2", parameters={}, timeout_s=1801)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(value)
+    assert exc.value.code == "profile_budget_exceeded"
+    assert store.status(value["run_id"]) is None
+
+
+def test_v2_context_matrix_widening_rejected_before_durable_creation(tmp_path):
+    store = _store(tmp_path)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(_spec(profile="pilot-v2", parameters={"token_buckets": [1048576]}))
+    assert exc.value.code == "profile_budget_exceeded"
+    assert store.status("run-001") is None
+
+
+@pytest.mark.parametrize("suite", ["context", "agentic", "swe", "aider", "performance"])
+def test_v2_submission_persists_admission_pin_and_retries_original_without_lookup(monkeypatch, tmp_path, suite):
+    from anvil_serving.benchmarking import submission
+    from anvil_serving.benchmarking.profiles import load_profile
+
+    store = _store(tmp_path)
+    parameters = {"instance_ids": ["astropy__astropy-12907"]} if suite == "swe" else {}
+    if suite == "performance":
+        parameters = {"runner": "aiperf", "workload": {"input_tokens": 128, "output_tokens": 32}, "request_count": 1}
+    value = _spec(profile="pilot-v2", suite=suite, parameters=parameters)
+    _, submitted = store.submit(value)
+    assert submitted["spec"]["profile_sha256"] == load_profile("pilot-v2")["content_sha256"]
+    assert submitted["spec_sha256"] == job_spec_sha256(submitted["spec"])
+    assert submitted["spec_sha256"] != job_spec_sha256(value)
+    monkeypatch.setattr(submission, "load_profile", lambda *_a: pytest.fail("retry must retain original admission"))
+    restarted = _store(tmp_path)
+    assert restarted.submit(value) == ("existing", submitted)
+    assert restarted.submit(submitted["spec"]) == ("existing", submitted)
+    for change in ({"profile_sha256": "0" * 64}, {"timeout_s": 601}):
+        with pytest.raises(BenchmarkJobError) as exc:
+            restarted.submit({**value, **change})
+        assert exc.value.code == "run_id_conflict"
+    assert restarted.status(value["run_id"]) == submitted
+
+
+def test_submission_does_not_silently_replace_caller_profile_pin(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(profile="pilot-v2", suite="aider", parameters={}, profile_sha256="0" * 64)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(value)
+    assert exc.value.code == "profile_binding_mismatch"
+    assert store.status(value["run_id"]) is None
+
+
+def test_legacy_submission_and_retry_leave_record_bytes_unchanged(tmp_path):
+    store = _store(tmp_path)
+    value = _spec(profile="smoke", parameters={})
+    _, record = store.submit(value)
+    assert record == new_job_record(value)
+    with closing(sqlite3.connect(store.path)) as connection:
+        original = connection.execute("SELECT record FROM benchmark_jobs").fetchone()[0]
+    assert store.submit(value) == ("existing", record)
+    with closing(sqlite3.connect(store.path)) as connection:
+        assert connection.execute("SELECT record FROM benchmark_jobs").fetchone()[0] == original
+
+
+@pytest.mark.parametrize("changes,code", [
+    ({"profile": "context-smoke-v1"}, "profile_not_found"),
+    ({"parameters": {"instance_ids": ["example"]}}, "suite_incompatible_parameter"),
+    ({"parameters": {"offline": "false"}}, "bad_offline"),
+])
+def test_new_v1_jobs_share_full_submission_admission(tmp_path, changes, code):
+    store = _store(tmp_path)
+    with pytest.raises(BenchmarkJobError) as exc:
+        store.submit(_spec(**changes))
+    assert exc.value.code == code
+    assert store.status("run-001") is None

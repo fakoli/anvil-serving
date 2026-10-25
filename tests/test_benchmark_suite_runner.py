@@ -649,3 +649,207 @@ def test_parallel_runner_requires_and_accepts_one_complete_batch():
     profile = copy.deepcopy(load_profile("deep"))
     profile["suites"]["agentic"]["repetitions"] = 1
     assert run_agentic_suite(profile, spec("agentic", case_ids=["parallel-tools"]), caller=caller)["passed"]
+
+
+def budget_profile(suite, *, calls, tokens=16, deadline=600, repetitions=1):
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["schema"] = "anvil-serving.benchmark-profile/v2"
+    settings = profile["suites"][suite]
+    if suite == "context":
+        settings.update(token_buckets=[512, 1024], positions=[0.5, 0.97])
+    settings["repetitions"] = repetitions
+    settings["timeout_s"] = deadline
+    settings["output_headroom_tokens" if suite == "context" else "max_completion_tokens"] = tokens
+    settings["budgets"] = {
+        "max_model_calls": calls, "max_completion_tokens": tokens,
+        "deadline_s": deadline, "max_retries": 0,
+        "min_free_disk_bytes": settings["requirements"]["min_free_disk_bytes"],
+    }
+    return profile
+
+
+def test_context_budget_counts_calibration_and_preserves_partial_cases():
+    calls = []
+
+    def caller(*args, **kwargs):
+        calls.append(kwargs)
+        return context_caller(*args, **kwargs)
+
+    result = run_context_suite(
+        budget_profile("context", calls=2),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5, 0.97]),
+        caller=caller,
+    )
+    assert [call["max_tokens"] for call in calls] == [1, 16]
+    assert result["calibration"]["sample_prompt_tokens"] > 0
+    assert result["observations"][0]["passed"] is True
+    assert len(result["observations"]) == 1
+    assert result["state"] == "incomplete"
+    assert result["passed"] is False
+    assert result["budget"]["model_calls"] == 2
+    assert result["budget"]["observed_completion_tokens"] == 4
+
+
+@pytest.mark.parametrize("call_cap", [1, 2])
+def test_context_budget_never_counts_unsent_lengths_as_attempted(call_cap):
+    result = run_context_suite(
+        budget_profile("context", calls=call_cap),
+        spec("context", case_ids=["native-needle"], token_buckets=[512, 1024], positions=[0.5]),
+        caller=context_caller,
+    )
+    assert result["state"] == "incomplete"
+    assert result["budget"]["model_calls"] == call_cap
+    assert [row["requested_tokens"] for row in result["observations"]] == (
+        [] if call_cap == 1 else [512]
+    )
+    if call_cap == 1:
+        assert result["calibration"] is not None
+        assert result["curve"] is None
+    else:
+        assert result["curve"]["attempted_buckets"] == [512]
+
+
+def test_context_budget_deadline_during_calibration_retains_evidence(monkeypatch):
+    from anvil_serving.benchmarking import budgets
+
+    now = [0]
+    monkeypatch.setattr(budgets.time, "monotonic", lambda: now[0])
+
+    def caller(*args, **kwargs):
+        now[0] = 11
+        return context_caller(*args, **kwargs)
+
+    result = run_context_suite(
+        budget_profile("context", calls=5, deadline=10),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
+        caller=caller,
+    )
+    assert result["calibration"] is not None
+    assert result["observations"] == []
+    assert result["curve"] is None
+    assert result["failure"]["budget"] == "deadline_s"
+    assert result["budget"]["model_calls"] == 1
+
+
+def test_context_budget_retains_failed_calibration_attempt():
+    def caller(*_args, **_kwargs):
+        raise OSError("test transport failed")
+
+    result = run_context_suite(budget_profile("context", calls=5), spec("context"), caller=caller)
+    assert result["state"] == "incomplete"
+    assert result["failure"]["code"] == "endpoint_error"
+    assert result["budget"]["model_calls"] == 1
+    assert result["budget"]["observed_completion_tokens"] is None
+
+
+def test_agentic_budget_spans_turns_and_repetitions():
+    caller = AgentCaller()
+    result = run_agentic_suite(
+        budget_profile("agentic", calls=4, repetitions=3),
+        spec("agentic", case_ids=["tool-recovery"]), caller=caller,
+    )
+    assert len(caller.kwargs) == 4
+    assert len(result["observations"]) == 2
+    assert result["observations"][0]["passed"] is True
+    assert len(result["observations"][1]["turns"]) == 1
+    assert result["observations"][1]["failure"]["code"] == "budget_exhausted"
+    assert result["passed"] is False
+    assert result["truncated"] is True
+    assert result["budget"]["model_calls"] == 4
+
+
+def test_agentic_budget_omits_an_unstarted_repetition():
+    caller = AgentCaller()
+    result = run_agentic_suite(
+        budget_profile("agentic", calls=3, repetitions=2),
+        spec("agentic", case_ids=["tool-recovery"]), caller=caller,
+    )
+    assert len(caller.kwargs) == 3
+    assert len(result["observations"]) == 1
+    assert result["observations"][0]["passed"] is True
+    assert result["summary"]["attempted"] == 1
+    assert result["state"] == "incomplete"
+    assert result["passed"] is False
+
+
+def test_agentic_deadline_before_first_send_has_no_attempted_case(monkeypatch):
+    from anvil_serving.benchmarking import budgets, suite_runner
+
+    now = [0]
+    monkeypatch.setattr(budgets.time, "monotonic", lambda: now[0])
+    original = suite_runner.build_agentic_scenario
+
+    def scenario(*args, **kwargs):
+        now[0] += 10
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(suite_runner, "build_agentic_scenario", scenario)
+    result = run_agentic_suite(
+        budget_profile("agentic", calls=3, deadline=10),
+        spec("agentic", case_ids=["tool-recovery"]),
+        caller=lambda *_, **__: pytest.fail("sent after deadline"),
+    )
+    assert result["state"] == "incomplete"
+    assert result["budget"]["model_calls"] == 0
+    assert result["observations"] == []
+    assert result["summary"]["attempted"] == 0
+    assert result["summary"]["pass_rate"] is None
+
+
+def test_long_session_budget_counts_every_real_turn():
+    calls = []
+
+    def caller(_base, _model, _key, messages, **kwargs):
+        calls.append((copy.deepcopy(messages), kwargs))
+        return {"latency_s": 0.1, "response": {
+            "choices": [{"message": {"content": "ACK"}}],
+            "usage": {"prompt_tokens": len(calls) * 100, "completion_tokens": 2},
+        }}
+
+    result = run_agentic_suite(
+        budget_profile("agentic", calls=2),
+        spec("agentic", case_ids=["long-session"], session_turns=4), caller=caller,
+    )
+    assert len(calls) == 2
+    assert result["budget"]["model_calls"] == 2
+    assert result["observations"][0]["history_prompt_tokens"] == [100, 200]
+    assert len(result["observations"][0]["turns"]) == 2
+    assert result["state"] == "incomplete"
+
+
+def test_agentic_late_last_reply_is_retained_but_cannot_complete(monkeypatch):
+    from anvil_serving.benchmarking import budgets
+
+    now = [0]
+    monkeypatch.setattr(budgets.time, "monotonic", lambda: now[0])
+    agent = AgentCaller()
+    timeouts = []
+
+    def caller(*args, **kwargs):
+        timeouts.append(kwargs["timeout"])
+        now[0] += 4
+        return agent(*args, **kwargs)
+
+    result = run_agentic_suite(
+        budget_profile("agentic", calls=5, deadline=10),
+        spec("agentic", case_ids=["tool-recovery"]), caller=caller,
+    )
+    assert timeouts == [10, 6, 2]
+    assert result["observations"][0]["visible_answer"] == "BUILD-OK"
+    assert result["observations"][0]["passed"] is True  # retained content correctness
+    assert result["passed"] is False  # suite deadline was violated
+    assert result["failure"]["budget"] == "deadline_s"
+    assert result["state"] == "incomplete"
+
+
+def test_v1_suite_results_have_no_new_budget_fields():
+    result = run_agentic_suite(load_profile("smoke"), spec("agentic", case_ids=["tool-recovery"]),
+                               caller=AgentCaller())
+    assert not {"budget", "state", "status", "truncated"}.intersection(result)
+
+
+def test_v2_context_rejects_out_of_profile_buckets_before_calibration():
+    with pytest.raises(BenchmarkJobError) as exc:
+        run_context_suite(load_profile("pilot-v2"), spec("context", token_buckets=[1048576]),
+                          caller=lambda *_a, **_kw: pytest.fail("model traffic before admission"))
+    assert exc.value.code == "profile_budget_exceeded"

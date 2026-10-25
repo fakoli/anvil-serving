@@ -7,17 +7,15 @@ import json
 import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
-from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
-from ....benchmarking.submission import validate_submission_spec
+from ....benchmarking.jobs import BenchmarkJobError, parse_job_spec_json
 from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
-    cleanup_harness_work,
     harness_asset_status,
     prepare_harness_assets,
 )
-from ....benchmarking.profiles import load_profile
-from ....benchmarking.worker import cancel_benchmark_job, launch_benchmark_job
+from ....benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES, load_profile
+from ....benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, launch_benchmark_job
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
@@ -91,13 +89,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
     if not confirm:
         raise ToolError("confirmation_required", "benchmark submission requires confirmation")
     try:
-        value = json.loads(raw)
-        spec = validate_job_spec(value)
-        if spec["suite"] != suite:
-            raise BenchmarkJobError(
-                "suite_mismatch", "job specification suite does not match the command"
-            )
-        validate_submission_spec(spec)
+        spec = parse_job_spec_json(raw, suite=suite)
         store = _benchmark_job_store()
         disposition, job = store.submit(spec)
         launch = (
@@ -106,8 +98,8 @@ def tool_benchmark_job_submit(args: dict) -> dict:
                 run_root=store.run_root,
                 run_id=job["spec"]["run_id"],
             )
-            if job["state"] == "queued"
-            else {"launched": False, "reason": f"job is {job['state']}"}
+            if disposition == "submitted"
+            else {"launched": False, "reason": f"existing job is {job['state']}"}
         )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_spec_json", "spec_json must be valid JSON") from None
@@ -129,20 +121,17 @@ def tool_benchmark_job_preflight(args: dict) -> dict:
     raw_spec = _str_arg(args, "spec_json", required=True)
     raw_requirements = _str_arg(args, "requirements_json") or "{}"
     try:
-        spec = validate_job_spec(json.loads(raw_spec))
+        spec = parse_job_spec_json(raw_spec, suite=suite)
         requirements = json.loads(raw_requirements)
         if not isinstance(requirements, dict):
             raise BenchmarkJobError("bad_json", "requirements_json must be an object")
-        if spec["suite"] != suite:
-            raise BenchmarkJobError(
-                "suite_mismatch", "job specification suite does not match the command"
-            )
         store = _benchmark_job_store()
         artifact = run_benchmark_preflight(
             spec,
             run_root=store.run_root,
             requirements=requirements,
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
+            job_store=store,
         )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_json", "benchmark preflight JSON is invalid") from None
@@ -255,6 +244,7 @@ def tool_benchmark_harness_status(args: dict) -> dict:
             run_root=store.run_root,
             ownership_id=_str_arg(args, "ownership_id", required=True),
             run_id=_str_arg(args, "run_id", required=True),
+            suite=_str_arg(args, "suite", required=True),
         )
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
@@ -266,11 +256,11 @@ def tool_benchmark_harness_cleanup(args: dict) -> dict:
         raise ToolError("confirmation_required", "harness cleanup requires confirmation")
     store = _benchmark_job_store()
     try:
-        result = cleanup_harness_work(
-            run_root=store.run_root,
-            ownership_id=_str_arg(args, "ownership_id", required=True),
-            run_id=_str_arg(args, "run_id", required=True),
-        )
+        run_id = _str_arg(args, "run_id", required=True)
+        record = _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+        if record["spec"]["ownership_id"] != _str_arg(args, "ownership_id", required=True):
+            raise BenchmarkJobError("ownership_mismatch", "run belongs to a different owner")
+        result = cleanup_benchmark_job(store, run_id)
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
     return _ok(result)
@@ -600,8 +590,8 @@ FAMILY = ToolFamily(
             "description": "Prepare exact external benchmark assets through the managed worker cache.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
-                    "profile": {"type": "string", "enum": ["smoke", "scout", "deep"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
+                    "profile": {"type": "string", "enum": sorted(PROFILE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                     "offline": {"type": "boolean"},
@@ -616,7 +606,7 @@ FAMILY = ToolFamily(
             "description": "Inspect one run's prepared external benchmark assets.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                 },
@@ -628,7 +618,7 @@ FAMILY = ToolFamily(
             "description": "Clean only a benchmark run's owned work directory.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                     "confirm": {"type": "boolean"},
@@ -641,7 +631,7 @@ FAMILY = ToolFamily(
             "description": "Validate a benchmark endpoint and isolated worker without model lifecycle changes.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "spec_json": {"type": "string", "maxLength": 262144},
                     "requirements_json": {"type": "string", "maxLength": 262144},
                 },
@@ -650,10 +640,10 @@ FAMILY = ToolFamily(
             "handler": tool_benchmark_job_preflight,
         },
         "benchmark_job_submit": {
-            "description": "Submit one durable context, agentic, or SWE benchmark job.",
+            "description": "Submit one durable benchmark job for the selected suite.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "spec_json": {"type": "string", "maxLength": 262144},
                     "follow": {"type": "boolean"},
                     "detach": {"type": "boolean"},
@@ -667,7 +657,7 @@ FAMILY = ToolFamily(
             "description": "Read durable benchmark job status.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                 },
                 required=["suite", "run_id"],
@@ -688,7 +678,7 @@ FAMILY = ToolFamily(
             "description": "Read bounded cursor logs for a durable benchmark job.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "cursor": _bounded_integer_schema(0, 2147483647, 0),
                     "limit": _bounded_integer_schema(1, 1000, 100),
@@ -702,7 +692,7 @@ FAMILY = ToolFamily(
             "description": "Cancel a durable benchmark job after recording partial evidence.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "confirm": {"type": "boolean"},
                 },
@@ -714,7 +704,7 @@ FAMILY = ToolFamily(
             "description": "Read a durable benchmark job artifact.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "path": {"type": "string", "maxLength": 512},
                 },

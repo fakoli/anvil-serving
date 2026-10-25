@@ -6,6 +6,7 @@ import copy
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
 import sqlite3
 import threading
@@ -828,3 +829,68 @@ def test_benchmark_workload_snapshot_is_coherent_with_concurrent_writer(
 
     assert not reader.is_alive()
     assert captured[0].records[0].updated_at == before
+
+
+@pytest.mark.parametrize("digest", [None, "", "a" * 63, "A" * 64, "g" * 64, 123])
+def test_job_profile_pin_is_a_closed_sha256_field(digest):
+    with pytest.raises(jobs.BenchmarkJobError) as exc:
+        jobs.validate_job_spec(_spec(profile_sha256=digest))
+    assert exc.value.code == "bad_profile_digest"
+
+
+def test_optional_profile_pin_changes_digest_without_rewriting_legacy_records():
+    legacy = jobs.new_job_record(_spec())
+    original = jobs.canonical_json_bytes(legacy)
+    assert "profile_sha256" not in legacy["spec"]
+    assert jobs.canonical_json_bytes(jobs.validate_job_record(legacy)) == original
+    pinned = jobs.new_job_record(_spec(profile_sha256="a" * 64))
+    assert pinned["spec"]["profile_sha256"] == "a" * 64
+    assert pinned["spec_sha256"] != legacy["spec_sha256"]
+
+
+def test_spec_file_and_inline_share_canonical_digest(tmp_path):
+    raw = json.dumps(_spec(), indent=2)
+    path = tmp_path / "job.json"
+    path.write_text(raw, encoding="utf-8")
+    file_spec = jobs.load_job_spec(spec_path=str(path), suite="context")
+    inline_spec = jobs.load_job_spec(spec_json=raw, suite="context")
+    assert file_spec == inline_spec
+    assert jobs.job_spec_sha256(file_spec) == jobs.job_spec_sha256(inline_spec)
+
+
+@pytest.mark.parametrize("raw, code", [
+    (" " * (jobs.MAX_BENCHMARK_JOB_SPEC_BYTES + 1), "spec_too_large"),
+    ("é" * (jobs.MAX_BENCHMARK_JOB_SPEC_BYTES // 2 + 1), "spec_too_large"),
+    (b"\xff", "bad_spec_json"),
+    ("{", "bad_spec_json"),
+    ("[" * 2000, "bad_spec_json"),
+    ("\ud800", "bad_spec_json"),
+])
+def test_spec_json_rejects_unbounded_or_malformed_input(raw, code):
+    with pytest.raises(jobs.BenchmarkJobError) as exc:
+        jobs.parse_job_spec_json(raw)
+    assert exc.value.code == code
+
+
+def test_spec_file_is_bounded_and_missing_sources_fail_closed(tmp_path):
+    path = tmp_path / "job.json"
+    path.write_bytes(b" " * (jobs.MAX_BENCHMARK_JOB_SPEC_BYTES + 1))
+    for kwargs, code in [
+        ({"spec_path": str(path)}, "spec_too_large"),
+        ({"spec_path": str(tmp_path / "missing")}, "bad_spec_file"),
+        ({}, "bad_spec_source"),
+        ({"spec_path": str(path), "spec_json": "{}"}, "bad_spec_source"),
+        ({"spec_json": json.dumps(_spec()), "suite": "aider"}, "suite_mismatch"),
+    ]:
+        with pytest.raises(jobs.BenchmarkJobError) as exc:
+            jobs.load_job_spec(**kwargs)
+        assert exc.value.code == code
+
+
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="FIFO requires POSIX")
+def test_spec_file_rejects_fifo_without_waiting_for_a_writer(tmp_path):
+    path = tmp_path / "job.fifo"
+    os.mkfifo(path)
+    with pytest.raises(jobs.BenchmarkJobError) as exc:
+        jobs.load_job_spec(spec_path=str(path))
+    assert exc.value.code == "bad_spec_file"

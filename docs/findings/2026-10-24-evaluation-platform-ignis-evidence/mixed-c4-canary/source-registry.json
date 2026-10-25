@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "mixed-c4-diagnostic",
+  "sources": [],
+  "local_sources": "Exact frozen native campaign/report/closure/telemetry/oracles, source validation/package receipts and postterminal absence evidence. No new external prior. Original commitments and public derivative hashes are retained separately.",
+  "source_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430"
+}

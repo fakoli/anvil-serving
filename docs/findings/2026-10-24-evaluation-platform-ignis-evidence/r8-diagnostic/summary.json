@@ -1,0 +1,132 @@
+{
+  "campaign": "diagnostic-campaign",
+  "candidate_unrun": 48,
+  "comparison_complete": false,
+  "complete": false,
+  "engine_causal_claim": false,
+  "full_native_projection": "refused",
+  "incumbent_denominator": 48,
+  "incumbent_other_outcomes": {
+    "cancelled": 2,
+    "cancelling": 2,
+    "max_model_calls_grade_unknown": 2
+  },
+  "jobs": {
+    "attempted": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 2,
+      "known_count": 2,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 42,
+      "known_count": 42,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 2,
+      "known_count": 2,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 96,
+      "known_count": 96,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": null,
+      "known_count": 42,
+      "unknown_cells": 4
+    },
+    "submitted": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 50,
+      "known_count": 50,
+      "unknown_cells": 0
+    }
+  },
+  "known_complete_grades": {
+    "failed": 10,
+    "graded": 42,
+    "measurement_complete": 42,
+    "passed": 32
+  },
+  "limits": [
+    "Native unfinished count50 includes48 planned candidate cells and2 cancelling incumbent cells.",
+    "Final blocked interval and total active time remain unknown; later absence/engine zero is recovery context only.",
+    "First-repeat chain audit covers24 cells, not the entire submitted population.",
+    "Two max_model_calls failures have unknown grades, not ordinary scored task failures.",
+    "No complete per-request/usage, speedup, parity, superiority, ranking, full paired-campaign or promotion claim.",
+    "Independent exact packet review and whole-experiment size admission remain pending."
+  ],
+  "manifest_sha256": "cdb787ab871e0f19655d34c5add6261a5855478975c0435fbc1663696c84f930",
+  "measurement_repaired": false,
+  "native_states_repaired": false,
+  "packet_kind": "diagnostic report packet; full native projection refused",
+  "promoted": false,
+  "prospective_eligibility": {
+    "candidate_observed": false,
+    "eligible": 42,
+    "excluded": 6,
+    "rule": "Exact key intersection and complete measurements on both sides; retain graded failures, never select on success or latency. Separate attempts are diagnostic only."
+  },
+  "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+  "samples": {
+    "attempted": {
+      "count": null,
+      "known_count": 42,
+      "unknown_cells": 6
+    },
+    "cancelled": {
+      "count": null,
+      "known_count": 0,
+      "unknown_cells": 2
+    },
+    "failed": {
+      "count": null,
+      "known_count": 10,
+      "unknown_cells": 6
+    },
+    "planned": {
+      "count": 96,
+      "known_count": 96,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": null,
+      "known_count": 42,
+      "unknown_cells": 4
+    },
+    "submitted": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": null,
+      "known_count": 50,
+      "unknown_cells": 2
+    }
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+  "timing": {
+    "active_wall_seconds": null,
+    "child_active_wall_seconds": null,
+    "known_active_wall_seconds": 3451.100682400167,
+    "observed_job_overlap": null,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 1,
+    "unknown_intervals": 4
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "candidate_removed": true,
+  "ending_state": "Exact incumbent image/model/recipe/GPU order/endpoint and active monitoring restored; original router admitting with all eight local counters zero.",
+  "evidence": [
+    "final-restoration-evidence.json",
+    "restoration-failed-attempt.json",
+    "pi-validation.json"
+  ],
+  "exact_recipe_restored": true,
+  "limits": "Routed coding/JSON/approximately128k needle/20of20 tools pass does not override strict Pi failure. Remote-memory terminal UNKNOWN remains separate from local zero counts.",
+  "preserved_failure": "First restore omitted explicit GPU order and was removed; exact-order retry restored service. Pi first input polluted by launcher stdin; clean-input second attempt still fails exact final text.",
+  "real_pi_accepted": false,
+  "restoration_acceptance_complete": false,
+  "routed_preflight_passed": true,
+  "router_never_transitioned": true,
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "service_restored": true,
+  "starting_state": "Exact incumbent unloaded for the candidate interval.",
+  "status": "service_restored_strict_real_client_acceptance_failed",
+  "verified": false
+}

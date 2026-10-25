@@ -1,0 +1,221 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-25-aider-diagnostic-canaries",
+  "complete": false,
+  "scope": "Standalone harness diagnostics; excluded from campaign population and all performance/model-quality comparisons.",
+  "canaries": [
+    {
+      "id": "canary-r1",
+      "source_commit": "718564565810c35086a8801ac29e70e37d3dd384",
+      "source_sha256": null,
+      "adapter_sha256": "075678b0e2765c44de9ed66e39d07dba24d705530af3aa31045bafb7580f22b5",
+      "oracle_image_id": "sha256:b70cee079a86554e18633c192abe87c4f45ae6b382ac6b8ed6571f9d51b3928d",
+      "state": "failed",
+      "native_summary": {
+        "graded": 0,
+        "resolve_rate": null,
+        "resolved": 0,
+        "selected": 1
+      },
+      "failure": {
+        "class": "infrastructure_failure",
+        "code": "aider_process_failed"
+      },
+      "tests_outcomes": null,
+      "observed_transport_starts": 3,
+      "final_model_calls": null,
+      "model_call_count_complete": false,
+      "process_duration_s": null,
+      "adapter_elapsed_s": null,
+      "process_output_truncated": null,
+      "combined_capture_hard_cap_bytes": 65536,
+      "retained_cap_per_stream_bytes": 65536,
+      "configured_job_timeout_s": 600,
+      "configured_suite_budgets": {
+        "deadline_s": 3600,
+        "max_completion_tokens": 16384,
+        "max_model_calls": 12,
+        "max_retries": 0,
+        "min_free_disk_bytes": 21474836480
+      },
+      "retention_state": "incomplete",
+      "missing_required_native": [
+        "adapter-result.json",
+        "results/cpp/exercises/practice/all-your-base/.aider.results.json"
+      ],
+      "events_rows": 8,
+      "events_complete": null,
+      "campaign_population_member": false,
+      "promotion_authorized": false
+    },
+    {
+      "id": "canary-r2",
+      "source_commit": "914a6750b283f5719a18ccf355f9d27794140261",
+      "source_sha256": "eb73c7f1ac94754757770563690b3526d25d7f3f9fc7966d75a5fb35d94162d2",
+      "adapter_sha256": "075678b0e2765c44de9ed66e39d07dba24d705530af3aa31045bafb7580f22b5",
+      "oracle_image_id": "sha256:b70cee079a86554e18633c192abe87c4f45ae6b382ac6b8ed6571f9d51b3928d",
+      "state": "failed",
+      "native_summary": {
+        "graded": 0,
+        "resolve_rate": null,
+        "resolved": 0,
+        "selected": 1
+      },
+      "failure": {
+        "class": "infrastructure_failure",
+        "code": "swe_process_output_overflow"
+      },
+      "tests_outcomes": null,
+      "observed_transport_starts": 3,
+      "final_model_calls": null,
+      "model_call_count_complete": false,
+      "process_duration_s": null,
+      "adapter_elapsed_s": null,
+      "process_output_truncated": null,
+      "combined_capture_hard_cap_bytes": 65536,
+      "retained_cap_per_stream_bytes": 65536,
+      "configured_job_timeout_s": 600,
+      "configured_suite_budgets": {
+        "deadline_s": 3600,
+        "max_completion_tokens": 16384,
+        "max_model_calls": 12,
+        "max_retries": 0,
+        "min_free_disk_bytes": 21474836480
+      },
+      "retention_state": "incomplete",
+      "missing_required_native": [
+        "adapter-result.json",
+        "results/cpp/exercises/practice/all-your-base/.aider.results.json"
+      ],
+      "events_rows": 8,
+      "events_complete": null,
+      "campaign_population_member": false,
+      "promotion_authorized": false
+    },
+    {
+      "id": "canary-r3",
+      "source_commit": "6479d36e74489be35a0a4ec9f855311c676e2e1a",
+      "source_sha256": "6b7739c91c40b6e798237ca023a786376127bbd9217f542dcb08c8fbab74649f",
+      "adapter_sha256": "075678b0e2765c44de9ed66e39d07dba24d705530af3aa31045bafb7580f22b5",
+      "oracle_image_id": "sha256:b70cee079a86554e18633c192abe87c4f45ae6b382ac6b8ed6571f9d51b3928d",
+      "state": "completed",
+      "native_summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      },
+      "failure": null,
+      "tests_outcomes": [
+        false,
+        true
+      ],
+      "observed_transport_starts": 8,
+      "final_model_calls": 8,
+      "model_call_count_complete": true,
+      "process_duration_s": 184.890899,
+      "adapter_elapsed_s": 179.965122,
+      "process_output_truncated": true,
+      "combined_capture_hard_cap_bytes": 8388608,
+      "retained_cap_per_stream_bytes": 65536,
+      "configured_job_timeout_s": 600,
+      "configured_suite_budgets": {
+        "deadline_s": 3600,
+        "max_completion_tokens": 16384,
+        "max_model_calls": 12,
+        "max_retries": 0,
+        "min_free_disk_bytes": 21474836480
+      },
+      "retention_state": "retained",
+      "missing_required_native": [],
+      "events_rows": 21,
+      "events_complete": true,
+      "campaign_population_member": false,
+      "promotion_authorized": false
+    },
+    {
+      "id": "canary-r4",
+      "source_commit": "60c80fa2b10e70939912c7ce184849790c041fd5",
+      "source_sha256": "107475066ebfb83e446be7c1d14f08052ace64face9492c9381b8c9e31e8572a",
+      "adapter_sha256": "7f988525180bba0fefb7044023832469bd3dd697d013b01bfe91a07b52f0b3a1",
+      "oracle_image_id": "sha256:6edaa29314de70de57541bfaa153760acac28542298e366bd1f76b6bff47893d",
+      "state": "completed",
+      "native_summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      },
+      "failure": null,
+      "tests_outcomes": [
+        false,
+        true
+      ],
+      "observed_transport_starts": 3,
+      "final_model_calls": 3,
+      "model_call_count_complete": true,
+      "process_duration_s": 98.401864,
+      "adapter_elapsed_s": 92.662213,
+      "process_output_truncated": true,
+      "combined_capture_hard_cap_bytes": 8388608,
+      "retained_cap_per_stream_bytes": 65536,
+      "configured_job_timeout_s": 600,
+      "configured_suite_budgets": {
+        "deadline_s": 3600,
+        "max_completion_tokens": 16384,
+        "max_model_calls": 12,
+        "max_retries": 0,
+        "min_free_disk_bytes": 21474836480
+      },
+      "retention_state": "retained",
+      "missing_required_native": [],
+      "events_rows": 11,
+      "events_complete": true,
+      "campaign_population_member": false,
+      "promotion_authorized": false
+    }
+  ],
+  "corrections": [
+    {
+      "commit": "914a6750b283f5719a18ccf355f9d27794140261",
+      "change": "Retain safe typed BenchmarkJobError code in Aider process/result; arbitrary messages/details remain excluded.",
+      "first_canary": "canary-r2"
+    },
+    {
+      "commit": "6479d36e74489be35a0a4ec9f855311c676e2e1a",
+      "change": "Aider-only combined process capture cap 8 MiB; siblings retain 64 KiB. Retained stage output remains 64 KiB per stream with truncation.",
+      "first_canary": "canary-r3"
+    },
+    {
+      "commit": "60c80fa2b10e70939912c7ce184849790c041fd5",
+      "change": "Pinned basic_lint selects C++ only for admitted cpp solution .h files; filenames/prompts/oracle unchanged. Declared local correction, not official leaderboard equivalence.",
+      "first_canary": "canary-r4"
+    }
+  ],
+  "r4_independent_review": {
+    "status": "GO for selected single-task methodology confirmation",
+    "original_private_sha256": "a172bdaf1ec987f9d9c1d6f4bb4e92a3458450e291161494e28faaf9e175439a",
+    "campaign_go": false
+  },
+  "limitations": [
+    "R1 exact process-boundary cause is unknown; no retroactive overflow assignment.",
+    "R2 output overflow is proven by retained typed failure.",
+    "R3 completed [false,true], with false header lint affecting the conversation; first grader failure cause unassigned.",
+    "R4 completed [false,true]; first grader failure cause unassigned.",
+    "Different source/image/methodology and stochastic trajectories preclude speedup and model-quality comparisons.",
+    "R1/R2 final adapter duration/model-call totals and native grader outcomes are missing; observed starts are a lower bound, not a terminal total.",
+    "Native identities expose the requested router alias; actual serving engine/image/revision are not proven by these standalone artifacts. Oracle image IDs identify the grading environment, not the model server.",
+    "Private raw text/dependency inventories and stage records remain authoritative; public derivatives do not reconstruct or revalidate native hashes.",
+    "No full campaign acceptance or promotion."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Separate exact-source full gates and newly frozen campaign identities."
+  }
+}

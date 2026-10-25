@@ -56,6 +56,10 @@ so four full 327K windows are unsupported. See the
 
 ## Current status and review date
 
+**2026-10-25 R12/R13 successor:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four cancelled grades remain unknown. The candidate was never measured. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. This does not change the incumbent assignment or establish a comparative ranking. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
+
+**Historical R5–R10 diagnostic addendum, 2026-10-25:** the [evaluation-platform pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) retains a censored incumbent population and separate harness canaries. Exact NVIDIA FP4 service restoration and routed preflight passed after candidate admission attempts; strict Pi final-text acceptance failed. The incumbent assignment remains unchanged. This is an incomplete pilot, not a new qualification or performance comparison.
+
 **2026-10-05 CSF/QAD scout:** the separate pinned GLM candidate passed disabled
 preflight 2/2 and HIGH preflight 25/25. Its first Oracle was 17/18 because a
 structured edit returned a Markdown fence instead of JSON; the strict C4
@@ -407,6 +411,20 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### R12 baseline and R13 admission refusal, 2026-10-25
+
+- **Status:** bounded functional/quality baseline, `no-promotion`; no candidate comparison.
+- **Measured:** 44 complete incumbent measurements/grades and four cancelled unknowns on the dual-card FP4 recipe, across fixed C1/C4 task cells. All released shared batch closures verified; active wall includes drain and telemetry finalization.
+- **Limits:** native tool cases include synthetic results; contained Aider tests supply the executable coding oracle. Fixed order, uncontrolled cache, unknown request overlap and partial cancellation output prevent broader quality, concurrency or performance claims. Minimal-thinking Pi acceptance does not accept thinking-off/default behavior.
+- **Evidence:** [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json), [index](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md), [manifest](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json), [finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal). Sanitized derivatives retain distinct original-private and public-byte hashes.
+
+### Evaluation-platform diagnostic, 2026-10-24–25
+
+- **Status:** partial incumbent evidence; pilot acceptance incomplete, `no-promotion`.
+- **Measured:** R8 has 42 complete measurement/grade pairs (32 pass, ten fail) on the pinned NVIDIA FP4 TP2 recipe. The separate repaired mixed-C4 canary has four complete measurements, three task passes and one valid Go failure.
+- **Limits:** six other submitted R8 rows have unknown grades or incomplete cancellation; blocked final interval and total active time remain unknown. No Ignis generation ran, so there is no paired deployment, speed or engine comparison. Real Pi tools/provider checks passed after restoration, but strict final text failed.
+- **Evidence:** [population boundaries, configuration, failures and restoration](../../findings/2026-10-24-evaluation-platform-ignis.md); prior campaigns and four C++ canaries are separate denominators.
+
 ### Current NVIDIA FP4 r2, 2026-10-17
 
 **Status:** `functional`, bounded `capacity`; human-approved `current`.
@@ -581,6 +599,8 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 ## Dated run history
 
+- 2026-10-25 — [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal): R12 retained complete graded incumbent results and clean shared closure; R13 supplied no candidate measurement. Exact restoration and minimal-thinking Pi accepted, historical thinking-off failure open.
+- 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — partial incumbent grades, accepted bounded mixed-C4 closure, candidate unmeasured; service restored with strict Pi acceptance incomplete.
 - **2026-10-17 — NVIDIA FP4 promotion and serving comparison:** selected primary
   with exact EXL3 r11 retained rollback; 12 matched pairs/84 scored requests per
   arm, fresh functional/capacity/native-client acceptance, KV accounting, and

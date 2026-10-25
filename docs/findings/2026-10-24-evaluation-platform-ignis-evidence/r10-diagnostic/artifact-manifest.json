@@ -1,0 +1,176 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "compatibility-only",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-candidate-monitoring-failure-r10",
+    "promotion_authorized": false,
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "a0c252732dad4c423467cf1dac5d5fd94b38fe27ca6db85f080cf3984895ba50",
+          "bytes": 2160
+        }
+      ],
+      "reason": "After-attempt diagnostic index."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "4f32ab8f982f9038af55b2afdf09d6806e3ac6b2dca0d1a38249504d6c2bb7c2",
+          "bytes": 19342
+        }
+      ],
+      "reason": "Original source hashes distinct from derivatives."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Complete frozen workload remains private; all48 report rows retained."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "Complete prepared plans remain private; no complete plan projection."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "frozen-identity.json",
+          "sha256": "1662c5a60d832e169b23d33baa2b42ecafa19fd5a77895a4fe2688377bc1358a",
+          "bytes": 1010
+        },
+        {
+          "path": "summary.json",
+          "sha256": "9aeab178eeccd85b94bc2a6c91edb6b61f881179484deef08d20997446265774",
+          "bytes": 3771
+        }
+      ],
+      "reason": "Exact frozen identities and effective memory settings."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-report.json",
+          "sha256": "08b8173679e9e75b6aea567d57dbf4f8e933e15f623bde73126df72219a5a07c",
+          "bytes": 73199
+        },
+        {
+          "path": "startup-events.json",
+          "sha256": "3a70aeecad7fb749966fb3be9cf7d17965bafb03a0498de82a092c65932c2eb9",
+          "bytes": 2455
+        },
+        {
+          "path": "candidate-containment-snapshot.json",
+          "sha256": "2bd04e97ec8cbe6c0e4a45332792331f4a275c0ded06d157e54f5b4948f6da41",
+          "bytes": 734
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "14fbc1512a1a0d93172a7e50d338af423f71b293c53d2934795815298c9e2f5c",
+          "bytes": 3183
+        }
+      ],
+      "reason": "Unexecuted report and bounded startup observations, not model measurements."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "monitoring-failure.json",
+          "sha256": "4fb889accfb1e0b4b37bf8668189bc44e0425c8bb9734743e2f800367b7ad966",
+          "bytes": 2119
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "76a842598aa7648426201c48f5c1a5759d440271d5a35ea5aed145155a4b1f3b",
+          "bytes": 2357
+        },
+        {
+          "path": "restoration-failed-attempt.json",
+          "sha256": "5d9ce81fac4a7cf6e0da74fa8ac0642fae9a30f2fc9a7f423436e6733a2d838f",
+          "bytes": 2282
+        }
+      ],
+      "reason": "Adapter defect, launch omission and exact-client failure remain separate."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "e4c438ce40c7dc8accec5f6b3a2565324781c409f7eb873bc6f16a46ce5203da",
+          "bytes": 1157
+        },
+        {
+          "path": "candidate-removal.json",
+          "sha256": "b9e382d595821855d0a7abe1361c43149fc68ce65f9b6bbc2dbd76bcd79b3fbb",
+          "bytes": 576
+        },
+        {
+          "path": "final-restoration-evidence.json",
+          "sha256": "78d9c55cd4a6f87fd37c1c630c6e4e9c05ee029c6d74e9cec224c429d62913e3",
+          "bytes": 4726
+        },
+        {
+          "path": "pi-validation.json",
+          "sha256": "e9c71f3cc596265e95a4a86803ce0d4a39410455bed240e7fb67f22620dcb247",
+          "bytes": 2345
+        }
+      ],
+      "reason": "Service restored; strict real-client acceptance remains failed."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "9aeab178eeccd85b94bc2a6c91edb6b61f881179484deef08d20997446265774",
+          "bytes": 3771
+        }
+      ],
+      "reason": "Diagnostic only; no comparison or promotion."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "22db97ed0eb5b42c5373ba046c0b3bd83e1b45ba50abf5aa3d4ceea6eb27e0ae",
+          "bytes": 910
+        }
+      ],
+      "reason": "Draft bounded copy, not published."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

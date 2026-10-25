@@ -1,0 +1,146 @@
+{
+  "assembled_after_abort_at": "2026-10-25T05:19:16.065245+00:00",
+  "audit": {
+    "children": 20,
+    "reference_dispositions": {
+      "matched": 320,
+      "mismatch": 4
+    },
+    "references": 324
+  },
+  "campaign": "2026-10-25-evaluation-pilot-r7-cancelled",
+  "candidate_started": false,
+  "comparison_complete": false,
+  "complete": false,
+  "counts_source": "campaign-report.json#/jobs",
+  "engine_causal_claim": false,
+  "jobs": {
+    "attempted": {
+      "count": 20,
+      "known_count": 20,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 3,
+      "known_count": 3,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 16,
+      "known_count": 16,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 1,
+      "known_count": 1,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 96,
+      "known_count": 96,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": null,
+      "known_count": 17,
+      "unknown_cells": 3
+    },
+    "submitted": {
+      "count": 20,
+      "known_count": 20,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 76,
+      "known_count": 76,
+      "unknown_cells": 0
+    }
+  },
+  "known_graded_outcomes": {
+    "caveat": "One passed task has failed measurement closure; 17 graded outcomes are not 17 complete measurements.",
+    "complete_measurements": 16,
+    "failed": 2,
+    "graded": 17,
+    "passed": 15
+  },
+  "limits": [
+    "76 planned cells unrun; candidate arm has no results.",
+    "One batch interval and four child intervals unknown in native report; aggregate wall time and overlap remain null.",
+    "HTTP 200 and request-start events do not prove all logical request completions or complete token accounting.",
+    "Raw corrupt originals remain private and unchanged. Matching file hashes do not validate custody, scoring semantics, or measurement eligibility.",
+    "Independent packet review and whole-experiment size admission remain pending."
+  ],
+  "manifest_sha256": "a77e2de161122b91fc49deb591137d6795d910e5d7020d4ea5f9554c8aa809c4",
+  "model_swap": false,
+  "native_chain_complete": false,
+  "packet_kind": "diagnostic report packet; full native projection refused",
+  "promoted": false,
+  "repository_revision": "60c80fa2b10e70939912c7ce184849790c041fd5",
+  "samples": {
+    "attempted": {
+      "count": null,
+      "known_count": 17,
+      "unknown_cells": 3
+    },
+    "cancelled": {
+      "count": null,
+      "known_count": 0,
+      "unknown_cells": 3
+    },
+    "failed": {
+      "count": null,
+      "known_count": 2,
+      "unknown_cells": 3
+    },
+    "planned": {
+      "count": 96,
+      "known_count": 96,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": null,
+      "known_count": 17,
+      "unknown_cells": 3
+    },
+    "submitted": {
+      "count": 20,
+      "known_count": 20,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 76,
+      "known_count": 76,
+      "unknown_cells": 0
+    }
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "source_sha256": "107475066ebfb83e446be7c1d14f08052ace64face9492c9381b8c9e31e8572a",
+  "terminal_commands": {
+    "cancel": {
+      "ended_at": "2026-10-25T05:09:25.503964+00:00",
+      "reason": "Native C4 child reported blocked drain while mixed batch siblings remained active; stop conditions preserve incomplete interval.",
+      "returncode": 0,
+      "started_at": "2026-10-25T05:08:45.069123+00:00",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "82a72a0c4f056d84b41995ae9d66d902dd5ed8c13a1c6e9dd33e0af6feb34fab"
+    },
+    "incumbent_coordinator": {
+      "exit_code": 2,
+      "finished_at": "2026-10-25T05:09:01.213206+00:00",
+      "started_at": "2026-10-25T04:46:14.016753+00:00",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stdout_sha256": "abaac8e25e82877db0dabee95b616e447fe31951dedba18130b7e5e0c27ee53e"
+    }
+  },
+  "timing": {
+    "active_wall_seconds": null,
+    "child_active_wall_seconds": null,
+    "known_active_wall_seconds": 1183.3147001906764,
+    "observed_job_overlap": null,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 1,
+    "unknown_intervals": 4
+  }
+}

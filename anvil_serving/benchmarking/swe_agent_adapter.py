@@ -1,8 +1,7 @@
 """Pinned mini-SWE retry observations, executed inside its existing Python environment.
 
-The adapter observes the configured HTTPX send seam and mini-SWE's Tenacity
-callbacks.  It deliberately never changes client transport, retry, timeout, or
-request configuration, and writes allowlisted metadata only.
+V1 observes HTTPX and Tenacity without changing requests. V2 explicitly opts
+into suite budgets at the same pinned send seam; evidence is allowlisted.
 """
 
 from __future__ import annotations
@@ -15,6 +14,7 @@ import importlib.util
 import json
 import math
 import re
+import shutil
 from pathlib import Path
 import runpy
 import subprocess
@@ -36,6 +36,88 @@ MAX_EVENTS = 2_000
 MAX_BYTES = 1_048_576
 SUPPORTED_DEPENDENCIES = {"litellm": "1.102.0", "openai": "2.54.0", "httpx": "0.28.1", "tenacity": "9.1.4"}
 _context = contextvars.ContextVar("swe_agent_observation", default=None)
+BUDGET_FIELDS = {"max_model_calls", "max_completion_tokens", "deadline_s", "max_retries", "min_free_disk_bytes"}
+
+
+def validate_budgets(value):
+    """Standalone adapter validation; no installed Anvil package is required."""
+    if (not isinstance(value, dict) or set(value) != BUDGET_FIELDS
+            or any(type(item) is not int or item < (0 if key in {"max_retries", "min_free_disk_bytes"} else 1)
+                   or item > 10**12 for key, item in value.items())):
+        raise ValueError("unsupported SWE budget configuration")
+    return dict(value)
+
+
+class BudgetStopped(BaseException):
+    """Bypass SDK/agent Exception retry loops while their finally blocks save evidence."""
+
+
+class SuiteBudget:
+    def __init__(self, configured, recorder):
+        self.configured = validate_budgets(configured)
+        self.recorder = recorder
+        self.started = time.monotonic()
+        self.model_calls = 0
+        self.reason = None
+        self._lock = threading.Lock()
+        recorder.budget = self
+        recorder.record("budget_configured", configured=self.configured)
+
+    def snapshot(self):
+        return {"configured": self.configured, "model_calls": self.model_calls,
+                "elapsed_s": round(max(0, time.monotonic() - self.started), 6),
+                "exhausted": self.reason is not None, "reason": self.reason}
+
+    def stop(self, reason):
+        if self.reason is None:
+            self.reason = reason
+            self.recorder.record("budget_exhausted", reason=reason, model_calls=self.model_calls)
+        raise BudgetStopped(self.reason)
+
+    def check(self):
+        if self.reason is not None:
+            raise BudgetStopped(self.reason)
+        remaining = self.configured["deadline_s"] - (time.monotonic() - self.started)
+        if remaining <= 0:
+            self.stop("deadline_s")
+        if shutil.disk_usage(self.recorder.path.parent).free < self.configured["min_free_disk_bytes"]:
+            self.stop("min_free_disk_bytes")
+        return remaining
+
+    def before_send(self, request, context, client, kwargs):
+        with self._lock:
+            remaining = self.check()
+            if context is None:
+                raise BudgetStopped("unsupported SWE transport outside logical query")
+            if self.model_calls >= self.configured["max_model_calls"]:
+                self.stop("max_model_calls")
+            if context["sdk_transport_attempt_ordinal"] > self.configured["max_retries"]:
+                self.stop("max_retries")
+            try:
+                body = json.loads(request.content)
+                caps = [body[key] for key in ("max_tokens", "max_completion_tokens") if key in body]
+                if (request.method != "POST" or not request.url.path.endswith("/chat/completions")
+                        or not isinstance(body, dict) or len(caps) != 1
+                        or type(caps[0]) is not int or not 0 < caps[0] <= self.configured["max_completion_tokens"]
+                        or body.get("stream", False) is not False
+                        or type(body.get("n", 1)) is not int or body.get("n", 1) != 1
+                        or kwargs.get("stream", False) is not False):
+                    raise ValueError
+                timeout = request.extensions.get("timeout", {})
+                if (not isinstance(timeout, dict) or set(timeout) - {"connect", "read", "write", "pool"}
+                        or any(item is not None and (type(item) not in {int, float} or not math.isfinite(item) or item <= 0)
+                               for item in timeout.values())):
+                    raise ValueError
+            except (AttributeError, TypeError, ValueError):
+                raise BudgetStopped("unsupported SWE request shape") from None
+            request.extensions["timeout"] = {
+                key: min(timeout[key], remaining) if timeout.get(key) is not None else remaining
+                for key in ("connect", "read", "write", "pool")
+            }
+            # HTTPX follows redirects inside send, outside the attempt counter.
+            # V2 explicitly disables them; pinned clients enable them by default.
+            kwargs["follow_redirects"] = False
+            self.model_calls += 1
 
 
 def _stamp():
@@ -50,6 +132,7 @@ class EventRecorder:
         self.max_events, self.max_bytes = max_events, max_bytes
         self.events = self.bytes = self.omitted_events = self.omitted_bytes = self.logical_requests = 0
         self.write_failed = False
+        self.budget = None
         self._lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._file = self.path.open("w", encoding="utf-8")
@@ -94,6 +177,8 @@ class EventRecorder:
                  "outcome": outcome, "event_count": self.events, "byte_count": self.bytes,
                  "omitted_events": self.omitted_events, "omitted_bytes": self.omitted_bytes,
                  "limits": {"max_events": self.max_events, "max_bytes": self.max_bytes}}
+        if self.budget is not None:
+            value["budget"] = self.budget.snapshot()
         try:
             self._file.write(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n")
             self._file.close()
@@ -184,13 +269,14 @@ def _exception_response_ids(exc):
         return {"response_id": None}
 
 
-def install_observers(*, default_agent, litellm_model, httpx_client, recorder, openai_base=None):
+def install_observers(*, default_agent, litellm_model, httpx_client, recorder, openai_base=None, budgets=None):
     """Install exact pinned seams and return a restoration callback for tests/errors."""
     original_query = default_agent.query
     original_retry = litellm_model.retry
     original_send = httpx_client.send
     original_calculate = getattr(openai_base, "_calculate_retry_timeout", None)
     original_should = getattr(openai_base, "_should_retry", None)
+    budget = SuiteBudget(budgets, recorder) if budgets is not None else None
 
     def agent_query(self, *args, **kwargs):
         started_at, started_mono = _stamp()
@@ -206,6 +292,10 @@ def install_observers(*, default_agent, litellm_model, httpx_client, recorder, o
         outcome = "success"
         error_type = None
         try:
+            if budget is not None:
+                budget.check()
+                if budget.model_calls >= budget.configured["max_model_calls"]:
+                    budget.stop("max_model_calls")
             message = original_query(self, *args, **kwargs)
             recorder.record("model_response", logical_request_id=context["logical_request_id"],
                             task_instance_id=context["task_instance_id"], step_ordinal=context["step_ordinal"],
@@ -228,6 +318,8 @@ def install_observers(*, default_agent, litellm_model, httpx_client, recorder, o
             _context.reset(token)
 
     def observed_retry(*args, **kwargs):
+        if budget is not None:
+            kwargs["abort_exceptions"] = [*kwargs.get("abort_exceptions", []), BudgetStopped]
         retrying = original_retry(*args, **kwargs)
         original_before, original_before_sleep = retrying.before, retrying.before_sleep
 
@@ -258,6 +350,10 @@ def install_observers(*, default_agent, litellm_model, httpx_client, recorder, o
 
     def observed_send(self, request, *args, **kwargs):
         context = _context.get()
+        if budget is not None:
+            if args:
+                raise BudgetStopped("unsupported SWE positional send arguments")
+            budget.before_send(request, context, self, kwargs)
         if context is not None:
             context["sdk_retry_reason_type"] = None
         started_at, started_mono = _stamp()
@@ -278,6 +374,8 @@ def install_observers(*, default_agent, litellm_model, httpx_client, recorder, o
                                 sdk_transport_attempt_ordinal=ordinal, utc_started_at=started_at,
                                 utc_ended_at=ended_at, monotonic_duration_s=round(ended_mono - started_mono, 6),
                                 error_type=type(exc).__name__)
+            if budget is not None:
+                budget.check()
             raise
         ended_at, ended_mono = _stamp()
         if context is not None:
@@ -287,6 +385,8 @@ def install_observers(*, default_agent, litellm_model, httpx_client, recorder, o
                             sdk_transport_attempt_ordinal=ordinal, utc_started_at=started_at, utc_ended_at=ended_at,
                             monotonic_duration_s=round(ended_mono - started_mono, 6), http_status=int(response.status_code),
                             ids=_ids(getattr(response, "headers", None)))
+        if budget is not None:
+            budget.check()
         return response
 
     def observed_should_retry(self, response, *args, **kwargs):
@@ -321,6 +421,8 @@ def install_observers(*, default_agent, litellm_model, httpx_client, recorder, o
 
 
 _EVENT_FIELDS = {
+    "budget_configured": {"configured"},
+    "budget_exhausted": {"reason", "model_calls"},
     "adapter_ready": {"mini_revision", "source_hashes", "adapter_sha256", "dependencies", "transport_seam", "retry_seam", "clock"},
     "logical_started": {"logical_request_id", "task_instance_id", "step_ordinal", "utc_started_at"},
     "agent_attempt_started": {"logical_request_id", "task_instance_id", "step_ordinal", "agent_attempt_ordinal"},
@@ -363,9 +465,18 @@ def _valid_event(value, expected_seq):
             or type(value.get("seq")) is not int or value.get("seq") != expected_seq):
         return False
     event = value.get("event")
-    if not isinstance(event, str) or event not in _EVENT_FIELDS or set(value) != _COMMON_FIELDS | _EVENT_FIELDS[event]:
+    extra = {"budget"} if event == "adapter_finished" and "budget" in value else set()
+    if not isinstance(event, str) or event not in _EVENT_FIELDS or set(value) != _COMMON_FIELDS | _EVENT_FIELDS[event] | extra:
         return False
-    if not all(_bounded_value(item) for key, item in value.items() if key not in {"ids", "source_hashes", "dependencies", "clock", "limits"}):
+    if not all(_bounded_value(item) for key, item in value.items() if key not in {"ids", "source_hashes", "dependencies", "clock", "limits", "configured", "budget"}):
+        return False
+    if event == "budget_configured":
+        try:
+            validate_budgets(value["configured"])
+        except ValueError:
+            return False
+    if event == "budget_exhausted" and (value["reason"] not in BUDGET_FIELDS
+                                         or type(value["model_calls"]) is not int or value["model_calls"] < 0):
         return False
     ids = value.get("ids")
     if ids is not None and (not isinstance(ids, dict) or set(ids) - _ID_FIELDS
@@ -383,6 +494,20 @@ def _valid_event(value, expected_seq):
                 and all(type(clock.get(field)) in {int, float} and math.isfinite(clock[field]) and clock[field] > 0
                         for field in {"wall_precision_s", "wall_resolution_s", "duration_resolution_s"}))
     if event == "adapter_finished":
+        if "budget" in value:
+            budget = value["budget"]
+            if not isinstance(budget, dict) or set(budget) != {"configured", "model_calls", "elapsed_s", "exhausted", "reason"}:
+                return False
+            try:
+                configured = validate_budgets(budget["configured"])
+            except ValueError:
+                return False
+            if (type(budget["model_calls"]) is not int or not 0 <= budget["model_calls"] <= configured["max_model_calls"]
+                    or type(budget["elapsed_s"]) not in {int, float} or not math.isfinite(budget["elapsed_s"]) or budget["elapsed_s"] < 0
+                    or type(budget["exhausted"]) is not bool
+                    or not (budget["reason"] is None or isinstance(budget["reason"], str) and budget["reason"] in BUDGET_FIELDS)
+                    or budget["exhausted"] != (budget["reason"] is not None)):
+                return False
         limits = value.get("limits")
         return (limits == {"max_events": MAX_EVENTS, "max_bytes": MAX_BYTES}
                 and value.get("status") in {"complete", "truncated"}
@@ -442,7 +567,7 @@ def read_attempt_evidence(path, instance_id=None, *, expected_adapter_sha256=Non
             all_events.append(value)
             if value["event"] != "adapter_finished":
                 preterminal_bytes += len(line) + 1
-            if instance_id is None or value.get("task_instance_id") == instance_id or value["event"] in {"adapter_ready", "adapter_finished"}:
+            if instance_id is None or value.get("task_instance_id") == instance_id or value["event"] in {"adapter_ready", "adapter_finished", "budget_configured", "budget_exhausted"}:
                 events.append(value)
     except (UnicodeDecodeError, ValueError, json.JSONDecodeError, RecursionError):
         return {"schema": EVENT_SCHEMA, "status": "invalid", "path": str(source), "sha256": digest,
@@ -453,10 +578,13 @@ def read_attempt_evidence(path, instance_id=None, *, expected_adapter_sha256=Non
     if terminal and (not ready or (expected_adapter_sha256 is not None and all_events[0]["adapter_sha256"] != expected_adapter_sha256)
                      or terminal["event_count"] != terminal["seq"] - 1 or terminal["byte_count"] != preterminal_bytes):
         final = None
-    return {"schema": EVENT_SCHEMA, "status": final.get("status", "incomplete") if final else "incomplete",
+    result = {"schema": EVENT_SCHEMA, "status": final.get("status", "incomplete") if final else "incomplete",
             "path": str(source), "sha256": digest, "bytes": len(raw), "event_count": len(events), "events": events,
             "omitted_events": final.get("omitted_events", 0) if final else None,
             "omitted_bytes": final.get("omitted_bytes", 0) if final else None}
+    if final and "budget" in final:
+        result["budget"] = final["budget"]
+    return result
 
 
 def terminal_outcome(exc):
@@ -464,7 +592,53 @@ def terminal_outcome(exc):
     return "completed" if isinstance(exc, SystemExit) and exc.code in (None, 0) else "failed"
 
 
-def run_agent(root, argv, *, adapter_sha256, events, run_module=runpy.run_module):
+def prompt_contract_config(config_paths, disclosure, output_path):
+    """Append a disclosure to the pinned SWE prompt without replacing its instructions."""
+    import yaml  # Available in the pinned mini-SWE environment.
+
+    if not isinstance(disclosure, str) or not disclosure.strip():
+        raise RuntimeError("SWE prompt disclosure is invalid")
+    for candidate in config_paths:
+        try:
+            value = yaml.safe_load(Path(candidate).read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError):
+            continue
+        template = value.get("agent", {}).get("system_template") if isinstance(value, dict) else None
+        if isinstance(template, str) and template:
+            Path(output_path).write_text(
+                yaml.safe_dump({"agent": {"system_template": template.rstrip() + "\n\n" + disclosure.strip() + "\n"}},
+                               sort_keys=False), encoding="utf-8"
+            )
+            return str(output_path)
+    raise RuntimeError("pinned SWE prompt template is unavailable")
+
+
+def validate_budget_agent_config(argv, budgets, config_loader, merge):
+    """Only the qualified synchronous OpenAI model/config surface is budgeted."""
+    allowed = {"--output", "--model", "--subset", "--split", "--filter", "--workers", "--environment-class", "--config"}
+    if len(argv) % 2 or any(flag not in allowed for flag in argv[::2]):
+        raise ValueError("unsupported SWE budget agent arguments")
+    pairs = list(zip(argv[::2], argv[1::2]))
+    values = dict(pairs)
+    if (set(values) != allowed or any(argv[::2].count(flag) != 1 for flag in allowed - {"--config"})
+            or values["--workers"] != "1" or values["--environment-class"] != "docker"
+            or not values["--model"].startswith("openai/")):
+        raise ValueError("unsupported SWE budget agent arguments")
+    config = merge(*(config_loader(path) for flag, path in pairs if flag == "--config"))
+    model = config.get("model", {})
+    kwargs = model.get("model_kwargs", {})
+    allowed_kwargs = {"custom_llm_provider", "api_base", "drop_params", "parallel_tool_calls",
+                      "max_tokens", "temperature", "top_p", "extra_body"}
+    if (model.get("model_class") != "litellm" or not isinstance(kwargs, dict)
+            or set(kwargs) - allowed_kwargs or kwargs.get("custom_llm_provider") != "openai"
+            or type(kwargs.get("max_tokens")) is not int
+            or kwargs["max_tokens"] != budgets["max_completion_tokens"]):
+        raise ValueError("unsupported SWE budget model configuration")
+
+
+def run_agent(root, argv, *, adapter_sha256, events, prompt_disclosure=None, budgets=None, run_module=runpy.run_module):
+    if budgets is not None:
+        budgets = validate_budgets(budgets)
     own_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if own_hash != adapter_sha256:
         raise RuntimeError("SWE agent observation adapter changed after planning")
@@ -481,6 +655,10 @@ def run_agent(root, argv, *, adapter_sha256, events, run_module=runpy.run_module
         import httpx
         import openai
         dependencies = verify_dependencies()
+        if budgets is not None:
+            from minisweagent.config import get_config_from_spec
+            from minisweagent.utils.serialize import recursive_merge
+            validate_budget_agent_config(argv, budgets, get_config_from_spec, recursive_merge)
         recorder.record("adapter_ready", mini_revision=MINI_REVISION, source_hashes=SOURCE_HASHES,
                         adapter_sha256=own_hash, dependencies=dependencies,
                         transport_seam="httpx.Client.send", retry_seam="minisweagent.models.litellm_model.retry",
@@ -490,10 +668,15 @@ def run_agent(root, argv, *, adapter_sha256, events, run_module=runpy.run_module
                                "synchronized": None})
         restore = install_observers(default_agent=DefaultAgent, litellm_model=litellm_model,
                                     httpx_client=httpx.Client, recorder=recorder,
-                                    openai_base=openai._base_client.BaseClient)
+                                    openai_base=openai._base_client.BaseClient, budgets=budgets)
         original_argv = sys.argv
         try:
-            sys.argv = ["minisweagent.run.benchmarks.swebench", *argv]
+            agent_argv = list(argv)
+            if prompt_disclosure is not None:
+                config_paths = [agent_argv[index + 1] for index, value in enumerate(agent_argv[:-1]) if value == "--config"]
+                disclosure_path = Path(config_paths[-1]).with_name("swe-prompt-contract.yaml")
+                agent_argv.extend(["--config", prompt_contract_config(config_paths, prompt_disclosure, disclosure_path)])
+            sys.argv = ["minisweagent.run.benchmarks.swebench", *agent_argv]
             result = run_module("minisweagent.run.benchmarks.swebench", run_name="__main__")
             recorder.close(outcome="completed")
             return result
@@ -515,11 +698,14 @@ def main():
     parser.add_argument("--mini-root", required=True)
     parser.add_argument("--adapter-sha256", required=True)
     parser.add_argument("--events", required=True)
+    parser.add_argument("--prompt-disclosure")
+    parser.add_argument("--budgets", type=json.loads)
     parser.add_argument("agent_args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if not args.agent_args or args.agent_args[0] != "--":
         parser.error("mini-SWE arguments must follow --")
-    run_agent(args.mini_root, args.agent_args[1:], adapter_sha256=args.adapter_sha256, events=args.events)
+    run_agent(args.mini_root, args.agent_args[1:], adapter_sha256=args.adapter_sha256,
+              events=args.events, prompt_disclosure=args.prompt_disclosure, budgets=args.budgets)
 
 
 if __name__ == "__main__":

@@ -9,12 +9,14 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking import swe
 from anvil_serving.benchmarking import harnesses
+from anvil_serving.benchmarking import swe_agent_adapter as adapter
 from anvil_serving.benchmarking.swe import (
     SWE_DATASET,
     build_swe_run_plan,
@@ -31,6 +33,7 @@ SCOUT_INSTANCES = [f"project__case-{index}" for index in range(5)]
 @pytest.fixture(autouse=True)
 def supported_worker(monkeypatch):
     monkeypatch.setattr(harnesses.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(swe.shutil, "disk_usage", lambda path: SimpleNamespace(free=2**40))
 
 
 def build_fixture_plan(tmp_path, *args, **kwargs):
@@ -77,8 +80,8 @@ def manifest(profile):
     }
 
 
-def plan(tmp_path, *, request_controls=None, paired_image_ids=None):
-    profile = load_profile("smoke")
+def plan(tmp_path, *, request_controls=None, paired_image_ids=None, prompt_contract="legacy/v1", profile_name="smoke", timeout_s=None):
+    profile = load_profile(profile_name)
     environment = manifest(profile)["python_environment"]
     executable = (
         tmp_path / "cache" / environment["cache_key"] / environment["executable"]
@@ -103,6 +106,8 @@ def plan(tmp_path, *, request_controls=None, paired_image_ids=None):
         run_id="smoke-one",
         request_controls=request_controls,
         paired_image_ids=paired_image_ids,
+        prompt_contract=prompt_contract,
+        timeout_s=timeout_s,
     )
 
 
@@ -183,6 +188,29 @@ def test_plan_forwards_and_records_reasoning_effort(tmp_path):
     }
     assert '    extra_body:\n      reasoning_effort: "xhigh"\n' in value["config_text"]
     assert '\n    reasoning_effort: "xhigh"\n' not in value["config_text"]
+
+
+def test_prompt_contract_preserves_legacy_bytes_and_discloses_v2_limits(tmp_path):
+    legacy = plan(tmp_path)
+    repeated = plan(tmp_path / "again", prompt_contract="legacy/v1")
+    disclosed = plan(tmp_path / "v2", prompt_contract="disclosed/v2")
+    assert legacy["prompt_contract"] == "legacy/v1"
+    assert legacy["config_text"] == repeated["config_text"]
+    assert "You have at most 5 model calls" not in legacy["config_text"]
+    assert disclosed["prompt_contract"] == "disclosed/v2"
+    suite = load_profile("smoke")["suites"]["swe"]
+    assert yaml.safe_load(disclosed["config_text"])["agent"]["step_limit"] == suite["max_steps"]
+    disclosure = disclosed["commands"]["agent"][disclosed["commands"]["agent"].index("--prompt-disclosure") + 1]
+    assert f"You have at most {suite['max_steps']} model calls (one call per step)." in disclosure
+    assert f"Each model completion is capped at {suite['max_completion_tokens']} tokens." in disclosure
+    assert "Submit your final answer as a patch" in disclosure
+
+    pinned = tmp_path / "pinned-swebench.yaml"
+    pinned.write_text("agent:\n  system_template: |\n    Full shell and patch submission instructions.\n")
+    generated = adapter.prompt_contract_config([str(pinned)], disclosure, tmp_path / "v2.yaml")
+    rendered = yaml.safe_load(Path(generated).read_text())["agent"]["system_template"]
+    assert "Full shell and patch submission instructions." in rendered
+    assert disclosure in rendered
 
 
 @pytest.mark.parametrize("force_nonempty_content", [True, False])
@@ -830,3 +858,121 @@ def test_windows_plan_and_replay_refuse_before_effects(tmp_path, monkeypatch):
         run_swe_benchmark({}, runner=lambda *_args: pytest.fail("runner called"))
     assert exc.value.code == "unsupported_swe_worker_platform"
     assert list(tmp_path.iterdir()) == []
+
+
+def test_v2_plan_freezes_exact_budgets_config_argv_and_adapter_hash(tmp_path):
+    value = plan(tmp_path, profile_name="pilot-v2", timeout_s=60)
+    budgets = load_profile("pilot-v2")["suites"]["swe"]["budgets"]
+    assert value["schema"] == swe.SWE_PLAN_SCHEMA_V2
+    assert value["budgets"] == budgets
+    assert value["timeout_s"] == 60
+    argv = value["commands"]["agent"]
+    assert json.loads(argv[argv.index("--budgets") + 1]) == budgets
+    assert argv.index("--budgets") < argv.index("--")
+    config_budget = value["config_text"].splitlines()[0].removeprefix("# suite_budgets: ")
+    assert json.loads(config_budget) == budgets
+    assert yaml.safe_load(value["config_text"])["model"]["model_kwargs"]["max_tokens"] == budgets["max_completion_tokens"]
+    assert hashlib.sha256(Path(argv[1]).read_bytes()).hexdigest() == value["harnesses"]["agent_observation"]["adapter_sha256"]
+    assert hashlib.sha256(canonical_json_bytes({key: item for key, item in value.items() if key != "plan_sha256"})).hexdigest() == value["plan_sha256"]
+    legacy = plan(tmp_path / "legacy")
+    assert "budgets" not in legacy and "--budgets" not in legacy["commands"]["agent"]
+    assert not legacy["config_text"].startswith("# suite_budgets")
+
+
+def _budget_events(value, *, exhausted=None):
+    recorder = adapter.EventRecorder(value["paths"]["request_events"])
+    recorder.record("adapter_ready", mini_revision=adapter.MINI_REVISION, source_hashes=adapter.SOURCE_HASHES,
+                    adapter_sha256=value["harnesses"]["agent_observation"]["adapter_sha256"],
+                    dependencies=adapter.SUPPORTED_DEPENDENCIES, transport_seam="httpx.Client.send",
+                    retry_seam="minisweagent.models.litellm_model.retry",
+                    clock={"wall": "UTC system clock", "wall_precision_s": 0.000001,
+                           "wall_resolution_s": 0.000001, "duration": "monotonic",
+                           "duration_resolution_s": 0.000001, "synchronized": None})
+    budget = adapter.SuiteBudget(value["budgets"], recorder)
+    budget.model_calls = 1
+    if exhausted:
+        with pytest.raises(adapter.BudgetStopped):
+            budget.stop(exhausted)
+    recorder.close(outcome="failed" if exhausted else "completed")
+
+
+def test_v2_exhaustion_survives_zero_exit_without_grading_or_success(tmp_path):
+    value = plan(tmp_path, profile_name="pilot-v2")
+    calls = []
+    def exhausted(argv, *_args):
+        calls.append(argv)
+        _budget_events(value, exhausted="max_retries")
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+    result = run_swe_benchmark(value, runner=exhausted, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert len(calls) == 1
+    assert result["state"] == "incomplete"
+    assert result["budgets"] == value["budgets"]
+    assert result["failure"] == {"class": "budget_exhausted", "stage": "agent", "code": "max_retries"}
+    assert result["request_observations"]["budget"]["model_calls"] == 1
+    assert json.loads(Path(value["paths"]["result"]).read_text())["failure"] == result["failure"]
+
+
+def test_v2_requires_complete_budget_evidence_even_if_grading_would_pass(tmp_path):
+    value = plan(tmp_path, profile_name="pilot-v2")
+    runner = SuccessfulRunner(value)
+    result = run_swe_benchmark(value, runner=runner, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert len(runner.calls) == 1
+    assert result["state"] == "incomplete"
+    assert result["failure"]["code"] == "missing_swe_budget_evidence"
+
+
+def test_v2_shared_deadline_includes_agent_and_grader(tmp_path, monkeypatch):
+    value = plan(tmp_path, profile_name="pilot-v2", timeout_s=60)
+    runner = SuccessfulRunner(value)
+    now = [10.0]
+    monkeypatch.setattr(swe.time, "monotonic", lambda: now[0])
+    def timed(argv, cwd, timeout, env):
+        if argv[1].endswith("swe_agent_adapter.py"):
+            assert timeout == 60
+            _budget_events(value)
+            now[0] += 40
+        else:
+            assert timeout == 20
+            now[0] += 21
+        return runner(argv, cwd, timeout, env)
+    result = run_swe_benchmark(value, runner=timed, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert len(runner.calls) == 2
+    assert result["state"] == "incomplete"
+    assert result["failure"] == {"class": "budget_exhausted", "stage": "official_grader", "code": "deadline_s"}
+
+
+def test_v2_external_timeout_preserves_budget_failure(tmp_path):
+    value = plan(tmp_path, profile_name="pilot-v2")
+    def timeout(*_args):
+        raise subprocess.TimeoutExpired("fixture", 1)
+    result = run_swe_benchmark(value, runner=timeout, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert result["failure"] == {"class": "budget_exhausted", "stage": "agent", "code": "deadline_s"}
+    assert result["request_observations"]["status"] == "missing"
+
+
+def test_v2_default_runner_reuses_owned_bounded_process(tmp_path, monkeypatch):
+    value = plan(tmp_path, profile_name="pilot-v2")
+    calls = []
+    delegate = SuccessfulRunner(value)
+    def bounded(argv, **kwargs):
+        calls.append(kwargs)
+        assert kwargs["owned_process_group"] is True
+        assert kwargs["max_output_bytes"] == swe.MAX_HARNESS_OUTPUT_BYTES
+        if argv[1].endswith("swe_agent_adapter.py"):
+            _budget_events(value)
+        return delegate(argv, kwargs["cwd"], kwargs["timeout"], kwargs["env"])
+    monkeypatch.setattr(swe, "_run_bounded_process", bounded)
+    result = run_swe_benchmark(value, environ={"ANVIL_ROUTER_TOKEN": "token"})
+    assert result["state"] == "completed"
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("error, code", [(swe._ProcessOutputOverflow, "swe_process_output_overflow"),
+                                         (swe._ProcessPipeError, "swe_process_boundary_failed")])
+def test_v2_bounded_runner_exposes_typed_failures(monkeypatch, error, code):
+    def fail(*args, **kwargs): raise error("private details")
+    monkeypatch.setattr(swe, "_run_bounded_process", fail)
+    with pytest.raises(BenchmarkJobError) as caught:
+        swe._budget_runner(["fixture"], ".", 1, {})
+    assert caught.value.code == code
+    assert "private details" not in str(caught.value)

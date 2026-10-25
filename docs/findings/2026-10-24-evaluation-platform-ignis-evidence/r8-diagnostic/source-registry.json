@@ -1,0 +1,50 @@
+{
+  "helper": {
+    "reviewed_version": "R3",
+    "sha256": "2e63347034b1cb24d65b17ed8184afc480ae07b73e4ab33a7026e7ebd0c2a1de"
+  },
+  "private_paths_omitted": true,
+  "scope": "Only retained local sources; no new external research",
+  "sources": [
+    {
+      "original_private_bytes": 139623,
+      "original_private_sha256": "5c48e2227d14e5599497097bcc345256b3d19c5eb12b857c247c8091bccb1b3c",
+      "source_id": "t006-r8-report-terminal-r1.json"
+    },
+    {
+      "original_private_bytes": 163024,
+      "original_private_sha256": "179667a76fb0953188f66b83d7ca9b310037dec0ca75222b5baab33b3a486534",
+      "source_id": "t006-r8-postterminal-physical-absence-r1.json"
+    },
+    {
+      "original_private_bytes": 21027,
+      "original_private_sha256": "d6bfe484a38152e71a2eb0bf793bdbb13a57cc8e2e1f7c6288cae9d409783322",
+      "source_id": "t006-r8-auto-cancellation-diagnosis-r1.json"
+    },
+    {
+      "original_private_bytes": 13684,
+      "original_private_sha256": "11257677ffe44ecdae021ced48139f7f0ac586e1ef79254fb6ad769f18fb47e5",
+      "source_id": "t006-r8-first-repeat-chain-audit-r1.json"
+    },
+    {
+      "original_private_bytes": 32875,
+      "original_private_sha256": "095105f77ead4935709b5356c99b40c180dd7a18361e39780f24d18486850afc",
+      "source_id": "t006-r8-prospective-eligibility-r1.json"
+    },
+    {
+      "original_private_bytes": 1532,
+      "original_private_sha256": "8f37b26d8ba0347666ece43a45a42279c90ad59f37168024dafbd200d29f2bad",
+      "source_id": "t006-publication-r8-projector-attempt-r1.json"
+    },
+    {
+      "original_private_bytes": 873,
+      "original_private_sha256": "07d0a340323e2dbabd764986664bdf65db3407fecbb8bf2053d2e4edf20105d3",
+      "source_id": "t006-r8-incumbent-terminal.json"
+    },
+    {
+      "original_private_bytes": 90463,
+      "original_private_sha256": "375f083c17459d651fe1deb0f999025efccc1bfc8c4b21a14de690a597da48dc",
+      "source_id": "t006-campaign-freeze-r8.json"
+    }
+  ]
+}

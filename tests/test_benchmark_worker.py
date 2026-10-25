@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import io
 import json
 import math
 import re
@@ -20,7 +21,7 @@ from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
 from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.profiles import load_profile
-from anvil_serving.benchmarking.worker import cancel_benchmark_job, execute_benchmark_job, launch_benchmark_job
+from anvil_serving.benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
 
@@ -144,7 +145,9 @@ def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeyp
     value = spec()
     value["parameters"] = {"thinking_mode": "bogus"}
     store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
+        store.submit(value)
     monkeypatch.setattr(
         "anvil_serving.benchmarking.worker.prepare_harness_assets",
         lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
@@ -250,13 +253,14 @@ def test_worker_forwards_swe_force_nonempty_content(monkeypatch, tmp_path, force
     }
 
 
-def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
+def test_detached_launcher_keeps_credentials_out_of_argv(monkeypatch, tmp_path):
     observed = {}
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "test-start")
 
     def popen(argv, **kwargs):
         observed["argv"] = argv
         observed["kwargs"] = kwargs
-        return SimpleNamespace(pid=987)
+        return SimpleNamespace(pid=987, stdin=io.BytesIO())
 
     database = str(tmp_path / "jobs.db")
     run_root = str(tmp_path / "runs")
@@ -276,7 +280,8 @@ def test_detached_launcher_keeps_credentials_out_of_argv(tmp_path):
 def test_detached_launcher_reports_typed_process_failure(tmp_path):
     database = str(tmp_path / "jobs.db")
     run_root = str(tmp_path / "runs")
-    BenchmarkJobStore(database, run_root=run_root).submit(spec())
+    store = BenchmarkJobStore(database, run_root=run_root)
+    _, submitted = store.submit(spec())
 
     with pytest.raises(BenchmarkJobError) as exc:
         launch_benchmark_job(
@@ -287,6 +292,178 @@ def test_detached_launcher_reports_typed_process_failure(tmp_path):
         )
 
     assert exc.value.code == "worker_launch_failed"
+    assert store.status("worker-run") == submitted
+    assert store.submit(spec()) == ("existing", submitted)
+    assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+@pytest.mark.parametrize("failure", ["identity", "write", "after-write"])
+def test_failed_custody_handoff_stops_real_child_before_claim_or_preparation(monkeypatch, tmp_path, failure):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    _, submitted = store.submit(spec())
+    ready, prepared = tmp_path / "ready", tmp_path / "prepared"
+    children = []
+    write_json = benchmark_worker.atomic_write_json
+    code = (
+        "import sys; from pathlib import Path; "
+        "from anvil_serving.benchmarking import worker; "
+        f"worker.prepare_harness_assets = lambda *a, **kw: Path({str(prepared)!r}).write_text('unexpected'); "
+        "worker.run_benchmark_preflight = lambda *a, **kw: {}; "
+        f"Path({str(ready)!r}).touch(); "
+        "raise SystemExit(worker.main(sys.argv[1:]))"
+    )
+
+    def popen(argv, **kwargs):
+        process = subprocess.Popen([sys.executable, "-c", code, *argv[3:]], **kwargs)
+        children.append(process)
+        return process
+
+    def fail_write(*_args, **_kwargs):
+        if failure == "after-write":
+            write_json(*_args, **_kwargs)
+        deadline = time.monotonic() + 5
+        while not ready.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert ready.exists(), "child failed to reach the custody gate"
+        time.sleep(0.1)
+        assert store.status("worker-run") == submitted
+        assert not prepared.exists()
+        raise OSError("disk full")
+
+    try:
+        with monkeypatch.context() as fault:
+            fault.setattr(benchmark_worker, "atomic_write_json", fail_write)
+            if failure == "identity":
+                fault.setattr(benchmark_worker, "_process_start_identity", lambda _pid: None)
+            with pytest.raises(BenchmarkJobError) as exc:
+                launch_benchmark_job(
+                    path=store.path, run_root=store.run_root, run_id="worker-run", popen=popen,
+                )
+        assert exc.value.code == "worker_launch_failed"
+        assert len(children) == 1
+        assert children[0].poll() is not None
+        assert not benchmark_worker._process_group_running(children[0].pid)
+        assert not prepared.exists()
+        assert store.status("worker-run") == submitted
+        assert store.submit(spec()) == ("existing", submitted)
+        assert (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists() is (failure == "after-write")
+        assert cancel_benchmark_job(store, "worker-run")["state"] == "cancelled"
+        assert store.submit({**spec(), "run_id": "replacement-run"})[0] == "submitted"
+    finally:
+        for child in children:
+            if child.poll() is None:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.wait(timeout=5)
+
+
+@pytest.mark.parametrize("handoff", ["parent-eof", "timeout", "wrong-custody", "missing-start", "oversize", "fifo"])
+def test_real_child_requires_bounded_matching_custody_before_execution(tmp_path, handoff):
+    if handoff == "fifo" and os.name == "nt":
+        pytest.skip("FIFO requires POSIX")
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    _, submitted = store.submit(spec())
+    executed = tmp_path / "executed"
+    code = (
+        "import sys; from pathlib import Path; "
+        "from anvil_serving.benchmarking import worker; "
+        "worker._WORKER_HANDOFF_TIMEOUT_S = 0.1; "
+        f"worker.execute_benchmark_job = lambda *a: Path({str(executed)!r}).touch(); "
+        "raise SystemExit(worker.main(sys.argv[1:]))"
+    )
+    if handoff == "missing-start":
+        code = code.replace("raise SystemExit", "worker._process_start_identity = lambda pid: None; raise SystemExit")
+    process = subprocess.Popen(
+        [sys.executable, "-c", code, "--db", store.path, "--run-root", store.run_root, "--run-id", "worker-run"],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        start_new_session=os.name != "nt",
+    )
+    try:
+        if handoff == "parent-eof":
+            process.stdin.close()
+        elif handoff not in {"timeout", "parent-eof"}:
+            run = tmp_path / "runs" / "campaign" / "worker-run"
+            run.mkdir(parents=True)
+            (run / "worker.json").write_text(json.dumps({
+                "run_id": "worker-run", "pid": process.pid + (handoff == "wrong-custody"), "db": store.path,
+                "run_root": store.run_root, "process_start": None if handoff == "missing-start" else benchmark_worker._process_start_identity(process.pid),
+                "process_group_id": process.pid, "session_id": process.pid,
+            }))
+            if handoff == "oversize":
+                with (run / "worker.json").open("a") as handle:
+                    handle.write(" " * 65536)
+            if handoff == "fifo":
+                (run / "worker.json").unlink()
+                os.mkfifo(run / "worker.json")
+            process.stdin.write(b"1")
+            process.stdin.flush()
+        assert process.wait(timeout=5) == 2, process.stderr.read().decode()
+        assert not executed.exists()
+        assert store.status("worker-run") == submitted
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+        process.stdin.close()
+        process.stderr.close()
+
+
+@pytest.mark.parametrize("state", [None, "running", "completed", "failed", "cancelled"])
+def test_detached_launcher_rejects_absent_or_nonqueued_jobs_before_spawn(tmp_path, state):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    if state is not None:
+        store.submit(spec())
+        store.claim("worker-run")
+        if state != "running":
+            store.transition("worker-run", state, failure={"code": "fixture"} if state == "failed" else None)
+    original = store.status("worker-run")
+
+    with pytest.raises(BenchmarkJobError) as exc:
+        launch_benchmark_job(
+            path=store.path, run_root=store.run_root, run_id="worker-run",
+            popen=lambda *_a, **_kw: pytest.fail("ineligible job spawned a worker"),
+        )
+
+    assert exc.value.code == ("job_not_found" if state is None else "job_already_claimed")
+    assert store.status("worker-run") == original
+    assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group cancellation is POSIX-specific")
+def test_rejected_relaunch_preserves_original_worker_cancellation_identity(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "original-start")
+    launch_benchmark_job(
+        path=store.path, run_root=store.run_root, run_id="worker-run",
+        popen=lambda *_a, **_kw: SimpleNamespace(pid=987, stdin=io.BytesIO()),
+    )
+    worker_path = tmp_path / "runs" / "campaign" / "worker-run" / "worker.json"
+    original = worker_path.read_bytes()
+    store.claim("worker-run")
+    with pytest.raises(BenchmarkJobError, match="not queued"):
+        launch_benchmark_job(
+            path=store.path, run_root=store.run_root, run_id="worker-run",
+            popen=lambda *_a, **_kw: pytest.fail("duplicate worker launched"),
+        )
+    assert worker_path.read_bytes() == original
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda _pid: (
+        sys.executable, "-m", "anvil_serving.benchmarking.worker",
+        "--db", os.path.realpath(store.path), "--run-root", store.run_root,
+        "--run-id", "worker-run",
+    ))
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda pid: pid)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda pid: pid)
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda _pid: False)
+    signals = []
+    monkeypatch.setattr(benchmark_worker.os, "killpg", lambda *args: signals.append(args))
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+
+    assert signals == [(987, signal.SIGTERM)]
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["worker_terminated"] is True
+    assert cancelled["cleanup_deferred"] is False
 
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group cancellation is POSIX-specific")
@@ -442,6 +619,33 @@ def test_cancellation_store_artifact_failure_is_terminal_and_preserves_work(monk
     assert (run_path / "work").exists()
 
 
+def test_cleanup_terminal_job_requires_stopped_owned_worker_and_retains(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(spec())
+    store.claim("worker-run")
+    store.transition("worker-run", "completed", results={"evidence": {}})
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work"
+    work.mkdir(parents=True)
+    (work / "predictions.jsonl").write_text('{"instance_id":"case"}\n', encoding="utf-8")
+    database = os.path.realpath(store.path)
+    (run_path / "worker.json").write_text(json.dumps({
+        "run_id": "worker-run", "pid": 12345, "db": database,
+        "run_root": store.run_root, "process_start": "started",
+        "process_group_id": 12345, "session_id": 12345,
+    }), encoding="utf-8")
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda _pid: None)
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: (_ for _ in ()).throw(ProcessLookupError()))
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda _pid: False)
+
+    cleaned = cleanup_benchmark_job(store, "worker-run")
+
+    assert cleaned["cleaned"] is True
+    assert cleaned["retention"]["state"] == "absent"
+    assert not work.exists()
+    assert not (run_path / "evidence" / "swe-canonical").exists()
+
+
 class EndpointHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         return
@@ -526,7 +730,9 @@ def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
     value["suite"] = suite
     value["parameters"] = parameters
     store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
+        store.submit(value)
     monkeypatch.setattr(
         "anvil_serving.benchmarking.worker.prepare_harness_assets",
         lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
@@ -534,3 +740,403 @@ def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
     record = execute_benchmark_job(store, "worker-run")
     assert record["state"] == "failed"
     assert record["failure"]["code"] == code
+
+
+def _execute_successful_swe(monkeypatch, tmp_path, *, missing=None):
+    from tests.test_swe_benchmark import SuccessfulRunner, plan
+
+    value = plan(tmp_path, prompt_contract="disclosed/v2" if missing == "overlay" else "legacy/v1")
+    submitted = spec()
+    submitted.update(run_id=value["run_id"], suite="swe", endpoint=value["endpoint"], parameters={
+        "instance_ids": value["selection"]["instance_ids"], "prompt_contract": value["prompt_contract"],
+    })
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(submitted)
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_args, **_kwargs: {"assets": {}})
+    monkeypatch.setattr(benchmark_worker, "run_benchmark_preflight", lambda *_args, **_kwargs: {
+        "schema": "anvil-serving.benchmark-preflight/v1", "passed": True, "observed": {}, "checks": [],
+    })
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", lambda *_args, **_kwargs: value)
+
+    def run(generated):
+        result = swe_benchmark.run_swe_benchmark(generated, runner=SuccessfulRunner(generated),
+                                               environ={"ANVIL_ROUTER_TOKEN": "fixture-only"})
+        assert result["state"] == "completed"
+        if missing == "grader":
+            from pathlib import Path
+            for report in Path(generated["paths"]["grader_work"]).glob("*.json"):
+                report.unlink()
+        return result
+
+    monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", run)
+    record = execute_benchmark_job(store, value["run_id"])
+    return store, record, tmp_path / "runs" / "campaign" / value["run_id"]
+
+
+def test_successful_legacy_swe_executes_and_completes_with_retained_artifacts(monkeypatch, tmp_path):
+    store, record, run = _execute_successful_swe(monkeypatch, tmp_path)
+    assert record["state"] == "completed", record.get("failure")
+    evidence = store.artifact(record["spec"]["run_id"])["results"]["evidence"]
+    assert evidence["completeness"] == "completed"
+    assert evidence["summary"]["resolve_rate"] == 1.0
+    assert all(stage["status"] == "completed" for stage in evidence["stages"])
+    manifest = json.loads((run / "evidence" / "swe-canonical" / "manifest.json").read_text())
+    assert manifest["state"] == "retained"
+    assert manifest["missing"] == []
+    assert not (run / "work" / "swe-prompt-contract.yaml").exists()
+    assert not (run / "work" / "paired-image-ids.json").exists()
+
+
+@pytest.mark.parametrize("missing", ["overlay", "grader"])
+def test_swe_execution_cannot_complete_with_missing_conditional_or_grader_evidence(monkeypatch, tmp_path, missing):
+    store, record, run = _execute_successful_swe(monkeypatch, tmp_path, missing=missing)
+    assert record["state"] == "failed"
+    evidence = store.artifact(record["spec"]["run_id"])["results"]["evidence"]
+    assert evidence["completeness"] == "failed"
+    assert next(stage for stage in evidence["stages"] if stage["name"] == "swe_canonical_retention")["status"] == "incomplete"
+    assert (run / "work").exists()
+
+
+def _stopped_worker(monkeypatch, store, run, run_id):
+    (run / "worker.json").write_text(json.dumps({
+        "run_id": run_id, "pid": 12345, "db": os.path.realpath(store.path),
+        "run_root": store.run_root, "process_start": "started", "process_group_id": 12345, "session_id": 12345,
+    }))
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda _pid: None)
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: (_ for _ in ()).throw(ProcessLookupError()))
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda _pid: False)
+
+
+@pytest.mark.parametrize("damage", [None, "manifest", "retained-file", "manifest-missing"])
+def test_swe_cleanup_requires_exact_terminal_bound_snapshot(monkeypatch, tmp_path, damage):
+    store, record, run = _execute_successful_swe(monkeypatch, tmp_path)
+    run_id = record["spec"]["run_id"]
+    _stopped_worker(monkeypatch, store, run, run_id)
+    original_artifact = store.artifact(run_id)
+    original_record = store.status(run_id)
+    manifest = run / "evidence" / "swe-canonical" / "manifest.json"
+    if damage == "manifest":
+        # Same valid content, different bytes: terminal digest is the authority.
+        manifest.write_text(manifest.read_text() + "\n")
+    elif damage == "retained-file":
+        (manifest.parent / "predictions.jsonl").write_text("tampered")
+    elif damage == "manifest-missing":
+        manifest.unlink()
+    if damage:
+        with pytest.raises(BenchmarkJobError) as exc:
+            cleanup_benchmark_job(store, run_id)
+        assert exc.value.code == ("swe_canonical_evidence_mismatch" if damage == "manifest" else "swe_artifact_retention_failed")
+        assert (run / "work").exists()
+    else:
+        cleaned = cleanup_benchmark_job(store, run_id)
+        assert cleaned["cleaned"] is True
+        assert cleaned["retention"]["reused"] is True
+        assert not (run / "work").exists()
+        assert (manifest.parent / "predictions.jsonl").is_file()
+    assert store.status(run_id) == original_record
+    assert store.artifact(run_id) == original_artifact
+
+
+def test_swe_cleanup_refuses_unanchored_terminal_work_without_creating_evidence(monkeypatch, tmp_path):
+    value = spec()
+    value.update(suite="swe", parameters={"instance_ids": ["astropy__astropy-12907"]})
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    store.transition("worker-run", "completed", results={"evidence": {}})
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run / "work"
+    work.mkdir(parents=True)
+    (work / "predictions.jsonl").write_text("source")
+    _stopped_worker(monkeypatch, store, run, "worker-run")
+    original = store.status("worker-run")
+    with pytest.raises(BenchmarkJobError) as exc:
+        cleanup_benchmark_job(store, "worker-run")
+    assert exc.value.code == "missing_swe_canonical_evidence"
+    assert work.exists()
+    assert not (run / "evidence" / "swe-canonical").exists()
+    assert store.status("worker-run") == original
+
+
+def test_swe_cancel_artifact_failure_then_cleanup_preserves_unanchored_work(monkeypatch, tmp_path):
+    from tests.test_benchmark_retention import _canonical_work
+    from anvil_serving.benchmarking.swe_regrade import prepare_swe_regrade
+
+    value = spec()
+    value.update(suite="swe", parameters={"instance_ids": ["astropy__astropy-12907"]})
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    work = _canonical_work(run)
+    _stopped_worker(monkeypatch, store, run, "worker-run")
+    monkeypatch.setattr(benchmark_worker, "_stop_owned_worker", lambda *_args, **_kwargs: {
+        "stopped": True, "status": "terminated", "pid": 12345,
+    })
+    with monkeypatch.context() as fault:
+        fault.setattr(store, "_write_artifact", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("ENOSPC")))
+        cancelled = cancel_benchmark_job(store, "worker-run")
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["cleanup_deferred"] is True
+    assert store.artifact("worker-run") is None
+    assert (run / "evidence" / "swe-canonical" / "manifest.json").is_file()
+    original = store.status("worker-run")
+    with pytest.raises(BenchmarkJobError) as exc:
+        cleanup_benchmark_job(store, "worker-run")
+    assert exc.value.code == "missing_swe_canonical_evidence"
+    with pytest.raises(BenchmarkJobError) as exc:
+        prepare_swe_regrade(store, {"spec": {**value, "run_id": "regrade", "parameters": {"operation": "regrade", "source_run_id": "worker-run"}}})
+    assert exc.value.code == "missing_swe_canonical_evidence"
+    assert work.exists()
+    assert store.status("worker-run") == original
+
+
+@pytest.mark.parametrize("suite", ["context", "agentic"])
+def test_non_swe_cleanup_retains_native_output_without_swe_evidence(monkeypatch, tmp_path, suite):
+    value = spec()
+    value["suite"] = suite
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    store.transition("worker-run", "failed", failure={"class": "worker_runtime", "code": "fixture"})
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    output = run / "work" / "mini-output"
+    output.mkdir(parents=True)
+    (output / "trajectory.json").write_text("native partial output")
+    _stopped_worker(monkeypatch, store, run, "worker-run")
+    original = store.status("worker-run")
+    cleaned = cleanup_benchmark_job(store, "worker-run")
+    assert cleaned["cleaned"] is True
+    assert cleaned["retention"]["state"] == "retained"
+    assert (run / "evidence" / "native-partial" / "trajectory.json").read_text() == "native partial output"
+    assert not (run / "evidence" / "swe-canonical").exists()
+    assert not (run / "work").exists()
+    assert store.status("worker-run") == original
+
+
+def test_unknown_suite_cannot_fall_through_to_swe(monkeypatch):
+    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", lambda *_a, **_kw: pytest.fail("SWE fallback"))
+    value = spec()
+    value["suite"] = "unknown"
+    with pytest.raises(BenchmarkJobError) as exc:
+        benchmark_worker._run_suite(None, {"spec": value}, load_profile("smoke"), {})
+    assert exc.value.code == "unknown_suite"
+
+
+@pytest.mark.parametrize("change,code", [({"suite": "historical-suite"}, "unknown_suite"), ({"profile": "missing-profile"}, "profile_not_found")])
+def test_historical_unknown_contract_fails_with_durable_evidence(monkeypatch, tmp_path, change, code):
+    from anvil_serving.benchmarking import profiles
+
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    value = spec()
+    value.update(change)
+    # Model an older writer without changing the persisted record format.
+    with monkeypatch.context() as old_writer:
+        old_writer.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {value["suite"]})
+        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
+        store.submit(value)
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: pytest.fail("asset preparation"))
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == code
+    assert store.artifact("worker-run")["results"]["evidence"]["completeness"] == "failed"
+
+
+def test_v2_worker_retains_budget_and_partial_result(monkeypatch, tmp_path):
+    value = spec()
+    value["profile"] = "pilot-v2"
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: {"assets": {}})
+    monkeypatch.setattr(benchmark_worker, "run_benchmark_preflight", lambda *_a, **_kw: {"schema": "anvil-serving.benchmark-preflight/v1", "passed": True, "observed": {}, "checks": []})
+    monkeypatch.setattr(benchmark_worker, "_run_suite", lambda *_a, **_kw: {
+        "state": "incomplete", "passed": False,
+        "budget": {"model_calls": 2, "exhausted": True},
+        "observations": [{"request_id": "partial"}],
+        "failure": {"class": "budget_exhausted", "message": "call cap reached"},
+    })
+    record = execute_benchmark_job(store, "worker-run")
+    assert record["state"] == "failed"
+    assert record["failure"]["class"] == "resource_exhaustion"
+    evidence = store.artifact("worker-run")["results"]["evidence"]
+    assert [s["sequence"] for s in evidence["stages"]] == list(range(4))
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    admission = json.loads((run / evidence["stages"][0]["evidence"][0]["path"]).read_text())
+    assert admission["budgets"] == load_profile("pilot-v2")["suites"]["context"]["budgets"]
+    partial = json.loads((run / evidence["stages"][-1]["evidence"][0]["path"]).read_text())
+    assert partial["observations"] == [{"request_id": "partial"}]
+
+
+def test_worker_rejects_replaced_valid_profile_before_preparation_or_traffic(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking import profiles
+
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    value = spec()
+    value.update(profile="pilot-v2", suite="aider", parameters={})
+    _, submitted = store.submit(value)
+    changed = load_profile("pilot-v2")
+    changed["suites"]["aider"]["budgets"]["max_model_calls"] += 1
+    changed["content_sha256"] = profiles.profile_content_sha256(changed)
+    profiles.validate_profile(changed)
+    profile_root = tmp_path / "profiles"
+    profile_root.mkdir()
+    (profile_root / "pilot-v2.json").write_text(json.dumps(changed))
+    monkeypatch.setattr(profiles, "PROFILE_ROOT", profile_root)
+    for name in ("prepare_harness_assets", "run_benchmark_preflight", "_run_suite"):
+        monkeypatch.setattr(benchmark_worker, name, lambda *_a, **_kw: pytest.fail("profile drift crossed admission"))
+    monkeypatch.setattr(benchmark_worker, "_retain_stopped_aider", lambda *_a, **_kw: {"state": "absent"})
+
+    record = execute_benchmark_job(store, value["run_id"])
+
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == "profile_binding_mismatch"
+    assert record["spec"] == submitted["spec"]
+    assert record["spec_sha256"] == submitted["spec_sha256"]
+    assert record["spec"]["profile_sha256"] != changed["content_sha256"]
+    assert store.artifact(value["run_id"])["failure"]["code"] == "profile_binding_mismatch"
+    assert store.submit(value) == ("existing", record)
+
+
+def test_worker_uses_one_profile_snapshot_for_admission_and_preparation(monkeypatch, tmp_path):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    value = spec()
+    value.update(profile="pilot-v2", parameters={})
+    _, submitted = store.submit(value)
+    profile = load_profile("pilot-v2")
+    calls = []
+
+    def load(name):
+        calls.append(name)
+        return profile
+
+    def prepare(actual, **_kwargs):
+        assert actual is profile
+        assert actual["content_sha256"] == submitted["spec"]["profile_sha256"]
+        raise BenchmarkJobError("test_stop", "stop after verified admission")
+
+    monkeypatch.setattr(benchmark_worker, "load_profile", load)
+    monkeypatch.setattr("anvil_serving.benchmarking.submission.load_profile", lambda *_a: pytest.fail("second profile load"))
+    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", prepare)
+    result = execute_benchmark_job(store, value["run_id"])
+    assert calls == ["pilot-v2"]
+    assert result["failure"]["code"] == "test_stop"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+@pytest.mark.parametrize("entry", ["missing", "lookup", "signal"])
+@pytest.mark.parametrize("observation", ["absent", "live-group", "reused-pid", "inspection-error"])
+def test_stop_owned_worker_requires_absent_leader_and_group(monkeypatch, tmp_path, entry, observation):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    run.mkdir(parents=True)
+    _stopped_worker(monkeypatch, store, run, "worker-run")
+    expected = (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db",
+                os.path.realpath(store.path), "--run-root", store.run_root, "--run-id", "worker-run")
+    observations = iter([None if entry == "missing" else expected,
+                         ("unrelated-process",) if observation == "reused-pid" else None])
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda pid: next(observations))
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda pid: "started")
+    checks = []
+    def group_id(pid):
+        checks.append(pid)
+        if entry == "signal" and len(checks) == 1:
+            return pid
+        raise ProcessLookupError()
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", group_id)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda pid: pid)
+    def group_running(pid):
+        if observation == "inspection-error":
+            raise OSError("group inspection unavailable")
+        return observation == "live-group"
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", group_running)
+    signals = []
+    def signal_group(pid, sig):
+        assert entry == "signal", "uncertain identity must not be signalled"
+        signals.append((pid, sig))
+        raise ProcessLookupError()
+    monkeypatch.setattr(benchmark_worker.os, "killpg", signal_group)
+
+    result = benchmark_worker._stop_owned_worker(str(run / "worker.json"), "worker-run",
+        database=os.path.realpath(store.path), run_root=store.run_root)
+
+    assert result["stopped"] is (observation == "absent")
+    assert result["status"] == ("already_stopped" if observation == "absent" else "leader_missing_unverified")
+    assert signals == ([(12345, signal.SIGTERM)] if entry == "signal" else [])
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+def test_competing_deadline_watchdog_stop_is_idempotent_for_campaign_owner(monkeypatch, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from tests.test_campaign_batch_closure import active
+    from tests.test_campaign_telemetry import setup
+
+    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch, count=4)
+    contexts = active(store, specs, release)
+    pids = {s["run_id"]: 20000 + i for i, s in enumerate(specs)}
+    alive = dict.fromkeys(pids.values(), True)
+    for value, context in zip(specs, contexts):
+        pid = pids[value["run_id"]]
+        (context["path"].parent / "worker.json").write_text(json.dumps({
+            "run_id": value["run_id"], "pid": pid, "db": os.path.realpath(store.path),
+            "run_root": store.run_root, "process_start": "started", "process_group_id": pid, "session_id": pid,
+        }))
+    def arguments(pid):
+        if not alive[pid]:
+            return None
+        run_id = next(run for run, value in pids.items() if value == pid)
+        return (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db",
+                os.path.realpath(store.path), "--run-root", store.run_root, "--run-id", run_id)
+    def group_id(pid):
+        if alive[pid]:
+            return pid
+        raise ProcessLookupError()
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", arguments)
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda pid: "started")
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", group_id)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", group_id)
+    monkeypatch.setattr(execution, "verify_child", lambda *a, **k: (manifest, {}))
+    entered, resume = threading.Event(), threading.Event()
+    signals = []
+    def signal_group(pid, sig):
+        assert alive[pid]
+        signals.append((pid, sig))
+        alive[pid] = False
+        if pid == pids[specs[0]["run_id"]]:
+            entered.set()
+            assert resume.wait(5)
+    monkeypatch.setattr(benchmark_worker.os, "killpg", signal_group)
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda pid: alive[pid])
+    drains = []
+    def drain(*args, **kwargs):
+        assert not any(alive.values())
+        assert all(execution._read(c["path"])["clients_stopped"] for c in contexts)
+        drains.append(True)
+        clock[0] += 35
+        return {"status": "verified"}
+    monkeypatch.setattr(execution, "observe_drain", drain)
+    clock[0] = release["traffic_deadline_monotonic"]
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        owner = pool.submit(benchmark_worker.cancel_campaign_jobs, manifest, store)
+        try:
+            assert entered.wait(3)
+            # The losing watchdog still performs its bounded safety stop. The
+            # campaign owner must accept proof that this group is already gone.
+            benchmark_worker._campaign_watchdog(store.path, store.run_root, specs[-1]["run_id"])
+            assert not alive[pids[specs[-1]["run_id"]]]
+        finally:
+            resume.set()
+        result = owner.result(5)
+    assert result["phase"] == "completed"
+    assert len(signals) == 4 and all(sig == signal.SIGTERM for _, sig in signals)
+    assert len(drains) == 1
+    assert all(store.status(s["run_id"])["state"] == "cancelled" for s in specs)
+    last = result["children"][-1]
+    assert last["worker_terminated"] is True and last["cleanup_deferred"] is False
+    files = [c["path"] for c in contexts]
+    files += [c["path"].parent / "artifact.json" for c in contexts]
+    files += [c["path"].parent / "evidence/cancellation-native-output.json" for c in contexts]
+    saved = {p: p.read_bytes() for p in files}
+    assert benchmark_worker.cancel_campaign_jobs(manifest, store)["phase"] == "completed"
+    assert all(p.read_bytes() == raw for p, raw in saved.items())
+    assert len(signals) == 4 and len(drains) == 1

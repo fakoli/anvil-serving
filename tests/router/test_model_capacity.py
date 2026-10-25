@@ -25,6 +25,7 @@ from anvil_serving.router.front_door import (
 from anvil_serving.router.model_capacity import (
     MetricsSnapshot,
     ReplicaPressureCache,
+    _default_metrics_read,
     build_model_capacity,
     fetch_engine_metrics,
     fetch_vllm_metrics,
@@ -563,6 +564,63 @@ def test_default_metrics_transport_interrupts_slow_headers_and_releases_cache_wo
         finally:
             cache.close()
     finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=1)
+
+
+@pytest.mark.parametrize(
+    ("protocol_version", "chunked"),
+    [("HTTP/1.0", False), ("HTTP/1.1", False), ("HTTP/1.1", True)],
+)
+def test_default_metrics_transport_interrupts_slow_connection_close_bodies(
+    protocol_version, chunked
+):
+    class _SlowBody(BaseHTTPRequestHandler):
+        def do_GET(self):
+            headers = (
+                f"{protocol_version} 200 OK\r\n"
+                "Content-Type: text/plain\r\n"
+                + ("Transfer-Encoding: chunked\r\n" if chunked else "")
+                + ("Connection: close\r\n" if protocol_version == "HTTP/1.1" else "")
+                + "\r\n"
+            ).encode()
+            try:
+                self.connection.sendall(headers)
+                while not self.server.stop.is_set():
+                    self.connection.sendall(b"1\r\nx\r\n" if chunked else b"x")
+                    time.sleep(0.01)
+            except OSError:
+                return
+
+        def log_message(self, _format, *_args):
+            return
+
+    class _Server(ThreadingHTTPServer):
+        daemon_threads = True
+
+    server = _Server(("127.0.0.1", 0), _SlowBody)
+    server.stop = threading.Event()
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        started = time.monotonic()
+        with pytest.raises(TimeoutError):
+            _default_metrics_read(
+                "http://127.0.0.1:%s/metrics" % server.server_port,
+                {}, timeout=0.06, max_bytes=1024,
+            )
+        assert time.monotonic() - started < 0.3
+
+        started = time.monotonic()
+        result = fetch_vllm_metrics(
+            replace(_tier(), base_url="http://127.0.0.1:%s/v1" % server.server_port),
+            env={}, timeout=0.06,
+        )
+        assert result == MetricsSnapshot("unavailable", {}, "metrics_transport")
+        assert time.monotonic() - started < 0.3
+    finally:
+        server.stop.set()
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)

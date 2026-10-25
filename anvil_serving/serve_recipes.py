@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -1000,6 +1001,48 @@ def _recipe_bound_ports(row: dict) -> list[int]:
     return sorted(ports)
 
 
+def _recipe_bound_endpoints(row: dict) -> list[dict[str, int | str]]:
+    """Return exact, inspect-reported TCP host bindings suitable for ownership checks."""
+    bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+    endpoints = set()
+    if not isinstance(bindings, dict):
+        return []
+    for container_binding, rows in bindings.items():
+        if not isinstance(container_binding, str) or not isinstance(rows, list):
+            continue
+        parts = container_binding.rsplit("/", 1)
+        if len(parts) != 2 or parts[1].lower() != "tcp":
+            continue
+        if not parts[0].isdecimal():
+            continue
+        container_port = int(parts[0])
+        if not 1 <= container_port <= 65535:
+            continue
+        for binding in rows:
+            if not isinstance(binding, dict):
+                continue
+            host_ip = binding.get("HostIp")
+            raw_host_port = binding.get("HostPort")
+            if not isinstance(host_ip, str) or isinstance(raw_host_port, bool):
+                continue
+            if isinstance(raw_host_port, int):
+                host_port = raw_host_port
+            elif isinstance(raw_host_port, str) and raw_host_port.isdecimal():
+                host_port = int(raw_host_port)
+            else:
+                continue
+            try:
+                normalized_ip = str(ipaddress.ip_address(host_ip))
+            except ValueError:
+                continue
+            if 1 <= host_port <= 65535:
+                endpoints.add((normalized_ip, host_port, container_port))
+    return [
+        {"host_ip": host_ip, "host_port": host_port, "container_port": container_port}
+        for host_ip, host_port, container_port in sorted(endpoints)
+    ]
+
+
 def _recipe_gpu_selection(row: dict) -> list[str]:
     selected = []
     requests = (row.get("HostConfig") or {}).get("DeviceRequests") or []
@@ -1026,15 +1069,17 @@ def _recipe_served_identity(row: dict, fallback: str) -> str:
         tokens = config.get("Cmd")
     if not isinstance(tokens, list):
         return fallback
-    for index, token in enumerate(tokens):
-        if not isinstance(token, str):
-            continue
-        if token == "--served-model-name" and index + 1 < len(tokens):
-            value = _bounded_container_value(tokens[index + 1], maximum=512)
-            return value or fallback
-        if token.startswith("--served-model-name="):
-            value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
-            return value or fallback
+    # Preserve the existing served-name override before the model-id alias.
+    for flag in ("--served-model-name", "--model-id"):
+        for index, token in enumerate(tokens):
+            if not isinstance(token, str):
+                continue
+            if token == flag:
+                value = tokens[index + 1] if index + 1 < len(tokens) else None
+                return _bounded_container_value(value, maximum=512) or fallback
+            if token.startswith(flag + "="):
+                value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
+                return value or fallback
     return fallback
 
 
@@ -1072,6 +1117,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         return None
     state = row.get("State") or {}
     state_name = _bounded_container_value(state.get("Status"), maximum=32) or "unknown"
+    started_at = _bounded_container_value(state.get("StartedAt"), maximum=64)
     health = _bounded_container_value(
         (state.get("Health") or {}).get("Status"), maximum=32
     )
@@ -1079,6 +1125,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     if not isinstance(image_digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest):
         image_digest = None
     ports = _recipe_bound_ports(row)
+    endpoints = _recipe_bound_endpoints(row)
     host_memory = recipe_memory.observation(row, _run=_run)
     return {
         "container": name,
@@ -1091,8 +1138,10 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         "served_identity": _recipe_served_identity(row, model),
         "bound_port": ports[0] if len(ports) == 1 else None,
         "bound_ports": ports,
+        "bound_endpoints": endpoints,
         "gpu_selection": _recipe_gpu_selection(row),
         "state": state_name,
+        "started_at": started_at,
         "running": bool(state.get("Running")),
         "health": health,
         "host_memory": host_memory,
@@ -1103,7 +1152,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     }
 
 
-def discover_recipe_containers(*, _run=subprocess.run) -> dict:
+def discover_recipe_containers(*, _run=subprocess.run, strict=False) -> dict:
     """Return bounded, secret-free identities for Anvil recipe containers."""
     try:
         listed = _run(
@@ -1130,6 +1179,8 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         container_id = line.strip()
         if re.fullmatch(r"[0-9a-f]{12,64}", container_id) and container_id not in ids:
             ids.append(container_id)
+        elif strict and container_id:
+            raise RecipeError("Docker recipe discovery contains an invalid or duplicate ID")
     if len(ids) > MAX_DISCOVERED_RECIPE_CONTAINERS:
         raise RecipeError(
             "recipe container discovery exceeds the %d-container safety bound"
@@ -1155,12 +1206,29 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         raise RecipeError("Docker recipe identity inspection returned malformed JSON") from None
     if not isinstance(rows, list):
         raise RecipeError("Docker recipe identity inspection returned malformed JSON")
+    if strict and len(rows) != len(ids):
+        raise RecipeError("Docker recipe identity inspection is incomplete")
     containers = []
     for row in rows[:MAX_DISCOVERED_RECIPE_CONTAINERS]:
+        if strict and (not isinstance(row, dict) or any(
+                row.get(key) is not None and not isinstance(row[key], dict)
+                for key in ("State", "HostConfig", "Config"))):
+            raise RecipeError("Docker recipe identity inspection contains malformed owner metadata")
+        if strict and isinstance(row, dict) and (row.get("State") or {}).get("Running"):
+            bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+            if (not isinstance(bindings, dict)
+                    or any(not isinstance(value, list) for value in bindings.values())
+                    or sum(len(value) for value in bindings.values()) != len(_recipe_bound_endpoints(row))):
+                raise RecipeError("monitoring requires unambiguous exact TCP bindings")
         record = _recipe_container_record(row, _run=_run)
         if record is not None:
             containers.append(record)
+        elif strict:
+            raise RecipeError("Docker recipe identity inspection contains an invalid owner")
     containers.sort(key=lambda item: item["container"].casefold())
+    if strict and (len({r["container_id"] for r in containers}) != len(ids)
+                   or any(sum(r["container_id"].startswith(i) for r in containers) != 1 for i in ids)):
+        raise RecipeError("Docker recipe inspection does not match discovered IDs")
     return {"schema": RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": containers}
 
 
@@ -1783,6 +1851,11 @@ def load_recipe(
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         raise RecipeError("host memory containment refused: %s" % exc) from exc
     bounded = recipe_memory.limits(recipe["serve"]) is not None
+    from . import recipe_monitoring
+    try:
+        recipe_monitoring.withdraw(port=recipe["serve"].get("port"), container=container, pending=True)
+    except (ValueError, OSError, TypeError) as exc:
+        raise RecipeError("monitoring withdrawal failed before Docker start") from exc
     try:
         completed = _run(argv, check=False, **({"stdout": subprocess.PIPE, "text": True} if bounded else {}))
     except OSError:

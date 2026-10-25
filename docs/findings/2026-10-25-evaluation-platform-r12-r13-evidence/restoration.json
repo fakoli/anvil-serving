@@ -1,0 +1,54 @@
+{
+  "campaign_id": "evaluation-platform-r12-r13",
+  "differences": [
+    "Incumbent container/monitoring incarnation changed through managed restore; original recipe/image/model revision/GPU order restored.",
+    "Candidate admission refused before creation; no candidate benchmark jobs or router alias transition.",
+    "Pi acceptance is only the separately explicit minimal-thinking invocation; historical thinking-off/default behavior is not accepted."
+  ],
+  "ending_state": {
+    "captured": true,
+    "description": "Exact incumbent recipe restored in a new incarnation; active matching monitoring; original router unchanged; routed preflight and explicit minimal-thinking Pi acceptance pass.",
+    "evidence": [
+      "restoration-evidence.json"
+    ]
+  },
+  "limits": [
+    "Remote-memory terminal remains UNKNOWN; local zero counts do not prove global fleet drain.",
+    "Publication approval/size exception remain separate and unapproved."
+  ],
+  "mutation_required": true,
+  "not_applicable_reason": null,
+  "post_run_checks": [
+    {
+      "check": "exact managed recipe restoration",
+      "passed": true
+    },
+    {
+      "check": "monitoring before/after Pi byte identity",
+      "passed": true
+    },
+    {
+      "check": "routed coding/JSON/approximately128k/20tools",
+      "passed": true
+    },
+    {
+      "check": "single minimal-thinking Pi invocation,29 independent checks",
+      "passed": true
+    }
+  ],
+  "promotion_authorized": false,
+  "restoration_acceptance_complete": true,
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "service_restored": true,
+  "starting_state": {
+    "captured": true,
+    "description": "Original incumbent recipe/image/revision/GPU order and unchanged router selection; R12 baseline closed before candidate admission.",
+    "evidence": [
+      "identity-control-map.json",
+      "r12-closure-and-cancellation.json"
+    ]
+  },
+  "status": "verified",
+  "thinking_off_or_default_accepted": false,
+  "verified": true
+}

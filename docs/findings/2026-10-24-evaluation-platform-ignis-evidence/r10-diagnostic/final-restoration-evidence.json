@@ -1,0 +1,118 @@
+{
+  "candidate_removed": true,
+  "exact_recipe_restored": true,
+  "exact_reload": {
+    "exit_code": 0,
+    "finished_at": "2026-10-25T08:27:25.434754+00:00",
+    "started_at": "2026-10-25T08:19:17.656855+00:00"
+  },
+  "identity_binding": "Exact original GPU selection/order and loopback endpoint restored; new container and monitoring generation. Private IDs and endpoint port omitted.",
+  "incumbent": {
+    "containment_error": null,
+    "host_memory": {
+      "current_bytes": 23004282880,
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "exit_code": 0,
+      "limit_bytes": 55834574848,
+      "oom_killed": false,
+      "peak_bytes": 32818667520,
+      "ram_plus_swap_limit_bytes": 55834574849
+    },
+    "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "running": true,
+    "state": "running"
+  },
+  "limits": [
+    "Service identity and routed correctness restored; full required real-client exact-output acceptance remains open.",
+    "No fleet promotion, client provider/configuration change or new candidate attempt.",
+    "No candidate generation requests or latency/quality measurements in R10.",
+    "Router remote-memory terminal state remains UNKNOWN as before; local counters are zero, not global fleet drain proof."
+  ],
+  "monitoring": {
+    "engine": "vllm-b12x-release-10152026",
+    "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "metrics_contract": "vllm",
+    "recipe_digest": "50d5cfe756db664c54d13939c722ae05d79a9bf2e26b47b4eb4673fc2655e065",
+    "registry_digest": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+    "schema": "recipe-monitoring/v1",
+    "started_at": "2026-10-25T08:19:17.958178498Z",
+    "state": "active",
+    "updated": 1792916845.3891382
+  },
+  "observed_at": "2026-10-25T08:31:55.842849+00:00",
+  "preserved_failures": [
+    "First restore command omitted explicit GPU order; loaded/healthy but monitoring refused all selection. Managed removal and exact recorded baseline command corrected it.",
+    "First Pi probe inherited launcher script on stdin. Clean-input retry closes stdin and preserves exact argv; strict final text still fails.",
+    "Pi validation R1 expected agent_end last; R2 correctly recognizes later agent_settled. Strict result remains failed."
+  ],
+  "promoted": false,
+  "real_pi": {
+    "accepted": false,
+    "checks": {
+      "configuration_unchanged": true,
+      "declared_provider_model": true,
+      "exact_final_text": false,
+      "exact_prompt": true,
+      "exit_zero": true,
+      "final_stop": true,
+      "one_read": true,
+      "successful_tool": true,
+      "terminal_event": true
+    },
+    "clean_input_attempt": 2,
+    "failure": "Exact final text contains extra prose and duplicated expected digest. Actual read tool, terminal completion and declared provider/model pass. No more retries."
+  },
+  "restoration_acceptance_complete": false,
+  "routed_preflight": {
+    "checks": [
+      "short coding",
+      "structured JSON",
+      "needle at approximately 128000 context",
+      "shared-prefix tool batch 20/20"
+    ],
+    "passed": true,
+    "proof": {
+      "artifact_sha256": "7b1544fa4511f94e1f6eabeb353e5b4ef6cebdb35874c058ba99b44949003a92",
+      "ended_at": "2026-10-25T08:28:27.859099Z",
+      "exit_code": 0,
+      "head_after": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+      "output_sha256": "b9d4b0d2e7f1499be3ccd15b872a111d85af3ae0505e57f7a4d0ac53646bf2c8",
+      "started_at": "2026-10-25T08:28:05.652723Z"
+    }
+  },
+  "router": {
+    "configuration_unchanged": true,
+    "counts": {
+      "audio": 0,
+      "chat": 0,
+      "delivery": 0,
+      "internal": 0,
+      "maintenance": 0,
+      "media": 0,
+      "memory": 0,
+      "purpose": 0
+    },
+    "cutover_pending": false,
+    "generation": 29,
+    "maintenance_drained": false,
+    "remote_memory_terminal": "UNKNOWN",
+    "state": "admitting"
+  },
+  "router_never_transitioned": true,
+  "schema": "anvil-serving.restoration-diagnostic-excerpt/v1",
+  "scope": "Selected exact retained metadata; private identity, topology, command and mount paths omitted. Service restoration passes; strict real-client acceptance fails.",
+  "service_restored": true,
+  "source_head": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+}

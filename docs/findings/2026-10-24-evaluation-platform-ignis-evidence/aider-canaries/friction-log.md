@@ -1,0 +1,7 @@
+# Harness diagnostic friction
+
+1. R1 lost the typed process-boundary failure behind BenchmarkJobError. Commit 914a6750b283f5719a18ccf355f9d27794140261 preserves its safe code without arbitrary messages/details. R1 exact cause remains unknown; R2 independently retained swe_process_output_overflow.
+2. R2 exceeded the shared 64 KiB combined process capture limit. Commit 6479d36e74489be35a0a4ec9f855311c676e2e1a gives Aider a finite 8 MiB combined cap while retaining 64 KiB per-stream result prefixes and the same deadline/group cleanup. R3/R4 completed with output_truncated=true; this retention flag is not process overflow. Sibling limits are unchanged.
+3. Pinned upstream .h detection uses C even for C++ tasks; the pinned C++ reference header itself fails that parse. Commit 60c80fa2b10e70939912c7ce184849790c041fd5 corrects only admitted C++ solution headers via the existing per-instance lint seam. Original filename and contained oracle are retained; invalid C++ still rejects. R4 independent review confirms absence of the prior false header-lint feedback for this case. This is one selected-case confirmation, not broad quality or speed evidence.
+
+R3 and R4 both preserve [false,true] oracle results. No cause is assigned to their first false result. Stochastic trajectories and changed methodology prevent a causal speedup inference from call counts or process duration. Private originals and independent reviews remain authoritative; no new requests were made for publication.

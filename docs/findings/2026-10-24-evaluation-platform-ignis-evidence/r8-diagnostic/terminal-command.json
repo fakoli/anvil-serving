@@ -1,0 +1,9 @@
+{
+  "coordinator_state": "cancelled",
+  "exit_code": 0,
+  "finished_at": "2026-10-25T07:19:17.623415+00:00",
+  "interpretation": "CLI exit0 is not full cancellation custody or complete measurement.",
+  "started_at": "2026-10-25T06:18:55.233544+00:00",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout_sha256": "1171b6478ab041c26df17af4dc256b64b04365be1136ce24830d59899f59adc9"
+}

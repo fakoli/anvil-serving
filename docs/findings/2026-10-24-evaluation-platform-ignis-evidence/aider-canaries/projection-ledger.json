@@ -1,0 +1,1926 @@
+{
+  "schema": "anvil-serving.sanitized-public-projection-ledger/v2",
+  "scope": "four standalone diagnostic canaries only",
+  "exact_unmodified_raw": false,
+  "native_hash_boundary": "Native internal hashes bind original private bytes, not sanitized derivatives; this bundle cannot revalidate the private native graph. Finalizer hashes bind public derivative bytes only.",
+  "entries": [
+    {
+      "source_id": "canary-r1/artifact.json",
+      "disposition": "projected",
+      "original_private_sha256": "51258272b5622c5d1ca067ca1fbf16438cde62d4898670a2756f67340aa0ecde",
+      "original_private_bytes": 5148,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/provenance/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/provenance/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/provenance/worker/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/hardware/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/topology/worker_id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 1,
+      "line_end": 1,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r1/artifact.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "468bb95ac2e9c1a81d03adb95a1eafd4decd7f8cd8cd991a3e804aab49cb43cc",
+      "slice_bytes": 3541
+    },
+    {
+      "source_id": "canary-r1/aider/plan.json",
+      "disposition": "projected",
+      "original_private_sha256": "3e9bbc9d74de4dd8bd911710e8c5891b679559b16f36527454b33728734a067d",
+      "original_private_bytes": 455326,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/aider_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/aider_environment/identity/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/package_inventory",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/cache_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/container_executable",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/paths",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/python_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/python_environment/resolved_packages",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_path",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/build_inputs/files",
+              "operation": "omit",
+              "reason": "Bulky generated image recipe/source text; original recipe digest retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 2,
+      "line_end": 2,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r1/aider/plan.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "047193a43b8dd114ea604a34456f7091b79224f6865005c5a287afb36cce0492",
+      "slice_bytes": 10060
+    },
+    {
+      "source_id": "canary-r1/aider/selection.json",
+      "disposition": "projected",
+      "original_private_sha256": "cce467c96bd777667c4519ae3b271898692cfe8be8650eef715cb86f0ebf5936",
+      "original_private_bytes": 2266,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 3,
+      "line_end": 3,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r1/aider/selection.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "a8cf13d470fa186d55dfddf8f13eecac41209c9543ba93df70a65a7f17be9a54",
+      "slice_bytes": 2223
+    },
+    {
+      "source_id": "canary-r1/aider/result.json",
+      "disposition": "projected",
+      "original_private_sha256": "0f9b733d3999d40343362a7a29c6c5b700f0cf079e3dc3810c0091a44b891a52",
+      "original_private_bytes": 4015,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 4,
+      "line_end": 4,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r1/aider/result.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "f0fd03d0b235d72f9f52041b28bcdf96b5cd1981fb92855d0f65ac0fa8594f28",
+      "slice_bytes": 3500
+    },
+    {
+      "source_id": "canary-r1/aider/process.json",
+      "disposition": "projected",
+      "original_private_sha256": "b4a1a97d6c1ee2ea339bc51f19748962768433fbb8ee9f850a328ab6ecd3c155",
+      "original_private_bytes": 62,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 5,
+      "line_end": 5,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r1/aider/process.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "10c4df1f7000294904302697d011a96386b73a1e068d57444d0a5e2adf5bab55",
+      "slice_bytes": 215
+    },
+    {
+      "source_id": "canary-r1/aider/adapter-result.json",
+      "disposition": "missing",
+      "reason": "Expected native evidence was not retained."
+    },
+    {
+      "source_id": "canary-r1/aider/retention.json",
+      "disposition": "projected",
+      "original_private_sha256": "1bba80a1d3861cda719468794098993dcdc7a1f03c1d956c7c0383489e22b62a",
+      "original_private_bytes": 1188,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 6,
+      "line_end": 6,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r1/aider/retention.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "dfb26a7b7243de9b7a72a9b89e8fea86e77ebfbc2834fdb284c6481f83956820",
+      "slice_bytes": 1149
+    },
+    {
+      "source_id": "canary-r1/aider/results/cpp/exercises/practice/all-your-base/.aider.results.json",
+      "disposition": "missing",
+      "reason": "Expected native evidence was not retained."
+    },
+    {
+      "source_id": "canary-r1/aider/requests.jsonl",
+      "disposition": "projected",
+      "original_private_sha256": "79425f24b9e15f410f865fc27f96314517bf8b889dffaa924502dd23d769a0a0",
+      "original_private_bytes": 2381,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 7,
+      "line_end": 14,
+      "record_count": 8,
+      "record_ids": [
+        "canary-r1/aider/requests.jsonl/line-0001",
+        "canary-r1/aider/requests.jsonl/line-0002",
+        "canary-r1/aider/requests.jsonl/line-0003",
+        "canary-r1/aider/requests.jsonl/line-0004",
+        "canary-r1/aider/requests.jsonl/line-0005",
+        "canary-r1/aider/requests.jsonl/line-0006",
+        "canary-r1/aider/requests.jsonl/line-0007",
+        "canary-r1/aider/requests.jsonl/line-0008"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "d660e590a0bed1f3876c48fef8b7822fc78f5fc5bc1dbdd4e768a2317315e8ff",
+      "slice_bytes": 4101
+    },
+    {
+      "source_id": "canary-r1/evidence/0-admission.json",
+      "disposition": "private-only",
+      "original_private_sha256": "c25b9f3bd27901bbb0dcbac14a16b2b8b634609e943a90e9dc3553c3d7c02f6c",
+      "original_private_bytes": 781,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r1/evidence/0-assets.json",
+      "disposition": "private-only",
+      "original_private_sha256": "1b107caa754f30e7a8425fcb95513599f08e4f1b7921ff534dd2a01e3fd35eb7",
+      "original_private_bytes": 529289,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r1/evidence/0-preflight.json",
+      "disposition": "private-only",
+      "original_private_sha256": "c2fe752efba43e42895d6ae3c52cc7b17d41906cfda77763ad64d6e1031139b6",
+      "original_private_bytes": 2972,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r1/evidence/0-aider-retention.json",
+      "disposition": "private-only",
+      "original_private_sha256": "18046bac424c176826a995f97ee9f28b73a37dd1bd082199fa1e51ff0e9aae7e",
+      "original_private_bytes": 1589,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r1/evidence/0-aider.json",
+      "disposition": "private-only",
+      "original_private_sha256": "c9694a9fcfab1538925e64dfbe124104a06e281e396a40f558dab3f8d1356d3f",
+      "original_private_bytes": 5474,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r1/aider/results/cpp/exercises/practice/all-your-base/.aider.chat.history.md",
+      "disposition": "private-only",
+      "original_private_sha256": "7e0c820c51ae04e90cc2a4a1326ad2e5133e7adeba6617fca31bbaf34f9b3cc3",
+      "original_private_bytes": 5179,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r1/submission-receipt",
+      "disposition": "private-only",
+      "original_private_sha256": "a99119b5fd00020e93318dfbd4332ed49e72d18f8b4ccdf225c4232ad394ba98",
+      "original_private_bytes": 3243,
+      "exact_unmodified_raw": false,
+      "reason": "Launcher command/output are private; exact source revision retained in summary."
+    },
+    {
+      "source_id": "canary-r2/artifact.json",
+      "disposition": "projected",
+      "original_private_sha256": "61e4d5d522498455ef2deea566e3f3899607909b200c715a9919eccaf31c4648",
+      "original_private_bytes": 5148,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/provenance/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/provenance/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/provenance/worker/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/hardware/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/topology/worker_id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 15,
+      "line_end": 15,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r2/artifact.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "574ef229e158b44a186e8db5d4561911c2654c95af9cd89139af40cf40ffc1e5",
+      "slice_bytes": 3541
+    },
+    {
+      "source_id": "canary-r2/aider/plan.json",
+      "disposition": "projected",
+      "original_private_sha256": "21d843950e69cc57f329e3ea75743c7ba16716c1f7e32fcfd07581ca8e3472b3",
+      "original_private_bytes": 455326,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/aider_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/aider_environment/identity/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/package_inventory",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/cache_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/container_executable",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/paths",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/python_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/python_environment/resolved_packages",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_path",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/build_inputs/files",
+              "operation": "omit",
+              "reason": "Bulky generated image recipe/source text; original recipe digest retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 16,
+      "line_end": 16,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r2/aider/plan.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "090d6b4d1e760246fc4f7870d39b3fdce1c9ca7fdeeca384ace3b6426c3321df",
+      "slice_bytes": 10060
+    },
+    {
+      "source_id": "canary-r2/aider/selection.json",
+      "disposition": "projected",
+      "original_private_sha256": "cce467c96bd777667c4519ae3b271898692cfe8be8650eef715cb86f0ebf5936",
+      "original_private_bytes": 2266,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 17,
+      "line_end": 17,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r2/aider/selection.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "099fe13b9f02fcaca1b60312fbdcce59a80cf27eaa72953b58c2a6d0147b7b5a",
+      "slice_bytes": 2223
+    },
+    {
+      "source_id": "canary-r2/aider/result.json",
+      "disposition": "projected",
+      "original_private_sha256": "39679157caac01ad471712cca11467f832513275b535aeef309114caa3948c7e",
+      "original_private_bytes": 4065,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 18,
+      "line_end": 18,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r2/aider/result.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "2920f251ddd673deb5f052cbff0bd40ae23db23aee66430ec77dbd49827cbd9e",
+      "slice_bytes": 3544
+    },
+    {
+      "source_id": "canary-r2/aider/process.json",
+      "disposition": "projected",
+      "original_private_sha256": "926e8d266342784569cb843d24c3d5ca5fc1012808ce9d773e730014d5c945b7",
+      "original_private_bytes": 103,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 19,
+      "line_end": 19,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r2/aider/process.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "c80a14e7d4fff4e901a112b759875da3f0d7950e9c2919bcc7635f67cffeb46b",
+      "slice_bytes": 252
+    },
+    {
+      "source_id": "canary-r2/aider/adapter-result.json",
+      "disposition": "missing",
+      "reason": "Expected native evidence was not retained."
+    },
+    {
+      "source_id": "canary-r2/aider/retention.json",
+      "disposition": "projected",
+      "original_private_sha256": "f7393be283d7dba2c0834ef4faf984428b0ebfa925eafd47d73d78e6216d6142",
+      "original_private_bytes": 1189,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 20,
+      "line_end": 20,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r2/aider/retention.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "9833b52959df26543f3ac06cfcd3b80fd639c623581a21d7f0165667942fb036",
+      "slice_bytes": 1150
+    },
+    {
+      "source_id": "canary-r2/aider/results/cpp/exercises/practice/all-your-base/.aider.results.json",
+      "disposition": "missing",
+      "reason": "Expected native evidence was not retained."
+    },
+    {
+      "source_id": "canary-r2/aider/requests.jsonl",
+      "disposition": "projected",
+      "original_private_sha256": "efead2d8306188bf969feb165c3534d97ece76d68a56819ce20f015a18ac2d22",
+      "original_private_bytes": 2381,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 21,
+      "line_end": 28,
+      "record_count": 8,
+      "record_ids": [
+        "canary-r2/aider/requests.jsonl/line-0001",
+        "canary-r2/aider/requests.jsonl/line-0002",
+        "canary-r2/aider/requests.jsonl/line-0003",
+        "canary-r2/aider/requests.jsonl/line-0004",
+        "canary-r2/aider/requests.jsonl/line-0005",
+        "canary-r2/aider/requests.jsonl/line-0006",
+        "canary-r2/aider/requests.jsonl/line-0007",
+        "canary-r2/aider/requests.jsonl/line-0008"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "6c6eea9bc78422c2789a6406d90d4f3f6796d18eccbfb8abe72a1ce2a15be6e6",
+      "slice_bytes": 4101
+    },
+    {
+      "source_id": "canary-r2/evidence/0-admission.json",
+      "disposition": "private-only",
+      "original_private_sha256": "c25b9f3bd27901bbb0dcbac14a16b2b8b634609e943a90e9dc3553c3d7c02f6c",
+      "original_private_bytes": 781,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r2/evidence/0-assets.json",
+      "disposition": "private-only",
+      "original_private_sha256": "644d29f699104eff2fc6f8d32b3dbd73083964ede30159a1dcf0f98816e52c24",
+      "original_private_bytes": 529289,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r2/evidence/0-preflight.json",
+      "disposition": "private-only",
+      "original_private_sha256": "2586587d21f7d39840c15716121346db5deda84846e6314d596cd0350e2051e4",
+      "original_private_bytes": 2972,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r2/evidence/0-aider-retention.json",
+      "disposition": "private-only",
+      "original_private_sha256": "a1acc5f328a03d12168ceb761aae7be9278215ec742e9b2bc56930c3ac4c320c",
+      "original_private_bytes": 1590,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r2/evidence/0-aider.json",
+      "disposition": "private-only",
+      "original_private_sha256": "12b8ca45eb0843d49aefb62f3ef17da26e8387939511aab048bc4b019470878a",
+      "original_private_bytes": 5525,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r2/aider/results/cpp/exercises/practice/all-your-base/.aider.chat.history.md",
+      "disposition": "private-only",
+      "original_private_sha256": "cd8d51d6afc96b3afd53287db1f9ac2b021069577057399d1ab301545cc37fe4",
+      "original_private_bytes": 5205,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r2/submission-receipt",
+      "disposition": "private-only",
+      "original_private_sha256": "97755ea9c2f0e3d96b633dd78a57369108d804f177d4cad435ea581aab035a30",
+      "original_private_bytes": 3433,
+      "exact_unmodified_raw": false,
+      "reason": "Launcher command/output are private; exact source revision retained in summary."
+    },
+    {
+      "source_id": "canary-r3/artifact.json",
+      "disposition": "projected",
+      "original_private_sha256": "364af8989a2fce4e6beb2d7948f64eaa0d1b725ec42939bcede555575b51c9a4",
+      "original_private_bytes": 4943,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/provenance/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/provenance/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/provenance/worker/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/hardware/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/topology/worker_id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 29,
+      "line_end": 29,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/artifact.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "9ab0ba8d727a63b46d32f732f0d370ee3eda5ddc297db50222d53894edbd0998",
+      "slice_bytes": 3374
+    },
+    {
+      "source_id": "canary-r3/aider/plan.json",
+      "disposition": "projected",
+      "original_private_sha256": "46c89c556c1159e1d77b552fad24ac9c86d0c00ad346aa98de051aabb4d6044b",
+      "original_private_bytes": 455326,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/aider_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/aider_environment/identity/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/package_inventory",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/cache_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/container_executable",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/paths",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/python_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/python_environment/resolved_packages",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_path",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/build_inputs/files",
+              "operation": "omit",
+              "reason": "Bulky generated image recipe/source text; original recipe digest retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 30,
+      "line_end": 30,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/plan.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "563796509729ac46099c40c973ab79da1d62baa79182bea096b667258b5e6dcc",
+      "slice_bytes": 10060
+    },
+    {
+      "source_id": "canary-r3/aider/selection.json",
+      "disposition": "projected",
+      "original_private_sha256": "cce467c96bd777667c4519ae3b271898692cfe8be8650eef715cb86f0ebf5936",
+      "original_private_bytes": 2266,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 31,
+      "line_end": 31,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/selection.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "e79b2998b3858165e630ca1fb05a25df379c0ab8e69c982e80168472db97541b",
+      "slice_bytes": 2223
+    },
+    {
+      "source_id": "canary-r3/aider/result.json",
+      "disposition": "projected",
+      "original_private_sha256": "0147ee685e6f53339c052becc278b4be8bedbb67466e7d71cba7655029c94ae2",
+      "original_private_bytes": 74089,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/instances/0/native/path",
+              "operation": "replace",
+              "reason": "private absolute path"
+            },
+            {
+              "path": "/stage/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stage/stderr",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stage/stdout",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 32,
+      "line_end": 32,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/result.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "9f07ea8e85b46ebc1474201fa8402512354a0978843d5330cf2596d017e2a3c6",
+      "slice_bytes": 4341
+    },
+    {
+      "source_id": "canary-r3/aider/process.json",
+      "disposition": "projected",
+      "original_private_sha256": "13dac94b639bc0d0d4a9f63ba34078e1e2ece544d9cb624fa4770d3729eb3024",
+      "original_private_bytes": 69303,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stderr",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stdout",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 33,
+      "line_end": 33,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/process.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "13ff17c7ed9707bf01aa9d835b327a13faac00546b61fea675b17f5435367993",
+      "slice_bytes": 544
+    },
+    {
+      "source_id": "canary-r3/aider/adapter-result.json",
+      "disposition": "projected",
+      "original_private_sha256": "dbf6f6865dcf3742ba6b64b7f769cbb2887b426370ff6780bba685ba03ee31c0",
+      "original_private_bytes": 580,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 34,
+      "line_end": 34,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/adapter-result.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "15a00c22b29f2b38e49c5c789cd1e95c9d582fa4ab3436924ed6b04615063aa5",
+      "slice_bytes": 695
+    },
+    {
+      "source_id": "canary-r3/aider/retention.json",
+      "disposition": "projected",
+      "original_private_sha256": "24c1814df10a46b08179b30eb803cec10e28c1fc5e713839c0ecb0d9ebaeb2fa",
+      "original_private_bytes": 1454,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 35,
+      "line_end": 35,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/retention.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "f0bc87cc3306db292994f7607a9225895fb18be1619192a02ecf52e1c7ac960e",
+      "slice_bytes": 1360
+    },
+    {
+      "source_id": "canary-r3/aider/results/cpp/exercises/practice/all-your-base/.aider.results.json",
+      "disposition": "projected",
+      "original_private_sha256": "764019fc8cab3b2b0395304fc7fcd3a5a09036640948076912f8ce4fd8bfd4aa",
+      "original_private_bytes": 1435,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/testdir",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/chat_hashes",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 36,
+      "line_end": 36,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r3/aider/results/cpp/exercises/practice/all-your-base/.aider.results.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "bb047649f2c01a2e0f0dce06df9f43875bcd027d06c7371a01ebcd928c96c114",
+      "slice_bytes": 721
+    },
+    {
+      "source_id": "canary-r3/aider/requests.jsonl",
+      "disposition": "projected",
+      "original_private_sha256": "703eda05761e1765e2252b8cdf781ec37227c464a29907026bbd2f2f2641ae5b",
+      "original_private_bytes": 5479,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": 13,
+          "changes": [
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        },
+        {
+          "source_line": 20,
+          "changes": [
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 37,
+      "line_end": 57,
+      "record_count": 21,
+      "record_ids": [
+        "canary-r3/aider/requests.jsonl/line-0001",
+        "canary-r3/aider/requests.jsonl/line-0002",
+        "canary-r3/aider/requests.jsonl/line-0003",
+        "canary-r3/aider/requests.jsonl/line-0004",
+        "canary-r3/aider/requests.jsonl/line-0005",
+        "canary-r3/aider/requests.jsonl/line-0006",
+        "canary-r3/aider/requests.jsonl/line-0007",
+        "canary-r3/aider/requests.jsonl/line-0008",
+        "canary-r3/aider/requests.jsonl/line-0009",
+        "canary-r3/aider/requests.jsonl/line-0010",
+        "canary-r3/aider/requests.jsonl/line-0011",
+        "canary-r3/aider/requests.jsonl/line-0012",
+        "canary-r3/aider/requests.jsonl/line-0013",
+        "canary-r3/aider/requests.jsonl/line-0014",
+        "canary-r3/aider/requests.jsonl/line-0015",
+        "canary-r3/aider/requests.jsonl/line-0016",
+        "canary-r3/aider/requests.jsonl/line-0017",
+        "canary-r3/aider/requests.jsonl/line-0018",
+        "canary-r3/aider/requests.jsonl/line-0019",
+        "canary-r3/aider/requests.jsonl/line-0020",
+        "canary-r3/aider/requests.jsonl/line-0021"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "1b83af49aaf7f997cf3ae63db0ae3f4adb3058554d198c9bd6bc4f134fd2fdf3",
+      "slice_bytes": 9920
+    },
+    {
+      "source_id": "canary-r3/evidence/0-admission.json",
+      "disposition": "private-only",
+      "original_private_sha256": "c25b9f3bd27901bbb0dcbac14a16b2b8b634609e943a90e9dc3553c3d7c02f6c",
+      "original_private_bytes": 781,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r3/evidence/0-assets.json",
+      "disposition": "private-only",
+      "original_private_sha256": "cf063e3d1304b2877ca4d8c3ce3ad35c76468a3119dad6bbae613dfc2b1dfbcb",
+      "original_private_bytes": 529289,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r3/evidence/0-preflight.json",
+      "disposition": "private-only",
+      "original_private_sha256": "4ee2c78cbcf4f07602e57230314ded54dd6552c91b0478802a434092de6fcf38",
+      "original_private_bytes": 2972,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r3/evidence/0-aider-retention.json",
+      "disposition": "private-only",
+      "original_private_sha256": "13724bcef11aec6709021139a0d446ca6796cc0ab92ea4883a8d026b47fe5d37",
+      "original_private_bytes": 1855,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r3/evidence/0-aider.json",
+      "disposition": "private-only",
+      "original_private_sha256": "970e274308369f06e111069b3389f719e63eaa1e21723b2157ba8acb982cbc28",
+      "original_private_bytes": 75828,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r3/aider/results/cpp/exercises/practice/all-your-base/.aider.chat.history.md",
+      "disposition": "private-only",
+      "original_private_sha256": "3bb31e704e9cce8fd979f0b48f4bfa4460cfe5a997a66578a4e6b53e0a4ef64a",
+      "original_private_bytes": 18504,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r3/submission-receipt",
+      "disposition": "private-only",
+      "original_private_sha256": "c18d0679c70c8950a5890f3542c081b59d41273bdcc990a0f42da2cbd04c5a4f",
+      "original_private_bytes": 3441,
+      "exact_unmodified_raw": false,
+      "reason": "Launcher command/output are private; exact source revision retained in summary."
+    },
+    {
+      "source_id": "canary-r4/artifact.json",
+      "disposition": "projected",
+      "original_private_sha256": "91a40b2e3f4054334b50a02c57716a924f0aea073017570c69a23e235f2e7261",
+      "original_private_bytes": 4943,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/provenance/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/provenance/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/provenance/worker/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/hardware/id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            },
+            {
+              "path": "/results/evidence/identities/topology/worker_id",
+              "operation": "replace",
+              "reason": "private worker identity"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 58,
+      "line_end": 58,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/artifact.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "672125f62a7ab5df38e015c8538e48b0c38c4c42ca768978fa7cbcd320422a05",
+      "slice_bytes": 3374
+    },
+    {
+      "source_id": "canary-r4/aider/plan.json",
+      "disposition": "projected",
+      "original_private_sha256": "cc4b64aea1bfae63b74b4386050c3e5feaee3c09cb6030435c473b9cc630e917",
+      "original_private_bytes": 455503,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/aider_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/aider_environment/identity/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/package_inventory",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/selection",
+              "operation": "omit",
+              "reason": "six-language preparation inventory outside selected standalone canary; bound by original hash"
+            },
+            {
+              "path": "/cache_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/container_executable",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/paths",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/python_environment/cache_key",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/python_environment/resolved_packages",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_path",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/run_root",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/aider_environment/build_inputs/files",
+              "operation": "omit",
+              "reason": "Bulky generated image recipe/source text; original recipe digest retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/0/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/1/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/2/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/3/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/4/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/reference_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            },
+            {
+              "path": "/aider_environment/oracle/results/5/starter_output",
+              "operation": "omit",
+              "reason": "Preparation compiler/oracle output text; numeric result, timeout and truncation fields retained."
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 59,
+      "line_end": 59,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/plan.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "97469e779bdfed4f85eb7e2808e035936076a223ddf5f65f43cc42c4df3e4105",
+      "slice_bytes": 10229
+    },
+    {
+      "source_id": "canary-r4/aider/selection.json",
+      "disposition": "projected",
+      "original_private_sha256": "cce467c96bd777667c4519ae3b271898692cfe8be8650eef715cb86f0ebf5936",
+      "original_private_bytes": 2266,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 60,
+      "line_end": 60,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/selection.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "3bd49c604be639cd7de7ea613938ef4421e94c3a2574a6f69ef92f748ec9785d",
+      "slice_bytes": 2223
+    },
+    {
+      "source_id": "canary-r4/aider/result.json",
+      "disposition": "projected",
+      "original_private_sha256": "84dcf14a266270cb814b492294afdc1a6917584ef99120c6190ff6898a33a265",
+      "original_private_bytes": 74411,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/endpoint/[credential-reference]",
+              "operation": "omit",
+              "reason": "private credential reference"
+            },
+            {
+              "path": "/endpoint/base_url",
+              "operation": "replace",
+              "reason": "private network/cache identity"
+            },
+            {
+              "path": "/instances/0/native/path",
+              "operation": "replace",
+              "reason": "private absolute path"
+            },
+            {
+              "path": "/stage/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stage/stderr",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stage/stdout",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 61,
+      "line_end": 61,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/result.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "37e059b00305a65b921fe4a4e90496d1f3f87ef937a5faec9eda79a86ee79c77",
+      "slice_bytes": 4508
+    },
+    {
+      "source_id": "canary-r4/aider/process.json",
+      "disposition": "projected",
+      "original_private_sha256": "366f817787e48115291bc8ec17331a28fe2779054a2b04e8246da71454ca84b9",
+      "original_private_bytes": 69451,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stderr",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/stdout",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 62,
+      "line_end": 62,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/process.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "3dbcc3ec36d92e780391fcec1f1a5efe9f7327d61a72d6ee4938b01fdd668798",
+      "slice_bytes": 543
+    },
+    {
+      "source_id": "canary-r4/aider/adapter-result.json",
+      "disposition": "projected",
+      "original_private_sha256": "dc138ec6fad65b8651ffe941c0aad0516f14a2f2a54d55e879c435da44a34c2d",
+      "original_private_bytes": 579,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 63,
+      "line_end": 63,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/adapter-result.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "f3c67c45b353fda544f13a2d070f465f43ee7bcd6a59518c8b91104d16a3077e",
+      "slice_bytes": 694
+    },
+    {
+      "source_id": "canary-r4/aider/retention.json",
+      "disposition": "projected",
+      "original_private_sha256": "baae4f864ae425f75d66102e6b15c310938626a2c1fe7e797ee64fed016da489",
+      "original_private_bytes": 1454,
+      "exact_unmodified_raw": false,
+      "container": "native-records.jsonl",
+      "line_start": 64,
+      "line_end": 64,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/retention.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "884832e7461b9b735c03b87c7694ccce765ff16e58e0dd840c865d27c43bec31",
+      "slice_bytes": 1360
+    },
+    {
+      "source_id": "canary-r4/aider/results/cpp/exercises/practice/all-your-base/.aider.results.json",
+      "disposition": "projected",
+      "original_private_sha256": "a5c4c9dfa7f049158a0b31e2b7c4e0bef374742242cf87f6de8d4fc1ab8ab921",
+      "original_private_bytes": 1035,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": null,
+          "changes": [
+            {
+              "path": "/testdir",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            },
+            {
+              "path": "/chat_hashes",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 65,
+      "line_end": 65,
+      "record_count": 1,
+      "record_ids": [
+        "canary-r4/aider/results/cpp/exercises/practice/all-your-base/.aider.results.json"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "cf616a10fe526a5e5220c2f97c08ba70caecd75b5cacc54e37c3b21175457975",
+      "slice_bytes": 717
+    },
+    {
+      "source_id": "canary-r4/aider/requests.jsonl",
+      "disposition": "projected",
+      "original_private_sha256": "f3ce93462a342bb31d8ee9b75a2c10e4a34457d7308054666c1a425f9c8039d4",
+      "original_private_bytes": 3418,
+      "exact_unmodified_raw": false,
+      "transformations": [
+        {
+          "source_line": 5,
+          "changes": [
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        },
+        {
+          "source_line": 9,
+          "changes": [
+            {
+              "path": "/command",
+              "operation": "omit",
+              "reason": "private text/path or bulky dependency inventory; original remains authoritative"
+            }
+          ]
+        }
+      ],
+      "container": "native-records.jsonl",
+      "line_start": 66,
+      "line_end": 76,
+      "record_count": 11,
+      "record_ids": [
+        "canary-r4/aider/requests.jsonl/line-0001",
+        "canary-r4/aider/requests.jsonl/line-0002",
+        "canary-r4/aider/requests.jsonl/line-0003",
+        "canary-r4/aider/requests.jsonl/line-0004",
+        "canary-r4/aider/requests.jsonl/line-0005",
+        "canary-r4/aider/requests.jsonl/line-0006",
+        "canary-r4/aider/requests.jsonl/line-0007",
+        "canary-r4/aider/requests.jsonl/line-0008",
+        "canary-r4/aider/requests.jsonl/line-0009",
+        "canary-r4/aider/requests.jsonl/line-0010",
+        "canary-r4/aider/requests.jsonl/line-0011"
+      ],
+      "container_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+      "container_bytes": 112245,
+      "slice_sha256": "a5c4a6a548cba9ba61409ee221159de2b8a45ee4120e5ef3e2f054a1c1a7c1e3",
+      "slice_bytes": 5699
+    },
+    {
+      "source_id": "canary-r4/evidence/0-admission.json",
+      "disposition": "private-only",
+      "original_private_sha256": "c25b9f3bd27901bbb0dcbac14a16b2b8b634609e943a90e9dc3553c3d7c02f6c",
+      "original_private_bytes": 781,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r4/evidence/0-assets.json",
+      "disposition": "private-only",
+      "original_private_sha256": "5b9a40762bec0321f43c7f3e552098bb268d0599470db403963cd2d670a17e82",
+      "original_private_bytes": 529290,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r4/evidence/0-preflight.json",
+      "disposition": "private-only",
+      "original_private_sha256": "6337315646dae2524c4f18d6d2e78352ffda8acb7fad6382ce40874ae94e6556",
+      "original_private_bytes": 2972,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r4/evidence/0-aider-retention.json",
+      "disposition": "private-only",
+      "original_private_sha256": "224d70abbb99b182ec12c83688480b77c6d9a5bece6e92f86394ad6548c9c7a3",
+      "original_private_bytes": 1855,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r4/evidence/0-aider.json",
+      "disposition": "private-only",
+      "original_private_sha256": "51499504b6af10c19415e4e186c4911fc56c1a73c10292537a8feb80235e8637",
+      "original_private_bytes": 76150,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r4/aider/results/cpp/exercises/practice/all-your-base/.aider.chat.history.md",
+      "disposition": "private-only",
+      "original_private_sha256": "d3fd122a087ffb92e5a2e9653c2dbd43249afe1ad35bd28a1edecaa47fb373e1",
+      "original_private_bytes": 20669,
+      "exact_unmodified_raw": false,
+      "reason": "Full native stage/chat evidence retained privately; not published in this bounded diagnostic bundle."
+    },
+    {
+      "source_id": "canary-r4/submission-receipt",
+      "disposition": "private-only",
+      "original_private_sha256": "3091a2d6071e03d9b6012e3865cd08775f768c89be2d22d576c1c1263f33edee",
+      "original_private_bytes": 3426,
+      "exact_unmodified_raw": false,
+      "reason": "Launcher command/output are private; exact source revision retained in summary."
+    },
+    {
+      "source_id": "canary-r4/independent-review",
+      "disposition": "private-only",
+      "original_private_sha256": "a172bdaf1ec987f9d9c1d6f4bb4e92a3458450e291161494e28faaf9e175439a",
+      "original_private_bytes": 6470,
+      "exact_unmodified_raw": false,
+      "reason": "Private independent review; bounded GO and limitations retained in summary."
+    }
+  ]
+}

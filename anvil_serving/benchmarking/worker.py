@@ -8,9 +8,11 @@ import os
 from pathlib import Path
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from typing import Any, Mapping
 
@@ -22,13 +24,15 @@ from .artifacts import (
     normalize_evidence_failure_class,
 )
 from .harnesses import prepare_harness_assets
+from .campaign_execution import campaign_result_reference, child_lock
 from .jobs import BenchmarkJobError, resolve_owned_run_path, utc_now
 from .preflight import require_benchmark_preflight, run_benchmark_preflight
-from .profiles import load_profile
+from .profiles import load_profile, suite_budgets
 from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
 from .swe_logs import server_log_collector
+from .retention import read_retained_swe_artifacts, retain_swe_artifacts
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -70,7 +74,7 @@ def _identities(
     worker = preflight.get("observed", {}).get("worker", {}) if preflight else {}
     endpoint = preflight.get("observed", {}).get("endpoint", {}) if preflight else {}
     adapters = assets.get("assets", {}) if assets else {}
-    suite = profile["suites"][spec["suite"]]
+    suite = profile.get("suites", {}).get(spec["suite"], {})
     parameters = spec.get("parameters", {})
     topology_kind = (
         "co-resident-benchmark-client"
@@ -110,7 +114,7 @@ def _identities(
                 ),
             },
         ),
-        "concurrency": declared_or("concurrency", {"requests": 1, "workers": 1}),
+        "concurrency": declared_or("concurrency", {"requests": parameters.get("concurrency", 1), "workers": 1, "status": "configured"} if spec["suite"] == "performance" else {"requests": 1, "workers": 1}),
         "harnesses": declared_or(
             "harnesses",
             {
@@ -119,14 +123,18 @@ def _identities(
                     for key, value in profile["adapters"][name].items()
                     if key in {"source", "revision", "image"}
                 }
-                for name in suite["adapters"]
+                for name in suite.get("adapters", [])
             } or {"native": {"schema": f"anvil-serving.{spec['suite']}/v1"}},
         ),
         "dataset": declared_or(
             "dataset",
             {"name": "SWE-bench_Verified", "split": "test"}
             if spec["suite"] == "swe"
-            else {"name": "deterministic-native", "profile_sha256": profile["content_sha256"]},
+            else {"name": "Aider Polyglot", "revision": profile.get("adapters", {}).get("polyglot-benchmark", {}).get("revision", "unavailable")}
+            if spec["suite"] == "aider"
+            else {"name": "native-synthetic", "runner": parameters.get("runner"), "requested_workload": parameters.get("workload"), "tokenizer_match": "unverified"}
+            if spec["suite"] == "performance"
+            else {"name": "deterministic-native", "profile_sha256": profile.get("content_sha256", "unavailable")},
         ),
     }
 
@@ -140,6 +148,27 @@ def _stage(sequence: int, name: str, status: str, reference: dict[str, Any]) -> 
     }
 
 
+def _retain_stopped_aider(record: Mapping[str, Any], *, run_path: str) -> dict[str, Any]:
+    """Containers outlive worker processes; verify their cleanup before retention."""
+    from .aider import retain_aider_artifacts
+    from .aider_containment import cleanup_aider_containers
+
+    spec = record["spec"]
+    cleanup = cleanup_aider_containers(
+        run_path=run_path, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
+    )
+    if cleanup["status"] != "completed":
+        return {"state": "failed", "reason": "aider_container_cleanup_unverified", "containers": cleanup}
+    return {**retain_aider_artifacts(run_path=run_path), "containers": cleanup}
+
+
+def _retain_external_artifacts(record: Mapping[str, Any], *, run_path: str) -> dict[str, Any]:
+    if record["spec"]["suite"] == "aider":
+        return _retain_stopped_aider(record, run_path=run_path)
+    from .performance import retain_performance_artifacts
+    return retain_performance_artifacts(run_path=run_path)
+
+
 def _run_suite(
     store: BenchmarkJobStore,
     record: Mapping[str, Any],
@@ -151,12 +180,39 @@ def _run_suite(
         return run_context_suite(profile, spec)
     if spec["suite"] == "agentic":
         return run_agentic_suite(profile, spec)
+    if spec["suite"] not in {"swe", "aider", "performance"}:
+        raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
     instance_ids = spec.get("parameters", {}).get("instance_ids")
     parameters = spec.get("parameters", {})
     cache_root = os.environ.get(
         "ANVIL_BENCHMARK_CACHE_ROOT",
         os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
     )
+    if spec["suite"] == "performance":
+        from .performance import build_performance_run_plan, run_performance_benchmark
+        plan = build_performance_run_plan(
+            profile, assets, endpoint=spec["endpoint"],
+            parameters={key: parameters[key] for key in (
+                "runner", "workload", "concurrency", "request_count", "duration_s",
+                "warmup_requests", "cache_condition", "thinking_mode", "reasoning_effort",
+                "temperature", "top_p",
+            ) if key in parameters},
+            run_root=store.run_root, cache_root=cache_root,
+            ownership_id=spec["ownership_id"], run_id=spec["run_id"], timeout_s=spec["timeout_s"],
+        )
+        return run_performance_benchmark(plan)
+    if spec["suite"] == "aider":
+        from .aider import build_aider_run_plan, run_aider_benchmark
+
+        plan = build_aider_run_plan(
+            profile, assets, endpoint=spec["endpoint"], instance_ids=instance_ids,
+            run_root=store.run_root, cache_root=cache_root,
+            ownership_id=spec["ownership_id"], run_id=spec["run_id"],
+            request_controls={key: parameters[key] for key in (
+                "thinking_mode", "reasoning_effort", "temperature", "top_p"
+            ) if key in parameters}, timeout_s=spec["timeout_s"],
+        )
+        return run_aider_benchmark(plan)
     plan = build_swe_run_plan(
         profile,
         assets,
@@ -174,37 +230,92 @@ def _run_suite(
         },
         paired_image_ids=parameters.get("paired_image_ids"),
         server_log=parameters.get("server_log"),
+        prompt_contract=parameters.get("prompt_contract", "legacy/v1"),
+        **({"timeout_s": spec["timeout_s"]} if suite_budgets(profile, "swe") is not None else {}),
     )
     selector = plan.get("server_log")
     collector = server_log_collector(selector) if selector is not None else None
     return run_swe_benchmark(plan, **({"log_collector": collector} if collector else {}))
 
 
+
+def _finish_job(store, spec, target, *, results, failure=None):
+    if 'campaign' not in spec:
+        return store.transition(spec['run_id'], target, results=results, failure=failure)
+    # Waiting must never hold the write lock: cancellation must stop all siblings.
+    reference = campaign_result_reference(store, spec)
+    with child_lock(store, spec):
+        current = store.status(spec['run_id'])
+        if current['state'] != 'running':
+            return current
+        # Receipt writers use this same lock; cancellation cannot replace it
+        # between reference capture and immutable artifact commit.
+        path = resolve_owned_run_path(store.run_root, ownership_id=spec['ownership_id'],
+                                      run_id=spec['run_id'], relative='campaign-execution.json')
+        if reference:
+            reference = {'campaign_execution': evidence_file_reference(path, root=str(Path(path).parent))}
+        return store.transition(spec['run_id'], target, results={**results, **reference}, failure=failure)
+
 def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
     """Claim and execute one job, retaining evidence at each completed stage."""
     record = store.claim(run_id)
     spec = record["spec"]
-    profile = load_profile(spec["profile"])
+    profile: dict[str, Any] = {}
     stages: list[dict[str, Any]] = []
     assets = None
     preflight = None
+    campaign_context = None
+    campaign_closure = None
     try:
-        validate_submission_spec(spec)
+        profile = load_profile(spec["profile"])
+        admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
+        if "campaign" in spec and spec["suite"] not in {"context", "agentic", "aider", "performance"}:
+            raise BenchmarkJobError("unsupported_campaign_suite", "campaign cannot execute this suite")
+        if "budgets" in admission:
+            stages.append(_stage(len(stages), "admission", "completed", _write_stage(store, record, "admission", admission)))
+        if spec.get("parameters", {}).get("operation") == "regrade":
+            from .swe_regrade import prepare_swe_regrade, regrade_swe_predictions
+
+            store.append_log(run_id, level="info", message="preparing retained SWE regrade")
+            plan = prepare_swe_regrade(store, record)
+            suite_result = regrade_swe_predictions(plan)
+            suite_ref = _write_stage(store, record, "regrade", suite_result)
+            completed = suite_result.get("state") == "completed"
+            stages.append(_stage(len(stages), "regrade", "completed" if completed else "failed", suite_ref))
+            if not completed:
+                failure = suite_result.get("failure") or {"class": "grader_failure", "message": "regrade incomplete"}
+                raise BenchmarkJobError(failure.get("class", "grader_failure"), failure.get("message", "regrade incomplete"))
+            evidence = build_measured_evidence(
+                run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
+                identities=_identities(spec, profile, None, None), stages=stages,
+                completeness="completed", summary=dict(suite_result.get("summary") or {"completed": True}),
+                created_at=utc_now(), artifact_root=resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]),
+            )
+            return _finish_job(store, spec, "completed", results={"evidence": evidence})
         store.append_log(run_id, level="info", message="benchmark worker claimed job")
-        store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
-        assets = prepare_harness_assets(
-            profile,
-            suite=spec["suite"],
-            run_root=store.run_root,
-            ownership_id=spec["ownership_id"],
-            run_id=spec["run_id"],
-            cache_root=os.environ.get(
-                "ANVIL_BENCHMARK_CACHE_ROOT",
-                os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
-            ),
-            offline=bool(spec.get("parameters", {}).get("offline", False)),
-        )
-        stages.append(_stage(0, "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
+        if "budgets" in admission:
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+            if shutil.disk_usage(run_path).free < admission["budgets"]["min_free_disk_bytes"]:
+                raise BenchmarkJobError("insufficient_disk", "free disk is below the profile reserve before asset preparation")
+        if "campaign" in spec:
+            from .campaign_execution import enter_campaign
+            campaign_context = enter_campaign(store, spec)
+            assets = campaign_context["payload"]["assets"]
+        else:
+            store.append_log(run_id, level="info", message="preparing pinned benchmark assets")
+            assets = prepare_harness_assets(
+                profile,
+                suite=spec["suite"],
+                run_root=store.run_root,
+                ownership_id=spec["ownership_id"],
+                run_id=spec["run_id"],
+                cache_root=os.environ.get(
+                    "ANVIL_BENCHMARK_CACHE_ROOT",
+                    os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
+                ),
+                offline=bool(spec.get("parameters", {}).get("offline", False)),
+            )
+        stages.append(_stage(len(stages), "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
 
@@ -220,24 +331,60 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         )
         preflight_ref = _write_stage(store, record, "preflight", preflight)
         preflight_status = "completed" if preflight["passed"] else "failed"
-        stages.append(_stage(1, "preflight", preflight_status, preflight_ref))
+        stages.append(_stage(len(stages), "preflight", preflight_status, preflight_ref))
         require_benchmark_preflight(preflight)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
 
         store.append_log(run_id, level="info", message=f"executing {spec['suite']} suite")
-        suite_result = _run_suite(store, record, profile, assets)
+        if campaign_context and spec["suite"] in {"aider", "performance"}:
+            from .campaign_execution import verify_child
+            _, prepared = verify_child(spec, run_root=store.run_root)
+            if spec["suite"] == "aider":
+                from .aider import run_aider_benchmark
+                suite_result = run_aider_benchmark(prepared["plan"])
+            else:
+                from .performance import run_performance_benchmark
+                suite_result = run_performance_benchmark(prepared["plan"])
+        else:
+            suite_result = _run_suite(store, record, profile, assets)
+        if campaign_context:
+            from .campaign_execution import close_campaign
+            campaign_closure = close_campaign(campaign_context)
         if store.status(run_id)["state"] != "running":
             return store.status(run_id)
+        if spec["suite"] in {"aider", "performance"}:
+            suite = spec["suite"]
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+            retention = _retain_external_artifacts(record, run_path=run_path)
+            retention_ref = _write_stage(store, record, f"{suite}-retention", retention)
+            stages.append(_stage(len(stages), f"{suite}_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+            if retention["state"] == "failed":
+                raise BenchmarkJobError(f"{suite}_artifact_retention_failed", f"{suite} canonical artifacts could not be verified")
+            if retention["state"] != "retained" and suite_result.get("state") == "completed":
+                raise BenchmarkJobError(f"{suite}_artifact_retention_incomplete", f"{suite} canonical artifacts are incomplete")
+        if spec["suite"] == "swe":
+            run_path = resolve_owned_run_path(
+                store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
+            )
+            work_path = os.path.join(run_path, "work")
+            if os.path.isdir(work_path):
+                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+                if retention["state"] == "failed":
+                    raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be retained")
+                retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
+                stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
-        stages.append(_stage(2, spec["suite"], "completed" if suite_complete else "failed", suite_ref))
+        stages.append(_stage(len(stages), spec["suite"], "completed" if suite_complete else "failed", suite_ref))
         if not suite_complete:
             failure = suite_result.get("failure") or {"class": "harness", "message": "suite incomplete"}
             raise BenchmarkJobError(
                 failure.get("class", "harness"),
                 failure.get("message", "benchmark suite did not complete"),
             )
+        if campaign_closure and campaign_closure["status"] != "closed":
+            raise BenchmarkJobError("campaign_closure_unknown", "owned clients or engine drain could not be verified")
         summary = suite_result.get("summary") or suite_result.get("curve") or {
             "completed": True,
             "passed": suite_result.get("passed"),
@@ -260,13 +407,33 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
         )
         store.append_log(run_id, level="info", message="benchmark completed; evidence retained")
-        return store.transition(run_id, "completed", results={"evidence": evidence})
+        return _finish_job(store, spec, "completed", results={"evidence": evidence})
     except Exception as exc:
+        if campaign_context and campaign_context["receipt"]["status"] == "active":
+            from .campaign_execution import close_campaign
+            close_campaign(campaign_context)
         current = store.status(run_id)
         if current is not None and current["state"] in {"cancelled", "cancelling"}:
             return current
         code = exc.code if isinstance(exc, BenchmarkJobError) else type(exc).__name__
         message = exc.message if isinstance(exc, BenchmarkJobError) else str(exc)
+        if spec["suite"] in {"aider", "performance"} and not any(stage["name"] == f"{spec['suite']}_retention" for stage in stages):
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+            try:
+                retention = _retain_external_artifacts(record, run_path=run_path)
+                retention_ref = _write_stage(store, record, f"{spec['suite']}-retention", retention)
+                stages.append(_stage(len(stages), f"{spec['suite']}_retention", "incomplete", retention_ref))
+            except (BenchmarkJobError, OSError, ValueError):
+                # Preserve the original error and all run files if retention itself failed.
+                pass
+        if spec["suite"] == "swe":
+            run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
+            work_path = os.path.join(run_path, "work")
+            if os.path.isdir(work_path) and not any(stage["name"] == "swe_canonical_retention" for stage in stages):
+                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+                if retention["state"] != "failed":
+                    retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
+                    stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
         try:
             failure_class = normalize_evidence_failure_class(code)
         except BenchmarkArtifactError:
@@ -295,8 +462,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
         )
         store.append_log(run_id, level="error", message=f"benchmark failed: {code}: {message}")
-        return store.transition(
-            run_id,
+        return _finish_job(
+            store, spec,
             "failed",
             failure={"class": failure_class, "code": code, "message": message[:1024]},
             results={"evidence": evidence},
@@ -309,6 +476,19 @@ def launch_benchmark_job(
     """Launch an owned detached worker without embedding credentials in argv."""
     database = os.path.realpath(path)
     root = os.path.realpath(run_root)
+    store = BenchmarkJobStore(database, run_root=root)
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "cannot launch a worker for an absent job")
+    if record["state"] != "queued":
+        raise BenchmarkJobError("job_already_claimed", "benchmark job is not queued")
+    worker_path = resolve_owned_run_path(
+        root,
+        ownership_id=record["spec"]["ownership_id"],
+        run_id=run_id,
+        relative="worker.json",
+    )
+    Path(worker_path).parent.mkdir(parents=True, exist_ok=True)
     argv = [
         sys.executable,
         "-m",
@@ -318,7 +498,7 @@ def launch_benchmark_job(
         "--run-id", run_id,
     ]
     kwargs: dict[str, Any] = {
-        "stdin": subprocess.DEVNULL,
+        "stdin": subprocess.PIPE,
         "stdout": subprocess.DEVNULL,
         "stderr": subprocess.DEVNULL,
         "close_fds": True,
@@ -332,32 +512,98 @@ def launch_benchmark_job(
         raise BenchmarkJobError(
             "worker_launch_failed", "detached benchmark worker could not be launched"
         ) from exc
-    store = BenchmarkJobStore(database, run_root=root)
-    record = store.status(run_id)
-    if record is None:
-        raise BenchmarkJobError("job_not_found", "cannot register a worker for an absent job")
-    worker_path = resolve_owned_run_path(
-        root,
-        ownership_id=record["spec"]["ownership_id"],
-        run_id=run_id,
-        relative="worker.json",
-    )
-    Path(worker_path).parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(worker_path, {
-        "run_id": run_id,
-        "pid": int(process.pid),
-        "db": database,
-        "run_root": root,
-        "process_start": _process_start_identity(int(process.pid)),
-        "process_group_id": int(process.pid),
-        "session_id": int(process.pid),
-        "launched_at": utc_now(),
-    })
+    try:
+        process_start = _process_start_identity(int(process.pid))
+        if not isinstance(process_start, str) or not process_start:
+            raise BenchmarkJobError("worker_custody_unverified", "worker process start identity is unavailable")
+        atomic_write_json(worker_path, {
+            "run_id": run_id,
+            "pid": int(process.pid),
+            "db": database,
+            "run_root": root,
+            "process_start": process_start,
+            "process_group_id": int(process.pid),
+            "session_id": int(process.pid),
+            "launched_at": utc_now(),
+        })
+        process.stdin.write(b"1")
+        process.stdin.flush()
+        process.stdin.close()
+    except BaseException as exc:
+        # We still own the unreaped child even when no durable receipt exists.
+        try:
+            if os.name == "nt":
+                process.kill()
+            else:
+                os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        finally:
+            process.wait(timeout=5)
+            try:
+                process.stdin.close()
+            except OSError:
+                pass
+        if not isinstance(exc, Exception):
+            raise
+        raise BenchmarkJobError(
+            "worker_launch_failed", "detached benchmark worker custody handoff failed"
+        ) from exc
     return {"launched": True, "pid": int(process.pid), "run_id": run_id}
 
 
-_MAX_PARTIAL_OUTPUT_BYTES = 64 * 1024 * 1024
-_MAX_PARTIAL_OUTPUT_FILES = 512
+_WORKER_HANDOFF_TIMEOUT_S = 10.0
+
+
+def _await_worker_custody(store: BenchmarkJobStore, run_id: str) -> None:
+    """Require the launching parent's acknowledgement and this child's receipt."""
+    acknowledged = threading.Event()
+    receipt = []
+
+    def read_acknowledgement() -> None:
+        try:
+            receipt.append(os.read(sys.stdin.fileno(), 1))
+        except (OSError, ValueError):
+            pass
+        finally:
+            acknowledged.set()
+
+    threading.Thread(target=read_acknowledgement, daemon=True).start()
+    if not acknowledged.wait(_WORKER_HANDOFF_TIMEOUT_S) or receipt != [b"1"]:
+        raise BenchmarkJobError("worker_custody_unverified", "worker custody was not acknowledged")
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
+    worker_path = resolve_owned_run_path(
+        store.run_root, ownership_id=record["spec"]["ownership_id"],
+        run_id=run_id, relative="worker.json",
+    )
+    pid = os.getpid()
+    process_start = _process_start_identity(pid)
+    if not isinstance(process_start, str) or not process_start:
+        raise BenchmarkJobError("worker_custody_unverified", "worker process start identity is unavailable")
+    expected = {
+        "run_id": run_id, "pid": pid, "db": os.path.realpath(store.path),
+        "run_root": store.run_root, "process_start": process_start,
+        "process_group_id": pid, "session_id": pid,
+    }
+    try:
+        with open(worker_path, "rb", opener=lambda path, flags: os.open(
+            path, flags | getattr(os, "O_NONBLOCK", 0)
+        )) as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise ValueError("worker receipt is not a regular file")
+            raw = handle.read(65537)
+        if len(raw) > 65536:
+            raise ValueError("worker receipt exceeds 64 KiB")
+        worker = json.loads(raw)
+        matches = isinstance(worker, dict) and all(worker.get(key) == value for key, value in expected.items())
+        if os.name != "nt":
+            matches = matches and os.getpgid(pid) == pid and os.getsid(pid) == pid
+    except (OSError, ValueError, RecursionError):
+        matches = False
+    if not matches:
+        raise BenchmarkJobError("worker_custody_unverified", "worker custody does not match this process")
 
 
 def _process_start_identity(pid: int) -> str | None:
@@ -407,6 +653,9 @@ def _stop_owned_worker(
     try:
         arguments = _process_arguments(pid)
         if arguments is None:
+            # Another deadline supervisor may already have stopped this group.
+            if _worker_group_stopped(worker_path, run_id=run_id, database=database, run_root=run_root):
+                return {"stopped": True, "status": "already_stopped", "pid": pid}
             return {"stopped": False, "status": "leader_missing_unverified", "pid": pid}
         expected = (
             sys.executable,
@@ -439,7 +688,12 @@ def _stop_owned_worker(
                 return {"stopped": True, "status": "killed", "pid": pid}
             time.sleep(0.05)
     except ProcessLookupError:
-        return {"stopped": True, "status": "already_stopped", "pid": pid}
+        # A missing leader alone does not prove its descendants have stopped.
+        try:
+            stopped = _worker_group_stopped(worker_path, run_id=run_id, database=database, run_root=run_root)
+        except (OSError, subprocess.SubprocessError):
+            stopped = False
+        return {"stopped": stopped, "status": "already_stopped" if stopped else "leader_missing_unverified", "pid": pid}
     except (OSError, subprocess.SubprocessError):
         return {"stopped": False, "status": "termination_error", "pid": pid}
     return {"stopped": False, "status": "termination_unverified", "pid": pid}
@@ -466,59 +720,75 @@ def _process_group_running(group_id: int) -> bool:
     return False
 
 
-def _retain_native_partial_outputs(
-    *, run_path: str, work_path: str
-) -> dict[str, Any]:
-    """Copy only bounded regular mini-SWE output into retained evidence."""
+_MAX_PARTIAL_OUTPUT_BYTES = 64 * 1024 * 1024
+_MAX_PARTIAL_OUTPUT_FILES = 512
+
+
+def _retain_native_partial_outputs(*, run_path: str, work_path: str) -> dict[str, Any]:
+    """Preserve the legacy non-SWE cancellation artifact contract."""
     source = os.path.join(work_path, "mini-output")
     if not os.path.exists(source):
         return {"state": "absent", "source": "work/mini-output", "files": [], "bytes": 0}
     if not os.path.isdir(source) or os.path.islink(source):
         return {"state": "failed", "reason": "native_output_is_not_a_directory"}
-    evidence_dir = os.path.join(run_path, "evidence")
-    destination = os.path.join(evidence_dir, "native-partial")
+    evidence_dir, destination = os.path.join(run_path, "evidence"), os.path.join(run_path, "evidence", "native-partial")
     Path(evidence_dir).mkdir(parents=True, exist_ok=True)
     if os.path.exists(destination):
         return {"state": "failed", "reason": "native_output_destination_exists"}
-    staging = tempfile.mkdtemp(prefix=".native-partial-", dir=evidence_dir)
-    files: list[dict[str, Any]] = []
-    total = 0
+    staging, files, total = tempfile.mkdtemp(prefix=".native-partial-", dir=evidence_dir), [], 0
     try:
         for current, directories, names in os.walk(source, followlinks=False):
-            directories.sort()
-            names.sort()
+            directories.sort(); names.sort()
             if any(os.path.islink(os.path.join(current, name)) for name in directories):
                 return {"state": "failed", "reason": "native_output_contains_symlink"}
             for name in names:
                 original = os.path.join(current, name)
-                relative = os.path.relpath(original, source)
                 if os.path.islink(original) or not os.path.isfile(original):
                     return {"state": "failed", "reason": "native_output_contains_nonregular_file"}
                 size = os.path.getsize(original)
                 if len(files) >= _MAX_PARTIAL_OUTPUT_FILES or total + size > _MAX_PARTIAL_OUTPUT_BYTES:
                     return {"state": "failed", "reason": "native_output_exceeds_retention_bound"}
-                copied = os.path.join(staging, relative)
-                Path(copied).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(original, copied)
-                files.append({"path": relative.replace("\\", "/"), **evidence_file_reference(copied, root=staging)})
+                copied = os.path.join(staging, os.path.relpath(original, source))
+                Path(copied).parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(original, copied)
+                files.append({"path": os.path.relpath(copied, staging).replace("\\", "/"), **evidence_file_reference(copied, root=staging)})
                 total += size
         os.replace(staging, destination)
         return {"state": "retained", "source": "work/mini-output", "files": files, "bytes": total}
     finally:
-        if os.path.isdir(staging):
-            shutil.rmtree(staging, ignore_errors=True)
+        if os.path.isdir(staging): shutil.rmtree(staging, ignore_errors=True)
 
 
 def _cancellation_evidence(
     record: Mapping[str, Any], *, run_path: str, retention: Mapping[str, Any], termination: Mapping[str, Any]
 ) -> dict[str, Any]:
     spec = record["spec"]
-    manifest_path = os.path.join(run_path, "evidence", "cancellation-native-output.json")
+    if spec["suite"] in {"aider", "performance"}:
+        suite = spec["suite"]
+        manifest_path = os.path.join(run_path, "evidence", f"cancellation-{suite}.json")
+        Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(manifest_path, {"schema": f"anvil-serving.{suite}-cancellation/v1", "retention": retention, "termination": termination})
+        retained = retention["state"] in {"retained", "incomplete"}
+        return build_measured_evidence(
+            run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": suite, "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
+            identities=_identities(spec, {}, None, None),
+            stages=[_stage(0, f"{suite}_retention", "incomplete" if retained else "failed", evidence_file_reference(manifest_path, root=run_path))],
+            completeness="cancelled", summary={"completed": False, f"{suite}_retention": dict(retention)},
+            failure={"class": "cancellation", "code": "cancelled" if retained else "partial_artifact_retention_failed", "message": f"{suite} cancellation preserves canonical files outside disposable work"},
+            created_at=utc_now(), artifact_root=run_path,
+        )
+    if spec["suite"] != "swe":
+        manifest_path = os.path.join(run_path, "evidence", "cancellation-native-output.json")
+        Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(manifest_path, {"schema": "anvil-serving.native-partial-output/v1", "retention": retention, "termination": termination})
+        status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "absent" else "failed"
+        failure_code = "cancelled" if retention["state"] in {"retained", "absent"} else "partial_artifact_retention_failed"
+        return build_measured_evidence(run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]}, identities={key: {"status": "unavailable", "reason": "cancellation before collection"} for key in ("model", "served_model", "runtime", "image", "hardware", "topology", "context", "concurrency", "harnesses", "dataset")}, stages=[_stage(0, "native_partial_outputs", status, evidence_file_reference(manifest_path, root=run_path))], completeness="cancelled", summary={"completed": False, "native_partial_output": dict(retention)}, failure={"class": "cancellation", "code": failure_code, "message": "benchmark cancellation retained native partial output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because native output retention failed"}, created_at=utc_now(), artifact_root=run_path)
+    manifest_path = os.path.join(run_path, "evidence", "cancellation-swe-canonical.json")
     Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_json(manifest_path, {"schema": "anvil-serving.native-partial-output/v1", "retention": retention, "termination": termination})
-    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "absent" else "failed"
-    failure_code = "cancelled" if retention["state"] in {"retained", "absent"} else "partial_artifact_retention_failed"
-    failure_message = "benchmark cancellation retained native partial output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because native output retention failed"
+    atomic_write_json(manifest_path, {"schema": "anvil-serving.swe-canonical-cancellation/v1", "retention": retention, "termination": termination})
+    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "incomplete" else "failed"
+    failure_code = "cancelled" if retention["state"] in {"retained", "incomplete"} else "partial_artifact_retention_failed"
+    failure_message = "benchmark cancellation retained canonical SWE output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because canonical SWE retention failed"
     identities = {
         "model": {"alias": spec["endpoint"]["model"]},
         "served_model": {"id": spec["endpoint"]["model"], "status": "unavailable"},
@@ -534,22 +804,22 @@ def _cancellation_evidence(
     return build_measured_evidence(
         run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": spec["suite"], "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
         identities=identities,
-        stages=[_stage(0, "native_partial_outputs", status, evidence_file_reference(manifest_path, root=run_path))],
+        stages=[_stage(0, "swe_canonical_retention", status, evidence_file_reference(manifest_path, root=run_path))],
         completeness="cancelled",
-        summary={"completed": False, "native_partial_output": dict(retention)},
+        summary={"completed": False, "swe_canonical_retention": dict(retention)},
         failure={"class": "cancellation", "code": failure_code, "message": failure_message},
         created_at=utc_now(),
         artifact_root=run_path,
     )
 
 
-def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
-    """Retain owned partial output, then cancel and clean up a detached worker."""
+def _prepare_cancellation(store, run_id):
+    """Stop and retain one child without waiting for shared drain or terminalizing."""
     record = store.status(run_id)
     if record is None:
-        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
-    if record["state"] in {"completed", "failed", "cancelled"}:
-        return record
+        raise BenchmarkJobError('job_not_found', 'benchmark job does not exist')
+    if record['state'] in {'completed', 'failed', 'cancelled'}:
+        return None
     worker_path = resolve_owned_run_path(
         store.run_root,
         ownership_id=record["spec"]["ownership_id"],
@@ -569,17 +839,41 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id, relative="work"
     )
     try:
-        retention = (
-            _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
-            if termination["stopped"]
-            else {"state": "failed", "reason": "worker_termination_unverified"}
-        )
+        if termination["stopped"]:
+            if record["spec"]["suite"] in {"aider", "performance"}:
+                retention = _retain_external_artifacts(record, run_path=run_path)
+            elif record["spec"]["suite"] == "swe":
+                receipt_path = os.path.join(run_path, "evidence", "worker-stop-receipt.json")
+                Path(receipt_path).parent.mkdir(parents=True, exist_ok=True)
+                atomic_write_json(receipt_path, {"schema": "anvil-serving.worker-stop-receipt/v1", "run_id": run_id, "termination": termination})
+                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+            else:
+                retention = _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
+        else:
+            retention = {"state": "failed", "reason": "worker_termination_unverified"}
+        if "campaign" in record["spec"]:
+            from .campaign_execution import close_cancelled_campaign
+            close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and retention["state"] != "failed")
+    except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
+        retention = {'state': 'failed', 'reason': 'cancellation_retention_unavailable'}
+    return {'record': record, 'termination': termination, 'retention': retention,
+            'run_path': run_path, 'work_path': work_path}
+
+
+def _finish_cancellation(store, prepared):
+    record, termination, retention, run_path = (prepared[k] for k in ('record', 'termination', 'retention', 'run_path'))
+    run_id = record['spec']['run_id']
+    try:
         evidence = _cancellation_evidence(
             record, run_path=run_path, retention=retention, termination=termination
         )
         failure = evidence["failure"]
-        results = {"evidence": evidence}
-    except (BenchmarkArtifactError, OSError):
+        results = {'evidence': evidence}
+        if 'campaign' in record['spec']:
+            path = Path(run_path) / 'campaign-execution.json'
+            if path.exists():
+                results['campaign_execution'] = evidence_file_reference(str(path), root=run_path)
+    except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {"state": "failed", "reason": "cancellation_artifact_unavailable"}
         failure = {
             "class": "cancellation",
@@ -589,7 +883,8 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         results = {"cancellation": {"retention": retention, "termination": termination}}
 
     def cleanup(work_path: str) -> None:
-        if termination["stopped"] and retention["state"] in {"retained", "absent"} and os.path.isdir(work_path):
+        allowed = {"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"}
+        if termination["stopped"] and retention["state"] in allowed and os.path.isdir(work_path):
             shutil.rmtree(work_path)
 
     cancelled = store.cancel(run_id, cleanup=cleanup, results=results, failure=failure)
@@ -599,13 +894,170 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     cancelled["worker_terminated"] = termination["stopped"]
     cancelled["cleanup_deferred"] = artifact_retention_failed or not (
-        termination["stopped"] and retention["state"] in {"retained", "absent"}
+        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"})
     )
     return cancelled
 
 
+
+def cancel_campaign_jobs(manifest, store):
+    """Single owner: stop every sibling, close batches, then commit artifacts."""
+    from . import campaign_execution as execution
+    directory = execution._directory(manifest, store.run_root)
+    with execution.campaign_lock(directory):
+        state = execution._state(directory, manifest=manifest)
+        state['cancel_requested'] = True
+        atomic_write_json(directory / 'state.json', state)
+    try:
+        with execution.campaign_lock(directory / 'cancellation-lock', timeout_s=0):
+            phase_path = directory / 'cancellation.json'
+            phase = {'manifest_sha256': manifest['manifest_sha256'], 'phase': 'stopping'}
+            atomic_write_json(phase_path, phase)
+            prepared = []
+            for cell in manifest['cells']:
+                spec = execution.bind_campaign_child(cell['spec'], manifest_sha256=manifest['manifest_sha256'],
+                    campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+                with child_lock(store, spec):
+                    record = store.status(spec['run_id'])
+                    if record is None:
+                        continue
+                    if record['spec'] != spec:
+                        raise BenchmarkJobError('campaign_child_mismatch', 'cancellation child differs from frozen manifest')
+                    if record['state'] in execution.TERMINAL:
+                        continue
+                    if record['state'] == 'running':
+                        store.transition(spec['run_id'], 'cancelling')
+                # The state gate prevents worker commits, but do not hold its
+                # write lock while waiting for process termination.
+                item = _prepare_cancellation(store, spec['run_id'])
+                if item is not None:
+                    prepared.append(item)
+            phase['phase'] = 'draining'
+            atomic_write_json(phase_path, phase)
+            for batch_id in dict.fromkeys(i['record']['spec']['campaign']['batch_id'] for i in prepared):
+                # Another coordinator may already own the bounded drain. Its
+                # closure is awaited by stopped children below, never duplicated.
+                execution.coordinate_batch(manifest, batch_id, store=store, force=True)
+            children = []
+            for item in prepared:
+                spec = item['record']['spec']
+                if not item['termination']['stopped']:
+                    children.append({**store.status(spec['run_id']), 'worker_terminated': False,
+                                     'cleanup_deferred': True})
+                    continue  # Mutable writer custody is unknown; do not anchor it.
+                campaign_result_reference(store, spec, cancelling=True)
+                with child_lock(store, spec):
+                    if store.status(spec['run_id'])['state'] in execution.TERMINAL:
+                        children.append(store.status(spec['run_id']))
+                    else:
+                        # Receipt has already awaited closure; this sequence is
+                        # single-owned through retention, evidence and artifact.
+                        children.append(_finish_cancellation(store, item))
+            phase['phase'] = 'completed' if all(c['state'] in execution.TERMINAL for c in children) else 'stopping_unverified'
+            atomic_write_json(phase_path, phase)
+            return {'campaign_id': manifest['campaign_id'], 'cancel_requested': True, 'phase': phase['phase'], 'children': children}
+    except BenchmarkJobError as exc:
+        if exc.code != 'campaign_lock_timeout':
+            raise
+        return {'campaign_id': manifest['campaign_id'], 'cancel_requested': True,
+                'phase': 'in_progress', 'children': []}
+
+
+def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError('job_not_found', 'benchmark job does not exist')
+    if record['state'] in {'completed', 'failed', 'cancelled'}:
+        return record
+    if 'campaign' in record['spec']:
+        from .campaign_execution import _path, _read
+        spec = record['spec']
+        manifest = _read(_path({'ownership_id': spec['ownership_id'], 'run_id': spec['campaign']['campaign_id']},
+                              store.run_root, 'campaign/manifest.json'))
+        result = cancel_campaign_jobs(manifest, store)
+        return next((c for c in result['children'] if c['spec']['run_id'] == run_id), store.status(run_id))
+    return _finish_cancellation(store, _prepare_cancellation(store, run_id))
+
+def _worker_group_stopped(worker_path: str, *, run_id: str, database: str, run_root: str) -> bool:
+    """Verify a stored worker identity has no surviving process group."""
+    try:
+        worker = json.loads(Path(worker_path).read_text(encoding="utf-8"))
+        pid = worker["pid"]
+    except (KeyError, OSError, ValueError, TypeError):
+        return False
+    if (not isinstance(pid, int) or pid <= 1 or worker.get("run_id") != run_id
+            or worker.get("db") != database or worker.get("run_root") != run_root
+            or not isinstance(worker.get("process_start"), str) or not worker["process_start"]
+            or worker.get("process_group_id") != pid or worker.get("session_id") != pid):
+        return False
+    arguments = _process_arguments(pid)
+    if arguments is not None:
+        return False  # A live or reused PID is never cleanup proof.
+    try:
+        os.getpgid(pid)
+        return False
+    except ProcessLookupError:
+        try:
+            return not _process_group_running(pid)
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+
+def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
+    """Remove disposable work only after worker and retained-evidence proof."""
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
+    if record["state"] not in {"completed", "failed", "cancelled"}:
+        raise BenchmarkJobError("cleanup_not_terminal", "benchmark cleanup requires a terminal job")
+    spec = record["spec"]
+    run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
+    worker_path = os.path.join(run_path, "worker.json")
+    if record["state"] == "cancelled" and spec["suite"] == "swe":
+        try:
+            receipt = json.loads(Path(os.path.join(run_path, "evidence", "worker-stop-receipt.json")).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise BenchmarkJobError("cleanup_stop_unverified", "cancelled job has no verified worker stop receipt") from None
+        if receipt.get("run_id") != run_id or not receipt.get("termination", {}).get("stopped"):
+            raise BenchmarkJobError("cleanup_stop_unverified", "cancelled job worker stop receipt is invalid")
+    if not _worker_group_stopped(worker_path, run_id=run_id, database=os.path.realpath(store.path), run_root=store.run_root):
+        raise BenchmarkJobError("cleanup_worker_unverified", "owned benchmark worker group is not proven stopped")
+    work_path = os.path.join(run_path, "work")
+    if spec["suite"] in {"aider", "performance"}:
+        retention = _retain_external_artifacts(record, run_path=run_path)
+        if retention["state"] == "failed":
+            raise BenchmarkJobError(f"{spec['suite']}_artifact_retention_failed", f"{spec['suite']} canonical artifacts could not be verified")
+    elif spec["suite"] == "swe":
+        from .swe_regrade import _terminal_manifest_reference
+        anchored = _terminal_manifest_reference(store, record)
+        try:
+            manifest = read_retained_swe_artifacts(run_path=run_path)
+            current = evidence_file_reference(os.path.join(run_path, "evidence", "swe-canonical", "manifest.json"), root=run_path)
+        except (OSError, ValueError) as exc:
+            raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be verified") from exc
+        if dict(anchored) != current:
+            raise BenchmarkJobError("swe_canonical_evidence_mismatch", "SWE canonical retention is not bound by terminal evidence")
+        retention = {"state": manifest["state"], "manifest": manifest, "manifest_reference": current, "reused": True}
+    else:
+        retention = _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
+        if retention["state"] == "failed":
+            raise BenchmarkJobError("native_artifact_retention_failed", "native partial output could not be retained")
+    existed = os.path.isdir(work_path)
+    if existed:
+        shutil.rmtree(work_path)
+    return {"cleaned": existed, "scope": "owned-work", "retention": retention}
+
+
+def _campaign_watchdog(database: str, run_root: str, run_id: str) -> None:
+    """Run the campaign supervisor with the worker's exact custody operations."""
+    from .campaign_execution import _watchdog
+    _watchdog(database, run_root, run_id, cancel_job=cancel_benchmark_job,
+              stop_worker=_stop_owned_worker)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="anvil-benchmark-worker")
+    parser.add_argument("--campaign-watchdog", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--db", required=True)
     parser.add_argument("--run-root", required=True)
     parser.add_argument("--run-id", required=True)
@@ -615,7 +1067,12 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        execute_benchmark_job(_store(args.db, args.run_root), args.run_id)
+        if args.campaign_watchdog:
+            _campaign_watchdog(args.db, args.run_root, args.run_id)
+            return 0
+        store = _store(args.db, args.run_root)
+        _await_worker_custody(store, args.run_id)
+        execute_benchmark_job(store, args.run_id)
     except BenchmarkJobError as exc:
         if exc.code != "job_already_claimed":
             return 2

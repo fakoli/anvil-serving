@@ -1,0 +1,24 @@
+{
+  "containment_error": null,
+  "host_memory": {
+    "current_bytes": 36386037760,
+    "effective_limit_bytes": 52613349376,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "exit_code": 0,
+    "limit_bytes": 52613349376,
+    "oom_killed": false,
+    "peak_bytes": 36687949824,
+    "ram_plus_swap_limit_bytes": 52613349377
+  },
+  "schema": "anvil-serving.containment-diagnostic-excerpt/v1",
+  "scope": "Pre-unload managed status only; no generation workload. cgroup peak is a sampled startup-period high-water mark, not measured inference capacity or whole-run telemetry coverage.",
+  "state": "running"
+}

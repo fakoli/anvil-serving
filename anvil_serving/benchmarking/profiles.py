@@ -1,4 +1,4 @@
-"""Versioned, content-addressed profiles for context, agentic, and SWE jobs."""
+"""Versioned, content-addressed profiles for managed evaluation jobs."""
 
 from __future__ import annotations
 
@@ -10,12 +10,28 @@ import re
 from typing import Any, Mapping
 
 from .jobs import BenchmarkJobError, canonical_json_bytes
-from .limits import MAX_BENCHMARK_JOB_SECONDS, MAX_CONTEXT_TARGET_TOKENS
+from .limits import (
+    MAX_BENCHMARK_JOB_SECONDS,
+    MAX_CONTEXT_TARGET_TOKENS,
+    MAX_QUALITY_COMPLETION_TOKENS,
+    MAX_TOTAL_EVAL_ATTEMPTS,
+)
 
 
 BENCHMARK_PROFILE_SCHEMA = "anvil-serving.benchmark-profile/v1"
-PROFILE_NAMES = frozenset({"smoke", "scout", "deep"})
-SUITE_NAMES = frozenset({"context", "agentic", "swe"})
+BENCHMARK_PROFILE_SCHEMA_V2 = "anvil-serving.benchmark-profile/v2"
+V1_PROFILE_NAMES = frozenset({"smoke", "scout", "deep"})
+V1_SUITE_NAMES = frozenset({"context", "agentic", "swe"})
+PROFILE_NAMES = V1_PROFILE_NAMES | {"pilot-v2"}
+SUITE_NAMES = frozenset({"context", "agentic", "swe", "aider", "performance"})
+# Reuse the existing bounded evaluation attempt and completion ceilings.
+_BUDGET_BOUNDS = {
+    "max_model_calls": (1, MAX_TOTAL_EVAL_ATTEMPTS),
+    "max_completion_tokens": (1, MAX_QUALITY_COMPLETION_TOKENS),
+    "deadline_s": (1, MAX_BENCHMARK_JOB_SECONDS),
+    "max_retries": (0, 10),
+    "min_free_disk_bytes": (1, 1024**4),
+}
 PROFILE_ROOT = resources.files("anvil_serving") / "_benchmark_profiles"
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _HEX_RE = re.compile(r"^[0-9a-f]{40,64}$")
@@ -72,8 +88,11 @@ def _validate_adapter(name: str, value: Any) -> dict[str, Any]:
     return adapter
 
 
-def _validate_suite(name: str, value: Any, adapters: Mapping[str, Any]) -> dict[str, Any]:
-    if name not in SUITE_NAMES or not isinstance(value, Mapping):
+def _validate_suite(
+    name: str, value: Any, adapters: Mapping[str, Any], *, v2: bool = False
+) -> dict[str, Any]:
+    allowed_suites = SUITE_NAMES if v2 else V1_SUITE_NAMES
+    if name not in allowed_suites or not isinstance(value, Mapping):
         raise BenchmarkJobError("unknown_suite", f"unsupported benchmark suite {name!r}")
     suite = copy.deepcopy(dict(value))
     common = {"cases", "repetitions", "timeout_s", "scoring", "requirements", "adapters"}
@@ -81,7 +100,11 @@ def _validate_suite(name: str, value: Any, adapters: Mapping[str, Any]) -> dict[
         "context": {"token_buckets", "positions", "output_headroom_tokens"},
         "agentic": {"max_steps", "max_completion_tokens"},
         "swe": {"instance_limit", "max_steps", "max_completion_tokens"},
+        "aider": {"instance_limit", "max_steps", "max_completion_tokens"},
+        "performance": {"max_completion_tokens"},
     }[name]
+    if v2:
+        extra = extra | {"budgets"}
     if set(suite) != common | extra:
         raise BenchmarkJobError("bad_profile", f"suite {name!r} has unsupported fields")
     cases = suite.get("cases")
@@ -137,6 +160,11 @@ def _validate_suite(name: str, value: Any, adapters: Mapping[str, Any]) -> dict[
         drop = scoring.get("max_relative_drop")
         if not isinstance(drop, (int, float)) or isinstance(drop, bool) or not 0 <= drop <= 1:
             raise BenchmarkJobError("bad_profile", "max_relative_drop must be from 0 through 1")
+    elif name == "performance":
+        _bounded_integer(suite.get("max_completion_tokens"), name="max_completion_tokens", minimum=1, maximum=65536)
+        if (suite["cases"] != ["decode"] or suite["repetitions"] != 1
+                or set(adapter_names) != {"lil", "aiperf"}):
+            raise BenchmarkJobError("bad_profile", "performance requires one decode cell and its pinned native runners")
     else:
         _bounded_integer(suite.get("max_steps"), name="max_steps", minimum=1, maximum=1000)
         _bounded_integer(
@@ -145,11 +173,57 @@ def _validate_suite(name: str, value: Any, adapters: Mapping[str, Any]) -> dict[
             minimum=1,
             maximum=65536,
         )
-        if name == "swe":
+        if name in {"swe", "aider"}:
             _bounded_integer(
                 suite.get("instance_limit"), name="instance_limit", minimum=1, maximum=500
             )
+        if name == "aider" and (
+            suite["max_steps"] != 2 or suite["repetitions"] != 1
+            or suite["cases"] != ["polyglot"]
+            or set(adapter_names) != {"aider", "polyglot-benchmark"}
+        ):
+            raise BenchmarkJobError("bad_profile", "Aider requires Polyglot, two attempts, one repetition, and its pinned adapters")
+    if v2:
+        suite["budgets"] = _validate_budgets(name, suite)
     return suite
+
+
+def _validate_budgets(name: str, suite: Mapping[str, Any]) -> dict[str, int]:
+    """Calls include failed/retried transports; tokens cap each request.
+
+    Deadline is the suite execution allowance, excluding asset preparation.
+    Disk is a minimum free reserve, never an upper disk quota. Existing suite
+    fields remain adapter inputs and must agree with the budget contract.
+    """
+    value = suite.get("budgets")
+    if not isinstance(value, Mapping) or set(value) != set(_BUDGET_BOUNDS):
+        raise BenchmarkJobError("bad_profile", "suite budgets must define exactly the five budget fields")
+    budgets = {
+        key: _bounded_integer(value[key], name=f"budgets.{key}", minimum=low, maximum=high)
+        for key, (low, high) in _BUDGET_BOUNDS.items()
+    }
+    token_field = "output_headroom_tokens" if name == "context" else "max_completion_tokens"
+    if budgets["max_completion_tokens"] != suite[token_field]:
+        raise BenchmarkJobError("bad_profile", f"budget token cap must equal {token_field}")
+    if budgets["deadline_s"] != suite["timeout_s"]:
+        raise BenchmarkJobError("bad_profile", "budget deadline_s must equal suite timeout_s")
+    reserve = suite["requirements"].get("min_free_disk_bytes")
+    if isinstance(reserve, bool) or not isinstance(reserve, int) or reserve != budgets["min_free_disk_bytes"]:
+        raise BenchmarkJobError("bad_profile", "budget disk reserve must equal requirements.min_free_disk_bytes")
+    if budgets["max_retries"] >= budgets["max_model_calls"]:
+        raise BenchmarkJobError("bad_profile", "retry ceiling must fit within the model call ceiling")
+    return budgets
+
+
+def suite_budgets(profile: Mapping[str, Any], suite: str) -> dict[str, int] | None:
+    """Return a validated budget copy; legacy v1 profiles have no budget contract."""
+    if not isinstance(suite, str) or suite not in SUITE_NAMES or suite not in profile["suites"]:
+        raise BenchmarkJobError("unknown_suite", f"unsupported benchmark suite {suite!r}")
+    if profile.get("schema") == BENCHMARK_PROFILE_SCHEMA:
+        return None
+    if profile.get("schema") != BENCHMARK_PROFILE_SCHEMA_V2:
+        raise BenchmarkJobError("bad_profile", "benchmark profile schema is invalid")
+    return _validate_budgets(suite, profile["suites"][suite])
 
 
 def validate_profile(value: Any, *, observed_context: int | None = None) -> dict[str, Any]:
@@ -157,11 +231,16 @@ def validate_profile(value: Any, *, observed_context: int | None = None) -> dict
         raise BenchmarkJobError("bad_profile", "benchmark profile must be an object")
     profile = copy.deepcopy(dict(value))
     required_keys = {"schema", "name", "description", "content_sha256", "adapters", "suites"}
-    if set(profile) != required_keys or profile.get("schema") != BENCHMARK_PROFILE_SCHEMA:
+    schema = profile.get("schema")
+    if set(profile) != required_keys or schema not in (
+        BENCHMARK_PROFILE_SCHEMA, BENCHMARK_PROFILE_SCHEMA_V2
+    ):
         raise BenchmarkJobError("bad_profile", "benchmark profile schema or fields are invalid")
     name = profile.get("name")
-    if name not in PROFILE_NAMES:
-        raise BenchmarkJobError("bad_profile", "benchmark profile name is unknown")
+    v2 = schema == BENCHMARK_PROFILE_SCHEMA_V2
+    allowed_names = PROFILE_NAMES - V1_PROFILE_NAMES if v2 else V1_PROFILE_NAMES
+    if not isinstance(name, str) or name not in allowed_names:
+        raise BenchmarkJobError("bad_profile", "benchmark profile name is unknown for this schema")
     if not isinstance(profile.get("description"), str) or not profile["description"]:
         raise BenchmarkJobError("bad_profile", "benchmark profile needs a description")
     adapters_raw = profile.get("adapters")
@@ -172,10 +251,16 @@ def validate_profile(value: Any, *, observed_context: int | None = None) -> dict
         for adapter_name, adapter in adapters_raw.items()
     }
     suites_raw = profile.get("suites")
-    if not isinstance(suites_raw, Mapping) or set(suites_raw) != SUITE_NAMES:
-        raise BenchmarkJobError("unknown_suite", "profile must define context, agentic, and swe")
+    allowed_suites = SUITE_NAMES if v2 else V1_SUITE_NAMES
+    if (
+        not isinstance(suites_raw, Mapping)
+        or not suites_raw
+        or not set(suites_raw) <= allowed_suites
+        or (not v2 and set(suites_raw) != V1_SUITE_NAMES)
+    ):
+        raise BenchmarkJobError("unknown_suite", "profile suites are missing or unsupported")
     suites = {
-        suite_name: _validate_suite(suite_name, suite, adapters)
+        suite_name: _validate_suite(suite_name, suite, adapters, v2=v2)
         for suite_name, suite in suites_raw.items()
     }
     expected = profile_content_sha256(profile)
@@ -183,7 +268,7 @@ def validate_profile(value: Any, *, observed_context: int | None = None) -> dict
         raise BenchmarkJobError("profile_digest_mismatch", "profile content identity is invalid")
     profile["adapters"] = adapters
     profile["suites"] = suites
-    if observed_context is not None:
+    if observed_context is not None and "context" in suites:
         _bounded_integer(
             observed_context,
             name="observed_context",
@@ -202,7 +287,7 @@ def validate_profile(value: Any, *, observed_context: int | None = None) -> dict
 
 
 def load_profile(name: str, *, observed_context: int | None = None) -> dict[str, Any]:
-    if name not in PROFILE_NAMES:
+    if not isinstance(name, str) or name not in PROFILE_NAMES:
         raise BenchmarkJobError("profile_not_found", f"unknown benchmark profile {name!r}")
     path = PROFILE_ROOT / f"{name}.json"
     try:

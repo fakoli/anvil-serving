@@ -32,7 +32,7 @@
         "mcp-serve": 15,
         "mcp-tools": 4,
         "models-cache-prune": 4,
-        "models-recipes": 42,
+        "models-recipes": 43,
         "models-score": 2,
         "router-run": 16,
         "serves-multiplex": 1,
@@ -43,10 +43,10 @@
         "voice-sidecar": 7
       },
       "files_by_category": {
-        "docs": 235,
+        "docs": 236,
         "tooling": 6
       },
-      "files_scanned": 241,
+      "files_scanned": 242,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -99,7 +99,7 @@
         "mcp-serve": 19,
         "mcp-tools": 5,
         "models-cache-prune": 9,
-        "models-recipes": 76,
+        "models-recipes": 77,
         "models-score": 5,
         "router-run": 36,
         "serves-multiplex": 4,
@@ -110,14 +110,14 @@
         "voice-sidecar": 29
       },
       "files_by_category": {
-        "docs": 235,
-        "examples": 237,
-        "implementation": 474,
+        "docs": 236,
+        "examples": 238,
+        "implementation": 494,
         "skills": 21,
-        "tests": 545,
+        "tests": 569,
         "tooling": 36
       },
-      "files_scanned": 1548,
+      "files_scanned": 1594,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

@@ -1,0 +1,105 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "After-refusal packet index.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Original source hashes are distinct from derivatives.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "Full frozen workload remains private; native report retains all 48 planned rows and matching hashes.",
+      "role": "workload-manifest",
+      "status": "missing"
+    },
+    {
+      "files": [],
+      "reason": "Complete prepared plans remain private; no complete plan projection claimed.",
+      "role": "run-plan",
+      "status": "missing"
+    },
+    {
+      "files": [
+        "frozen-identity.json",
+        "summary.json"
+      ],
+      "reason": "Pinned source/manifest metadata and configured admission limits; not live candidate identity.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "campaign-report.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Full unexecuted native report; no campaign execution or request artifacts fabricated.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "admission-refusal.json",
+        "friction-log.md"
+      ],
+      "reason": "Pre-create admission refusal and separate successor boundary.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "interim-restoration-evidence.json",
+        "routed-preflight-excerpt.json"
+      ],
+      "reason": "Interim exact restore and bounded routed correctness verified; full final long-context/client acceptance remains pending.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "No qualification, comparison or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Bounded public copy, not yet published.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "decision_labels": [
+      "no-promotion",
+      "rejected"
+    ],
+    "evidence_labels": [
+      "compatibility-only",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-candidate-admission-refusal-r9",
+    "promotion_authorized": false,
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

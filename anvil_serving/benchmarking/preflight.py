@@ -20,6 +20,7 @@ from .jobs import (
     validate_job_spec,
 )
 from .harnesses import resolve_container_binary
+from .profiles import PROFILE_NAMES, SUITE_NAMES, V1_PROFILE_NAMES
 
 
 BENCHMARK_PREFLIGHT_SCHEMA = "anvil-serving.benchmark-preflight/v1"
@@ -192,10 +193,45 @@ def run_benchmark_preflight(
     timeout_s: float = 10.0,
     disk_usage: Callable[[str], Any] = shutil.disk_usage,
     container_binary: str | None = None,
+    job_store: Any = None,
 ) -> dict[str, Any]:
     """Observe endpoint and worker readiness without changing model lifecycle."""
     normalized = validate_job_spec(spec)
+    if normalized["suite"] not in SUITE_NAMES:
+        raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
+    budget_admission = None
+    if normalized["profile"] in PROFILE_NAMES - V1_PROFILE_NAMES:
+        from .submission import validate_submission_spec
+        budget_admission = validate_submission_spec(normalized)
+    if normalized["suite"] == "swe" and normalized.get("parameters", {}).get("operation") == "regrade":
+        from .submission import validate_submission_spec
+        from .swe_regrade import prepare_swe_regrade
+
+        validate_submission_spec(normalized)
+        if job_store is None:
+            raise BenchmarkJobError("regrade_store_required", "regrade preflight requires the owning job store")
+        try:
+            prepare_swe_regrade(job_store, {"spec": normalized})
+            check = _check("retained_swe_source", True, None, "retained source and pinned grader verified")
+        except BenchmarkJobError as exc:
+            check = _check("retained_swe_source", False, exc.code, exc.message)
+        return {
+            "schema": BENCHMARK_PREFLIGHT_SCHEMA,
+            "run_id": normalized["run_id"],
+            "created_at": utc_now(),
+            "passed": check["passed"],
+            "operation": "regrade",
+            "source_run_id": normalized["parameters"]["source_run_id"],
+            "checks": [check],
+            "observed": {"endpoint": {"status": "not_contacted", "reason": "grading retained predictions"}},
+            "unsupported_telemetry": [],
+            "side_effects": {"model_lifecycle": False, "route_mutation": False, "model_requests": False},
+        }
     required = _requirements(requirements)
+    if budget_admission is not None:
+        required["min_free_disk_bytes"] = max(
+            required["min_free_disk_bytes"], budget_admission["budgets"]["min_free_disk_bytes"]
+        )
     parameters = normalized.get("parameters", {})
     declared_model_host = parameters.get("model_host_id")
     if required["model_host_id"] is None and isinstance(declared_model_host, str):
@@ -368,6 +404,8 @@ def run_benchmark_preflight(
         "unsupported_telemetry": unsupported,
         "side_effects": {"model_lifecycle": False, "route_mutation": False},
     }
+    if budget_admission is not None:
+        artifact["budget_admission"] = budget_admission
     return artifact
 
 

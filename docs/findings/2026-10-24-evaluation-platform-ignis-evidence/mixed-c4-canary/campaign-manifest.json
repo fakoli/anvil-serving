@@ -1,0 +1,309 @@
+{
+  "arms": [
+    {
+      "activation": {
+        "container": "incumbent-container",
+        "monitoring_receipt_path": "private-original/active-recipe.json",
+        "observer_base_url": "http://100.64.0.10:19100",
+        "registry_path": "private-original/serve-recipes.evaluation-incumbent-20261024.toml",
+        "upstream_base_url": "http://100.64.0.10:39126/v1"
+      },
+      "arm_id": "incumbent",
+      "budget_s": 900,
+      "drain_policy": {
+        "metric_labels": {
+          "model_name": "incumbent-model"
+        },
+        "poll_s": 1,
+        "running_metric": "vllm:num_requests_running",
+        "timeout_s": 40,
+        "waiting_metric": "vllm:num_requests_waiting"
+      },
+      "endpoint": {
+        "base_url": "http://100.64.0.10:8000/v1",
+        "model": "llm.primary"
+      },
+      "identity": {
+        "hardware": [
+          "GPU-1",
+          "GPU-2"
+        ],
+        "image": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+        "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+        "recipe_selector": "nvidia/GLM-5.3-Flash-FP4-Local",
+        "recipe_sha256": "50d5cfe756db664c54d13939c722ae05d79a9bf2e26b47b4eb4673fc2655e065",
+        "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+        "runtime": "vllm-b12x-release-10152026",
+        "served_model": "incumbent-model"
+      },
+      "worker": {
+        "id": "Primary Node"
+      }
+    }
+  ],
+  "budgets": {
+    "drain_reserve_s": 120,
+    "per_arm_s": 900,
+    "total_s": 900
+  },
+  "campaign_id": "mixed-c4-diagnostic",
+  "cells": [
+    {
+      "arm_id": "incumbent",
+      "batch_id": "batch-1",
+      "cache_condition": "uncontrolled",
+      "cell_id": "cell-1",
+      "concurrency": 4,
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "prepared": {
+        "matching": {
+          "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+          "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+        },
+        "path": "campaign-prepared/plan.json",
+        "plan_sha256": "5c43aca521390f22a81b4767e571f7fcb01224be0f355b58832a8ba24dc74844",
+        "sha256": "69fdc5b05565f3f821e2fbb236e48e4209daf14b35d41d0805b98e4c324468b8",
+        "source_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed"
+      },
+      "repeat": 1,
+      "spec": {
+        "endpoint": {
+          "base_url": "http://100.64.0.10:8000/v1",
+          "model": "llm.primary"
+        },
+        "ownership_id": "benchmark-owner",
+        "parameters": {
+          "case_ids": [
+            "tool-recovery"
+          ],
+          "client_topology": "co-resident",
+          "model_host_id": "Primary Node",
+          "reasoning_effort": "max",
+          "recovery_result": "error",
+          "temperature": 0.6,
+          "top_p": 0.95
+        },
+        "profile": "pilot-v2",
+        "profile_sha256": "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf",
+        "run_id": "cell-1",
+        "schema": "anvil-serving.benchmark-job-spec/v1",
+        "submitted_at": "2026-10-25T05:37:01.742725Z",
+        "suite": "agentic",
+        "timeout_s": 600,
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "spec_sha256": "0e525a516642115af21a8ba683da859bf99d9dc23b9e93ca30accfc23352cb26",
+      "task_id": "tool-recovery"
+    },
+    {
+      "arm_id": "incumbent",
+      "batch_id": "batch-1",
+      "cache_condition": "uncontrolled",
+      "cell_id": "cell-2",
+      "concurrency": 4,
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "prepared": {
+        "matching": {
+          "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+          "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+        },
+        "path": "campaign-prepared/plan.json",
+        "plan_sha256": "5676f54a678ab814514dbdf5a805930d248e0dfaac83440aecf793efcd936620",
+        "sha256": "bc4b7d1a1bbe76a0ad9411c541a694557e36716401b2b3b9ab318829cc0bd179",
+        "source_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed"
+      },
+      "repeat": 1,
+      "spec": {
+        "endpoint": {
+          "base_url": "http://100.64.0.10:8000/v1",
+          "model": "llm.primary"
+        },
+        "ownership_id": "benchmark-owner",
+        "parameters": {
+          "case_ids": [
+            "debug-loop-v2"
+          ],
+          "client_topology": "co-resident",
+          "model_host_id": "Primary Node",
+          "reasoning_effort": "max",
+          "temperature": 0.6,
+          "top_p": 0.95
+        },
+        "profile": "pilot-v2",
+        "profile_sha256": "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf",
+        "run_id": "cell-2",
+        "schema": "anvil-serving.benchmark-job-spec/v1",
+        "submitted_at": "2026-10-25T05:37:01.742725Z",
+        "suite": "agentic",
+        "timeout_s": 600,
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "spec_sha256": "f523698a7fba2f432ddba5c945a87f17550482ef0232244c36d6c4cd0581b5f4",
+      "task_id": "debug-loop-v2"
+    },
+    {
+      "arm_id": "incumbent",
+      "batch_id": "batch-1",
+      "cache_condition": "uncontrolled",
+      "cell_id": "cell-3",
+      "concurrency": 4,
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "prepared": {
+        "matching": {
+          "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+          "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+        },
+        "path": "campaign-prepared/plan.json",
+        "plan_sha256": "e31eb27ce2b93e85c4d31df255d19ecd7c8511b77bb94af3f08693ddf979fb6c",
+        "sha256": "35177bddfb9886f14f618be443654849df177b21ecec49f51555b6c35be0402d",
+        "source_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed"
+      },
+      "repeat": 1,
+      "spec": {
+        "endpoint": {
+          "base_url": "http://100.64.0.10:8000/v1",
+          "model": "llm.primary"
+        },
+        "ownership_id": "benchmark-owner",
+        "parameters": {
+          "client_topology": "co-resident",
+          "instance_ids": [
+            "cpp/exercises/practice/all-your-base"
+          ],
+          "model_host_id": "Primary Node",
+          "reasoning_effort": "max",
+          "temperature": 0.6,
+          "top_p": 0.95
+        },
+        "profile": "pilot-v2",
+        "profile_sha256": "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf",
+        "run_id": "cell-3",
+        "schema": "anvil-serving.benchmark-job-spec/v1",
+        "submitted_at": "2026-10-25T05:37:01.742725Z",
+        "suite": "aider",
+        "timeout_s": 3600,
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "spec_sha256": "1b2f62cd3ab8c655742464940c0f0552d982ea821805553f23ef03df17de3d34",
+      "task_id": "cpp/exercises/practice/all-your-base"
+    },
+    {
+      "arm_id": "incumbent",
+      "batch_id": "batch-1",
+      "cache_condition": "uncontrolled",
+      "cell_id": "cell-4",
+      "concurrency": 4,
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "prepared": {
+        "matching": {
+          "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+          "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+        },
+        "path": "campaign-prepared/plan.json",
+        "plan_sha256": "d945d6a4c3e8504d984085836695f04340b62ec851fbef489b4cb2261f2e871f",
+        "sha256": "cd2a3ffa6d7d001ab85252fd726c2c111623ab53674a59c036c44b2a41a08e25",
+        "source_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed"
+      },
+      "repeat": 1,
+      "spec": {
+        "endpoint": {
+          "base_url": "http://100.64.0.10:8000/v1",
+          "model": "llm.primary"
+        },
+        "ownership_id": "benchmark-owner",
+        "parameters": {
+          "client_topology": "co-resident",
+          "instance_ids": [
+            "go/exercises/practice/alphametics"
+          ],
+          "model_host_id": "Primary Node",
+          "reasoning_effort": "max",
+          "temperature": 0.6,
+          "top_p": 0.95
+        },
+        "profile": "pilot-v2",
+        "profile_sha256": "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf",
+        "run_id": "cell-4",
+        "schema": "anvil-serving.benchmark-job-spec/v1",
+        "submitted_at": "2026-10-25T05:37:01.742725Z",
+        "suite": "aider",
+        "timeout_s": 3600,
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "spec_sha256": "61e3ba3e249c455731bf48387e6f3a3bde87f0d3227d28b72ebac609675f3d0c",
+      "task_id": "go/exercises/practice/alphametics"
+    }
+  ],
+  "drain_policy": {},
+  "input_sha256": "791504879f7914194b59190ac44a723e65a8ce9ed9cf119d56a3f020db1b08e3",
+  "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+  "ownership_id": "benchmark-owner",
+  "schema": "anvil-serving.benchmark-campaign/v1",
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+  "submitted_at": "2026-10-25T05:37:01.742725Z",
+  "telemetry": {
+    "cgroup": "required",
+    "engine": "required",
+    "gpu": "required",
+    "host": "required"
+  },
+  "telemetry_collection": {
+    "cadence_s": 5,
+    "gpu": {
+      "identity_label": "uuid",
+      "identity_prefix": "GPU-",
+      "metrics": {
+        "nvidia_smi_clocks_event_reasons_hw_thermal_slowdown": "gauge",
+        "nvidia_smi_memory_used_bytes": "gauge",
+        "nvidia_smi_power_draw_watts": "gauge",
+        "nvidia_smi_utilization_gpu_ratio": "gauge"
+      },
+      "success_metric": "nvidia_smi_last_collect_success",
+      "timestamp_metric": "nvidia_smi_last_collect_success_timestamp_seconds",
+      "url": "http://100.64.0.10:9835/metrics"
+    },
+    "host": {
+      "metrics": {
+        "node_memory_MemAvailable_bytes": "gauge",
+        "node_memory_SwapFree_bytes": "gauge",
+        "node_pressure_memory_waiting_seconds_total": "counter",
+        "node_vmstat_oom_kill": "counter"
+      },
+      "timestamp_metric": "node_time_seconds",
+      "url": "http://100.64.0.10:9100/metrics"
+    },
+    "max_bytes": 8388608,
+    "max_gap_s": 40,
+    "max_rows": 4096,
+    "schema": "anvil-serving.campaign-telemetry/v1",
+    "timeout_s": 2
+  }
+}

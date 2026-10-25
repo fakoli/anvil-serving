@@ -1,0 +1,39 @@
+{
+  "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+  "all_full_suites_passed": true,
+  "full_suite_summaries": [
+    {
+      "python": "311",
+      "summary": "13171 passed, 124 skipped, 76 subtests passed in 878.57s (0:14:38)",
+      "log_original_sha256": "4f5fc7141de2d0fac910f33707e5340f2bd69f3e37fbb71d77e5b95ff348a741"
+    },
+    {
+      "python": "312",
+      "summary": "13185 passed, 110 skipped, 5 warnings, 76 subtests passed in 884.25s (0:14:44)",
+      "log_original_sha256": "d11da45d18ac0c8c7664b1c28ea2f96ea4b80c1cf4f46f0f586f32ea778d1946"
+    },
+    {
+      "python": "313",
+      "summary": "13182 passed, 113 skipped, 4 warnings, 76 subtests passed in 880.19s (0:14:40)",
+      "log_original_sha256": "78037d3a1fbef59d97388eaf57386b8e22f627d108f3e3df989c18850f3e80c8"
+    }
+  ],
+  "typed_proof_original_sha256": "ca7675c6641df4ac1a5d113e0c6527f2eb6f508437d4289d1d8c0e477740f7ef",
+  "source_validation_original_sha256": "73ef3ac026c646e629c6d37bef591e0d775e3f7678d6f1d5801a69fa98105e39",
+  "packaging_receipt_original_sha256": "af63c441ec0e9553d46828383d5ae31b14470745ae3528074efbfb8d707a703a",
+  "packaging_status": "passed per retained receipt",
+  "native_command": {
+    "started_at": "2026-10-25T05:54:35.164557+00:00",
+    "finished_at": "2026-10-25T05:59:52.406104+00:00",
+    "exit_code": 0,
+    "stdout_original_sha256": "11a680226be90250c968c551aad241be0774b7b04b76236b49fb0a420aa37e3d",
+    "stderr_original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "original_private_terminal_sha256": "6a2f249969bc757dd1ececf71655c92e56dd57dae8e51e9429ab6a76eddfc8ed",
+  "working_controls": {
+    "created_at": "2026-10-25T05:45:26.309692Z",
+    "original_private_sha256": "565bea0797bc87fb9b1e623b3b48a44041f99dac256c486897126f2c0e38a540",
+    "boundary": "Private template controls existed before requests; this sanitized packet was assembled after terminal execution."
+  }
+}

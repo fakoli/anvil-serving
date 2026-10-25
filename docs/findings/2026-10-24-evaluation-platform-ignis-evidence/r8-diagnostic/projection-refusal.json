@@ -1,0 +1,13 @@
+{
+  "exact_error": "ValueError: active campaign producer must stop first",
+  "exit_code": 1,
+  "full_native_projection": "refused",
+  "graph_validation_executed": false,
+  "helper_sha256": "2e63347034b1cb24d65b17ed8184afc480ae07b73e4ab33a7026e7ebd0c2a1de",
+  "native_report_unchanged": true,
+  "no_bypass_or_helper_modification": true,
+  "operation": "snapshot",
+  "reason": "The reviewed96-cell projector allows planned/completed/failed/cancelled states only. Two retained native rows are cancelling; later physical absence does not change those rows.",
+  "schema": "anvil-serving.publication-refusal/v1",
+  "snapshot_created": false
+}

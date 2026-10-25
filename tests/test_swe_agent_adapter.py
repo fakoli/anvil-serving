@@ -306,3 +306,177 @@ def test_exception_metadata_cannot_mask_original_failure(tmp_path):
     finally:
         restore()
         recorder.close(outcome="failed")
+
+
+def _budgets(**changes):
+    return {"max_model_calls": 3, "max_completion_tokens": 8, "deadline_s": 30,
+            "max_retries": 1, "min_free_disk_bytes": 0, **changes}
+
+
+def _request(**body):
+    from types import SimpleNamespace
+    return SimpleNamespace(method="POST", url=SimpleNamespace(path="/v1/chat/completions"),
+                           content=json.dumps({"max_tokens": 8, **body}).encode(),
+                           extensions={"timeout": {"read": 60, "connect": 1}})
+
+
+def test_v2_budget_counts_all_failed_sdk_and_agent_attempts_across_instances(tmp_path):
+    from types import SimpleNamespace
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    _ready(recorder)
+    calls = []
+    class Client:
+        def send(self, request, **kwargs):
+            calls.append(request)
+            if len(calls) == 1:
+                raise TimeoutError("private response")
+            return SimpleNamespace(status_code=200, headers={})
+    class Lite:
+        @staticmethod
+        def retry(**kwargs):
+            assert adapter.BudgetStopped in kwargs["abort_exceptions"]
+            return _Retrying()
+    class Agent:
+        n_calls = 0
+        def __init__(self, instance): self.instance_id = instance
+        def query(self):
+            retrying = Lite.retry(abort_exceptions=[KeyboardInterrupt])
+            retrying.before(_State(1))
+            try:
+                return Client().send(_request())
+            except TimeoutError:
+                retrying.before(_State(2))
+                return Client().send(_request())
+    restore = adapter.install_observers(default_agent=Agent, litellm_model=Lite, httpx_client=Client,
+                                        recorder=recorder, budgets=_budgets())
+    try:
+        Agent("first").query()
+        Agent("second").query()
+        with pytest.raises(adapter.BudgetStopped, match="max_model_calls"):
+            Agent("third").query()
+    finally:
+        restore(); recorder.close(outcome="failed")
+    assert len(calls) == 3
+    assert 0 < calls[0].extensions["timeout"]["read"] <= 30
+    assert calls[0].extensions["timeout"]["connect"] == 1
+    evidence = adapter.read_attempt_evidence(recorder.path)
+    assert evidence["status"] == "complete"
+    assert evidence["budget"]["model_calls"] == 3
+    assert evidence["budget"]["reason"] == "max_model_calls"
+    assert "private response" not in json.dumps(evidence)
+
+
+def test_v2_retry_ceiling_spans_sdk_and_agent_retries(tmp_path):
+    from types import SimpleNamespace
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    _ready(recorder)
+    calls = []
+    class Client:
+        def send(self, request, **kwargs):
+            assert kwargs["follow_redirects"] is False
+            calls.append(request)
+            return SimpleNamespace(status_code=503, headers={})
+    class Lite:
+        retry = staticmethod(lambda **kwargs: _Retrying())
+    class Agent:
+        n_calls, instance_id = 0, "retry-task"
+        def query(self):
+            retrying = Lite.retry()
+            retrying.before(_State(1))
+            Client().send(_request())
+            Client().send(_request())  # SDK retry.
+            retrying.before(_State(2))
+            Client().send(_request())  # Agent retry cannot reset the ceiling.
+    restore = adapter.install_observers(default_agent=Agent, litellm_model=Lite, httpx_client=Client,
+                                        recorder=recorder, budgets=_budgets(max_model_calls=10))
+    try:
+        with pytest.raises(adapter.BudgetStopped, match="max_retries"):
+            Agent().query()
+    finally:
+        restore(); recorder.close(outcome="failed")
+    assert len(calls) == 2
+    assert adapter.read_attempt_evidence(recorder.path)["budget"]["reason"] == "max_retries"
+
+
+@pytest.mark.parametrize("body", [{"max_tokens": 9}, {"max_tokens": True}, {"max_tokens": None},
+                                   {"max_completion_tokens": 8}, {"stream": True}, {"n": 2}])
+def test_v2_rejects_unsupported_request_before_transport(tmp_path, body):
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    budget = adapter.SuiteBudget(_budgets(), recorder)
+    try:
+        with pytest.raises(adapter.BudgetStopped, match="unsupported SWE request"):
+            budget.before_send(_request(**body), {"sdk_transport_attempt_ordinal": 0}, object(), {})
+        assert budget.model_calls == 0
+    finally:
+        recorder.close(outcome="failed")
+
+
+@pytest.mark.parametrize("configured", [{}, _budgets(extra=1), _budgets(max_retries=True),
+                                         _budgets(deadline_s=0), _budgets(max_model_calls=1.5)])
+def test_v2_rejects_bad_configuration_before_instrumentation(tmp_path, configured):
+    with pytest.raises(ValueError, match="budget configuration"):
+        adapter.run_agent("unused", [], adapter_sha256="unused", events=tmp_path / "unused", budgets=configured)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_v2_deadline_uses_monotonic_and_checks_transport_return(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    now = [10.0]
+    monkeypatch.setattr(adapter.time, "monotonic", lambda: now[0])
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    _ready(recorder)
+    class Client:
+        def send(self, request, **kwargs):
+            assert kwargs["follow_redirects"] is False
+            assert request.extensions["timeout"]["read"] == 30
+            now[0] += 31
+            return SimpleNamespace(status_code=200, headers={})
+    class Lite: retry = staticmethod(lambda **kwargs: _Retrying())
+    class Agent:
+        n_calls, instance_id = 0, "deadline-task"
+        def query(self): return Client().send(_request())
+    restore = adapter.install_observers(default_agent=Agent, litellm_model=Lite, httpx_client=Client,
+                                        recorder=recorder, budgets=_budgets())
+    try:
+        with pytest.raises(adapter.BudgetStopped, match="deadline_s"):
+            Agent().query()
+    finally:
+        restore(); recorder.close(outcome="failed")
+    evidence = adapter.read_attempt_evidence(recorder.path)
+    assert evidence["budget"]["elapsed_s"] == 31
+    assert evidence["budget"]["model_calls"] == 1
+    assert any(event["event"] == "transport_response" for event in evidence["events"])
+
+
+def test_v2_disk_reserve_checked_before_send(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    monkeypatch.setattr(adapter.shutil, "disk_usage", lambda path: SimpleNamespace(free=1))
+    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
+    budget = adapter.SuiteBudget(_budgets(min_free_disk_bytes=2), recorder)
+    try:
+        with pytest.raises(adapter.BudgetStopped, match="min_free_disk_bytes"):
+            budget.before_send(_request(), {"sdk_transport_attempt_ordinal": 0}, object(), {})
+        assert budget.model_calls == 0
+    finally:
+        recorder.close(outcome="failed")
+
+
+def test_v2_rejects_unqualified_model_config_before_run():
+    argv = ["--output", "output", "--model", "openai/local", "--subset", "dataset", "--split", "test",
+            "--filter", "task", "--workers", "1", "--environment-class", "docker", "--config", "pinned"]
+    config = {"model": {"model_class": "litellm", "model_kwargs": {"custom_llm_provider": "openai", "max_tokens": 8}}}
+    adapter.validate_budget_agent_config(argv, _budgets(), lambda _: config, lambda value: value)
+    config["model"]["model_class"] = "other"
+    with pytest.raises(ValueError, match="model configuration"):
+        adapter.validate_budget_agent_config(argv, _budgets(), lambda _: config, lambda value: value)
+    with pytest.raises(ValueError, match="agent arguments"):
+        adapter.validate_budget_agent_config([*argv, "--model-class", "other"], _budgets(), lambda _: {}, lambda value: value)
+
+
+def test_adapter_file_executes_without_anvil_install():
+    import subprocess
+    import sys
+    result = subprocess.run([sys.executable, "-I", adapter.__file__, "--help"],
+                            capture_output=True, timeout=10, check=False)
+    assert result.returncode == 0
+    assert b"--budgets" in result.stdout

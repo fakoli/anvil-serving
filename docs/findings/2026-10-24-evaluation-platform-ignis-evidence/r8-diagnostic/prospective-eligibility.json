@@ -1,0 +1,741 @@
+{
+  "baseline_arm_denominator": 48,
+  "baseline_campaign": "diagnostic-campaign",
+  "baseline_manifest_sha256": "cdb787ab871e0f19655d34c5add6261a5855478975c0435fbc1663696c84f930",
+  "baseline_report": {
+    "bytes": 139623,
+    "path": "campaign-report.json",
+    "sha256": "5c48e2227d14e5599497097bcc345256b3d19c5eb12b857c247c8091bccb1b3c"
+  },
+  "baseline_source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+  "candidate_campaign": null,
+  "candidate_results_observed": false,
+  "created_at": "2026-10-25T07:25:57.011283+00:00",
+  "eligible": [
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "structured-edit",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-1"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "tool-sequence",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-2"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "parallel-tools",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-3"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "dependent-result",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-4"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "tool-recovery",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-5"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "debug-loop-v2",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-6"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "cpp/exercises/practice/all-your-base",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-7"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "go/exercises/practice/alphametics",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-8"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "java/exercises/practice/affine-cipher",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-9"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "javascript/exercises/practice/affine-cipher",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-10"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "python/exercises/practice/affine-cipher",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-11"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "rust/exercises/practice/accumulate",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-12"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "structured-edit",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-13"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "tool-sequence",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-14"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "parallel-tools",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-15"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "dependent-result",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-16"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "tool-recovery",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-17"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "debug-loop-v2",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-18"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "cpp/exercises/practice/all-your-base",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-19"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "go/exercises/practice/alphametics",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-20"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "java/exercises/practice/affine-cipher",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-21"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "javascript/exercises/practice/affine-cipher",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-22"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "rust/exercises/practice/accumulate",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-24"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "structured-edit",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-25"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "tool-sequence",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-26"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "parallel-tools",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-27"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "dependent-result",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-28"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "tool-recovery",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-29"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "agentic",
+        "task_id": "debug-loop-v2",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-30"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "cpp/exercises/practice/all-your-base",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-31"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "go/exercises/practice/alphametics",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-32"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "java/exercises/practice/affine-cipher",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-33"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "javascript/exercises/practice/affine-cipher",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-34"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "rust/exercises/practice/accumulate",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-36"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "structured-edit",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-37"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "tool-sequence",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-38"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "parallel-tools",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-39"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "dependent-result",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-40"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "tool-recovery",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-41"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "agentic",
+        "task_id": "debug-loop-v2",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-42"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "cpp/exercises/practice/all-your-base",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-43"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "go/exercises/practice/alphametics",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": true,
+      "native_state": "completed",
+      "run_id": "cell-44"
+    }
+  ],
+  "excluded": [
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 1,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "python/exercises/practice/affine-cipher",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_state": "failed",
+      "run_id": "cell-23"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 1,
+        "suite": "aider",
+        "task_id": "python/exercises/practice/affine-cipher",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_state": "failed",
+      "run_id": "cell-35"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "java/exercises/practice/affine-cipher",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": false,
+      "native_state": "cancelled",
+      "run_id": "cell-45"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "javascript/exercises/practice/affine-cipher",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": false,
+      "native_state": "cancelling",
+      "run_id": "cell-46"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "python/exercises/practice/affine-cipher",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_state": "cancelled",
+      "run_id": "cell-47"
+    },
+    {
+      "key": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "repeat": 2,
+        "requested_concurrency": 4,
+        "suite": "aider",
+        "task_id": "rust/exercises/practice/accumulate",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": false,
+      "native_state": "cancelling",
+      "run_id": "cell-48"
+    }
+  ],
+  "promoted": false,
+  "rule": "Exact suite/task/repeat/concurrency/workload/controls/oracle/cache key intersection, measurement_complete true on both sides. Include graded failures; never select by outcome or latency. Keep all denominators and excluded rows. Candidate source/activation and any cancellation-only source delta require separate admission. Separate attempts, descriptive diagnostic only; no causal, speedup, parity, superiority, full paired campaign, or promotion claim.",
+  "schema": "t006.prospective-cross-attempt-eligibility/v1"
+}

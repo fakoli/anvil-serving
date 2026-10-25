@@ -122,8 +122,11 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
             "served_identity": "served-model",
             "bound_port": 39077,
             "bound_ports": [39077],
+            "bound_endpoints": [{"host_ip": "127.0.0.1", "host_port": 39077,
+                                 "container_port": 8000}],
             "gpu_selection": ["GPU-a", "GPU-b"],
             "state": "running",
+            "started_at": None,
             "running": True,
             "health": "healthy",
             "native_kv_offload": False,
@@ -138,7 +141,56 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
     assert "must-not-leak" not in encoded
     assert "HF_TOKEN" not in encoded
     assert "registry.invalid" not in encoded
-    assert "127.0.0.1" not in encoded
+    assert "127.0.0.1" in encoded
+
+
+@pytest.mark.parametrize("flag", ["--served-model-name", "--model-id"])
+@pytest.mark.parametrize("equals", [False, True])
+@pytest.mark.parametrize("source", ["Args", "Cmd"])
+def test_recipe_discovery_parses_served_identity_flags(flag, equals, source):
+    row = _row("candidate")
+    tokens = [flag + "=served-model"] if equals else [flag, "served-model"]
+    if source == "Args":
+        row["Args"] = tokens
+        row["Config"]["Cmd"] = ["--model-id", "ignored-cmd"]
+    else:
+        row.pop("Args")
+        row["Config"]["Cmd"] = tokens
+    inventory = serve_recipes.discover_recipe_containers(_run=_DiscoveryRun([row]))
+    assert inventory["containers"][0]["served_identity"] == "served-model"
+    assert inventory["containers"][0]["model"] == "org/model"
+    assert "must-not-leak" not in json.dumps(inventory)
+
+
+@pytest.mark.parametrize("flag", ["--served-model-name", "--model-id"])
+@pytest.mark.parametrize("tail", [[], [""], [None], ["x" * 513], ["bad\nname"], ["bad\x7fname"]])
+def test_recipe_discovery_served_identity_retains_value_bounds(flag, tail):
+    row = _row("candidate")
+    row["Args"] = [flag, *tail]
+    inventory = serve_recipes.discover_recipe_containers(_run=_DiscoveryRun([row]))
+    assert inventory["containers"][0]["served_identity"] == "org/model"
+
+
+@pytest.mark.parametrize("tokens,expected", [
+    (["--model-id=alias", "--served-model-name=override"], "override"),
+    (["--served-model-name", "override", "--model-id", "alias"], "override"),
+    (["--model-id=alias", "--served-model-name="], "org/model"),
+    (["--model-id=alias", "--served-model-name"], "org/model"),
+    (["--model-id=first", "--model-id=second"], "first"),
+    ([None, "--model-id", "x" * 512], "x" * 512),
+    (["--model-id="], "org/model"),
+    (["--model-id=" + "x" * 513], "org/model"),
+    (["--model-id=bad\nname"], "org/model"),
+    (["--model-identifier=other"], "org/model"),
+    ([], "org/model"),
+])
+def test_recipe_discovery_served_identity_preserves_precedence_and_fallback(tokens, expected):
+    row = _row("candidate")
+    row["Args"] = tokens
+    # An explicit Args list, including empty, still takes precedence over Cmd.
+    row["Config"]["Cmd"] = ["--model-id=ignored-cmd"]
+    inventory = serve_recipes.discover_recipe_containers(_run=_DiscoveryRun([row]))
+    assert inventory["containers"][0]["served_identity"] == expected
 
 
 def test_recipe_container_discovery_includes_exited_owned_container() -> None:
