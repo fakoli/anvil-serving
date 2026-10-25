@@ -36,7 +36,7 @@ def _digest(value):
     return value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) else None
 
 
-def _read(root, relative, reference=None):
+def _read_bytes(root, relative, reference=None):
     """Read bounded owned evidence; a reference also binds its exact bytes."""
     if not isinstance(relative, str) or not relative or "\\" in relative:
         raise ValueError("invalid evidence path")
@@ -55,7 +55,11 @@ def _read(root, relative, reference=None):
     if reference is not None and (reference.get("sha256") != hashlib.sha256(raw).hexdigest()
                                   or reference.get("bytes") != len(raw)):
         raise ValueError("evidence digest mismatch")
-    value = json.loads(raw)
+    return raw
+
+
+def _read(root, relative, reference=None):
+    value = json.loads(_read_bytes(root, relative, reference))
     if not isinstance(value, dict):
         raise ValueError("invalid evidence object")
     return value
@@ -94,7 +98,23 @@ def _retained_reference(manifest, path):
     return reference
 
 
-def _cancelled_aider_raw_task_grades(store, cell, record, root, expected_sha256):
+def _retained_aider_diagnostics(root, manifest):
+    reference = _retained_reference(manifest, "aider/requests.jsonl")
+    if reference is None:
+        return None
+    try:
+        rows = [json.loads(line) for line in _read_bytes(root, reference["path"], reference).splitlines()]
+        if not all(isinstance(row, dict) for row in rows):
+            return None
+        signals = ("output_truncated", "compilation_failure")
+        if any(key in row and type(row[key]) is not bool for row in rows for key in signals):
+            return None
+        return {key: True if any(row.get(key) is True for row in rows) else None for key in signals}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError):
+        return None
+
+
+def _cancelled_aider_raw_evidence(store, cell, record, root, expected_sha256):
     """Project one retained native grade without creating a suite scoring stage."""
     try:
         if record.get("spec_sha256") != expected_sha256:
@@ -125,7 +145,10 @@ def _cancelled_aider_raw_task_grades(store, cell, record, root, expected_sha256)
         selection_reference = _retained_reference(manifest, "aider/selection.json")
         task_id = cell["task_id"]
         native_reference = _retained_reference(manifest, f"aider/results/{task_id}/.aider.results.json")
-        if not plan_reference or not selection_reference or not native_reference or native_reference["bytes"] > 1024 * 1024:
+        if not plan_reference or not selection_reference:
+            return None
+        if any(not isinstance(path, str) for path in manifest["missing"]) or any(
+                path in manifest["missing"] for path in (plan_reference["path"], selection_reference["path"])):
             return None
         plan = _read(root, plan_reference["path"], plan_reference)
         selection = _read(root, selection_reference["path"], selection_reference)
@@ -147,9 +170,23 @@ def _cancelled_aider_raw_task_grades(store, cell, record, root, expected_sha256)
                 or instance_ids != cell["spec"].get("parameters", {}).get("instance_ids")
                 or selection.get("sha256") != hashlib.sha256(canonical_json_bytes(instance_ids)).hexdigest()):
             return None
-        grade = validated_aider_task_grade(plan, _read(root, native_reference["path"], native_reference))
-        return [grade] if grade is not None else None
-    except (OSError, ValueError, TypeError, KeyError, AttributeError, BenchmarkJobError):
+        diagnostics = _retained_aider_diagnostics(root, manifest)
+        if (native_reference is None or native_reference["bytes"] > 1024 * 1024
+                or native_reference["path"] in manifest["missing"]):
+            return {"grades": None, "diagnostics": {**diagnostics, "num_exhausted_context_windows": None}
+                    if diagnostics is not None else None}
+        native = _read(root, native_reference["path"], native_reference)
+        grade = validated_aider_task_grade(plan, native)
+        if grade is None:
+            return {"grades": None, "diagnostics": {**diagnostics, "num_exhausted_context_windows": None}
+                    if diagnostics is not None else None}
+        if diagnostics is None:
+            return {"grades": [grade], "diagnostics": None}
+        exhausted = native.get("num_exhausted_context_windows")
+        diagnostics = {**diagnostics, "num_exhausted_context_windows": exhausted
+                       if type(exhausted) is int and exhausted >= 0 else None}
+        return {"grades": [grade], "diagnostics": diagnostics}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError, BenchmarkJobError):
         return None
 
 
@@ -364,8 +401,8 @@ def report_campaign(manifest, store, *, state=None):
             started_runs.add(spec["run_id"])
             receipts.append(receipt)
         status = record.get("state") if record and record.get("state") in _STATES else "planned"
-        raw_task_grades = (_cancelled_aider_raw_task_grades(store, cell, record, root, job_spec_sha256(expected))
-                           if status == "cancelled" and spec["suite"] == "aider" else None)
+        raw_task_evidence = (_cancelled_aider_raw_evidence(store, cell, record, root, job_spec_sha256(expected))
+                             if status == "cancelled" and spec["suite"] == "aider" else None)
         performance = spec["suite"] == "performance"
         planned = spec.get("parameters", {}).get("request_count") if performance else 1
         planned = planned if type(planned) is int and planned > 0 else None
@@ -396,7 +433,8 @@ def report_campaign(manifest, store, *, state=None):
                "matching": {key: _digest(cell.get("matching", {}).get(key)) for key in _HASHES},
                "evidence_status": reason or "retained", "samples": counts,
                "outcomes": samples, "native_aggregate_metrics": metrics,
-               "raw_task_grades": raw_task_grades,
+               "raw_task_grades": raw_task_evidence["grades"] if raw_task_evidence else None,
+               "raw_task_grade_diagnostics": raw_task_evidence["diagnostics"] if raw_task_evidence else None,
                "telemetry_coverage": coverage, "cache": {"requested": requested_cache, "proven": None},
                "identity_status": identity_status,
                "measurement_complete": status == "completed" and bool(native) and not reason and planned is not None

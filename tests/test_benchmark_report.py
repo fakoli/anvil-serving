@@ -373,17 +373,27 @@ def cancelled_aider_retention(manifest, store, *, change=None):
             "model": "cloud" if change == "model" else "openai/" + plan["endpoint"]["model"],
             "edit_format": "whole", "tests_outcomes": [True] if change == "pass" else [False, False],
         }
+        if change == "signals":
+            paths["aider/results/tool-sequence/.aider.results.json"]["num_exhausted_context_windows"] = 2
     for relative, value in paths.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(value))
+        path.write_text(("{\"nested\": " * 1100) + "null" + ("}" * 1100) if change == "nested" and path == native_path else json.dumps(value))
     if change == "selection":
         (root / "aider/selection.json").write_text(json.dumps({"instance_ids": [], "sha256": aider._digest([])}))
     artifacts = [evidence_file_reference(str(root / relative), root=str(root)) for relative in paths]
+    events = ({"event": "aider_transport_response", "output_truncated": True},
+              {"event": "aider_contained_command_finished", "compilation_failure": True}) if change == "signals" else (
+              ({"event": "aider_transport_response"},) if change == "missing_metadata" else (
+              ({"event": "aider_transport_response", "output_truncated": "yes"},) if change == "invalid_metadata" else ()))
+    if events:
+        requests_path = root / "aider/requests.jsonl"
+        requests_path.write_text("".join(json.dumps(event) + "\n" for event in events))
+        artifacts.append(evidence_file_reference(str(requests_path), root=str(root)))
     if change == "forged_hash":
         artifacts[-1]["sha256"] = "0" * 64
     retention_manifest = {"schema": "anvil-serving.aider-retention/v1", "state": "incomplete",
-                          "artifacts": artifacts, "missing": []}
+                          "artifacts": artifacts, "missing": ["aider/results/tool-sequence/.aider.results.json"] if change == "missing_native" else []}
     retention_path = root / "aider/retention.json"
     retention_path.write_text(json.dumps(retention_manifest))
     retention = {**retention_manifest, "manifest_reference": evidence_file_reference(str(retention_path), root=str(root))}
@@ -411,6 +421,8 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     ("symlink", None),
     ("swapped_model", None),
     ("swapped_task", None),
+    ("nested", None),
+    ("missing_native", None),
 ])
 def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path, change, expected):
     from anvil_serving.benchmarking.campaign_report import report_campaign
@@ -422,6 +434,21 @@ def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(
     assert row["samples"] == {"planned": 1, "submitted": 1, "attempted": None,
                               "scored": None, "failed": None, "cancelled": None, "unfinished": 0}
     assert row["measurement_complete"] is False
+
+
+@pytest.mark.parametrize(("change", "expected"), [
+    ("signals", {"output_truncated": True, "compilation_failure": True, "num_exhausted_context_windows": 2}),
+    ("missing_metadata", {"output_truncated": None, "compilation_failure": None, "num_exhausted_context_windows": None}),
+    ("invalid_metadata", None),
+])
+def test_campaign_cancelled_aider_diagnostics_are_allowlisted_and_independent(tmp_path, change, expected):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    cancelled_aider_retention(manifest, store, change=change)
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["raw_task_grade_diagnostics"] == expected
+    assert row["raw_task_grades"] == [{"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]
+    assert row["state"] == "cancelled"
 
 
 def test_campaign_partial_denominators_and_scored_negative_are_separate(tmp_path):
