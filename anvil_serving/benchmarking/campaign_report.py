@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 
 from .jobs import BenchmarkJobError, job_spec_sha256, resolve_owned_run_path
-from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch
+from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch, batch_closure
 
 SCHEMA = "anvil-serving.benchmark-campaign-report/v1"
 _HASHES = ("workload_sha256", "controls_sha256", "oracle_sha256", "cache_sha256")
@@ -149,6 +149,12 @@ def _coverage(receipt, manifest=None, cell=None, store=None):
             run_id=manifest['campaign_id'], relative='campaign/batches/' + cell['batch_id'] + '.json'))
         release = _read_execution(release_path)
         _validate_release(release, manifest, cell['batch_id'])
+        if not isinstance(receipt.get('batch_closure'), dict):
+            return result
+        shared, _ = batch_closure(manifest, cell['batch_id'], release, run_root=store.run_root,
+                                  reference=receipt['batch_closure'])
+        if shared['status'] != 'closed' or shared.get('telemetry_terminal') != receipt.get('telemetry_terminal'):
+            return result
         reference = receipt['telemetry_terminal']
         terminal, rows, _ = verify_terminal(manifest, cell['batch_id'], release, run_root=store.run_root, reference=reference)
         arm = next(a for a in manifest['arms'] if a['arm_id'] == cell['arm_id'])

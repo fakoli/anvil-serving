@@ -1541,7 +1541,7 @@
       "recovery_capable": false,
       "remote_operation": null,
       "resource_role": "model-serve",
-      "summary": "Register one verified running recipe with the local observer.",
+      "summary": "Register one verified running recipe with the local observer. MODEL is a required positional recipe selector.",
       "transports": [
         "local"
       ],

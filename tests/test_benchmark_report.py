@@ -564,6 +564,25 @@ def test_campaign_batch_wall_starts_at_release_and_missing_drain_invalidates_tot
             "run_ids": [cell["spec"]["run_id"]], "boot_id": "private-boot", "released_monotonic": 9 + index * 5,
             "deadline_monotonic": 49 + index * 5, "traffic_deadline_monotonic": 39 + index * 5,
                 "drain_reserve_s": 10, "allowance_s": 40, "activation": activation}))
+    # Build the explicit shared closure chain before querying this fake store.
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.artifacts import atomic_write_json, evidence_file_reference
+    for index, cell in enumerate(manifest['cells']):
+        release = json.loads((batches / (cell['batch_id'] + '.json')).read_text())
+        receipt_path = paths[index] / 'campaign-execution.json'
+        receipt = json.loads(receipt_path.read_text())
+        receipt.update(activation=activation, clients_stopped_wall=100 + index)
+        shared = {'schema': 'anvil-serving.campaign-batch-closure/v1',
+            'manifest_sha256': manifest['manifest_sha256'], 'release_sha256': execution._digest(release),
+            'batch_id': cell['batch_id'], 'status': 'closed', 'stops': [execution._stop_fact(receipt)],
+            'drain': {'status': 'verified'}, 'closed_monotonic': receipt['closed_monotonic'],
+            'finalized_monotonic': receipt['closed_monotonic']}
+        closure = batches.parent / 'closures' / (cell['batch_id'] + '.json')
+        closure.parent.mkdir(exist_ok=True)
+        atomic_write_json(closure, shared)
+        receipt['batch_closure'] = evidence_file_reference(str(closure), root=str(batches.parent))
+        atomic_write_json(receipt_path, receipt)
+        store.artifacts[cell['spec']['run_id']]['results']['campaign_execution'] = evidence_file_reference(str(receipt_path), root=str(paths[index]))
     report = report_campaign(manifest, store)
     assert report["timing"]["active_wall_seconds"] == 16
     assert report["timing"]["child_active_wall_seconds"] == 15

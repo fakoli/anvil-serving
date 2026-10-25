@@ -376,7 +376,12 @@ they cannot isolate the effect of an inference engine.
 Active measurement is bounded to at most one hour per arm and two hours in
 total, with an explicit drain reserve. Preparation is separate. Overlapping
 children consume elapsed batch time rather than the sum of their durations.
-Missing closure or unverified server drain blocks further admission. Drain
+Missing closure or unverified server drain blocks further admission. Each child
+records when its own clients stop. The coordinator waits for every child in the
+batch before checking global server drain once; a faster child does not treat
+its still-running siblings as a drain failure. Cancellation stops and retains
+all owned siblings before that shared drain check. An unverified stop leaves
+the affected job nonterminal and blocks further admission. Drain
 collectors use the keyless local `generation-bound-observer/v1` contract. The
 current verified activation supplies the generation for
 `/engine/<64-hex-generation>/metrics`; preparation never guesses a future
@@ -431,9 +436,14 @@ one-hour arm cap includes release, drain and telemetry finalization; missing
 finalization conservatively consumes the full reserved allowance.
 
 Each immutable child artifact anchors its execution receipt, which anchors the
-shared `telemetry/<batch>/terminal.json`, which anchors bounded `samples.jsonl`.
-Workers wait only until the release deadline. Coordinator loss leaves partial
-rows and unavailable terminal evidence; cancellation retains partial evidence.
+shared `closures/<batch>.json` and `telemetry/<batch>/terminal.json`. The closure
+binds every child's stop facts and the telemetry terminal, which anchors bounded
+`samples.jsonl`. Reports verify this complete chain. Cancellation and normal
+completion serialize terminal writes; later callers cannot rewrite evidence
+already anchored by a terminal artifact.
+Workers wait only until the release deadline. Coordinator loss can leave partial
+rows or an orphaned terminal. Without a verified shared closure, neither proves
+measurement closure or reclaims reserved time; cancellation retains partial evidence.
 Neither path repairs an already anchored receipt. Reports verify all referenced
 bytes and rederive distinct sample counts, source gaps, failures, reset segments
 and interval coverage. Forged summaries, missing series and broken references

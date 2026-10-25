@@ -253,18 +253,8 @@ def _owned_record(store, manifest, cell):
 
 
 def cancel_campaign(manifest, store):
-    from .worker import cancel_benchmark_job
-    directory = campaign_directory(store.run_root, manifest["ownership_id"], manifest["campaign_id"])
-    with campaign_lock(directory):
-        state = _state(directory, manifest=manifest)
-        state["cancel_requested"] = True
-        atomic_write_json(directory / "state.json", state)
-        records = [_owned_record(store, manifest, cell) for cell in manifest["cells"]]
-    cancelled = []
-    for record in records:
-        if record is not None and record["state"] not in TERMINAL_JOB_STATES:
-            cancelled.append(cancel_benchmark_job(store, record["spec"]["run_id"]))
-    return {"campaign_id": manifest["campaign_id"], "cancel_requested": True, "children": cancelled}
+    from .worker import cancel_campaign_jobs
+    return cancel_campaign_jobs(manifest, store)
 
 
 def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
@@ -324,16 +314,7 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
             ready_deadline = time.monotonic() + 60
             released = False
             while True:
-                if sampler is not None and sampler.release and not sampler.finished:
-                    raw = []
-                    try:
-                        raw = [execution._receipt(c, manifest, store.run_root) for c in cells]
-                    except FileNotFoundError:
-                        pass
-                    if raw and all(r.get('status') in {'closed', 'blocked'} for r in raw):
-                        sampler.finish()
-                    else:
-                        sampler.tick()
+                execution.coordinate_batch(manifest, batch_id, store=store, sampler=sampler)
                 with campaign_lock(directory):
                     state = _state(directory, manifest=manifest)
                     if state["cancel_requested"]:
@@ -362,8 +343,9 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
                         raise BenchmarkJobError("campaign_unclosed_batch", "terminal batch lacks verified drain; further traffic is blocked")
                 time.sleep(poll_s)
     finally:
-        if sampler is not None and not sampler.finished:
-            sampler.finish(partial=True)
+        # Cancellation owns remaining stop/drain/finalization phases on error.
+        # Never finalize partial telemetry while siblings may still be active.
+        pass
     return {"state": "completed", "campaign_id": manifest["campaign_id"], "arm_id": arm_id}
 
 

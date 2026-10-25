@@ -337,3 +337,19 @@ def test_disabled_monitoring_refuses_unsafe_retained_receipt(tmp_path, monkeypat
         m.receipt_path().symlink_to(source)
     with pytest.raises((ValueError, OSError)):
         m.withdraw(port=30000, container='candidate')
+
+
+
+def test_monitor_sync_help_declares_required_model_without_monitoring(monkeypatch, capsys):
+    from anvil_serving import cli
+    def forbidden():
+        pytest.fail('help or missing MODEL must not access monitoring configuration')
+    monkeypatch.setattr(m, 'configuration', forbidden)
+    assert cli.main(['models', 'recipes', 'monitor-sync', '--help']) == 0
+    rendered = ' '.join(capsys.readouterr().out.split())
+    assert 'MODEL is a required positional recipe selector.' in rendered
+    assert '--container NAME' in rendered and '--registry PATH' in rendered
+    with pytest.raises(SystemExit) as error:
+        m.main(['--container', 'candidate', '--registry', 'recipes.toml'])
+    assert error.value.code == 2
+    assert 'required: model' in capsys.readouterr().err

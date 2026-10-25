@@ -24,8 +24,10 @@ def contract():
             'metrics': {'node_memory_bytes': 'gauge', 'node_oom_total': 'counter'}}}
 
 
-def setup(tmp_path, monkeypatch, *, count=1):
+def setup(tmp_path, monkeypatch, *, count=1, mixed=False):
     tasks = [('agentic', task) for task in ('structured-edit', 'tool-sequence', 'parallel-tools', 'dependent-result')][:count]
+    if mixed:
+        tasks[2:] = [('aider', lang + '/exercises/practice/task') for lang in ('cpp', 'go')]
     value = specification(concurrency=count, tasks=tasks)
     value['budgets']['drain_reserve_s'] = 120
     value['telemetry_collection'] = contract()
@@ -43,6 +45,7 @@ def setup(tmp_path, monkeypatch, *, count=1):
         'metrics_url': 'http://127.0.0.1:19100/engine/' + 'a' * 64 + '/metrics'}
     activation['binding_sha256'] = execution._digest({k: v for k, v in activation.items() if k != 'status'})
     monkeypatch.setattr(execution, '_activation', lambda arm, expected=None: activation)
+    monkeypatch.setattr(execution, 'observe_drain', lambda *a, **k: {'status': 'verified'})
     clock = [1000.]
     timer = SimpleNamespace(monotonic=lambda: clock[0], time=lambda: 1000 + clock[0],
                             sleep=time.sleep, perf_counter=time.perf_counter)
@@ -79,7 +82,8 @@ def close(store, specs, release, clock):
         path = execution._path(spec, store.run_root, 'campaign-execution.json')
         value = execution._read(path)
         value.update(status='closed', activation=release['activation'], clients_stopped=True,
-            drain={'status': 'verified'}, started_monotonic=release['released_monotonic'], closed_monotonic=clock[0])
+            drain={'status': 'verified'}, clients_stopped_wall=1000 + clock[0],
+            started_monotonic=release['released_monotonic'], closed_monotonic=clock[0])
         atomic_write_json(path, value)
     clock[0] += 1
 
@@ -94,7 +98,7 @@ def test_c4_one_shared_sampler_barrier_precedes_all_immutable_artifacts(tmp_path
         futures = [pool.submit(finish_child, spec) for spec in specs]
         time.sleep(.1)
         assert not any(f.done() for f in futures)
-        sampler.finish()
+        execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
         assert all(f.result(3)['state'] == 'completed' for f in futures)
     references = [execution._read(execution._path(s, store.run_root, 'campaign-execution.json'))['telemetry_terminal'] for s in specs]
     assert all(r == references[0] for r in references)
@@ -131,7 +135,8 @@ def test_cached_source_not_poll_count_gaps_and_counter_segments(tmp_path, monkey
 @pytest.mark.parametrize('kind', ['bytes', 'summary', 'series', 'foreign_gpu', 'nonfinite', 'symlink'])
 def test_report_rederives_chain_and_rejects_tampered_or_forged_samples(tmp_path, monkeypatch, kind):
     manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch)
-    close(store, specs, release, clock); sampler.finish()
+    close(store, specs, release, clock)
+    execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
     execution.campaign_result_reference(store, specs[0])
     receipt_path = execution._path(specs[0], store.run_root, 'campaign-execution.json')
     receipt = execution._read(receipt_path)
@@ -302,7 +307,8 @@ def test_conflicting_model_labels_never_bind_to_selected_engine():
 
 def test_closed_terminal_receipt_cannot_be_reclosed_by_late_cancellation(tmp_path, monkeypatch):
     manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch)
-    close(store, specs, release, clock); sampler.finish()
+    close(store, specs, release, clock)
+    execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
     spec = specs[0]
     store.transition(spec['run_id'], 'completed', results=execution.campaign_result_reference(store, spec))
     path = execution._path(spec, store.run_root, 'campaign-execution.json')

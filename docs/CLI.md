@@ -136,7 +136,7 @@ required operands, choices, and defaults.
 | `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--native-stage`<br>`--cache-dir`<br>`--hf-executable`<br>`--evidence-out`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token`<br>`--headroom-gib`<br>`--xet`<br>`--volume`<br>`--image`<br>`--expected-bytes`<br>`--memory-mib`<br>`--memory-swap-mib` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
-| `models recipes monitor-sync` | Register one verified running recipe with the local observer. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--registry` |
+| `models recipes monitor-sync` | Register one verified running recipe with the local observer. MODEL is a required positional recipe selector. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--registry` |
 | `models recipes trace-artifacts` | Inspect or export a stopped recipe's diagnostic traces. | `read` / `bounded` | `--container`<br>`--retained-volume`<br>`--registry`<br>`--output` |
 | `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |

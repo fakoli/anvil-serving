@@ -227,6 +227,32 @@ class BatchSampler:
         self.truncated = False
         self.boot = _boot_id()
 
+    @classmethod
+    def recover(cls, manifest, batch_id, release, *, run_root):
+        """Resume retained sampling only while holding the batch closure lock."""
+        sampler = cls(manifest, batch_id, run_root=run_root)
+        sampler.activation, sampler.release, sampler.boot = release['activation'], release, release['boot_id']
+        try:
+            raw = _read(sampler.root, sampler.relative + 'samples.jsonl', sampler.contract['max_bytes'])
+            sampler.rows = [json.loads(line) for line in raw.splitlines()]
+            if not 1 <= len(sampler.rows) <= sampler.contract['max_rows']:
+                return None
+            for row in sampler.rows:
+                if (row['manifest_sha256'] != manifest['manifest_sha256']
+                        or row['activation_sha256'] != release['activation']['binding_sha256']
+                        or row['batch_id'] != batch_id or row['boot_id'] != release['boot_id']):
+                    return None
+            coverage(sampler.rows, sampler.contract, sampler.arm, release['released_monotonic'],
+                     time.monotonic(), complete=False)
+            sampler.byte_count = len(raw)
+            sampler.next_tick = sampler.rows[-1]['monotonic'] + sampler.contract['cadence_s']
+            if (sampler.root / (sampler.relative + 'terminal.json')).exists():
+                verify_terminal(manifest, batch_id, release, run_root=run_root)
+                sampler.finished = True
+            return sampler
+        except (OSError, ValueError, KeyError, TypeError, BenchmarkJobError):
+            return None
+
     def start(self, activation):
         self.activation = activation
         directory = self.root / self.relative
@@ -305,18 +331,24 @@ class BatchSampler:
         self.byte_count += len(raw)
         self.next_tick = time.monotonic() + self.contract['cadence_s']
 
-    def finish(self, *, partial=False):
+    def finish(self, *, partial=False, closure=None):
         if self.finished or not self.activation:
             return
+        if (self.root / (self.relative + 'terminal.json')).exists():
+            self.finished = True
+            return  # A different serialized owner already finalized this batch.
         from .campaign_identity import _receipt
         receipts = []
         try:
-            receipts = [_receipt(c, self.manifest, self.run_root) for c in self.cells]
-        except (OSError, ValueError, KeyError, BenchmarkJobError):
+            if closure is None:
+                receipts = [_receipt(c, self.manifest, self.run_root) for c in self.cells]
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, BenchmarkJobError):
             partial = True
         closed = receipts and all(r.get('status') == 'closed' and r.get('clients_stopped') is True and r.get('drain', {}).get('status') == 'verified' for r in receipts)
+        if closure is not None:
+            closed = closure['status'] == 'closed'
         complete = bool(closed and not partial and self.release)
-        end = max((r.get('closed_monotonic', 0) for r in receipts), default=0)
+        end = closure['closed_monotonic'] if closure is not None else max((r.get('closed_monotonic', 0) for r in receipts), default=0)
         final_deadline = min(time.monotonic() + self.contract['max_gap_s'], self.release['deadline_monotonic'] - 1) if self.release else time.monotonic()
         if not complete:
             self.tick(force=True)

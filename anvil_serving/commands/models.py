@@ -62,7 +62,8 @@ def commands() -> CommandNode:
                 children=(
                     _resource_node(
                         "monitor-sync",
-                        "Register one verified running recipe with the local observer.",
+                        "Register one verified running recipe with the local observer. "
+                        "MODEL is a required positional recipe selector.",
                         "anvil_serving.recipe_monitoring",
                         role="model-serve",
                         execution_host_os=("linux",),

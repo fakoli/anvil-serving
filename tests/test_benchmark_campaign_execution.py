@@ -91,8 +91,16 @@ def test_ready_barrier_union_budget_unknown_closure_and_clamp(tmp_path, monkeypa
     with pytest.raises(BenchmarkJobError, match='prior batch lacks'):
         execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=50)
     first.update(status='closed', started_monotonic=release['released_monotonic'],
-        closed_monotonic=release['released_monotonic']+20, clients_stopped=True, drain={'status': 'verified'})
+        closed_monotonic=release['released_monotonic']+20, clients_stopped=True, clients_stopped_wall=time.time(),
+        activation=release['activation'], drain={'status': 'verified'})
     atomic_write_json(execution._path(bound[0], root, 'campaign-execution.json'), first)
+    shared = {'schema': 'anvil-serving.campaign-batch-closure/v1', 'manifest_sha256': manifest['manifest_sha256'],
+        'release_sha256': execution._digest(release), 'batch_id': 'batch-0', 'status': 'closed',
+        'stops': [execution._stop_fact(first)], 'drain': {'status': 'verified'}, 'closed_at': 'fixture',
+        'closed_monotonic': first['closed_monotonic'], 'finalized_monotonic': first['closed_monotonic']}
+    target = execution._directory(manifest, root) / 'closures/batch-0.json'
+    target.parent.mkdir(parents=True)
+    atomic_write_json(target, shared)
     store.transition(bound[0]['run_id'], 'completed', results=execution.campaign_result_reference(store, bound[0]))
     assert execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['active_seconds'] == 20
     second = execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=50, store=store)
@@ -174,8 +182,7 @@ def test_watchdog_stops_owned_worker_when_job_state_is_unreadable_at_deadline(tm
     worker._campaign_watchdog(store.path, root, bound[0]['run_id'])
     assert stopped
     receipt = execution._read(execution._path(bound[0], root, 'campaign-execution.json'))
-    assert receipt['status'] == 'blocked'
-    assert receipt['watchdog']['reason'] == 'job_state_unreadable_at_traffic_deadline'
+    assert receipt['status'] == 'ready'  # Unreadable durable state cannot authorize a post-terminal write.
 
 
 def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_path, monkeypatch):
@@ -238,6 +245,7 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
         assert execution.batch_ready(manifest, 'batch-0', run_root=root)
         execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80)
         while time.monotonic() < deadline:
+            execution.coordinate_batch(manifest, 'batch-0', store=store)
             result = store.status(bound[0]['run_id'])
             if result['state'] in {'completed', 'failed', 'cancelled'}: break
             time.sleep(.05)
@@ -415,19 +423,19 @@ def test_entry_failure_closes_before_shared_terminal_and_durable_failure(tmp_pat
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
             receipt = execution._read(path)
-            if receipt['status'] == 'blocked':
+            if receipt['status'] in {'blocked', 'draining'}:
                 break
             time.sleep(.01)
-        assert receipt['status'] == 'blocked'
+        assert receipt['status'] in {'blocked', 'draining'}
         assert receipt['clients_stopped'] is True
-        assert receipt['drain']['status'] == 'unknown'
+        assert receipt['drain']['status'] in {'unknown', 'pending'}
         assert receipt['entry_failure']['code'] == expected
         assert not future.done()  # The immutable artifact still waits for the coordinator.
         assert store.status(child['run_id'])['state'] == 'running'
         assert not execution._anchored_closure(store, manifest['cells'][0], manifest, store.run_root)
         assert all(p.poll() is not None and p.stdout.closed for p in supervisors)
-        # Same closed/blocked predicate used by the foreground coordinator.
-        sampler.finish()
+        # Actual coordinator closes the shared barrier before terminal artifacts.
+        execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler, force=True)
         result = future.result(timeout=3)
     assert result['state'] == 'failed' and result['finished_at']
     assert result['failure']['code'] == expected
@@ -542,7 +550,7 @@ def test_watchdog_acknowledgement_is_bounded_and_allows_verified_slow_start(tmp_
                 execution.enter_campaign(store, child)
             assert time.monotonic() - started < 2
             assert supervisors[0].poll() is not None
-            assert execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))['status'] == 'blocked'
+            assert execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))['status'] == 'draining'
     finally:
         for process in supervisors:
             if process.poll() is None:

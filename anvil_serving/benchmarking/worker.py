@@ -24,7 +24,7 @@ from .artifacts import (
     normalize_evidence_failure_class,
 )
 from .harnesses import prepare_harness_assets
-from .campaign_execution import campaign_result_reference
+from .campaign_execution import campaign_result_reference, child_lock
 from .jobs import BenchmarkJobError, resolve_owned_run_path, utc_now
 from .preflight import require_benchmark_preflight, run_benchmark_preflight
 from .profiles import load_profile, suite_budgets
@@ -238,6 +238,24 @@ def _run_suite(
     return run_swe_benchmark(plan, **({"log_collector": collector} if collector else {}))
 
 
+
+def _finish_job(store, spec, target, *, results, failure=None):
+    if 'campaign' not in spec:
+        return store.transition(spec['run_id'], target, results=results, failure=failure)
+    # Waiting must never hold the write lock: cancellation must stop all siblings.
+    reference = campaign_result_reference(store, spec)
+    with child_lock(store, spec):
+        current = store.status(spec['run_id'])
+        if current['state'] != 'running':
+            return current
+        # Receipt writers use this same lock; cancellation cannot replace it
+        # between reference capture and immutable artifact commit.
+        path = resolve_owned_run_path(store.run_root, ownership_id=spec['ownership_id'],
+                                      run_id=spec['run_id'], relative='campaign-execution.json')
+        if reference:
+            reference = {'campaign_execution': evidence_file_reference(path, root=str(Path(path).parent))}
+        return store.transition(spec['run_id'], target, results={**results, **reference}, failure=failure)
+
 def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
     """Claim and execute one job, retaining evidence at each completed stage."""
     record = store.claim(run_id)
@@ -273,7 +291,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 completeness="completed", summary=dict(suite_result.get("summary") or {"completed": True}),
                 created_at=utc_now(), artifact_root=resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]),
             )
-            return store.transition(run_id, "completed", results={"evidence": evidence, **campaign_result_reference(store, spec)})
+            return _finish_job(store, spec, "completed", results={"evidence": evidence})
         store.append_log(run_id, level="info", message="benchmark worker claimed job")
         if "budgets" in admission:
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
@@ -359,14 +377,14 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
         stages.append(_stage(len(stages), spec["suite"], "completed" if suite_complete else "failed", suite_ref))
-        if campaign_closure and campaign_closure["status"] != "closed":
-            raise BenchmarkJobError("campaign_closure_unknown", "owned clients or engine drain could not be verified")
         if not suite_complete:
             failure = suite_result.get("failure") or {"class": "harness", "message": "suite incomplete"}
             raise BenchmarkJobError(
                 failure.get("class", "harness"),
                 failure.get("message", "benchmark suite did not complete"),
             )
+        if campaign_closure and campaign_closure["status"] != "closed":
+            raise BenchmarkJobError("campaign_closure_unknown", "owned clients or engine drain could not be verified")
         summary = suite_result.get("summary") or suite_result.get("curve") or {
             "completed": True,
             "passed": suite_result.get("passed"),
@@ -389,7 +407,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
         )
         store.append_log(run_id, level="info", message="benchmark completed; evidence retained")
-        return store.transition(run_id, "completed", results={"evidence": evidence, **campaign_result_reference(store, spec)})
+        return _finish_job(store, spec, "completed", results={"evidence": evidence})
     except Exception as exc:
         if campaign_context and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
@@ -444,11 +462,11 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
         )
         store.append_log(run_id, level="error", message=f"benchmark failed: {code}: {message}")
-        return store.transition(
-            run_id,
+        return _finish_job(
+            store, spec,
             "failed",
             failure={"class": failure_class, "code": code, "message": message[:1024]},
-            results={"evidence": evidence, **campaign_result_reference(store, spec)},
+            results={"evidence": evidence},
         )
 
 
@@ -787,13 +805,13 @@ def _cancellation_evidence(
     )
 
 
-def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
-    """Retain owned partial output, then cancel and clean up a detached worker."""
+def _prepare_cancellation(store, run_id):
+    """Stop and retain one child without waiting for shared drain or terminalizing."""
     record = store.status(run_id)
     if record is None:
-        raise BenchmarkJobError("job_not_found", "benchmark job does not exist")
-    if record["state"] in {"completed", "failed", "cancelled"}:
-        return record
+        raise BenchmarkJobError('job_not_found', 'benchmark job does not exist')
+    if record['state'] in {'completed', 'failed', 'cancelled'}:
+        return None
     worker_path = resolve_owned_run_path(
         store.run_root,
         ownership_id=record["spec"]["ownership_id"],
@@ -828,11 +846,25 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
         if "campaign" in record["spec"]:
             from .campaign_execution import close_cancelled_campaign
             close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and retention["state"] != "failed")
+    except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
+        retention = {'state': 'failed', 'reason': 'cancellation_retention_unavailable'}
+    return {'record': record, 'termination': termination, 'retention': retention,
+            'run_path': run_path, 'work_path': work_path}
+
+
+def _finish_cancellation(store, prepared):
+    record, termination, retention, run_path = (prepared[k] for k in ('record', 'termination', 'retention', 'run_path'))
+    run_id = record['spec']['run_id']
+    try:
         evidence = _cancellation_evidence(
             record, run_path=run_path, retention=retention, termination=termination
         )
         failure = evidence["failure"]
-        results = {"evidence": evidence, **campaign_result_reference(store, record["spec"])}
+        results = {'evidence': evidence}
+        if 'campaign' in record['spec']:
+            path = Path(run_path) / 'campaign-execution.json'
+            if path.exists():
+                results['campaign_execution'] = evidence_file_reference(str(path), root=run_path)
     except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {"state": "failed", "reason": "cancellation_artifact_unavailable"}
         failure = {
@@ -858,6 +890,85 @@ def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any
     )
     return cancelled
 
+
+
+def cancel_campaign_jobs(manifest, store):
+    """Single owner: stop every sibling, close batches, then commit artifacts."""
+    from . import campaign_execution as execution
+    directory = execution._directory(manifest, store.run_root)
+    with execution.campaign_lock(directory):
+        state = execution._state(directory, manifest=manifest)
+        state['cancel_requested'] = True
+        atomic_write_json(directory / 'state.json', state)
+    try:
+        with execution.campaign_lock(directory / 'cancellation-lock', timeout_s=0):
+            phase_path = directory / 'cancellation.json'
+            phase = {'manifest_sha256': manifest['manifest_sha256'], 'phase': 'stopping'}
+            atomic_write_json(phase_path, phase)
+            prepared = []
+            for cell in manifest['cells']:
+                spec = execution.bind_campaign_child(cell['spec'], manifest_sha256=manifest['manifest_sha256'],
+                    campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+                with child_lock(store, spec):
+                    record = store.status(spec['run_id'])
+                    if record is None:
+                        continue
+                    if record['spec'] != spec:
+                        raise BenchmarkJobError('campaign_child_mismatch', 'cancellation child differs from frozen manifest')
+                    if record['state'] in execution.TERMINAL:
+                        continue
+                    if record['state'] == 'running':
+                        store.transition(spec['run_id'], 'cancelling')
+                # The state gate prevents worker commits, but do not hold its
+                # write lock while waiting for process termination.
+                item = _prepare_cancellation(store, spec['run_id'])
+                if item is not None:
+                    prepared.append(item)
+            phase['phase'] = 'draining'
+            atomic_write_json(phase_path, phase)
+            for batch_id in dict.fromkeys(i['record']['spec']['campaign']['batch_id'] for i in prepared):
+                # Another coordinator may already own the bounded drain. Its
+                # closure is awaited by stopped children below, never duplicated.
+                execution.coordinate_batch(manifest, batch_id, store=store, force=True)
+            children = []
+            for item in prepared:
+                spec = item['record']['spec']
+                if not item['termination']['stopped']:
+                    children.append({**store.status(spec['run_id']), 'worker_terminated': False,
+                                     'cleanup_deferred': True})
+                    continue  # Mutable writer custody is unknown; do not anchor it.
+                campaign_result_reference(store, spec, cancelling=True)
+                with child_lock(store, spec):
+                    if store.status(spec['run_id'])['state'] in execution.TERMINAL:
+                        children.append(store.status(spec['run_id']))
+                    else:
+                        # Receipt has already awaited closure; this sequence is
+                        # single-owned through retention, evidence and artifact.
+                        children.append(_finish_cancellation(store, item))
+            phase['phase'] = 'completed' if all(c['state'] in execution.TERMINAL for c in children) else 'stopping_unverified'
+            atomic_write_json(phase_path, phase)
+            return {'campaign_id': manifest['campaign_id'], 'cancel_requested': True, 'phase': phase['phase'], 'children': children}
+    except BenchmarkJobError as exc:
+        if exc.code != 'campaign_lock_timeout':
+            raise
+        return {'campaign_id': manifest['campaign_id'], 'cancel_requested': True,
+                'phase': 'in_progress', 'children': []}
+
+
+def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
+    record = store.status(run_id)
+    if record is None:
+        raise BenchmarkJobError('job_not_found', 'benchmark job does not exist')
+    if record['state'] in {'completed', 'failed', 'cancelled'}:
+        return record
+    if 'campaign' in record['spec']:
+        from .campaign_execution import _path, _read
+        spec = record['spec']
+        manifest = _read(_path({'ownership_id': spec['ownership_id'], 'run_id': spec['campaign']['campaign_id']},
+                              store.run_root, 'campaign/manifest.json'))
+        result = cancel_campaign_jobs(manifest, store)
+        return next((c for c in result['children'] if c['spec']['run_id'] == run_id), store.status(run_id))
+    return _finish_cancellation(store, _prepare_cancellation(store, run_id))
 
 def _worker_group_stopped(worker_path: str, *, run_id: str, database: str, run_root: str) -> bool:
     """Verify a stored worker identity has no surviving process group."""
