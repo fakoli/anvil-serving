@@ -348,6 +348,74 @@ def campaign_result(manifest, store, index, *, passed=True, state="completed", n
     return root
 
 
+def cancelled_aider_retention(manifest, store, *, change=None):
+    from anvil_serving.benchmarking import aider
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_execution import bind_campaign_child
+    from anvil_serving.benchmarking.jobs import job_spec_sha256
+
+    cell = manifest["cells"][0]
+    spec = bind_campaign_child(cell["spec"], manifest_sha256=manifest["manifest_sha256"],
+        campaign_id=manifest["campaign_id"], cell_id=cell["cell_id"], arm_id=cell["arm_id"], batch_id=cell["batch_id"])
+    root = Path(store.run_root) / spec["ownership_id"] / spec["run_id"]
+    native_path = root / "aider/results/tool-sequence/.aider.results.json"
+    selection = {"instance_ids": [cell["task_id"]], "sha256": aider._digest([cell["task_id"]])}
+    plan = {"schema": aider.AIDER_PLAN_SCHEMA, "ownership_id": spec["ownership_id"], "run_id": spec["run_id"],
+            "profile": spec["profile"], "endpoint": {"model": "llm.primary"}, "selection": selection}
+    plan["plan_sha256"] = aider._digest(plan)
+    paths = {"aider/plan.json": plan, "aider/selection.json": selection}
+    if change != "missing":
+        paths["aider/results/tool-sequence/.aider.results.json"] = {
+            "model": "cloud" if change == "model" else "openai/llm.primary",
+            "edit_format": "whole", "tests_outcomes": [True] if change == "pass" else [False, False],
+        }
+    for relative, value in paths.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+    if change == "selection":
+        (root / "aider/selection.json").write_text(json.dumps({"instance_ids": [], "sha256": aider._digest([])}))
+    artifacts = [evidence_file_reference(str(root / relative), root=str(root)) for relative in paths]
+    if change == "forged_hash":
+        artifacts[-1]["sha256"] = "0" * 64
+    retention_manifest = {"schema": "anvil-serving.aider-retention/v1", "state": "incomplete",
+                          "artifacts": artifacts, "missing": []}
+    retention_path = root / "aider/retention.json"
+    retention_path.write_text(json.dumps(retention_manifest))
+    retention = {**retention_manifest, "manifest_reference": evidence_file_reference(str(retention_path), root=str(root))}
+    cancellation_path = root / "evidence/cancellation-aider.json"
+    cancellation_path.parent.mkdir(exist_ok=True)
+    cancellation_path.write_text(json.dumps({"schema": "anvil-serving.aider-cancellation/v1", "retention": retention}))
+    if change == "symlink":
+        outside = root / "outside.json"
+        outside.write_text(native_path.read_text())
+        native_path.unlink()
+        native_path.symlink_to(outside)
+    store.records[spec["run_id"]] = {"spec": spec, "state": "cancelled", "started_at": "2026-10-24T12:00:01Z",
+                                      "spec_sha256": job_spec_sha256(spec)}
+    store.artifacts[spec["run_id"]] = {"run": {"spec_sha256": job_spec_sha256(spec)}, "results": {"evidence": {
+        "stages": [{"name": "aider_retention", "evidence": [evidence_file_reference(str(cancellation_path), root=str(root))]}]}}}
+
+
+@pytest.mark.parametrize(("change", "expected"), [
+    ("pass", [{"first_attempt_passed": True, "second_attempt_passed": None, "resolved": True}]),
+    ("fail", [{"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]),
+    ("missing", None),
+    ("forged_hash", None),
+    ("model", None),
+    ("selection", None),
+    ("symlink", None),
+])
+def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path, change, expected):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    cancelled_aider_retention(manifest, store, change=change)
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["raw_task_grades"] == expected
+    assert row["outcomes"] is None
+    assert row["measurement_complete"] is False
+
+
 def test_campaign_partial_denominators_and_scored_negative_are_separate(tmp_path):
     from anvil_serving.benchmarking.campaign_report import report_campaign
     manifest, store = campaign_fixture(tmp_path, repeats=2)

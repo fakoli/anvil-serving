@@ -11,7 +11,8 @@ import stat
 from pathlib import Path
 import re
 
-from .jobs import BenchmarkJobError, job_spec_sha256, resolve_owned_run_path
+from .aider import AIDER_PLAN_SCHEMA, validated_aider_task_grade
+from .jobs import BenchmarkJobError, canonical_json_bytes, job_spec_sha256, resolve_owned_run_path
 from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch, batch_closure
 
 SCHEMA = "anvil-serving.benchmark-campaign-report/v1"
@@ -77,6 +78,75 @@ def _native(store, cell, record, root, expected_sha256):
         return _read(root, refs[0].get("path"), refs[0]), None
     except (OSError, ValueError, TypeError, KeyError, AttributeError, BenchmarkJobError):
         return None, "invalid_evidence"
+
+
+def _retained_reference(manifest, path):
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        return None
+    matches = [item for item in artifacts if isinstance(item, dict) and item.get("path") == path]
+    if len(matches) != 1:
+        return None
+    reference = matches[0]
+    if (set(reference) != {"path", "bytes", "sha256"} or type(reference["bytes"]) is not int
+            or reference["bytes"] < 0 or not _digest(reference["sha256"])):
+        return None
+    return reference
+
+
+def _cancelled_aider_raw_task_grades(store, cell, record, root, expected_sha256):
+    """Project one retained native grade without creating a suite scoring stage."""
+    try:
+        if record.get("spec_sha256") != expected_sha256:
+            return None
+        artifact = store.artifact(cell["spec"]["run_id"])
+        if not artifact or artifact.get("run", {}).get("spec_sha256") != expected_sha256:
+            return None
+        stages = artifact.get("results", {}).get("evidence", {}).get("stages", [])
+        refs = [ref for stage in stages if stage.get("name") == "aider_retention" for ref in stage.get("evidence", [])]
+        if len(refs) != 1:
+            return None
+        cancellation = _read(root, refs[0].get("path"), refs[0])
+        if cancellation.get("schema") != "anvil-serving.aider-cancellation/v1":
+            return None
+        retention = cancellation.get("retention")
+        if (not isinstance(retention, dict) or retention.get("schema") != "anvil-serving.aider-retention/v1"
+                or retention.get("state") not in {"retained", "incomplete"}
+                or not isinstance(retention.get("manifest_reference"), dict)):
+            return None
+        manifest_reference = retention["manifest_reference"]
+        manifest = _read(root, manifest_reference.get("path"), manifest_reference)
+        if (manifest.get("schema") != "anvil-serving.aider-retention/v1" or manifest.get("state") != retention["state"]
+                or not isinstance(manifest.get("missing"), list) or manifest != {
+                "schema": manifest.get("schema"), "state": manifest.get("state"),
+                "artifacts": manifest.get("artifacts"), "missing": manifest.get("missing")}):
+            return None
+        plan_reference = _retained_reference(manifest, "aider/plan.json")
+        selection_reference = _retained_reference(manifest, "aider/selection.json")
+        task_id = cell["task_id"]
+        native_reference = _retained_reference(manifest, f"aider/results/{task_id}/.aider.results.json")
+        if not plan_reference or not selection_reference or not native_reference or native_reference["bytes"] > 1024 * 1024:
+            return None
+        plan = _read(root, plan_reference["path"], plan_reference)
+        selection = _read(root, selection_reference["path"], selection_reference)
+        if (plan.get("schema") != AIDER_PLAN_SCHEMA
+                or plan.get("plan_sha256") != hashlib.sha256(canonical_json_bytes(
+                    {key: value for key, value in plan.items() if key != "plan_sha256"}
+                )).hexdigest()
+                or plan.get("ownership_id") != cell["spec"]["ownership_id"]
+                or plan.get("run_id") != cell["spec"]["run_id"]
+                or plan.get("profile") != cell["spec"]["profile"]
+                or not isinstance(plan.get("selection"), dict)
+                or selection != plan["selection"]):
+            return None
+        instance_ids = selection.get("instance_ids")
+        if (not isinstance(instance_ids, list) or task_id not in instance_ids
+                or selection.get("sha256") != hashlib.sha256(canonical_json_bytes(instance_ids)).hexdigest()):
+            return None
+        grade = validated_aider_task_grade(plan, _read(root, native_reference["path"], native_reference))
+        return [grade] if grade is not None else None
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, BenchmarkJobError):
+        return None
 
 
 def _samples(cell, native):
@@ -290,6 +360,8 @@ def report_campaign(manifest, store, *, state=None):
             started_runs.add(spec["run_id"])
             receipts.append(receipt)
         status = record.get("state") if record and record.get("state") in _STATES else "planned"
+        raw_task_grades = (_cancelled_aider_raw_task_grades(store, cell, record, root, job_spec_sha256(expected))
+                           if status == "cancelled" and spec["suite"] == "aider" else None)
         performance = spec["suite"] == "performance"
         planned = spec.get("parameters", {}).get("request_count") if performance else 1
         planned = planned if type(planned) is int and planned > 0 else None
@@ -320,6 +392,7 @@ def report_campaign(manifest, store, *, state=None):
                "matching": {key: _digest(cell.get("matching", {}).get(key)) for key in _HASHES},
                "evidence_status": reason or "retained", "samples": counts,
                "outcomes": samples, "native_aggregate_metrics": metrics,
+               "raw_task_grades": raw_task_grades,
                "telemetry_coverage": coverage, "cache": {"requested": requested_cache, "proven": None},
                "identity_status": identity_status,
                "measurement_complete": status == "completed" and bool(native) and not reason and planned is not None

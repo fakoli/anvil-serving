@@ -139,6 +139,18 @@ def verify_plan(plan):
     return verify_aider_plan(plan)
 
 
+def validated_aider_task_grade(plan, raw):
+    """Return a grade only when the pinned Aider result has its exact contract."""
+    outcomes = raw.get("tests_outcomes") if isinstance(raw, Mapping) else None
+    if (raw.get("model") == "openai/" + plan["endpoint"]["model"] and raw.get("edit_format") == "whole"
+            and isinstance(outcomes, list) and 1 <= len(outcomes) <= 2
+            and all(type(item) is bool for item in outcomes)
+            and (outcomes == [True] or len(outcomes) == 2 and outcomes[0] is False)):
+        return {"first_attempt_passed": outcomes[0], "second_attempt_passed": outcomes[1] if len(outcomes) == 2 else None,
+                "resolved": any(outcomes)}
+    return None
+
+
 def _normalize(plan, result):
     selected = plan["selection"]["instance_ids"]
     for task_id in selected:
@@ -152,13 +164,9 @@ def _normalize(plan, result):
                 raise ValueError("unsafe native Aider result")
             raw = json.loads(native.read_text())
             row["native"] = {"path": str(native), "sha256": hashlib.sha256(native.read_bytes()).hexdigest()}
-            outcomes = raw.get("tests_outcomes")
-            if (raw.get("model") == "openai/" + plan["endpoint"]["model"] and raw.get("edit_format") == "whole"
-                    and isinstance(outcomes, list) and 1 <= len(outcomes) <= 2
-                    and all(type(item) is bool for item in outcomes)
-                    and (outcomes == [True] or len(outcomes) == 2 and outcomes[0] is False)):
-                row.update(first_attempt_passed=outcomes[0], second_attempt_passed=outcomes[1] if len(outcomes) == 2 else None,
-                           resolved=any(outcomes))
+            grade = validated_aider_task_grade(plan, raw)
+            if grade is not None:
+                row.update(grade)
         result["instances"].append(row)
     graded = [row for row in result["instances"] if row["resolved"] is not None]
     result["summary"] = {"selected": len(selected), "graded": len(graded),
