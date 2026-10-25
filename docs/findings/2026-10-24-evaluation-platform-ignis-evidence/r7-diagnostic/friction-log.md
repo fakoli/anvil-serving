@@ -1,0 +1,7 @@
+# Retained failures and limits
+
+The mixed C4 batch failed drain/measurement closure while sibling jobs were active. The coordinator exited 2; managed cancellation exited 0. The terminal report retains one unknown batch interval and four unknown child intervals. A later zero-count router observation cannot close those intervals.
+
+The existing full projection helper then failed closed on the campaign-execution reference for synthetic child job-0019. A bounded later audit of all 20 submitted artifact roots found 324 reference occurrences: 320 matched and four mismatched. Both job-0019 and job-0020 have mismatches for campaign-execution.json and evidence/cancellation-aider.json. Exact expected and observed hashes and lengths are retained in [reference-audit.json](reference-audit.json). The cancellation targets may reflect later recovery writes; this audit establishes mismatch, not the writer or cause. No raw artifact was repaired and no projection guard was changed.
+
+Fix-forward disposition: retain the refused projection and raw originals, investigate custody and concurrent closure through independent source review, and require new source gates before any new campaign. This packet supplies a diagnostic disclosure only; it does not close the defect or rehabilitate unknown measurements. Per-request accounting remains incomplete where starts, HTTP success messages and completed events do not reconcile. No engine-speed, model-ranking or promotion conclusion follows.

@@ -1,0 +1,41 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "cancelled-attempt-2",
+  "observed_at": "2026-10-25T00:11:42.568866+00:00",
+  "sources": [
+    {
+      "id": "aider",
+      "url": "https://github.com/Aider-AI/aider/tree/5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-25T00:11:42.568866+00:00",
+      "age_class": "pinned historical source; checked locally in current campaign",
+      "evidence_type": "source-verified",
+      "hardware_runtime_relevance": "six-language contained editing harness; not a model performance prior",
+      "decision_impact": "Pin exact task/oracle/source bytes, with six starter failures and six reference passes.",
+      "revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c"
+    },
+    {
+      "id": "polyglot-benchmark",
+      "url": "https://github.com/paraemsi/polyglot-benchmark/tree/7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-25T00:11:42.568866+00:00",
+      "age_class": "pinned historical source; checked locally in current campaign",
+      "evidence_type": "source-verified",
+      "hardware_runtime_relevance": "six-language contained editing harness; not a model performance prior",
+      "decision_impact": "Pin exact task/oracle/source bytes, with six starter failures and six reference passes.",
+      "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+    },
+    {
+      "id": "ignis-080",
+      "url": "https://github.com/gpillon/ignis/tree/950ee0d1c2cf6178cd7fec29df3f17c3e127f987",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-25T00:11:42.568866+00:00",
+      "age_class": "current campaign pin; no claim of newest after that date",
+      "evidence_type": "source-verified recipe prior",
+      "hardware_runtime_relevance": "rtxpro6000 profile, TP1, C8, MTP3, 131072 context; performance remains unmeasured",
+      "decision_impact": "Test pinned maintainer profile with loop guard, disabled host reuse pool, and /ui/metrics enabled."
+    }
+  ],
+  "assembled_at": "2026-10-25T02:59:40.633061+00:00",
+  "scope": "Previously read pinned source entries carried unchanged from preparation; original observation timestamps retained. No new research or performance prior. Candidate remained unrun."
+}

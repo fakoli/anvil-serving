@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "cancelled-attempt-1",
+  "assembled_at": "2026-10-25T02:18:04.911788+00:00",
+  "status": "incomplete_campaign_closure",
+  "verified": false,
+  "model_restoration": {
+    "required": false,
+    "performed": false,
+    "reason": "Incumbent was not unloaded; candidate and temporary alias were not activated. No model swap occurred."
+  },
+  "configuration_scope": "This is not a claim that the entire campaign made no mutations: a router metadata overlay preceded the attempt. No reverse/reload or full client restoration acceptance is claimed here.",
+  "worker_recovery": {
+    "state": "cancelled",
+    "worker_terminated": true,
+    "evidence": "failure-diagnostic.json"
+  },
+  "campaign_interval": {
+    "closure": "blocked",
+    "engine_drain": "unknown",
+    "telemetry_complete": false,
+    "reason": "Cancellation activation recheck lacked endpoint credentials; underlying recheck error unavailable."
+  },
+  "separate_post_cancel_observation": {
+    "evidence": "failure-diagnostic.json",
+    "scope": "Independent later running/waiting zero observation only. Does not establish drain during, or repair, the frozen cancelled interval."
+  },
+  "promoted": false
+}

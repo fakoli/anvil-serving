@@ -1,0 +1,76 @@
+{
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "full_long_context_check_performed": false,
+  "native_schema": "preflight/v2",
+  "observations": [
+    {
+      "finish_reason": "stop",
+      "passed": true,
+      "test": "smoke",
+      "validation_detail": "contains sum("
+    },
+    {
+      "finish_reason": "stop",
+      "passed": true,
+      "test": "json",
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "request_index": 3,
+      "test": "tools",
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "request_index": 0,
+      "test": "tools",
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "request_index": 1,
+      "test": "tools",
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "request_index": 2,
+      "test": "tools",
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "passed": true,
+  "real_pi_client_check_performed": false,
+  "sampling": {
+    "temperature": 0.0
+  },
+  "schema": "anvil-serving.preflight-diagnostic-excerpt/v1",
+  "scope": "Selected exact fields and all six validation observations; endpoint and response/reasoning text omitted. Bounded interim routed correctness only.",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "activation": {
+    "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+    "container_id": "container-1",
+    "generation": "generation-1",
+    "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+    "served_model": "incumbent-model",
+    "started_at": "2026-10-24T05:24:53.460914102Z",
+    "status": "verified"
+  },
+  "arm_id": "incumbent",
+  "batch_id": "batch-1",
+  "boot_id": "boot-1",
+  "complete": true,
+  "contract_sha256": "7dd5624e1be3301e6baec0d80a9d9b7d8fa3b911549414b612a637169a0fb3a3",
+  "coverage": {
+    "cgroup": {
+      "closed_monotonic": 1274051.9415053362,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 5.578168236417696,
+      "reset_segments": 0,
+      "sample_count": 60,
+      "started_monotonic": 1273743.2156503352,
+      "status": "measured"
+    },
+    "engine": {
+      "closed_monotonic": 1274040.3251792768,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 16.642545354785398,
+      "reset_segments": 0,
+      "sample_count": 21,
+      "started_monotonic": 1273728.6238717276,
+      "status": "measured"
+    },
+    "gpu": {
+      "closed_monotonic": 1274049.7202202077,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 15.000000261701643,
+      "reset_segments": 0,
+      "sample_count": 22,
+      "started_monotonic": 1273734.720220254,
+      "status": "measured"
+    },
+    "host": {
+      "closed_monotonic": 1274051.7975317182,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 5.526578747201711,
+      "reset_segments": 0,
+      "sample_count": 60,
+      "started_monotonic": 1273743.053130846,
+      "status": "measured"
+    }
+  },
+  "finalized_monotonic": 1274051.955587638,
+  "interval_end_monotonic": 1274035.982891108,
+  "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+  "row_count": 60,
+  "samples": {
+    "bytes": 200742,
+    "path": "telemetry/batch-1/samples.jsonl",
+    "sha256": "106f98dd2f057df520087019a2060a13526d95b801419f59eb395cff5f26661c"
+  },
+  "schema": "anvil-serving.campaign-telemetry/v1",
+  "truncated": false
+}

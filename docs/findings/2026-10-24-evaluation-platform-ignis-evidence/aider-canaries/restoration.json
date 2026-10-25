@@ -1,0 +1,18 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-25-aider-diagnostic-canaries",
+  "status": "not-applicable",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": false,
+    "evidence": []
+  },
+  "ending_state": {
+    "captured": false,
+    "evidence": []
+  },
+  "differences": [],
+  "post_run_checks": [],
+  "verified": false,
+  "not_applicable_reason": "These separate canaries did not load/unload/promote models or alter routes. This publication task performed no live operation or fresh state check. Broader campaign restoration is a separate pending requirement; this record makes no current-model-state claim."
+}

@@ -56,6 +56,8 @@ so four full 327K windows are unsupported. See the
 
 ## Current status and review date
 
+**2026-10-25 diagnostic addendum:** the [evaluation-platform pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) retains a censored incumbent population and separate harness canaries. Exact NVIDIA FP4 service restoration and routed preflight passed after candidate admission attempts; strict Pi final-text acceptance failed. The incumbent assignment remains unchanged. This is an incomplete pilot, not a new qualification or performance comparison.
+
 **2026-10-05 CSF/QAD scout:** the separate pinned GLM candidate passed disabled
 preflight 2/2 and HIGH preflight 25/25. Its first Oracle was 17/18 because a
 structured edit returned a Markdown fence instead of JSON; the strict C4
@@ -407,6 +409,13 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Evaluation-platform diagnostic, 2026-10-24–25
+
+- **Status:** partial incumbent evidence; pilot acceptance incomplete, `no-promotion`.
+- **Measured:** R8 has 42 complete measurement/grade pairs (32 pass, ten fail) on the pinned NVIDIA FP4 TP2 recipe. The separate repaired mixed-C4 canary has four complete measurements, three task passes and one valid Go failure.
+- **Limits:** six other submitted R8 rows have unknown grades or incomplete cancellation; blocked final interval and total active time remain unknown. No Ignis generation ran, so there is no paired deployment, speed or engine comparison. Real Pi tools/provider checks passed after restoration, but strict final text failed.
+- **Evidence:** [population boundaries, configuration, failures and restoration](../../findings/2026-10-24-evaluation-platform-ignis.md); prior campaigns and four C++ canaries are separate denominators.
+
 ### Current NVIDIA FP4 r2, 2026-10-17
 
 **Status:** `functional`, bounded `capacity`; human-approved `current`.
@@ -581,6 +590,7 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 ## Dated run history
 
+- 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — partial incumbent grades, accepted bounded mixed-C4 closure, candidate unmeasured; service restored with strict Pi acceptance incomplete.
 - **2026-10-17 — NVIDIA FP4 promotion and serving comparison:** selected primary
   with exact EXL3 r11 retained rollback; 12 matched pairs/84 scored requests per
   arm, fresh functional/capacity/native-client acceptance, KV accounting, and

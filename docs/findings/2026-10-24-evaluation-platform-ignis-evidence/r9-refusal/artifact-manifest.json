@@ -1,0 +1,157 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "decision_labels": [
+      "no-promotion",
+      "rejected"
+    ],
+    "evidence_labels": [
+      "compatibility-only",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-candidate-admission-refusal-r9",
+    "promotion_authorized": false,
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "e2b519ac032c27a798dc3e13a47cda36dcc7bd32ff8cc588238018687a65571c",
+          "bytes": 1805
+        }
+      ],
+      "reason": "After-refusal packet index."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "cea024ef5b76dc7c07bcd7441fab8cb59053296d9b2f9221b8d9727feeeda1e3",
+          "bytes": 6588
+        }
+      ],
+      "reason": "Original source hashes are distinct from derivatives."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Full frozen workload remains private; native report retains all 48 planned rows and matching hashes."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "Complete prepared plans remain private; no complete plan projection claimed."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "frozen-identity.json",
+          "sha256": "b6a45c62e9603ac92940d7b5b7a86c2e0c05a23ff656491c6600f8cf723365f2",
+          "bytes": 797
+        },
+        {
+          "path": "summary.json",
+          "sha256": "37dff7a4083f09e09a51204508f7929c78424eff1e54fa9f2803bedb395b1c44",
+          "bytes": 3877
+        }
+      ],
+      "reason": "Pinned source/manifest metadata and configured admission limits; not live candidate identity."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-report.json",
+          "sha256": "0d5c4192f8531bf63e94af71b6ad1bc43a0f239ac31dcfca19d04fdbc4c0c719",
+          "bytes": 73199
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "b7336d9be8d319e503ac23479ae30f2c18a5fbfb3f783b33fa11def829e97d47",
+          "bytes": 2651
+        }
+      ],
+      "reason": "Full unexecuted native report; no campaign execution or request artifacts fabricated."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "admission-refusal.json",
+          "sha256": "5f6eceff66dfefcd34587f2b37b37ba8b1e52ec93390a0648327412a466fcde2",
+          "bytes": 1160
+        },
+        {
+          "path": "friction-log.md",
+          "sha256": "e2d7747176dfb7814802cb1e9b6e66af7a68736a4c3ebb42fac1fb81092d6cc1",
+          "bytes": 1347
+        }
+      ],
+      "reason": "Pre-create admission refusal and separate successor boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "cdb31a997ab81bca834e4f9ffc9dbd9f379644dc06b6ce1856e6fc2facc6fad1",
+          "bytes": 1058
+        },
+        {
+          "path": "interim-restoration-evidence.json",
+          "sha256": "1329cafa85d253922fed052439e769da9a6321db854f7a77daf334a288426700",
+          "bytes": 3206
+        },
+        {
+          "path": "routed-preflight-excerpt.json",
+          "sha256": "e4ed1dcafe62699c83d48fc634c7b399c76d70d35b8745edecc0fa2f0ad82108",
+          "bytes": 1921
+        }
+      ],
+      "reason": "Interim exact restore and bounded routed correctness verified; full final long-context/client acceptance remains pending."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "37dff7a4083f09e09a51204508f7929c78424eff1e54fa9f2803bedb395b1c44",
+          "bytes": 3877
+        }
+      ],
+      "reason": "No qualification, comparison or promotion."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "33b3cbf36df7d2fb121687da877816aa3e77b4b7aa98705c4af384037213a21b",
+          "bytes": 751
+        }
+      ],
+      "reason": "Bounded public copy, not yet published."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

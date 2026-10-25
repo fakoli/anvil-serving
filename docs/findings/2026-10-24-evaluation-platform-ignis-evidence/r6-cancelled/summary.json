@@ -1,0 +1,137 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "cancelled-attempt-2",
+  "assembled_at": "2026-10-25T02:59:40.633061+00:00",
+  "source_revision": "890d51987f40cf02cfa8822fcd9f456c419baa7c",
+  "source_sha256": "6fc9a0a5649cfcbb58fed7f2439037e13cc0bc0bc2bc95eb2b3a75084e9f43f2",
+  "complete": false,
+  "status": "cancelled_partial_pilot",
+  "decision": "Retain the failed attempt for harness diagnosis; no model ranking or promotion.",
+  "evidence_labels": [
+    "diagnostic-only",
+    "partial"
+  ],
+  "decision_labels": [
+    "no-promotion"
+  ],
+  "promoted": false,
+  "promotion_authorized": false,
+  "authoritative_public_report": "campaign-report.json",
+  "jobs": {
+    "attempted": {
+      "count": 9,
+      "known_count": 9,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 1,
+      "known_count": 1,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 6,
+      "known_count": 6,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 2,
+      "known_count": 2,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 96,
+      "known_count": 96,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": null,
+      "known_count": 6,
+      "unknown_cells": 1
+    },
+    "submitted": {
+      "count": 9,
+      "known_count": 9,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 87,
+      "known_count": 87,
+      "unknown_cells": 0
+    }
+  },
+  "planned_batches": 60,
+  "released_batches": 8,
+  "unrun_batches": 51,
+  "workload": {
+    "configured": "12 tasks x C1/C4 x 2 repeats x 2 arms; fixed deterministic order; cache uncontrolled. Diagnostic sample, not complete model quality coverage.",
+    "measurement": "Six native C1 incumbent jobs completed; two Aider launches failed before adapter entry/graded results; one Aider child cancelled before activation. Candidate arm unrun."
+  },
+  "controls": {
+    "identity": "identity-control-map.json",
+    "plan": "projections/campaign-control-records-0001.jsonl",
+    "prepared_children": "projections/child-evidence-records-0001.jsonl",
+    "configured_not_measured": "Planned concurrency, token/deadline budgets, runtime settings and GPU counts do not prove achieved concurrency, utilization or capacity."
+  },
+  "failure_diagnostic": "failure-diagnostic.json",
+  "restoration": "restoration.json",
+  "limits": [
+    "96 planned jobs remain in the denominator:9 submitted,6 completed,2 harness failed,1 cancelled,87 unrun. Six native passes are not a6/96 campaign quality success rate.",
+    "Job-level unrun count87 differs from sample-level unfinished89, which includes the two failed Aider partial jobs. Scored aggregate stays null with six known and one unknown.",
+    "Failed Aider quality remains unknown. Their verified drain and four-plane telemetry do not repair the final cancelled pre-activation interval.",
+    "Total active wall and request overlap remain unknown;437.0491850050166 seconds is only the sum of known intervals.",
+    "Native six-cell token and latency totals exclude other campaign work. They are not TTFT, decode throughput, or whole-campaign timing.",
+    "Sparse engine-zero samples do not prove no compute; the later zero observation cannot repair the unknown interval.",
+    "Configured models and GPU counts differ; candidate has no measurements, so no ranking or engine-causal inference is available.",
+    "No serving-comparison metric receipt or completeness claim is supplied. Private originals remain authoritative; sanitized derivatives cannot revalidate native hashes.",
+    "The source repair is uncommitted and pending independent review at this cutoff; no successor campaign acceptance is claimed."
+  ],
+  "publication_status": "Final wrapper review and public matrix publication pending.",
+  "unreleased_started_batches": 1,
+  "timing": {
+    "active_wall_seconds": null,
+    "child_active_wall_seconds": null,
+    "known_active_wall_seconds": 437.0491850050166,
+    "observed_job_overlap": null,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 1,
+    "unknown_intervals": 1
+  },
+  "native_completed_subpopulation": {
+    "completed_native_cells": 6,
+    "model_calls": 17,
+    "prompt_tokens_sum": 6607,
+    "completion_tokens_sum": 1433,
+    "call_latency_ms_sum": 11848.445171955973,
+    "harness_elapsed_s_sum": 11.852925054263324,
+    "scope": "First six native C1 incumbent cells only; excludes preflight, drain, telemetry finalization, failed Aider and unrun cells.",
+    "definition": "Call latency is the sum of retained turn.latency_ms; harness elapsed is the sum of native suite budget.elapsed_s. Neither is TTFT, decode throughput, full campaign wall time or a matched-arm comparison.",
+    "evidence": [
+      {
+        "container": "projections/child-evidence-records-0001.jsonl",
+        "record_id": "child/job-0001/evidence/0-agentic.json"
+      },
+      {
+        "container": "projections/child-evidence-records-0001.jsonl",
+        "record_id": "child/job-0002/evidence/0-agentic.json"
+      },
+      {
+        "container": "projections/child-evidence-records-0001.jsonl",
+        "record_id": "child/job-0003/evidence/0-agentic.json"
+      },
+      {
+        "container": "projections/child-evidence-records-0001.jsonl",
+        "record_id": "child/job-0004/evidence/0-agentic.json"
+      },
+      {
+        "container": "projections/child-evidence-records-0001.jsonl",
+        "record_id": "child/job-0005/evidence/0-agentic.json"
+      },
+      {
+        "container": "projections/child-evidence-records-0001.jsonl",
+        "record_id": "child/job-0006/evidence/0-agentic.json"
+      }
+    ]
+  }
+}

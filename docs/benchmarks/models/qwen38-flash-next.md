@@ -6,6 +6,8 @@
 
 ## Current status and review date
 
+**2026-10-25 Ignis 0.8 addendum:** [R9/R10 admission diagnostics](../../findings/2026-10-24-evaluation-platform-ignis.md#r9-and-r10-no-candidate-measurement) produced no generation or coding result. R9 was refused by the host-reserve gate; R10 loaded but Anvil Serving withheld monitoring after misreading its served model identity. Both 48-row reports remain entirely planned. The incumbent service was restored; strict Pi acceptance and a fresh post-fix candidate campaign remain required. No qualification, ranking or promotion follows.
+
 **2026-10-19 addendum:** Ignis0.7.2 is not qualified. Bounded serving checks passed, but the fixed-five coding run ended with one officially unresolved patch and four empty ungraded step-limit submissions. The incumbent was restored; no recommendation change. [Evidence and limits](../../findings/2026-10-19-ignis-072.md).
 
 **2026-10-05 replacement scout:** the evaluated prospective primary profile
@@ -118,6 +120,10 @@ retained text/image/OCR/video rollback. The label describes the August decision,
 
 ## Immutable identity
 
+### Ignis 0.8 admission-only lane, October 24–25
+
+Pinned Trellis revision `8d94db83cd8e58d6be31e796723e5e35b960638c`, Ignis source `950ee0d1c2cf6178cd7fec29df3f17c3e127f987`, and immutable image `2b8d56c75bbba758b504bc0ef7edea59bf45df398dd9a4cde1514edc81b63029` form a separate lane from the historical profiles below. Its TP1/131,072-token/eight-lane/MTP3 settings are configured values. R10 used 49 GiB RAM/no extra swap with a 16 GiB host reserve; the inherited 52 GiB prose note is an erratum. [Exact pins and boundaries](../../findings/2026-10-24-evaluation-platform-ignis.md#exact-configuration).
+
 ### October Strata candidate, unqualified at this checkpoint
 
 Unsloth GGUF revision `38bb39ee97821de2c9009abb7e93950eec396e66`, UD-IQ4_XS;
@@ -196,6 +202,10 @@ recipe](https://github.com/fakoli/anvil-serving/blob/main/configs/qwen38-flash-n
 is retained as the slower same-day correctness baseline.
 
 ## Evidence by measurement class
+
+### Ignis 0.8 startup and admission, 2026-10-24–25
+
+R9 retains a pre-create host-envelope refusal. R10 retains loaded/ready startup evidence, a source-verified Anvil Serving identity-adapter defect and correct monitoring refusal. The coordinator's raw readiness/models responses were not durably retained; their provenance is explicit. Zero generation means no model quality, latency, throughput, energy or capacity result. Configured eight-lane concurrency is not measured capacity. [Diagnostic finding and artifacts](../../findings/2026-10-24-evaluation-platform-ignis.md#r9-and-r10-no-candidate-measurement).
 
 ### September EXL3 quality and strict capacity
 
@@ -294,6 +304,7 @@ functional, quality, capacity, and client gates.
 
 ## Dated run history
 
+- 2026-10-24–25: [Ignis 0.8 evaluation-platform admission diagnostics](../../findings/2026-10-24-evaluation-platform-ignis.md) — R9 refused, R10 monitoring blocked after startup; candidate generation unmeasured, pilot acceptance incomplete.
 - 2026-10-13 — [full qualification closure](../../findings/2026-10-13-full-qualification.md): QAD and EXL3 4.05 TP1 records retain distinct protocol and quality evidence; the Tabby parser correction has full-13 protocol and quality-12 coverage. The source-aligned top-k-20 control was cancelled before load/query, so no quality or speed improvement is claimed. Ignis R4 terminal SWE was 2/5 resolved, 2/5 graded, and three empty; serial C1 passed 6/6, the separate C8 preflight passed 6/13 with seven immediate 503 refusals, and 24 SWE engine-full retry notices all recovered. Pylint remained ungraded/empty; these retries do not explain the three empty patches. `no-promotion`.
 
 - 2026-10-05 — [Strata/UD-IQ4_XS research and Swift baseline](../../findings/2026-10-05-swift-96gb-baseline.md): 5090/96 GB initial feasibility; protocol/image checks passed, practical latency failed, instrumented diagnostics separate; no promotion.

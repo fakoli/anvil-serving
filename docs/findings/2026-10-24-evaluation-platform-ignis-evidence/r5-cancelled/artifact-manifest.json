@@ -1,0 +1,211 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "cancelled-attempt-1",
+    "capability": "evaluation",
+    "repository_revision": "6b26ed55285480cd731ae7771f41eea917382f02",
+    "source_sha256": "e1ea8b1a65adb5a7b5b5a107de853a5f231e8c937be2b91aed3a655679a01c66",
+    "attempt_source_dirty": false,
+    "submitted_at": "2026-10-25T00:53:38.407493Z",
+    "cancelled_at": "2026-10-25T02:02:02.782251Z",
+    "assembled_at": "2026-10-25T02:18:04.911788+00:00",
+    "status": "cancelled_partial_pilot",
+    "evidence_labels": [
+      "diagnostic-only",
+      "partial"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.aider-cancellation/v1",
+    "anvil-serving.aider-retention/v1",
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-campaign/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.campaign-execution/v1",
+    "anvil-serving.campaign-release/v1",
+    "anvil-serving.campaign-telemetry/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "e369c5b7791bae4aa7a0aaa6806a2473b6eb6325391bb832d58eccb67e0f1644",
+          "bytes": 2573
+        }
+      ],
+      "reason": "Post-abort index; no before-requests wrapper claim."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "f74b6004fe79d3effabf3973891d368ec85c8a4e7bf6f157f427bae61c92c2f1",
+          "bytes": 2347
+        }
+      ],
+      "reason": "Previously pinned and read source entries only."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/campaign-control-records-0001.jsonl",
+          "sha256": "b4c06279574492b9993e0666254d1a00e2dfba34f7338d9edca2e650974838c2",
+          "bytes": 171196
+        },
+        {
+          "path": "projections/child-evidence-records-0001.jsonl",
+          "sha256": "705d11caa681757f48e72da3768036cc8d1ab62d6548375ded72c5c32bd97992",
+          "bytes": 9942136
+        }
+      ],
+      "reason": "Frozen workload and prepared plans in reviewed derivatives; unrun/missing dispositions remain in ledger."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/campaign-control-records-0001.jsonl",
+          "sha256": "b4c06279574492b9993e0666254d1a00e2dfba34f7338d9edca2e650974838c2",
+          "bytes": 171196
+        }
+      ],
+      "reason": "Configured ordering, budgets, controls, state and released batches; planned is not measured."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity-control-map.json",
+          "sha256": "9f89223e5afe6108b059fe957b95778eda0173844596813df9a9af7318307118",
+          "bytes": 683
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "ff5e3dcf52df2b508fbd5cae1f921cba53449815d8b37fa2a90d3b2d14355a91",
+          "bytes": 7517133
+        }
+      ],
+      "reason": "Configured safe identities and explicit private-to-public transformations."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-report.json",
+          "sha256": "3fb8e101c42ade961090192aa47fea29215bd5dd214b82ddfdee11e70b2a5067",
+          "bytes": 114451
+        },
+        {
+          "path": "projections/aider-and-partial-records-0001.jsonl",
+          "sha256": "99f050130ea1ef54cac6a573c298f23221b76de37f20fd7b61df8b37678098df",
+          "bytes": 448
+        },
+        {
+          "path": "projections/campaign-control-records-0001.jsonl",
+          "sha256": "b4c06279574492b9993e0666254d1a00e2dfba34f7338d9edca2e650974838c2",
+          "bytes": 171196
+        },
+        {
+          "path": "projections/child-evidence-records-0001.jsonl",
+          "sha256": "705d11caa681757f48e72da3768036cc8d1ab62d6548375ded72c5c32bd97992",
+          "bytes": 9942136
+        },
+        {
+          "path": "projections/telemetry-records-0001.jsonl",
+          "sha256": "1e4fadf6675542f0da18228b2ca7166935d0796c01e3bc95a3fb1bd3d8b013e6",
+          "bytes": 357454
+        },
+        {
+          "path": "projection-validation.json",
+          "sha256": "f86f13478913f9689faf35a20664dbe4f475c0afdac0c6d264b858eecc1d7f86",
+          "bytes": 1769
+        }
+      ],
+      "reason": "Native report and reviewed sanitized records, not exact original raw bytes; private originals remain authoritative."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "5d134550babd8b72070b099b13018aebd08ce9301911c01141f7a654cda93ffb",
+          "bytes": 1429
+        },
+        {
+          "path": "failure-diagnostic.json",
+          "sha256": "ba70636453a020f980e69a92d7a6f4939e75d55850211e9742c2722b20986ec8",
+          "bytes": 2197
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "ff5e3dcf52df2b508fbd5cae1f921cba53449815d8b37fa2a90d3b2d14355a91",
+          "bytes": 7517133
+        }
+      ],
+      "reason": "Startup error, cancellation, unknown closure, missing and unrun evidence retained."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "1bd75bec43ecd59f783f44e3eb79bc461e51916bffaba36066bdab471f64e0c2",
+          "bytes": 1241
+        },
+        {
+          "path": "failure-diagnostic.json",
+          "sha256": "ba70636453a020f980e69a92d7a6f4939e75d55850211e9742c2722b20986ec8",
+          "bytes": 2197
+        }
+      ],
+      "reason": "Negative/incomplete restoration evidence retained; no model restoration needed, no complete campaign closure claimed."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "221b0b6ee2eb6b8a6cfcbdd9b7e93a4886c06b33bab794fce8f16e18c4c943d3",
+          "bytes": 3233
+        }
+      ],
+      "reason": "Incomplete diagnostic decision; no fabricated serving-comparison metrics or ranking."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "df522c94312a3ecf095bf27080bb8fa7fc0c9399a0c4d64a70bbe091a011b6a0",
+          "bytes": 2187
+        }
+      ],
+      "reason": "Draft narrative and claim ledger; no publication or post claimed."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 16 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

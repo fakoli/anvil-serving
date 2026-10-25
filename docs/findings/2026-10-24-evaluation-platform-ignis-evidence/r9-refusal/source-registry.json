@@ -1,0 +1,139 @@
+{
+  "private_paths_omitted": true,
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "scope": "Only retained local records; no new external research.",
+  "sources": [
+    {
+      "age_class": "current-local",
+      "decision_impact": "Full native zero-submission report",
+      "evidence_type": "retained-local-native-or-review",
+      "hardware_runtime_relevance": "Managed candidate admission and frozen diagnostic campaign",
+      "id": "local-source-1",
+      "observed_at": "2026-10-25T07:50:54.735237+00:00",
+      "original_private_bytes": 63288,
+      "original_private_sha256": "24a0aabf6a30e385229ade70e8ee140212554d6bec2641f9c517ee7c532f2183",
+      "published_or_observed": "2026-10-25",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Exact refusal and restoration-in-progress cutoff",
+      "evidence_type": "retained-local-native-or-review",
+      "hardware_runtime_relevance": "Managed candidate admission and frozen diagnostic campaign",
+      "id": "local-source-2",
+      "observed_at": "2026-10-25T07:50:54.735237+00:00",
+      "original_private_bytes": 1998,
+      "original_private_sha256": "3fb35b92cbc4b19191bd6ecb5aaae9cafc171863dd7dd1add877dc9c09cc8581",
+      "published_or_observed": "2026-10-25",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Frozen identity provenance",
+      "evidence_type": "retained-local-native-or-review",
+      "hardware_runtime_relevance": "Managed candidate admission and frozen diagnostic campaign",
+      "id": "local-source-3",
+      "observed_at": "2026-10-25T07:50:54.735237+00:00",
+      "original_private_bytes": 46460,
+      "original_private_sha256": "8fa3d2ceb1124bb31404433ed8f790de86c23f5c1f083e5ff5c630594498faa1",
+      "published_or_observed": "2026-10-25",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Conditional static admission review; not resource admission",
+      "evidence_type": "retained-local-native-or-review",
+      "hardware_runtime_relevance": "Managed candidate admission and frozen diagnostic campaign",
+      "id": "local-source-4",
+      "observed_at": "2026-10-25T07:50:54.735237+00:00",
+      "original_private_bytes": 3741,
+      "original_private_sha256": "5b4107df92ab3ed89eab874959ee4a495c1b57614c8fa517ae08473b5739bf2d",
+      "published_or_observed": "2026-10-25",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Separate successor draft and historical note correction",
+      "evidence_type": "retained-local-native-or-review",
+      "hardware_runtime_relevance": "Managed candidate admission and frozen diagnostic campaign",
+      "id": "local-source-5",
+      "observed_at": "2026-10-25T07:50:54.735237+00:00",
+      "original_private_bytes": 35414,
+      "original_private_sha256": "3b5aeb4b5a8d9214dc9bf83330b67a0af741f0e71d2b8f319796dd0087bd9cb2",
+      "published_or_observed": "2026-10-25",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Interim restoration only; final acceptance remains separate.",
+      "evidence_type": "retained-local-restoration",
+      "hardware_runtime_relevance": "Exact incumbent restore and bounded routed readiness",
+      "id": "local-source-6",
+      "observed_at": "2026-10-25T07:53:17.405165+00:00",
+      "original_private_bytes": 4869,
+      "original_private_sha256": "e4f7f93984eec7326c9c266bc8c88f182bd7d276245132dfe8f345655f763ee9",
+      "published_or_observed": "2026-10-25T07:51:58.345426+00:00",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Interim restoration only; final acceptance remains separate.",
+      "evidence_type": "retained-local-restoration",
+      "hardware_runtime_relevance": "Exact incumbent restore and bounded routed readiness",
+      "id": "local-source-7",
+      "observed_at": "2026-10-25T07:53:17.405165+00:00",
+      "original_private_bytes": 1013,
+      "original_private_sha256": "885e0a3e1e6abe667502cff3ff841b2ba03cfd0dd8048145705dfffabbcc4f02",
+      "published_or_observed": "2026-10-25T07:51:58.345426+00:00",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Interim restoration only; final acceptance remains separate.",
+      "evidence_type": "retained-local-restoration",
+      "hardware_runtime_relevance": "Exact incumbent restore and bounded routed readiness",
+      "id": "local-source-8",
+      "observed_at": "2026-10-25T07:53:17.405165+00:00",
+      "original_private_bytes": 2173,
+      "original_private_sha256": "ef893fe6c834df9ceef8d3757c13ed83b2182ef2500c834484570ffeeedbd214",
+      "published_or_observed": "2026-10-25T07:51:58.345426+00:00",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Interim restoration only; final acceptance remains separate.",
+      "evidence_type": "retained-local-restoration",
+      "hardware_runtime_relevance": "Exact incumbent restore and bounded routed readiness",
+      "id": "local-source-9",
+      "observed_at": "2026-10-25T07:53:17.405165+00:00",
+      "original_private_bytes": 1327,
+      "original_private_sha256": "002a539dbbb66644a1bfbda1e7392d1d61bc156ecd0d350820d2c08ff010a15d",
+      "published_or_observed": "2026-10-25T07:51:58.345426+00:00",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Interim restoration only; final acceptance remains separate.",
+      "evidence_type": "retained-local-restoration",
+      "hardware_runtime_relevance": "Exact incumbent restore and bounded routed readiness",
+      "id": "local-source-10",
+      "observed_at": "2026-10-25T07:53:17.405165+00:00",
+      "original_private_bytes": 2094,
+      "original_private_sha256": "4da250d77190f819c5a77c9bab31b3d1c1d16b6b1e8e5b2e39b96e42b46f6ad7",
+      "published_or_observed": "2026-10-25T07:51:58.345426+00:00",
+      "url": null
+    },
+    {
+      "age_class": "current-local",
+      "decision_impact": "Interim restoration only; final acceptance remains separate.",
+      "evidence_type": "retained-local-restoration",
+      "hardware_runtime_relevance": "Exact incumbent restore and bounded routed readiness",
+      "id": "local-source-11",
+      "observed_at": "2026-10-25T07:53:17.405165+00:00",
+      "original_private_bytes": 6734,
+      "original_private_sha256": "e59493ff198c0d4a10be9419aaf6445737f3dab69dd4f7d50bd5d57535cdfb1f",
+      "published_or_observed": "2026-10-25T07:51:58.345426+00:00",
+      "url": null
+    }
+  ]
+}

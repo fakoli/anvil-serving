@@ -1,0 +1,37 @@
+{
+  "local_sources": [
+    {
+      "original_private_bytes": 136898,
+      "original_private_sha256": "3045490aa7137a6a97d174fb90ef80ddef2edbaf0a603c24274837cf6b692601",
+      "source": "native terminal campaign report envelope"
+    },
+    {
+      "original_private_bytes": 300,
+      "original_private_sha256": "aee11d5746a918706361a8196037467e44cd1a7dc1d70566739eaa604abacbf5",
+      "source": "coordinator terminal command receipt"
+    },
+    {
+      "original_private_bytes": 720,
+      "original_private_sha256": "420840d6d0009207cdba984d45b4442b34b9b651738240721ec86e870e87f0f1",
+      "source": "cancellation command receipt"
+    },
+    {
+      "original_private_bytes": 1327,
+      "original_private_sha256": "002a539dbbb66644a1bfbda1e7392d1d61bc156ecd0d350820d2c08ff010a15d",
+      "source": "post-cancellation router status"
+    },
+    {
+      "original_private_bytes": 2173,
+      "original_private_sha256": "2597c7f594020de2eec4dc18fb6edb494cda76a1316d878bd41c02bc66282b06",
+      "source": "post-cancellation incumbent status"
+    },
+    {
+      "original_private_bytes": 2138,
+      "original_private_sha256": "cc674de466af787ae6a2d7bc5a6816a5781f41e4ecc53d2512afc1511df9d000",
+      "source": "refused full projection snapshot attempt"
+    }
+  ],
+  "note": "Retained local evidence only; no new external research. Original private source hashes identify original bytes. Public derivative hashes are in artifact-manifest.json and cannot revalidate private native chains.",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": []
+}

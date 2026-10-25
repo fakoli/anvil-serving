@@ -1,0 +1,23 @@
+{
+  "scope": "bounded publication projection; not native hash revalidation",
+  "ok": true,
+  "record_count": 76,
+  "source_count": 65,
+  "dispositions": {
+    "projected": 32,
+    "private-only": 29,
+    "missing": 4
+  },
+  "checks": {
+    "original_private_bytes_rechecked": true,
+    "record_ids_unique": true,
+    "every_output_line_bound_once": true,
+    "source_row_cardinality_preserved": true,
+    "native_nonredacted_fields_equal_using_declared_pointer_operations": true,
+    "public_private_identity_scan_passed": true,
+    "all_four_outcomes_retained": true
+  },
+  "public_records_sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+  "public_records_bytes": 112245,
+  "independent_review_required": true
+}

@@ -1,0 +1,108 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "After-attempt diagnostic index.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Original source hashes distinct from derivatives.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "Complete frozen workload remains private; all48 report rows retained.",
+      "role": "workload-manifest",
+      "status": "missing"
+    },
+    {
+      "files": [],
+      "reason": "Complete prepared plans remain private; no complete plan projection.",
+      "role": "run-plan",
+      "status": "missing"
+    },
+    {
+      "files": [
+        "frozen-identity.json",
+        "summary.json"
+      ],
+      "reason": "Exact frozen identities and effective memory settings.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "campaign-report.json",
+        "startup-events.json",
+        "candidate-containment-snapshot.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Unexecuted report and bounded startup observations, not model measurements.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "monitoring-failure.json",
+        "friction-log.md",
+        "restoration-failed-attempt.json"
+      ],
+      "reason": "Adapter defect, launch omission and exact-client failure remain separate.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "candidate-removal.json",
+        "final-restoration-evidence.json",
+        "pi-validation.json"
+      ],
+      "reason": "Service restored; strict real-client acceptance remains failed.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Diagnostic only; no comparison or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Draft bounded copy, not published.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "compatibility-only",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-candidate-monitoring-failure-r10",
+    "promotion_authorized": false,
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

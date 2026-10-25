@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-10-24–25 evaluation-platform pilot:** [diagnostic closeout](2026-10-24-evaluation-platform-ignis.md) retains partial GLM incumbent results, failed earlier attempts and an accepted mixed-C4 closure canary. Ignis 0.8 reached no generation: R9 was refused before creation and R10 was blocked by a served-identity integration defect after startup. The exact incumbent service is restored, but strict Pi acceptance and the candidate campaign remain incomplete. No paired comparison or promotion.
+
 **2026-10-21–23 Flare engine investigation series:** [initial scout](2026-10-21-flare-glm53-trial.md), [optimization](2026-10-21-flare-glm53-optimization.md), [inference diagnostics](2026-10-21-flare-inference-diagnostics.md), [cache diagnostics](2026-10-22-flare-cache-diagnostics.md), [cache allocation](2026-10-22-flare-cache-fix.md), [state diagnostics](2026-10-23-flare-state-diagnostics.md), and [upstream refresh](2026-10-23-flare-upstream-refresh.md) retain closed diagnostic evidence and restoration. The incumbent remains selected; no promotion or upstream submission follows.
 
 **2026-10-19 Ignis 0.7.2:** [focused qualification](2026-10-19-ignis-072.md) passed bounded serving checks but failed coding qualification: one graded unresolved patch and four empty ungraded submissions. Incumbent restoration passed; no promotion.
@@ -129,6 +131,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-10-24 | [Evaluation platform and Ignis 0.8 diagnostic pilot](2026-10-24-evaluation-platform-ignis.md) | R8: 42 complete incumbent grades, 32 pass/10 fail, censored remainder; R9/R10 each retain 48 planned candidate rows and zero generation; service restored, strict Pi acceptance failed; pilot incomplete, no promotion |
 | 2026-10-16 | [QUASAR versus Swift15 coding/tools campaign](2026-10-16-quasar-swift15-coding-tools.md) | Matched 32K/C4 functional comparison: QUASAR tools 16/18 versus Swift15 18/18; coding is representation-sensitive (Q 119/123 list, 123/123 tuple; Swift 120/123); original Swift15 restored, `no-promotion` |
 | 2026-10-06 | [MiMo and uncensored GLM qualification scout](2026-10-06-mimo-qualification.md) | MiMo passed preflight 25/25 and SWE 4/5 but missed every 18/18 agentic profile; the abliterated GLM passed preflight 25/25 and agentic 18/18 but SWE 3/5, below the frozen floor. Neither is qualified or promoted; exact r11 restoration is verified (direct 25/25, routed 7/7, unchanged protected configuration hashes, and router readmission). |
 | 2026-10-13 | [Full qualification campaign](2026-10-13-full-qualification.md) | Public-safe closure across GLM, Qwen, DeepSeek, MiMo, and Ignis lanes: baseline 2/5; terminal Ignis 2/5 resolved, 2/5 graded, three empty; no challenger clears the complete 4/5 and Django/Pylint floor. 100 source priors and native artifacts retained; no promotion. |

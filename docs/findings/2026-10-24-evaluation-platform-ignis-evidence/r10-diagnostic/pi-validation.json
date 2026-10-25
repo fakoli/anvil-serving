@@ -1,0 +1,49 @@
+{
+  "attempts": [
+    {
+      "attempt": 1,
+      "checks": {
+        "configuration_unchanged": true,
+        "declared_provider_model": true,
+        "exact_final_text": false,
+        "exact_prompt": false,
+        "exit_zero": true,
+        "final_stop": true,
+        "one_read": true,
+        "successful_tool": true,
+        "terminal_event": true
+      },
+      "final_text": "The user asked to return only the manifest_sha256 field as plain text. The manifest_sha256 is \"71af441958fb33d9bffd39de6e0bc36192828834831787907647834f4f8dbb09\".71af441958fb33d9bffd39de6e0bc36192828834831787907647834f4f8dbb09",
+      "input_bytes": 1925,
+      "input_sha256": "6dc7975ad5de812a835ae154a4aa7daa7929531b5274768a834947c0b802d2d9",
+      "passed": false,
+      "receipt_sha256": "61ed411b08beb14cd83cadc1d595ddf4f848d40f4f970db2c64fc343f1aebc43"
+    },
+    {
+      "attempt": 2,
+      "checks": {
+        "configuration_unchanged": true,
+        "declared_provider_model": true,
+        "exact_final_text": false,
+        "exact_prompt": true,
+        "exit_zero": true,
+        "final_stop": true,
+        "one_read": true,
+        "successful_tool": true,
+        "terminal_event": true
+      },
+      "final_text": "The user asked me to return only the manifest_sha256 field as plain text. That's:\n\n71af441958fb33d9bffd39de6e0bc36192828834831787907647834f4f8dbb0971af441958fb33d9bffd39de6e0bc36192828834831787907647834f4f8dbb09",
+      "input_bytes": 198,
+      "input_sha256": "5254841218715628399092ee53f331cd62a2877cceb6313f1cc09305a7e0722b",
+      "passed": false,
+      "receipt_sha256": "3dbe5f2b1ff282f146371bb31d59eb1b11ae2e5cf6a2513771f4d6d3fd166639"
+    }
+  ],
+  "observed_at": "2026-10-25T08:31:20.757018+00:00",
+  "schema": "anvil-serving.real-client-validation-excerpt/v1",
+  "scope": "Both actual attempts retained. First input included launcher stdin; second used closed stdin and exact198-byte prompt. Terminal-event interpretation corrected to agent_settled; strict final output remains failed. No additional retries or provider/configuration changes.",
+  "supersedes": {
+    "correction": "Pi emits agent_settled after agent_end; recognize both actual terminal events. Exact final text still fails in both attempts.",
+    "original_private_sha256": "804b9e8e4330be8e479827d171e6eff93dc57c1f3cc254f332e9f769ad254226"
+  }
+}

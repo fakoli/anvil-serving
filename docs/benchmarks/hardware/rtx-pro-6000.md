@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-24–25 evaluation-platform diagnostics:** the dual-card GLM FP4 incumbent executed the coding/tool workload; the one-card Ignis 0.8 candidate reached startup only. R8 retains 42 complete incumbent grades (32 pass, ten fail) with censored remaining rows and unknown final interval. A separate mixed-C4 canary verified four complete measurements and shared closure, with one valid task failure. R9 host-reserve refusal and R10 monitoring identity refusal supply no candidate inference or hardware-capacity result. Exact incumbent service restoration passed, while strict Pi final-text acceptance failed. The pilot remains incomplete; no comparative performance or promotion claim follows. [Finding and population boundaries](../../findings/2026-10-24-evaluation-platform-ignis.md).
+
 **2026-10-21–23 Flare engine investigations:** the dual-card TP2 reports are
 bounded diagnostic evidence, not a hardware ranking or a promotion. The
 [engine-testing index](../engine-testing.md) links every retained finding and
@@ -360,6 +362,7 @@ The GLM, MiMo, and Mistral replacement gates were measured on the dual RTX PRO 6
 
 ## Recent changes
 
+- 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — measured incumbent tools/coding on the dual-card pair; candidate startup on one card without generation; censored attempts and incomplete real-client acceptance retained.
 - 2026-09-08: native Linux / retained WSL GLM comparison added above; same
   measured dual-card pair, faster historical-style decode with explicit failed
   strict-output and routed gates; no new promotion.

@@ -1,0 +1,121 @@
+{
+  "batch_id": "batch-1",
+  "closed_at": "2026-10-25T05:59:36.262672Z",
+  "closed_monotonic": 1274035.982891108,
+  "drain": {
+    "collector_sha256": "423232d675791ea53fbfa50bfe08bb1a1c5cf64f87f43ee2b67387a1394eb3c6",
+    "freshness_wait_s": 35,
+    "identity_contract": "generation-bound-observer/v1",
+    "sample": {
+      "observed_monotonic": 1274035.775411549,
+      "running_metric": 0.0,
+      "source_timestamp_seconds": 1792907965.3038607,
+      "waiting_metric": 0.0
+    },
+    "status": "verified"
+  },
+  "finalized_monotonic": 1274051.962656514,
+  "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+  "release_sha256": "3fdaf3099436c94fde8de2cdf547701a35789909c3a6baf32dbee83bcca18311",
+  "schema": "anvil-serving.campaign-batch-closure/v1",
+  "status": "closed",
+  "stops": [
+    {
+      "activation": {
+        "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+        "container_id": "container-1",
+        "generation": "generation-1",
+        "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+        "served_model": "incumbent-model",
+        "started_at": "2026-10-24T05:24:53.460914102Z",
+        "status": "verified"
+      },
+      "boot_id": "boot-1",
+      "campaign": {
+        "arm_id": "incumbent",
+        "batch_id": "batch-1",
+        "campaign_id": "mixed-c4-diagnostic",
+        "cell_id": "cell-1",
+        "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe"
+      },
+      "clients_stopped": true,
+      "clients_stopped_wall": 1792907688.0031755,
+      "spec_sha256": "6c3e7345a5980a63c0aef2af457e4a47bd13a4680388fc811b4e0db9bd0d1e15",
+      "started_monotonic": 1273743.773016613
+    },
+    {
+      "activation": {
+        "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+        "container_id": "container-1",
+        "generation": "generation-1",
+        "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+        "served_model": "incumbent-model",
+        "started_at": "2026-10-24T05:24:53.460914102Z",
+        "status": "verified"
+      },
+      "boot_id": "boot-1",
+      "campaign": {
+        "arm_id": "incumbent",
+        "batch_id": "batch-1",
+        "campaign_id": "mixed-c4-diagnostic",
+        "cell_id": "cell-2",
+        "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe"
+      },
+      "clients_stopped": true,
+      "clients_stopped_wall": 1792907689.0000665,
+      "spec_sha256": "a4bb4428025937cd951f4acb998dbc7049e131ef17e504725e9e767a2e582ccc",
+      "started_monotonic": 1273743.808681014
+    },
+    {
+      "activation": {
+        "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+        "container_id": "container-1",
+        "generation": "generation-1",
+        "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+        "served_model": "incumbent-model",
+        "started_at": "2026-10-24T05:24:53.460914102Z",
+        "status": "verified"
+      },
+      "boot_id": "boot-1",
+      "campaign": {
+        "arm_id": "incumbent",
+        "batch_id": "batch-1",
+        "campaign_id": "mixed-c4-diagnostic",
+        "cell_id": "cell-3",
+        "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe"
+      },
+      "clients_stopped": true,
+      "clients_stopped_wall": 1792907892.9386816,
+      "spec_sha256": "434abb772506cbc623fefc9eef1cb7870a88da08b8bcb60f8c829fd61a7a0ada",
+      "started_monotonic": 1273746.127924285
+    },
+    {
+      "activation": {
+        "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+        "container_id": "container-1",
+        "generation": "generation-1",
+        "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+        "served_model": "incumbent-model",
+        "started_at": "2026-10-24T05:24:53.460914102Z",
+        "status": "verified"
+      },
+      "boot_id": "boot-1",
+      "campaign": {
+        "arm_id": "incumbent",
+        "batch_id": "batch-1",
+        "campaign_id": "mixed-c4-diagnostic",
+        "cell_id": "cell-4",
+        "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe"
+      },
+      "clients_stopped": true,
+      "clients_stopped_wall": 1792907940.8130598,
+      "spec_sha256": "55217056af386b63b912c6c9a8b9b5375bc864b5f59f6984dcef34265f71e04e",
+      "started_monotonic": 1273746.171609225
+    }
+  ],
+  "telemetry_terminal": {
+    "bytes": 2367,
+    "path": "telemetry/batch-1/terminal.json",
+    "sha256": "829b0ea69f7957e924a81937c915bfd5e989e731849d64310ae25a72dde1d258"
+  }
+}
