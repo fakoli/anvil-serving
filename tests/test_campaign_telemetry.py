@@ -72,7 +72,7 @@ def setup(tmp_path, monkeypatch, *, count=1, mixed=False):
             'schema': 'anvil-serving.campaign-execution/v1', 'campaign': spec['campaign'],
             'spec_sha256': job_spec_sha256(spec), 'status': 'ready', 'boot_id': execution._boot_id()})
     sampler = telemetry.BatchSampler(manifest, manifest['cells'][0]['batch_id'], run_root=store.run_root)
-    release = execution.release_batch(manifest, sampler.batch_id, run_root=store.run_root, allowance_s=150, store=store, sampler=sampler)
+    release = execution.release_batch(manifest, sampler.batch_id, run_root=store.run_root, allowance_s=210, store=store, sampler=sampler)
     return manifest, store, bound, sampler, release, clock
 
 
