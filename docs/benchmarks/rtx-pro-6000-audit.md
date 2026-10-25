@@ -7,6 +7,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-24-evaluation-platform-ignis.md`
+(bounded incumbent diagnostics on the dual-Max-Q configuration and one-GPU
+Ignis candidate startup evidence; no candidate inference, paired comparison,
+or promotion).
+
 `docs/benchmarks/engine-testing.md`
 (navigation and interpretation of the dated Flare/Ignis measurements below;
 no additional hardware test, current deployment claim or promotion);
