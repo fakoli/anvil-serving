@@ -113,14 +113,34 @@ def _retained_aider_diagnostics(root, manifest):
         if not 1 <= len(lines) <= MAX_EVENTS or len(raw) > MAX_BYTES + 8192:
             return None
         rows = [json.loads(line) for line in lines]
-        if any(not isinstance(row, dict) or row.get("schema") != EVENT_SCHEMA or row.get("seq") != index
+        if any(not isinstance(row, dict) or row.get("schema") != EVENT_SCHEMA or type(row.get("seq")) is not int or row["seq"] != index
                or not isinstance(row.get("event"), str) for index, row in enumerate(rows, 1)):
             return None
-        terminal = rows[-1] if rows[-1]["event"] == "adapter_finished" else None
-        if terminal is not None and (terminal.get("event_count") != len(rows) - 1
-                                     or terminal.get("byte_count") != sum(map(len, lines[:-1]))
-                                     or terminal.get("status") not in {"complete", "truncated"}):
+        # The producer closes once. A terminal followed by any event is not a
+        # partial observation; it contradicts the append-only recorder contract.
+        if any(row["event"] == "adapter_finished" for row in rows[:-1]):
             return None
+        terminal = rows[-1] if rows[-1]["event"] == "adapter_finished" else None
+        event_count = len(rows) - int(terminal is not None)
+        byte_count = sum(map(len, lines[:event_count]))
+        if event_count > MAX_EVENTS - 1 or byte_count > MAX_BYTES - 4096:
+            return None
+        if terminal is not None:
+            counters = ("event_count", "byte_count", "omitted_events", "omitted_bytes")
+            limits = terminal.get("limits")
+            if (any(type(terminal.get(key)) is not int or terminal[key] < 0 for key in counters)
+                    or terminal["event_count"] != event_count or terminal["byte_count"] != byte_count
+                    or not isinstance(limits, dict) or set(limits) != {"max_events", "max_bytes"}
+                    or any(type(value) is not int for value in limits.values())
+                    or limits != {"max_events": MAX_EVENTS, "max_bytes": MAX_BYTES}
+                    or terminal.get("outcome") not in {"completed", "failed", "budget_exhausted", "boundary_rejected"}
+                    or terminal.get("status") not in {"complete", "truncated"}):
+                return None
+            if terminal["status"] == "complete":
+                if terminal["omitted_events"] != 0 or terminal["omitted_bytes"] != 0:
+                    return None
+            elif terminal["omitted_events"] <= 0 or terminal["omitted_bytes"] <= 0:
+                return None
         signals = {"output_truncated": "aider_transport_response",
                    "compilation_failure": "aider_contained_command_finished"}
         observed = {}

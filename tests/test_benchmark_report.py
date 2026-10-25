@@ -386,7 +386,7 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     event_fields = ({"event": "aider_transport_response", "output_truncated": True},
                     {"event": "aider_transport_response", "output_truncated": None},
                     {"event": "aider_contained_command_finished", "compilation_failure": True},
-                    {"event": "aider_contained_command_finished", "compilation_failure": None}) if change == "signals" else (
+                    {"event": "aider_contained_command_finished", "compilation_failure": None}) if change in {"signals", "missing_requests"} else (
                    ({"event": "aider_transport_response"},) if change == "missing_metadata" else (
                    ({"event": "aider_transport_response", "output_truncated": "yes"},) if change == "invalid_metadata" else ()))
     events = tuple({"schema": EVENT_SCHEMA, "seq": index, "utc_observed_at": "2026-10-24T12:00:00.000000Z", **fields}
@@ -398,7 +398,8 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     if change == "forged_hash":
         artifacts[-1]["sha256"] = "0" * 64
     retention_manifest = {"schema": "anvil-serving.aider-retention/v1", "state": "incomplete",
-                          "artifacts": artifacts, "missing": ["results/tool-sequence/.aider.results.json"] if change == "missing_native" else []}
+                          "artifacts": artifacts, "missing": (["results/tool-sequence/.aider.results.json"] if change == "missing_native" else
+                                      ["requests.jsonl"] if change == "missing_requests" else [])}
     retention_path = root / "aider/retention.json"
     retention_path.write_text(json.dumps(retention_manifest))
     retention = {**retention_manifest, "manifest_reference": evidence_file_reference(str(retention_path), root=str(root))}
@@ -455,6 +456,7 @@ def test_campaign_retained_plan_binds_full_prepared_digest_not_internal_digest(t
     ("signals", {"output_truncated": True, "compilation_failure": True, "coverage": "partial", "num_exhausted_context_windows": 2}),
     ("missing_metadata", {"output_truncated": None, "compilation_failure": None, "coverage": "partial", "num_exhausted_context_windows": None}),
     ("invalid_metadata", None),
+    ("missing_requests", None),
 ])
 def test_campaign_cancelled_aider_diagnostics_are_allowlisted_and_independent(tmp_path, change, expected):
     from anvil_serving.benchmarking.campaign_report import report_campaign
@@ -464,6 +466,68 @@ def test_campaign_cancelled_aider_diagnostics_are_allowlisted_and_independent(tm
     assert row["raw_task_grade_diagnostics"] == expected
     assert row["raw_task_grades"] == [{"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]
     assert row["state"] == "cancelled"
+
+
+
+@pytest.mark.parametrize("change", [
+    "complete", "truncated", "absent", "midstream", "duplicate", "complete_omits_events",
+    "complete_omits_bytes", "truncated_no_events", "truncated_no_bytes", "event_count",
+    "byte_count", "limits", "boolean_limit", "outcome", "boolean_seq", "event_capacity", "byte_capacity",
+    *[f"{field}_{kind}" for field in ("event_count", "byte_count", "omitted_events", "omitted_bytes")
+      for kind in ("negative", "boolean", "float", "missing")],
+])
+def test_retained_aider_diagnostics_validate_producer_terminal_contract(tmp_path, change):
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_report import _retained_aider_diagnostics
+    from anvil_serving.benchmarking.swe_agent_adapter import EventRecorder, MAX_BYTES, MAX_EVENTS
+    path = tmp_path / "aider/requests.jsonl"
+    recorder = EventRecorder(path)
+    recorder.record("aider_transport_response", output_truncated=True)
+    if change in {"truncated", "truncated_no_events", "truncated_no_bytes"}:
+        # A single oversized event is omitted by the real producer.
+        recorder.record("aider_transport_response", padding="x" * MAX_BYTES)
+    recorder.close(outcome="budget_exhausted")
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    terminal = rows[-1]
+    if change == "absent":
+        rows.pop()
+    elif change == "midstream":
+        rows.append({**rows[0], "seq": 3})
+    elif change == "duplicate":
+        rows.append({**terminal, "seq": 3})
+    elif change in {"complete_omits_events", "complete_omits_bytes"}:
+        terminal["omitted_events" if change.endswith("events") else "omitted_bytes"] = 1
+    elif change in {"truncated_no_events", "truncated_no_bytes"}:
+        terminal["omitted_events" if change.endswith("events") else "omitted_bytes"] = 0
+    elif change in {"event_count", "byte_count"}:
+        terminal[change] += 1
+    elif change == "limits":
+        terminal["limits"]["max_events"] += 1
+    elif change == "boolean_limit":
+        terminal["limits"]["max_events"] = True
+    elif change == "outcome":
+        terminal["outcome"] = "success"
+    elif change == "boolean_seq":
+        rows[0]["seq"] = True
+    elif change == "event_capacity":
+        rows = [{**rows[0], "seq": index} for index in range(1, MAX_EVENTS + 1)]
+    elif change == "byte_capacity":
+        rows = [{**rows[0], "padding": "x" * MAX_BYTES}]
+    elif change not in {"complete", "truncated"}:
+        field, kind = change.rsplit("_", 1)
+        if kind == "missing":
+            del terminal[field]
+        else:
+            terminal[field] = {"negative": -1, "boolean": bool(terminal[field]), "float": float(terminal[field])}[kind]
+    # Preserve producer serialization: byte_count counts exact preceding bytes.
+    path.write_text("".join(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n" for row in rows))
+    manifest = {"artifacts": [evidence_file_reference(str(path), root=str(tmp_path))], "missing": []}
+    result = _retained_aider_diagnostics(tmp_path, manifest)
+    if change in {"complete", "truncated", "absent"}:
+        assert result == {"output_truncated": True, "compilation_failure": None,
+                          "coverage": "complete" if change == "complete" else "partial"}
+    else:
+        assert result is None
 
 
 def test_campaign_partial_denominators_and_scored_negative_are_separate(tmp_path):
