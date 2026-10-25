@@ -28,6 +28,15 @@ from .aider_containment import (
     contained_test_callback as contained_test_callback,
 )
 
+_COMPILER_DIAGNOSTIC_PATTERNS = {
+    "rust": {
+        "rust_could_not_compile": r"(?m)^error: could not compile `[^`\r\n]+`",
+        "rust_syntax_error": r"(?m)^error: (?:expected |unexpected |mismatched closing delimiter|unclosed delimiter|unterminated )",
+        "rust_linker_error": r"(?m)^error: linking with [^\r\n]+ failed:",
+    },
+    "go": {"go_build_failed": r"(?m)^FAIL[ \t]+[^\r\n]+[ \t]+\[build failed\][ \t]*\r?$"},
+}
+
 
 def verify_source(root, *, runner=subprocess.run):
     root = Path(root).resolve(strict=True)
@@ -138,7 +147,10 @@ def response_diagnostics(response):
         usage = body.get("usage")
         if isinstance(usage, dict):
             details = usage.get("completion_tokens_details")
-            values = {**usage, "reasoning_tokens": details.get("reasoning_tokens") if isinstance(details, dict) else None}
+            values = dict(usage)
+            reasoning = details.get("reasoning_tokens") if isinstance(details, dict) else None
+            if type(reasoning) is int and 0 <= reasoning <= 10**12:
+                values["reasoning_tokens"] = reasoning
             for name in result["usage"]:
                 value = values.get(name)
                 if type(value) is int and 0 <= value <= 10**12:
@@ -236,8 +248,9 @@ def run_contained_callback(command, *, plan, budget, **kwargs):
     finally:
         verify_task_tree(kwargs["cwd"])
         if recorder is not None:
-            compiler_codes, truncated = set(), None
-            if completed is not None and task.parts[-4:-1] == ("rust", "exercises", "practice"):
+            compiler_codes, compiler_signals, truncated = set(), set(), None
+            language = task.parts[-4] if len(task.parts) >= 4 and task.parts[-3:-1] == ("exercises", "practice") else None
+            if completed is not None and language in _COMPILER_DIAGNOSTIC_PATTERNS:
                 truncated = False
                 for output in (completed.stdout, completed.stderr):
                     if isinstance(output, (str, bytes)):
@@ -245,10 +258,18 @@ def run_contained_callback(command, *, plan, budget, **kwargs):
                         text = output[:65536]
                         if isinstance(text, bytes):
                             text = text.decode("utf-8", "replace")
-                        compiler_codes.update(re.findall(r"(?m)^error\[(E[0-9]{4})\]:", text))
+                        if language == "rust":
+                            compiler_codes.update(re.findall(r"(?m)^error\[(E[0-9]{4})\]:", text))
+                        compiler_signals.update(label for label, pattern in _COMPILER_DIAGNOSTIC_PATTERNS[language].items()
+                                                if re.search(pattern, text))
+                if compiler_codes:
+                    compiler_signals.add("rust_error_code")
+            # Diagnostic signatures are observations, not a replacement test oracle.
             recorder.record("aider_contained_command_finished", task=str(task),
                 returncode=completed.returncode if completed is not None else None, timed_out=timed_out,
                 rust_compiler_error_codes=sorted(compiler_codes)[:32] or None,
+                compilation_failure=True if compiler_signals and completed.returncode != 0 else None,
+                compilation_failure_signals=sorted(compiler_signals) or None,
                 compiler_diagnostics_truncated=truncated if truncated is None else truncated or len(compiler_codes) > 32)
 
 

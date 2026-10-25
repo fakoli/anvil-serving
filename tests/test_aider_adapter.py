@@ -191,6 +191,14 @@ def test_missing_invalid_response_metadata_stays_unknown_without_retry(tmp_path,
     assert set(event["usage"].values()) == {None}
 
 
+@pytest.mark.parametrize("details,expected", [(None, 7), ({"reasoning_tokens": 3}, 3),
+    ({"reasoning_tokens": "3"}, 7), ({"reasoning_tokens": -1}, 7), ({"reasoning_tokens": True}, 7)])
+def test_response_reasoning_usage_accepts_top_level_and_prefers_valid_details(details, expected):
+    response = types.SimpleNamespace(status_code=200, content=json.dumps({"usage": {
+        "reasoning_tokens": 7, "completion_tokens_details": details}}).encode())
+    assert adapter.response_diagnostics(response)["usage"]["reasoning_tokens"] == expected
+
+
 def test_generated_tree_cannot_redirect_host_edits_or_test_restore(tmp_path):
     task = tmp_path / "task"
     task.mkdir()
@@ -228,16 +236,25 @@ def test_timeout_cannot_return_an_unsafe_tree_to_host(tmp_path, monkeypatch):
         adapter.run_contained_callback(["pytest"], plan=plan, budget=budget, cwd=task, timeout=180)
 
 
-@pytest.mark.parametrize("mode", ["compiler", "test_failure", "timeout", "infrastructure"])
-def test_contained_diagnostics_preserve_result_and_exception_without_output(tmp_path, monkeypatch, mode):
+@pytest.mark.parametrize("mode,language,output,signal", [
+    ("compiler", "rust", "error[E0594]: private-output\nerror[E0594]: duplicate\n", "rust_error_code"),
+    ("compiler", "rust", "error: could not compile `private-output` due to previous error\n", "rust_could_not_compile"),
+    ("compiler", "rust", "error: expected expression, found `private-output`\n", "rust_syntax_error"),
+    ("compiler", "rust", "error: linking with `private-output` failed: exit status: 1\n", "rust_linker_error"),
+    ("compiler", "go", "# private-output\nFAIL\tprivate-output [build failed]\n", "go_build_failed"),
+    ("test_failure", "go", "--- FAIL: TestExample\nFAIL\tprivate-output\n", None),
+    ("test_failure", "rust", "assertion failed: private-output", None),
+    ("timeout", "rust", "private-output", None),
+    ("infrastructure", "rust", "private-output", None),
+])
+def test_contained_diagnostics_preserve_result_and_exception_without_output(tmp_path, monkeypatch, mode, language, output, signal):
     from anvil_serving.benchmarking import aider_containment
-    task = tmp_path / "results/rust/exercises/practice/example"
+    task = tmp_path / f"results/{language}/exercises/practice/example"
     task.mkdir(parents=True)
     recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
     budget = types.SimpleNamespace(check=lambda: 180, recorder=recorder)
     plan = {"run_path": str(tmp_path), "ownership_id": "owner", "run_id": "run",
             "aider_environment": {"image_id": "sha256:" + "a" * 64}, "container_executable": "docker"}
-    output = "error[E0594]: private-output\nerror[E0594]: duplicate\n" if mode == "compiler" else "assertion failed: private-output"
     completed = subprocess.CompletedProcess(["cargo", "test"], 1, output, None)
     error = subprocess.TimeoutExpired(["cargo", "test"], 180, output="private-output") if mode == "timeout" else RuntimeError("private-output")
     def contained(*args, **kwargs):
@@ -259,7 +276,9 @@ def test_contained_diagnostics_preserve_result_and_exception_without_output(tmp_
     assert "private-output" not in text
     assert event["returncode"] == (1 if mode in {"compiler", "test_failure"} else None)
     assert event["timed_out"] == (None if mode == "infrastructure" else mode == "timeout")
-    assert event["rust_compiler_error_codes"] == (["E0594"] if mode == "compiler" else None)
+    assert event["rust_compiler_error_codes"] == (["E0594"] if signal == "rust_error_code" else None)
+    assert event["compilation_failure"] is (True if signal else None)
+    assert event["compilation_failure_signals"] == ([signal] if signal else None)
     assert event["compiler_diagnostics_truncated"] is (False if mode in {"compiler", "test_failure"} else None)
 
 
