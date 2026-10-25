@@ -126,14 +126,17 @@ def _retained_aider_diagnostics(root, manifest):
         if event_count > MAX_EVENTS - 1 or byte_count > MAX_BYTES - 4096:
             return None
         request_accounting = None
-        accounting_declared = (rows[0].get("request_accounting_schema") is not None
-                               or terminal is not None and terminal.get("request_accounting") is not None)
-        if accounting_declared:
-            adapter_reference = _retained_reference(manifest, "aider/adapter-result.json")
-            if (terminal is None or adapter_reference is None
-                    or _retained_missing(manifest, adapter_reference)):
-                return None
+        adapter_reference = _retained_reference(manifest, "aider/adapter-result.json")
+        adapter_result = None
+        if adapter_reference is not None and not _retained_missing(manifest, adapter_reference):
             adapter_result = _read(root, adapter_reference["path"], adapter_reference)
+        accounting_declared = (rows[0].get("request_accounting_schema") is not None
+                               or terminal is not None and terminal.get("request_accounting") is not None
+                               or isinstance(adapter_result, dict)
+                               and adapter_result.get("request_accounting") is not None)
+        if accounting_declared:
+            if terminal is None or adapter_result is None:
+                return None
             if adapter_result.get("schema") != "anvil-serving.aider-adapter-result/v1":
                 return None
             request_accounting = _validate_request_accounting(rows, adapter_result)

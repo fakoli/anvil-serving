@@ -562,8 +562,8 @@ def test_retained_aider_diagnostics_validate_producer_terminal_contract(tmp_path
         assert result is None
 
 
-@pytest.mark.parametrize("change", ["valid", "legacy_incomplete", "missing_adapter",
-                                    "adapter_mismatch", "events_complete"])
+@pytest.mark.parametrize("change", ["valid", "legacy_incomplete", "adapter_only",
+                                    "missing_adapter", "adapter_mismatch", "events_complete"])
 def test_retained_aider_diagnostics_require_versioned_incomplete_accounting(tmp_path, change):
     from anvil_serving.benchmarking import aider
     from anvil_serving.benchmarking.artifacts import evidence_file_reference
@@ -583,9 +583,10 @@ def test_retained_aider_diagnostics_require_versioned_incomplete_accounting(tmp_
                       "outcome": "budget_exhausted", "request_accounting": accounting,
                       "events_complete": False}
     rows = [json.loads(line) for line in path.read_text().splitlines()]
-    if change == "legacy_incomplete":
+    if change in {"legacy_incomplete", "adapter_only"}:
         del rows[0]["request_accounting_schema"]
         del rows[-1]["request_accounting"]
+    if change == "legacy_incomplete":
         del adapter_result["request_accounting"]
     elif change == "adapter_mismatch":
         adapter_result["request_accounting"] = {**accounting, "pending": 0}
