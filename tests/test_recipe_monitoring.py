@@ -146,6 +146,45 @@ def monitoring_slot(tmp_path, monkeypatch, engine='ignis'):
     return recipe, row
 
 
+@pytest.mark.parametrize('reported_model', ['qwen3.8-flash-next', 'wrong-model'])
+def test_model_id_discovery_binds_monitoring_publication(tmp_path, monkeypatch, reported_model):
+    from tests.test_recipe_container_discovery import _row
+    real_discover = serve_recipes.discover_recipe_containers
+    recipe, _ = monitoring_slot(tmp_path, monkeypatch)
+    monkeypatch.setattr(serve_recipes, 'discover_recipe_containers', real_discover)
+    before = m.read_json(m.receipt_path())
+    row = _row('candidate', container_id='a' * 64, model=recipe['model'],
+               labels={serve_recipes.RECIPE_DIGEST_LABEL: serve_recipes.recipe_digest(recipe)})
+    row['Args'] = ['/weights/model', '--model-id', 'qwen3.8-flash-next']
+    row['HostConfig']['PortBindings'] = {
+        '30000/tcp': [{'HostIp': '127.0.0.1', 'HostPort': '30000'}]}
+    row['State']['StartedAt'] = '2026-10-24T00:00:00Z'
+    docker_calls, fetch_calls = [], []
+    def run(argv, **kwargs):
+        docker_calls.append(argv[1])
+        assert argv[:2] in (['docker', 'ps'], ['docker', 'inspect'])
+        return SimpleNamespace(returncode=0,
+            stdout='a' * 64 + '\n' if argv[1] == 'ps' else json.dumps([row]))
+    def fetch(path):
+        fetch_calls.append(path)
+        return b'{}' if path == '/ready' else json.dumps({'data': [{'id': reported_model}]}).encode()
+    if reported_model == 'qwen3.8-flash-next':
+        active = m.publish(recipe, 'candidate', registry_digest='c' * 64, _run=run, _fetch=fetch)
+        assert active['state'] == 'active'
+        assert active['model'] == 'qwen3.8-flash-next'
+        assert active['metrics_contract'] == 'ignis'
+        assert active['container_id'] == 'a' * 64
+        assert m.read_json(m.receipt_path()) == active
+        assert docker_calls == ['ps', 'inspect', 'ps', 'inspect']
+    else:
+        with pytest.raises(ValueError, match='monitoring live model identity differs from recipe container'):
+            m.publish(recipe, 'candidate', registry_digest='c' * 64, _run=run, _fetch=fetch)
+        assert m.read_json(m.receipt_path()) == before
+        assert before['state'] == 'pending'
+        assert docker_calls == ['ps', 'inspect']
+    assert fetch_calls == ['/ready', '/v1/models']
+
+
 @pytest.mark.parametrize('engine', ['vllm', 'sglang', 'flare', 'ignis'])
 def test_exact_binding_single_port_receipt(tmp_path, monkeypatch, engine):
     recipe, row = monitoring_slot(tmp_path, monkeypatch, engine)

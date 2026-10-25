@@ -1020,3 +1020,123 @@ def test_worker_uses_one_profile_snapshot_for_admission_and_preparation(monkeypa
     result = execute_benchmark_job(store, value["run_id"])
     assert calls == ["pilot-v2"]
     assert result["failure"]["code"] == "test_stop"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+@pytest.mark.parametrize("entry", ["missing", "lookup", "signal"])
+@pytest.mark.parametrize("observation", ["absent", "live-group", "reused-pid", "inspection-error"])
+def test_stop_owned_worker_requires_absent_leader_and_group(monkeypatch, tmp_path, entry, observation):
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    run = tmp_path / "runs" / "campaign" / "worker-run"
+    run.mkdir(parents=True)
+    _stopped_worker(monkeypatch, store, run, "worker-run")
+    expected = (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db",
+                os.path.realpath(store.path), "--run-root", store.run_root, "--run-id", "worker-run")
+    observations = iter([None if entry == "missing" else expected,
+                         ("unrelated-process",) if observation == "reused-pid" else None])
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda pid: next(observations))
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda pid: "started")
+    checks = []
+    def group_id(pid):
+        checks.append(pid)
+        if entry == "signal" and len(checks) == 1:
+            return pid
+        raise ProcessLookupError()
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", group_id)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda pid: pid)
+    def group_running(pid):
+        if observation == "inspection-error":
+            raise OSError("group inspection unavailable")
+        return observation == "live-group"
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", group_running)
+    signals = []
+    def signal_group(pid, sig):
+        assert entry == "signal", "uncertain identity must not be signalled"
+        signals.append((pid, sig))
+        raise ProcessLookupError()
+    monkeypatch.setattr(benchmark_worker.os, "killpg", signal_group)
+
+    result = benchmark_worker._stop_owned_worker(str(run / "worker.json"), "worker-run",
+        database=os.path.realpath(store.path), run_root=store.run_root)
+
+    assert result["stopped"] is (observation == "absent")
+    assert result["status"] == ("already_stopped" if observation == "absent" else "leader_missing_unverified")
+    assert signals == ([(12345, signal.SIGTERM)] if entry == "signal" else [])
+
+
+@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+def test_competing_deadline_watchdog_stop_is_idempotent_for_campaign_owner(monkeypatch, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from tests.test_campaign_batch_closure import active
+    from tests.test_campaign_telemetry import setup
+
+    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch, count=4)
+    contexts = active(store, specs, release)
+    pids = {s["run_id"]: 20000 + i for i, s in enumerate(specs)}
+    alive = dict.fromkeys(pids.values(), True)
+    for value, context in zip(specs, contexts):
+        pid = pids[value["run_id"]]
+        (context["path"].parent / "worker.json").write_text(json.dumps({
+            "run_id": value["run_id"], "pid": pid, "db": os.path.realpath(store.path),
+            "run_root": store.run_root, "process_start": "started", "process_group_id": pid, "session_id": pid,
+        }))
+    def arguments(pid):
+        if not alive[pid]:
+            return None
+        run_id = next(run for run, value in pids.items() if value == pid)
+        return (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db",
+                os.path.realpath(store.path), "--run-root", store.run_root, "--run-id", run_id)
+    def group_id(pid):
+        if alive[pid]:
+            return pid
+        raise ProcessLookupError()
+    monkeypatch.setattr(benchmark_worker, "_process_arguments", arguments)
+    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda pid: "started")
+    monkeypatch.setattr(benchmark_worker.os, "getpgid", group_id)
+    monkeypatch.setattr(benchmark_worker.os, "getsid", group_id)
+    monkeypatch.setattr(execution, "verify_child", lambda *a, **k: (manifest, {}))
+    entered, resume = threading.Event(), threading.Event()
+    signals = []
+    def signal_group(pid, sig):
+        assert alive[pid]
+        signals.append((pid, sig))
+        alive[pid] = False
+        if pid == pids[specs[0]["run_id"]]:
+            entered.set()
+            assert resume.wait(5)
+    monkeypatch.setattr(benchmark_worker.os, "killpg", signal_group)
+    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda pid: alive[pid])
+    drains = []
+    def drain(*args, **kwargs):
+        assert not any(alive.values())
+        assert all(execution._read(c["path"])["clients_stopped"] for c in contexts)
+        drains.append(True)
+        clock[0] += 35
+        return {"status": "verified"}
+    monkeypatch.setattr(execution, "observe_drain", drain)
+    clock[0] = release["traffic_deadline_monotonic"]
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        owner = pool.submit(benchmark_worker.cancel_campaign_jobs, manifest, store)
+        try:
+            assert entered.wait(3)
+            # The losing watchdog still performs its bounded safety stop. The
+            # campaign owner must accept proof that this group is already gone.
+            benchmark_worker._campaign_watchdog(store.path, store.run_root, specs[-1]["run_id"])
+            assert not alive[pids[specs[-1]["run_id"]]]
+        finally:
+            resume.set()
+        result = owner.result(5)
+    assert result["phase"] == "completed"
+    assert len(signals) == 4 and all(sig == signal.SIGTERM for _, sig in signals)
+    assert len(drains) == 1
+    assert all(store.status(s["run_id"])["state"] == "cancelled" for s in specs)
+    last = result["children"][-1]
+    assert last["worker_terminated"] is True and last["cleanup_deferred"] is False
+    files = [c["path"] for c in contexts]
+    files += [c["path"].parent / "artifact.json" for c in contexts]
+    files += [c["path"].parent / "evidence/cancellation-native-output.json" for c in contexts]
+    saved = {p: p.read_bytes() for p in files}
+    assert benchmark_worker.cancel_campaign_jobs(manifest, store)["phase"] == "completed"
+    assert all(p.read_bytes() == raw for p, raw in saved.items())
+    assert len(signals) == 4 and len(drains) == 1

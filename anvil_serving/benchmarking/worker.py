@@ -653,6 +653,9 @@ def _stop_owned_worker(
     try:
         arguments = _process_arguments(pid)
         if arguments is None:
+            # Another deadline supervisor may already have stopped this group.
+            if _worker_group_stopped(worker_path, run_id=run_id, database=database, run_root=run_root):
+                return {"stopped": True, "status": "already_stopped", "pid": pid}
             return {"stopped": False, "status": "leader_missing_unverified", "pid": pid}
         expected = (
             sys.executable,
@@ -685,7 +688,12 @@ def _stop_owned_worker(
                 return {"stopped": True, "status": "killed", "pid": pid}
             time.sleep(0.05)
     except ProcessLookupError:
-        return {"stopped": True, "status": "already_stopped", "pid": pid}
+        # A missing leader alone does not prove its descendants have stopped.
+        try:
+            stopped = _worker_group_stopped(worker_path, run_id=run_id, database=database, run_root=run_root)
+        except (OSError, subprocess.SubprocessError):
+            stopped = False
+        return {"stopped": stopped, "status": "already_stopped" if stopped else "leader_missing_unverified", "pid": pid}
     except (OSError, subprocess.SubprocessError):
         return {"stopped": False, "status": "termination_error", "pid": pid}
     return {"stopped": False, "status": "termination_unverified", "pid": pid}

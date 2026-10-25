@@ -1069,15 +1069,17 @@ def _recipe_served_identity(row: dict, fallback: str) -> str:
         tokens = config.get("Cmd")
     if not isinstance(tokens, list):
         return fallback
-    for index, token in enumerate(tokens):
-        if not isinstance(token, str):
-            continue
-        if token == "--served-model-name" and index + 1 < len(tokens):
-            value = _bounded_container_value(tokens[index + 1], maximum=512)
-            return value or fallback
-        if token.startswith("--served-model-name="):
-            value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
-            return value or fallback
+    # Preserve the existing served-name override before the model-id alias.
+    for flag in ("--served-model-name", "--model-id"):
+        for index, token in enumerate(tokens):
+            if not isinstance(token, str):
+                continue
+            if token == flag:
+                value = tokens[index + 1] if index + 1 < len(tokens) else None
+                return _bounded_container_value(value, maximum=512) or fallback
+            if token.startswith(flag + "="):
+                value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
+                return value or fallback
     return fallback
 
 
