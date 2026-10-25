@@ -256,3 +256,82 @@ def test_real_isolated_adapter_startup_from_path_separator_checkout(tmp_path, mo
     assert str(checkout / "anvil_serving/benchmarking" / (adapter + "_prepare.py")) in rejected.stderr
     assert "ModuleNotFoundError" not in rejected.stderr
     assert "untrusted" not in help_result.stderr + rejected.stderr
+
+
+def test_real_aider_default_capture_limit_preserves_small_retention(tmp_path, monkeypatch):
+    from pathlib import Path
+    import subprocess
+    from anvil_serving.benchmarking import swe
+    profile, manifest, kwargs, *_ = prepared_plan_inputs(tmp_path, monkeypatch)
+    plan = aider.build_aider_run_plan(profile, manifest, **kwargs)
+    calls = []
+    def bounded(argv, **options):
+        calls.append(options)
+        assert argv == plan["command"]
+        assert options["max_output_bytes"] == aider.MAX_AIDER_PROCESS_OUTPUT_BYTES == 8 * 1024**2
+        assert options["owned_process_group"] is True
+        assert options["timeout"] == plan["timeout_s"]
+        assert options["cwd"] == plan["paths"]["aider_root"]
+        assert "UNRELATED_KEY" not in options["env"]
+        return subprocess.CompletedProcess(argv, 0, stdout=b"a" * 65537, stderr=b"b" * 65537)
+    monkeypatch.setattr(swe, "_run_bounded_process", bounded)
+    # Exercise the definition-time default, not an injected command_runner.
+    result = aider.run_aider_benchmark(plan, environ={"UNRELATED_KEY": "private"})
+    assert len(calls) == 1
+    assert result["stage"]["returncode"] == 0
+    assert result["stage"]["stdout"] == "a" * 65536
+    assert result["stage"]["stderr"] == "b" * 65536
+    assert result["stage"]["output_truncated"] is True
+    assert json.loads(Path(plan["paths"]["process"]).read_text()) == result["stage"]
+
+
+@pytest.mark.parametrize("owner, count, expected", [
+    ("aider", 8 * 1024**2, "completed"),
+    ("aider", 8 * 1024**2 + 1, "swe_process_output_overflow"),
+    ("swe", 65537, "swe_process_output_overflow"),
+    ("performance", 65537, "swe_process_output_overflow"),
+    ("aider", 0, "timeout"),
+])
+def test_actual_process_capture_caps_deadline_and_owned_group_cleanup(tmp_path, owner, count, expected):
+    import os
+    from pathlib import Path
+    import subprocess
+    import sys
+    import textwrap
+    if os.name != "posix":
+        pytest.skip("owned process groups require POSIX")
+    script = textwrap.dedent("""\
+        import json, os, subprocess, sys
+        sys.path.insert(0, sys.argv[1])
+        from anvil_serving.benchmarking import aider, swe, performance
+        from anvil_serving.benchmarking.jobs import BenchmarkJobError
+        from anvil_serving.transports import _owned_group_members
+        owner, count = sys.argv[2], int(sys.argv[3])
+        runner = (swe._budget_runner if owner == 'swe' else
+                  (aider.run_aider_benchmark if owner == 'aider' else
+                   performance.run_performance_benchmark).__kwdefaults__['command_runner'])
+        child = "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c','import time; time.sleep(5)']); "
+        child += ("time.sleep(5)" if not count else
+                  f"sys.stdout.buffer.write(b'a'*{count // 2}); sys.stdout.flush(); sys.stderr.buffer.write(b'b'*{count - count // 2}); sys.stderr.flush()")
+        try:
+            result = runner([sys.executable, '-I', '-B', '-c', child], os.getcwd(),
+                            0.2 if not count else 5, {'PATH': os.defpath})
+            observed = {'outcome': 'completed', 'bytes': len(result.stdout) + len(result.stderr),
+                        'returncode': result.returncode}
+        except BenchmarkJobError as exc:
+            observed = {'outcome': exc.code}
+        except subprocess.TimeoutExpired:
+            observed = {'outcome': 'timeout'}
+        observed['remaining_peers'] = _owned_group_members(os.getpid(), timeout=1)
+        print(json.dumps(observed))
+    """)
+    process = subprocess.run([sys.executable, "-I", "-B", "-c", script,
+                              str(Path(aider.__file__).resolve().parents[2]), owner, str(count)],
+                             cwd=tmp_path, env={"PATH": os.defpath}, start_new_session=True,
+                             capture_output=True, text=True, timeout=15)
+    assert process.returncode == 0, process.stderr
+    observed = json.loads(process.stdout)
+    assert observed["outcome"] == expected
+    assert observed["remaining_peers"] == []
+    if expected == "completed":
+        assert observed["returncode"] == 0 and observed["bytes"] == count

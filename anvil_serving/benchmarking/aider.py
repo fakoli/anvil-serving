@@ -1,6 +1,7 @@
 """Pinned Aider Polyglot planning and retained, independently graded results."""
 from __future__ import annotations
 
+from functools import partial
 import hashlib
 import json
 import math
@@ -23,6 +24,8 @@ from .swe import _budget_runner, _endpoint, _result_record
 from .swe_agent_adapter import validate_budgets
 
 AIDER_RUN_SCHEMA = "anvil-serving.aider-run/v1"
+# Aider prints reasoning and repeated edits; retained stage output stays 64 KiB per stream.
+MAX_AIDER_PROCESS_OUTPUT_BYTES = 8 * 1024 * 1024
 
 
 def _digest(value):
@@ -163,7 +166,7 @@ def _normalize(plan, result):
         result["failure"] = {"class": "broken_harness", "code": "missing_aider_outcomes"}
 
 
-def run_aider_benchmark(plan, *, command_runner=_budget_runner, environ=None):
+def run_aider_benchmark(plan, *, command_runner=partial(_budget_runner, max_output_bytes=MAX_AIDER_PROCESS_OUTPUT_BYTES), environ=None):
     verify_plan(plan)
     paths = plan["paths"]
     for key in ("aider", "original", "home"):

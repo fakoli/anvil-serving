@@ -90,9 +90,9 @@ def _default_runner(
     )
 
 
-def _budget_runner(argv, cwd, timeout, env):
+def _budget_runner(argv, cwd, timeout, env, *, max_output_bytes=MAX_HARNESS_OUTPUT_BYTES):
     try:
-        return _run_bounded_process(argv, timeout=timeout, max_output_bytes=MAX_HARNESS_OUTPUT_BYTES,
+        return _run_bounded_process(argv, timeout=timeout, max_output_bytes=max_output_bytes,
                                     cwd=cwd, env=dict(env), owned_process_group=True)
     except (_ProcessOutputOverflow, _ProcessPipeError) as exc:
         code = "swe_process_output_overflow" if isinstance(exc, _ProcessOutputOverflow) else "swe_process_boundary_failed"
