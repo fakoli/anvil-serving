@@ -350,7 +350,7 @@ def test_writable_input_or_missing_scratch_never_starts(tmp_path, drift):
 
 
 @pytest.mark.parametrize("kind", ["symlink", "hardlink", "fifo", "socket"])
-def test_non_regular_and_shared_input_never_reaches_docker(tmp_path, kind):
+def test_non_regular_and_shared_input_never_reaches_docker(tmp_path, monkeypatch, kind):
     run, task, args = setup(tmp_path)
     source = task / "solution.py"
     source.write_text("pass\n")
@@ -365,8 +365,11 @@ def test_non_regular_and_shared_input_never_reaches_docker(tmp_path, kind):
             os.mkfifo(candidate)
         else:
             listener = socket.socket(socket.AF_UNIX)
-            # AF_UNIX has a small path bound; a short path still lives in this task.
-            listener.bind(str(candidate))
+            # Bind relative to the task so AF_UNIX ignores the temp root's length.
+            with monkeypatch.context() as cwd:
+                cwd.chdir(task)
+                listener.bind(candidate.name)
+            assert candidate.is_socket()
         docker = Docker(run)
         with pytest.raises(BenchmarkJobError, match="single-linked regular files"):
             containment.run_contained_test("false", runner=docker, **args)
