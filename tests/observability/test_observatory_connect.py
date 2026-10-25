@@ -305,13 +305,24 @@ def test_connect_application_roles_use_only_the_explicit_role_mapping(tmp_path):
         message = Message()
         message[_header_name()] = assertion("GET", target, role="member")
         session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        assert issued and session.principal.identity == "member-fixture"
+        owner = console.store.connect_profile("connect-fixture")["id"]
+        assert issued and session.principal.identity == session.profile_id == owner
         assert session.principal.role == "viewer" and not session.principal.resources
 
         message = Message()
         message[_header_name()] = assertion("GET", target, role="admin")
         session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        assert issued and session.principal.identity == "operator-fixture"
+        assert issued and session.principal.identity == session.profile_id == owner
+        assert session.principal.can_operate("fixture", "configuration.apply")
+        assert session.principal.username == "operator" and session.principal.role == "operator"
+        assert console.access._connect_roles["admin"].identity == "operator-fixture"
+        # New sessions and roles preserve the subject owner, not the template.
+        message = Message()
+        message[_header_name()] = assertion("GET", target, role="admin", subject="other-fixture", sid="c" * 32)
+        peer, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
+        assert issued and peer.principal.identity != owner
+        assert peer.principal.resources == session.principal.resources
+        assert peer.principal.actions == session.principal.actions
 
         missing = config(tmp_path)
         missing["authentication"]["connect"]["roles"] = {"admin": "operator-fixture"}

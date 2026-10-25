@@ -30,6 +30,7 @@ from . import guard
 import io
 import json
 import os
+import re
 import threading
 import time
 import urllib.request
@@ -567,6 +568,80 @@ class _Lease:
 
 
 # --- HTTP FRONT: one handler maps OpenAI routes onto the Multiplexer ----------
+_MAX_REQUEST_BODY_BYTES = 32 * 1024 * 1024
+_REQUEST_HEADER_TIMEOUT_SECONDS = 30.0
+_REQUEST_BODY_TIMEOUT_SECONDS = 30.0
+_CLIENT_SOCKET_TIMEOUT_SECONDS = 30.0
+
+
+class _HeaderDeadlineReader(io.RawIOBase):
+    """Apply the remaining header budget to every underlying socket read."""
+
+    def __init__(self, raw_stream, connection):
+        self.raw_stream = raw_stream
+        self.connection = connection
+        self.deadline = None
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        if self.deadline is None:
+            return self.raw_stream.readinto(buffer)
+        remaining_seconds = self.deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            raise TimeoutError("request header deadline exceeded")
+        previous_timeout = self.connection.gettimeout()
+        self.connection.settimeout(min(previous_timeout, remaining_seconds)
+                                   if previous_timeout is not None else remaining_seconds)
+        try:
+            return self.raw_stream.readinto(buffer)
+        finally:
+            self.connection.settimeout(previous_timeout)
+
+    def close(self):
+        try:
+            self.raw_stream.close()
+        finally:
+            super().close()
+
+
+class _MultiplexerHTTPServer(ThreadingHTTPServer):
+    """Bound connections before allocating a handler, including idle clients."""
+
+    def __init__(self, *args, maximum_connections=64, **kwargs):
+        self.connection_slots = threading.BoundedSemaphore(maximum_connections)
+        super().__init__(*args, **kwargs)
+
+    def get_request(self):
+        connection, address = super().get_request()
+        connection.settimeout(_CLIENT_SOCKET_TIMEOUT_SECONDS)
+        return connection, address
+
+    def process_request(self, request, client_address):
+        if not self.connection_slots.acquire(blocking=False):
+            try:
+                # Do not let a saturated peer block the accept loop's refusal.
+                request.settimeout(0.1)
+                request.sendall(b"HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\nContent-Length: 0\r\n\r\n")
+            except OSError:
+                pass
+            finally:
+                self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.connection_slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.connection_slots.release()
+
+
 def _open_upstream(url, body, timeout=900):
     """POST raw `body` bytes to `url` and return the OPEN response object (caller
     streams + closes it). The body is never read/re-encoded here, so streaming
@@ -616,6 +691,29 @@ def relay(resp, h, chunk_size=65536):
 def make_handler(mux):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
+        timeout = _CLIENT_SOCKET_TIMEOUT_SECONDS
+        rbufsize = 0  # Wrap the raw stream before buffering can repeat reads.
+
+        def setup(self):
+            super().setup()
+            self._request_reader = _HeaderDeadlineReader(self.rfile, self.connection)
+            self.rfile = io.BufferedReader(self._request_reader)
+
+        def handle_one_request(self):
+            # A new budget covers the request line and headers on every request,
+            # including idle waits and subsequent requests on keep-alive sockets.
+            self._request_reader.deadline = time.monotonic() + _REQUEST_HEADER_TIMEOUT_SECONDS
+            try:
+                super().handle_one_request()
+            finally:
+                self._request_reader.deadline = None
+
+        def parse_request(self):
+            try:
+                return super().parse_request()
+            finally:
+                # Body reads have their own budget; inference/relay has neither.
+                self._request_reader.deadline = None
 
         def _send(self, status, obj=None, raw=None):
             payload = raw if raw is not None else json.dumps(obj).encode()
@@ -639,6 +737,7 @@ def make_handler(mux):
         def do_POST(self):
             path = self.path
             if path not in ("/v1/chat/completions", "/v1/completions"):
+                self.close_connection = True  # The rejected body is unread.
                 self._err(404, "not_found", f"no route {path}")
                 return
             # Chunked request bodies are not decoded here (mirrors the router
@@ -650,8 +749,58 @@ def make_handler(mux):
                           "chunked request bodies are unsupported; send "
                           "Content-Length")
                 return
-            n = int(self.headers.get("Content-Length") or 0)
-            body = self.rfile.read(n)
+            lengths = self.headers.get_all("Content-Length") or []
+            if not lengths:
+                self.close_connection = True
+                self._err(411, "invalid_request", "send Content-Length")
+                return
+            length_value = lengths[0].strip(" \t")
+            if len(lengths) != 1 or not re.fullmatch(r"[0-9]+", length_value):
+                self.close_connection = True
+                self._err(400, "invalid_request", "send one nonnegative decimal Content-Length")
+                return
+            # Compare bounded header text before int(): huge decimal strings
+            # must not hit Python's integer-conversion limit. Leading zeros and
+            # HTTP optional whitespace do not change the declared length.
+            length_value = length_value.lstrip("0") or "0"
+            maximum_length = str(_MAX_REQUEST_BODY_BYTES)
+            if (len(length_value) > len(maximum_length)
+                    or (len(length_value) == len(maximum_length) and length_value > maximum_length)):
+                self.close_connection = True
+                self._err(413, "invalid_request", "request body exceeds the allowed size")
+                return
+            body_length = int(length_value)
+            if body_length == 0:
+                self.close_connection = True
+                self._err(400, "invalid_request", "request body must not be empty")
+                return
+            body = bytearray()
+            deadline = time.monotonic() + _REQUEST_BODY_TIMEOUT_SECONDS
+            previous_timeout = self.connection.gettimeout()
+            try:
+                while len(body) < body_length:
+                    remaining_seconds = deadline - time.monotonic()
+                    if remaining_seconds <= 0:
+                        raise TimeoutError
+                    self.connection.settimeout(remaining_seconds)
+                    chunk = self.rfile.read1(min(65536, body_length - len(body)))
+                    if not chunk:
+                        self.close_connection = True
+                        self._err(400, "invalid_request", "incomplete request body")
+                        return
+                    body.extend(chunk)
+            except TimeoutError:
+                self.close_connection = True
+                self.connection.settimeout(previous_timeout)
+                self._err(408, "request_timeout", "request body deadline exceeded")
+                return
+            except OSError:
+                self.close_connection = True
+                return
+            finally:
+                # Inference and streaming are not subject to the body deadline.
+                self.connection.settimeout(previous_timeout)
+            body = bytes(body)
             try:
                 model = json.loads(body)["model"]
             except Exception as e:
@@ -723,7 +872,7 @@ def serve(mux, host="127.0.0.1", port=8000):
         print(f"WARNING: binding the multiplexer to {host!r} exposes an "
               f"UNAUTHENTICATED model-swap endpoint on the network; any peer "
               f"can load/evict GPU models. See SECURITY.md.", flush=True)
-    httpd = ThreadingHTTPServer((host, port), make_handler(mux))
+    httpd = _MultiplexerHTTPServer((host, port), make_handler(mux))
     print(f"anvil multiplexer on http://{host}:{port}  models={mux.order}")
     httpd.serve_forever()
 
