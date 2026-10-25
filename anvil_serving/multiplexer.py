@@ -569,8 +569,41 @@ class _Lease:
 
 # --- HTTP FRONT: one handler maps OpenAI routes onto the Multiplexer ----------
 _MAX_REQUEST_BODY_BYTES = 32 * 1024 * 1024
+_REQUEST_HEADER_TIMEOUT_SECONDS = 30.0
 _REQUEST_BODY_TIMEOUT_SECONDS = 30.0
 _CLIENT_SOCKET_TIMEOUT_SECONDS = 30.0
+
+
+class _HeaderDeadlineReader(io.RawIOBase):
+    """Apply the remaining header budget to every underlying socket read."""
+
+    def __init__(self, raw_stream, connection):
+        self.raw_stream = raw_stream
+        self.connection = connection
+        self.deadline = None
+
+    def readable(self):
+        return True
+
+    def readinto(self, buffer):
+        if self.deadline is None:
+            return self.raw_stream.readinto(buffer)
+        remaining_seconds = self.deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            raise TimeoutError("request header deadline exceeded")
+        previous_timeout = self.connection.gettimeout()
+        self.connection.settimeout(min(previous_timeout, remaining_seconds)
+                                   if previous_timeout is not None else remaining_seconds)
+        try:
+            return self.raw_stream.readinto(buffer)
+        finally:
+            self.connection.settimeout(previous_timeout)
+
+    def close(self):
+        try:
+            self.raw_stream.close()
+        finally:
+            super().close()
 
 
 class _MultiplexerHTTPServer(ThreadingHTTPServer):
@@ -659,6 +692,28 @@ def make_handler(mux):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         timeout = _CLIENT_SOCKET_TIMEOUT_SECONDS
+        rbufsize = 0  # Wrap the raw stream before buffering can repeat reads.
+
+        def setup(self):
+            super().setup()
+            self._request_reader = _HeaderDeadlineReader(self.rfile, self.connection)
+            self.rfile = io.BufferedReader(self._request_reader)
+
+        def handle_one_request(self):
+            # A new budget covers the request line and headers on every request,
+            # including idle waits and subsequent requests on keep-alive sockets.
+            self._request_reader.deadline = time.monotonic() + _REQUEST_HEADER_TIMEOUT_SECONDS
+            try:
+                super().handle_one_request()
+            finally:
+                self._request_reader.deadline = None
+
+        def parse_request(self):
+            try:
+                return super().parse_request()
+            finally:
+                # Body reads have their own budget; inference/relay has neither.
+                self._request_reader.deadline = None
 
         def _send(self, status, obj=None, raw=None):
             payload = raw if raw is not None else json.dumps(obj).encode()

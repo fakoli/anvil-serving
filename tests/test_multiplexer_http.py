@@ -5,6 +5,7 @@ import http.client
 import queue
 import socket
 import threading
+from contextlib import ExitStack, closing
 from email.message import Message
 from types import SimpleNamespace
 
@@ -129,9 +130,67 @@ def test_saturation_is_rejected_before_a_new_handler_and_recovers(server):
     assert backend.started == []
 
 
+@pytest.mark.parametrize("phase", ["request_line", "headers", "keep_alive_headers"])
+def test_dripping_headers_release_saturated_slots(server, monkeypatch, phase):
+    httpd, accepted, backend = server
+    monkeypatch.setattr(multiplexer, "_REQUEST_HEADER_TIMEOUT_SECONDS", 0.4)
+    httpd.RequestHandlerClass.timeout = 0.15
+    stopped = threading.Event()
+
+    def drip(client):
+        while not stopped.wait(0.03):
+            try:
+                client.sendall(b"a")
+            except OSError:
+                return
+
+    with ExitStack() as clients:
+        threads = []
+        sockets = []
+        try:
+            for _ in range(2):
+                client = clients.enter_context(socket.create_connection(httpd.server_address, timeout=2))
+                accepted.get(timeout=2)
+                if phase == "keep_alive_headers":
+                    client.sendall(b"GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+                    response = http.client.HTTPResponse(client)
+                    response.begin()
+                    assert response.status == 200
+                    response.read()
+                    response.close()
+                prefix = (b"GET /" if phase == "request_line" else
+                          b"GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Slow: ")
+                client.sendall(prefix)
+                thread = threading.Thread(target=drip, args=(client,))
+                thread.start()
+                threads.append(thread)
+                sockets.append(client)
+            # Sending bytes more frequently than the idle timeout must not
+            # retain the slots beyond the elapsed-time header deadline.
+            for client in sockets:
+                assert client.recv(1) == b""
+            assert httpd.connection_slots.acquire(timeout=2)
+            assert httpd.connection_slots.acquire(timeout=2)
+            httpd.connection_slots.release()
+            httpd.connection_slots.release()
+            assert backend.started == []
+            with closing(http.client.HTTPConnection(*httpd.server_address, timeout=2)) as connection:
+                for path in ("/healthz", "/v1/models"):
+                    connection.request("GET", path)
+                    response = connection.getresponse()
+                    assert response.status == 200
+                    response.read()
+        finally:
+            stopped.set()
+            for thread in threads:
+                thread.join(timeout=2)
+                assert not thread.is_alive()
+
+
 @pytest.mark.parametrize("streaming", [False, True])
 def test_valid_body_and_response_are_forwarded_verbatim(server, monkeypatch, streaming):
     httpd, accepted, backend = server
+    monkeypatch.setattr(multiplexer, "_REQUEST_HEADER_TIMEOUT_SECONDS", 0.2)
     payload = b'{ "model": "selected", "messages": [] }'
     output = b'data: {"choices":[]}\n\ndata: [DONE]\n\n' if streaming else b'{"choices":[]}'
     response = io.BytesIO(output)
@@ -145,6 +204,9 @@ def test_valid_body_and_response_are_forwarded_verbatim(server, monkeypatch, str
         calls.append((url, body))
         handler = accepted.get(timeout=2)
         assert handler.connection.gettimeout() == multiplexer._CLIENT_SOCKET_TIMEOUT_SECONDS
+        # The header deadline must not cut off inference or leak into the next
+        # keep-alive request, even when inference outlasts that budget.
+        threading.Event().wait(0.3)
         return response
 
     monkeypatch.setattr(multiplexer, "_open_upstream", upstream)
