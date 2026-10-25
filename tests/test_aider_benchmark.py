@@ -67,7 +67,8 @@ def test_tampered_plan_rejected_before_any_run():
         aider.verify_plan({"schema": aider.AIDER_PLAN_SCHEMA, "plan_sha256": "0" * 64})
 
 
-def test_process_timeout_retains_partial_output_and_sanitizes_client_environment(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failure", ["timeout", "swe_process_output_overflow", "swe_process_boundary_failed", "generic"])
+def test_process_failure_retains_safe_evidence_and_sanitizes_client_environment(tmp_path, monkeypatch, failure):
     import subprocess
     task = "python/exercises/practice/example"
     source = tmp_path / "source"
@@ -87,14 +88,30 @@ def test_process_timeout_retains_partial_output_and_sanitizes_client_environment
         assert env["OPENAI_API_KEY"] == "test-reference-value"
         assert "UNRELATED_CLOUD_KEY" not in env and "PYTHONPATH" not in env and "PYTHONHOME" not in env
         assert "TEST_KEY" not in env
-        raise subprocess.TimeoutExpired(command, timeout, output="partial upstream output")
+        if failure == "timeout":
+            raise subprocess.TimeoutExpired(command, timeout, output="partial upstream output")
+        if failure == "generic":
+            raise RuntimeError("private diagnostic value")
+        raise BenchmarkJobError(failure, "private diagnostic value", {"stderr": "private diagnostic value"})
     result = aider.run_aider_benchmark(plan, command_runner=runner,
         environ={"TEST_KEY": "test-reference-value", "UNRELATED_CLOUD_KEY": "must not inherit",
                  "PYTHONPATH": "/untrusted/product", "PYTHONHOME": "/untrusted/python"})
     assert result["state"] == "incomplete"
     assert result["quality"]["status"] == "unknown"
-    assert result["failure"]["class"] == "budget_exhausted"
-    assert result["stage"]["stdout"] == "partial upstream output"
+    if failure == "timeout":
+        assert result["failure"] == {"class": "budget_exhausted", "code": "deadline_s"}
+        assert result["stage"]["stdout"] == "partial upstream output"
+    else:
+        expected_code = "aider_process_failed" if failure == "generic" else failure
+        assert result["failure"] == {"class": "infrastructure_failure", "code": expected_code}
+        expected_stage = {"status": "failed", "error_type": "RuntimeError" if failure == "generic" else "BenchmarkJobError"}
+        if failure != "generic":
+            expected_stage["code"] = failure
+        assert result["stage"] == expected_stage
+    assert json.loads((base / "process.json").read_text()) == result["stage"]
+    assert json.loads((base / "result.json").read_text())["failure"] == result["failure"]
+    assert "private diagnostic value" not in json.dumps(result)
+    assert all("private diagnostic value" not in path.read_text() for path in base.glob("*.json"))
     assert result["retention"]["state"] == "incomplete"
     assert (base / "original" / task / "solution.py").exists()
 

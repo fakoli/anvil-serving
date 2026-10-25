@@ -203,6 +203,9 @@ def run_aider_benchmark(plan, *, command_runner=_budget_runner, environ=None):
     except subprocess.TimeoutExpired as exc:
         stage = _result_record(plan["command"], exc, time.monotonic() - started, stamp)
         result["failure"] = {"class": "budget_exhausted", "code": "deadline_s"}
+    except BenchmarkJobError as exc:
+        stage = {"status": "failed", "error_type": type(exc).__name__, "code": exc.code}
+        result["failure"] = {"class": "infrastructure_failure", "code": exc.code}
     except Exception as exc:
         stage = {"status": "failed", "error_type": type(exc).__name__}
         result["failure"] = {"class": "infrastructure_failure", "code": "aider_process_failed"}
