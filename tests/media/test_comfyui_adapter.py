@@ -55,6 +55,25 @@ def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():
     assert seen["body"]["client_id"] == "anvil-job_0123456789abcdef"
 
 
+@pytest.mark.parametrize("running,pending,expected", [
+    (["prompt_123"], [], "running"),
+    (["prompt_other"], ["prompt_123"], "queued"),
+    ([], [], "queued"),
+])
+def test_history_observes_live_queue_before_completed_history_exists(running, pending, expected):
+    def record(identifier):
+        return [0, identifier, {}, {}, []]
+    def opener(request, timeout):
+        if request.full_url.endswith("/history/prompt_123"):
+            return Response({})
+        if request.full_url.endswith("/queue"):
+            return Response({"queue_running": [record(p) for p in running],
+                             "queue_pending": [record(p) for p in pending]})
+        raise AssertionError(request.full_url)
+    result = ComfyUIClient("http://127.0.0.1:8188", opener=opener).history("prompt_123")
+    assert result.state == expected
+
+
 def test_find_prompt_recovers_deterministic_client_identity_from_queue():
     job_id = "job_0123456789abcdef"
     record = [

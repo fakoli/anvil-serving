@@ -345,7 +345,9 @@ class ComfyUIClient:
             raise MediaError("backend_response_invalid", "ComfyUI history response is invalid", status=502)
         record = response.get(prompt_id)
         if record is None:
-            return BackendStatus(prompt_id, "queued")
+            live_state = self.prompt_state(prompt_id)
+            # Completion racing this probe waits for the next full history and its outputs.
+            return BackendStatus(prompt_id, "running" if live_state == "running" else "queued")
         if not isinstance(record, Mapping):
             raise MediaError("backend_response_invalid", "ComfyUI history record is invalid", status=502)
         status = record.get("status")
