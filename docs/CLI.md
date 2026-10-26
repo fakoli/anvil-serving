@@ -182,7 +182,7 @@ required operands, choices, and defaults.
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
 | `router startup-abort` | Abort one never-admitted failed startup while preserving retained accounting. | `mutate` / `bounded` | `--config`<br>`--preview-out`<br>`--confirm` |
 | `router recovery-status` | Inspect protected custody sidecars without authorizing recovery. | `read` / `bounded` | `--container`<br>`--ledger` |
-| `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
+| `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256`<br>`--out` |
 | `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
 | `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
 | `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--compose`<br>`--dry-run`<br>`--confirm` |

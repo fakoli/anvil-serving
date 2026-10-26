@@ -127,6 +127,20 @@ It rejects links in the selected file's path and config dependency bundles.
 Unrelated operator-home files are never enumerated or read. Whole-home
 `host config inventory/export` guards remain unchanged. Output contains private
 topology and belongs in private operator evidence. No service is changed.
+For a host-unreadable bind on a POSIX router host, pass `--out` with a new
+file directly inside the pre-existing owner-only directory
+`~/.anvil-serving/router-snapshots`. Installation must create that directory
+with mode `0700`; export refuses missing parents, links, traversal and overwrite.
+The controller image prepares this directory and its Compose template persists
+it in a dedicated named volume, without mounting an operator home. Existing
+deployments need the updated image, snapshot volume and operation allowlist.
+That opt-in captures the exact runtime bytes from the verified container, returns
+metadata only, and permits dependency references with `dependency_complete=false`;
+it never reads dependency contents or writes configuration to stdout.
+The controller's `router_config_export` tool calls the same implementation and
+requires `out` under its own snapshot directory. Remote CLI export requires
+`--out`; the legacy content-returning form remains local-only. A snapshot is
+not a complete deployment bundle and does not authorize a configuration change.
 The direct tier `extra_body.thinking_token_budget` setting is recognized as a numeric
 inference limit only for integers from 0 through 1,048,576. Strings, booleans,
 nested occurrences, and other credential-shaped fields retain the secret guard.

@@ -31,10 +31,12 @@ def commands() -> CommandNode:
                 role="router",
                 argv_prefix=(),
                 handler_attribute="dispatch",
+                remote_operation=_remote("router_config_export", allowed=("container", "expected_sha256", "out")),
                 execution_runtime_roles=("native",),
                 options=(
                     _option("--container", summary="Exact running router container.", value_name="NAME"),
                     _option("--expected-sha256", summary="Required exact source and mounted-file SHA-256.", value_name="SHA256"),
+                    _option("--out", summary="New protected runtime snapshot output; suppresses configuration content.", value_name="PATH"),
                 ),
                 docs_anchor="docs/cli/router.md#export-installed-configuration",
             ),

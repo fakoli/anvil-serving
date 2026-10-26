@@ -102,6 +102,19 @@ def tool_router_fleet_status(args: dict) -> dict:
     return _ok(report)
 
 
+def tool_router_config_export(args: dict) -> dict:
+    """Capture one verified installed config to a protected local snapshot."""
+    from .... import router_config_export
+
+    container = _str_arg(args, "container", "anvil-router")
+    expected_sha256 = _str_arg(args, "expected_sha256", required=True)
+    out = _str_arg(args, "out", required=True)
+    try:
+        return _ok(router_config_export.export_runtime_snapshot(container, expected_sha256, out))
+    except router_config_export.UsageError as exc:
+        raise ToolError(exc.code, "router config export refused", exc.details) from None
+
+
 def tool_router_logs(args: dict) -> dict:
     from .... import router_manage
 
@@ -654,6 +667,15 @@ FAMILY = ToolFamily(
                 }
             ),
             "handler": tool_router_fleet_status,
+        },
+        "router_config_export": {
+            "description": "Export one verified installed router configuration to a new protected file; returns metadata only.",
+            "inputSchema": _schema({
+                "container": {"type": "string"},
+                "expected_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+                "out": {"type": "string", "minLength": 1, "maxLength": 4096},
+            }, required=["expected_sha256", "out"]),
+            "handler": tool_router_config_export,
         },
         "router_logs": {
             "description": "Read bounded, redacted docker logs for the deployed router; follow mode is not allowed.",

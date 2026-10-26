@@ -1,5 +1,7 @@
 import hashlib
 import json
+import base64
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +28,13 @@ auth_env = "ANVIL_UPSTREAM_TOKEN"
 [router.model_routes]
 "llm.secondary" = "secondary"
 '''
+
+
+@pytest.fixture(autouse=True)
+def snapshot_root(tmp_path, monkeypatch):
+    root = tmp_path / "router-snapshots"
+    root.mkdir(mode=0o700)
+    monkeypatch.setattr(export, "SNAPSHOT_ROOT", root)
 
 
 @pytest.fixture
@@ -200,3 +209,173 @@ def test_device_key_dependency_is_refused_after_runtime_validation(setup):
     with pytest.raises(UsageError) as caught:
         export.export_installed_config("anvil-router", digest, _run=runtime)
     assert caught.value.details == {"stage": "dependency_validation"}
+
+
+def _runtime_snapshot_runner(state, raw):
+    digest = hashlib.sha256(raw).hexdigest()
+
+    def run(argv, **kwargs):
+        if argv[1] == "inspect":
+            return SimpleNamespace(returncode=0, stdout=json.dumps(state).encode(), stderr=b"")
+        if export._CAPTURE_CODE in argv:
+            return SimpleNamespace(returncode=0, stdout=base64.b64encode(raw) + b"\n", stderr=b"")
+        if export._VALIDATE_INSTALLED_CODE in argv:
+            return SimpleNamespace(returncode=0, stdout=(digest + "\n").encode(), stderr=b"")
+        pytest.fail("unexpected command")
+    return digest, run
+
+
+def test_runtime_snapshot_exports_exact_crlf_bytes_without_reading_host_source(tmp_path):
+    raw = CONFIG.replace("\n", "\r\n").encode()
+    state = {"id": "a" * 64, "running": True, "project": "anvil-serving", "service": "router", "mounts": [{
+        "Type": "bind", "Source": "/root/unreadable/router.toml", "Destination": export.INSTALLED_PATH, "RW": False,
+    }]}
+    digest, run = _runtime_snapshot_runner(state, raw)
+    protected = export.SNAPSHOT_ROOT
+    output = protected / "snapshot.toml"
+    result = export.export_runtime_snapshot("anvil-router", digest, str(output), _run=run)
+    assert output.read_bytes() == raw
+    assert result == {"schema": "installed-router-runtime-snapshot/v1", "read_only": True,
+                      "container": "anvil-router", "container_id": "a" * 64,
+                      "installed_path": export.INSTALLED_PATH, "sha256": digest,
+                      "size_bytes": len(raw), "dependency_complete": True,
+                      "dependency_field_count": 0}
+    assert output.stat().st_mode & 0o077 == 0
+
+
+def test_runtime_snapshot_keeps_dependency_references_without_reading_them(tmp_path):
+    raw = CONFIG.replace('[server]', '[server]\nauthorization_policy_path = "policy.json"').encode()
+    state = {"id": "a" * 64, "running": True, "project": "anvil-serving", "service": "router", "mounts": [{
+        "Type": "bind", "Source": "/root/unreadable/router.toml", "Destination": export.INSTALLED_PATH, "RW": False,
+    }]}
+    digest, run = _runtime_snapshot_runner(state, raw)
+    protected = export.SNAPSHOT_ROOT
+    result = export.export_runtime_snapshot("anvil-router", digest, str(protected / "snapshot.toml"), _run=run)
+    assert result["dependency_complete"] is False
+    assert result["dependency_field_count"] == 1
+    assert "/root/unreadable" not in json.dumps(result)
+
+
+def test_runtime_snapshot_refuses_literal_secret_and_existing_output(tmp_path):
+    raw = (CONFIG + '\n[secrets]\napi_key = "private-value"\n').encode()
+    state = {"id": "a" * 64, "running": True, "project": "anvil-serving", "service": "router", "mounts": [{
+        "Type": "bind", "Source": "/root/unreadable/router.toml", "Destination": export.INSTALLED_PATH, "RW": False,
+    }]}
+    digest, run = _runtime_snapshot_runner(state, raw)
+    protected = export.SNAPSHOT_ROOT
+    output = protected / "snapshot.toml"
+    with pytest.raises(UsageError) as caught:
+        export.export_runtime_snapshot("anvil-router", digest, str(output), _run=run)
+    assert caught.value.details == {"stage": "secret_validation"}
+    assert not output.exists()
+    clean = CONFIG.encode(); digest, run = _runtime_snapshot_runner(state, clean)
+    output.write_bytes(b"existing")
+    with pytest.raises(UsageError) as caught:
+        export.export_runtime_snapshot("anvil-router", digest, str(output), _run=run)
+    assert caught.value.details == {"stage": "output"}
+    assert output.read_bytes() == b"existing"
+
+
+def test_runtime_snapshot_refuses_capture_or_custody_drift(tmp_path):
+    raw = CONFIG.encode()
+    state = {"id": "a" * 64, "running": True, "project": "anvil-serving", "service": "router", "mounts": [{
+        "Type": "bind", "Source": "/root/unreadable/router.toml", "Destination": export.INSTALLED_PATH, "RW": False,
+    }]}
+    digest, base = _runtime_snapshot_runner(state, raw)
+    calls = 0
+    def drift(argv, **kwargs):
+        nonlocal calls
+        result = base(argv, **kwargs)
+        if export._CAPTURE_CODE in argv:
+            calls += 1
+            if calls == 2:
+                state["id"] = "b" * 64
+        return result
+    protected = export.SNAPSHOT_ROOT
+    with pytest.raises(UsageError) as caught:
+        export.export_runtime_snapshot("anvil-router", digest, str(protected / "snapshot.toml"), _run=drift)
+    assert caught.value.details == {"stage": "installed_identity"}
+
+
+@pytest.mark.parametrize("content", [
+    CONFIG + '\n[ignored]\nmanifest="Bearer private-value"\n',
+    CONFIG + '\n[ignored]\nmanifest="basic private-value"\n',
+    CONFIG.replace('[server]', '[server]\napi_keys_path="Bearer private-value"'),
+    CONFIG.replace('[server]', '[server]\nauthorization_policy_path="https://user:password@example.test/policy"'),
+    CONFIG + '\n[ignored]\nauthorization_policy_path="private-value"\n',
+])
+def test_snapshot_path_projection_cannot_hide_literal_credentials(content):
+    import tomllib
+    from anvil_serving.operator_config import ConfigExportError
+
+    with pytest.raises((ConfigExportError, ValueError)):
+        projected = export._snapshot_secret_projection(tomllib.loads(content))
+        export.operator_config._assert_no_secret_literals(projected, path="router.toml")
+
+
+@pytest.mark.parametrize("kind", ["outside", "traversal", "missing_parent", "symlink_parent", "symlink_leaf", "control"])
+def test_snapshot_output_refused_before_container_access(tmp_path, monkeypatch, kind):
+    root = export.SNAPSHOT_ROOT
+    output = root / "snapshot.toml"
+    if kind == "outside":
+        output = tmp_path / "snapshot.toml"
+    elif kind == "traversal":
+        output = root / ".." / "router-snapshots" / "snapshot.toml"
+    elif kind == "missing_parent":
+        root.rmdir()
+    elif kind == "symlink_parent":
+        root.rmdir(); root.symlink_to(tmp_path, target_is_directory=True)
+    elif kind == "symlink_leaf":
+        output.symlink_to(tmp_path / "other.toml")
+    elif kind == "control":
+        output = root / "bad\nname.toml"
+    with pytest.raises(UsageError) as caught:
+        export.export_runtime_snapshot("anvil-router", "a" * 64, str(output),
+                                       _run=lambda *a, **kw: pytest.fail("runtime contacted"))
+    assert caught.value.details == {"stage": "output"}
+
+
+@pytest.mark.parametrize("size", [export.MAX_BYTES, export.MAX_BYTES + 1])
+def test_snapshot_capture_size_boundary(size):
+    raw = CONFIG.encode() + b"#" + b"x" * (size - len(CONFIG.encode()) - 1)
+    state = {"id": "a" * 64, "running": True, "project": "anvil-serving", "service": "router", "mounts": [{
+        "Type": "bind", "Source": "/root/unreadable/router.toml", "Destination": export.INSTALLED_PATH, "RW": False,
+    }]}
+    digest, run = _runtime_snapshot_runner(state, raw)
+    output = export.SNAPSHOT_ROOT / "snapshot.toml"
+    if size > export.MAX_BYTES:
+        with pytest.raises(UsageError):
+            export.export_runtime_snapshot("anvil-router", digest, str(output), _run=run)
+        assert not output.exists()
+    else:
+        result = export.export_runtime_snapshot("anvil-router", digest, str(output), _run=run)
+        assert result["size_bytes"] == size
+        assert output.read_bytes() == raw
+
+
+@pytest.mark.parametrize("stream", ["stdout", "stderr"])
+def test_snapshot_default_runner_bounds_actual_child_output(stream):
+    runner = export.export_runtime_snapshot.__kwdefaults__["_run"]
+    with pytest.raises(export._ProcessOutputOverflow):
+        runner([sys.executable, "-c", f"import sys; sys.{stream}.write('x' * 65536)"],
+               timeout=5, max_output_bytes=1024)
+
+
+def test_snapshot_default_runner_times_out_actual_child():
+    runner = export.export_runtime_snapshot.__kwdefaults__["_run"]
+    with pytest.raises(subprocess.TimeoutExpired):
+        runner([sys.executable, "-c", "import time; time.sleep(5)"], timeout=0.05, max_output_bytes=1024)
+
+
+def test_snapshot_dispatch_and_remote_contract_require_protected_output(monkeypatch):
+    from anvil_serving.commands import manifest_data
+    invoked = []
+    result_data = {"schema": "installed-router-runtime-snapshot/v1", "sha256": "a" * 64}
+    monkeypatch.setattr(export, "export_runtime_snapshot", lambda *args: invoked.append(args) or result_data)
+    result = export.dispatch(["--expected-sha256", "a" * 64, "--out", str(export.SNAPSHOT_ROOT / "snapshot.toml")])
+    assert result.data == result_data and result.human_stdout == ""
+    assert len(invoked) == 1
+    nodes = manifest_data()["commands"]
+    row = next(row for row in nodes if row["path"] == "router export-config")
+    assert row["remote_operation"]["tool"] == "router_config_export"
+    assert row["remote_operation"]["allowed_arguments"] == ["container", "expected_sha256", "out"]
