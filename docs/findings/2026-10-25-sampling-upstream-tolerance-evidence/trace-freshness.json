@@ -1,0 +1,13 @@
+{
+  "schema": "anvil-serving.sampling-trace-freshness/v1",
+  "pre_request_warning_count": 325,
+  "post_request_warning_count": 327,
+  "pre_request_warnings_are_exact_prefix": true,
+  "appended_warning_count": 2,
+  "appended_sampling_trace_count": 2,
+  "source_hashes": {
+    "candidate-ready-logs.json": "f0086693a7317a75b7d2d034da11a1daf7ee1813d645f08a350ecd749b305aba",
+    "candidate-after-logs.json": "6125e151db0f3a05414a046a13d7282be970f00c69b85c37211e1d00f8e95e8e"
+  },
+  "limit": "Exact prefix comparison establishes newly appended worker receipts in the request observation interval; it is not per-token provenance."
+}

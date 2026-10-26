@@ -1,0 +1,74 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independent read-only review of retained managed-restoration evidence after the bounded marker GPU trace trial",
+  "gate_state": "blocked",
+  "targets": {
+    "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "evaluated_model": "GLM-5.3-Flash-FP4-Local",
+    "implementing_model": "GPT-6 lead; exact variant unverified",
+    "reviewer_model": "Sol; independent from implementer and evaluated model",
+    "ignis": "hold"
+  },
+  "tools_used": [
+    {"name": "retained_artifact_json_parse_hash_and_field_comparison", "source_class": "local", "ok": true, "dry_run": true, "confirmed": false, "target": "private campaign evidence", "error": null},
+    {"name": "operation_contracts", "source_class": "mcp", "ok": false, "dry_run": true, "confirmed": false, "target": null, "error": "Tool unavailable in reviewer session; no transport-parity claim is made."},
+    {"name": "workflow_packet_validate", "source_class": "mcp", "ok": false, "dry_run": true, "confirmed": false, "target": null, "error": "Tool unavailable in reviewer session; packet shape checked against the workbench contract."}
+  ],
+  "artifacts": [
+    {
+      "role": "findings_summary",
+      "status": "operational_restored_quality_failed",
+      "summary": "Incumbent operational identity, captured source/template/tokenizer bytes, image, launch hashes except expected lifecycle identity, router custody, readiness/admission, idle engine and OOM state are restored. The restored JSON smoke still fails because prose precedes the requested object. Baseline also failed, but its raw response is missing, so regression is not established. Accept operational restoration only; functional acceptance remains blocked."
+    },
+    {"role": "finding", "severity": "high", "classification": "confirmed", "title": "Functional restoration smoke failed", "concrete_state": "The restored 58-token stop response contains prose before the requested JSON object and fails with Extra data.", "wrong_result_avoided": "Calling the incumbent fully accepted merely because the endpoint is ready and identity matches.", "result": "Functional restoration remains failed while operational restoration passed."},
+    {"role": "finding", "severity": "medium", "classification": "confirmed", "title": "Baseline comparison cannot establish regression", "concrete_state": "Both smokes failed, while the baseline invocation retained no raw response.", "wrong_result_avoided": "Attributing restored-smoke failure to the candidate or claiming malformed-output equivalence.", "result": "Quality regression remains not established."},
+    {"role": "finding", "severity": "low", "classification": "confirmed_limitation", "title": "Exact router configuration-byte parity is unproven", "concrete_state": "Router status receipts are byte-identical, but mounted configuration bytes were not separately captured before the trial.", "wrong_result_avoided": "Promoting custody and status parity into a configuration-file byte comparison.", "result": "Router custody and readiness are restored; mounted-byte parity is not claimed."},
+    {
+      "role": "operational_restoration",
+      "status": "operational_passed_quality_failed",
+      "capture_exact": true,
+      "image_exact": true,
+      "runtime_patch_absent": true,
+      "launch_exact_except_container_lifecycle": true,
+      "router_custody_exact": true,
+      "router_running_healthy": true,
+      "engine_running": 0,
+      "engine_waiting": 0,
+      "promoted": false,
+      "ignis": "hold"
+    },
+    {
+      "role": "resource_and_time_bounds",
+      "full_swap_probe_restoration_lifecycle_seconds": 1278.233917,
+      "declared_trial_window_seconds": 2700,
+      "within_declared_window": true,
+      "minimum_sampled_host_available_bytes": 65195872256,
+      "host_oom_kill_counter_delta": 0,
+      "cgroup_oom_events": 0,
+      "transition_sample_scope": "15-second observations; exact pre-load instant not claimed"
+    },
+    {
+      "role": "breakage_probes",
+      "probes": [
+        {"axis": "fail_closed_unreadable_state", "classification": "refuted_for_required_receipts", "result": "All required restoration receipts parsed and hashed; missing baseline raw response remains explicit."},
+        {"axis": "malformed_and_boundary_input", "classification": "confirmed", "result": "Prose plus embedded JSON fails strict parsing; stop alone is not treated as acceptance."},
+        {"axis": "resource_exhaustion_or_missing_bounds", "classification": "refuted", "result": "Lifecycle finished within 2700 seconds with no OOM increment and engine 0/0."},
+        {"axis": "state_drift_across_runtime_router_process_config_seams", "classification": "partially_refuted_with_explicit_limit", "result": "Runtime identity and custody match; lifecycle changed as expected; mounted router configuration bytes and exact resource occupancy are not claimed."}
+      ]
+    }
+  ],
+  "advisory_priors": [
+    {"status": "accepted", "finding": "Operational incumbent restoration is supported."},
+    {"status": "failed", "finding": "Functional JSON smoke failed after restoration."},
+    {"status": "unknown", "finding": "Candidate-caused quality regression is not established."},
+    {"status": "limitation", "finding": "Router custody parity does not prove mounted configuration-file byte parity."},
+    {"status": "required", "finding": "Keep the post-probe unknown verdict, functional failure, Ignis hold and promoted=false unchanged."}
+  ],
+  "recommendation": "accept_operational_restoration_only_hold_functional_quality_and_promotion",
+  "human_gate_required": true,
+  "promoted": false,
+  "projection": {
+    "native_source_sha256": "ef54424e3f01a8513989d6c81a03628b2c0b8ff56543c3e2a53403455e3fca86",
+    "transformations": ["Removed private evidence paths and artifact paths; retained findings, exact values, breakage probes, recommendation and no-promotion boundary."]
+  }
+}

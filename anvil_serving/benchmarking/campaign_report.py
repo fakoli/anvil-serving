@@ -11,7 +11,9 @@ import stat
 from pathlib import Path
 import re
 
-from .jobs import BenchmarkJobError, job_spec_sha256, resolve_owned_run_path
+from .aider import AIDER_PLAN_SCHEMA, _validate_request_accounting, validated_aider_task_grade
+from .jobs import BenchmarkJobError, canonical_json_bytes, job_spec_sha256, resolve_owned_run_path
+from .swe_agent_adapter import EVENT_SCHEMA, MAX_BYTES, MAX_EVENTS
 from .campaign_execution import _read as _read_execution, _validate_release, bind_campaign_child, reconcile_batch, batch_closure
 
 SCHEMA = "anvil-serving.benchmark-campaign-report/v1"
@@ -35,7 +37,7 @@ def _digest(value):
     return value if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) else None
 
 
-def _read(root, relative, reference=None):
+def _read_bytes(root, relative, reference=None):
     """Read bounded owned evidence; a reference also binds its exact bytes."""
     if not isinstance(relative, str) or not relative or "\\" in relative:
         raise ValueError("invalid evidence path")
@@ -54,7 +56,11 @@ def _read(root, relative, reference=None):
     if reference is not None and (reference.get("sha256") != hashlib.sha256(raw).hexdigest()
                                   or reference.get("bytes") != len(raw)):
         raise ValueError("evidence digest mismatch")
-    value = json.loads(raw)
+    return raw
+
+
+def _read(root, relative, reference=None):
+    value = json.loads(_read_bytes(root, relative, reference))
     if not isinstance(value, dict):
         raise ValueError("invalid evidence object")
     return value
@@ -77,6 +83,169 @@ def _native(store, cell, record, root, expected_sha256):
         return _read(root, refs[0].get("path"), refs[0]), None
     except (OSError, ValueError, TypeError, KeyError, AttributeError, BenchmarkJobError):
         return None, "invalid_evidence"
+
+
+def _retained_reference(manifest, path):
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        return None
+    matches = [item for item in artifacts if isinstance(item, dict) and item.get("path") == path]
+    if len(matches) != 1:
+        return None
+    reference = matches[0]
+    if (set(reference) != {"path", "bytes", "sha256"} or type(reference["bytes"]) is not int
+            or reference["bytes"] < 0 or not _digest(reference["sha256"])):
+        return None
+    return reference
+
+
+def _retained_missing(manifest, reference):
+    return reference["path"].removeprefix("aider/") in manifest["missing"]
+
+
+def _retained_aider_diagnostics(root, manifest):
+    reference = _retained_reference(manifest, "aider/requests.jsonl")
+    if reference is None or _retained_missing(manifest, reference):
+        return None
+    try:
+        raw = _read_bytes(root, reference["path"], reference)
+        lines = raw.splitlines(keepends=True)
+        if not 1 <= len(lines) <= MAX_EVENTS or len(raw) > MAX_BYTES + 8192:
+            return None
+        rows = [json.loads(line) for line in lines]
+        if any(not isinstance(row, dict) or row.get("schema") != EVENT_SCHEMA or type(row.get("seq")) is not int or row["seq"] != index
+               or not isinstance(row.get("event"), str) for index, row in enumerate(rows, 1)):
+            return None
+        # The producer closes once. A terminal followed by any event is not a
+        # partial observation; it contradicts the append-only recorder contract.
+        if any(row["event"] == "adapter_finished" for row in rows[:-1]):
+            return None
+        terminal = rows[-1] if rows[-1]["event"] == "adapter_finished" else None
+        event_count = len(rows) - int(terminal is not None)
+        byte_count = sum(map(len, lines[:event_count]))
+        if event_count > MAX_EVENTS - 1 or byte_count > MAX_BYTES - 4096:
+            return None
+        request_accounting = None
+        adapter_reference = _retained_reference(manifest, "aider/adapter-result.json")
+        adapter_result = None
+        if adapter_reference is not None and not _retained_missing(manifest, adapter_reference):
+            adapter_result = _read(root, adapter_reference["path"], adapter_reference)
+        accounting_declared = (rows[0].get("request_accounting_schema") is not None
+                               or terminal is not None and terminal.get("request_accounting") is not None
+                               or isinstance(adapter_result, dict)
+                               and adapter_result.get("request_accounting") is not None)
+        if accounting_declared:
+            if terminal is None or adapter_result is None:
+                return None
+            if adapter_result.get("schema") != "anvil-serving.aider-adapter-result/v1":
+                return None
+            request_accounting = _validate_request_accounting(rows, adapter_result)
+        if terminal is not None:
+            counters = ("event_count", "byte_count", "omitted_events", "omitted_bytes")
+            limits = terminal.get("limits")
+            if (any(type(terminal.get(key)) is not int or terminal[key] < 0 for key in counters)
+                    or terminal["event_count"] != event_count or terminal["byte_count"] != byte_count
+                    or not isinstance(limits, dict) or set(limits) != {"max_events", "max_bytes"}
+                    or any(type(value) is not int for value in limits.values())
+                    or limits != {"max_events": MAX_EVENTS, "max_bytes": MAX_BYTES}
+                    or terminal.get("outcome") not in {"completed", "failed", "budget_exhausted", "boundary_rejected"}
+                    or terminal.get("status") not in {"complete", "truncated", "incomplete"}):
+                return None
+            if terminal["status"] == "complete":
+                if terminal["omitted_events"] != 0 or terminal["omitted_bytes"] != 0:
+                    return None
+            elif terminal["status"] == "truncated":
+                if terminal["omitted_events"] <= 0 or terminal["omitted_bytes"] <= 0:
+                    return None
+            elif request_accounting is None or terminal["omitted_events"] or terminal["omitted_bytes"]:
+                return None
+        signals = {"output_truncated": "aider_transport_response",
+                   "compilation_failure": "aider_contained_command_finished"}
+        observed = {}
+        for signal, event in signals.items():
+            values = [row[signal] for row in rows if row["event"] == event and signal in row]
+            if any(value is not None and type(value) is not bool for value in values):
+                return None
+            observed[signal] = True if any(value is True for value in values) else None
+        return {**observed, "coverage": "complete" if terminal and terminal["status"] == "complete" else "partial"}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError, UnicodeDecodeError):
+        return None
+
+
+def _cancelled_aider_raw_evidence(store, cell, record, root, expected_sha256):
+    """Project one retained native grade without creating a suite scoring stage."""
+    try:
+        if record.get("spec_sha256") != expected_sha256:
+            return None
+        artifact = store.artifact(cell["spec"]["run_id"])
+        if not artifact or artifact.get("run", {}).get("spec_sha256") != expected_sha256:
+            return None
+        stages = artifact.get("results", {}).get("evidence", {}).get("stages", [])
+        refs = [ref for stage in stages if stage.get("name") == "aider_retention" for ref in stage.get("evidence", [])]
+        if len(refs) != 1:
+            return None
+        cancellation = _read(root, refs[0].get("path"), refs[0])
+        if cancellation.get("schema") != "anvil-serving.aider-cancellation/v1":
+            return None
+        retention = cancellation.get("retention")
+        if (not isinstance(retention, dict) or retention.get("schema") != "anvil-serving.aider-retention/v1"
+                or retention.get("state") not in {"retained", "incomplete"}
+                or not isinstance(retention.get("manifest_reference"), dict)):
+            return None
+        manifest_reference = retention["manifest_reference"]
+        manifest = _read(root, manifest_reference.get("path"), manifest_reference)
+        if (manifest.get("schema") != "anvil-serving.aider-retention/v1" or manifest.get("state") != retention["state"]
+                or not isinstance(manifest.get("missing"), list) or manifest != {
+                "schema": manifest.get("schema"), "state": manifest.get("state"),
+                "artifacts": manifest.get("artifacts"), "missing": manifest.get("missing")}):
+            return None
+        plan_reference = _retained_reference(manifest, "aider/plan.json")
+        selection_reference = _retained_reference(manifest, "aider/selection.json")
+        task_id = cell["task_id"]
+        native_reference = _retained_reference(manifest, f"aider/results/{task_id}/.aider.results.json")
+        if not plan_reference or not selection_reference:
+            return None
+        if any(not isinstance(path, str) for path in manifest["missing"]) or any(
+                _retained_missing(manifest, reference) for reference in (plan_reference, selection_reference)):
+            return None
+        plan = _read(root, plan_reference["path"], plan_reference)
+        selection = _read(root, selection_reference["path"], selection_reference)
+        if (plan.get("schema") != AIDER_PLAN_SCHEMA
+                or plan.get("plan_sha256") != hashlib.sha256(canonical_json_bytes(
+                    {key: value for key, value in plan.items() if key != "plan_sha256"}
+                )).hexdigest()
+                or not isinstance(cell.get("prepared"), dict)
+                or hashlib.sha256(canonical_json_bytes(plan)).hexdigest() != cell["prepared"].get("plan_sha256")
+                or plan.get("ownership_id") != cell["spec"]["ownership_id"]
+                or plan.get("run_id") != cell["spec"]["run_id"]
+                or plan.get("profile") != cell["spec"]["profile"]
+                or plan.get("endpoint") != cell["spec"]["endpoint"]
+                or not isinstance(plan.get("selection"), dict)
+                or selection != plan["selection"]):
+            return None
+        instance_ids = selection.get("instance_ids")
+        if (not isinstance(instance_ids, list) or instance_ids != [task_id]
+                or instance_ids != cell["spec"].get("parameters", {}).get("instance_ids")
+                or selection.get("sha256") != hashlib.sha256(canonical_json_bytes(instance_ids)).hexdigest()):
+            return None
+        diagnostics = _retained_aider_diagnostics(root, manifest)
+        if (native_reference is None or native_reference["bytes"] > 1024 * 1024
+                or _retained_missing(manifest, native_reference)):
+            return {"grades": None, "diagnostics": {**diagnostics, "num_exhausted_context_windows": None}
+                    if diagnostics is not None else None}
+        native = _read(root, native_reference["path"], native_reference)
+        grade = validated_aider_task_grade(plan, native)
+        if grade is None:
+            return {"grades": None, "diagnostics": {**diagnostics, "num_exhausted_context_windows": None}
+                    if diagnostics is not None else None}
+        if diagnostics is None:
+            return {"grades": [grade], "diagnostics": None}
+        exhausted = native.get("num_exhausted_context_windows")
+        diagnostics = {**diagnostics, "num_exhausted_context_windows": exhausted
+                       if type(exhausted) is int and 0 <= exhausted <= 12 else None}
+        return {"grades": [grade], "diagnostics": diagnostics}
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, RecursionError, BenchmarkJobError):
+        return None
 
 
 def _samples(cell, native):
@@ -290,6 +459,8 @@ def report_campaign(manifest, store, *, state=None):
             started_runs.add(spec["run_id"])
             receipts.append(receipt)
         status = record.get("state") if record and record.get("state") in _STATES else "planned"
+        raw_task_evidence = (_cancelled_aider_raw_evidence(store, cell, record, root, job_spec_sha256(expected))
+                             if status == "cancelled" and spec["suite"] == "aider" else None)
         performance = spec["suite"] == "performance"
         planned = spec.get("parameters", {}).get("request_count") if performance else 1
         planned = planned if type(planned) is int and planned > 0 else None
@@ -320,6 +491,8 @@ def report_campaign(manifest, store, *, state=None):
                "matching": {key: _digest(cell.get("matching", {}).get(key)) for key in _HASHES},
                "evidence_status": reason or "retained", "samples": counts,
                "outcomes": samples, "native_aggregate_metrics": metrics,
+               "raw_task_grades": raw_task_evidence["grades"] if raw_task_evidence else None,
+               "raw_task_grade_diagnostics": raw_task_evidence["diagnostics"] if raw_task_evidence else None,
                "telemetry_coverage": coverage, "cache": {"requested": requested_cache, "proven": None},
                "identity_status": identity_status,
                "measurement_complete": status == "completed" and bool(native) and not reason and planned is not None

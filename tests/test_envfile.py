@@ -64,7 +64,8 @@ def test_resolve_precedence_shell_then_config_home_then_user_home(env_homes, mon
     assert (value, source) == ("from-shell", "env")
 
 
-def test_resolve_falls_back_to_user_home(env_homes):
+def test_resolve_falls_back_to_user_home(env_homes, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     _config_home, user_home = env_homes
     (user_home / ".env").write_text("EXAMPLE_TOKEN=from-home\n", encoding="utf-8")
     value, source = envfile.resolve_env_value("EXAMPLE_TOKEN")
@@ -76,7 +77,8 @@ def test_resolve_unset_everywhere_returns_none(env_homes):
     assert envfile.resolve_env_value("EXAMPLE_TOKEN") == (None, "")
 
 
-def test_resolve_skips_unreadable_encoding(env_homes):
+def test_resolve_skips_unreadable_encoding(env_homes, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     config_home, user_home = env_homes
     (config_home / ".env").write_bytes(b"\xff\xfeinvalid")
     assert envfile.resolve_env_value("EXAMPLE_TOKEN") == (None, "")
@@ -100,9 +102,46 @@ def test_invalid_name_never_resolves(env_homes):
     assert envfile.resolve_env_value("") == (None, "")
 
 
-def test_env_sources_names_every_location(env_homes):
+def test_env_sources_names_every_location(env_homes, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     config_home, user_home = env_homes
     sources = envfile.env_sources("EXAMPLE_TOKEN")
     assert sources[0] == "environment variable EXAMPLE_TOKEN"
     assert os.path.join(str(config_home), ".env") in sources
     assert os.path.join(str(user_home), ".env") in sources
+
+
+def test_home_environment_opt_out_never_opens_shared_file(env_homes, monkeypatch):
+    from anvil_serving import serves
+    import builtins
+
+    config_home, user_home = env_homes
+    (config_home / ".env").write_text("EXAMPLE_TOKEN=operator\n")
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "1")
+    original_open = builtins.open
+
+    def guarded_open(path, *args, **kwargs):
+        assert os.fspath(path) != str(user_home / ".env")
+        if os.path.exists(path) and (user_home / ".env").exists():
+            assert not os.path.samefile(path, user_home / ".env")
+        return original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", guarded_open)
+    assert envfile.fallback_paths() == [str(config_home / ".env")]
+    assert envfile.read_dotenv(user_home / ".env") == {}
+    assert envfile.resolve_env_value("EXAMPLE_TOKEN")[0] == "operator"
+    assert serves._serve_env({})["EXAMPLE_TOKEN"] == "operator"
+    monkeypatch.setenv("EXAMPLE_TOKEN", "shell")
+    assert serves._serve_env({})["EXAMPLE_TOKEN"] == "shell"
+    (user_home / ".env").write_text("SHARED_SENTINEL=must-not-read\n")
+    manifest = config_home / "manifest"
+    manifest.mkdir()
+    alias = manifest / ".env"
+    alias.symlink_to(user_home / ".env")
+    assert "SHARED_SENTINEL" not in serves._serve_env({"_manifest_dir": str(manifest)})
+    alias.unlink()
+    os.link(user_home / ".env", alias)
+    assert "SHARED_SENTINEL" not in serves._serve_env({"_manifest_dir": str(manifest)})
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "yes")
+    with pytest.raises(ValueError, match="must be 0 or 1"):
+        serves._serve_env({})

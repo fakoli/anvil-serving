@@ -1,0 +1,21 @@
+{
+  "schema": "marker-gpu-trace-smoke-projection/v1",
+  "phase": "incumbent_before_trial",
+  "endpoint": "http://127.0.0.1:8000/v1",
+  "model": "llm.primary",
+  "checks": ["json"],
+  "thinking_mode": "disabled",
+  "visible_answer_tokens": 512,
+  "reasoning_headroom_tokens": 0,
+  "timeout_seconds": 120,
+  "passed": false,
+  "error": "Extra data: line 1 column 32 (char 31)",
+  "raw_response": "missing; the initial invocation omitted JSON output and was not retried",
+  "projection": {
+    "native_source_sha256": "4af5cc023769ff57a24141e39a04b30effb9e8f0109a3b53cd28d2e99f680d73",
+    "transformations": [
+      "Converted the managed CLI envelope into an allowlisted outcome record.",
+      "Preserved the failure and missing-raw-response limitation."
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "status": "unknown",
+  "error": "'prompt_token_ids'",
+  "promoted": false,
+  "ignis": "hold",
+  "logs_sha256": "8ce1e7554ca1349bfbd21caefe26aca8ef92d73448afd1fd438384ce1ffe3834",
+  "startup_logs_sha256": "f4a3bea16b40c90ab9da3d2e7eac774f268e557c13c0c20352e466c1d22cdff4",
+  "gpu_selftest": {
+    "schema": "marker-trace/v1",
+    "kind": "gpu_selftest",
+    "passed": true,
+    "steps": 2,
+    "original_logits_and_cache_equal": true,
+    "peak_tensor_bytes": 7447552,
+    "limit": "Synthetic selected tokens; does not test stochastic rejection sampling."
+  },
+  "response_sha256": [
+    "1bae7b635b4936f53f7f0087c44f37687284e960238bde93a21eadb7d383a3af"
+  ]
+}

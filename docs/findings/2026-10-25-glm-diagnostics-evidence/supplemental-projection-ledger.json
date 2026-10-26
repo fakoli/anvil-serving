@@ -1,0 +1,166 @@
+{
+  "original_private_authority": "Private native bytes remain authoritative; derivative bytes cannot validate original native hash chains.",
+  "schema": "sanitized-diagnostic-supplemental-ledger/v1",
+  "sources": [
+    {
+      "derivatives": [
+        {
+          "bytes": 3298,
+          "path": "summary.json",
+          "sha256": "988ad1204bf70b9d4e4ba31c7fdd7d04a879b96118c8fa2a6fc488cbd5af2b9c"
+        },
+        {
+          "bytes": 1175,
+          "path": "restoration.json",
+          "sha256": "cc97facb2ebf8b47e0a6153de4f71b9f825fe60739a81c8ac7e210aaed05983f"
+        }
+      ],
+      "original_private": {
+        "bytes": 10086,
+        "sha256": "e20931b6997d40e18a222bd7d71f9cd57241af2df13973eece5b968910b1a36d"
+      },
+      "source_id": "preflight/resources",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 3298,
+          "path": "summary.json",
+          "sha256": "988ad1204bf70b9d4e4ba31c7fdd7d04a879b96118c8fa2a6fc488cbd5af2b9c"
+        },
+        {
+          "bytes": 1175,
+          "path": "restoration.json",
+          "sha256": "cc97facb2ebf8b47e0a6153de4f71b9f825fe60739a81c8ac7e210aaed05983f"
+        }
+      ],
+      "original_private": {
+        "bytes": 10096,
+        "sha256": "0315cc38047c92cd9a4218a6f9ce12110a0f5b8e295ba94c966960532f972c92"
+      },
+      "source_id": "post-run/resources",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 3298,
+          "path": "summary.json",
+          "sha256": "988ad1204bf70b9d4e4ba31c7fdd7d04a879b96118c8fa2a6fc488cbd5af2b9c"
+        },
+        {
+          "bytes": 1175,
+          "path": "restoration.json",
+          "sha256": "cc97facb2ebf8b47e0a6153de4f71b9f825fe60739a81c8ac7e210aaed05983f"
+        }
+      ],
+      "original_private": {
+        "bytes": 312,
+        "sha256": "725d96edd164c05b05d24deb96153e4948803e0cef63f1321f44390d14652173"
+      },
+      "source_id": "clock",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 3298,
+          "path": "summary.json",
+          "sha256": "988ad1204bf70b9d4e4ba31c7fdd7d04a879b96118c8fa2a6fc488cbd5af2b9c"
+        },
+        {
+          "bytes": 1175,
+          "path": "restoration.json",
+          "sha256": "cc97facb2ebf8b47e0a6153de4f71b9f825fe60739a81c8ac7e210aaed05983f"
+        }
+      ],
+      "original_private": {
+        "bytes": 14972,
+        "sha256": "d681fc61b5565199c9dd8b5bc83c08441b2faeb102fd67a798b153ac4f6766d0"
+      },
+      "source_id": "owned-closure-audit",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 4261,
+          "path": "coverage.json",
+          "sha256": "666b84aa0eab99e2efd3d5d0598eedbe52cf6e8a89a8cbaaab76e61e1d80da89"
+        }
+      ],
+      "original_private": {
+        "bytes": 4261,
+        "sha256": "a93f547a5dab43af2e00039b01932cb85d666e02c24e82a43f908b50df5a1288"
+      },
+      "source_id": "requested-coverage",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 123755,
+          "path": "r12-replayed-report.json",
+          "sha256": "82548eb5d976b9b2aefff08205cad0f818d8212dc6064273a1cc80adec9fd379"
+        }
+      ],
+      "original_private": {
+        "bytes": 146668,
+        "sha256": "c73f9bfb4d413f1ff7565de0fc909e5da671e0d4fbdf129da8db80135d6a069b"
+      },
+      "source_id": "historical-r12/replay",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 14679,
+          "path": "case-diagnostics.json",
+          "sha256": "166d7625d651d1478e1318ad844880ef235afdcdb693af9463071bc8e8c75a00"
+        }
+      ],
+      "original_private": {
+        "bytes": 24993,
+        "sha256": "fb206fb637842008b4ca4ad96a03047730523e59acfb44e1a143914b1f2e5c20"
+      },
+      "source_id": "rust16-analysis",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 14679,
+          "path": "case-diagnostics.json",
+          "sha256": "166d7625d651d1478e1318ad844880ef235afdcdb693af9463071bc8e8c75a00"
+        },
+        {
+          "bytes": 3268,
+          "path": "rust-repair-excerpts.json",
+          "sha256": "dec34891289e1b1585240986f1daaeee12ba8bfbcf32cf758a6fc7d4517d1e2d"
+        }
+      ],
+      "original_private": {
+        "bytes": 24417,
+        "sha256": "ae94fbf9093a6a0906bd0b466616e13513636109d1bef0d43fe96828e14c9ced"
+      },
+      "source_id": "rust32-analysis",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    },
+    {
+      "derivatives": [
+        {
+          "bytes": 586,
+          "path": "budget-stop.json",
+          "sha256": "6bbc27a46f7d3e4b41a16e6405e18d75d17563eeb87618b979e50089f1fc30f6"
+        }
+      ],
+      "original_private": {
+        "bytes": 788,
+        "sha256": "b4f37d26e025b7015acf8d79b2bb874c00fd0eae3c1620201b550d61f6eff869"
+      },
+      "source_id": "run-command",
+      "transformation": "Selected bounded numeric, boolean, control, code-excerpt or explanatory fields; remove operator paths/addresses and raw prompts, reasoning text and credentials."
+    }
+  ]
+}

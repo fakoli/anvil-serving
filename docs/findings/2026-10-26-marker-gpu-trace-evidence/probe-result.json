@@ -1,0 +1,47 @@
+{
+  "schema": "marker-gpu-trace-probe-result/v1",
+  "status": "executed",
+  "sample_count": 1,
+  "case": "boundary",
+  "owner_state": {
+    "identity_matches": true,
+    "running": 0,
+    "waiting": 0,
+    "idle": true,
+    "scope": "point-in-time owner observation, not an admission lease"
+  },
+  "finish_reason": "stop",
+  "usage": {
+    "prompt_tokens": 48,
+    "completion_tokens": 75,
+    "total_tokens": 123,
+    "reasoning_tokens": 64
+  },
+  "boundary": "boundary_consistent_not_forced_provenance",
+  "reasoning_span_tokens": 64,
+  "generated_reasoning_token_ids_count": 64,
+  "oracle": true,
+  "response_anomalies": [],
+  "terminal": "response",
+  "engine_drain": "unknown",
+  "router_config_unchanged": true,
+  "shared_configuration_changed": false,
+  "runtime_verified_by_probe_runner": false,
+  "runtime_identity_authority": "operator_attested",
+  "request_artifact": {
+    "native_sha256": "0aedf2279c95aea90be8ae704e918cf39fe604c52d904e5311c21dbee99f7277"
+  },
+  "response_artifact": {
+    "native_sha256": "34c2827dab0ccc3baad01f3aeebc02564b20a219822c241e085aad99e69857dd"
+  },
+  "ignis": "hold",
+  "promoted": false,
+  "projection": {
+    "native_source_sha256": "776030b88749157de0ca851448c2cafee24119879dcb26e1935013ba08676f92",
+    "transformations": [
+      "Removed timestamps and elapsed duration because synchronized tracing excludes performance claims.",
+      "Replaced private filenames with native SHA-256 bindings.",
+      "Preserved the runner's runtime_verified=false and operator-attested authority labels."
+    ]
+  }
+}

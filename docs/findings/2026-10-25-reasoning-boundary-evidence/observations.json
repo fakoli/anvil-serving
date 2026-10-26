@@ -1,0 +1,29 @@
+{
+  "closing_marker": 154842,
+  "closing_marker_present": false,
+  "finish_reason": "length",
+  "generated_token_ids_count": 512,
+  "initial_nonzero_token_ids_count": 64,
+  "native_usage": {
+    "completion_tokens": 512,
+    "completion_tokens_details": {
+      "reasoning_tokens": 512
+    },
+    "prompt_tokens": 48,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "created_cache_tokens": 0,
+      "multimodal_tokens": null
+    },
+    "total_tokens": 560
+  },
+  "prompt_token_ids_count": 48,
+  "repeated_suffix_count": 448,
+  "repeated_token_id": 0,
+  "repeated_token_text": "!",
+  "request_count": 1,
+  "schema": "anvil-serving.reasoning-boundary-observation/v1",
+  "scope": "Derived from private exact response; raw prompt/reasoning text and token sequences withheld.",
+  "source_response_sha256": "3ff9f594a511d75e00770a52014b2262556470504563c298130d59672dd3d679",
+  "visible_content": null
+}

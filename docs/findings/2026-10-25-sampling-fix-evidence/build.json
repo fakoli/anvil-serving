@@ -1,0 +1,14 @@
+{
+  "cpus": 2,
+  "dockerfile_sha256": "e7c4eda25258ff52da6301c2b743d9b6b9f4fb0e7d5b9c11a44a1b504365c4aa",
+  "dry_run": false,
+  "duration_seconds": 1.667,
+  "image_id": "sha256:b9d7e1c083047e7b5cbca464913df2ddbad0fff2a3d29236a3c07be89585519e",
+  "log_truncated": false,
+  "memory_mib": 4096,
+  "ok": true,
+  "platform": "linux/amd64",
+  "returncode": 0,
+  "schema": "anvil-serving.image-build/v1",
+  "timeout_seconds": 900
+}

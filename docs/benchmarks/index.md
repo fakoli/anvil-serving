@@ -31,6 +31,8 @@ configuration and retained evidence. **Evidence reviewed: 2026-10-17 FP4 promoti
 
 ## Engine testing
 
+The [October 25 sampling-fix trial](../findings/2026-10-25-sampling-fix.md) stopped at a synthetic ordinary-mask parity failure before model weights or inference. It supplies partial functional kernel evidence, no candidate promotion or proven model-boundary fix.
+
 The [engine-testing reports](engine-testing.md) collect the closed Flare
 diagnostics and the 0.7.2 Ignis qualification. They are bounded local evidence:
 the incumbent remains selected, no Flare result is promoted, and Ignis coding

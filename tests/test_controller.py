@@ -1645,17 +1645,21 @@ def test_bind_safety_explicit_env_stays_hermetic(token_only_in_config_env):
     assert exc.value.details["sources_checked"][0].startswith("environment variable ")
 
 
-def test_resolve_auth_token_missing_names_sources(tmp_path, monkeypatch):
+@pytest.mark.parametrize("disable_home_environment, expected_source_count", [("0", 3), ("1", 2)])
+def test_resolve_auth_token_missing_names_sources(
+    tmp_path, monkeypatch, disable_home_environment, expected_source_count
+):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
     monkeypatch.setenv("HOME", str(tmp_path / "empty-user"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "empty-user"))
     monkeypatch.delenv("ANVIL_CONTROLLER_TOKEN", raising=False)
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", disable_home_environment)
     with pytest.raises(controller.ControllerError) as exc:
         controller.resolve_auth_token(required=True)
     assert exc.value.code == "auth_token_missing"
     sources = exc.value.details["sources_checked"]
     assert sources[0] == "environment variable ANVIL_CONTROLLER_TOKEN"
-    assert len(sources) == 3
+    assert len(sources) == expected_source_count
 
 
 def test_controller_status_succeeds_with_dotenv_only_token(token_only_in_config_env):

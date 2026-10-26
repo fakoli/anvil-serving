@@ -1,0 +1,17 @@
+{
+  "schema": "anvil-serving.image-build/v1",
+  "name": "reasoning-reference-r2",
+  "image": "anvil-glm-sampling-fix:58231-r2",
+  "image_id": "sha256:67f0d352dc21a068fb310d2c4b06a08f66b7a798775f6f82c850cc0616eb20fc",
+  "dockerfile_sha256": "7167e1c346db3daaa9904d88cfe39180599045c506046aa0a4d56627f8bbad21",
+  "platform": "linux/amd64",
+  "cpus": 2,
+  "memory_mib": 4096,
+  "timeout_seconds": 900,
+  "dry_run": false,
+  "ok": true,
+  "returncode": 0,
+  "duration_seconds": 1.567,
+  "log_truncated": false,
+  "projection_note": "Private command, path, and log location omitted."
+}

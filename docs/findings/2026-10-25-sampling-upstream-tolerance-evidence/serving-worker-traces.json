@@ -1,0 +1,41 @@
+{
+  "schema": "anvil-serving.sampling-worker-trace-projection/v1",
+  "source_phase": "Captured after the single candidate probe, following candidate readiness",
+  "receipts": [
+    {
+      "worker_rank": 0,
+      "receipt": {
+        "checks": 36,
+        "event": 1,
+        "forced_finite_max": 1,
+        "forced_finite_min": 1,
+        "forced_rows": 2,
+        "has_k": 0,
+        "rows": 4,
+        "split_mask_completed": 1,
+        "splits": 32,
+        "step_rounds": 5,
+        "token_154842_finite_rows": 2,
+        "vocab": 154880
+      }
+    },
+    {
+      "worker_rank": 1,
+      "receipt": {
+        "checks": 36,
+        "event": 1,
+        "forced_finite_max": 1,
+        "forced_finite_min": 1,
+        "forced_rows": 2,
+        "has_k": 0,
+        "rows": 4,
+        "split_mask_completed": 1,
+        "splits": 32,
+        "step_rounds": 5,
+        "token_154842_finite_rows": 2,
+        "vocab": 154880
+      }
+    }
+  ],
+  "interpretation": "Fresh serving-worker dispatch receipts; distinct from the synthetic preweight child. Process IDs omitted. Synchronized Python dispatch completion is not profiler-level attribution or performance evidence."
+}

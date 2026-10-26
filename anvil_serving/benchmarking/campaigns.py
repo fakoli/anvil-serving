@@ -299,6 +299,7 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
                             raise BenchmarkJobError("campaign_unclosed_batch", "terminal jobs lack verified batch closure")
                         continue
                 else:
+                    execution.require_batch_allowance(manifest, batch_id, run_root=store.run_root, store=store)
                     for cell in cells:
                         execution.verify_prepared_child(cell["spec"], cell["prepared"], run_root=store.run_root)
                     state["batches"][batch_id] = {"phase": "submitting", "run_ids": [cell["spec"]["run_id"] for cell in cells]}
@@ -328,7 +329,7 @@ def _run_campaign(manifest, store, *, arm_id, poll_s=0.1):
                     released = released or receipt.get("status") == "active"
                     if not released and execution.batch_ready(manifest, batch_id, run_root=store.run_root):
                         _check_source(manifest)
-                        allowance = max(cell["spec"]["timeout_s"] for cell in cells) + manifest["budgets"]["drain_reserve_s"]
+                        allowance = execution.required_batch_allowance(manifest, batch_id)
                         options = {}
                         if 'telemetry_collection' in manifest:
                             from .campaign_telemetry import BatchSampler

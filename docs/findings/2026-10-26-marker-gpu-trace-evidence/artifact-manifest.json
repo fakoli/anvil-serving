@@ -1,0 +1,346 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-26-marker-gpu-trace",
+    "capability": "Focused actual-GPU reasoning-marker provenance diagnostic",
+    "repository_revision": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "dirty_state": "Executable source frozen clean before lifecycle; publication projections added after measurement.",
+    "started_at": "2026-10-26T06:36:06Z",
+    "completed_at": "2026-10-26T07:29:57Z",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "marker-gpu-trace-experiment/v1",
+    "marker-trace/v1",
+    "anvil-serving.reasoning-runtime-inspection/v1",
+    "preflight/v2",
+    "operator-workflow/v1",
+    "marker-gpu-trace-restoration/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "59b9f5224acb1e1c3aa47967e0d73dd900c56b66a26b1299e10bcc59fb147ed8",
+          "bytes": 5781
+        }
+      ],
+      "reason": "Human evidence map and interpretation boundaries."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "6db39b6a7777c1f96605583779e3015a2308712cb19ac3d2757e3dd0c2126ec2",
+          "bytes": 1938
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "fc6246ba43098dcbe7d710c44440f49e03893d4b45884d3ec5829857c16d7b39",
+          "bytes": 11781
+        }
+      ],
+      "reason": "Primary sources and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "16af950ca48f59fde39d0443f2b1b7f1dea09bcc422bcba3d760059041697642",
+          "bytes": 3271
+        },
+        {
+          "path": "request.json",
+          "sha256": "8e5d150f45a12c45b09b0cd21b8b3bf5de0d3a106409b65c674fe612278809d9",
+          "bytes": 772
+        }
+      ],
+      "reason": "Frozen synthetic workload, controls and forwarded request projection."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "16af950ca48f59fde39d0443f2b1b7f1dea09bcc422bcba3d760059041697642",
+          "bytes": 3271
+        },
+        {
+          "path": "independent-pre-live-review.json",
+          "sha256": "63e61aa9e1fa6c8f1139992caed01b2b3901e6ed1bfa91b079ec10ceef8d0a38",
+          "bytes": 4688
+        }
+      ],
+      "reason": "Prospective gates, bounds, stop policy, restoration and independent authorization review."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-freeze.json",
+          "sha256": "7b36957b299f2b6d61d82104987614c659053b5b284597d8aef1c2ddbd072bbf",
+          "bytes": 1530
+        },
+        {
+          "path": "build.json",
+          "sha256": "6787789f8fd7bf88632e954084ddbed240de066b82f6caac54404dade742e114",
+          "bytes": 1482
+        },
+        {
+          "path": "candidate-attestation.json",
+          "sha256": "dce1922932480725949732065ab596619f375b3dba2dc39ba26aa25ac16f137d",
+          "bytes": 1920
+        },
+        {
+          "path": "runtime-before.json",
+          "sha256": "a201719e5d05e0632cb1a3d2b5c2c84d76d0d14ddc048f1c6516bf604e2dd056",
+          "bytes": 1697
+        },
+        {
+          "path": "runtime-candidate-before.json",
+          "sha256": "d414cc051bb5edb5db33b1e41b258faff86e8cb3f0eff5a0ff9a5f4898d08aa4",
+          "bytes": 2219
+        },
+        {
+          "path": "runtime-candidate-after.json",
+          "sha256": "716cdabb51612cc7135ca620014f2d194453678dbaecf8892b5ecb1500af89ea",
+          "bytes": 2427
+        },
+        {
+          "path": "runtime-restored.json",
+          "sha256": "9442b3adafd6a3295df4a4e54336c5875ae05bb9417d1671da6519589b40d4ff",
+          "bytes": 1973
+        }
+      ],
+      "reason": "Pinned source/image/model composition and bounded runtime comparisons."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "startup-gates.json",
+          "sha256": "967a91b3ad895ed1524fccf6bfec2499388f1dd712da22ade96e6edf383885b0",
+          "bytes": 787
+        },
+        {
+          "path": "request.json",
+          "sha256": "8e5d150f45a12c45b09b0cd21b8b3bf5de0d3a106409b65c674fe612278809d9",
+          "bytes": 772
+        },
+        {
+          "path": "response.json",
+          "sha256": "c33cfc5f352b43a006d5d9cc9211efd2abeb9f5c04315c911d838ac5896e39f7",
+          "bytes": 2154
+        },
+        {
+          "path": "probe-result.json",
+          "sha256": "9e2e37a5cbfed554c567b03e69b402824f693ea53cf06571c491963fca420604",
+          "bytes": 1550
+        },
+        {
+          "path": "trace-result.json",
+          "sha256": "75283d595a40c19eabecc9b9bd180ee6ec2fbea82c428e9eac85757f3e769cfc",
+          "bytes": 935
+        },
+        {
+          "path": "serving-worker-traces.json",
+          "sha256": "d4847f370c99f44af7da809d5ae4a1559a53a08b5f98da58175388a379c9504d",
+          "bytes": 275727
+        },
+        {
+          "path": "serving-worker-traces.log",
+          "sha256": "8ce1e7554ca1349bfbd21caefe26aca8ef92d73448afd1fd438384ce1ffe3834",
+          "bytes": 110119
+        },
+        {
+          "path": "startup-receipts.log",
+          "sha256": "f4a3bea16b40c90ab9da3d2e7eac774f268e557c13c0c20352e466c1d22cdff4",
+          "bytes": 15607
+        },
+        {
+          "path": "public-replay-result.json",
+          "sha256": "34a5bf9ac46751bb32e04933fb3456017c1ac7669d05b23a41261e678a0d748e",
+          "bytes": 664
+        },
+        {
+          "path": "public-replay-result-2.json",
+          "sha256": "78ae1d056be0e6b50a230682f09e5436f26e31cd2e7e660bb59f2305bb0ffce2",
+          "bytes": 703
+        },
+        {
+          "path": "marker-trace-summary.json",
+          "sha256": "8bb6d2017750d6248b81d7e82f4dc67c7b2d421c39fd6d01ea998ad1975d3db6",
+          "bytes": 2333
+        },
+        {
+          "path": "baseline-smoke.json",
+          "sha256": "7f135335ec478f06a5cf95a46cf6e1517dc119ed4e2cb3ed87034f5df0b3d4f2",
+          "bytes": 767
+        }
+      ],
+      "reason": "Native numerical/token evidence, complete public-safe worker records, frozen unknown analyzer result and explicitly derived summary."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "b7338b7e63f0317e32ff906c6ead4d522277dc653e6c179835509af742bee9f1",
+          "bytes": 2547
+        },
+        {
+          "path": "trace-result.json",
+          "sha256": "75283d595a40c19eabecc9b9bd180ee6ec2fbea82c428e9eac85757f3e769cfc",
+          "bytes": 935
+        },
+        {
+          "path": "independent-live-review.json",
+          "sha256": "3131be79d2c30cee67f807e580e2d2b1497054b9a6e8455b1749571e1bd4b097",
+          "bytes": 7548
+        },
+        {
+          "path": "public-replay-result.json",
+          "sha256": "34a5bf9ac46751bb32e04933fb3456017c1ac7669d05b23a41261e678a0d748e",
+          "bytes": 664
+        },
+        {
+          "path": "public-replay-result-2.json",
+          "sha256": "78ae1d056be0e6b50a230682f09e5436f26e31cd2e7e660bb59f2305bb0ffce2",
+          "bytes": 703
+        },
+        {
+          "path": "baseline-smoke.json",
+          "sha256": "7f135335ec478f06a5cf95a46cf6e1517dc119ed4e2cb3ed87034f5df0b3d4f2",
+          "bytes": 767
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "5119583ea842f5c20ed703955f752f39f26db921cd33af2a7ed946a11b9d1d3c",
+          "bytes": 1582
+        }
+      ],
+      "reason": "Failed full-sequence gate, nonreproduction, build friction and strict JSON failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "04d5b0bccdbdd74aab6990acd8e47c65ed480adb8394bd724e6d8128e5790848",
+          "bytes": 2778
+        },
+        {
+          "path": "closure.json",
+          "sha256": "05dbe7aacbdc9da1018e154223b3c166851be0804d0ff7e86f9c52e57c21c8e4",
+          "bytes": 1444
+        },
+        {
+          "path": "runtime-before.json",
+          "sha256": "a201719e5d05e0632cb1a3d2b5c2c84d76d0d14ddc048f1c6516bf604e2dd056",
+          "bytes": 1697
+        },
+        {
+          "path": "runtime-restored.json",
+          "sha256": "9442b3adafd6a3295df4a4e54336c5875ae05bb9417d1671da6519589b40d4ff",
+          "bytes": 1973
+        },
+        {
+          "path": "router-restored.json",
+          "sha256": "42d32c7e63c7dc3c3ee7a30b2890228f2102ad63c81ba0c515cfaa82d6dd2b3b",
+          "bytes": 916
+        },
+        {
+          "path": "router-transition-restored.json",
+          "sha256": "a82403cdf3fd9d5f1db08497c8f5a7a650804e62f1c9e0c0640bf57b43972882",
+          "bytes": 760
+        },
+        {
+          "path": "mode-restored.json",
+          "sha256": "35d05b440727489464d826e971b6f1742e37cfc386bcd39d88fc77c9c4e6a24c",
+          "bytes": 566
+        },
+        {
+          "path": "resources-final.json",
+          "sha256": "c515fb0da11463e0e202130aa873b4dc206b93243b4bb2f711951c9caa62526b",
+          "bytes": 1070
+        },
+        {
+          "path": "baseline-smoke.json",
+          "sha256": "7f135335ec478f06a5cf95a46cf6e1517dc119ed4e2cb3ed87034f5df0b3d4f2",
+          "bytes": 767
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "5119583ea842f5c20ed703955f752f39f26db921cd33af2a7ed946a11b9d1d3c",
+          "bytes": 1582
+        },
+        {
+          "path": "independent-restoration-review.json",
+          "sha256": "b76d99632e56a6930c99802607089305456b03df7c83282f9591314ab9d5660e",
+          "bytes": 5936
+        }
+      ],
+      "reason": "Exact operational restoration; functional acceptance remains incomplete; no quality regression established."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "1d3ba241894c9d826cecfc7463319da3b2b246a074341617213dc723e6881fd8",
+          "bytes": 4600
+        },
+        {
+          "path": "closure.json",
+          "sha256": "05dbe7aacbdc9da1018e154223b3c166851be0804d0ff7e86f9c52e57c21c8e4",
+          "bytes": 1444
+        },
+        {
+          "path": "independent-pre-live-review.json",
+          "sha256": "63e61aa9e1fa6c8f1139992caed01b2b3901e6ed1bfa91b079ec10ceef8d0a38",
+          "bytes": 4688
+        },
+        {
+          "path": "independent-live-review.json",
+          "sha256": "3131be79d2c30cee67f807e580e2d2b1497054b9a6e8455b1749571e1bd4b097",
+          "bytes": 7548
+        },
+        {
+          "path": "independent-restoration-review.json",
+          "sha256": "b76d99632e56a6930c99802607089305456b03df7c83282f9591314ab9d5660e",
+          "bytes": 5936
+        }
+      ],
+      "reason": "Closed inconclusive diagnostic with independent pre-live, post-probe and restoration reviews."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; the dated technical finding is the public report."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

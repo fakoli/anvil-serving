@@ -1,0 +1,132 @@
+{
+  "case_order": "vocabulary, batch, ordinary parity, forced 1e9, forced 1e9/0.6",
+  "cases": [
+    {
+      "batch_size": 4,
+      "evidence_basis": "Pinned loop order, six trace receipts and terminating ordinary-parity assertion; no final aggregate receipt.",
+      "kind": "ordinary_exact_parity",
+      "status": "passed",
+      "vocab_size": 131072
+    },
+    {
+      "baseline": "all logits -inf; softmax all NaN; argmax 0",
+      "batch_size": 4,
+      "forced_logit_expression": "1e9",
+      "forced_token_id": 13,
+      "kind": "forced_logit",
+      "patched": "one finite forced token; no NaN probabilities; expected argmax",
+      "status": "passed",
+      "vocab_size": 131072
+    },
+    {
+      "baseline": "all logits -inf; softmax all NaN; argmax 0",
+      "batch_size": 4,
+      "forced_logit_expression": "1e9 / 0.6",
+      "forced_token_id": 13,
+      "kind": "forced_logit",
+      "patched": "one finite forced token; no NaN probabilities; expected argmax",
+      "status": "passed",
+      "vocab_size": 131072
+    },
+    {
+      "batch_size": 64,
+      "evidence_basis": "Pinned loop order, six trace receipts and terminating ordinary-parity assertion; no final aggregate receipt.",
+      "kind": "ordinary_exact_parity",
+      "status": "passed",
+      "vocab_size": 131072
+    },
+    {
+      "baseline": "all logits -inf; softmax all NaN; argmax 0",
+      "batch_size": 64,
+      "forced_logit_expression": "1e9",
+      "forced_token_id": 13,
+      "kind": "forced_logit",
+      "patched": "one finite forced token; no NaN probabilities; expected argmax",
+      "status": "passed",
+      "vocab_size": 131072
+    },
+    {
+      "baseline": "all logits -inf; softmax all NaN; argmax 0",
+      "batch_size": 64,
+      "forced_logit_expression": "1e9 / 0.6",
+      "forced_token_id": 13,
+      "kind": "forced_logit",
+      "patched": "one finite forced token; no NaN probabilities; expected argmax",
+      "status": "passed",
+      "vocab_size": 131072
+    },
+    {
+      "batch_size": 4,
+      "evidence_basis": "Pinned loop order, six trace receipts and terminating ordinary-parity assertion; no final aggregate receipt.",
+      "kind": "ordinary_exact_parity",
+      "status": "passed",
+      "vocab_size": 154856
+    },
+    {
+      "baseline": "all logits -inf; softmax all NaN; argmax 0",
+      "batch_size": 4,
+      "forced_logit_expression": "1e9",
+      "forced_token_id": 154842,
+      "kind": "forced_logit",
+      "patched": "one finite forced token; no NaN probabilities; expected argmax",
+      "status": "passed",
+      "vocab_size": 154856
+    },
+    {
+      "baseline": "all logits -inf; softmax all NaN; argmax 0",
+      "batch_size": 4,
+      "forced_logit_expression": "1e9 / 0.6",
+      "forced_token_id": 154842,
+      "kind": "forced_logit",
+      "patched": "one finite forced token; no NaN probabilities; expected argmax",
+      "status": "passed",
+      "vocab_size": 154856
+    },
+    {
+      "batch_size": 64,
+      "evidence_basis": "Pinned loop order, six trace receipts and terminating ordinary-parity assertion; no final aggregate receipt.",
+      "kind": "ordinary_exact_parity",
+      "status": "failed",
+      "vocab_size": 154856
+    },
+    {
+      "baseline": "not_run",
+      "batch_size": 64,
+      "forced_logit_expression": "1e9",
+      "forced_token_id": 154842,
+      "kind": "forced_logit",
+      "patched": "not_run",
+      "status": "not_run",
+      "vocab_size": 154856
+    },
+    {
+      "baseline": "not_run",
+      "batch_size": 64,
+      "forced_logit_expression": "1e9 / 0.6",
+      "forced_token_id": 154842,
+      "kind": "forced_logit",
+      "patched": "not_run",
+      "status": "not_run",
+      "vocab_size": 154856
+    }
+  ],
+  "count_provenance": "Reconstructed from retained log and exact hash-pinned runner order; not a final success summary.",
+  "dtype": "float32",
+  "forced_passed": 6,
+  "forced_planned": 8,
+  "missing": [
+    "Mismatch indices and counts",
+    "Probability-mass/reference comparison",
+    "Peak allocated bytes: terminal check not reached",
+    "Candidate serving-worker trace",
+    "Candidate end-to-end request"
+  ],
+  "ordinary_failed": 1,
+  "ordinary_passed": 3,
+  "ordinary_planned": 4,
+  "schema": "anvil-serving.sampling-kernel-case-accounting/v1",
+  "seed": 58231,
+  "status": "partial_failed",
+  "top_k": null,
+  "top_p": 0.95
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.sampling-boundary-summary/v1",
+  "derived_from": [
+    "response.json",
+    "probe-result.json",
+    "serving-worker-traces.json"
+  ],
+  "requests": 1,
+  "finish_reason": "stop",
+  "completion_tokens": 137,
+  "native_reasoning_tokens": 64,
+  "closing_token": 154842,
+  "closing_token_positions_zero_based": [
+    64,
+    126
+  ],
+  "token_zero_count": 0,
+  "exact_answer_oracle": false,
+  "boundary": "invalid_repeated_or_missing_close",
+  "numeric_solution_present": true,
+  "numeric_solution_presence_is_not_strict_oracle_pass": true,
+  "candidate_worker_trace_receipts": 2,
+  "kernel_path_evidence": "observed synchronized split-mask dispatch",
+  "full_reasoning_limit_gate": "failed",
+  "promotion_authorized": false
+}

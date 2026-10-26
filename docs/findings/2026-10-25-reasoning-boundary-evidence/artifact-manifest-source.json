@@ -1,0 +1,105 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "plan.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "plan.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "identity.json",
+        "source-freeze.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "result.json",
+        "observations.json",
+        "offline-response-replay.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "No social publication copy requested.",
+      "role": "publication-summary",
+      "status": "not-applicable"
+    }
+  ],
+  "campaign": {
+    "capability": "Focused reasoning boundary diagnostic",
+    "completed_at": "2026-10-26T02:08:54.556605+00:00",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "Frozen private patch and file hashes in source-freeze.json; final offline usage fix postdates live request.",
+    "evidence_labels": [
+      "functional"
+    ],
+    "id": "glm-reasoning-boundary-20261025-r1",
+    "promoted": false,
+    "promotion_authorized": false,
+    "repository_revision": "3ccb65f1b886f527a2da98fc63439e9bd89fcf38",
+    "started_at": "2026-10-26T02:08:18.901938+00:00"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1"
+}

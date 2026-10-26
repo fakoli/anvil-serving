@@ -1,0 +1,24 @@
+{
+  "model": "served-model-1",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Solve SEND + MORE = MONEY in decimal. Different letters are different digits and leading digits cannot be zero. Return only the three integers SEND, MORE, MONEY separated by commas."
+    }
+  ],
+  "stream": false,
+  "max_tokens": 512,
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "reasoning_effort": "max",
+  "thinking_token_budget": 64,
+  "include_reasoning": true,
+  "return_token_ids": true,
+  "projection": {
+    "native_source_sha256": "0aedf2279c95aea90be8ae704e918cf39fe604c52d904e5311c21dbee99f7277",
+    "transformations": [
+      "Replaced the private served model name with served-model-1.",
+      "The synthetic prompt and all request controls are unchanged."
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independent pre-live adversarial review of the bounded actual-GPU reasoning-marker trace experiment",
+  "gate_state": "confirm_required",
+  "targets": {
+    "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "source_clean": true,
+    "evaluated_model": "GLM-5.3-Flash-FP4-Local",
+    "implementing_model": "GPT-6 lead; exact variant unverified",
+    "reviewer_model": "Sol; independent from implementer and evaluated model",
+    "candidate_image": "sha256:789be89fc1f16c28673fad1dbb539974f7d363c6c04ee1372a22fd12b21090d3",
+    "experiment_plan_sha256": "383c1a90ea02d04b01da62f8f4d4e8fb7424fe4147f065d015d79a2655ffb539",
+    "pre_live_freeze_sha256": "fa58acade9317c48129ef31a219c0bb10c5c34bfec56170cc7d524e3abaf4a89"
+  },
+  "tools_used": [
+    {"name": "read_only_source_and_diff_inspection", "source_class": "local", "ok": true, "dry_run": true, "confirmed": false, "target": "source checkout", "error": null},
+    {"name": "retained_verification_output_review", "source_class": "local", "ok": true, "dry_run": true, "confirmed": false, "target": "offline verification receipt", "error": null},
+    {"name": "operation_contracts", "source_class": "mcp", "ok": false, "dry_run": true, "confirmed": false, "target": null, "error": "Tool unavailable in reviewer session; no operational command was executed."},
+    {"name": "workflow_packet_validate", "source_class": "mcp", "ok": false, "dry_run": true, "confirmed": false, "target": null, "error": "Tool unavailable in reviewer session; packet shape checked against the workbench contract."}
+  ],
+  "artifacts": [
+    {
+      "role": "findings_summary",
+      "status": "no_remaining_blocker",
+      "summary": "The initially confirmed fail-closed analyzer defect for rejected speculative force rows was corrected before freeze. The final analyzer validates GPU events, force rows, effective positions, stores, boundary accounting, TP2 agreement and exact native-response token IDs. No remaining source, safety, boundedness or evidence-shape blocker was found for the authorized trial."
+    },
+    {"role": "breakage_probe_fail_closed", "classification": "refuted", "concrete_state": "Unreadable, oversized, duplicate-key, truncated, unknown-event, incomplete-rank, missing-lifecycle or inconsistent force-row evidence", "result": "Analyzer returns unknown/nonzero rather than attribution."},
+    {"role": "breakage_probe_malformed_boundary", "classification": "refuted", "concrete_state": "Malformed boundary metadata, stop cardinality, capture dimensions, accepted/rejected deltas, CRLF logs or path metacharacters", "result": "Boundary shape and cutoff are validated; paths are passed without a shell."},
+    {"role": "breakage_probe_resource_bounds", "classification": "refuted", "concrete_state": "Excessive requests, steps, rows, records, bytes, artifacts, startup time, request time or trial duration", "result": "Source and plan impose explicit fail-closed caps; frozen preweight GPU allocation limit is 67108864 bytes."},
+    {"role": "breakage_probe_state_drift", "classification": "refuted_pre_live_conditionally", "concrete_state": "Source, image, launch, recipe, rank, process, response or runtime identity drift", "result": "Frozen hashes, immutable image identity, recipe diffs, installed-byte attestation, before/after identity checks, TP-rank digests and exact response IDs are required; live receipts remained prospective."},
+    {"role": "offline_checks", "result": "165 passed in 26.37s", "sha256": "ba640034c42cbbdc47774aae66022dfbccf5dc9c53a6f25bf2e4bfb849014157"}
+  ],
+  "advisory_priors": [
+    {"status": "limitation", "finding": "Trace stores and committed-token correlation do not prove a counterfactual sampled outcome."},
+    {"status": "limitation", "finding": "Synchronized tracing cannot support performance claims and cannot retroactively attribute an earlier output."},
+    {"status": "prospective_gate", "finding": "Actual-CUDA selftest, runtime attestation, rank completeness, native-response reconciliation and restoration remained required."}
+  ],
+  "recommendation": "needs_more_data",
+  "human_gate_required": false,
+  "promoted": false,
+  "operator_conclusion": "Conditional GO for the already authorized single bounded managed trial. Preserve Ignis hold, zero retries, exact restoration, no performance claim and no promotion.",
+  "projection": {
+    "native_source_sha256": "a78601021452e53e5279e243e3225f9371a4eba674ada691612627ad62ca6bf9",
+    "transformations": ["Removed private checkout, evidence and artifact paths; retained reviewer independence, probes, limits, recommendation and no-promotion boundary."]
+  }
+}

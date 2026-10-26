@@ -1,0 +1,35 @@
+{
+  "schema": "marker-gpu-trace-final-resources/v1",
+  "host_memory": {
+    "total_bytes": 134164500480,
+    "available_bytes": 75693391872,
+    "swap_total_bytes": 8589930496,
+    "swap_free_bytes": 3605110784
+  },
+  "memory_pressure": {
+    "some_avg10": 0.0,
+    "some_avg60": 0.0,
+    "some_avg300": 0.0,
+    "full_avg10": 0.0,
+    "full_avg60": 0.0,
+    "full_avg300": 0.0
+  },
+  "swap_io": {
+    "pswpin": 1758969,
+    "pswpout": 5425620,
+    "oom_kill": 3
+  },
+  "restoration_comparison": {
+    "host_oom_kill_counter_delta": 0,
+    "minimum_sampled_host_available_bytes_during_transition": 65195872256,
+    "transition_sample_count": 70,
+    "sample_scope": "15-second host transition observations; exact pre-load instant not guaranteed"
+  },
+  "projection": {
+    "native_source_sha256": "b5bed4012471f48c081d4c089c912eb1135d4852298b689203833ee2764b2b1d",
+    "transformations": [
+      "Removed timestamp, process inventory, process IDs, process names and GPU identity rows.",
+      "Preserved bounded memory, pressure, swap and OOM observations."
+    ]
+  }
+}

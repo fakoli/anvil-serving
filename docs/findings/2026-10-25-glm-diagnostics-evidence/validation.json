@@ -1,0 +1,29 @@
+{
+  "command": "python3 scripts/run_tests.py tests/ -x -q",
+  "exit_code": 0,
+  "focused_catalog_checks_passed": 149,
+  "full_log_private_original": {
+    "bytes": 15849,
+    "sha256": "23e6e3f10728eb86adcc98cb970e6cc30f7ccea6b361e97e42c16299b4be4d70"
+  },
+  "historical_replay_population_unchanged": true,
+  "independent_pre_live_review_count": 3,
+  "passed": 13318,
+  "post_live_test_only_cleanup": {
+    "change": "Remove unused json import only; no executable or grading change.",
+    "file_sha256": "05dbcf617e1665095f5471003fa7037397c4265d5daadf7a682d5423fbe0c8b9",
+    "full_suite_repeated": false,
+    "path": "tests/test_benchmark_profiles.py",
+    "profile_tests_passed": 76,
+    "reason": "Original full-suite and live source stay pinned; focused test rerun covers the one-line test-only delta.",
+    "ruff": "whole tree passed"
+  },
+  "schema": "diagnostic-validation/v1",
+  "skipped": 111,
+  "source_head": "3e211eec5998998712acba85cf2d06ae4a49cd1a",
+  "subtests_passed": 76,
+  "typed_command_proof_private_original": {
+    "bytes": 21987,
+    "sha256": "5fcaf67d13a6d8d1d6e1004a3b1fe6b814a53103c2010c0e3707ee7b58786a51"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "marker-gpu-trace-mode-restoration/v1",
+  "managed_mode_left": true,
+  "candidate_removed": true,
+  "incumbent_loaded": true,
+  "primary_tier_readmitted": true,
+  "readiness_passed": true,
+  "active_requests": 0,
+  "state": "admitting",
+  "projection": {
+    "native_source_sha256": "a408a96150f46c6f8622674dd6e84aa0eb83ad721fc021cbe3726987ac89ae9b",
+    "transformations": [
+      "Converted private managed-mode console output into a bounded boolean receipt.",
+      "Removed private recipe, container, GPU, path and command identities."
+    ]
+  }
+}

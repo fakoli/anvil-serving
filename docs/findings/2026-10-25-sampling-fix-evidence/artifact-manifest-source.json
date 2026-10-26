@@ -1,0 +1,119 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human index and explicit evidence limits.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Dated exact sources and original-private versus sanitized-public provenance.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "plan.json",
+        "kernel-cases.json"
+      ],
+      "reason": "Frozen synthetic workload and explicit planned/completed/unrun cases.",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "plan.json"
+      ],
+      "reason": "Predeclared kernel stop gate, inference conditions and restoration budget.",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "identity.json",
+        "source-freeze.json",
+        "build.json"
+      ],
+      "reason": "Exact runtime/image/source pins; one measured GPU versus two reserved for planned serving.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "kernel-log-excerpt.json",
+        "kernel-cases.json",
+        "candidate-status.json"
+      ],
+      "reason": "Sanitized raw dispatch and assertion evidence; reconstructed case counts are labeled.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "candidate-status.json"
+      ],
+      "reason": "Earliest assertion, secondary unavailable-cgroup warning and deferred product repair.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "closure.json"
+      ],
+      "reason": "Managed rollback closure: exact incumbent identity, authenticated readiness/readmission and phase-bound resource checks; no generation smoke.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Bounded partial functional outcome; no candidate inference, fix acceptance or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "No social-copy package requested; the dated technical finding is the public report.",
+      "role": "publication-summary",
+      "status": "not-applicable"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "capability": "Focused sampling-kernel correctness diagnostic",
+    "completed_at": "2026-10-26T03:13:10.016257+00:00",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "Executable source frozen after independent review; later edits are publication-only.",
+    "evidence_labels": [
+      "functional"
+    ],
+    "id": "glm-sampling-fix-20261025-r1",
+    "promoted": false,
+    "promotion_authorized": false,
+    "repository_revision": "cf0b0db9efbd8d1213f3ff3fd4b765b0e2e3eb50",
+    "started_at": "2026-10-26T03:02:42.873565+00:00"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.image-build/v1",
+    "recipe-container-status/v1",
+    "sampling-fix-experiment/v1",
+    "sampling-source-freeze/v1",
+    "anvil-serving.sanitized-kernel-log-excerpt/v1",
+    "anvil-serving.sampling-kernel-case-accounting/v1",
+    "sampling-fix-closure/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 4 MiB"
+}

@@ -1,0 +1,15 @@
+{
+  "tiers": [
+    {
+      "active_requests": 0,
+      "draining": false,
+      "readiness_reason": "identity_passed",
+      "readiness_state": "ready",
+      "ready": true,
+      "reason": "admitting",
+      "state": "admitting",
+      "expected_model": "served-model-1",
+      "observed_model": "served-model-1"
+    }
+  ]
+}

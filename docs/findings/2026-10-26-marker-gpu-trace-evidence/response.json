@@ -1,0 +1,54 @@
+{
+  "object": "chat.completion",
+  "model": "served-model-1",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "9567,1085,10652",
+        "reasoning": "We need answer only three integers. Need solve cryptarithm. Classic SEND+MORE=MONEY solution 9567+1085=10652. Need ensure decimal. Return only \"9567,1085,10652\". But let's analyze? User asks solve. Need final only three integers separated commas"
+      },
+      "finish_reason": "stop",
+      "stop_reason": 154827,
+      "token_ids": [
+        1654, 1184, 4226, 1172, 2326, 25700, 13, 14646, 11619, 14426,
+        56255, 76, 13, 21785, 55289, 10, 46410, 49364, 54288, 6291,
+        220, 101804, 21, 22, 10, 108479, 20, 28, 109626, 102501,
+        13, 14646, 5978, 12116, 13, 3411, 1172, 330, 101804, 21,
+        22, 11, 108479, 20, 11, 109626, 102501, 3263, 1988, 1077,
+        594, 23578, 30, 2657, 17045, 11619, 13, 14646, 1590, 1172,
+        2326, 25700, 18630, 75994, 154842, 101804, 21, 22, 11, 108479,
+        20, 11, 109626, 102501, 154827
+      ]
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 48,
+    "completion_tokens": 75,
+    "total_tokens": 123,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "created_cache_tokens": 0,
+      "multimodal_tokens": null
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 64
+    }
+  },
+  "prompt_token_ids": [
+    154822, 154824, 154826, 25062, 287, 29905, 371, 25, 7487, 154827,
+    50, 3948, 55289, 488, 18417, 284, 92679, 304, 12116, 13,
+    33236, 11925, 525, 2155, 18478, 323, 6388, 18478, 4157, 387,
+    7168, 13, 3411, 1172, 279, 2326, 25700, 55289, 11, 18417,
+    11, 92679, 18630, 553, 75994, 13, 154828, 154841
+  ],
+  "projection": {
+    "native_source_sha256": "34c2827dab0ccc3baad01f3aeebc02564b20a219822c241e085aad99e69857dd",
+    "transformations": [
+      "Replaced the private served model name with served-model-1.",
+      "Removed request ID, creation time, system fingerprint, null transport fields and transport metrics.",
+      "Preserved response text, reasoning text, prompt/completion token IDs, stop metadata and usage exactly."
+    ]
+  }
+}

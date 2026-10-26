@@ -1,0 +1,26 @@
+{
+  "reviewer": "Sol independent runtime reviewer",
+  "verdict": "operational_restoration_verified_functional_acceptance_incomplete",
+  "blocking_findings": [],
+  "verified": [
+    "managed candidate removal and exact incumbent registry reload",
+    "readiness identity and readmission passed",
+    "incumbent sole TP2 owner on both GPU roles; candidate blocked; no unresolved ownership",
+    "model/revision/image and complete source/template/tokenizer capture match",
+    "launch command/entrypoint/mounts/parser/speculative/env match; recreated ID/time expected",
+    "no container OOM or containment error; zero swap allowance",
+    "router ready admitting active0; engine0/0; shared-memory check clean",
+    "host OOM delta0 and final pressure averages0",
+    "matched smokes each once, same prose-prefix strict JSON error;53 vs66 completiontokens",
+    "1188.8 seconds within2700 target"
+  ],
+  "limitations": [
+    "matched cached prompt counts30 versus0; no performance comparison",
+    "functional restoration acceptance incomplete because both smokes fail",
+    "bounded transition samples are not continuous memory/phase observation",
+    "post-closure memory extraction is separate from candidate requestcount"
+  ],
+  "candidate_model_requests": 1,
+  "promoted": false,
+  "ignis": "hold"
+}

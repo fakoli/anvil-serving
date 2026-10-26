@@ -132,6 +132,7 @@ class EventRecorder:
         self.max_events, self.max_bytes = max_events, max_bytes
         self.events = self.bytes = self.omitted_events = self.omitted_bytes = self.logical_requests = 0
         self.write_failed = False
+        self._closed = False
         self.budget = None
         self._lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -140,7 +141,8 @@ class EventRecorder:
     def record(self, event, **fields):
         started_at, _ = _stamp()
         with self._lock:
-            if self.write_failed:
+            if self._closed or self.write_failed:
+                self.write_failed = True
                 return False
             value = {"schema": EVENT_SCHEMA, "event": event, "seq": self.events + 1,
                      "utc_observed_at": started_at, **fields}
@@ -153,7 +155,7 @@ class EventRecorder:
             try:
                 self._file.write(encoded.decode())
                 self._file.flush()
-            except OSError:
+            except (OSError, ValueError):
                 self.write_failed = True
                 return False
             self.events += 1
@@ -165,25 +167,35 @@ class EventRecorder:
             self.logical_requests += 1
             return f"logical-{self.logical_requests:08d}"
 
-    def close(self, *, outcome):
-        if self.write_failed:
+    def close(self, *, outcome, request_accounting=None):
+        # Serialize the terminal record with writers and make repeated cleanup safe.
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+            if self.write_failed:
+                try:
+                    self._file.close()
+                except (OSError, ValueError):
+                    pass
+                return
+            status = "truncated" if self.omitted_events else "complete"
+            if request_accounting is not None and request_accounting["status"] != "complete":
+                status = "truncated" if self.omitted_events else "incomplete"
+            value = {"schema": EVENT_SCHEMA, "event": "adapter_finished", "seq": self.events + 1,
+                     "utc_observed_at": _stamp()[0], "status": status,
+                     "outcome": outcome, "event_count": self.events, "byte_count": self.bytes,
+                     "omitted_events": self.omitted_events, "omitted_bytes": self.omitted_bytes,
+                     "limits": {"max_events": self.max_events, "max_bytes": self.max_bytes}}
+            if self.budget is not None:
+                value["budget"] = self.budget.snapshot()
+            if request_accounting is not None:
+                value["request_accounting"] = request_accounting
             try:
+                self._file.write(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n")
                 self._file.close()
-            except OSError:
-                pass
-            return
-        value = {"schema": EVENT_SCHEMA, "event": "adapter_finished", "seq": self.events + 1,
-                 "utc_observed_at": _stamp()[0], "status": "truncated" if self.omitted_events else "complete",
-                 "outcome": outcome, "event_count": self.events, "byte_count": self.bytes,
-                 "omitted_events": self.omitted_events, "omitted_bytes": self.omitted_bytes,
-                 "limits": {"max_events": self.max_events, "max_bytes": self.max_bytes}}
-        if self.budget is not None:
-            value["budget"] = self.budget.snapshot()
-        try:
-            self._file.write(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n")
-            self._file.close()
-        except OSError:
-            self.write_failed = True
+            except (OSError, ValueError):
+                self.write_failed = True
 
 
 def verify_source(root, *, runner=subprocess.run):
