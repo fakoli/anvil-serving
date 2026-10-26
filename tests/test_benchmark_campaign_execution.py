@@ -1,7 +1,10 @@
 """Campaign binding and bounded release checks; no serving requests."""
 import copy
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import time
 
 import pytest
@@ -206,6 +209,40 @@ def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_p
     assert stopped == [True]
 
 
+def install_test_owned_activation(tmp_path, monkeypatch, activation):
+    """Pin source before startup hooks can import a different editable checkout."""
+    hook = tmp_path / 'hook'
+    hook.mkdir()
+    source_root = Path(__file__).resolve().parents[1]
+    (hook / 'sitecustomize.py').write_text(
+        'import sys\n'
+        f'sys.path.insert(0, {str(source_root)!r})\n'
+        'from anvil_serving.benchmarking import campaign_execution as e\n'
+        'a = ' + repr(activation) + '\n'
+        'e._activation = lambda arm, expected=None: a if expected in (None, a) else (_ for _ in ()).throw(RuntimeError("activation drift"))\n'
+    )
+    monkeypatch.setenv('PYTHONPATH', str(hook))
+
+
+def test_activation_hook_pins_checkout_before_conflicting_package(tmp_path, monkeypatch):
+    activation = {'status': 'test-owned'}
+    install_test_owned_activation(tmp_path, monkeypatch, activation)
+    conflicting_root = tmp_path / 'other-install'
+    conflicting_package = conflicting_root / 'anvil_serving'
+    conflicting_package.mkdir(parents=True)
+    (conflicting_package / '__init__.py').write_text('raise RuntimeError("wrong checkout imported")\n')
+    monkeypatch.setenv('PYTHONPATH', os.environ['PYTHONPATH'] + os.pathsep + str(conflicting_root))
+    result = subprocess.run(
+        [sys.executable, '-c',
+         'import json; from anvil_serving.benchmarking import campaign_execution as e; '
+         'print(json.dumps({"source": e.__file__, "activation": e._activation({})}))'],
+        cwd=tmp_path, capture_output=True, text=True, timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    assert not result.stderr
+    assert json.loads(result.stdout) == {'source': execution.__file__, 'activation': activation}
+
+
 def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkeypatch):
     """A child interpreter loads only this test-owned activation seam."""
     from http.server import ThreadingHTTPServer
@@ -229,13 +266,7 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
             'metrics_url': address + '/engine/' + 'a' * 64 + '/metrics', 'container_id': 'b' * 64,
             'started_at': 'test', 'served_model': 'model'}
         activation['binding_sha256'] = execution._digest({key: activation[key] for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')})
-        hook = tmp_path / 'hook'; hook.mkdir()
-        (hook / 'sitecustomize.py').write_text(
-            'from anvil_serving.benchmarking import campaign_execution as e\n'
-            'a = ' + repr(activation) + '\n'
-            'e._activation = lambda arm, expected=None: a if expected in (None, a) else (_ for _ in ()).throw(RuntimeError("activation drift"))\n'
-        )
-        monkeypatch.setenv('PYTHONPATH', str(hook))
+        install_test_owned_activation(tmp_path, monkeypatch, activation)
         root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation,
             drain={'running_metric': 'running', 'waiting_metric': 'waiting', 'metric_labels': {'model_name': 'model'}, 'timeout_s': 40, 'poll_s': .01}, drain_reserve_s=70)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
@@ -279,14 +310,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
             'metrics_url': address + '/engine/' + 'a' * 64 + '/metrics', 'container_id': 'b' * 64,
             'started_at': 'test', 'served_model': 'model'}
         activation['binding_sha256'] = execution._digest({key: activation[key] for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')})
-        hook = tmp_path / 'hook'; hook.mkdir()
-        (hook / 'sitecustomize.py').write_text(
-            'import time\n'
-            'from anvil_serving.benchmarking import campaign_execution as e\n'
-            'a = ' + repr(activation) + '\n'
-            'e._activation = lambda arm, expected=None: a if expected in (None, a) else (_ for _ in ()).throw(RuntimeError("activation drift"))\n'
-        )
-        monkeypatch.setenv('PYTHONPATH', str(hook))
+        install_test_owned_activation(tmp_path, monkeypatch, activation)
         root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
