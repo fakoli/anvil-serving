@@ -1,0 +1,183 @@
+{
+  "campaign_id": "2026-10-26-flash-next-engine-qualification",
+  "decision": {
+    "promoted": false,
+    "result": "no-promotion"
+  },
+  "differences_and_limits": [
+    "The router image was replaced by the reviewed PR #704 overlay; this is not restoration of the original router image.",
+    "Router state reports remote_memory_terminal UNKNOWN and drained false; no drained=true claim is made.",
+    "Both compute GPUs remain assigned to the restored GLM incumbent; no free compute GPU was available.",
+    "This verifies the recorded direct/routed gates and one Pi read-tool turn only; no whole-fleet, reboot, or fresh-host acceptance is claimed.",
+    "An earlier router image attempt failed at the Python 3.11 WAL runtime guard; the recovery episode is retained in the friction log."
+  ],
+  "observed_at_utc": "2026-10-26T18:50:20Z",
+  "post_run_checks": [
+    {
+      "check": "direct_preflight",
+      "evidence": "glm-restoration-direct-preflight.json",
+      "passed_checks": 5,
+      "status": "passed",
+      "total_checks": 5
+    },
+    {
+      "check": "routed_preflight",
+      "evidence": "glm-restoration-routed-preflight.json",
+      "passed_checks": 5,
+      "status": "passed",
+      "total_checks": 5
+    },
+    {
+      "check": "Pi real read-tool turn",
+      "exact_answer": true,
+      "raw_session_or_answer_published": false,
+      "status": "passed",
+      "turns": 1
+    },
+    {
+      "check": "candidate_absence",
+      "status": "passed"
+    },
+    {
+      "assigned_compute_GPUs": 2,
+      "check": "exclusive_GPU_ownership",
+      "free_compute_GPUs": 0,
+      "status": "passed"
+    },
+    {
+      "check": "shared_memory_files",
+      "count": 0,
+      "status": "passed"
+    },
+    {
+      "cgroup_peak_gib": 38.087,
+      "check": "memory_and_OOM",
+      "host_available_gib": 77.35,
+      "oom_events": 0,
+      "status": "passed"
+    },
+    {
+      "bank_content_published": false,
+      "check": "supplementary_shared-memory recall",
+      "status": "passed_provisional"
+    }
+  ],
+  "restored_model": {
+    "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "recipe_digest": "50d5cfe756db664c54d13939c722ae05d79a9bf2e26b47b4eb4673fc2655e065",
+    "registry_digest": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+    "repository": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "served_identity": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+    "topology": "two RTX PRO 6000 Max-Q GPUs; exclusive TP2 GLM owner"
+  },
+  "router": {
+    "configuration_revision": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+    "generation": 38,
+    "original_router_image_restored": false,
+    "prometheus_registration_generation": "e57472ae97e860b3d4aae4516cad64539375f7339a9bcbccf1c30b77f528b3b6",
+    "prometheus_up": 1,
+    "running_requests": 0,
+    "runtime_image": "reviewed incumbent-runtime overlay with PR #704 whitespace fix; image ID suffix DE213",
+    "state": "admitting",
+    "temporary_evaluation_routes_and_output_caps": "exact prior configuration restored",
+    "waiting_requests": 0
+  },
+  "sanitized_native_preflights": [
+    {
+      "public_bytes": 7349,
+      "public_path": "glm-restoration-direct-preflight.json",
+      "public_sha256": "068669e4079d28070e8b54b093b04311b4c94d31b603028de01f5ef11a1461bd",
+      "redactions": [
+        "base URL removed",
+        "returned content/reasoning excerpts removed",
+        "detail strings omitted"
+      ],
+      "source_bytes": 11246,
+      "source_name": "glm-final-restore-direct-preflight.json",
+      "source_sha256": "76d5d3d82a4974ac073dd7d17ef855358a7e7a127c95e7d027a4162c6578fa7c"
+    },
+    {
+      "public_bytes": 6766,
+      "public_path": "glm-restoration-routed-preflight.json",
+      "public_sha256": "4cd689de913959cc99db9e7e6cb7f05292b440734562c1471bdea347daa520f2",
+      "redactions": [
+        "base URL removed",
+        "returned content/reasoning excerpts removed",
+        "detail strings omitted"
+      ],
+      "source_bytes": 10420,
+      "source_name": "glm-final-restore-routed-preflight.json",
+      "source_sha256": "878b2c82e3d05d3de1d1f5fd93af05fc460c1eaea76a8baabf6aa2eac45c12e4"
+    }
+  ],
+  "schema": "anvil-serving.benchmark-restoration-evidence/v1",
+  "source_artifact_count": 12,
+  "source_artifacts": [
+    {
+      "bytes": 11246,
+      "name": "glm-final-restore-direct-preflight.json",
+      "sha256": "76d5d3d82a4974ac073dd7d17ef855358a7e7a127c95e7d027a4162c6578fa7c"
+    },
+    {
+      "bytes": 10420,
+      "name": "glm-final-restore-routed-preflight.json",
+      "sha256": "878b2c82e3d05d3de1d1f5fd93af05fc460c1eaea76a8baabf6aa2eac45c12e4"
+    },
+    {
+      "bytes": 1296,
+      "name": "glm-final-restore-health-models.json",
+      "sha256": "23b14cf5455016c799596efc012f88d9c5d144166784abb8353f15edc54b2bd9"
+    },
+    {
+      "bytes": 536,
+      "name": "glm-restored-pi-smoke-r2/acceptance.json",
+      "sha256": "746cdc9e6766d0e0cc13930b08f4827a18857c22d0008497bf57ed7d847adb1a"
+    },
+    {
+      "bytes": 2515,
+      "name": "glm-restored-mode-status.json",
+      "sha256": "7b50ff307e1209492e1b3dcf29676cc07824005695d4633e9c0b35a4c8c144e5"
+    },
+    {
+      "bytes": 684,
+      "name": "glm-restored-shared-memory.json",
+      "sha256": "d18dba4aece3f71b164672cc12d07130425c57d7b507a722f4b4a60424e79354"
+    },
+    {
+      "bytes": 5668,
+      "name": "final-recipe-inventory.json",
+      "sha256": "8b89aa4c7a89522eafdec05948df3393f30ec65c5b1afbf68cb59fbc3c513821"
+    },
+    {
+      "bytes": 355491,
+      "name": "final-restoration-memory.json",
+      "sha256": "e550a9711cb86c742eae73b87c92bde7e9d583694a24dd244b5df79ee285ac60"
+    },
+    {
+      "bytes": 1348,
+      "name": "closure-preparation/router-overlay-readmit-applied.json",
+      "sha256": "a7d66d5fcb214da832fbc136e8d3aca154b5b1dd8e8285d131c36e555bdd9102"
+    },
+    {
+      "bytes": 3687,
+      "name": "closure-preparation/router-overlay-closed-status.json",
+      "sha256": "8055f7b89609aa2bb799bbda4a99c396cd83aeab181a0e01637099a4d6dc0112"
+    },
+    {
+      "bytes": 3488,
+      "name": "glm-restored-monitoring-prometheus.json",
+      "sha256": "8a9c35ea2a64ce5a88e051e412f5519b6ed71fae8243dc37253a68ca8d2910c6"
+    },
+    {
+      "bytes": 7395,
+      "name": "router-whitespace-runtime-overlay-r2/base-layer-receipt.json",
+      "sha256": "d9a4def7458aaf4890da53dec01b69c87e6937142ae61e783bf967080a34d4fc"
+    }
+  ],
+  "source_receipt": {
+    "bytes": 4837,
+    "schema": "private.flash-next-final-restoration/v1",
+    "sha256": "53eb8dff9cca39bd1025f177f49168a2a640ff124f39af2a309a611be266ba82"
+  }
+}

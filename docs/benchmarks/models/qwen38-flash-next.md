@@ -1,5 +1,7 @@
 # Qwen3.8 Flash Next
 
+**2026-10-26 three-recipe scout — final, no-promotion:** distinct Ignis 0.8.0, vLLM r2, and Flare r2 recipes each passed the six-case agentic suite and nine-sample context scout (maximum observed prompt 114,588). Aider and official SWE results were mixed; the shared router's buffered-text whitespace defect makes historical coding attribution uncertain because original HTTP bodies were not retained. Flare C1 ended 0/8 performance-eligible; its native `native_control_mismatch` is preserved. Exact prior evaluation route/output-cap configuration and GLM incumbent readmission passed local checks; direct/routed five-check preflights and one Pi real read-tool turn passed. The router uses reviewed PR #704 overlay, not original image. No engine ranking, speed result, full-context/capacity qualification, or promotion follows. [Finding](../../findings/2026-10-26-flash-next-engine-qualification.md) · [evidence](../../findings/2026-10-26-flash-next-engine-qualification-evidence/README.md).
+
 **2026-10-26 Ignis 0.8 mandatory-tool qualification:** the original one-card
 `tool_choice: "auto"` preflight retained a 3/4 tools batch. A separately frozen
 same-runtime follow-up used the documented request-level `required` policy and
