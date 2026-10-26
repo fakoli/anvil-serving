@@ -204,6 +204,43 @@ promotion state by itself.
 
 ## Lifecycle and integration boundary
 
+### Windows host memory guard
+
+For a guarded Windows/Docker deployment, copy the operator-owned
+`media-guard.toml` policy into the operator home. Give `lease_path` a dedicated
+subdirectory beneath that home. Defaults retain the measured trial safeguards:
+stop below 4 GiB available Windows RAM, below 16 GiB commit headroom, or below
+8 GiB available RAM for 15 seconds. The worker also stops when the host signal
+is more than five seconds old or its 45-minute lifetime expires.
+
+```powershell
+anvil-serving media memory-guard sample
+anvil-serving media memory-guard install --confirm
+anvil-serving media memory-guard status
+```
+
+Installation starts a hidden, small Windows publisher and registers it in the
+current user's login startup entries. It reads native physical-memory and
+commit counters; it does not load a model or operate other services. Its global
+mutex prevents duplicate publishers across login sessions. The dedicated
+signal directory has private ACLs, with existing explicit permissions reset.
+Its policy and implementation digest must match the worker's expectations.
+
+The Linux worker's fixed entrypoint uses `memory-guard supervise --confirm`
+with its declared ComfyUI command after `--`. Mount the signal directory
+read-only and map its path with `--lease`; never mount credentials in the
+worker. Unsafe, missing, invalid or stale signals prevent startup or immediately
+terminate only the supervisor's own child process group. The lifetime limit is
+for the worker container, including idle time, rather than an individual shot.
+Normal job-owned teardown remains the lifecycle owner's responsibility.
+
+`install` and `uninstall` preview unless `--confirm` is supplied. To update a
+guard policy or implementation, run `uninstall --confirm`, allow the publisher
+to report `guard stopped`, then reinstall. Uninstall removes only the matching
+login entry and requests its publisher to stop; it preserves its files. A
+running worker will stop when its host signal becomes unsafe. Foreground
+`run --confirm` is available for diagnosis and writes an unsafe signal on exit.
+
 ### Connect Codex to the media MCP
 
 Register a dedicated connection to the authenticated gateway after the operator
