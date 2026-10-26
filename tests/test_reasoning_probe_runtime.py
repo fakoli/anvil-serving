@@ -28,7 +28,8 @@ def test_launch_projection_excludes_unselected_secrets():
 @pytest.mark.parametrize("drift", [False, True])
 @pytest.mark.parametrize("patch_state", [None, "valid", "bad_labels", "bad_source", "bad_helper",
     "missing_entrypoint", "wrong_entrypoint", "wrong_command", "wrong_flags",
-    "recipe_entrypoint", "recipe_trace", "trace_missing", "trace_zero", "trace_duplicate"])
+    "recipe_entrypoint", "recipe_trace", "trace_missing", "trace_zero", "trace_duplicate",
+    "marker_valid", "marker_source", "marker_helper", "marker_label", "marker_environment"])
 def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, drift, patch_state):
     plan = tmp_path / "plan.json"
     plan.write_text(json.dumps({"runtime": {"model_revision": probe.REVISION,
@@ -38,6 +39,9 @@ def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, dr
         value["runtime_patch"] = {"base_image_digest": reasoning_probe._RUNTIME["image_digest"],
             "base_source_sha256": reasoning_probe._PATCH_BASE_SOURCE,
             "upstream_commit": reasoning_probe._PATCH_COMMIT, "source_sha256": reasoning_probe._PATCH_SOURCE}
+        if patch_state.startswith("marker_"):
+            value["marker_trace"] = {"schema": "anvil-serving.marker-trace/v1",
+                "manifest_sha256": probe.MARKER_MANIFEST_SHA256}
         plan.write_text(json.dumps(value))
     recipe = {"download": {"revision": probe.REVISION}, "serve": {"model_path": probe.MODEL_PATH, "port": 30000}}
     monkeypatch.setattr(probe.serve_recipes, "load_registry", lambda path: {})
@@ -82,6 +86,13 @@ def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, dr
             row["Config"]["Env"][-1] = "ANVIL_SAMPLING_TRACE=0"
         elif patch_state == "trace_duplicate":
             row["Config"]["Env"].append("ANVIL_SAMPLING_TRACE=1")
+    if patch_state and patch_state.startswith("marker_"):
+        recipe["serve"]["entrypoint"] = list(probe.MARKER_ENTRYPOINT)
+        recipe["serve"]["env"].append("ANVIL_MARKER_TRACE=1")
+        row["Config"]["Cmd"][0] = probe.MARKER_ENTRYPOINT[1]
+        row["Config"]["Env"].append("ANVIL_MARKER_TRACE=" + ("0" if patch_state == "marker_environment" else "1"))
+        row["Config"]["Labels"]["io.anvil-serving.marker-trace.manifest-sha256"] = (
+            "wrong" if patch_state == "marker_label" else probe.MARKER_MANIFEST_SHA256)
     calls = []
     def runner(argv, **kwargs):
         calls.append(argv)
@@ -98,6 +109,15 @@ def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, dr
                 "sha256": "wrong" if patch_state == "bad_source" else reasoning_probe._PATCH_SOURCE}
             result["files"].update({"patch/" + name: {"sha256": digest}
                                     for name, digest in probe._PATCH_FILES.items()})
+            if patch_state and patch_state.startswith("marker_"):
+                result["files"].update({"vllm/" + name: {"sha256": digest}
+                                       for name, digest in probe.MARKER_SOURCE_FILES.items()})
+                result["files"].update({"marker/" + name: {"sha256": digest}
+                                       for name, digest in probe.MARKER_HELPER_FILES.items()})
+                if patch_state == "marker_source":
+                    result["files"]["vllm/" + next(iter(probe.MARKER_SOURCE_FILES))]["sha256"] = "wrong"
+                if patch_state == "marker_helper":
+                    result["files"]["marker/launch.py"]["sha256"] = "wrong"
             if patch_state == "bad_helper":
                 result["files"]["patch/launch.py"]["sha256"] = "wrong"
         else:
@@ -105,7 +125,7 @@ def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, dr
                 row["State"]["StartedAt"] = "changed"
             result = [row]
         return subprocess.CompletedProcess(argv, 0, json.dumps(result).encode(), b"")
-    if patch_state not in {None, "valid"}:
+    if patch_state not in {None, "valid", "marker_valid"}:
         with pytest.raises(ValueError, match="mismatch|ambiguous"):
             probe.inspect_runtime(tmp_path / "registry", "candidate", plan, runner=runner)
     elif drift:
@@ -223,3 +243,13 @@ def test_resource_deadline_failure_is_sanitized_by_cli(monkeypatch, capsys):
     monkeypatch.setattr(probe, "inspect_runtime", failed)
     assert probe.main(["--registry", "unused", "--container", "candidate", "--plan", "unused"]) == 1
     assert json.loads(capsys.readouterr().out) == {"ok": False, "error": "RequestControlError"}
+
+
+def test_marker_trace_contract_refuses_unknown_or_unpatched_trace():
+    from anvil_serving.reasoning_marker_trace import validate_marker_trace, MARKER_MANIFEST_SHA256
+    valid = {"schema": "anvil-serving.marker-trace/v1", "manifest_sha256": MARKER_MANIFEST_SHA256}
+    assert validate_marker_trace({}) is None
+    for marker, patch in [(valid, None), ({**valid, "manifest_sha256": "0" * 64}, {}),
+                          ({**valid, "arbitrary_file": "/tmp/untrusted"}, {})]:
+        with pytest.raises(ValueError, match="marker trace"):
+            validate_marker_trace({"marker_trace": marker, "runtime_patch": patch})

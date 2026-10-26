@@ -1,0 +1,22 @@
+{
+  "vllm/v1/worker/gpu/sample/thinking_budget.py": {
+    "original": "020513e1d3406f367de6ad995a95055008fd0c28f2873647e8283c9870e22404",
+    "patched": "df13a214922325296a00a7726bf3951ba942c47718a8db84f46c88e6f727ff3f"
+  },
+  "vllm/v1/worker/gpu/sample/sampler.py": {
+    "original": "832c9945d201a1e730ff9b4b52076aa83bd4a5064e1e4cfea952cf84d4a8d1f0",
+    "patched": "37263a79c8527955fe150102b2ac150e023535c55a7b1c1fa71d62c90d797c43"
+  },
+  "vllm/v1/worker/gpu/spec_decode/rejection_sampler.py": {
+    "original": "030db5bfca162cc1f305112f299de5d6d61c59d3ed0807fee46575441ca4086d",
+    "patched": "a95a8115117e76920bc8992ad772f676dfb12676fd4cdee0479007b1f657f748"
+  },
+  "vllm/v1/worker/gpu/model_runner.py": {
+    "original": "aeadc5177c80789112c8e4836639b97e6fbb056711a4e6c81748c7ab9ad805d0",
+    "patched": "e9a5a199d0c12b7ab3c5f9bf695933b83e36edfafefbf8e2cb3edf2b6f976e2e"
+  },
+  "vllm/v1/worker/gpu/states.py": {
+    "original": "99418f5df43ca612ded72609fee011620b065b2cab2f249ccb387096bf4ae71a",
+    "patched": "a60d4227b338417752c877be03340e3b26360ecc13d122e53be7264e39a3e111"
+  }
+}

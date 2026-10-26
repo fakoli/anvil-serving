@@ -12,6 +12,8 @@ import time
 from pathlib import Path
 
 from . import serve_recipes
+from .reasoning_marker_trace import (MARKER_ENTRYPOINT, MARKER_SOURCE_FILES,
+    MARKER_HELPER_FILES, MARKER_MANIFEST_SHA256, validate_marker_trace)
 from .models import _recipe_container_identity
 from .router.request_control import RequestControlError
 from .transports import _run_bounded_process
@@ -73,6 +75,8 @@ for name in settings["source_files"]:
     read_file("vllm/" + name, root / name, 2 * 1024 * 1024)
 for name in settings["patch_files"]:
     read_file("patch/" + name, Path("/opt/anvil-sampling") / name, 256 * 1024)
+for name in settings.get("marker_files", []):
+    read_file("marker/" + name, Path("/opt/anvil-marker-trace") / name, 256 * 1024)
 read_file("runtime-template", Path(settings["template"]), 256 * 1024)
 model = Path(settings["model_path"])
 read_file("tokenizer.json", model / "tokenizer.json", 32 * 1024 * 1024)
@@ -121,7 +125,7 @@ def _launch_projection(row):
     for item in config.get("Env") or []:
         key, separator, value = item.partition("=")
         if separator and key in {"VLLM_USE_V2_MODEL_RUNNER", "VLLM_USE_FASTOKENS",
-                                  "VLLM_USE_FLASHINFER_SAMPLER", "ANVIL_SAMPLING_TRACE"}:
+                                  "VLLM_USE_FLASHINFER_SAMPLER", "ANVIL_SAMPLING_TRACE", "ANVIL_MARKER_TRACE"}:
             if key in environment:
                 raise ValueError("ambiguous diagnostic environment")
             environment[key] = value
@@ -246,6 +250,8 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
     plan = _json(_read_bytes(Path(plan_path)))
     runtime = plan["runtime"]
     patch = _validate_runtime_patch(plan)
+    marker_trace = validate_marker_trace(plan)
+    expected_entrypoint = MARKER_ENTRYPOINT if marker_trace else _PATCH_ENTRYPOINT
     recipe = serve_recipes.find_recipe(serve_recipes.load_registry(registry_path), MODEL)
     if (recipe is None or recipe["download"]["revision"] != REVISION
             or recipe["serve"].get("model_path") != MODEL_PATH
@@ -277,13 +283,13 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
         if patch is not None:
             config = rows[0].get("Config") or {}
             serve = recipe["serve"]
-            command = _PATCH_ENTRYPOINT[1:] + [MODEL_PATH] + [
+            command = expected_entrypoint[1:] + [MODEL_PATH] + [
                 token for flag in serve.get("flags", []) for token in shlex.split(flag)]
             trace_settings = [item for item in serve.get("env", [])
                               if item.partition("=")[0] == "ANVIL_SAMPLING_TRACE"]
-            if (serve.get("entrypoint") != _PATCH_ENTRYPOINT
+            if (serve.get("entrypoint") != expected_entrypoint
                     or serve.get("model_flag") or serve.get("model_env")
-                    or config.get("Entrypoint") != _PATCH_ENTRYPOINT[:1]
+                    or config.get("Entrypoint") != expected_entrypoint[:1]
                     or config.get("Cmd") != command
                     or trace_settings != ["ANVIL_SAMPLING_TRACE=1"]):
                 raise ValueError("runtime patch startup wrapper mismatch")
@@ -291,11 +297,20 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
             expected = {"io.anvil-serving.patch.base-image": patch["base_image_digest"],
                         "io.anvil-serving.patch.upstream": patch["upstream_commit"],
                         "io.anvil-serving.patch.source-sha256": patch["source_sha256"]}
+            if marker_trace:
+                expected["io.anvil-serving.marker-trace.manifest-sha256"] = MARKER_MANIFEST_SHA256
             if any(labels.get(key) != value for key, value in expected.items()):
                 raise ValueError("runtime patch image labels mismatch")
         observed = _launch_projection(rows[0])
         if patch is not None and observed["selected_environment"].get("ANVIL_SAMPLING_TRACE") != "1":
             raise ValueError("runtime patch trace environment mismatch")
+        marker_settings = [item for item in recipe["serve"].get("env", [])
+                           if item.partition("=")[0] == "ANVIL_MARKER_TRACE"]
+        if marker_trace and (marker_settings != ["ANVIL_MARKER_TRACE=1"]
+                or observed["selected_environment"].get("ANVIL_MARKER_TRACE") != "1"):
+            raise ValueError("runtime marker trace environment mismatch")
+        if not marker_trace and (marker_settings or "ANVIL_MARKER_TRACE" in observed["selected_environment"]):
+            raise ValueError("undeclared marker trace environment")
         return observed
 
     projection = launch()
@@ -313,8 +328,9 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
             or any(value not in {"0", "1"} for value in projection["selected_environment"].values())
             or projection["bound_endpoints"] != [{"host_ip": "127.0.0.1", "host_port": port, "container_port": port}]):
         raise ValueError("unsupported reasoning or tokenizer launch configuration")
-    settings = {"source_files": SOURCE_FILES, "template": TEMPLATE, "model_path": MODEL_PATH,
-                "patch_files": list(_PATCH_FILES) if patch else []}
+    settings = {"source_files": tuple(dict.fromkeys((*SOURCE_FILES, *(MARKER_SOURCE_FILES if marker_trace else {})))), "template": TEMPLATE, "model_path": MODEL_PATH,
+                "patch_files": list(_PATCH_FILES) if patch else [],
+                "marker_files": list(MARKER_HELPER_FILES) if marker_trace else []}
     captured = json.loads(run(["docker", "exec", "--env", "CUDA_VISIBLE_DEVICES=",
                               "--env", "HF_HUB_OFFLINE=1", "--env", "TRANSFORMERS_OFFLINE=1",
                               "--env", "PYTHONDONTWRITEBYTECODE=1", identity, "python3", "-B", "-c",
@@ -326,6 +342,10 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
     if patch is not None and any(captured["files"]["patch/" + name]["sha256"] != digest
                                  for name, digest in _PATCH_FILES.items()):
         raise ValueError("runtime patch regression helper hash mismatch")
+    if marker_trace:
+        for prefix, bindings in (("vllm/", MARKER_SOURCE_FILES), ("marker/", MARKER_HELPER_FILES)):
+            if any(captured["files"][prefix + name]["sha256"] != digest for name, digest in bindings.items()):
+                raise ValueError("runtime marker trace source/helper hash mismatch")
     resources = resource_snapshot(port, runner=runner, deadline=deadline)
     after = _recipe_container_identity(recipe, container, _run=run, require_recipe_digest=True)
     if (launch() != projection or after["container_id"] != identity or not after["running"]
@@ -339,7 +359,7 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
     return {"schema": "anvil-serving.reasoning-runtime-inspection/v1",
             "identity": before, "launch": safe_projection, "capture": captured,
             "resources": resources,
-            "runtime_patch": patch,
+            "runtime_patch": patch, "marker_trace": marker_trace,
             "source_parity": "requires_comparison_with_pinned_source",
             "inference_requests": 0}
 

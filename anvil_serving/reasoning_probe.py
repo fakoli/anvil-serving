@@ -50,6 +50,8 @@ _PATCH_SOURCE = "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e
 
 
 def _validate_runtime_patch(plan: Mapping[str, Any]) -> dict[str, str] | None:
+    from .reasoning_marker_trace import validate_marker_trace
+    validate_marker_trace(plan)
     patch = plan.get("runtime_patch")
     if patch is None:
         return None
@@ -198,7 +200,7 @@ def _validate(plan: Mapping[str, Any], boundary: Mapping[str, Any]) -> None:
         raise ValueError("unsupported plan schema")
     allowed = {"schema", "status", "execution_authorized", "live_identity_verified", "ignis",
                "runtime", "limits", "isolated_tier_extra_body", "request_common", "cases",
-               "required_evidence", "stop_conditions", "execution_prerequisites", "runtime_patch"}
+               "required_evidence", "stop_conditions", "execution_prerequisites", "runtime_patch", "marker_trace"}
     if set(plan) - allowed:
         raise ValueError("unsupported plan fields")
     patch = _validate_runtime_patch(plan)
@@ -474,7 +476,7 @@ def run(router_config: Path, plan_path: Path, boundary_path: Path, output: Path,
     try:
         artifacts.record("start.json", {**preview, "status": "started", "network": True, "started_at": _timestamp(),
                          "authorization": "explicit_confirm", "runtime": plan["runtime"],
-                         "runtime_patch": plan.get("runtime_patch"),
+                         "runtime_patch": plan.get("runtime_patch"), "marker_trace": plan.get("marker_trace"),
                          "plan_sha256": _digest(plan_bytes), "boundary_sha256": _digest(boundary_bytes)})
         for index, case in enumerate(plan["cases"]):
             if time.monotonic() - started + 2 * _CHECK_SECONDS + _REQUEST_SECONDS + _CLEANUP_SECONDS > _WINDOW_SECONDS:
