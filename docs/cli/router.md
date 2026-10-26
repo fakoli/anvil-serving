@@ -129,7 +129,7 @@ Unrelated operator-home files are never enumerated or read. Whole-home
 topology and belongs in private operator evidence. No service is changed.
 For a host-unreadable bind on a POSIX router host, pass `--out` with a new
 file directly inside the pre-existing owner-only directory
-`~/.anvil-serving/router-snapshots`. Installation must create that directory
+`~/.local/state/anvil-serving/router-snapshots`. Installation must create that directory
 with mode `0700`; export refuses missing parents, links, traversal and overwrite.
 The controller image prepares this directory and its Compose template persists
 it in a dedicated named volume, without mounting an operator home. Existing

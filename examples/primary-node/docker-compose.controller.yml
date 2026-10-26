@@ -61,7 +61,7 @@ services:
       - ../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml:/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml:ro
       - ../../configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml:/configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml:ro
       - anvil-controller-state:/var/lib/anvil-serving
-      - anvil-controller-snapshots:/home/anvil/.anvil-serving/router-snapshots
+      - anvil-controller-snapshots:/home/anvil/.local/state/anvil-serving/router-snapshots
     command:
       - --host
       - 0.0.0.0

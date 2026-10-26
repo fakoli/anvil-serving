@@ -24,7 +24,7 @@ from .transports import _ProcessOutputOverflow, _ProcessPipeError, _run_bounded_
 
 MAX_BYTES = 1024 * 1024
 MAX_CAPTURE_BYTES = ((MAX_BYTES + 2) // 3) * 4 + 1
-SNAPSHOT_ROOT = Path.home() / ".anvil-serving" / "router-snapshots"
+SNAPSHOT_ROOT = Path.home() / ".local" / "state" / "anvil-serving" / "router-snapshots"
 INSTALLED_PATH = "/etc/anvil/config.toml"
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
@@ -229,6 +229,8 @@ def _dependency_summary(parsed: dict) -> dict:
     server = parsed.get("server", {})
     if isinstance(server, dict):
         names.update(key for key in ("authorization_policy_path", "api_keys_path") if server.get(key) is not None)
+        if any(profile.get("signer_file") is not None for profile in server.get("webui_identity", [])):
+            names.add("signer_file")
     return {"dependency_complete": not names, "dependency_field_count": len(names)}
 
 
@@ -246,6 +248,16 @@ def _snapshot_secret_projection(parsed: dict) -> dict:
                     raise ValueError("unsafe dependency reference")
                 operator_config._assert_no_secret_literals(value, path="router.toml")
                 del server[key]
+        # These two schema-validated fields identify an existing credential;
+        # neither contains the credential. Signer references remain scanned.
+        from .router.identity import WebUIProfile, validate_webui_profiles
+        profiles = server.get("webui_identity", [])
+        if not isinstance(profiles, list):
+            raise ValueError("invalid identity references")
+        validate_webui_profiles(tuple(WebUIProfile(**profile) for profile in profiles))
+        for profile in profiles:
+            del profile["credential_id"]
+            del profile["credential_kind"]
     return _secret_projection(projected)
 
 

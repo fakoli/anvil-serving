@@ -313,6 +313,38 @@ def test_snapshot_path_projection_cannot_hide_literal_credentials(content):
         export.operator_config._assert_no_secret_literals(projected, path="router.toml")
 
 
+def test_snapshot_preserves_validated_webui_ids_without_resolving_signer(monkeypatch):
+    raw = (CONFIG.replace('[server]', '[server]\nauthorization_policy_path="policy.json"') + '''
+[[server.webui_identity]]
+credential_id = "test-ui-service"
+credential_kind = "configured_scope"
+instance = "test-ui"
+signer_env = "TEST_UI_SIGNER"
+''').encode()
+    state = {"id": "a" * 64, "running": True, "project": "anvil-serving", "service": "router", "mounts": [{
+        "Type": "bind", "Source": "/root/unreadable/router.toml", "Destination": export.INSTALLED_PATH, "RW": False,
+    }]}
+    from anvil_serving.router import identity
+    monkeypatch.setattr(identity, "read_private_auth_file", lambda *a, **kw: pytest.fail("signer read"))
+    digest, run = _runtime_snapshot_runner(state, raw)
+    output = export.SNAPSHOT_ROOT / "snapshot.toml"
+    result = export.export_runtime_snapshot("anvil-router", digest, str(output), _run=run)
+    assert output.read_bytes() == raw and result["dependency_complete"] is False
+
+
+@pytest.mark.parametrize("section,fields", [
+    ("ignored", 'credential_id="private-value"'),
+    ("[server.webui_identity]", 'credential_id="Bearer private-value"\ncredential_kind="device_key"\ninstance="test-ui"\nsigner_env="TEST_UI_SIGNER"'),
+    ("[server.webui_identity]", 'credential_id="test-ui"\ncredential_kind="Bearer private-value"\ninstance="test-ui"\nsigner_env="TEST_UI_SIGNER"'),
+])
+def test_snapshot_identity_projection_is_schema_scoped(section, fields):
+    import tomllib
+    from anvil_serving.operator_config import ConfigExportError
+    with pytest.raises((ValueError, ConfigExportError)):
+        projected = export._snapshot_secret_projection(tomllib.loads(CONFIG + f"\n[{section}]\n{fields}\n"))
+        export.operator_config._assert_no_secret_literals(projected, path="router.toml")
+
+
 @pytest.mark.parametrize("kind", ["outside", "traversal", "missing_parent", "symlink_parent", "symlink_leaf", "control"])
 def test_snapshot_output_refused_before_container_access(tmp_path, monkeypatch, kind):
     root = export.SNAPSHOT_ROOT
