@@ -1,7 +1,6 @@
 import hashlib
 import json
 import base64
-import os
 import subprocess
 import sys
 from pathlib import Path
