@@ -19,6 +19,7 @@ from anvil_serving.benchmarking.artifacts import REQUIRED_MEASURED_IDENTITIES
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
+from anvil_serving.benchmarking import preflight as benchmark_preflight
 from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, execute_benchmark_job, launch_benchmark_job
@@ -193,6 +194,56 @@ def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeyp
     record = execute_benchmark_job(store, "worker-run")
     assert record["state"] == "failed"
     assert record["failure"]["code"] == "bad_thinking_mode"
+
+
+def test_worker_stops_before_suite_when_router_output_cap_is_too_small(monkeypatch, tmp_path):
+    value = spec()
+    value["parameters"] = {
+        "model_host_id": "model-host",
+        "token_buckets": [8192],
+        "output_headroom_tokens": 8192,
+    }
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(
+        benchmark_worker,
+        "prepare_harness_assets",
+        lambda *_args, **_kwargs: {"assets": {}},
+    )
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self, _limit):
+            return json.dumps({"data": [{"id": "deepseek", "max_output_tokens": 1024}]}).encode()
+
+    monkeypatch.setattr(
+        benchmark_worker,
+        "run_benchmark_preflight",
+        lambda submitted, **kwargs: benchmark_preflight.run_benchmark_preflight(
+            submitted, opener=lambda *_args, **_kwargs: Response(), **kwargs
+        ),
+    )
+    monkeypatch.setattr(
+        benchmark_worker,
+        "_run_suite",
+        lambda *_args, **_kwargs: pytest.fail("suite started despite output-cap rejection"),
+    )
+
+    record = execute_benchmark_job(store, "worker-run")
+
+    assert record["state"] == "failed"
+    assert record["failure"]["code"] == "preflight_failed"
+    evidence = store.artifact("worker-run")["results"]["evidence"]
+    preflight_stage = next(stage for stage in evidence["stages"] if stage["name"] == "preflight")
+    preflight = json.loads(
+        (tmp_path / "runs" / "campaign" / "worker-run" / preflight_stage["evidence"][0]["path"]).read_text()
+    )
+    assert "output_budget_exceeds_router_cap" in {item["code"] for item in preflight["checks"]}
 
 
 def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkeypatch, tmp_path):
