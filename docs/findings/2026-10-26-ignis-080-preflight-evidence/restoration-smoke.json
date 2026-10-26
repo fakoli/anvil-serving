@@ -1,0 +1,54 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 4608,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 512
+  },
+  "checks": ["smoke"],
+  "evidence_policy": {
+    "allowed_finish_reasons": ["stop", "tool_calls"],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nIf you want alternatives (e.g., avoiding the built-in):\n\n```python\n__import__('functools').reduce(lambda a, b: a + b, xs, 0)\n```\n\nBut `sum(xs)` is the idiomatic choice — it's fast, readable, and handles empty lists (returning `0`).",
+      "content_chars": 254,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nIf you want alternatives (e.g., avoiding the built-in):\n\n```python\n__import__('functools').reduce(lambda a, b: a + b, xs, 0)\n```\n\nBut `sum(xs)` is the idiomatic choice — it's fa",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1035,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is to use the built-in `sum()` function:\n\n```python\nsum(xs)\n```\n\nThat's it ",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 264,
+      "seconds": 2.199,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 341,
+        "completion_tokens_details": {"reasoning_tokens": 264},
+        "prompt_tokens": 28,
+        "prompt_tokens_details": {"cached_tokens": 0},
+        "total_tokens": 369
+      },
+      "validation_detail": "contains sum("
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "2.2s got='```python\\nsum(xs)\\n```\\n\\nIf you want alternatives (e' finish='stop' visible=254 reasoning_chars=1035 reasoning_tokens=264",
+      "name": "smoke (short coding)",
+      "passed": true
+    }
+  ],
+  "sampling": {"temperature": 0.6},
+  "schema_version": "preflight/v2",
+  "thinking": {"chat_template_kwargs": null, "mode": "default", "reasoning_effort": null},
+  "video_expect": [],
+  "video_input": null
+}

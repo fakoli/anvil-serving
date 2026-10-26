@@ -274,20 +274,38 @@ def tool_preflight_probe(args: dict) -> dict:
     api_key_env = _probe_api_key_env(args)
     needle_ctx = _bounded_int_arg(args, "needle_ctx", 128000, min_value=1, max_value=1000000)
     tool_batch = _bounded_int_arg(args, "tool_batch", 20, min_value=1, max_value=128)
+    tool_choice_mode = _str_arg(args, "tool_choice_mode") or "auto"
+    if tool_choice_mode not in {"auto", "required"}:
+        raise ToolError("bad_argument", "tool_choice_mode must be auto or required")
+    seed = args.get("seed")
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)
+                             or not -(2 ** 63) <= seed <= 2 ** 63 - 1):
+        raise ToolError("bad_argument", "seed must be a signed 64-bit integer")
+    capture_tool_transport = _arg_bool(
+        args.get("capture_tool_transport"), False, name="capture_tool_transport"
+    )
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
     force_nonempty_content = _arg_bool(
         args.get("force_nonempty_content"), False, name="force_nonempty_content"
     )
     checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
     selected_checks = [item.strip() for item in checks.split(",") if item.strip()]
-    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr", "video"}
+    known_checks = {
+        "smoke", "json", "needle", "tools", "long-tools", "streaming-tools",
+        "tool-result", "responses", "image", "ocr", "video",
+    }
     unknown_checks = sorted(set(selected_checks) - known_checks)
     if not selected_checks or unknown_checks:
         raise ToolError(
             "bad_argument",
-            "checks must select smoke,json,needle,tools,image,ocr,video",
+            "checks must select smoke,json,needle,tools,long-tools,streaming-tools,"
+            "tool-result,responses,image,ocr,video",
             {"unknown": unknown_checks},
         )
+    if capture_tool_transport and not (
+        {"tools", "long-tools", "streaming-tools", "tool-result"} & set(selected_checks)
+    ):
+        raise ToolError("bad_argument", "capture_tool_transport requires a tool check")
     image_path = _str_arg(args, "image_path")
     video_path = _str_arg(args, "video_path")
     image_expect = [item.strip() for item in _str_list_arg(args, "image_expect")]
@@ -400,6 +418,8 @@ def tool_preflight_probe(args: dict) -> dict:
         str(needle_ctx),
         "--tool-batch",
         str(tool_batch),
+        "--tool-choice-mode",
+        tool_choice_mode,
         "--checks",
         checks,
         "--thinking-mode",
@@ -417,6 +437,10 @@ def tool_preflight_probe(args: dict) -> dict:
     ]
     if api_key_env:
         argv += ["--api-key-env", api_key_env]
+    if seed is not None:
+        argv += ["--seed", str(seed)]
+    if capture_tool_transport:
+        argv.append("--capture-tool-transport")
     if no_thinking:
         argv.append("--no-thinking")
     if force_nonempty_content:
@@ -722,6 +746,9 @@ FAMILY = ToolFamily(
                     "temperature": {"type": "number", "minimum": 0, "maximum": 2, "default": 0},
                     "needle_ctx": _bounded_integer_schema(1, 1000000, 128000),
                     "tool_batch": _bounded_integer_schema(1, 128, 20),
+                    "tool_choice_mode": {"type": "string", "enum": ["auto", "required"], "default": "auto"},
+                    "seed": {"type": "integer", "minimum": -(2 ** 63), "maximum": 2 ** 63 - 1},
+                    "capture_tool_transport": {"type": "boolean"},
                     "no_thinking": {"type": "boolean"},
                     "force_nonempty_content": {"type": "boolean"},
                     "checks": {"type": "string"},

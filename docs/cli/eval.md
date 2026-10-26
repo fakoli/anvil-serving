@@ -46,6 +46,21 @@ typed `chat_template_kwargs` pair. The preflight artifact and dry-run plan
 retain that requested pair; a successful request remains endpoint evidence,
 not proof that a different model family honors the same control.
 
+For a bounded tool-protocol diagnosis, `--tool-choice-mode required` applies
+only to requests expected to emit `get_weather`; the tool-result continuation
+is deliberately unforced so it must produce its final text normally. `auto` is
+the default. `--seed` accepts a signed 64-bit value and applies to tool-protocol
+requests only; the artifact records that scope. `--capture-tool-transport` is
+an explicit opt-in that saves up to 1 MiB of each nonstreaming tool response,
+its exact request JSON, HTTP status, hashes, and whitelisted request-ID headers.
+It never records authorization headers. Raw SSE transport capture is unsupported
+and is labeled as such in streaming-tool evidence. Client-side capture cannot
+correlate a terminal engine event; it records that limitation rather than
+inventing one. Captured bodies can contain prompts or echoed content: retain
+them as protected operator evidence and complete a privacy review before any
+publication. Tool-call results use the recorded `tool-call/v2-exact-weather`
+oracle; older artifacts retain their historical oracle and are not rescored.
+
 ## Routed client evaluation
 
 Use `eval routed` after direct preflight when a candidate must be exercised

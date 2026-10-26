@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.public-configuration-projection/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "product_source": {
+    "preflight_commit": "dc576b25083d7cfdab1554db89379feee82346b5",
+    "phase_two_harness_patch_sha256": "0c9b211fd6bf8d49493a2db46f5def4ebfe9a887d2470d8a74f6f37331b46206",
+    "phase_two_reviewed_commit": "c727ff01f34d2d7564fab63d94203fec68890baf",
+    "phase_two_publication_cherry_pick": "0c81bbae99ce3bc73201f5fdf94dd69fb0a03609",
+    "clean": true,
+    "launcher": "python -m anvil_serving.cli"
+  },
+  "model": {
+    "repository": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+    "revision": "8d94db83cd8e58d6be31e796723e5e35b960638c",
+    "served_name": "qwen3.8-flash-next",
+    "main_artifact": {
+      "file": "qwen3_8_flash_next_trellis_a25-v2.ninfer",
+      "bytes": 71760711680,
+      "sha256": "12e3b265b0678ba935a4b05d1b612ba4b68b3a96c3026d818ad65838985fd864"
+    },
+    "mtp_artifact": {
+      "file": "qwen3_8_flash_next_mtp_3p0-v2.ninfer",
+      "bytes": 1037905920,
+      "sha256": "432fe5c0838027047c5b46c4fde526f3d3ef3d126f00fed1213921f8705988d2"
+    }
+  },
+  "runtime": {
+    "name": "Ignis",
+    "version": "0.8.0",
+    "image": "sha256:0226b62047113c219124ca4a02b1e52492402b44f5a3020db91e77756914b8cc",
+    "profile": "rtxpro6000",
+    "context_tokens_configured": 131072,
+    "decode_lanes_configured": 8,
+    "mtp_draft_tokens_configured": 3,
+    "kv_format_observed": "hq-e8-2b",
+    "vision_enabled": false,
+    "downloads_enabled": false,
+    "host_kv_reuse_pool_bytes": 0
+  },
+  "hardware": {
+    "measured_gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q",
+    "measured_gpu_count": 1,
+    "protected_equal_gpu_count": 1,
+    "topology": "single-card candidate on a two-card host; second card protected",
+    "published_gpu_uuid": null
+  },
+  "containment": {
+    "ram_limit_bytes": 55834574848,
+    "swap_limit_bytes": 0,
+    "shared_memory": "8 GiB",
+    "oom_killed": false
+  },
+  "recipe": {
+    "managed": true,
+    "operator_private": true,
+    "public_reconstruction": "This file records the safe effective controls; private registry, container, GPU UUID, port, cache volume, and host paths are intentionally omitted."
+  },
+  "identity_status": "exact candidate model revision, image, one-GPU selection, and managed containment verified before both request phases; phase two changed only harness/request controls"
+}

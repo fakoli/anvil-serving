@@ -1,0 +1,61 @@
+{
+  "schema": "anvil-serving.resource-summary/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "snapshots": 3,
+  "snapshot_scope": ["phase-one-candidate-ready", "phase-one-after-preflight", "phase-two-after-probes"],
+  "gpu_memory": {
+    "measured_candidate_gpu_mib": 96027,
+    "protected_second_gpu_mib": 0,
+    "per_gpu_total_mib": 97887,
+    "gpu_uuid_published": false
+  },
+  "host_memory": {
+    "minimum_mem_available_bytes": 63536336896,
+    "minimum_mem_available_gib": 59.17,
+    "measurement": "minimum of two retained phase-one point snapshots: candidate-ready and after the 4.221-second preflight CLI had ended; not a continuous watermark"
+  },
+  "candidate_cgroup": {
+    "configured_ram_limit_bytes": 55834574848,
+    "configured_swap_limit_bytes": 0,
+    "peak_bytes": 38050410496,
+    "peak_gib": 35.44,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "phase_two_candidate_cgroup": {
+    "configured_ram_limit_bytes": 55834574848,
+    "configured_swap_limit_bytes": 0,
+    "current_bytes_after_probes": 44942905344,
+    "peak_bytes": 44944740352,
+    "peak_gib": 41.86,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "phase_two_after_probes": {
+    "candidate_gpu_memory_mib": 96027,
+    "protected_second_gpu_memory_mib": 0,
+    "host_mem_available_bytes": 61764468736,
+    "host_mem_available_gib": 57.52,
+    "memory_pressure_some_avg10": 0.0,
+    "memory_pressure_full_avg10": 0.0,
+    "host_oom_counter": 3,
+    "measurement": "single retained point snapshot after all 16 phase-two requests"
+  },
+  "phase_two_minimum_candidate_mem_available_gib": 57.27,
+  "phase_two_minimum_candidate_mem_available_boundary": "lowest retained candidate-phase point sample across ready, post-probe, and pre-unload observations",
+  "host_oom_counter": {
+    "candidate_ready": 3,
+    "during_preflight": 3,
+    "delta": 0,
+    "boundary": "host cumulative counter; unchanged across the two retained snapshots"
+  },
+  "performance_claims": [],
+  "limitations": [
+    "GPU and host point snapshots do not prove a continuous peak or process-memory watermark; cgroup peak_bytes is the managed lifecycle high-water mark.",
+    "Configured eight-lane concurrency is not measured simultaneous capacity.",
+    "Resource observations do not establish throughput or efficiency.",
+    "Phase-one and phase-two cgroup peaks belong to separate managed candidate incarnations and are not a performance comparison."
+  ]
+}

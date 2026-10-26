@@ -208,6 +208,17 @@ retain the model's actual replies in history, and require strictly increasing
 endpoint-reported prompt-token counts. A single prefilled transcript cannot be
 reported as a multi-turn endurance pass.
 
+**Tool-choice preflight policy, 2026-10-26.** New exact-weather tool checks use
+the versioned `tool-call/v2-exact-weather` oracle: exactly one complete expected
+function call, JSON-object arguments with a non-empty expected city, and API
+`finish_reason: "tool_calls"`. Ordinary prose, a missing or partial call, a
+wrong function, malformed arguments, or a wrong city fails. The request policy
+is part of the measurement identity: `auto` leaves the call decision to the
+model, while `required` tests a workflow step whose contract mandates a tool
+call. Results from those policies are not pooled, and a passing seeded
+follow-up does not retroactively rescore an older unseeded result or earlier
+oracle. Historical findings keep the validator and policy they actually ran.
+
 **Long-context tool gate.** The `long-tools` preflight check calibrates a real
 tool request and passes only when endpoint usage reports at least 100,000
 actual prompt tokens, the model selects the expected tool, and its arguments

@@ -1,0 +1,95 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": {
+    "kind": "independent_restoration_audit",
+    "summary": "Review the final incumbent, router, readmission, smoke, idle-state, and OOM restoration evidence after the bounded Ignis tool-choice follow-up.",
+    "implementing_model": "GPT-6 lead owned lifecycle and assembled restoration evidence",
+    "evaluated_model": "Qwen3.8 Flash Next during the completed diagnostic; restored model is the incumbent GLM serve",
+    "reviewing_model": "GPT-5.6 Sol"
+  },
+  "gate_state": {
+    "status": "operational_restoration_pass",
+    "restoration_reviewed": true,
+    "operational_restoration_accepted": true,
+    "quality_qualification_inferred": false,
+    "promotion_allowed": false
+  },
+  "targets": [
+    {
+      "artifact": "phase-two result",
+      "sha256": "53261439dd831130287b13212873adddb485a38a43606e6d0c2d8ca08bce51b5"
+    },
+    {
+      "artifact": "phase-two restoration closure",
+      "sha256": "3a4c81fad580587221899dd88c6239a224cd31d8db511a7d4b7af5c88e6116e7"
+    },
+    {
+      "artifact": "incumbent before",
+      "sha256": "c74cba30665ce5c860a49f36c778495b56419109f86cc9c073aa17974e442817"
+    },
+    {
+      "artifact": "recipes restored",
+      "sha256": "bc0a1f27f4fbd62673940b030244c8e443303688da9cd8a5d52f8b3c85d9764e"
+    },
+    {
+      "artifact": "router before and restored",
+      "sha256": "9afdc3a57cbb7e3ac34d741151c10f6332785b149794f3b96b1e3fd3d0983734"
+    },
+    {
+      "artifact": "router readmit",
+      "sha256": "07d8b0585bca6ec96357be6080f1f9d41f76a2bb2cfab563e96710a2da11a56c"
+    },
+    {
+      "artifact": "restoration smoke native",
+      "sha256": "4e233b34fe6830773a02b95883aa4ce59bfe7474e038b4523a3257ae8fac0e94"
+    },
+    {
+      "artifact": "resources restored after smoke",
+      "sha256": "394e45584e8d37d333b85fbaa5e9498472c8c8e6d995749830699d503d130e77"
+    },
+    {
+      "artifact": "incumbent restored status",
+      "sha256": "2fb29d81e7356865af5428cd29debcb2acc843160ca0a80f2329da289300c467"
+    }
+  ],
+  "tools_used": [
+    "read-only JSON and SHA-256 inspection",
+    "field-by-field local comparison",
+    "no model, GPU, router, container, or network calls"
+  ],
+  "artifacts": {
+    "findings_summary": [],
+    "verified_restoration": {
+      "incumbent_identity": "model, revision, image digest, recipe digest, registry digest, ordered GPU selection, bound endpoints, and served identity all match the pre-trial inventory",
+      "candidate_removed": true,
+      "inventory_cardinality": "four managed containers before and after",
+      "incumbent_state": "running",
+      "router_custody": "before/restored router artifacts are byte-identical",
+      "readmission": "applied, readiness passed, tier ready and admitting with zero active requests",
+      "routed_smoke": "one smoke observation passed",
+      "post_smoke_engine": "running=0 and waiting=0",
+      "container_oom": "pre-trial inventory, restored inventory, and final status all report no OOM kill and zero memory-event counters"
+    },
+    "residual_risk": [
+      "Mounted router configuration bytes were not independently read. The review establishes unchanged custody/status artifact bytes and no attempted router-config write, not independent configuration-file digest parity.",
+      "Ephemeral container lifecycle identity is not expected to match after a managed unload/reload and is outside the declared reproducible identity contract.",
+      "The functional restoration check is one routed smoke. It does not establish full quality, strict JSON, long-run stability, or promotion."
+    ]
+  },
+  "advisory_priors": [
+    "Operational restoration is separate from candidate diagnostic evidence and promotion.",
+    "Exact incumbent identity uses declared reproducible serve fields rather than ephemeral container lifecycle IDs."
+  ],
+  "recommendation": {
+    "decision": "pass",
+    "scope": "Accept operational restoration for this bounded trial only.",
+    "conditions": [
+      "Preserve the mounted-router-config limitation.",
+      "Describe functional restoration as one routed smoke, not full qualification.",
+      "Keep promoted=false."
+    ]
+  },
+  "human_gate_required": true,
+  "promoted": false,
+  "protected_receipt_sha256": "9ac47633650bce06f1be759d1af2cab4319a26b19ff3625e912ea0c5b24eefa2"
+}

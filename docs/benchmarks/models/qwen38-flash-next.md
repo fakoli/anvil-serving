@@ -1,5 +1,17 @@
 # Qwen3.8 Flash Next
 
+**2026-10-26 Ignis 0.8 mandatory-tool qualification:** the original one-card
+`tool_choice: "auto"` preflight retained a 3/4 tools batch. A separately frozen
+same-runtime follow-up used the documented request-level `required` policy and
+normal thinking: 3/3 mechanism cells, 5/5 selected checks with 9/9
+observations, and a seed-18 4/4 tools repeat passed. All 16 phase-two requests
+have terminal engine events; literal HTTP 200 was retained for 12 captured
+tool requests. Exact operational restoration passed after both phases. This
+qualifies the mandatory-tool request path on the exact pin,
+not `auto` reliability, a global agent default, coding/SWE, capacity,
+performance, clients, or promotion. [Finding](../../findings/2026-10-26-ignis-080-preflight.md) ·
+[evidence](../../findings/2026-10-26-ignis-080-preflight-evidence/README.md).
+
 **2026-10-16 NVIDIA FP4 scout:** the pinned Qwen profile passed native preflight 6/6 and Oracle 54/54, then ended the five-case SWE run at 2/5 resolved and 4/5 graded. It missed the frozen 4/5 floor; vision, context, capacity, and stability are deliberate non-results. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md)
 
 <!-- benchmark-dossier/v2 -->

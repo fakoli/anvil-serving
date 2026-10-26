@@ -1,0 +1,125 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "ignis-080-required-tools-20261026",
+    "capability": "Focused automatic-choice diagnostic and required-tool request-policy qualification",
+    "repository_revision": "c727ff01f34d2d7564fab63d94203fec68890baf",
+    "dirty_state": "Phase-one executable source was clean at dc576b25. Phase-two ran from the exact reviewed patch later committed as c727ff01; public projections were assembled afterward in an isolated worktree.",
+    "started_at": "2026-10-26T08:11:19.084754Z",
+    "completed_at": "2026-10-26T09:20:49.487605Z",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "ignis-tool-choice-followup/v1",
+    "ignis-tool-choice-followup-result/v1",
+    "operator-workflow/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human evidence map, two-phase outcome, and interpretation boundaries."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "projection-ledger.json",
+        "tool-usage-contract.md"
+      ],
+      "reason": "Pinned official sources, reviewed harness source, and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "plan.json",
+        "preflight-native.json",
+        "tool-choice-followup.json"
+      ],
+      "reason": "Frozen synthetic workload, request controls, exact oracle, and bounded phase accounting."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "plan.json"
+      ],
+      "reason": "Prospective phase sequencing, limits, stop conditions, and selection rule."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "resource-summary.json"
+      ],
+      "reason": "Pinned source/image/model/profile, one-card hardware boundary, containment, and measured resource provenance."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "preflight-native.json",
+        "engine-request-summary.json",
+        "tool-choice-followup.json",
+        "resource-summary.json",
+        "restoration-smoke.json",
+        "restoration-smoke-phase-two.json"
+      ],
+      "reason": "Sanitized native phase-one result, phase-two request/result projection, request lifecycle accounting, resources, and restoration smokes."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "tool-failure-analysis.md",
+        "prepared-followup.json"
+      ],
+      "reason": "Original auto-mode miss, request-count correction, configuration warnings, unrun coding campaign, and evidence-wording boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "restoration-smoke.json",
+        "restoration-smoke-phase-two.json",
+        "independent-restoration-review.json"
+      ],
+      "reason": "Exact operational restoration after both phases with independent phase-two acceptance and explicit quality/config-byte limits."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "tool-choice-followup.json",
+        "independent-restoration-review.json"
+      ],
+      "reason": "Closed functional qualification, retained auto miss, request-policy recommendation, restoration acceptance, and no-promotion boundary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No compact social-copy package was requested; the dated technical finding is the public report."
+    }
+  ],
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}
