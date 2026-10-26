@@ -45,7 +45,7 @@ narration.
 
 ## MCP Tool Map
 
-- Gateway: `router_status`, `router_fleet_status`, `router_logs`, `router_manage`,
+- Gateway: `router_status`, `router_fleet_status`, `router_config_export`, `router_logs`, `router_manage`,
   `router_transition`, `router_configuration`, `runtime_experiment`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
   `serves_manage`, `serves_mode`, `serves_logs`, `serves_probe`, `serves_profile`,

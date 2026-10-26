@@ -33,6 +33,7 @@ TOOL_NAMES = [
     "controller_logs",
     "router_status",
     "router_fleet_status",
+    "router_config_export",
     "router_logs",
     "router_manage",
     "router_transition",
@@ -171,6 +172,10 @@ def _normalize_benchmark_profile_catalog_delta(public_tools):
     submit["description"] = "Submit one durable context, agentic, or SWE benchmark job."
 
 
+def _normalize_router_config_export_delta(public_tools):
+    public_tools[:] = [tool for tool in public_tools if tool["name"] != "router_config_export"]
+
+
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
     assert list(mcp.TOOLS) == TOOL_NAMES
     # The propagation declaration is deliberately scoped and absent from legacy
@@ -180,6 +185,7 @@ def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable
     # T023 adds exactly the explicit whole-router selector and owner token.
     # Normalize those additions to retain the accepted legacy catalog digest.
     public_tools = deepcopy(public_tools)
+    _normalize_router_config_export_delta(public_tools)
     schema = next(tool for tool in public_tools if tool["name"] == "router_transition")["inputSchema"]
     assert schema["maxProperties"] == 9
     assert schema["properties"].pop("scope") == {"type": "string", "enum": ["tier", "router"], "maxLength": 262144}
@@ -207,6 +213,7 @@ def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable
 
 def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     public_tools = deepcopy(mcp.list_tools())
+    _normalize_router_config_export_delta(public_tools)
     transition = next(tool for tool in public_tools if tool["name"] == "router_transition")
     schema = transition["inputSchema"]
     assert transition["description"] == (
@@ -338,7 +345,7 @@ def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():
     handlers = [
         (name, specification["handler"].__name__)
         for name, specification in mcp.TOOLS.items()
-        if name != "propagation_capabilities"
+            if name not in {"propagation_capabilities", "router_config_export"}
     ]
 
     assert type(mcp.TOOLS) is dict
@@ -430,6 +437,21 @@ def test_router_fleet_status_tool_uses_installed_runtime_probe(monkeypatch):
 
     assert result["data"] == report
     assert seen == {"container": "anvil-router", "timeout": 7.0}
+
+
+def test_router_config_export_tool_uses_runtime_snapshot_core(monkeypatch, tmp_path):
+    output = tmp_path / "snapshot.toml"
+    expected = "a" * 64
+    seen = {}
+    monkeypatch.setattr(
+        "anvil_serving.router_config_export.export_runtime_snapshot",
+        lambda container, digest, path: seen.update(container=container, digest=digest, path=path) or {
+            "schema": "installed-router-runtime-snapshot/v1", "sha256": digest,
+        },
+    )
+    result = router_tools.tool_router_config_export({"expected_sha256": expected, "out": str(output)})
+    assert result["data"] == {"schema": "installed-router-runtime-snapshot/v1", "sha256": expected}
+    assert seen == {"container": "anvil-router", "digest": expected, "path": str(output)}
 
 
 def test_operation_contracts_resolve_against_the_composed_public_catalog():

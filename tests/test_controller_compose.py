@@ -96,6 +96,7 @@ def test_controller_compose_has_exact_generic_operation_allowlist():
     assert operations == (
         "operation_contracts",
         "router_status",
+        "router_config_export",
         "router_logs",
         "router_manage",
         "router_transition",
@@ -119,3 +120,15 @@ def test_controller_compose_pins_current_release():
     text = _text()
 
     assert "anvil-serving-controller:1.3.0" in text
+
+
+def test_controller_snapshot_root_is_private_and_persisted_without_a_host_home_mount():
+    from anvil_serving import router_config_export
+
+    runtime_root = PurePosixPath("/") / "home" / "anvil" / router_config_export.SNAPSHOT_ROOT.relative_to(Path.home())
+    dockerfile = (REPO / "Dockerfile").read_text()
+    controller_stage = dockerfile.split("FROM runtime AS controller\n", 1)[1]
+    assert f"mkdir -p {runtime_root}" in controller_stage
+    assert f"chmod 700 {runtime_root.parent} {runtime_root}" in controller_stage
+    assert f"anvil-controller-snapshots:{runtime_root}" in _text()
+    assert "  anvil-controller-snapshots:\n" in _text()

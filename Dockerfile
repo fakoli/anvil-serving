@@ -65,6 +65,10 @@ CMD ["--host", "127.0.0.1", "--port", "8768"]
 
 FROM runtime AS controller
 
+# New controller volumes inherit this private snapshot directory on first use.
+RUN mkdir -p /home/anvil/.local/state/anvil-serving/router-snapshots \
+    && chmod 700 /home/anvil/.local/state/anvil-serving /home/anvil/.local/state/anvil-serving/router-snapshots
+
 # The controller is a separate image target. It gets only the pinned Docker CLI
 # and Compose plugin required by managed lifecycle verbs; router images do not.
 COPY --from=docker-cli --chown=root:root /usr/local/bin/docker /usr/local/bin/docker

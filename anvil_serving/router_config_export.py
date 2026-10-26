@@ -8,9 +8,11 @@ inventory and export keep their existing symlink/dependency refusal contract.
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -18,8 +20,11 @@ import tomllib
 
 from . import operator_config
 from .operator_output import CommandResult, UsageError
+from .transports import _ProcessOutputOverflow, _ProcessPipeError, _run_bounded_process
 
 MAX_BYTES = 1024 * 1024
+MAX_CAPTURE_BYTES = ((MAX_BYTES + 2) // 3) * 4 + 1
+SNAPSHOT_ROOT = Path.home() / ".local" / "state" / "anvil-serving" / "router-snapshots"
 INSTALLED_PATH = "/etc/anvil/config.toml"
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
@@ -28,6 +33,12 @@ _HASH_CODE = (
     "s=os.lstat(p); assert stat.S_ISREG(s.st_mode) and s.st_size<=1048576; "
     "f=open(p,'rb'); b=f.read(1048577); f.close(); "
     "assert len(b)<=1048576; print(hashlib.sha256(b).hexdigest())"
+)
+_CAPTURE_CODE = (
+    "import base64,os,stat; p='/etc/anvil/config.toml'; "
+    "s=os.lstat(p); assert stat.S_ISREG(s.st_mode) and s.st_size<=1048576; "
+    "f=open(p,'rb'); b=f.read(1048577); f.close(); assert len(b)<=1048576; "
+    "print(base64.b64encode(b).decode('ascii'))"
 )
 _VALIDATE_CODE = """
 import hashlib, pathlib, sys, tempfile
@@ -41,6 +52,10 @@ with tempfile.TemporaryDirectory(prefix='anvil-router-validate-') as folder:
     load_server_config(str(snapshot))
 print(hashlib.sha256(raw).hexdigest())
 """
+_VALIDATE_INSTALLED_CODE = _VALIDATE_CODE.replace(
+    "raw = sys.stdin.buffer.read(1048577)",
+    "with open('/etc/anvil/config.toml', 'rb') as source:\n    raw = source.read(1048577)",
+)
 
 
 def _refusal(stage="ownership") -> UsageError:
@@ -147,13 +162,188 @@ def export_installed_config(container: str, expected_sha256: str, *, _run=subpro
         raise _refusal(stage) from None
 
 
+def _snapshot_target(path: str) -> Path:
+    from .router.keys import _secure_directory
+
+    if os.name != "posix" or len(path) > 4096 or any(ord(character) < 32 for character in path):
+        raise ValueError("invalid snapshot output")
+    target = Path(path).expanduser()
+    root = SNAPSHOT_ROOT.expanduser().absolute()
+    if not target.is_absolute() or ".." in target.parts or target.parent != root:
+        raise ValueError("snapshot output is outside the declared evidence root")
+    _secure_directory(root, create=False)
+    if os.path.lexists(target):
+        raise ValueError("snapshot output already exists")
+    return target
+
+
+def _write_snapshot(path: str, raw: bytes) -> None:
+    """Create one owner-only snapshot; existing evidence is never replaced."""
+    from .router.keys import _private_created_descriptor
+
+    target = _snapshot_target(path)
+    root = target.parent
+    listed_root = root.lstat()
+    root_fd = os.open(root, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        opened_root = os.fstat(root_fd)
+        if not os.path.samestat(listed_root, opened_root) or opened_root.st_uid != os.geteuid() or opened_root.st_mode & 0o077:
+            raise ValueError("snapshot directory changed")
+        descriptor = os.open(target.name, flags, 0o600, dir_fd=root_fd)
+        created = os.fstat(descriptor)
+        try:
+            _private_created_descriptor(descriptor)
+            with os.fdopen(descriptor, "wb") as output:
+                descriptor = -1
+                output.write(raw)
+                output.flush()
+                os.fsync(output.fileno())
+            if not os.path.samestat(root.lstat(), opened_root):
+                raise ValueError("snapshot directory changed")
+            os.fsync(root_fd)
+        except BaseException:
+            if descriptor != -1:
+                os.close(descriptor)
+            if os.path.samestat(os.stat(target.name, dir_fd=root_fd, follow_symlinks=False), created):
+                os.unlink(target.name, dir_fd=root_fd)
+            raise
+    finally:
+        os.close(root_fd)
+
+
+def _dependency_summary(parsed: dict) -> dict:
+    names = set()
+
+    def visit(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if key in operator_config._DEPENDENCY_KEYS:
+                    names.add(key)
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(parsed)
+    server = parsed.get("server", {})
+    if isinstance(server, dict):
+        names.update(key for key in ("authorization_policy_path", "api_keys_path") if server.get(key) is not None)
+        if any(profile.get("signer_file") is not None for profile in server.get("webui_identity", [])):
+            names.add("signer_file")
+    return {"dependency_complete": not names, "dependency_field_count": len(names)}
+
+
+def _snapshot_secret_projection(parsed: dict) -> dict:
+    """Validate known path fields before omitting them from credential-key checks."""
+    projected = copy.deepcopy(parsed)
+    server = projected.get("server")
+    if isinstance(server, dict):
+        for key in ("authorization_policy_path", "api_keys_path"):
+            value = server.get(key)
+            if value is not None:
+                if (not isinstance(value, str) or not value or len(value) > 4096
+                        or any(ord(character) < 32 for character in value)
+                        or "://" in value or ".." in Path(value).parts):
+                    raise ValueError("unsafe dependency reference")
+                operator_config._assert_no_secret_literals(value, path="router.toml")
+                del server[key]
+        # These two schema-validated fields identify an existing credential;
+        # neither contains the credential. Signer references remain scanned.
+        from .router.identity import WebUIProfile, validate_webui_profiles
+        profiles = server.get("webui_identity", [])
+        if not isinstance(profiles, list):
+            raise ValueError("invalid identity references")
+        validate_webui_profiles(tuple(WebUIProfile(**profile) for profile in profiles))
+        for profile in profiles:
+            del profile["credential_id"]
+            del profile["credential_kind"]
+    return _secret_projection(projected)
+
+
+def export_runtime_snapshot(container: str, expected_sha256: str, out: str, *, _run=_run_bounded_process) -> dict:
+    """Export exact installed bytes to a new protected file, never stdout."""
+    if (not isinstance(container, str) or not _NAME.fullmatch(container)
+            or not isinstance(expected_sha256, str) or not _SHA.fullmatch(expected_sha256)
+            or not isinstance(out, str) or not out):
+        raise _refusal()
+    stage = "output"
+
+    def run(argv: list[str], *, limit=128 * 1024) -> bytes:
+        result = _run(argv, timeout=30, max_output_bytes=limit)
+        if result.returncode or len(result.stdout) > limit:
+            raise _refusal(stage)
+        return result.stdout
+
+    def inspect() -> dict:
+        row = json.loads(run(["docker", "inspect", "--format",
+            '{"id":{{json .Id}},"running":{{json .State.Running}},"mounts":{{json .Mounts}},'
+            '"project":{{json (index .Config.Labels "com.docker.compose.project")}},'
+            '"service":{{json (index .Config.Labels "com.docker.compose.service")}}}', container]).decode())
+        if not isinstance(row, dict) or row.get("running") is not True or not isinstance(row.get("id"), str) or not _SHA.fullmatch(row["id"]):
+            raise _refusal()
+        mounts = row.get("mounts")
+        if not isinstance(mounts, list) or any(not isinstance(item, dict) for item in mounts):
+            raise _refusal()
+        matches = [item for item in mounts if item.get("Destination") == INSTALLED_PATH]
+        if row.get("project") != "anvil-serving" or row.get("service") != "router" or len(matches) != 1 or matches[0].get("Type") != "bind" or matches[0].get("RW") is not False:
+            raise _refusal()
+        return {"container_id": row["id"], "mount": matches[0]}
+
+    def capture(container_id: str) -> bytes:
+        encoded = run(["docker", "exec", container_id, "python", "-c", _CAPTURE_CODE], limit=MAX_CAPTURE_BYTES).strip()
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+        except ValueError:
+            raise _refusal("source_read") from None
+        if len(raw) > MAX_BYTES:
+            raise _refusal("source_read")
+        return raw
+
+    try:
+        _snapshot_target(out)
+        stage = "ownership"
+        before = inspect()
+        stage = "source_read"
+        raw = capture(before["container_id"])
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != expected_sha256:
+            raise _refusal()
+        try:
+            content = raw.decode("utf-8")
+            parsed = tomllib.loads(content)
+        except (UnicodeDecodeError, tomllib.TOMLDecodeError):
+            raise _refusal("router_validation") from None
+        stage = "router_validation"
+        validated = run(["docker", "exec", before["container_id"], "python", "-c", _VALIDATE_INSTALLED_CODE]).strip().decode()
+        if validated != digest:
+            raise _refusal(stage)
+        stage = "secret_validation"
+        operator_config._assert_text_config_safe(content, parser="toml", path="router.toml")
+        operator_config._assert_no_secret_literals(_snapshot_secret_projection(parsed), path="router.toml")
+        dependencies = _dependency_summary(parsed)
+        stage = "installed_identity"
+        if capture(before["container_id"]) != raw or inspect() != before:
+            raise _refusal(stage)
+        stage = "output"
+        _write_snapshot(out, raw)
+        return {"schema": "installed-router-runtime-snapshot/v1", "read_only": True,
+                "container": container, "container_id": before["container_id"],
+                "installed_path": INSTALLED_PATH, "sha256": digest, "size_bytes": len(raw),
+                **dependencies}
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, _ProcessOutputOverflow, _ProcessPipeError):
+        raise _refusal(stage) from None
+
+
 def dispatch(argv=None) -> CommandResult:
     parser = argparse.ArgumentParser(prog="anvil-serving router export-config")
     parser.add_argument("--container", default="anvil-router")
     parser.add_argument("--expected-sha256", required=True)
+    parser.add_argument("--out")
     args = parser.parse_args(argv)
     try:
-        data = export_installed_config(args.container, args.expected_sha256)
+        data = (export_runtime_snapshot(args.container, args.expected_sha256, args.out)
+                if args.out is not None else export_installed_config(args.container, args.expected_sha256))
     except UsageError as exc:
         return CommandResult(error=exc, human_stderr="router export-config: refused at " + exc.details["stage"] + "\n")
-    return CommandResult(data=data, human_stdout=data["content"])
+    return CommandResult(data=data, human_stdout="" if args.out is not None else data["content"])
