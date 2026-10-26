@@ -163,6 +163,23 @@ are never public identifiers. Full bytes are delivered through the
 authenticated `/artifacts/{opaque-id}` boundary; eligible small images may
 also be returned as bounded native MCP image content. Video is resource-only.
 
+### Use an owned result as workflow input
+
+A descriptor may declare a parameter with `kind: "artifact"` and optional
+`media_types`, such as `["video/mp4"]`. Pass the opaque artifact ID returned by
+a completed job. Before submission, the shared operation checks ownership,
+expiry, declared MIME types and upload size; it verifies the content SHA-256,
+uploads the bytes to the selected worker, and binds the returned input name
+only inside the private execution graph. Public requests and job records keep
+opaque IDs. An idempotent replay returns the existing job without uploading or
+submitting it again, including after the original input expires.
+
+Input handoff currently supports PNG and MP4 artifacts, bounded by 32 MiB and
+the workflow's artifact-byte limit, whichever is smaller. It does not accept a
+caller filesystem path or import an arbitrary local recording. Long recordings
+must first be cut into supported, bounded shots by the owning application;
+external-media ingestion is a separate integration boundary.
+
 ## Qualify without promoting
 
 ```bash

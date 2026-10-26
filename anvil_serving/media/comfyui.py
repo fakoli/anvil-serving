@@ -22,6 +22,7 @@ MAX_METADATA_ITEMS = 4096
 MAX_ERROR_BYTES = 4096
 MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 _PROMPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+_UPLOAD_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
 _BACKEND_UNAVAILABLE_HTTP_STATUSES = frozenset({502, 503, 504})
 
 
@@ -212,6 +213,7 @@ class ComfyUIClient:
             "vae",
             "checkpoints",
             "latent_upscale_models",
+            "loras",
         ):
             inventory = self.request_json("GET", f"/models/{folder}")
             models.update(_bounded_strings(inventory, label="model"))
@@ -392,9 +394,7 @@ class ComfyUIClient:
     def upload_input(self, filename: str, content: bytes, *, max_bytes: int = MAX_UPLOAD_BYTES) -> str:
         if (
             not isinstance(filename, str)
-            or not filename
-            or len(filename) > 128
-            or filename != filename.replace("\\", "/").rsplit("/", 1)[-1]
+            or not _UPLOAD_NAME_RE.fullmatch(filename)
         ):
             raise MediaError("invalid_upload", "upload filename is invalid")
         if not isinstance(content, bytes) or not content or len(content) > max_bytes:
@@ -417,7 +417,7 @@ class ComfyUIClient:
         except (UnicodeError, json.JSONDecodeError) as exc:
             raise MediaError("backend_response_invalid", "ComfyUI upload response is invalid", status=502) from exc
         stored = value.get("name") if isinstance(value, Mapping) else None
-        if not isinstance(stored, str) or not stored or len(stored) > 256:
+        if not isinstance(stored, str) or not _UPLOAD_NAME_RE.fullmatch(stored):
             raise MediaError("backend_response_invalid", "ComfyUI upload response lacks a bounded name", status=502)
         return stored
 

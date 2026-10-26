@@ -140,3 +140,17 @@ def test_upload_rejects_paths_and_oversize_before_contact():
     with pytest.raises(MediaError):
         client.upload_input("input.png", b"xx", max_bytes=1)
     assert contacted == []
+
+
+@pytest.mark.parametrize("filename", ['bad"name.mp4', "bad\r\nname.mp4", "bad\x00name.mp4", "../bad.mp4", "bad\\name.mp4"])
+def test_upload_rejects_unsafe_multipart_filenames(filename):
+    client = ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_a, **_k: pytest.fail("contacted backend"))
+    with pytest.raises(MediaError, match="filename"):
+        client.upload_input(filename, b"video")
+
+
+@pytest.mark.parametrize("stored", ["../escaped.mp4", "bad\r\nname.mp4", "/absolute.mp4"])
+def test_upload_rejects_unsafe_returned_filename(stored):
+    client = ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_a, **_k: Response({"name": stored}))
+    with pytest.raises(MediaError):
+        client.upload_input("safe.mp4", b"video")
