@@ -517,15 +517,18 @@ def test_recorder_omissions_make_balanced_accounting_incomplete(tmp_path):
 _PINNED_SUMMARY_METHODS = '    def summarize_start(self):\n        if not self.summarizer.too_big(self.done_messages):\n            return\n\n        self.summarize_end()\n\n        if self.verbose:\n            self.io.tool_output("Starting to summarize chat history.")\n\n        self.summarizer_thread = threading.Thread(target=self.summarize_worker)\n        self.summarizer_thread.start()\n\n    def summarize_worker(self):\n        self.summarizing_messages = list(self.done_messages)\n        try:\n            self.summarized_done_messages = self.summarizer.summarize(self.summarizing_messages)\n        except ValueError as err:\n            self.io.tool_warning(err.args[0])\n\n        if self.verbose:\n            self.io.tool_output("Finished summarizing chat history.")\n\n    def summarize_end(self):\n        if self.summarizer_thread is None:\n            return\n\n        self.summarizer_thread.join()\n        self.summarizer_thread = None\n\n        if self.summarizing_messages == self.done_messages:\n            self.done_messages = self.summarized_done_messages\n        self.summarizing_messages = None\n        self.summarized_done_messages = []\n\n'
 
 
-@pytest.mark.parametrize("final_response", ["success", "error", "deadline"])
+@pytest.mark.parametrize("final_response", ["success", "error", "deadline", "budget_stop"])
 def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeypatch, final_response):
     from contextlib import nullcontext
     namespace = {"threading": threading}
     exec("class Coder:\n" + _PINNED_SUMMARY_METHODS, namespace)
     Coder = namespace["Coder"]
     Coder.allowed_to_edit = lambda *args: None
-    original_start, original_end = Coder.summarize_start, Coder.summarize_end
+    original_start = Coder.summarize_start
+    original_worker = Coder.summarize_worker
+    original_end = Coder.summarize_end
     entered, release = threading.Event(), threading.Event()
+    summary_started = threading.Event()
     failures, coders, captured_guards = [], [], []
     now = [100.0]
     if final_response == "deadline":
@@ -563,12 +566,14 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
         coder.summarized_done_messages = []
         coder.io = types.SimpleNamespace(tool_warning=lambda _text: None)
         def summarize(_messages):
+            summary_started.set()
             model.send_completion()
             return ["summary"]
         coder.summarizer = types.SimpleNamespace(too_big=lambda _messages: True, summarize=summarize)
         coders.append(coder)
         coder.summarize_start()
-        assert entered.wait(5)
+        expected_start = summary_started if final_response == "budget_stop" else entered
+        assert expected_start.wait(5)
         # Like pinned benchmark.py, return after grading without summarize_end().
         if final_response == "deadline":
             now[0] += 61
@@ -589,14 +594,16 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
     plan = {"paths": {"aider_root": str(tmp_path), "request_events": str(tmp_path / "events.jsonl"),
                       "adapter_result": str(tmp_path / "result.json"), "results": str(tmp_path / "results"),
                       "aider": str(tmp_path)},
-            "budgets": {"max_model_calls": 12, "max_completion_tokens": 8,
+            "budgets": {"max_model_calls": 2 if final_response == "budget_stop" else 12,
+                        "max_completion_tokens": 8,
                         "deadline_s": 60, "max_retries": 0, "min_free_disk_bytes": 0},
             "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
             "request_controls": {}, "plan_sha256": "a" * 64, "adapter_sha256": "b" * 64}
     # Release only after shutdown has entered the bounded *actual* summary join.
     observed_join = threading.Event()
     def watch_join():
-        assert entered.wait(5)
+        expected_start = summary_started if final_response == "budget_stop" else entered
+        assert expected_start.wait(5)
         thread = coders[0].summarizer_thread
         original_join = thread.join
         def join(timeout=None):
@@ -610,7 +617,7 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
     benchmark["app"] = lambda **kwargs: (actual_app(**kwargs), watch_join())
     monkeypatch.setattr(threading, "excepthook", lambda args: failures.append(args.exc_value))
     try:
-        if final_response == "deadline":
+        if final_response in ("deadline", "budget_stop"):
             with pytest.raises(adapter.BudgetStopped):
                 adapter.run_adapter(plan)
         else:
@@ -621,7 +628,7 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
         assert rows[0]["request_accounting_schema"] == adapter.REQUEST_ACCOUNTING_SCHEMA
         assert rows[-1]["request_accounting"] == result["request_accounting"]
         accounting = result["request_accounting"]
-        assert accounting["started"] == 3
+        assert accounting["started"] == (2 if final_response == "budget_stop" else 3)
         if final_response == "deadline":
             assert result["outcome"] == "budget_exhausted" and result["events_complete"] is False
             assert rows[-1]["status"] == accounting["status"] == "incomplete"
@@ -633,6 +640,20 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
                 Model().send_completion()
             assert len(sent) == 3
             assert (tmp_path / "events.jsonl").read_text().splitlines() == [json.dumps(row, sort_keys=True, separators=(",", ":")) for row in rows]
+        elif final_response == "budget_stop":
+            assert result["outcome"] == "budget_exhausted" and result["events_complete"] is True
+            assert result["budget"]["reason"] == "max_model_calls"
+            assert accounting == {"schema": adapter.REQUEST_ACCOUNTING_SCHEMA,
+                                 "status": "complete", "started": 2, "responses": 2,
+                                 "errors": 0, "pending": 0}
+            assert len(sent) == 2
+            assert coders[0].summarizer_thread is None
+            assert coders[0].done_messages == ["history"]
+            assert Client.send is original_send and Model.send_completion is original_completion
+            assert Coder.summarize_start is original_start
+            assert Coder.summarize_worker is original_worker
+            assert Coder.summarize_end is original_end
+            assert not failures
         else:
             assert result["outcome"] == "completed" and result["events_complete"] is True
             assert accounting["pending"] == 0 and accounting["status"] == "complete"
@@ -640,7 +661,9 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
             assert accounting["errors"] == (1 if final_response == "error" else 0)
             assert coders[0].summarizer_thread is None
             assert Client.send is original_send and Model.send_completion is original_completion
-            assert Coder.summarize_start is original_start and Coder.summarize_end is original_end
+            assert Coder.summarize_start is original_start
+            assert Coder.summarize_worker is original_worker
+            assert Coder.summarize_end is original_end
             assert not failures
         assert "private failure text" not in (tmp_path / "events.jsonl").read_text()
     finally:

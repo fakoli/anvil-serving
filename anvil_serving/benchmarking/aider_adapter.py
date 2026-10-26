@@ -279,13 +279,23 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
 
 def install_summary_guard(coder_class, budget):
     """Bound the pinned Coder's real summary joins, including the final one."""
-    original_start, original_end = coder_class.summarize_start, coder_class.summarize_end
+    original_start = coder_class.summarize_start
+    original_worker = coder_class.summarize_worker
+    original_end = coder_class.summarize_end
     coders = []
 
     def start(self):
         if not any(coder is self for coder in coders):
             coders.append(self)
         return original_start(self)
+
+    def summarize_worker(self):
+        try:
+            return original_worker(self)
+        except BudgetStopped:
+            # A summary is advisory. If the shared run budget blocks its request,
+            # keep the unsummarized history intact and let the run report exhaustion.
+            self.summarized_done_messages = list(self.summarizing_messages or [])
 
     def end(self):
         thread = self.summarizer_thread
@@ -296,7 +306,9 @@ def install_summary_guard(coder_class, budget):
         # Preserve upstream message bookkeeping, now with a finished thread.
         return original_end(self)
 
-    coder_class.summarize_start, coder_class.summarize_end = start, end
+    coder_class.summarize_start = start
+    coder_class.summarize_worker = summarize_worker
+    coder_class.summarize_end = end
 
     def finish():
         try:
@@ -304,7 +316,9 @@ def install_summary_guard(coder_class, budget):
                 end(coder)
         finally:
             if all(coder.summarizer_thread is None or not coder.summarizer_thread.is_alive() for coder in coders):
-                coder_class.summarize_start, coder_class.summarize_end = original_start, original_end
+                coder_class.summarize_start = original_start
+                coder_class.summarize_worker = original_worker
+                coder_class.summarize_end = original_end
     return finish
 
 
