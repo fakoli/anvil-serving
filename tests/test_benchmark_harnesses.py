@@ -45,6 +45,7 @@ class Runner:
                     b"mini-swe-agent==2.4.6\n"
                     b"swebench==4.2.0\n"
                     b"typer==0.21.0\n"
+                    b"httpx==0.28.1\nlitellm==1.102.0\nopenai==2.54.0\ntenacity==9.1.4\n"
                 ),
                 stderr=b"",
             )
@@ -84,10 +85,17 @@ def test_preparation_records_exact_assets_and_reuses_cache(tmp_path):
         "anvil-serving.swe-python-environment/v1"
     )
     assert first["python_environment"]["resolved_packages"] == [
+        "httpx==0.28.1",
+        "litellm==1.102.0",
         "mini-swe-agent==2.4.6",
+        "openai==2.54.0",
         "swebench==4.2.0",
+        "tenacity==9.1.4",
         "typer==0.21.0",
     ]
+    assert first["python_environment"]["dependency_versions"] == harnesses.SUPPORTED_DEPENDENCIES
+    install = next(call[0] for call in runner.calls if call[0][1:4] == ("-m", "pip", "install"))
+    assert {"litellm==1.102.0", "openai==2.54.0", "httpx==0.28.1", "tenacity==9.1.4"} <= set(install)
     assert all(len(item["stdout"].encode()) <= 64 * 1024 for item in first["command_logs"])
 
     second = prepare_harness_assets(
@@ -104,6 +112,39 @@ def test_preparation_records_exact_assets_and_reuses_cache(tmp_path):
     assert harness_asset_status(
         run_root=str(tmp_path / "runs"), ownership_id="campaign", run_id="run-two"
     )["status"] == "ready"
+
+
+@pytest.mark.parametrize("reuse", [False, True])
+def test_swe_prepare_rejects_unsupported_dependency_even_with_matching_inventory(tmp_path, reuse):
+    options = dict(profile=load_profile("smoke"), suite="swe", run_root=str(tmp_path / "runs"),
+                   ownership_id="campaign", run_id="dependencies", cache_root=str(tmp_path / "cache"))
+    if reuse:
+        first = prepare_harness_assets(**options, runner=Runner())
+        lock_path = tmp_path / "cache" / first["python_environment"]["cache_key"] / ".anvil-swe-python-environment.json"
+        lock = json.loads(lock_path.read_text())
+        lock["resolved_packages"] = [entry.replace("litellm==1.102.0", "litellm==1.102.1")
+                                     for entry in lock["resolved_packages"]]
+        lock_path.write_text(json.dumps(lock))
+
+    class WrongVersionRunner(Runner):
+        def __call__(self, argv, cwd, timeout):
+            result = super().__call__(argv, cwd, timeout)
+            if argv[1:4] == ("-m", "pip", "freeze"):
+                result.stdout = result.stdout.replace(b"litellm==1.102.0", b"litellm==1.102.1")
+            return result
+
+    with pytest.raises(BenchmarkJobError, match="requires litellm==1.102.0"):
+        prepare_harness_assets(**options, runner=WrongVersionRunner())
+
+
+def test_swe_dependency_change_uses_new_cache_identity(tmp_path, monkeypatch):
+    options = dict(profile=load_profile("smoke"), suite="swe", run_root=str(tmp_path / "runs"),
+                   ownership_id="campaign", run_id="dependencies", cache_root=str(tmp_path / "cache"))
+    first = prepare_harness_assets(**options, runner=Runner())
+    monkeypatch.setattr(harnesses, "SUPPORTED_DEPENDENCIES", {**harnesses.SUPPORTED_DEPENDENCIES, "litellm": "1.102.1"})
+    with pytest.raises(BenchmarkJobError, match="absent from the offline cache"):
+        prepare_harness_assets(**options, offline=True, runner=Runner())
+    assert (tmp_path / "cache" / first["python_environment"]["cache_key"]).is_dir()
 
 
 def test_offline_missing_asset_fails_closed(tmp_path):
