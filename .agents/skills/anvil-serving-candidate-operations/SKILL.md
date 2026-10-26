@@ -48,6 +48,39 @@ that ceiling, stop the candidate trial and record the product gap; do not
 substitute raw Docker or rely on the global OOM killer. Preserve exact known-good
 restoration separately from new candidate experimentation.
 
+For every authorized candidate load or model swap, retain bounded, timestamped
+host-memory snapshots in private attempt evidence: before unloading the
+incumbent, immediately before loading the candidate, after startup, and after
+restoration. A refusal or startup failure requires an immediate snapshot before
+cleanup when safe; capture must never delay urgent restoration. Record missing
+phases and unavailable fields explicitly. A documentation-only change does not
+require a live capture or model operation.
+
+Each snapshot must include:
+
+- Total, free and available host RAM; swap total/used; memory pressure; file
+  cache, shared memory and reclaimable/unreclaimable kernel memory. Keep these
+  accounting views separate rather than adding overlapping counters.
+- The largest processes and managed services/containers, with PID/parent,
+  identity, counts and proportional resident memory (PSS) when available.
+  Group desktop/agent child tools so many small workers are not missed. Retain
+  cgroup `memory.current`, anonymous/file/shared/kernel and swap accounting when
+  available; container totals include cache and are not process PSS.
+- Candidate RAM and RAM-plus-swap ceilings, host reserve, required available
+  RAM, observed available RAM and signed headroom/shortfall. A ceiling is not
+  measured consumption. Bind the recipe, command host, phase and timestamp.
+
+Use supported host/status/monitoring commands first. If Linux attribution or
+numeric refusal values are unavailable, retain bounded read-only `/proc` and
+cgroup evidence and record the product gap. Never read process environments or
+retain raw command lines, credentials or shared environment files. A nearby
+snapshot is not the guard's exact sample: label refusal-time values unknown
+unless the guard retained them. An admission refusal is not an engine OOM.
+Investigate co-resident owners before proposing a new memory budget; do not
+silently lower the reserve, evict caches, terminate agent/session processes or
+retry the same frozen attempt. Apply existing lifecycle authority without
+requesting duplicate approval.
+
 A host-wide OOM or desktop-session loss blocks retries until containment and
 loader diagnosis are independently checked. See the
 [September 17 failure](../../../docs/findings/2026-09-17-glm53-mixed35-startup.md)

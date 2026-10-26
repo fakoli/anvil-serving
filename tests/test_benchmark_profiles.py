@@ -1,5 +1,4 @@
 import copy
-import json
 from pathlib import Path
 
 import pytest
@@ -17,7 +16,10 @@ from anvil_serving.benchmarking.profiles import (
 def test_checked_in_profiles_are_content_addressed_and_valid(name):
     profile = load_profile(name)
     assert profile["content_sha256"] == profile_content_sha256(profile)
-    assert set(profile["suites"]) == ({"context", "agentic", "swe", "aider", "performance"} if name == "pilot-v2" else {"context", "agentic", "swe"})
+    expected = ({"aider"} if name.startswith("aider-diagnostic-") else
+                {"context", "agentic", "swe", "aider", "performance"} if name == "pilot-v2" else
+                {"context", "agentic", "swe"})
+    assert set(profile["suites"]) == expected
 
 
 @pytest.mark.parametrize("name", sorted(PROFILE_NAMES))
@@ -25,12 +27,10 @@ def test_packaged_profiles_match_public_config(name):
     root = Path(__file__).resolve().parents[1]
     packaged = root / "anvil_serving" / "_benchmark_profiles" / f"{name}.json"
     public = root / "configs" / "benchmarks" / f"{name}.json"
-    assert json.loads(packaged.read_text(encoding="utf-8")) == json.loads(
-        public.read_text(encoding="utf-8")
-    )
+    assert packaged.read_bytes() == public.read_bytes()
 
 
-@pytest.mark.parametrize("name", sorted(PROFILE_NAMES))
+@pytest.mark.parametrize("name", sorted(name for name in PROFILE_NAMES if "swe" in load_profile(name)["suites"]))
 def test_swe_bench_verified_uses_the_fetchable_official_revision(name):
     profile = load_profile(name)
     assert (
@@ -220,3 +220,36 @@ def test_v1_profile_bytes_stay_frozen(name, digest):
     root = Path(__file__).resolve().parents[1]
     for directory in ("anvil_serving/_benchmark_profiles", "configs/benchmarks"):
         assert hashlib.sha256((root / directory / f"{name}.json").read_bytes()).hexdigest() == digest
+
+
+def test_aider_diagnostic_profiles_pair_only_completion_caps_and_keep_pilot_unchanged():
+    from anvil_serving.benchmarking.aider import validate_aider_parameters
+    from anvil_serving.benchmarking.profiles import suite_budgets
+
+    pilot = load_profile("pilot-v2")
+    assert pilot["content_sha256"] == "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf"
+    suites = []
+    for size in (16, 32):
+        profile = load_profile(f"aider-diagnostic-{size}k-v1")
+        assert profile["schema"] == "anvil-serving.benchmark-profile/v2"
+        assert profile["adapters"] == {key: pilot["adapters"][key] for key in ("aider", "polyglot-benchmark")}
+        assert set(profile["suites"]) == {"aider"}
+        suite = profile["suites"]["aider"]
+        assert (suite["timeout_s"], suite["instance_limit"], suite["max_steps"], suite["repetitions"]) == (600, 1, 2, 1)
+        assert suite["max_completion_tokens"] == size * 1024
+        assert suite["scoring"] == pilot["suites"]["aider"]["scoring"]
+        assert suite["requirements"] == {"min_free_disk_bytes": 20 * 1024**3, "container_required": True}
+        assert suite_budgets(profile, "aider") == {
+            "max_model_calls": 12, "max_completion_tokens": size * 1024,
+            "deadline_s": 600, "max_retries": 0, "min_free_disk_bytes": 20 * 1024**3,
+        }
+        for task in ("go/exercises/practice/alphametics", "rust/exercises/practice/accumulate"):
+            assert validate_aider_parameters(profile, {"instance_ids": [task]})["selection"]["instance_ids"] == [task]
+        with pytest.raises(BenchmarkJobError):
+            validate_aider_parameters(profile, {"instance_ids": [
+                "go/exercises/practice/alphametics", "rust/exercises/practice/accumulate"]})
+        with pytest.raises(BenchmarkJobError, match="unsupported benchmark suite"):
+            suite_budgets(profile, "swe")
+        suite["max_completion_tokens"] = suite["budgets"]["max_completion_tokens"] = 0
+        suites.append(suite)
+    assert suites[0] == suites[1]

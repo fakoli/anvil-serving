@@ -348,6 +348,272 @@ def campaign_result(manifest, store, index, *, passed=True, state="completed", n
     return root
 
 
+def cancelled_aider_retention(manifest, store, *, change=None):
+    from anvil_serving.benchmarking import aider
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_execution import bind_campaign_child
+    from anvil_serving.benchmarking.jobs import canonical_json_bytes, job_spec_sha256
+    from anvil_serving.benchmarking.swe_agent_adapter import EVENT_SCHEMA
+
+    cell = manifest["cells"][0]
+    cell["spec"]["parameters"] = {"instance_ids": [cell["task_id"]]}
+    spec = bind_campaign_child(cell["spec"], manifest_sha256=manifest["manifest_sha256"],
+        campaign_id=manifest["campaign_id"], cell_id=cell["cell_id"], arm_id=cell["arm_id"], batch_id=cell["batch_id"])
+    root = Path(store.run_root) / spec["ownership_id"] / spec["run_id"]
+    native_path = root / "aider/results/tool-sequence/.aider.results.json"
+    selected_task = "other-task" if change == "swapped_task" else cell["task_id"]
+    selection = {"instance_ids": [selected_task], "sha256": aider._digest([selected_task])}
+    plan = {"schema": aider.AIDER_PLAN_SCHEMA, "ownership_id": spec["ownership_id"], "run_id": spec["run_id"],
+            "profile": spec["profile"], "endpoint": {**spec["endpoint"], "model": "other-model" if change == "swapped_model" else spec["endpoint"]["model"]},
+            "selection": selection}
+    plan["plan_sha256"] = aider._digest(plan)
+    cell["prepared"] = {"plan_sha256": hashlib.sha256(canonical_json_bytes(plan)).hexdigest()}
+    paths = {"aider/plan.json": plan, "aider/selection.json": selection}
+    if change != "missing":
+        paths["aider/results/tool-sequence/.aider.results.json"] = {
+            "model": "cloud" if change == "model" else "openai/" + plan["endpoint"]["model"],
+            "edit_format": "whole", "tests_outcomes": [True] if change == "pass" else [False, False],
+        }
+        if change == "signals":
+            paths["aider/results/tool-sequence/.aider.results.json"]["num_exhausted_context_windows"] = 2
+    for relative, value in paths.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(("{\"nested\": " * 1100) + "null" + ("}" * 1100) if change == "nested" and path == native_path else json.dumps(value))
+    if change == "selection":
+        (root / "aider/selection.json").write_text(json.dumps({"instance_ids": [], "sha256": aider._digest([])}))
+    artifacts = [evidence_file_reference(str(root / relative), root=str(root)) for relative in paths]
+    event_fields = ({"event": "aider_transport_response", "output_truncated": True},
+                    {"event": "aider_transport_response", "output_truncated": None},
+                    {"event": "aider_contained_command_finished", "compilation_failure": True},
+                    {"event": "aider_contained_command_finished", "compilation_failure": None}) if change in {"signals", "missing_requests"} else (
+                   ({"event": "aider_transport_response"},) if change == "missing_metadata" else (
+                   ({"event": "aider_transport_response", "output_truncated": "yes"},) if change == "invalid_metadata" else ()))
+    events = tuple({"schema": EVENT_SCHEMA, "seq": index, "utc_observed_at": "2026-10-24T12:00:00.000000Z", **fields}
+                   for index, fields in enumerate(event_fields, 1))
+    if events:
+        requests_path = root / "aider/requests.jsonl"
+        requests_path.write_text("".join(json.dumps(event) + "\n" for event in events))
+        artifacts.append(evidence_file_reference(str(requests_path), root=str(root)))
+    if change == "accounted_deadline":
+        from anvil_serving.benchmarking.swe_agent_adapter import EventRecorder
+        requests_path = root / "aider/requests.jsonl"
+        recorder = EventRecorder(requests_path)
+        recorder.record("aider_adapter_ready", request_accounting_schema=aider.AIDER_REQUEST_ACCOUNTING_SCHEMA)
+        recorder.record("aider_transport_started", logical_request_id="logical-00000001", attempt=1,
+                        model_call=1)
+        recorder.record("aider_transport_error", logical_request_id="logical-00000001", attempt=1,
+                        error_type="timeout", http_status=None, finish_reason=None,
+                        output_truncated=None, usage=dict.fromkeys(aider._AIDER_USAGE_FIELDS))
+        accounting = {"schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": "incomplete",
+                      "started": 1, "responses": 0, "errors": 1, "pending": 0}
+        recorder.close(outcome="budget_exhausted", request_accounting=accounting)
+        adapter_result_path = root / "aider/adapter-result.json"
+        adapter_result_path.write_text(json.dumps({
+            "schema": "anvil-serving.aider-adapter-result/v1", "outcome": "budget_exhausted",
+            "request_accounting": accounting, "events_complete": False}))
+        artifacts.extend(evidence_file_reference(str(path), root=str(root))
+                         for path in (requests_path, adapter_result_path))
+    if change == "forged_hash":
+        artifacts[-1]["sha256"] = "0" * 64
+    retention_manifest = {"schema": "anvil-serving.aider-retention/v1", "state": "incomplete",
+                          "artifacts": artifacts, "missing": (["results/tool-sequence/.aider.results.json"] if change == "missing_native" else
+                                      ["requests.jsonl"] if change == "missing_requests" else [])}
+    retention_path = root / "aider/retention.json"
+    retention_path.write_text(json.dumps(retention_manifest))
+    retention = {**retention_manifest, "manifest_reference": evidence_file_reference(str(retention_path), root=str(root))}
+    cancellation_path = root / "evidence/cancellation-aider.json"
+    cancellation_path.parent.mkdir(exist_ok=True)
+    cancellation_path.write_text(json.dumps({"schema": "anvil-serving.aider-cancellation/v1", "retention": retention}))
+    if change == "symlink":
+        outside = root / "outside.json"
+        outside.write_text(native_path.read_text())
+        native_path.unlink()
+        native_path.symlink_to(outside)
+    store.records[spec["run_id"]] = {"spec": spec, "state": "cancelled", "started_at": "2026-10-24T12:00:01Z",
+                                      "spec_sha256": job_spec_sha256(spec)}
+    store.artifacts[spec["run_id"]] = {"run": {"spec_sha256": job_spec_sha256(spec)}, "results": {"evidence": {
+        "stages": [{"name": "aider_retention", "evidence": [evidence_file_reference(str(cancellation_path), root=str(root))]}]}}}
+    return plan
+
+
+@pytest.mark.parametrize(("change", "expected"), [
+    ("pass", [{"first_attempt_passed": True, "second_attempt_passed": None, "resolved": True}]),
+    ("fail", [{"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]),
+    ("missing", None),
+    ("forged_hash", None),
+    ("model", None),
+    ("selection", None),
+    ("symlink", None),
+    ("swapped_model", None),
+    ("swapped_task", None),
+    ("nested", None),
+    ("missing_native", None),
+])
+def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path, change, expected):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    cancelled_aider_retention(manifest, store, change=change)
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["raw_task_grades"] == expected
+    assert row["outcomes"] is None
+    assert row["samples"] == {"planned": 1, "submitted": 1, "attempted": None,
+                              "scored": None, "failed": None, "cancelled": None, "unfinished": 0}
+    assert row["measurement_complete"] is False
+
+
+def test_campaign_retained_plan_binds_full_prepared_digest_not_internal_digest(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    from anvil_serving.benchmarking.jobs import canonical_json_bytes
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    plan = cancelled_aider_retention(manifest, store, change="pass")
+    assert plan["plan_sha256"] != hashlib.sha256(canonical_json_bytes(plan)).hexdigest()
+    assert report_campaign(manifest, store)["cells"][0]["raw_task_grades"]
+
+
+@pytest.mark.parametrize(("change", "expected"), [
+    ("signals", {"output_truncated": True, "compilation_failure": True, "coverage": "partial", "num_exhausted_context_windows": 2}),
+    ("missing_metadata", {"output_truncated": None, "compilation_failure": None, "coverage": "partial", "num_exhausted_context_windows": None}),
+    ("invalid_metadata", None),
+    ("missing_requests", None),
+])
+def test_campaign_cancelled_aider_diagnostics_are_allowlisted_and_independent(tmp_path, change, expected):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    cancelled_aider_retention(manifest, store, change=change)
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["raw_task_grade_diagnostics"] == expected
+    assert row["raw_task_grades"] == [{"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]
+    assert row["state"] == "cancelled"
+
+
+def test_campaign_retains_producer_shaped_deadline_diagnostics_and_independent_grade(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite="aider")
+    cancelled_aider_retention(manifest, store, change="accounted_deadline")
+    row = report_campaign(manifest, store)["cells"][0]
+    assert row["raw_task_grade_diagnostics"] == {
+        "output_truncated": None, "compilation_failure": None,
+        "coverage": "partial", "num_exhausted_context_windows": None}
+    assert row["raw_task_grades"] == [
+        {"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]
+    assert row["state"] == "cancelled"
+
+
+
+@pytest.mark.parametrize("change", [
+    "complete", "truncated", "absent", "midstream", "duplicate", "complete_omits_events",
+    "complete_omits_bytes", "truncated_no_events", "truncated_no_bytes", "event_count",
+    "byte_count", "limits", "boolean_limit", "outcome", "boolean_seq", "event_capacity", "byte_capacity",
+    *[f"{field}_{kind}" for field in ("event_count", "byte_count", "omitted_events", "omitted_bytes")
+      for kind in ("negative", "boolean", "float", "missing")],
+])
+def test_retained_aider_diagnostics_validate_producer_terminal_contract(tmp_path, change):
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_report import _retained_aider_diagnostics
+    from anvil_serving.benchmarking.swe_agent_adapter import EventRecorder, MAX_BYTES, MAX_EVENTS
+    path = tmp_path / "aider/requests.jsonl"
+    recorder = EventRecorder(path)
+    recorder.record("aider_transport_response", output_truncated=True)
+    if change in {"truncated", "truncated_no_events", "truncated_no_bytes"}:
+        # A single oversized event is omitted by the real producer.
+        recorder.record("aider_transport_response", padding="x" * MAX_BYTES)
+    recorder.close(outcome="budget_exhausted")
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    terminal = rows[-1]
+    if change == "absent":
+        rows.pop()
+    elif change == "midstream":
+        rows.append({**rows[0], "seq": 3})
+    elif change == "duplicate":
+        rows.append({**terminal, "seq": 3})
+    elif change in {"complete_omits_events", "complete_omits_bytes"}:
+        terminal["omitted_events" if change.endswith("events") else "omitted_bytes"] = 1
+    elif change in {"truncated_no_events", "truncated_no_bytes"}:
+        terminal["omitted_events" if change.endswith("events") else "omitted_bytes"] = 0
+    elif change in {"event_count", "byte_count"}:
+        terminal[change] += 1
+    elif change == "limits":
+        terminal["limits"]["max_events"] += 1
+    elif change == "boolean_limit":
+        terminal["limits"]["max_events"] = True
+    elif change == "outcome":
+        terminal["outcome"] = "success"
+    elif change == "boolean_seq":
+        rows[0]["seq"] = True
+    elif change == "event_capacity":
+        rows = [{**rows[0], "seq": index} for index in range(1, MAX_EVENTS + 1)]
+    elif change == "byte_capacity":
+        rows = [{**rows[0], "padding": "x" * MAX_BYTES}]
+    elif change not in {"complete", "truncated"}:
+        field, kind = change.rsplit("_", 1)
+        if kind == "missing":
+            del terminal[field]
+        else:
+            terminal[field] = {"negative": -1, "boolean": bool(terminal[field]), "float": float(terminal[field])}[kind]
+    # Preserve producer serialization: byte_count counts exact preceding bytes.
+    path.write_text("".join(json.dumps(row, sort_keys=True, separators=(",", ":"), ensure_ascii=True) + "\n" for row in rows))
+    manifest = {"artifacts": [evidence_file_reference(str(path), root=str(tmp_path))], "missing": []}
+    result = _retained_aider_diagnostics(tmp_path, manifest)
+    if change in {"complete", "truncated", "absent"}:
+        assert result == {"output_truncated": True, "compilation_failure": None,
+                          "coverage": "complete" if change == "complete" else "partial"}
+    else:
+        assert result is None
+
+
+@pytest.mark.parametrize("change", ["valid", "legacy_incomplete", "adapter_only",
+                                    "missing_adapter", "adapter_mismatch", "events_complete"])
+def test_retained_aider_diagnostics_require_versioned_incomplete_accounting(tmp_path, change):
+    from anvil_serving.benchmarking import aider
+    from anvil_serving.benchmarking.artifacts import evidence_file_reference
+    from anvil_serving.benchmarking.campaign_report import _retained_aider_diagnostics
+    from anvil_serving.benchmarking.swe_agent_adapter import EventRecorder
+
+    path = tmp_path / "aider/requests.jsonl"
+    recorder = EventRecorder(path)
+    recorder.record("aider_adapter_ready", request_accounting_schema=aider.AIDER_REQUEST_ACCOUNTING_SCHEMA)
+    recorder.record("aider_transport_started", logical_request_id="logical-00000001", attempt=1,
+                    model_call=1)
+    accounting = {"schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": "incomplete",
+                  "started": 1, "responses": 0, "errors": 0, "pending": 1}
+    recorder.close(outcome="budget_exhausted", request_accounting=accounting)
+    adapter_path = tmp_path / "aider/adapter-result.json"
+    adapter_result = {"schema": "anvil-serving.aider-adapter-result/v1",
+                      "outcome": "budget_exhausted", "request_accounting": accounting,
+                      "events_complete": False}
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    if change in {"legacy_incomplete", "adapter_only"}:
+        del rows[0]["request_accounting_schema"]
+        del rows[-1]["request_accounting"]
+    if change == "adapter_only":
+        rows[-1]["status"] = "complete"
+        rows[-1]["omitted_events"] = 0
+        rows[-1]["omitted_bytes"] = 0
+    if change == "legacy_incomplete":
+        del adapter_result["request_accounting"]
+    elif change == "adapter_mismatch":
+        adapter_result["request_accounting"] = {**accounting, "pending": 0}
+    elif change == "events_complete":
+        adapter_result["events_complete"] = True
+    raw = [(json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n").encode()
+           for row in rows[:-1]]
+    rows[-1]["byte_count"] = sum(map(len, raw))
+    path.write_text(b"".join(raw).decode()
+                    + json.dumps(rows[-1], sort_keys=True, separators=(",", ":")) + "\n")
+    adapter_path.write_text(json.dumps(adapter_result))
+    artifacts = [evidence_file_reference(str(path), root=str(tmp_path))]
+    if change != "missing_adapter":
+        artifacts.append(evidence_file_reference(str(adapter_path), root=str(tmp_path)))
+    manifest = {"artifacts": artifacts, "missing": []}
+    result = _retained_aider_diagnostics(tmp_path, manifest)
+    if change == "valid":
+        assert result == {"output_truncated": None, "compilation_failure": None,
+                          "coverage": "partial"}
+    else:
+        assert result is None
+
+
 def test_campaign_partial_denominators_and_scored_negative_are_separate(tmp_path):
     from anvil_serving.benchmarking.campaign_report import report_campaign
     manifest, store = campaign_fixture(tmp_path, repeats=2)

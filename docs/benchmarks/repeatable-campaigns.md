@@ -62,6 +62,53 @@ or recover in-flight token chunks. The final native artifact binds the completed
 journal by hash and byte count. Journal I/O is included in measured wall time;
 do not pool results from producers with different journaling behavior.
 
+## Reserve the complete batch window
+
+Managed campaigns check the full allowance before submitting a new batch and
+again before releasing its ready workers:
+
+```text
+required seconds = 60 entry reserve + longest child timeout + drain reserve
+```
+
+The fixed entry reserve covers post-release asset checks, watchdog startup
+and preflight. It is an allowance, not a separate hard timeout for every setup
+operation. A child timeout already includes its contained test execution;
+do not add test time again or sum parallel child timeouts. The validated drain
+reserve covers client cleanup, engine drain and final telemetry/receipts.
+After preflight and prepared-plan verification, the worker checks that its
+entire suite timeout still fits before dispatching the suite.
+
+For example, a 600-second child with a 120-second drain reserve needs 780
+seconds. If only 779 seconds remain, the new batch stays unsubmitted. Release
+also refuses an unfunded or shortened allowance rather than clamping it.
+The error reports required and remaining time. Earlier release receipts keep
+their historical interpretation; the new admission rule does not rewrite them.
+
+Campaign `budgets.total_s` accounts for active released batches and their
+closure; it is not an overall operator wall-clock deadline. For a campaign
+authorized for 45 minutes including cleanup, start the wall timer before the
+first inference/model transport attempt, including preflight traffic. Record
+that timer origin and absolute deadline separately. A conservative 2,100-second active budget alone
+does not enforce that wall limit: preparation and gaps between batches also
+consume elapsed time. Stop admitting work that cannot finish within the
+remaining wall window, and use managed cancellation no later than minute 40
+to leave five minutes for cleanup. Keep unstarted cells and unknown closure
+visible rather than extending the authorized window.
+
+With the campaign's existing store configuration, use the short product
+commands to cancel owned work and inspect the final evidence:
+
+```text
+anvil-serving eval benchmark campaign cancel CAMPAIGN --ownership-id OWNER --confirm
+anvil-serving eval benchmark campaign report CAMPAIGN --ownership-id OWNER --json
+```
+
+Cancellation intent alone is not verified engine drain or completed cleanup.
+Retain final worker, drain and telemetry receipts plus the complete elapsed
+interval. The report's [raw Aider grades](methodology.md#aider-grades-lifecycle-and-diagnostic-observations)
+do not change lifecycle state or accepted measurement populations.
+
 ## Verify the executing source
 
 Before the first request, run these from the intended checkout:

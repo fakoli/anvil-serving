@@ -159,7 +159,10 @@ def _normalize_benchmark_profile_catalog_delta(public_tools):
     profile = tools["benchmark_harness_prepare"]["inputSchema"]["properties"]["profile"]
     assert profile == {
         "type": "string",
-        "enum": ["deep", "pilot-v2", "scout", "smoke"],
+        "enum": [
+            "aider-diagnostic-16k-v1", "aider-diagnostic-32k-v1",
+            "deep", "pilot-v2", "scout", "smoke",
+        ],
         "maxLength": 262144,
     }
     profile["enum"] = ["smoke", "scout", "deep"]

@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
+
 **2026-10-21–23 Flare engine investigations:** seven closed findings retain the
 candidate scout, tuning, cache, state, and current-upstream diagnostics. The
 result is diagnostic-only: protected and numerical gates remain incomplete or
@@ -55,6 +57,8 @@ so four full 327K windows are unsupported. See the
 <!-- benchmark-dossier/v2 -->
 
 ## Current status and review date
+
+**2026-10-25 Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) closed six completed measurements with one passing and five failing task grades; two supported cells remained unstarted and four reasoning controls were blocked. Raw grades remain separate from lifecycle and measurement eligibility. The mixed Rust result establishes no causal benefit from the larger cap. Diagnostic only; no Ignis run, broad model ranking or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
 
 **2026-10-25 R12/R13 successor:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four cancelled grades remain unknown. The candidate was never measured. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. This does not change the incumbent assignment or establish a comparative ranking. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
 
@@ -410,6 +414,12 @@ graphs, so increasing concurrency requires a managed candidate load and the
 full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
+
+### Go/Rust completion-cap diagnostics, 2026-10-25
+
+- **Scope:** pinned Aider/Polyglot Go and Rust tasks at 16K/32K completion caps; diagnostic-only, no promotion.
+- **Measurement boundary:** a retained raw task grade does not make a cancelled or incomplete job a completed measurement. Missing usage, finish reasons and compiler signals remain unknown; diagnostic absence does not establish a negative result.
+- **Evidence:** [dated finding](../../findings/2026-10-25-glm-diagnostics.md) and [evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md). All six submitted jobs have verified closure; three additional request starts lack captured responses and retain unknown usage. Historical R12 accepted populations remain unchanged.
 
 ### R12 baseline and R13 admission refusal, 2026-10-25
 

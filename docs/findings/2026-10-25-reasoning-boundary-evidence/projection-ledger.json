@@ -1,0 +1,66 @@
+{
+  "private_originals": [
+    {
+      "bytes": 463,
+      "name": "live-1/0-request.json",
+      "sha256": "0aedf2279c95aea90be8ae704e918cf39fe604c52d904e5311c21dbee99f7277"
+    },
+    {
+      "bytes": 2957,
+      "name": "live-1/0-response.json",
+      "sha256": "3ff9f594a511d75e00770a52014b2262556470504563c298130d59672dd3d679"
+    },
+    {
+      "bytes": 1982,
+      "name": "live-1/result.json",
+      "sha256": "c6db10ab067a2e1a3d4795813dba927bcae1f181c3cf638bed66c249eb8171b0"
+    },
+    {
+      "bytes": 8170,
+      "name": "runtime-before-r4.json",
+      "sha256": "b1932e6288cc669f3d9e9dd59e9246d54c8b720aeb70dba860e8bdb9d25546cf"
+    },
+    {
+      "bytes": 8172,
+      "name": "runtime-after.json",
+      "sha256": "cd2a8c68344c823f4a1e8c5563af314bf6ab40a5c6177edddc626b3c3ff1242c"
+    },
+    {
+      "bytes": 3597,
+      "name": "source-parity.json",
+      "sha256": "34f0b9dac0aed8e38501a9eb25daa080f007b3154f3a20ee9831ae98b50736ad"
+    },
+    {
+      "bytes": 383,
+      "name": "tokenizer-parity.json",
+      "sha256": "b3ee2bf4584b1ddb1659565f181d031c75bc8a8877393c0c4f9735ce4c8cbc9b"
+    },
+    {
+      "bytes": 1411,
+      "name": "execution-gate-final.json",
+      "sha256": "e84c1fc293cdde0fbeea9516f06785fdd16687e48add19d51260a50ad19755c7"
+    },
+    {
+      "bytes": 93345,
+      "name": "pre-live-source-final.patch",
+      "sha256": "4f3a324d6ffc86d11bfa6149c15ebc4b6849152c20df112a0f893b01933d31d8"
+    },
+    {
+      "bytes": 1536,
+      "name": "pre-live-source-final.json",
+      "sha256": "cfa326c77d91a35719d4057f4245a6c9f23d1a75657360e22fdabed7e85aaf65"
+    },
+    {
+      "bytes": 3223,
+      "name": "execution-plan.json",
+      "sha256": "3c13cc651d713066113fa706f57a474d133a780f4c913893fa08362926a2d29d"
+    }
+  ],
+  "redactions": [
+    "Private container, endpoint and operator identifiers omitted from identity projection.",
+    "Raw prompts/reasoning text and token sequences retained privately; public observation preserves exact counts and original response hash.",
+    "Public plan resets both execution and live-identity flags to false; original true flags remain private."
+  ],
+  "schema": "anvil-serving.projection-ledger/v1",
+  "warning": "Private original commitments do not authenticate rewritten public identity projections; public manifest hashes bind derivative bytes separately."
+}

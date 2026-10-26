@@ -1,0 +1,85 @@
+{
+  "cases": [
+    {
+      "expected_integers": [
+        9567,
+        1085,
+        10652
+      ],
+      "id": "boundary",
+      "prompt": "Solve SEND + MORE = MONEY in decimal. Different letters are different digits and leading digits cannot be zero. Return only the three integers SEND, MORE, MONEY separated by commas."
+    },
+    {
+      "condition": "Only if boundary case naturally ends reasoning below 64 tokens with coherent output and enforcement remains untested.",
+      "expected_integers": [
+        96233,
+        62513,
+        158746
+      ],
+      "id": "natural_end_fallback",
+      "prompt": "Solve CROSS + ROADS = DANGER in decimal. Different letters are different digits and leading digits cannot be zero. Return only the three integers CROSS, ROADS, DANGER separated by commas."
+    }
+  ],
+  "execution_authorized": false,
+  "execution_prerequisites": [
+    "Notify user before any running-model inspection or request.",
+    "Create and review an isolated managed request path to the same incumbent endpoint; do not alter shared tier controls.",
+    "Verify deployed source/template bytes and assess forced-logit split-top-p risk before inference.",
+    "Bind managed raw-response and marker capture; the current Aider request observations alone cannot prove forced closure."
+  ],
+  "ignis": "hold",
+  "isolated_tier_extra_body": {
+    "reasoning_effort": "max",
+    "temperature": 0.6,
+    "thinking_token_budget": 64,
+    "top_p": 0.95
+  },
+  "limits": {
+    "concurrency": 1,
+    "maximum_requests": 2,
+    "request_timeout_s": 120,
+    "retries": 0,
+    "total_window_s": 300
+  },
+  "live_identity_verified": false,
+  "request_common": {
+    "max_tokens": 512,
+    "model": "llm.primary",
+    "reasoning_effort": "max",
+    "stream": false,
+    "temperature": 0.6,
+    "top_p": 0.95
+  },
+  "required_evidence": [
+    "live package and template identity parity",
+    "exact forwarded upstream request body",
+    "request start and exactly one response or typed transport error",
+    "finish reason and nullable native token usage",
+    "token IDs or equivalent verified natural versus forced end-marker evidence",
+    "visible-answer oracle result separately from boundary result",
+    "pre/post RAM, pressure, GPU and cgroup measurements",
+    "owned request drain and unchanged incumbent configuration"
+  ],
+  "runtime": {
+    "build_revision": "6a833b698f0b41a9c12922343553eee419b9f465",
+    "engine_revision": "8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+    "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "model_revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "model_runner": "V2",
+    "reasoning_parser": "glm45",
+    "speculative_tokens": 3,
+    "template_sha256": "b5bbea09a508f00213386271fae738fb6373bf396e0cc19baaa9675a10952bb0"
+  },
+  "schema": "anvil-serving.reasoning-limit-probe-plan/v1",
+  "status": "historical_sanitized_not_executable",
+  "stop_conditions": [
+    "identity mismatch",
+    "requested controls absent or overridden",
+    "transport refusal or timeout",
+    "length-only reasoning",
+    "repeated end markers",
+    "incoherent or repetitive continuation",
+    "missing boundary evidence",
+    "host resource pressure"
+  ]
+}

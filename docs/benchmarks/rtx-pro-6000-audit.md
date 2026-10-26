@@ -7,6 +7,10 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-25-glm-diagnostics.md`
+(six bounded Go/Rust quality measurements on the dual-Max-Q incumbent;
+failed and unstarted cases retained, no engine comparison or promotion).
+
 `docs/findings/2026-10-24-evaluation-platform-ignis.md`
 (bounded incumbent diagnostics on the dual-Max-Q configuration and one-GPU
 Ignis candidate startup evidence; no candidate inference, paired comparison,
