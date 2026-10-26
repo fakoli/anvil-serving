@@ -103,6 +103,12 @@ class ManagedDockerFake:
                     and "target=/run/anvil-flare-publishers.json" in argv[index + 1]
                     for index, token in enumerate(argv)
                 ),
+                "publisher_profile_source": next((
+                    argv[index + 1].split("source=", 1)[1].split(",", 1)[0]
+                    for index, token in enumerate(argv)
+                    if token == "--mount" and index + 1 < len(argv)
+                    and "target=/run/anvil-flare-publishers.json" in argv[index + 1]
+                ), None),
             }
             cidfile.write_text(CID, encoding="ascii")
             stdout.write((CID + "\n").encode())
@@ -147,6 +153,8 @@ class ManagedDockerFake:
             }
             if row.get("publisher_profile_mounted", False):
                 document["Mounts"].append({
+                    "Type": "bind",
+                    "Source": row["publisher_profile_source"],
                     "Destination": "/run/anvil-flare-publishers.json",
                     "RW": False,
                 })
@@ -456,7 +464,7 @@ def test_unconfirmed_execution_is_refused_before_host_or_docker_checks():
 
 def test_missing_default_profile_fails_closed_and_removes_only_owned_helper(tmp_path):
     fake = ManagedDockerFake(fail_inspect=True, publisher_error_stream="stderr")
-    with pytest.raises(prepare.PreparationError, match="cannot verify signing key") as error:
+    with pytest.raises(prepare.PreparationError, match="could not verify the pinned publisher key") as error:
         prepare.prepare(
             candidate_recipe(), dry_run=False, confirm=True, runner=fake,
             memory_check=lambda _limits: None,
@@ -464,7 +472,7 @@ def test_missing_default_profile_fails_closed_and_removes_only_owned_helper(tmp_
             clock=iter([0.0, 0.1, 0.2, 0.3, 1.0, 1.1, 1.2, 1.3]).__next__,
             sleep=lambda _delay: None,
         )
-    assert prepare.PUBLISHER_FINGERPRINT in str(error.value)
+    assert "provide the validated public publisher profile with --publisher-keys" in str(error.value)
     assert not fake.containers
     assert sum(call[1] == "rm" for call in fake.calls) == 2
 
@@ -516,3 +524,96 @@ def test_accepted_public_profile_is_copied_mounted_read_only_and_cleaned(tmp_pat
     mounted_source = profile_mount.split("source=", 1)[1].split(",", 1)[0]
     assert not Path(mounted_source).exists()
     assert not fake.containers
+
+
+@pytest.mark.parametrize(
+    "mount_change",
+    [
+        lambda mount: mount.update(Type="volume"),
+        lambda mount: mount.update(Source="/tmp/other-publisher.json"),
+        lambda mount: mount.update(Destination="/run/other.json"),
+        lambda mount: mount.update(RW=True),
+    ],
+)
+def test_publisher_mount_projection_requires_exact_validated_copy(mount_change):
+    fake = ManagedDockerFake()
+    operation_id = "d" * 32
+    fake.containers[CID] = {
+        "labels": {
+            prepare._OWNERSHIP_LABEL: "v1",
+            prepare._OPERATION_LABEL: operation_id,
+            prepare._STEP_LABEL: "inspect",
+        },
+        "action": "inspect",
+        "state": "running",
+        "polls": 0,
+        "publisher_profile_mounted": True,
+        "publisher_profile_source": "/tmp/validated-publisher.json",
+    }
+    mount = {
+        "Type": "bind",
+        "Source": "/tmp/validated-publisher.json",
+        "Destination": "/run/anvil-flare-publishers.json",
+        "RW": False,
+    }
+    mount_change(mount)
+    original = fake.__call__
+
+    def altered_inspect(argv, **kwargs):
+        result = original(argv, **kwargs)
+        if argv[1] == "inspect" and argv[2] == "--type":
+            kwargs["stdout"].seek(0)
+            document = json.loads(kwargs["stdout"].read())
+            document["Mounts"][-1] = mount
+            kwargs["stdout"].seek(0)
+            kwargs["stdout"].truncate()
+            kwargs["stdout"].write(json.dumps(document).encode())
+        return result
+
+    with pytest.raises(prepare.PreparationError, match="publisher profile mount"):
+        prepare._inspect_projection(
+            CID, operation_id, "inspect",
+            publisher_profile_source="/tmp/validated-publisher.json",
+            runner=altered_inspect,
+        )
+
+
+@pytest.mark.parametrize(
+    "diagnostic",
+    [
+        "cannot verify signing key {fingerprint}: no embedded, remembered, or --publisher-keys profile names it (publisher {namespace} at https://evil.example/redirect)",
+        "cannot verify signing key {fingerprint}: no embedded, remembered, or --publisher-keys profile names it (publisher {namespace} at https://huggingface.co/{model})\u001b[31m injected",
+    ],
+)
+def test_untrusted_publisher_diagnostic_is_not_reflected(diagnostic, tmp_path):
+    detail = diagnostic.format(
+        fingerprint=prepare.PUBLISHER_FINGERPRINT,
+        namespace=prepare.PUBLISHER_NAMESPACE,
+        model=prepare.MODEL,
+    )
+    fake = ManagedDockerFake(fail_inspect=True, publisher_error_stream="stderr")
+    original = fake.__call__
+
+    def malicious_logs(argv, **kwargs):
+        result = original(argv, **kwargs)
+        if argv[1] == "logs" and self_action(fake, argv[-1]) == "inspect":
+            kwargs["stderr"].seek(0)
+            kwargs["stderr"].truncate()
+            kwargs["stderr"].write((detail + "\n").encode())
+        return result
+
+    with pytest.raises(prepare.PreparationError) as error:
+        prepare.prepare(
+            candidate_recipe(), dry_run=False, confirm=True, runner=malicious_logs,
+            memory_check=lambda _limits: None,
+            lock_path=tmp_path / "flare-lock",
+            clock=iter([0.0, 0.1, 0.2, 0.3, 1.0, 1.1, 1.2, 1.3]).__next__,
+            sleep=lambda _delay: None,
+        )
+    assert detail not in str(error.value)
+    assert "evil.example" not in str(error.value)
+    assert "injected" not in str(error.value)
+
+
+def self_action(fake, container_id):
+    return fake.containers[container_id]["action"]

@@ -315,7 +315,7 @@ def _read_cidfile(path: Path) -> str | None:
 
 def _inspect_projection(
     container_id: str, operation_id: str, step: str, *,
-    publisher_profile_mounted: bool = False, runner=subprocess.run,
+    publisher_profile_source: str | None = None, runner=subprocess.run,
 ) -> dict:
     code, output, _stderr = _run_bounded(
         ["docker", "inspect", "--type", "container", "--format", "{{json .}}", container_id],
@@ -364,9 +364,16 @@ def _inspect_projection(
             or home_mounts[0].get("RW") is not (step == "download")):
         raise PreparationError("Docker helper Flare home mount does not match the cache preservation plan")
     other_mounts = [mount for mount in mounts if mount not in home_mounts]
-    if publisher_profile_mounted:
-        if (len(other_mounts) != 1 or other_mounts[0].get("Destination") != "/run/anvil-flare-publishers.json"
-                or other_mounts[0].get("RW") is not False):
+    if publisher_profile_source is not None:
+        profile_mounts = [
+            mount for mount in other_mounts
+            if isinstance(mount, dict)
+            and mount.get("Destination") == "/run/anvil-flare-publishers.json"
+        ]
+        if (len(other_mounts) != 1 or len(profile_mounts) != 1
+                or profile_mounts[0].get("Type") != "bind"
+                or profile_mounts[0].get("Source") != publisher_profile_source
+                or profile_mounts[0].get("RW") is not False):
             raise PreparationError("Docker helper publisher profile mount is not read-only and exact")
     elif other_mounts:
         raise PreparationError("Docker helper has an undeclared mount")
@@ -444,11 +451,11 @@ def _wait_for_owned_container(operation_id: str, step: str, *, runner=subprocess
 
 def _remove_owned_container(
     container_id: str, operation_id: str, step: str, *,
-    publisher_profile_mounted: bool = False, runner=subprocess.run,
+    publisher_profile_source: str | None = None, runner=subprocess.run,
 ) -> None:
     _inspect_projection(
         container_id, operation_id, step,
-        publisher_profile_mounted=publisher_profile_mounted, runner=runner,
+        publisher_profile_source=publisher_profile_source, runner=runner,
     )
     code, _stdout, stderr = _run_bounded(
         ["docker", "rm", "--force", container_id], timeout=30, runner=runner
@@ -479,7 +486,6 @@ def _execute_container(
 ) -> tuple[bytes, dict]:
     step = action
     cid = None
-    profile_mounted = publisher_data is not None
     with tempfile.TemporaryDirectory(prefix="anvil-flare-prepare-") as temporary_directory:
         temporary_path = Path(temporary_directory)
         cidfile = temporary_path / "container-id"
@@ -488,6 +494,7 @@ def _execute_container(
             profile_path = temporary_path / "publisher.json"
             profile_path.write_bytes(publisher_data)
             profile_path.chmod(0o644)
+        profile_source = str(profile_path.resolve()) if profile_path is not None else None
         argv = build_container_argv(
             action, operation_id=operation_id, step=step, cidfile=str(cidfile),
             package_path=package_path,
@@ -505,7 +512,7 @@ def _execute_container(
                 raise PreparationError("Docker did not create one ID-matched Flare preparation container")
             initial = _inspect_projection(
                 cid, operation_id, step,
-                publisher_profile_mounted=profile_mounted, runner=runner,
+                publisher_profile_source=profile_source, runner=runner,
             )
             start_code, _started, _start_error = _run_bounded(
                 ["docker", "start", cid], timeout=30, runner=runner
@@ -518,7 +525,7 @@ def _execute_container(
             while clock() < deadline:
                 projection = _inspect_projection(
                     cid, operation_id, step,
-                    publisher_profile_mounted=profile_mounted, runner=runner,
+                    publisher_profile_source=profile_source, runner=runner,
                 )
                 observed_running = observed_running or projection["observed_running"]
                 if projection["container_state"] in {"exited", "dead"}:
@@ -539,12 +546,17 @@ def _execute_container(
                         stream.decode("utf-8", errors="replace")
                         for stream in (logs, _log_error)
                     )
-                    match = re.search(
-                        r"cannot verify signing key [0-9a-f]{64}: no embedded, remembered, or --publisher-keys profile names it \(publisher [A-Za-z0-9_.-]+ at https://[^\s)]+\)",
-                        detail,
+                    publisher_source = re.compile(
+                        r"cannot verify signing key " + re.escape(PUBLISHER_FINGERPRINT)
+                        + r": no embedded, remembered, or --publisher-keys profile names it \(publisher "
+                        + re.escape(PUBLISHER_NAMESPACE) + r" at "
+                        + re.escape(f"https://huggingface.co/{MODEL}") + r"\)"
                     )
-                    if match:
-                        raise PreparationError(match.group(0))
+                    if any(publisher_source.fullmatch(line) for line in detail.splitlines()):
+                        raise PreparationError(
+                            "Flare could not verify the pinned publisher key; provide the validated public "
+                            "publisher profile with --publisher-keys"
+                        )
                 raise PreparationError("managed Flare preparation did not complete successfully under observed bindings")
             return logs, projection
         finally:
@@ -556,7 +568,7 @@ def _execute_container(
             if cid is not None:
                 _remove_owned_container(
                     cid, operation_id, step,
-                    publisher_profile_mounted=profile_mounted,
+                    publisher_profile_source=profile_source,
                     runner=runner,
                 )
 
