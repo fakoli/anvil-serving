@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-26 [operator-private] H3 MCP functional smoke
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+| --- | --- | --- | --- |
+
+
 ## 2026-10-26 Ignis 0.8 mandatory-tool qualification
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

@@ -46,6 +46,10 @@ deployment values belong in the private operator home.
 
 ## Prepare the worker bundle
 
+For private deployment registries, follow the
+[operator-owned video workflow contract](../VIDEO-MCP-WORKFLOWS.md). Keep model
+selection, asset identities and qualification records in private operator storage.
+
 Inventory verifies the exact workflow version, lock file, and protected model
 volume without writing:
 
