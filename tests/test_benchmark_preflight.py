@@ -263,3 +263,85 @@ def test_unknown_suite_preflight_does_not_touch_endpoint_or_output(tmp_path):
         run_benchmark_preflight(_spec(suite="unknown"), run_root=str(run_root), opener=lambda *_a, **_kw: pytest.fail("endpoint"))
     assert exc.value.code == "unknown_suite"
     assert not run_root.exists()
+
+
+@pytest.mark.parametrize("profile", ["deep", "aider-diagnostic-32k-v1"])
+def test_declared_output_budget_above_router_cap_fails_preflight(tmp_path, profile):
+    suite = "swe" if profile == "deep" else "aider"
+    value = _spec(profile=profile, suite=suite)
+    artifact = run_benchmark_preflight(
+        value,
+        run_root=str(tmp_path),
+        opener=_opener([{"id": "deepseek", "max_output_tokens": 16384}]),
+    )
+
+    output_budget = artifact["observed"]["endpoint"]["output_budget"]
+    assert output_budget == {
+        "declared_tokens": 32768,
+        "router_max_output_tokens": 16384,
+        "status": "exceeds_limit",
+    }
+    assert "output_budget_exceeds_router_cap" in {item["code"] for item in artifact["checks"]}
+    assert artifact["passed"] is False
+
+
+def test_declared_output_budget_matching_router_cap_passes_preflight(tmp_path):
+    artifact = run_benchmark_preflight(
+        _spec(profile="deep"),
+        run_root=str(tmp_path),
+        opener=_opener([{"id": "deepseek", "max_output_tokens": 32768}]),
+    )
+
+    assert artifact["observed"]["endpoint"]["output_budget"] == {
+        "declared_tokens": 32768,
+        "router_max_output_tokens": 32768,
+        "status": "within_limit",
+    }
+    assert artifact["passed"] is True
+
+
+@pytest.mark.parametrize("models", [[{"id": "deepseek"}], [{"id": "deepseek", "max_output_tokens": None}]])
+def test_missing_or_null_router_output_cap_remains_unknown(tmp_path, models):
+    artifact = run_benchmark_preflight(
+        _spec(profile="deep"), run_root=str(tmp_path), opener=_opener(models)
+    )
+
+    assert artifact["observed"]["endpoint"]["output_budget"] == {
+        "declared_tokens": 32768,
+        "router_max_output_tokens": None,
+        "status": "unknown",
+    }
+    assert artifact["passed"] is True
+
+
+@pytest.mark.parametrize("invalid_cap", [0, -1, True, "16384", 16384.0])
+def test_invalid_router_output_cap_fails_closed(tmp_path, invalid_cap):
+    artifact = run_benchmark_preflight(
+        _spec(profile="deep"),
+        run_root=str(tmp_path),
+        opener=_opener([{"id": "deepseek", "max_output_tokens": invalid_cap}]),
+    )
+
+    assert artifact["observed"]["endpoint"]["output_budget"]["status"] == "invalid"
+    assert "invalid_router_output_cap" in {item["code"] for item in artifact["checks"]}
+    assert artifact["passed"] is False
+
+
+def test_context_preflight_uses_selected_output_headroom(tmp_path):
+    value = _spec(
+        profile="pilot-v2",
+        suite="context",
+        parameters={"model_host_id": "model-host", "output_headroom_tokens": 1024},
+    )
+    artifact = run_benchmark_preflight(
+        value,
+        run_root=str(tmp_path),
+        opener=_opener([{"id": "deepseek", "max_output_tokens": 1024}]),
+    )
+
+    assert artifact["observed"]["endpoint"]["output_budget"] == {
+        "declared_tokens": 1024,
+        "router_max_output_tokens": 1024,
+        "status": "within_limit",
+    }
+    assert artifact["passed"] is True
