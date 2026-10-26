@@ -343,19 +343,24 @@ def cmd_up(
     environ=None,
     startup_abort_config=None,
     current_stop_receipt=None,
+    rollback_current_stop=False,
 ):
-    if current_stop_receipt is not None:
+    if current_stop_receipt is not None or rollback_current_stop:
         try:
-            from .router_current_stop import completed_receipt, require_successor
+            from .router_current_stop import completed_receipt, require_predecessor, require_successor
             if startup_abort_config is not None:
                 raise ValueError('router_recovery_proofs_are_exclusive')
+            if current_stop_receipt is None:
+                raise ValueError('router_current_stop_receipt_required')
             execution_env = {'PATH': os.defpath}
             def native(argv, **kwargs):
                 return _run(argv, **{**kwargs, 'env': execution_env})
             stopped = _container_incarnation(container, _run=native, stopped=True)
             saved = completed_receipt(current_stop_receipt, stopped)
-            if (compose != saved['authorization']['successor']['compose']
-                    or service != DEFAULT_SERVICE or container != DEFAULT_CONTAINER):
+            expected_compose = (saved['preview']['compose_path'] if rollback_current_stop
+                                else saved['authorization']['successor']['compose'])
+            if (compose != expected_compose or service != DEFAULT_SERVICE
+                    or container != DEFAULT_CONTAINER):
                 raise ValueError('router_current_stop_target_mismatch')
             environment = saved['preview'].get('environment')
             if (environment is None and env_file is not None or environment is not None
@@ -363,7 +368,8 @@ def cmd_up(
                 raise ValueError('router_current_stop_environment_mismatch')
             execution_env = (_compose_execution_env(compose, env_file, environ={'PATH': os.defpath})
                              or {'PATH': os.defpath})
-            require_successor(current_stop_receipt, compose, service, container, stopped,
+            validate_target = require_predecessor if rollback_current_stop else require_successor
+            validate_target(current_stop_receipt, compose, service, container, stopped,
                 _run=native, env_file=env_file, execution_env=execution_env)
             if dry_run:
                 return 0
@@ -374,7 +380,7 @@ def cmd_up(
                     env_file=env_file, execution_env=execution_env)
             return rc
         except (ValueError, OSError, subprocess.SubprocessError, TypeError, KeyError):
-            print('router lifecycle HOLD: completed current-stop successor custody is required; admission remains closed', file=sys.stderr)
+            print('router lifecycle HOLD: completed current-stop custody is required; admission remains closed', file=sys.stderr)
             return 1
     try:
         execution_env = _compose_execution_env(
@@ -807,6 +813,8 @@ def _build_parser():
             recovery = item.add_mutually_exclusive_group()
             recovery.add_argument("--startup-abort-config")
             recovery.add_argument("--current-stop-receipt")
+            item.add_argument("--rollback-current-stop", action="store_true",
+                              help="Select only the exact predecessor bound by the completed stop receipt.")
     fleet = actions.add_parser("fleet-status")
     fleet_source = fleet.add_mutually_exclusive_group()
     fleet_source.add_argument(
@@ -887,7 +895,7 @@ def main(argv=None):
             container=getattr(args, "container", DEFAULT_CONTAINER),
             recreate=getattr(args, "recreate", False),
         )
-        if args.dry_run and not (args.action == 'up' and args.current_stop_receipt):
+        if args.dry_run and not (args.action == 'up' and (args.current_stop_receipt or args.rollback_current_stop)):
             print(json.dumps({"applied": False, "dry_run": True, **plan}, sort_keys=True))
             return 0
         if args.action == "up":
@@ -899,6 +907,7 @@ def main(argv=None):
                 container=plan["container"],
                 startup_abort_config=args.startup_abort_config,
                 current_stop_receipt=args.current_stop_receipt,
+                rollback_current_stop=args.rollback_current_stop,
                 dry_run=args.dry_run,
             )
         elif args.action == "down":

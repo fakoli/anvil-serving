@@ -1,5 +1,6 @@
 """Receipt-bound successor bootstrap; no live Docker or ownership mutations."""
 from copy import deepcopy
+import ast
 import hashlib
 import json
 import os
@@ -86,6 +87,14 @@ usage_domain_id="fixture"
     def native(compose, service, container, code, **kwargs):
         assert compose == str(f['old']) and kwargs['_owner_state_only']
         assert '_offline_router_start()' in code and 'native_transaction' not in code
+        helper = ast.parse(code)
+        custody_block = next(node for node in ast.walk(helper)
+                             if isinstance(node, ast.With)
+                             and ast.unparse(node.items[0].context_expr)
+                             == 'store._offline_custody(settings, allow_retained=True)')
+        start_call = next(node for node in ast.walk(helper)
+                          if isinstance(node, ast.Call) and ast.unparse(node.func) == '_offline_router_start')
+        assert start_call not in ast.walk(custody_block)
         calls.append('native-read')
         return deepcopy(proof)
     monkeypatch.setattr(router_manage, '_offline_compose_run', native)
@@ -99,12 +108,90 @@ usage_domain_id="fixture"
     monkeypatch.setattr(router_manage, '_managed_container_custody', lambda kind, *a, **k: calls.append(kind))
     return SimpleNamespace(path=receipt_path, receipt=receipt, stopped=stopped, old=old,
         candidate=candidate, config=candidate_config, compose=f['new'], proof=proof, calls=calls, run=run,
-        scope=scope, protected=f['protected'])
+        old_compose=f['old'], router_config=f['router_config'], scope=scope, protected=f['protected'])
 
 
 def invoke(f, **kwargs):
     return router_manage.cmd_up(str(f.compose), 'router', current_stop_receipt=str(f.path),
                                _run=f.run, **kwargs)
+
+
+def enable_predecessor_runtime(f, monkeypatch):
+    f.compose = f.old_compose
+    original = f.run
+    def run(argv, **kwargs):
+        if 'config' in argv and '-f' in argv and argv[argv.index('-f') + 1] == str(f.old_compose):
+            return SimpleNamespace(returncode=0, stdout=json.dumps(f.old), stderr='')
+        if argv[:3] == ['docker', 'image', 'inspect'] and argv[-1] == f.old['services']['router']['image']:
+            return SimpleNamespace(returncode=0, stdout=f.stopped['image_id'], stderr='')
+        return original(argv, **kwargs)
+    f.run = run
+    offline = []
+    def require_offline(compose, service, **kwargs):
+        assert compose == str(f.old_compose)
+        assert service == 'router'
+        offline.append((compose, kwargs))
+        return {'schema':'router-offline-start/v1','offline':True,'schema_version':3}
+    monkeypatch.setattr(router_manage, 'require_router_offline', require_offline)
+    return offline
+
+
+def test_explicit_rollback_starts_only_frozen_predecessor_closed(successor, monkeypatch):
+    f = successor
+    offline = enable_predecessor_runtime(f, monkeypatch)
+    assert invoke(f, rollback_current_stop=True, dry_run=True) == 0
+    assert offline and 'native-read' in f.calls
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+    assert 'live' not in f.calls
+
+    assert invoke(f, rollback_current_stop=True) == 0
+    up_calls = [call for call in f.calls if isinstance(call, list) and 'up' in call]
+    assert len(up_calls) == 1 and str(f.old_compose) in up_calls[0]
+    assert f.calls[-1] == 'live'
+
+
+@pytest.mark.parametrize('damage', ['wrong-compose', 'stale-compose', 'wrong-image', 'wrong-config',
+                                    'wrong-environment', 'consumed-proof'])
+def test_explicit_rollback_refuses_changed_or_consumed_predecessor(successor, monkeypatch, damage):
+    f = successor
+    enable_predecessor_runtime(f, monkeypatch)
+    if damage == 'wrong-compose':
+        f.compose = f.compose.parent / 'other.json'
+    elif damage == 'stale-compose':
+        f.old_compose.write_text('{}')
+    elif damage == 'wrong-image':
+        original = f.run
+        def run(argv, **kwargs):
+            result = original(argv, **kwargs)
+            if argv[:3] == ['docker', 'image', 'inspect'] and argv[-1] == f.old['services']['router']['image']:
+                return SimpleNamespace(returncode=0, stdout='sha256:'+'0'*64, stderr='')
+            return result
+        f.run = run
+    elif damage == 'wrong-config':
+        f.router_config.write_text(f.router_config.read_text() + '\n# drift\n')
+    elif damage == 'wrong-environment':
+        env_file = f.path.parent / 'declared.env'
+        env_file.write_text('SYNTHETIC_AUTH=fixture\n'); env_file.chmod(0o600)
+        f.receipt['preview']['environment'] = {
+            'file':str(env_file), 'sha256':hashlib.sha256(env_file.read_bytes()).hexdigest()}
+        f.receipt['authorization']['preview_sha256'] = maintenance.digest(f.receipt['preview'])
+        f.protected(f.path, f.receipt)
+        f.env_file = f.path.parent / 'other.env'
+        f.env_file.write_bytes(env_file.read_bytes()); f.env_file.chmod(0o600)
+    elif damage == 'consumed-proof':
+        f.proof['phase'] = 'transferred'
+    assert invoke(f, rollback_current_stop=True,
+                  **({'env_file':str(f.env_file)} if damage == 'wrong-environment' else {})) == 1
+    assert 'live' not in f.calls
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+
+
+def test_rollback_mode_requires_completed_stop_receipt(capsys):
+    calls = []
+    assert router_manage.cmd_up('compose.json', 'router', rollback_current_stop=True,
+        _run=lambda *args, **kwargs: calls.append(args) or pytest.fail('unexpected runner call')) == 1
+    assert not calls
+    assert 'HOLD' in capsys.readouterr().err
 
 
 def test_changed_image_and_source_require_exact_receipt_and_preview_is_read_only(successor, monkeypatch):
@@ -235,7 +322,11 @@ def test_recovery_flags_are_exclusive_and_registered_preview_validates(successor
     assert cli.main(['router','up','--compose',str(f.compose),'--env-file','/dev/null',
                      '--current-stop-receipt',str(f.path),'--dry-run']) == 1
     assert calls[0]['dry_run'] is True and calls[0]['current_stop_receipt'] == str(f.path)
+    assert cli.main(['router','up','--compose',str(f.old_compose),
+                     '--current-stop-receipt',str(f.path),'--rollback-current-stop','--dry-run']) == 1
+    assert calls[-1]['rollback_current_stop'] is True
     assert cli.main(['router','up','--current-stop-receipt',str(f.path),
                      '--startup-abort-config','other.json','--dry-run']) == 2
+    assert cli.main(['router','up','--rollback-current-stop','--dry-run']) == 1
     for action in ('down', 'restart', 'reload'):
         assert cli.main(['router', action, '--dry-run']) == 0

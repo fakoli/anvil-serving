@@ -625,7 +625,10 @@ def test_native_scope_foreign_run_and_unknown_process_hold(store,monkeypatch):
 
 
 @pytest.mark.parametrize('action',['restart','reload','down','up'])
-def test_old_runtime_lifecycle_refuses_before_any_mutating_docker(action,monkeypatch):
+def test_old_runtime_lifecycle_refuses_before_any_mutating_docker(action,monkeypatch,tmp_path):
+    # These lifecycle guards consult the operator-home promotion lock. Keep
+    # parallel test runs isolated from a real operator home and from each other.
+    monkeypatch.setenv('ANVIL_SERVING_HOME',str(tmp_path/'operator-home'))
     commands=[]
     monkeypatch.setattr(router_manage,'require_router_drain',lambda *a,**k: (_ for _ in ()).throw(ValueError('hold')))
     def run(argv,**kwargs):
