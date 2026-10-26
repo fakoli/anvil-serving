@@ -1,8 +1,10 @@
-# Reasoning-limit probe preparation
+# Isolated reasoning-limit probe
 
-Prepared October 25, 2026; **not executed**. The [frozen request packet](reasoning-limit-probe.json)
-defines two synthetic requests and retained runtime pins. These are prior
-observations, not a fresh inspection of the running model. Ignis remains held.
+The [frozen request packet](reasoning-limit-probe.json), prepared October 25,
+2026, defines two synthetic requests and retained runtime pins. Its historical
+authorization and execution fields remain unchanged. Current execution requires
+explicit `--confirm`, fresh runtime evidence and the operator checks below.
+Ignis remains held.
 
 The earlier GLM diagnostic exhausted total completion caps of 16,384 and
 32,768 tokens below the configured reasoning budget of 49,152. It therefore
@@ -25,6 +27,53 @@ the shared tier would still impose 49,152, and that neither configuration is
 mutated by the request. This test opens no sockets. It does not prove engine
 enforcement or authorize running the packet.
 
+## Repeatable commands
+
+First collect read-only runtime and resource evidence for the exact managed
+recipe container (this runs a fixed CPU tokenizer inspection, never inference):
+
+```bash
+anvil-serving eval reasoning-limit-inspect --registry recipes.toml --container candidate --plan docs/benchmarks/reasoning-limit-probe.json
+```
+
+The inspection requires the pinned GLM recipe, verifies its owner/digest and
+immutable container identity before and after capture, and returns source and
+template hashes plus tokenizer markers. Compare **every** source hash with the
+pinned source before traffic. It uses the engine's patched HF tokenizer path,
+with local files only. Raw command arguments, arbitrary environment variables
+and mount paths are excluded. RAM availability/pressure, swap activity, GPU
+usage, cgroup memory and engine running/waiting gauges accompany the capture.
+
+Record `router_config_sha256`, the exact `expected_model`, and nonempty integer
+arrays `start`, `end`, `forced_end` in a private `boundary.json`. The command
+currently supports identical natural and forced closing markers only.
+Preview without network or writes:
+
+```bash
+anvil-serving eval reasoning-limit-probe --router-config router.toml --plan docs/benchmarks/reasoning-limit-probe.json --boundary-config boundary.json --output probe-evidence
+```
+
+After independently checking the fresh inspection and source parity, retain a
+private execution copy of the plan with `execution_authorized=true` and
+`live_identity_verified=true`. Record its hash together with the inspection and
+source-parity hashes in the operator's verification record. Confirmed execution
+requires that reviewed copy; it refuses the historical false/false packet.
+Run the command with `--plan execution-plan.json --confirm`. Those fields record
+the operator's verification; the request runner does not validate that separate
+verification record or claim automatic source attestation. Its `executed` status
+and zero exit code mean transport execution completed, not that the boundary or
+answer gate passed; inspect `boundary`, `oracle`, and `response_anomalies`.
+
+The evidence directory must be new. Request starts, exact outbound JSON, bounded
+raw responses and terminal records are retained with owner-only permissions.
+No shared router configuration is changed: only an in-memory tier copy gets the
+64-token budget and token-ID capture controls. The selected endpoint and its
+credential reference remain the same. This direct diagnostic does not share the
+running router's admission counters. It checks the exact served identity and
+zero running/waiting occupancy immediately before each request. This is an idle
+observation, not an exclusive scheduler lease; run only during a quiet window.
+Stop if occupancy or memory pressure makes the canary inappropriate.
+
 ## Execution prerequisites
 
 Notify the user before inspecting or sending anything to the running model.
@@ -37,12 +86,13 @@ path to the **same endpoint** must be prepared and reviewed before execution;
 the offline test does not install that path. Preserve the shared route, model,
 provider, sampling, history policy and MTP settings.
 
-Bind a supported raw-response capture path that retains finish reason, nullable
-usage, and token IDs or equivalent evidence distinguishing forced closure from
-natural closure. Aider's bounded observations alone cannot prove that
-distinction. If capture cannot establish it, stop with enforcement unknown.
-There is deliberately no claimed ready-to-run command until these managed
-path and capture prerequisites are satisfied.
+Capture includes finish reason, nullable native usage, prompt token IDs and full
+generated token IDs. The prompt opens the reasoning marker, so classification
+uses the concatenated prompt and output. Exactly 64 tokens after the complete
+opening marker followed by the complete closing marker is **boundary-consistent**
+evidence. The API has no forced-versus-natural provenance flag; even that result
+does not directly prove which kernel branch emitted the marker. Missing IDs,
+partial/repeated markers or a later close leave enforcement unestablished.
 
 ## Run and interpretation
 
@@ -51,7 +101,10 @@ and 300 seconds including closure. Freeze both requests and source identities
 before starting. Capture RAM availability/pressure, GPU and cgroup evidence
 before and after; verify owned requests have drained. Stop on any packet stop
 condition, retaining the failure and unknown fields. Do not add more cases to
-make a failing probe pass.
+make a failing probe pass. Repeat the inspection after the requests and compare
+identity/configuration, memory/OOM counters and engine running/waiting gauges.
+Client socket closure is separate from engine drain; the runner leaves the
+latter unknown until that owner-side evidence is supplied.
 
 Report boundary enforcement and visible-answer correctness separately. A
 correct puzzle answer does not prove forced closure; a forced boundary does

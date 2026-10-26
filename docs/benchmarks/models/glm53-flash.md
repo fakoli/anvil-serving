@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
+
 **2026-10-21–23 Flare engine investigations:** seven closed findings retain the
 candidate scout, tuning, cache, state, and current-upstream diagnostics. The
 result is diagnostic-only: protected and numerical gates remain incomplete or

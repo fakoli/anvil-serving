@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-25 isolated reasoning-boundary diagnostic
+
+| Configuration / scope | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM NVIDIA FP4 incumbent; C1, numeric budget64/output512 | Dual RTX PRO 6000 Blackwell Max-Q; functional diagnostic | Failed boundary transition; `no-promotion`, Ignis held, runtime unchanged. See canonical finding for measured token pattern and limitations. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up) |
+
 ## 2026-10-25 GLM Go/Rust completion-cap diagnostics
 
 | Configuration / scope | Hardware and evidence | Outcome / boundary | Links |

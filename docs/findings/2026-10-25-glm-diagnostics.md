@@ -76,11 +76,44 @@ The earlier R12 report still accepts 44 graded jobs: 38 passes and six failures.
 
 The frozen executable source was tested at `3e211eec5998998712acba85cf2d06ae4a49cd1a`: 13,318 tests passed, 111 skipped. Independent review and offline replay preceded the live campaign. Original validation failures, generated-profile metadata repairs and all experiment limitations remain in the [friction log](2026-10-25-glm-diagnostics-evidence/friction-log.md).
 
+## Isolated reasoning-boundary follow-up
+
+<!-- benchmark-result-card/v1 -->
+### Boundary diagnostic result card
+
+**October 25 local time; October 26, 02:08 UTC.** One direct request through an isolated in-memory copy of the existing tier tested `thinking_token_budget=64` with `max_tokens=512`, max effort, temperature 0.6 and top-p 0.95. The shared 49,152-token policy was unchanged. This is a focused functional diagnostic, not another Aider grade or serving comparison.
+
+| Observation | Result |
+|---|---:|
+| Requests / retries | 1 / 0 |
+| Prompt / generated token IDs | 48 / 512 |
+| Generated prefix before degeneration | 64 ordinary tokens |
+| Remaining generated suffix | 448 consecutive token IDs `0` (`!`) |
+| Closing reasoning marker / visible answer | Absent / absent |
+| Finish reason / independent answer oracle | `length` / failed |
+| Client request interval | 6.544 seconds; not a throughput claim |
+
+**Why it matters:** Exact request and token capture localize the first observed degeneration to the configured reasoning boundary. **Caveat:** One failed request cannot identify the active kernel or qualify a fix; cache state was uncontrolled. [Summary](2026-10-25-reasoning-boundary-evidence/summary.json) · [Evidence index](2026-10-25-reasoning-boundary-evidence/README.md) · [Manifest](2026-10-25-reasoning-boundary-evidence/artifact-manifest.json).
+
+The request asked for the numeric solution to SEND + MORE = MONEY. The exact runtime tokenizer/parser supplied opening marker `154841` and closing marker `154842`. The prompt ended with the opening marker; no closing marker appeared in the generated IDs. The boundary classifier therefore remains `unknown`: the requested budget did not produce a valid transition to an answer. The conditional second case was not sent.
+
+The timing of degeneration is consistent with the forced-logit split-top-p issue described in [vLLM PR #58231](https://github.com/vllm-project/vllm/pull/58231). The captured source still contains the older implementation. This is a source-backed hypothesis, not active-kernel attribution or proof that the upstream fix will repair this runtime. No engine patch was installed or submitted.
+
+The exact engine revision is `8244d1c44348ae8a5bbfc9f1b607021652283ed4`, image digest `sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29`. The model revision and dual Max-Q setup above are unchanged. Twenty runtime source hashes matched the pinned checkout; template and tokenizer hashes were independently checked. The deployed `glm45` name resolves through the GLM parser-engine adapter, not the similarly named standalone Rust parser. The [identity projection](2026-10-25-reasoning-boundary-evidence/identity.json) retains the full pins and configured TP2/DCP2, FP8 KV, MTP3 and 327,680/C4 limits; only C1 was exercised.
+
+Post-run owner inspection, completed 35.655 seconds after the request start, observed the same container generation, launch, image, source, template and tokenizer bytes, with zero running and waiting requests. Host/cgroup OOM and swap-I/O counters did not increase. Available host RAM was approximately 68.48 GiB before and 68.69 GiB afterward; these are two samples, not continuous minima. The native runner itself leaves drain unknown, and the separate owner record supplies the closure evidence. No model restart, configuration change, provider change, promotion or Ignis run occurred.
+
+The original result also flags `unexpected_usage_fields`: the harness initially omitted legitimate `created_cache_tokens=0` and `multimodal_tokens=null`. An offline allowlist correction and replay of the same retained response remove that reporting warning while preserving `finish_reason_not_stop` and the failed oracle. Original live artifacts are unchanged. This is not a second model defect, and the probe does not retrospectively resolve the three missing historical Aider responses.
+
+The live code was the retained base commit plus a frozen dirty patch, recorded before dispatch with source hashes and 269 passing offline tests. The final usage projection correction postdates that live request. The public evidence bundle was assembled afterward; its private plan, source freeze and execution gate were recorded before dispatch. Private originals preserve exact bytes; public projections omit operator identifiers and raw reasoning/token sequences.
+
+[Probe summary](2026-10-25-reasoning-boundary-evidence/summary.json) · [Evidence index](2026-10-25-reasoning-boundary-evidence/README.md) · [Manifest](2026-10-25-reasoning-boundary-evidence/artifact-manifest.json) · [Repeatable command and boundary contract](../benchmarks/reasoning-limit-probe.md)
+
 ## Next experiments, not completed work
 
-1. Verify an engine-supported reasoning budget that leaves room for an answer, then compare it through an explicitly qualified route. Do not infer support from a forwarded field alone.
+1. Attribute the boundary-triggered degeneration to the active sampling path, then test an exact upstream fix or backport in a separately managed candidate. The isolated 64-token probe failed; forwarding a field does not prove correct enforcement.
 2. Trace the unobserved auxiliary request lifetime and alias/context metadata so token accounting can cover request termination without changing the native grading contract.
-3. Replan the two unstarted repetitions with an adequate declared allowance, then use matched settings for any later Ignis comparison. No such follow-up ran here.
+3. Replan the two unstarted repetitions with an adequate declared allowance, then use matched settings for any later Ignis comparison. No such repetition or Ignis follow-up ran here.
 
 ## Evidence boundary
 

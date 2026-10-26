@@ -277,6 +277,33 @@ def commands() -> CommandNode:
         "Run quality evaluation workflows.",
         children=(
             _resource_node(
+                "reasoning-limit-probe",
+                "Preview or execute an isolated, bounded reasoning-boundary diagnostic.",
+                "anvil_serving.reasoning_probe",
+                role="evaluation", mutation="mutate", argv_prefix=(),
+                forward_confirm_flag=True,
+                options=(
+                    _option("--router-config", summary="Unchanged source router configuration.", value_name="PATH"),
+                    _option("--plan", summary="Frozen two-case probe plan.", value_name="PATH"),
+                    _option("--boundary-config", summary="Verified model, configuration hash and marker IDs.", value_name="PATH"),
+                    _option("--output", summary="New private evidence directory.", value_name="PATH"),
+                    _option("--confirm", summary="Send the bounded probe; omission previews offline.", requires_confirmation=True),
+                ),
+                docs_anchor="docs/benchmarks/reasoning-limit-probe.md",
+            ),
+            _resource_node(
+                "reasoning-limit-inspect",
+                "Read pinned GLM runtime hashes and tokenizer markers without inference.",
+                "anvil_serving.reasoning_probe_runtime",
+                role="model-serve", argv_prefix=(), execution_host_os=("linux",),
+                options=(
+                    _option("--registry", summary="Managed recipe registry.", value_name="PATH"),
+                    _option("--container", summary="Exact running recipe container.", value_name="NAME"),
+                    _option("--plan", summary="Frozen runtime pins.", value_name="PATH"),
+                ),
+                docs_anchor="docs/benchmarks/reasoning-limit-probe.md",
+            ),
+            _resource_node(
                 "usage",
                 "Write usage and role summaries from recorded sessions.",
                 "anvil_serving.profile",

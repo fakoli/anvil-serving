@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
+
 **2026-10-25 GLM Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) completed six measurements on the dual-card GLM configuration, with one passing and five failing task grades. Two supported cells remained unstarted and four reasoning controls were blocked. All six jobs have complete engine/GPU/host/cgroup telemetry and verified closure. Raw grades remain separate from completed measurements; this diagnostic establishes no causal cap benefit or hardware ranking. No Ignis run or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
 
 Closure through the final postcheck took 26.73 minutes. Sampled host available RAM ranged from 69.30 to 71.49 GiB; observed host and serving-cgroup OOM counters did not increase. Three additional Aider request starts lack captured responses, so their usage remains unknown; completed measurement eligibility does not imply complete token accounting.

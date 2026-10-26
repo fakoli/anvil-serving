@@ -1,0 +1,31 @@
+{
+  "campaign_id": "glm-reasoning-boundary-20261025-r1",
+  "observed_at": "2026-10-26T02:08:54.556605+00:00",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current",
+      "decision_impact": "Pins request controls, parser and budget/sampling implementation",
+      "evidence_type": "primary-source-code",
+      "hardware_runtime_relevance": "Exact deployed engine revision and source parity",
+      "id": "source-1",
+      "observed_at": "2026-10-26T02:08:54.556605+00:00",
+      "observed_date": "2026-10-25",
+      "published_date": null,
+      "published_or_observed": "2026-10-25",
+      "url": "https://github.com/local-inference-lab/vllm/tree/8244d1c44348ae8a5bbfc9f1b607021652283ed4"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Candidate fix to investigate, not established root cause",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Forced-logit split-top-p sampling; active path not traced",
+      "id": "source-2",
+      "observed_at": "2026-10-26T02:08:54.556605+00:00",
+      "observed_date": "2026-10-25",
+      "published_date": "2026-10-19",
+      "published_or_observed": "2026-10-19",
+      "url": "https://github.com/vllm-project/vllm/pull/58231"
+    }
+  ]
+}
