@@ -407,6 +407,30 @@ def _find_owned_container(operation_id: str, step: str, *, runner=subprocess.run
     return identifiers[0] if identifiers else None
 
 
+def _refuse_preexisting_helpers(*, runner=subprocess.run) -> None:
+    """Do not admit a new cache writer while an earlier labeled helper may remain."""
+    code, output, _stderr = _run_bounded(
+        [
+            "docker", "container", "ls", "--all", "--quiet", "--no-trunc",
+            "--filter", f"label={_OWNERSHIP_LABEL}=v1",
+        ],
+        timeout=30,
+        runner=runner,
+    )
+    if code:
+        raise PreparationError("cannot check for an earlier Flare package preparation helper")
+    try:
+        identifiers = [line.strip() for line in output.decode("ascii").splitlines() if line.strip()]
+    except UnicodeDecodeError as exc:
+        raise PreparationError("Docker returned non-ASCII prior helper IDs") from exc
+    if any(not _CONTAINER_ID_RE.fullmatch(identifier) for identifier in identifiers):
+        raise PreparationError("Docker returned an invalid prior Flare helper ID")
+    if identifiers:
+        raise PreparationError(
+            "an earlier labeled Flare preparation helper remains; reconcile it before retrying"
+        )
+
+
 def _wait_for_owned_container(operation_id: str, step: str, *, runner=subprocess.run,
                               clock=time.monotonic, sleep=time.sleep) -> str | None:
     """Reconcile create timeouts briefly so a late daemon response cannot orphan a cache writer."""
@@ -511,7 +535,10 @@ def _execute_container(
                 raise PreparationError("cannot retrieve bounded Flare preparation output")
             if projection["exit_code"] != 0:
                 if action == "inspect":
-                    detail = logs.decode("utf-8", errors="replace")
+                    detail = "\n".join(
+                        stream.decode("utf-8", errors="replace")
+                        for stream in (logs, _log_error)
+                    )
                     match = re.search(
                         r"cannot verify signing key [0-9a-f]{64}: no embedded, remembered, or --publisher-keys profile names it \(publisher [A-Za-z0-9_.-]+ at https://[^\s)]+\)",
                         detail,
@@ -641,6 +668,7 @@ def prepare(recipe: dict, *, dry_run: bool, confirm: bool, publisher_profile: st
     if not confirm:
         raise PreparationError("preparation changes the persistent package cache; pass --confirm or --dry-run")
     with _preparation_lock(lock_path):
+        _refuse_preexisting_helpers(runner=runner)
         try:
             memory_check({
                 "memory_limit_mib": 8 * 1024,
