@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.media-workflow-registry/v1",
+  "workflows": [
+    "video.h3-cobijada-t2v-v1.json",
+    "video.h3-cobijada-upscale-v1.json"
+  ]
+}

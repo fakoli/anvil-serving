@@ -44,6 +44,9 @@ meet a perceptual goal, and it does not set `promoted=true` automatically.
 Public packaged workflow descriptors remain templates and pinned defaults; real
 deployment values belong in the private operator home.
 
+The [Cobijada H3 bundle](../H3-COMFYUI-MCP.md) uses its own `registry.h3.json`
+and `bundle.h3.lock.json`, leaving the default image/Wan registry unchanged.
+
 ## Prepare the worker bundle
 
 Inventory verifies the exact workflow version, lock file, and protected model

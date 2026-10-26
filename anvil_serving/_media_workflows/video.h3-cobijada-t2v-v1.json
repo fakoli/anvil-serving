@@ -1,0 +1,145 @@
+{
+  "schema": "anvil-serving.media-workflow/v1",
+  "id": "video.h3-cobijada-t2v-v1",
+  "version": "v1",
+  "kind": "video",
+  "service_target": "media-worker-h3",
+  "graph": "video.h3-cobijada-t2v-v1.graph.json",
+  "graph_digest": "452b3d69fe7bfbbd13c911d72d0a4454b41505ab84f80bf3621eb330c4567f58",
+  "parameters": {
+    "prompt": {
+      "kind": "string",
+      "max_length": 4096
+    },
+    "seed": {
+      "kind": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "width": {
+      "kind": "integer",
+      "minimum": 64,
+      "maximum": 864
+    },
+    "height": {
+      "kind": "integer",
+      "minimum": 64,
+      "maximum": 480
+    },
+    "frames": {
+      "kind": "integer",
+      "minimum": 4,
+      "maximum": 124
+    },
+    "steps": {
+      "kind": "integer",
+      "minimum": 1,
+      "maximum": 20
+    },
+    "fps": {
+      "kind": "integer",
+      "minimum": 24,
+      "maximum": 24
+    }
+  },
+  "bindings": [
+    {
+      "parameter": "prompt",
+      "node": "131",
+      "input": "prompt"
+    },
+    {
+      "parameter": "seed",
+      "node": "129",
+      "input": "noise_seed"
+    },
+    {
+      "parameter": "width",
+      "node": "131",
+      "input": "width"
+    },
+    {
+      "parameter": "height",
+      "node": "131",
+      "input": "height"
+    },
+    {
+      "parameter": "frames",
+      "node": "131",
+      "input": "length"
+    },
+    {
+      "parameter": "steps",
+      "node": "124",
+      "input": "steps"
+    },
+    {
+      "parameter": "fps",
+      "node": "130",
+      "input": "fps"
+    }
+  ],
+  "default_quality_profile": "standard",
+  "quality_profiles": {
+    "standard": {
+      "description": "The locally measured H3 recipe; other settings need separate qualification.",
+      "parameters": {
+        "width": 864,
+        "height": 480,
+        "frames": 124,
+        "steps": 20,
+        "fps": 24
+      }
+    }
+  },
+  "output_nodes": [
+    "92"
+  ],
+  "output_mime_types": [
+    "video/mp4"
+  ],
+  "required_features": [
+    "supports_model_type_tags"
+  ],
+  "required_nodes": [
+    "BasicGuider",
+    "BasicScheduler",
+    "CLIPLoader",
+    "CreateVideo",
+    "KSamplerSelect",
+    "MiniMaxH3ImageToVideo",
+    "RandomNoise",
+    "SamplerCustomAdvanced",
+    "SaveVideo",
+    "UNETLoader",
+    "VAEDecode",
+    "VAEDecodeAudio",
+    "VAELoader"
+  ],
+  "required_models": [
+    "Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+    "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+    "minimax_h3_video_vae_int8_convrot.safetensors",
+    "minimax_h3_audio_vae_fp32.safetensors"
+  ],
+  "available": false,
+  "unavailable_reasons": [
+    "deployment_unqualified"
+  ],
+  "source_notes": {
+    "upstream_workflow_repository": "Comfy-Org/workflow_templates",
+    "upstream_workflow_revision": "67984637eefcd4825dcf5c134e39034785be1682",
+    "upstream_workflow_path": "templates/video_minimax_h3_t2v.json",
+    "sampling": "Non-Turbo branch, BasicGuider, res_multistep/simple; jointly generates video and audio.",
+    "character_or_speech_control": "Character LoRAs, external recorded audio and multi-shot identity continuity are not qualified by this graph.",
+    "license": "Community uncensored label is unverified. Original MiniMax H3 terms still apply; review territorial restrictions and separate permission before use."
+  },
+  "limits": {
+    "request_bytes": 65536,
+    "artifact_bytes": 268435456,
+    "timeout_seconds": 2700,
+    "retention_seconds": 604800,
+    "queue_depth": 1,
+    "concurrency": 1
+  }
+}

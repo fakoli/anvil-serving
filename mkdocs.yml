@@ -113,6 +113,7 @@ nav:
       - Voice and Media:
           - Voice pipeline: VOICE.md
           - Media workflows: cli/media.md
+          - H3 MCP workflow: H3-COMFYUI-MCP.md
       - Fleet and host operations:
           - Operator playbooks: OPERATOR-PLAYBOOKS.md
           - Read workload activity: WORKLOAD-VISIBILITY.md

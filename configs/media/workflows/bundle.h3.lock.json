@@ -1,0 +1,142 @@
+{
+  "schema": "anvil-serving.media-bundle-lock/v1",
+  "observed_at": "2026-10-26",
+  "staging": {
+    "container": "curlimages/curl@sha256:7c12af72ceb38b7432ab85e1a265cff6ae58e06f95539d539b654f2cfa64bb13"
+  },
+  "runtime": {
+    "comfyui_release": "v0.42.0",
+    "image_id": "sha256:2745761f803e2c0ac93c5c852e7dfbf0b5b8568ac386aae14277a748f4571bdc",
+    "image_distribution": "Locally built, retained image; image ID is not a public pull reference.",
+    "source_revision_status": "Git metadata was excluded from the retained image; do not infer its source commit from the mutable source checkout or image tag.",
+    "torch": "2.13.0+cu130",
+    "cuda": "13.0",
+    "pinned_memory": false,
+    "cache": "none"
+  },
+  "custom_nodes": [
+    {
+      "name": "ComfyUI-H3-Video-Upsampler",
+      "repository": "https://github.com/sandpies/ComfyUI-H3-Video-Upsampler.git",
+      "revision": "3403ef7a81742fb76eb1633bdd5bb748ad85fd53",
+      "files": [
+        {
+          "path": "__init__.py",
+          "sha256": "4fe20745f7430f4d4fb1340e5a66d4042907146423a88a37cd52a28caf946656"
+        },
+        {
+          "path": "video_upsampler.py",
+          "sha256": "b28cfd19a38a648edeef620d41aa476f3a363cfdb0e7655804cac280ad5ba6b3"
+        },
+        {
+          "path": "tiled_upsampler.py",
+          "sha256": "59ea294af340672207b4d977fac3334f91709fda2274aef6557198a3a80e806d"
+        },
+        {
+          "path": "upscale_guide.py",
+          "sha256": "6b568cf86bf3cb04bc5cbb0557532e555582c29495f747a4736b7f27cab5a68a"
+        },
+        {
+          "path": "pyproject.toml",
+          "sha256": "226d0caa46e587f70d3de733b551c9ea2c8a222999815514ce253e3318b8190a"
+        }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "id": "video.h3-cobijada-t2v-v1",
+      "version": "v1",
+      "graph_sha256": "452b3d69fe7bfbbd13c911d72d0a4454b41505ab84f80bf3621eb330c4567f58",
+      "models": [
+        {
+          "repository": "Winnougan/Cobijada_Minimax-H3_Hybrid_Pruned_ComfyUI",
+          "revision": "d14d58723efadf84de98bc2c3a3613cfedea4d04",
+          "path": "Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+          "target": "diffusion_models/Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+          "size": 20970382008,
+          "sha256": "85a4573a861810bfb250b3cc38f492870b6a3b01048feaa02a85bc7c511b7ca1"
+        },
+        {
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "path": "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+          "target": "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+          "size": 27141342152,
+          "sha256": "bc2ced0fbea64757fa9acddccfc0b3f4819d1dcf1da6c124d690d368be283923"
+        },
+        {
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "path": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "target": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "size": 2811065184,
+          "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e"
+        },
+        {
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "path": "vae/minimax_h3_audio_vae_fp32.safetensors",
+          "target": "vae/minimax_h3_audio_vae_fp32.safetensors",
+          "size": 605254808,
+          "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
+        }
+      ]
+    },
+    {
+      "id": "video.h3-cobijada-upscale-v1",
+      "version": "v1",
+      "graph_sha256": "e68e0c477e174a826cca2f4bc5e795913563298c3ca3e3f9c70ecde4aaa95f5c",
+      "models": [
+        {
+          "repository": "Winnougan/Cobijada_Minimax-H3_Hybrid_Pruned_ComfyUI",
+          "revision": "d14d58723efadf84de98bc2c3a3613cfedea4d04",
+          "path": "Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+          "target": "diffusion_models/Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+          "size": 20970382008,
+          "sha256": "85a4573a861810bfb250b3cc38f492870b6a3b01048feaa02a85bc7c511b7ca1"
+        },
+        {
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "path": "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+          "target": "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+          "size": 27141342152,
+          "sha256": "bc2ced0fbea64757fa9acddccfc0b3f4819d1dcf1da6c124d690d368be283923"
+        },
+        {
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "path": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "target": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+          "size": 2811065184,
+          "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e"
+        },
+        {
+          "repository": "Comfy-Org/MiniMax-H3",
+          "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+          "path": "vae/minimax_h3_audio_vae_fp32.safetensors",
+          "target": "vae/minimax_h3_audio_vae_fp32.safetensors",
+          "size": 605254808,
+          "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48"
+        },
+        {
+          "repository": "sandpies/ComfyUI-H3-Video-Upsampler",
+          "revision": "4592d2b187255c433376bb426c0eec0e9ecdee35",
+          "path": "lora/h3upscale_v2_x2.safetensors",
+          "target": "loras/h3upscale_v2_x2.safetensors",
+          "size": 620285992,
+          "sha256": "ff671fa94e377fd277319a89c366a67f49b97ae6528c8ac3b0c5e0a3b254c56c"
+        },
+        {
+          "repository": "LBH-123-AI/Minimax_h3_latent_Upscaler",
+          "revision": "3f941d5d182014dd5c0a5e16330420ee2d4aa0c6",
+          "path": "minimax_h3_latent_upscaler_3d_conv_v1/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+          "target": "latent_upscale_models/minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+          "size": 690592992,
+          "sha256": "4f57821f5837f32f7142b67d815606dbd7550f194e5c769f7d6c3f83b146a5e6"
+        }
+      ]
+    }
+  ]
+}

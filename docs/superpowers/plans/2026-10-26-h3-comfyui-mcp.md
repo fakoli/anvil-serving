@@ -39,17 +39,17 @@
 
 **Interfaces:** Existing artifact parameters remain opaque IDs. Optional descriptor-owned `media_types` constrains accepted MIME types. `MediaOperations._submit_rendered` stages verified owned bytes and substitutes only declared bindings in a copied graph; the original request digest and public job remain path-free.
 
-- [ ] Establish the existing media-test baseline with a working isolated interpreter; record environment defects.
-- [ ] Write failing tests for MP4 handoff, MIME/ownership/expiry/size/hash refusal, safe filenames and replay.
-- [ ] Implement the smallest shared artifact resolution and filename validation changes.
-- [ ] Run the focused tests and existing media/MCP regressions.
+- [x] Establish the existing media-test baseline with a working isolated interpreter; record environment defects.
+- [x] Write failing tests for MP4 handoff, MIME/ownership/expiry/size/hash refusal, safe filenames and replay.
+- [x] Implement the smallest shared artifact resolution and filename validation changes.
+- [x] Run the focused tests and existing media/MCP regressions.
 
 ### Task 2: Register and deploy the exact tested H3 workflows
 
 **Files:** `configs/media/workflows/video.h3-cobijada-t2v-v1.*`, `video.h3-cobijada-upscale-v1.*`, matching packaged workflows and lock metadata; private worker/controller/gateway configuration.
 
-- [ ] Derive immutable graph descriptors from retained trial graphs and pinned asset manifests; preserve the tested settings.
-- [ ] Add graph/descriptor tests and the documented MCP input/output contract.
+- [x] Derive immutable graph descriptors from retained trial graphs and pinned asset manifests; preserve the tested settings.
+- [x] Add graph/descriptor tests and the documented MCP input/output contract.
 - [ ] Reuse managed lifecycle verbs with a pinned H3 runtime, verified existing model mounts and reviewed custom nodes. Resolve the old 4-GiB reservation mismatch explicitly.
 - [ ] Configure the local MCP gateway and lifecycle controller against the same durable state, with protected secret references and no exposure beyond the intended local surface.
 - [ ] Validate compatibility and model readiness before generation.

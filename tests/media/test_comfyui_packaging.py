@@ -92,12 +92,17 @@ def test_workflow_bundle_and_required_model_identities_are_pinned():
         assert (SOURCE_BUNDLE / name).read_bytes() == (PACKAGED_BUNDLE / name).read_bytes()
     assert Path(DEFAULT_REGISTRY).resolve() == (PACKAGED_BUNDLE / "registry.json").resolve()
 
-    lock = _json(SOURCE_BUNDLE / "bundle.lock.json")
-    locked = {(item["id"], item["version"]): item for item in lock["workflows"]}
+    locked = {
+        (item["id"], item["version"]): item
+        for path in SOURCE_BUNDLE.glob("bundle*.lock.json")
+        for item in _json(path)["workflows"]
+    }
     expected_availability = {
         "image.flux2-klein-4b-fp8-v1": (True, []),
         "video.wan2.2-ti2v-5b-v1": (False, ["quality_failed"]),
         "video.wan2.2-ti2v-5b-v2": (False, ["quality_unverified"]),
+        "video.h3-cobijada-t2v-v1": (False, ["deployment_unqualified"]),
+        "video.h3-cobijada-upscale-v1": (False, ["deployment_unqualified"]),
     }
     for descriptor_path in sorted(SOURCE_BUNDLE.glob("*.json")):
         descriptor = _json(descriptor_path)

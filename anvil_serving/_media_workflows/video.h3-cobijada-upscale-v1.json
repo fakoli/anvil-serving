@@ -1,0 +1,115 @@
+{
+  "schema": "anvil-serving.media-workflow/v1",
+  "id": "video.h3-cobijada-upscale-v1",
+  "version": "v1",
+  "kind": "video",
+  "service_target": "media-worker-h3",
+  "graph": "video.h3-cobijada-upscale-v1.graph.json",
+  "graph_digest": "e68e0c477e174a826cca2f4bc5e795913563298c3ca3e3f9c70ecde4aaa95f5c",
+  "parameters": {
+    "source_video": {
+      "kind": "artifact",
+      "max_length": 128,
+      "media_types": [
+        "video/mp4"
+      ]
+    },
+    "megapixels": {
+      "kind": "number",
+      "minimum": 1.58203125,
+      "maximum": 1.58203125
+    },
+    "denoise": {
+      "kind": "number",
+      "minimum": 0.1,
+      "maximum": 0.1
+    },
+    "tile_tokens": {
+      "kind": "integer",
+      "minimum": 25000,
+      "maximum": 25000
+    }
+  },
+  "bindings": [
+    {
+      "parameter": "source_video",
+      "node": "6",
+      "input": "file"
+    },
+    {
+      "parameter": "megapixels",
+      "node": "8",
+      "input": "megapixels"
+    },
+    {
+      "parameter": "denoise",
+      "node": "8",
+      "input": "denoise"
+    },
+    {
+      "parameter": "tile_tokens",
+      "node": "8",
+      "input": "tile_tokens"
+    }
+  ],
+  "default_quality_profile": "standard",
+  "quality_profiles": {
+    "standard": {
+      "description": "The locally measured H3 recipe; other settings need separate qualification.",
+      "parameters": {
+        "megapixels": 1.58203125,
+        "denoise": 0.1,
+        "tile_tokens": 25000
+      }
+    }
+  },
+  "output_nodes": [
+    "11"
+  ],
+  "output_mime_types": [
+    "video/mp4"
+  ],
+  "required_features": [
+    "supports_model_type_tags"
+  ],
+  "required_nodes": [
+    "CLIPLoader",
+    "CreateVideo",
+    "GetVideoComponents",
+    "H3VideoUpsampler",
+    "LoadVideo",
+    "SaveVideo",
+    "UNETLoader",
+    "VAELoader"
+  ],
+  "required_models": [
+    "Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+    "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+    "minimax_h3_video_vae_int8_convrot.safetensors",
+    "minimax_h3_audio_vae_fp32.safetensors",
+    "h3upscale_v2_x2.safetensors",
+    "minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors"
+  ],
+  "available": false,
+  "unavailable_reasons": [
+    "deployment_unqualified"
+  ],
+  "source_notes": {
+    "upstream_workflow_repository": "sandpies/ComfyUI-H3-Video-Upsampler",
+    "upstream_workflow_revision": "3403ef7a81742fb76eb1633bdd5bb748ad85fd53",
+    "upstream_workflow_path": "example_workflows/H3_Video_Upsampler.json",
+    "tested_input": "864x480, 124 frames, 24 fps; target 1728x960. A fixed megapixel target is not an arbitrary-input 2x guarantee.",
+    "refinement": "Two Euler steps, guide LoRA strength 1, fixed node seed 444, 192-pixel overlap.",
+    "audio": "Incoming decoded waveform and source FPS pass through. SaveVideo re-encodes audio; compressed AAC bitstream identity is not promised by this graph.",
+    "input": "An unexpired caller-owned MP4 artifact, at most 32 MiB. External file ingestion and long recordings are separate integration work.",
+    "license": "The base model terms still apply to this refinement path."
+  },
+  "limits": {
+    "request_bytes": 65536,
+    "artifact_bytes": 268435456,
+    "timeout_seconds": 2700,
+    "retention_seconds": 604800,
+    "queue_depth": 1,
+    "concurrency": 1
+  }
+}
