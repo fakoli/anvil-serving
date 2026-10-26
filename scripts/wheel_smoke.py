@@ -31,6 +31,7 @@ required = (
     package / "_benchmark_profiles" / "scout.json",
     package / "_benchmark_profiles" / "deep.json",
     package / "_node" / "mcp_proxy.mjs",
+    package / "_node" / "THIRD_PARTY_NOTICES.txt",
     package / "_media_workflows" / "bundle.lock.json",
     package / "_media_workflows" / "registry.json",
     package / "_media_workflows" / "image.flux2-klein-4b-fp8-v1.json",

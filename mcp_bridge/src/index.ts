@@ -10,6 +10,7 @@ import {
   type JSONValue,
 } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 
@@ -218,6 +219,9 @@ async function buildBridge(options: BridgeOptions): Promise<McpServer> {
               timeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               maxTotalTimeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               toolDefinition: tool,
+              ...(jsonObject(argumentsValue).confirm === true && jsonObject(argumentsValue).dry_run !== true
+                ? { headers: { "X-Anvil-Idempotency-Key": randomUUID() } }
+                : {}),
             },
           );
         } catch (error) {
