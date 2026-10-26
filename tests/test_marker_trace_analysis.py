@@ -15,22 +15,23 @@ def fixture():
     records = []
     for rank in (0, 1):
         records.append(dict(kind='request_start', rank=rank, request=1, slot=0,
-                            prompt_length=1, budget=64, max_tokens=512))
+                            prompt_length=65, budget=64, max_tokens=512))
         for number, force in ((1, 1), (2, 0)):
-            event = [1, force, analysis.END if force else -1, 0, -1, number, number-1, -1]
-            state = dict(total_len=number, cache=[0, -1, number], markers={str(analysis.END): []})
+            position = 64 + number
+            event = [1, force, analysis.END if force else -1, 0, -1 if force else 65, position, position-1, 0 if force else -1]
+            state = dict(total_len=position, cache=[0, -1, number], markers={str(analysis.END): []})
             records.append(dict(kind='step', rank=rank, request=1, step=number, slot=0,
                 before_budget=state, before_commit=state, after_budget=state,
-                after_commit=dict(total_len=number+1), force_rows=[event],
-                local_positions=[0], expanded_mapping=[0], effective_positions=[number],
+                after_commit=dict(total_len=position+1), force_rows=[event],
+                local_positions=[0], expanded_mapping=[0], effective_positions=[position],
                 counts_before_commit=[1, 0], counts_after_commit=[1, 0], verified_count=1,
                 boundary_enabled=False, boundary_metadata=None, boundary_stop_tokens=[], boundary_capture=None,
                 query_start=[0, 1], logits_only=False, selected_tokens=[analysis.END], verified_tokens=[analysis.END],
                 marker_logits_after=[[0, 1e9 if force else 0]],
-                committed=[dict(position=number, token=analysis.END, budget_store=force, stored_token=event[2])]))
+                committed=[dict(position=position, token=analysis.END, budget_store=force, stored_token=event[2])]))
         records.append(dict(kind='request_end', rank=rank, request=1, slot=0,
-                            prompt_length=1, steps=2, generated=2))
-    response = {'prompt_token_ids': [154841], 'choices': [{'token_ids': [analysis.END, analysis.END]}]}
+                            prompt_length=65, steps=2, generated=2))
+    response = {'prompt_token_ids': [154841] + [20] * 64, 'choices': [{'token_ids': [analysis.END, analysis.END]}]}
     return records, [response]
 
 
@@ -70,9 +71,10 @@ def test_boundary_metadata_and_uncommitted_force_rows_are_required():
     records, responses = fixture()
     step = records[1]
     step["force_rows"].append([-1] * 8)
+    step["marker_logits_after"].append([0, 0])
     step["local_positions"] = [0, 1]
     step["expanded_mapping"] = [0, 0]
-    step["effective_positions"] = [1, 2]
+    step["effective_positions"] = [65, 66]
     with pytest.raises(ValueError, match="speculative GPU"):
         analysis.reconcile(records, responses)
 
@@ -92,13 +94,27 @@ def test_observed_boundary_truncation_reconciles_both_ranks():
     records, responses = fixture()
     for index in (1, 5):
         step = records[index]
-        step.update(boundary_enabled=True, boundary_metadata=[1, 1, 0, 1, 513, 1, 0],
+        step.update(boundary_enabled=True, boundary_metadata=[1, 65, 0, 65, 577, 1, 0],
                     boundary_stop_tokens=[analysis.END], boundary_capture=[[[0, 0, 0, 0]]] * 3,
                     selected_tokens=[analysis.END, 42], verified_tokens=[analysis.END, 42],
                     verified_count=2, counts_before_commit=[2, 0], counts_after_commit=[1, 1],
-                    local_positions=[0, 1], expanded_mapping=[0, 0], effective_positions=[1, 2])
-        step['force_rows'].append([1, 0, -1, 0, 1, 2, 1, -1])
+                    local_positions=[0, 1], expanded_mapping=[0, 0], effective_positions=[65, 66])
+        step['force_rows'].append([1, 0, -1, 0, 65, 66, 65, -1])
+        step['marker_logits_after'].append([0, 0])
     assert analysis.reconcile(records, responses)['status'] == 'reconciled'
     records[1]['counts_after_commit'][1] = 0
     with pytest.raises(ValueError, match='accounting'):
+        analysis.reconcile(records, responses)
+
+
+def test_rejected_speculative_force_corruption_is_not_accepted():
+    records, responses = fixture()
+    for index in (1, 5):
+        step = records[index]
+        step["force_rows"].append([1, 1, -1, 0, -1, 66, 65, 0])
+        step["marker_logits_after"].append([0, 1e9])
+        step["local_positions"] = [0, 1]
+        step["expanded_mapping"] = [0, 0]
+        step["effective_positions"] = [65, 66]
+    with pytest.raises(ValueError, match="speculative force store"):
         analysis.reconcile(records, responses)

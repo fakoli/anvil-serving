@@ -120,9 +120,24 @@ def reconcile(records, responses):
                     raise ValueError("expanded request mapping mismatch")
                 if step["effective_positions"] != [cursor + i for i in range(len(forces))]:
                     raise ValueError("effective position mismatch")
-                for force in forces:
-                    if len(force) != 8 or force[0] != 1 or force[1] not in (0, 1):
+                marker_logits = step["marker_logits_after"]
+                if (not isinstance(marker_logits, list) or len(marker_logits) != len(forces)
+                        or any(not isinstance(row, list) or len(row) != 2 for row in marker_logits)):
+                    raise ValueError("missing per-row marker logits")
+                for i, force in enumerate(forces):
+                    if (len(force) != 8 or any(type(v) is not int for v in force)
+                            or force[0] != 1 or force[1] not in (0, 1)):
                         raise ValueError("missing speculative GPU force observation")
+                    if (force[5] != step["effective_positions"][i]
+                            or force[6] != force[5] - force[3] - 1):
+                        raise ValueError("inconsistent GPU effective history")
+                    if force[1]:
+                        if (force[2] != END or force[7] != 0 or force[3] < 0
+                                or force[3] <= force[4] or force[6] < 64
+                                or marker_logits[i][1] != 1e9):
+                            raise ValueError("inconsistent speculative force store")
+                    elif force[2] != -1 or force[7] != -1:
+                        raise ValueError("unexpected unforced store fields")
                 enabled, metadata = step["boundary_enabled"], step["boundary_metadata"]
                 stops, capture = step["boundary_stop_tokens"], step["boundary_capture"]
                 before_count, before_rejected = step["counts_before_commit"]
