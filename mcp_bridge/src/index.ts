@@ -25,6 +25,7 @@ interface BridgeOptions {
   authEnv: string;
   token: string;
   serverVersion: string;
+  executionContext: Record<string, string> | undefined;
 }
 
 function usageError(message: string): never {
@@ -84,7 +85,22 @@ function parseOptions(argv: string[], env: NodeJS.ProcessEnv): BridgeOptions {
   if (controllerUrl.pathname === "/" || controllerUrl.pathname === "") {
     controllerUrl.pathname = "/mcp";
   }
-  return { controllerUrl, authEnv, token, serverVersion };
+  let executionContext: Record<string, string> | undefined;
+  const encodedContext = env.ANVIL_MCP_EXECUTION_CONTEXT;
+  if (encodedContext !== undefined) {
+    try {
+      const value = JSON.parse(encodedContext.length <= 1024 ? encodedContext : "");
+      const fields = ["topology", "execution_host", "execution_runtime"];
+      if (value === null || typeof value !== "object" || Array.isArray(value)
+          || Object.keys(value).length !== fields.length
+          || !fields.every((field) => typeof value[field] === "string"
+            && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value[field]))) throw new Error();
+      executionContext = value;
+    } catch {
+      usageError("ANVIL_MCP_EXECUTION_CONTEXT must contain exactly three bounded identity fields: topology, execution_host, execution_runtime");
+    }
+  }
+  return { controllerUrl, authEnv, token, serverVersion, executionContext };
 }
 
 export function requestTimeout(argumentsValue: unknown, path = "/mcp"): number {
@@ -209,17 +225,20 @@ async function buildBridge(options: BridgeOptions): Promise<McpServer> {
       tool.name,
       toolConfig(tool),
       async (argumentsValue): Promise<CallToolResult> => {
+        const args = jsonObject(argumentsValue);
+        const confirmed = args.confirm === true && args.dry_run !== true;
         try {
           return await remote.callTool(
             {
               name: tool.name,
-              arguments: jsonObject(argumentsValue),
+              arguments: args,
+              ...(confirmed && options.executionContext ? { context: options.executionContext } : {}),
             },
             {
               timeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               maxTotalTimeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               toolDefinition: tool,
-              ...(jsonObject(argumentsValue).confirm === true && jsonObject(argumentsValue).dry_run !== true
+              ...(confirmed
                 ? { headers: { "X-Anvil-Idempotency-Key": randomUUID() } }
                 : {}),
             },

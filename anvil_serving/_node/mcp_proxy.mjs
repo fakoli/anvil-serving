@@ -37623,7 +37623,19 @@ function parseOptions(argv, env) {
   if (controllerUrl.pathname === "/" || controllerUrl.pathname === "") {
     controllerUrl.pathname = "/mcp";
   }
-  return { controllerUrl, authEnv, token, serverVersion };
+  let executionContext;
+  const encodedContext = env.ANVIL_MCP_EXECUTION_CONTEXT;
+  if (encodedContext !== void 0) {
+    try {
+      const value = JSON.parse(encodedContext.length <= 1024 ? encodedContext : "");
+      const fields = ["topology", "execution_host", "execution_runtime"];
+      if (value === null || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== fields.length || !fields.every((field) => typeof value[field] === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value[field]))) throw new Error();
+      executionContext = value;
+    } catch {
+      usageError("ANVIL_MCP_EXECUTION_CONTEXT must contain exactly three bounded identity fields: topology, execution_host, execution_runtime");
+    }
+  }
+  return { controllerUrl, authEnv, token, serverVersion, executionContext };
 }
 function requestTimeout(argumentsValue, path = "/mcp") {
   if (path === "/v1/memory/mcp") return 31e4;
@@ -37727,17 +37739,20 @@ async function buildBridge(options) {
       tool.name,
       toolConfig(tool),
       async (argumentsValue) => {
+        const args = jsonObject(argumentsValue);
+        const confirmed = args.confirm === true && args.dry_run !== true;
         try {
           return await remote.callTool(
             {
               name: tool.name,
-              arguments: jsonObject(argumentsValue)
+              arguments: args,
+              ...confirmed && options.executionContext ? { context: options.executionContext } : {}
             },
             {
               timeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               maxTotalTimeout: requestTimeout(argumentsValue, options.controllerUrl.pathname),
               toolDefinition: tool,
-              ...jsonObject(argumentsValue).confirm === true && jsonObject(argumentsValue).dry_run !== true ? { headers: { "X-Anvil-Idempotency-Key": randomUUID() } } : {}
+              ...confirmed ? { headers: { "X-Anvil-Idempotency-Key": randomUUID() } } : {}
             }
           );
         } catch (error2) {

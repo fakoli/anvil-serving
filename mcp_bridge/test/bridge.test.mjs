@@ -27,6 +27,7 @@ const VERSION = "0.17.0";
 const SERVER_INFO_KEY = "io.modelcontextprotocol/serverInfo";
 const PROTOCOL_KEY = "io.modelcontextprotocol/protocolVersion";
 const MAX_NATIVE_IMAGE_BASE64_BYTES = 8 * 1024 * 1024;
+const EXECUTION_CONTEXT = { topology: "test-mesh", execution_host: "primary-node", execution_runtime: "controller-container" };
 
 test("the distributed notice retains the pinned SDK and validator licenses", async () => {
   const notice = await readFile(new URL("../../anvil_serving/_node/THIRD_PARTY_NOTICES.txt", import.meta.url), "utf8");
@@ -230,6 +231,7 @@ function bridgeTransport(Transport, controllerUrl) {
     env: {
       ...process.env,
       ANVIL_CONTROLLER_TOKEN: TOKEN,
+      ANVIL_MCP_EXECUTION_CONTEXT: JSON.stringify(EXECUTION_CONTEXT),
     },
   });
 }
@@ -382,14 +384,34 @@ test("confirmed calls carry distinct request-local operation keys", async () => 
       const key = call.headers["x-anvil-idempotency-key"];
       if (args.confirm === true && args.dry_run !== true) {
         assert.match(key ?? "", /^[0-9a-f-]{36}$/);
+        assert.deepEqual(call.body.params.context, EXECUTION_CONTEXT);
         keys.push(key);
-      } else assert.equal(key, undefined);
+      } else {
+        assert.equal(key, undefined);
+        assert.equal(call.body.params.context, undefined);
+      }
     }
     assert.equal(keys.length, 2);
     assert.equal(new Set(keys).size, 2);
   } finally {
     await client.close();
     await controller.close();
+  }
+});
+
+test("malformed configured operation context fails before connecting", async () => {
+  for (const context of ["{", "[]", JSON.stringify({ ...EXECUTION_CONTEXT, extra: "x" }), JSON.stringify({ ...EXECUTION_CONTEXT, execution_host: "bad/host" }), JSON.stringify({ ...EXECUTION_CONTEXT, execution_host: "host\n" })]) {
+    const child = spawn(process.execPath, [BRIDGE, "--controller-url", "http://127.0.0.1:8765/mcp", "--auth-env", "ANVIL_CONTROLLER_TOKEN", "--server-version", VERSION], {
+      env: { PATH: process.env.PATH, ANVIL_CONTROLLER_TOKEN: TOKEN, ANVIL_MCP_EXECUTION_CONTEXT: context },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    const [code] = await once(child, "exit");
+    assert.equal(code, 2);
+    assert.match(stderr, /ANVIL_MCP_EXECUTION_CONTEXT must contain/);
+    assert.doesNotMatch(stderr, new RegExp(TOKEN));
   }
 });
 
