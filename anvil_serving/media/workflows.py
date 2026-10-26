@@ -82,7 +82,7 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
     for name, spec in parameters_raw.items():
         if not isinstance(name, str) or not isinstance(spec, Mapping):
             raise MediaError("workflow_descriptor_invalid", "workflow parameter is invalid")
-        allowed = {"kind", "required", "minimum", "maximum", "max_length", "enum"}
+        allowed = {"kind", "required", "minimum", "maximum", "max_length", "enum", "media_types"}
         if set(spec) - allowed:
             raise MediaError("workflow_descriptor_invalid", "workflow parameter has unknown fields")
         parameters[name] = ParameterSpec(
@@ -92,6 +92,7 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
             maximum=spec.get("maximum"),
             max_length=spec.get("max_length"),
             enum=tuple(spec.get("enum", ())),
+            media_types=_string_tuple(spec.get("media_types", []), "artifact media types"),
         )
     bindings_raw = raw.get("bindings")
     if not isinstance(bindings_raw, list) or len(bindings_raw) > 64:

@@ -72,6 +72,17 @@ def test_workflow_contract_validates_bounds_and_schema():
         workflow.validate_parameters({"prompt": "owl", "width": 2048})
 
 
+@pytest.mark.parametrize(("kind", "media_types"), [
+    ("string", ("video/mp4",)),
+    ("artifact", ("audio/wav",)),
+    ("artifact", ("video/mp4", "video/mp4")),
+    ("artifact", ["video/mp4"]),
+])
+def test_artifact_media_type_contract_is_immutable_and_type_specific(kind, media_types):
+    with pytest.raises(MediaError, match="media types"):
+        ParameterSpec(kind, media_types=media_types)
+
+
 def test_workflow_descriptor_is_immutable_and_has_one_target():
     workflow = descriptor()
     with pytest.raises(TypeError):
