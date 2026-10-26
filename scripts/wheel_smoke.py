@@ -216,6 +216,7 @@ def run_smoke(
                 "anvil_serving/_benchmark_profiles/scout.json",
                 "anvil_serving/_benchmark_profiles/deep.json",
                 "anvil_serving/_node/mcp_proxy.mjs",
+                "anvil_serving/_node/THIRD_PARTY_NOTICES.txt",
                 "anvil_serving/_media_workflows/bundle.lock.json",
                 "anvil_serving/_media_workflows/registry.json",
                 "anvil_serving/_media_workflows/image.flux2-klein-4b-fp8-v1.json",

@@ -42,6 +42,14 @@ that request; concurrent calls have separate keys. A new invocation is a new
 operation: retain job IDs and lifecycle transaction receipts for recovery after
 a disconnect, and do not blindly repeat an ambiguous mutation.
 
+Operator connections also set the non-secret `ANVIL_MCP_EXECUTION_CONTEXT`
+environment value to a JSON object containing exactly `topology`,
+`execution_host`, and `execution_runtime`, each a bounded deployment identifier.
+Installation supplies the actual resource owner's values. The bridge forwards
+this configured context only for confirmed operations; it never invents a host
+identity or adds lifecycle authority to an ordinary media connection. Missing
+context is still refused by the controller's mutation gate.
+
 The packaged Hermes example at
 [`examples/hermes/`](../examples/hermes/README.md) uses this bridge with an
 explicit caller-only media tool allowlist. Its skill consumes only named
