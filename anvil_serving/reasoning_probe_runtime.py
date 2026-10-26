@@ -24,8 +24,9 @@ MODEL_PATH = "/root/.cache/huggingface/hub/models--nvidia--GLM-5.3-Flash-FP4-Loc
 _PATCH_ENTRYPOINT = ["python3", "/opt/anvil-sampling/launch.py", "vllm", "serve"]
 _PATCH_FILES = {
     "launch.py": "24203cc50619e0b4116be44cecb14d800f6b2845298f998e1384c6adeb369cd1",
-    "kernel_regression.py": "2f2bdedf444d334fe9a984d884835e4524b331d1e453450cc1bb25e7b5d7b091",
+    "kernel_regression.py": "9798b88ceaa95aba5d122bda7349c71469d8b6c395b588677a1e166e59fe69c1",
     "verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c",
+    "reference.py": "e0a1dfe2f7f5aea547d38c60b69f03349bd14f3a0f64b25e5f836e3740f5f60f",
     "baseline.py": _PATCH_BASE_SOURCE,
 }
 _PROCESS_LIMIT = 4096

@@ -45,10 +45,45 @@ The regression imports the exact original source saved at
 0, it checks eight forced-logit cases: batches 4/64, logits `1e9`/`1e9 / 0.6`,
 top-p 0.95, vocabulary/token pairs 131072/13 and 154856/154842. Each must show
 original all-masked rows, NaN probabilities, and argmax 0; patched rows must retain
-exactly the forced token with finite probabilities. Four seeded ordinary-logit
-controls require exact original/patched output equality. Peak PyTorch tensor
+exactly the forced token with finite probabilities. All eight forced cases run
+before ordinary controls. The ordinary controls replay the original seed 58231
+draw order and add seed 42, each across the same four shapes (272 rows total).
+The input logits and `p` are the actual float32 tensor values. Peak PyTorch tensor
 allocation must remain below 1 GiB; this excludes CUDA context/compiler overhead.
 This verifies kernel behavior, not model quality or the end-to-end sampling path.
+
+For this new attempt only, the independent numerical gate supersedes the exact
+original/patched parity assertion that stopped the prior attempt. That failure
+remains preserved in the dated evidence; it is not reclassified as a pass.
+`reference.py` uses only stdlib binary64 `math.exp`, `math.fsum` normalization,
+stable descending-logit sorting (lower token ID wins exact ties), and a Kahan
+prefix scan against `p * normalizer`. Two `math.fsum` boundary checks must certify
+the same minimal prefix. Disagreement is `oracle_boundary_ambiguous`, a failure;
+there is no mass tolerance or adaptive threshold. This is a binary64 numerical
+reference, not a proof over exact real arithmetic.
+
+Every ordinary row must satisfy all of these predeclared checks:
+
+- Both original and patched masks contain the entire reference prefix.
+- The patched mask is a canonical prefix, including its exact-tie ordering.
+- Its symmetric-difference count against the reference is no greater than the
+  original's for the same row.
+- Patched kept-count error is at most three; otherwise it is strictly less than
+  0.5% of that row's reference count. This is a conservative per-row form of the
+  upstream count envelope, not a fitted probability-mass tolerance.
+
+Inputs are captured before both independent clones and checked bitwise after
+both kernels. Every case emits counts, exactness, an input-unchanged flag and
+a digest binding all float32 input rows.
+Differing original/patched rows and failing rows emit kept/missing/extra counts
+and masses, retained and remove-lowest mass, prefix holes, boundary values, and
+bounded differing indices (first 32 and a full big-endian uint32 index hash when
+larger). Inputs and helper hashes are retained; only synthetic data is logged.
+All eight ordinary cases finish before their aggregate assertion, so one failed
+row cannot suppress the other ordinary controls. NaN, positive infinity or a
+changed retained fp32 bits (including signed zero) fails that row. Failure or timeout prevents model loading.
+Exact mask equality and remove-lowest mass remain diagnostics. Passing this
+bounded gate does not establish general exact top-p behavior or model quality.
 
 ## Optional dispatch receipts
 
