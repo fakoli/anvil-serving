@@ -55,6 +55,25 @@ def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():
     assert seen["body"]["client_id"] == "anvil-job_0123456789abcdef"
 
 
+@pytest.mark.parametrize("running,pending,expected", [
+    (["prompt_123"], [], "running"),
+    (["prompt_other"], ["prompt_123"], "queued"),
+    ([], [], "queued"),
+])
+def test_history_observes_live_queue_before_completed_history_exists(running, pending, expected):
+    def record(identifier):
+        return [0, identifier, {}, {}, []]
+    def opener(request, timeout):
+        if request.full_url.endswith("/history/prompt_123"):
+            return Response({})
+        if request.full_url.endswith("/queue"):
+            return Response({"queue_running": [record(p) for p in running],
+                             "queue_pending": [record(p) for p in pending]})
+        raise AssertionError(request.full_url)
+    result = ComfyUIClient("http://127.0.0.1:8188", opener=opener).history("prompt_123")
+    assert result.state == expected
+
+
 def test_find_prompt_recovers_deterministic_client_identity_from_queue():
     job_id = "job_0123456789abcdef"
     record = [
@@ -140,3 +159,17 @@ def test_upload_rejects_paths_and_oversize_before_contact():
     with pytest.raises(MediaError):
         client.upload_input("input.png", b"xx", max_bytes=1)
     assert contacted == []
+
+
+@pytest.mark.parametrize("filename", ['bad"name.mp4', "bad\r\nname.mp4", "bad\x00name.mp4", "../bad.mp4", "bad\\name.mp4"])
+def test_upload_rejects_unsafe_multipart_filenames(filename):
+    client = ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_a, **_k: pytest.fail("contacted backend"))
+    with pytest.raises(MediaError, match="filename"):
+        client.upload_input(filename, b"video")
+
+
+@pytest.mark.parametrize("stored", ["../escaped.mp4", "bad\r\nname.mp4", "/absolute.mp4"])
+def test_upload_rejects_unsafe_returned_filename(stored):
+    client = ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_a, **_k: Response({"name": stored}))
+    with pytest.raises(MediaError):
+        client.upload_input("safe.mp4", b"video")

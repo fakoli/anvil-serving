@@ -46,6 +46,10 @@ deployment values belong in the private operator home.
 
 ## Prepare the worker bundle
 
+For private deployment registries, follow the
+[operator-owned video workflow contract](../VIDEO-MCP-WORKFLOWS.md). Keep model
+selection, asset identities and qualification records in private operator storage.
+
 Inventory verifies the exact workflow version, lock file, and protected model
 volume without writing:
 
@@ -163,6 +167,23 @@ are never public identifiers. Full bytes are delivered through the
 authenticated `/artifacts/{opaque-id}` boundary; eligible small images may
 also be returned as bounded native MCP image content. Video is resource-only.
 
+### Use an owned result as workflow input
+
+A descriptor may declare a parameter with `kind: "artifact"` and optional
+`media_types`, such as `["video/mp4"]`. Pass the opaque artifact ID returned by
+a completed job. Before submission, the shared operation checks ownership,
+expiry, declared MIME types and upload size; it verifies the content SHA-256,
+uploads the bytes to the selected worker, and binds the returned input name
+only inside the private execution graph. Public requests and job records keep
+opaque IDs. An idempotent replay returns the existing job without uploading or
+submitting it again, including after the original input expires.
+
+Input handoff currently supports PNG and MP4 artifacts, bounded by 32 MiB and
+the workflow's artifact-byte limit, whichever is smaller. It does not accept a
+caller filesystem path or import an arbitrary local recording. Long recordings
+must first be cut into supported, bounded shots by the owning application;
+external-media ingestion is a separate integration boundary.
+
 ## Qualify without promoting
 
 ```bash
@@ -183,6 +204,43 @@ generate the artifact. A successful run does not change availability or
 promotion state by itself.
 
 ## Lifecycle and integration boundary
+
+### Windows host memory guard
+
+For a guarded Windows/Docker deployment, copy the operator-owned
+`media-guard.toml` policy into the operator home. Give `lease_path` a dedicated
+subdirectory beneath that home. Defaults retain the measured trial safeguards:
+stop below 4 GiB available Windows RAM, below 16 GiB commit headroom, or below
+8 GiB available RAM for 15 seconds. The worker also stops when the host signal
+is more than five seconds old or its 45-minute lifetime expires.
+
+```powershell
+anvil-serving media memory-guard sample
+anvil-serving media memory-guard install --confirm
+anvil-serving media memory-guard status
+```
+
+Installation starts a hidden, small Windows publisher and registers it in the
+current user's login startup entries. It reads native physical-memory and
+commit counters; it does not load a model or operate other services. Its global
+mutex prevents duplicate publishers across login sessions. The dedicated
+signal directory has private ACLs, with existing explicit permissions reset.
+Its policy and implementation digest must match the worker's expectations.
+
+The Linux worker's fixed entrypoint uses `memory-guard supervise --confirm`
+with its declared ComfyUI command after `--`. Mount the signal directory
+read-only and map its path with `--lease`; never mount credentials in the
+worker. Unsafe, missing, invalid or stale signals prevent startup or immediately
+terminate only the supervisor's own child process group. The lifetime limit is
+for the worker container, including idle time, rather than an individual shot.
+Normal job-owned teardown remains the lifecycle owner's responsibility.
+
+`install` and `uninstall` preview unless `--confirm` is supplied. To update a
+guard policy or implementation, run `uninstall --confirm`, allow the publisher
+to report `guard stopped`, then reinstall. Uninstall removes only the matching
+login entry and requests its publisher to stop; it preserves its files. A
+running worker will stop when its host signal becomes unsafe. Foreground
+`run --confirm` is available for diagnosis and writes an unsafe signal on exit.
 
 ### Connect Codex to the media MCP
 

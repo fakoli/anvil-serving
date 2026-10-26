@@ -79,6 +79,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "py.typed",
     "_scaffold_templates/*",
     "_node/*.mjs",
+    "_node/*.txt",
     "_gpu_sharing_probe/*.yml",
     "_gpu_sharing_probe/gpu-sharing/*.cu",
     "_nccl_probe/*.py.txt",

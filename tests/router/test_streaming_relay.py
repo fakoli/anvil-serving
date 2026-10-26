@@ -26,6 +26,7 @@ from anvil_serving.router.backends.relay import (
     RelayBackend,
     RelayBackendError,
     RelayTimeoutError,
+    split_into_deltas,
 )
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
@@ -282,6 +283,51 @@ def test_non_sse_response_falls_back_to_buffered_parse():
     s = backend.get_last_structured()
     assert s.finish_reason == "stop"
     assert s.usage == {"input_tokens": 3, "output_tokens": 2}
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "def encode(plaintext, a, b):\n if not isinstance(plaintext, str):\n  raise TypeError('bad')\n return plaintext",
+        "one   two",
+        " leading and trailing ",
+        "    ",
+        "\tleading\tand\nnewlines\n",
+        "",
+    ],
+)
+def test_split_into_deltas_preserves_exact_text(text):
+    deltas = split_into_deltas(text)
+    assert "".join(deltas) == text
+    assert all(deltas)
+
+
+@pytest.mark.parametrize("mode", ["buffered", "json-stream-fallback"])
+def test_buffered_and_json_fallback_preserve_code_indentation(mode):
+    text = (
+        "def encode(plaintext, a, b):\n"
+        " if not isinstance(plaintext, str):\n"
+        "  raise TypeError('plaintext must be a string')\n"
+        " return plaintext\n"
+    )
+    body = json.dumps({
+        "choices": [{"message": {"content": text}, "finish_reason": "stop"}],
+        "usage": {"prompt_tokens": 3, "completion_tokens": 2},
+    }).encode()
+    if mode == "buffered":
+        backend = RelayBackend(
+            _tier("openai"), env={"EXAMPLE_KEY": "k"},
+            transport=lambda url, **kwargs: body,
+        )
+        request = _request(stream=False)
+    else:
+        backend = RelayBackend(
+            _tier("openai"), env={"EXAMPLE_KEY": "k"},
+            stream_transport=FakeStreamTransport(body, ctype="application/json"),
+        )
+        request = _request(stream=True)
+
+    assert "".join(backend.generate(request)) == text
 
 
 @pytest.mark.parametrize(

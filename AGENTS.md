@@ -28,6 +28,12 @@ description is `README.md`; do not contradict it.
 
 ## Public product and private operator-state policy
 
+When a user designates a model selection private, keep its identity, variant,
+asset fingerprints and censorship status out of public reports, examples,
+history, pull requests and build artifacts. Keep deployment-specific workflow
+registries and qualification records in private operator storage; publish only
+model-neutral contracts or independently authorized public research.
+
 Treat **every tracked file as public**, including `AGENTS.md`, `CLAUDE.md`,
 examples, tests, tickets, and raw evidence under `docs/findings/`.
 

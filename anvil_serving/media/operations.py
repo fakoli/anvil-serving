@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 
+import copy
 import hashlib
 import json
 import threading
@@ -13,8 +14,8 @@ from typing import Any, Callable, Mapping
 from .admission import MediaAdmissionService
 from .artifacts import ArtifactStore
 from .cancellation import MediaCancellationService
-from .comfyui import ComfyUIClient
-from .contracts import JobState, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
+from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient
+from .contracts import JobState, MediaArtifact, RenderedWorkflow, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
 from .errors import MediaError
 from .jobs import MediaJobStore
 from .workflows import WorkflowRegistry
@@ -134,6 +135,7 @@ class MediaOperations:
                 backend=backend,
                 qualification=qualification,
             )
+        self._artifact_inputs(rendered, principal=principal)
         try:
             compatibility = (
                 backend.compatibility(rendered.descriptor, qualification=True)
@@ -482,6 +484,16 @@ class MediaOperations:
                 principal=principal,
                 bind=True,
             )
+            try:
+                rendered = self._stage_artifact_inputs(
+                    rendered, principal=principal, backend=backend
+                )
+            except MediaError as exc:
+                # Upload preparation has not called /prompt, so failure is unambiguous.
+                self.jobs.transition(
+                    job_id, JobState.FAILED, principal=principal, reason=exc.code
+                )
+                raise
             prompt_id = backend.submit(rendered, job_id=job_id)
             self.jobs.set_backend_prompt(job_id, prompt_id, principal=principal)
             return self.jobs.transition(
@@ -490,6 +502,48 @@ class MediaOperations:
                 principal=principal,
                 reason="submitted_to_media_backend",
             )
+
+    def _artifact_inputs(
+        self, rendered: RenderedWorkflow, *, principal: str
+    ) -> dict[str, MediaArtifact]:
+        inputs = {}
+        maximum = min(MAX_UPLOAD_BYTES, rendered.descriptor.max_artifact_bytes)
+        for name, spec in rendered.descriptor.parameters.items():
+            if spec.kind != "artifact" or name not in rendered.resolved_parameters:
+                continue
+            artifact = self.artifacts.metadata(rendered.resolved_parameters[name], principal=principal)
+            if spec.media_types and artifact.media_type not in spec.media_types:
+                raise MediaError("artifact_media_type", "input artifact has an unsupported media type")
+            if artifact.media_type not in {"image/png", "video/mp4"}:
+                raise MediaError("artifact_media_type", "input artifact has an unsupported media type")
+            if artifact.byte_length > maximum:
+                raise MediaError("artifact_too_large", "input artifact exceeds upload policy", status=413)
+            inputs[name] = artifact
+        return inputs
+
+    def _stage_artifact_inputs(
+        self, rendered: RenderedWorkflow, *, principal: str, backend: ComfyUIClient
+    ) -> RenderedWorkflow:
+        inputs = self._artifact_inputs(rendered, principal=principal)
+        if not inputs:
+            return rendered
+        graph = copy.deepcopy(rendered.graph)
+        maximum = min(MAX_UPLOAD_BYTES, rendered.descriptor.max_artifact_bytes)
+        uploaded = {}
+        for binding in rendered.descriptor.bindings:
+            artifact = inputs.get(binding.parameter)
+            if artifact is None:
+                continue
+            if artifact.id not in uploaded:
+                payload = self.artifacts.read(artifact.id, principal=principal, max_bytes=maximum)
+                if hashlib.sha256(payload.data).hexdigest() != artifact.sha256:
+                    raise MediaError("artifact_digest_mismatch", "input artifact content changed", status=409)
+                extension = "mp4" if artifact.media_type == "video/mp4" else "png"
+                uploaded[artifact.id] = _backend_method(backend, "upload_input")(
+                    f"anvil-{artifact.sha256}.{extension}", payload.data, max_bytes=maximum
+                )
+            graph[binding.node]["inputs"][binding.input] = uploaded[artifact.id]
+        return replace(rendered, graph=graph)
 
     def _resume_submitting(
         self,

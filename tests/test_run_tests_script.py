@@ -53,10 +53,11 @@ def test_runner_receipt_preserves_exit_and_stops_interrupted_child(monkeypatch, 
     assert result["state"] == state and result["exit_code"] == code
     assert result["run_id"] != "stale" and result["finished_at"]
     assert result["source"] == {"head": "abc", "dirty": False}
-    assert seen["argv"][-2:] == ["--basetemp", str(tmp_path / "pytest")]
+    assert seen["argv"][-2:] == ["--basetemp", str(tmp_path / "pytest" / "fixtures")]
     assert seen["env"]["PATH"].split(run_tests.os.pathsep)[0] == str(run_tests.Path(run_tests.sys.executable).parent)
     assert result["base_temp"] == str(tmp_path / "pytest")
     assert all(seen["env"][name] == result["base_temp"] for name in ("TMPDIR", "TEMP", "TMP"))
+    assert Path(seen["argv"][-1]).parent == Path(result["base_temp"])
     assert seen.get("killed", False) is isinstance(outcome, BaseException)
 
 

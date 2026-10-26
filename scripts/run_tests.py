@@ -185,7 +185,8 @@ def main(argv: list[str] | None = None) -> int:
         args = args or ["tests/", "-q"]
         for name in ("TMPDIR", "TEMP", "TMP"):
             env[name] = base_temp
-        command = [sys.executable, "-m", "pytest", *args, "--basetemp", base_temp]
+        # Pytest recreates basetemp; leave the process TEMP root outside that deletion.
+        command = [sys.executable, "-m", "pytest", *args, "--basetemp", str(Path(base_temp) / "fixtures")]
         receipt.update(state="running", command=command)
         write_receipt(options.receipt, receipt)
         process = subprocess.Popen(command, env=env, start_new_session=os.name != "nt")

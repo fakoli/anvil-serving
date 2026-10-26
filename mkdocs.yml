@@ -113,6 +113,8 @@ nav:
       - Voice and Media:
           - Voice pipeline: VOICE.md
           - Media workflows: cli/media.md
+          - Operator video workflows: VIDEO-MCP-WORKFLOWS.md
+          - Podcast component research: research/local-podcast-components-2026-10-26.md
       - Fleet and host operations:
           - Operator playbooks: OPERATOR-PLAYBOOKS.md
           - Read workload activity: WORKLOAD-VISIBILITY.md

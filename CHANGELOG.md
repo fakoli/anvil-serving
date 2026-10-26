@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format is based on
 
 ### Added
 
+- Caller-owned bounded video artifact handoff for named media workflows.
+- A Windows RAM/commit heartbeat and scoped worker supervisor, including
+  protected login registration, stale-signal refusal and bounded sharing retries.
+
 - Guarded `models cache discard` for an entirely retired native Linux model
   directory or Docker volume, including incomplete downloads and shared-blob
   layouts. Apply binds the reviewed inventory and operator configuration to an

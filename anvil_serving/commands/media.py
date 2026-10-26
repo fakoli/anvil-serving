@@ -2,7 +2,7 @@
 
 from .common import CONFIRM_OPTIONS
 from .family import command_family
-from .spec import CommandNode, _node, _option, _resource_node
+from .spec import CommandNode, _handler, _node, _option, _resource_node
 
 
 REGISTRY_OPTION = (
@@ -28,6 +28,38 @@ def commands() -> CommandNode:
         "media",
         "Inspect and run bounded managed media workflows.",
         children=(
+            _node(
+                "memory-guard",
+                "Publish Windows memory safety signals and supervise one worker.",
+                children=tuple(
+                    _node(
+                        action,
+                        description,
+                        handler=_handler(
+                            "anvil_serving.media.memory_guard",
+                            argv_prefix=(action,),
+                            forward_confirm_flag=action not in {"sample", "status"},
+                        ),
+                        mutation_class="read" if action in {"sample", "status"} else "mutate",
+                        output_policy="foreground" if action in {"run", "supervise"} else "bounded",
+                        options=(
+                            _option("--config", summary="Operator-owned memory guard policy.", value_name="PATH"),
+                        ) + (
+                            (_option("--lease", summary="Container mapping of the host signal.", value_name="PATH"),)
+                            if action == "supervise" else ()
+                        ) + (CONFIRM_OPTIONS if action not in {"sample", "status"} else ()),
+                        docs_anchor="docs/cli/media.md#windows-host-memory-guard",
+                    )
+                    for action, description in (
+                        ("sample", "Read native Windows available RAM and commit headroom."),
+                        ("status", "Check the configured host memory signal."),
+                        ("install", "Register and start the private Windows login memory guard."),
+                        ("uninstall", "Remove this guard's login entry and request its stop."),
+                        ("run", "Publish memory safety signals until explicitly stopped."),
+                        ("supervise", "Run one worker child only while its host signal is safe and fresh."),
+                    )
+                ),
+            ),
             _resource_node(
                 "capabilities",
                 "List deterministic media capabilities.",
