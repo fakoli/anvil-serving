@@ -388,6 +388,56 @@ def test_discovered_recipe_logs_read_revalidated_immutable_id(
     assert capsys.readouterr().out == "candidate ready\n"
 
 
+@pytest.mark.parametrize("registered", [False, True])
+def test_recipe_logs_emit_redacted_stderr_only_container_output_as_data(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    registered: bool,
+) -> None:
+    identity = serve_recipes._recipe_container_record(_row("candidate"))
+    assert identity is not None
+    monkeypatch.setattr(models, "_recipe_container_identity", lambda *args, **kwargs: identity)
+    monkeypatch.setattr(models, "_recheck_discovered_recipe_container", lambda *args, **kwargs: identity)
+
+    def run(argv, **_kwargs):
+        assert argv[:2] == ["docker", "logs"]
+        return _completed(
+            argv,
+            stderr="error: token=private-test-token\n",
+        )
+
+    if registered:
+        returncode = models._recipe_container_logs(
+            {"model": "org/model"}, "candidate", _run=run,
+        )
+    else:
+        returncode = models._discovered_recipe_container_logs(identity, _run=run)
+
+    captured = capsys.readouterr()
+    assert returncode == 0
+    assert captured.out == "error: token=<redacted>\n"
+    assert captured.err == ""
+    assert "private-test-token" not in captured.out
+
+
+def test_recipe_logs_keep_docker_failure_status_and_diagnostic_on_stderr(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    identity = serve_recipes._recipe_container_record(_row("candidate"))
+    assert identity is not None
+    monkeypatch.setattr(models, "_recheck_discovered_recipe_container", lambda *args, **kwargs: identity)
+
+    def run(argv, **_kwargs):
+        return _completed(argv, returncode=17, stderr="docker: token=private-test-token denied\n")
+
+    returncode = models._discovered_recipe_container_logs(identity, _run=run)
+    captured = capsys.readouterr()
+    assert returncode == 17
+    assert captured.out == ""
+    assert captured.err == "docker: token=<redacted> denied\n"
+
+
 def test_recipe_log_metadata_rechecks_discovered_identity_and_uses_interval_flags(monkeypatch: pytest.MonkeyPatch) -> None:
     identity = serve_recipes._recipe_container_record(_row("candidate"))
     assert identity is not None
@@ -399,7 +449,7 @@ def test_recipe_log_metadata_rechecks_discovered_identity_and_uses_interval_flag
     result = models.collect_discovered_recipe_container_logs(
         "candidate", tail=3, since="2026-10-16T12:00:00Z", until="2026-10-16T12:01:00Z", timestamps=True,
         _run=lambda argv, **_kwargs: calls.append(argv) or _completed(
-            argv, stdout='2026-10-16T12:00:02Z {"event":"admission"}\n'
+            argv, stdout='2026-10-16T12:00:02Z event=admission token=private-test-token\n'
         ),
     )
     assert calls == [[
@@ -407,7 +457,7 @@ def test_recipe_log_metadata_rechecks_discovered_identity_and_uses_interval_flag
         "--until", "2026-10-16T12:01:00Z", "--timestamps", identity["container_id"],
     ]]
     assert result["observed_runtime"]["container_id"] == identity["container_id"]
-    assert result["lines"] == ['2026-10-16T12:00:02Z {"event":"admission"}']
+    assert result["lines"] == ["2026-10-16T12:00:02Z event=admission token=<redacted>"]
 
 
 def test_default_recipe_log_capture_uses_bounded_popen_path(monkeypatch: pytest.MonkeyPatch) -> None:
