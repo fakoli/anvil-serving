@@ -931,6 +931,7 @@ def test_cmd_up_loads_home_dotenv_as_fallback(tmp_path, monkeypatch):
     manifest_dir.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     monkeypatch.delenv("HF_TOKEN", raising=False)
     (home / ".env").write_text("HF_TOKEN=home-token\n", encoding="utf-8")
     path = _manifest(manifest_dir, """
@@ -965,6 +966,7 @@ def test_cmd_up_prefers_config_home_dotenv_over_home_fallback(tmp_path, monkeypa
     manifest_dir.mkdir()
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
     monkeypatch.delenv("HF_TOKEN", raising=False)
     (home / ".env").write_text("HF_TOKEN=home-token\n", encoding="utf-8")

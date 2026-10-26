@@ -1,5 +1,11 @@
 # GLM-5.3-Flash
 
+**2026-10-25 sampling-reference diagnostic:** the [independent numerical-reference gate](../../findings/2026-10-25-sampling-reference.md) passed 8/8 forced cases but rejected the patch after one of 272 ordinary rows retained one extra boundary token relative to stock/reference. Candidate weights and inference never started; the model reasoning-boundary failure remains unresolved. Exact operational restoration passed, but the restored incumbent failed its single strict JSON smoke, so functional restoration acceptance is incomplete. No promotion; Ignis held.
+
+**2026-10-25 sampling-fix trial:** the earlier [candidate kernel gate](../../findings/2026-10-25-sampling-fix.md) failed ordinary-logit exact parity after partial forced-token success. The later reference diagnostic above resolves that difference without rewriting this historical result.
+
+**2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
+
 **2026-10-21–23 Flare engine investigations:** seven closed findings retain the
 candidate scout, tuning, cache, state, and current-upstream diagnostics. The
 result is diagnostic-only: protected and numerical gates remain incomplete or
@@ -55,6 +61,8 @@ so four full 327K windows are unsupported. See the
 <!-- benchmark-dossier/v2 -->
 
 ## Current status and review date
+
+**2026-10-25 Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) closed six completed measurements with one passing and five failing task grades; two supported cells remained unstarted and four reasoning controls were blocked. Raw grades remain separate from lifecycle and measurement eligibility. The mixed Rust result establishes no causal benefit from the larger cap. Diagnostic only; no Ignis run, broad model ranking or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
 
 **2026-10-25 R12/R13 successor:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four cancelled grades remain unknown. The candidate was never measured. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. This does not change the incumbent assignment or establish a comparative ranking. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
 
@@ -411,6 +419,26 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Split-top-p independent-reference diagnostic, 2026-10-25
+
+- **Status:** failed strict local functional kernel gate; `no-promotion`; exact operational restoration passed but functional restoration acceptance is incomplete.
+- **Measured:** eight forced cases and 272 ordinary rows on one RTX PRO 6000 Blackwell Max-Q. All forced cases passed; stock/patch masks were identical on 271 rows. On the remaining row, stock exactly matched the binary64 numerical reference and the patch retained one extra boundary token.
+- **Limits:** the one-token difference is within the predeclared count envelope derived from upstream tests, but failed the per-row local no-worse rule. This does not establish that the upstream test suite passed. Exact internal cause is unproven; no candidate weights, serving-worker trace, inference, end-to-end boundary result, or performance comparison. The restored-incumbent JSON smoke failed; no matched pretrial smoke exists, so regression is unproven and candidate causality is refuted.
+- **Evidence:** [dated finding](../../findings/2026-10-25-sampling-reference.md), [summary](../../findings/2026-10-25-sampling-reference-evidence/summary.json), [independent outcome review](../../findings/2026-10-25-sampling-reference-evidence/outcome-review.json), and [evidence index](../../findings/2026-10-25-sampling-reference-evidence/README.md).
+
+### Split-top-p patch diagnostic, 2026-10-25
+
+- **Status:** partial functional kernel result; failed preweight gate, `no-promotion`.
+- **Measured:** original/patched synthetic logits on one RTX PRO 6000 Blackwell Max-Q, CUDA device 0; exact case counts are in the [authoritative summary](../../findings/2026-10-25-sampling-fix-evidence/summary.json).
+- **Limits:** the fourth ordinary-input mask comparison failed. No candidate model weights, inference, serving-worker boundary trace, peak-allocation pass, or timing comparison. Planned TP2/C4/context settings were not exercised.
+- **Evidence:** [dated finding](../../findings/2026-10-25-sampling-fix.md), [raw excerpt and case ledger](../../findings/2026-10-25-sampling-fix-evidence/README.md), and [restoration record](../../findings/2026-10-25-sampling-fix-evidence/restoration.json). Preserve the exact-parity failure; obtain a reference probability/mask oracle before changing the gate.
+
+### Go/Rust completion-cap diagnostics, 2026-10-25
+
+- **Scope:** pinned Aider/Polyglot Go and Rust tasks at 16K/32K completion caps; diagnostic-only, no promotion.
+- **Measurement boundary:** a retained raw task grade does not make a cancelled or incomplete job a completed measurement. Missing usage, finish reasons and compiler signals remain unknown; diagnostic absence does not establish a negative result.
+- **Evidence:** [dated finding](../../findings/2026-10-25-glm-diagnostics.md) and [evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md). All six submitted jobs have verified closure; three additional request starts lack captured responses and retain unknown usage. Historical R12 accepted populations remain unchanged.
+
 ### R12 baseline and R13 admission refusal, 2026-10-25
 
 - **Status:** bounded functional/quality baseline, `no-promotion`; no candidate comparison.
@@ -598,6 +626,10 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-10-25 — [Sampling-reference diagnostic](../../findings/2026-10-25-sampling-reference.md): independent binary64 reference resolved the earlier unknown difference; 8/8 forced cases passed, but one patched ordinary row over-retained one token and failed the strict local no-worse gate. Zero candidate requests. Exact operational restoration passed; the strict JSON smoke failed. No end-to-end claim or promotion.
+
+- 2026-10-25 — [Sampling-fix kernel trial](../../findings/2026-10-25-sampling-fix.md): candidate stopped before model weights after ordinary-mask parity failure; partial forced-token correction does not prove the end-to-end boundary fix.
 
 - 2026-10-25 — [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal): R12 retained complete graded incumbent results and clean shared closure; R13 supplied no candidate measurement. Exact restoration and minimal-thinking Pi accepted, historical thinking-off failure open.
 - 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — partial incumbent grades, accepted bounded mixed-C4 closure, candidate unmeasured; service restored with strict Pi acceptance incomplete.

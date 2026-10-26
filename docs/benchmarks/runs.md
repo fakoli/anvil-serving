@@ -1,5 +1,31 @@
 # Benchmark run catalog
 
+## 2026-10-25 split-top-p sampling-reference diagnostic
+
+| Configuration | Measured hardware and layer | Outcome | Evidence |
+|---|---|---|---|
+| GLM FP4 candidate image with exact upstream split-top-p patch and independent binary64 numerical reference; model weights not loaded | One RTX PRO 6000 Blackwell Max-Q, synthetic CUDA kernel check; two cards reserved for the unrun TP2 candidate | 8/8 forced cases passed. Stock/patch masks were identical on 271/272 ordinary rows; the patch kept one extra token and failed the strict local no-worse gate. Zero candidate requests. Exact operational restoration passed; the strict JSON smoke failed, leaving functional acceptance incomplete. No promotion; Ignis held. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-reference.md) · [Summary](../findings/2026-10-25-sampling-reference-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-reference-evidence/README.md) |
+
+## 2026-10-25 pinned sampling-fix kernel trial
+
+| Configuration | Measured hardware and layer | Outcome | Evidence |
+|---|---|---|---|
+| GLM FP4 candidate image with exact vLLM split-top-p backport; model weights not loaded | One RTX PRO 6000 Blackwell Max-Q, synthetic CUDA device-0 kernel check; two cards reserved for planned TP2 | Ordinary parity failed after partial forced-case success; zero candidate model requests. Functional, no promotion, Ignis held; end-to-end fix unproven. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-fix.md) · [Authoritative counts](../findings/2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-fix-evidence/README.md) |
+
+## 2026-10-25 isolated reasoning-boundary diagnostic
+
+| Configuration / scope | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM NVIDIA FP4 incumbent; C1, numeric budget64/output512 | Dual RTX PRO 6000 Blackwell Max-Q; functional diagnostic | Failed boundary transition; `no-promotion`, Ignis held, runtime unchanged. See canonical finding for measured token pattern and limitations. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up) |
+
+## 2026-10-25 GLM Go/Rust completion-cap diagnostics
+
+| Configuration / scope | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM-5.3-Flash; pinned Aider/Polyglot Go and Rust tasks with 16K/32K completion caps | Dual RTX PRO 6000 Blackwell Max-Q measured; complete engine/GPU/host/cgroup telemetry and verified closure for all six submitted jobs | Six completed measurements: one passing/five failing task grades; two supported cells unstarted, four reasoning controls blocked. Raw grades remain separate from lifecycle and measurement eligibility. No causal cap benefit, Ignis run or promotion. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-glm-diagnostics.md) · [Evidence index](../findings/2026-10-25-glm-diagnostics-evidence/README.md) |
+
+Closure through the final postcheck took 26.73 minutes within the 45-minute operator limit. Three additional Aider request starts lack captured responses; their usage remains unknown. See the [authoritative summary](../findings/2026-10-25-glm-diagnostics-evidence/summary.json).
+
 ## 2026-10-25 R12 baseline and R13 admission refusal
 
 | Configuration / population | Hardware and evidence | Outcome / boundary | Links |

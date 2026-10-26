@@ -1,0 +1,239 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "glm-sampling-reference-20261025-r2",
+    "capability": "Focused split-top-p numerical-reference diagnostic",
+    "started_at": "2026-10-26 UTC; exact timestamp not retained in public evidence",
+    "completed_at": "2026-10-26T03:57:22.096135Z",
+    "repository_revision": "3fa3d856ba3f5a797a661a50a468fdee481f58ab",
+    "dirty_state": "Executable source frozen after independent review; publication files are a later evidence projection.",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promoted": false,
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.image-build/v1",
+    "recipe-container-status/v1",
+    "sampling-reference-experiment/v1",
+    "sampling-source-freeze/v1",
+    "sampling-reference-result/v1",
+    "anvil-serving.independent-outcome-review/v1",
+    "sampling-reference-closure/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "2282187e30c47e42d22fe754f92c35fbeaf6f6477c9b88d7918d3f574ead1525",
+          "bytes": 2961
+        }
+      ],
+      "reason": "Human-readable evidence map and explicit interpretation limits."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "df071a007761bd85f2751a41672640d200e5b8199a7bf80eb08ff35865d1ff08",
+          "bytes": 3432
+        },
+        {
+          "path": "reference-design.md",
+          "sha256": "7cf0623e4377f0178e6f74ab801d8599bfa739deb5e31af98ffe832038299ea9",
+          "bytes": 7080
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "632a36fe884efa499ab24040dd6f2e6d5981fe71431030c752db877bda8fc6d9",
+          "bytes": 6286
+        }
+      ],
+      "reason": "Dated primary sources, independent oracle design, and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "b3cdfab9795363c39fbc701cf90ca703026e5182e548db7b79c6c3e04e2cbfa2",
+          "bytes": 1983
+        }
+      ],
+      "reason": "Frozen seeds, shapes, forced cases, ordinary rows, top-p value, and numerical oracle."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "b3cdfab9795363c39fbc701cf90ca703026e5182e548db7b79c6c3e04e2cbfa2",
+          "bytes": 1983
+        },
+        {
+          "path": "reference-design.md",
+          "sha256": "7cf0623e4377f0178e6f74ab801d8599bfa739deb5e31af98ffe832038299ea9",
+          "bytes": 7080
+        }
+      ],
+      "reason": "Predeclared gates, stop rules, bounds, and independently reviewed acceptance design."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "1eab50be99b1ddb8e3867dc0a4695c31be171a3271ad1b1341396874b1d1ee3c",
+          "bytes": 1378
+        },
+        {
+          "path": "source-freeze.json",
+          "sha256": "41f764a96e1618c6c8a062b5ccf846f7d7cb3e14c7e78fc8d3974b96371fe73a",
+          "bytes": 1354
+        },
+        {
+          "path": "build.json",
+          "sha256": "b402ff10dea7e1ded955e362b9262545ffa9cb9a2005bfa2fbaf06cf429eaff4",
+          "bytes": 580
+        }
+      ],
+      "reason": "Exact source, patch, helper, image, model, and measured-hardware identity."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "kernel-receipts.log",
+          "sha256": "674206eeb64c26d7767093948af8b35242037629377c66721d399031cde00eb4",
+          "bytes": 5974
+        },
+        {
+          "path": "kernel-summary.json",
+          "sha256": "f39b7fbace903922077ddf571d98b3eef37dd2d91f745053457c0ac10c36317e",
+          "bytes": 2940
+        },
+        {
+          "path": "candidate-status.json",
+          "sha256": "baa92ffe2404faa7339ccb64d38e810bfe05964ab81baa1363d69123c88a5225",
+          "bytes": 790
+        }
+      ],
+      "reason": "Verbatim bounded numerical receipts, derived row/accounting summary, and managed exit status."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "9645b3a9282abe1011a19934d714c50cd4829e88a5d49930cfecb16e88faaad4",
+          "bytes": 2228
+        },
+        {
+          "path": "kernel-summary.json",
+          "sha256": "f39b7fbace903922077ddf571d98b3eef37dd2d91f745053457c0ac10c36317e",
+          "bytes": 2940
+        },
+        {
+          "path": "candidate-status.json",
+          "sha256": "baa92ffe2404faa7339ccb64d38e810bfe05964ab81baa1363d69123c88a5225",
+          "bytes": 790
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "951c13db753e58bee1874cc16477b487bfecc2954111ba78b5f364381c520497",
+          "bytes": 1598
+        }
+      ],
+      "reason": "Strict local policy failure, secondary post-exit observability limitation, and failed restored-incumbent strict JSON smoke."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "98f1fd3c0cd699587beac52923539df05672804c30922ecc62a56195ba27f5b3",
+          "bytes": 2583
+        },
+        {
+          "path": "closure.json",
+          "sha256": "f1133ad57757f0daa8ff915421c1180b399ba4ee8c533fb998f72432121a37d1",
+          "bytes": 1609
+        },
+        {
+          "path": "runtime-restored.json",
+          "sha256": "aec75ba0211fa4ada41c9f6cbafa57c1c19d0fc68649b887287a7343a83960b8",
+          "bytes": 1784
+        },
+        {
+          "path": "router-restored.json",
+          "sha256": "ce841480dc440fb635c011c67e97a1846d66797e8718d05d5c6acbbbd7fb9818",
+          "bytes": 371
+        },
+        {
+          "path": "mode-restored.json",
+          "sha256": "fd30feb03f4a1ba6264938e2deb45bc71eb9ca12fc6849850476f3c565e9805e",
+          "bytes": 344
+        },
+        {
+          "path": "shared-memory-restored.json",
+          "sha256": "dcf19b6a1716bbe886670a1b8c594eba6dfbaed8eb38342866a0a4243f49d6c4",
+          "bytes": 262
+        },
+        {
+          "path": "gpus-restored.json",
+          "sha256": "665ee01098f015fa7d088ca3adeab733cb7cefc60b69dd30e4934719990afd14",
+          "bytes": 271
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "951c13db753e58bee1874cc16477b487bfecc2954111ba78b5f364381c520497",
+          "bytes": 1598
+        }
+      ],
+      "reason": "Exact operational restoration and idle readiness passed; the strict JSON functional smoke failed, so restoration acceptance is incomplete."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "b58eff7e9a7768018defa4bd1fd294faadc7890470dd32dd058d71d6cd8d88e1",
+          "bytes": 5048
+        },
+        {
+          "path": "outcome-review.json",
+          "sha256": "cb2f39725f071b8f3a04024727c2341721d142cf20d2c614d85a4ca5956fcc32",
+          "bytes": 1194
+        }
+      ],
+      "reason": "Bounded failed functional result and independent no-probe decision; no end-to-end or promotion claim."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; the dated technical finding is the public report."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 4 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

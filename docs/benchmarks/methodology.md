@@ -280,6 +280,35 @@ These contracts can be tested with synthetic traces and fake callers. Passing
 those tests establishes harness behavior, not corrected model accuracy,
 real-engine cancellation, production throughput or promotion readiness.
 
+### Aider grades, lifecycle and diagnostic observations
+
+The campaign report keeps a retained cancelled Aider task's `raw_task_grades`
+separate from job state, accepted samples, comparisons and measurement
+eligibility. The grade reuses the native two-attempt oracle only when the
+retention hashes, frozen prepared plan, endpoint and exact task selection
+match. Missing, corrupt, contradictory or mismatched evidence stays unknown.
+A retained pass does not turn a cancelled job into a completed measurement;
+a retained negative grade remains visible. Historical accepted populations
+and outcomes retain their original meaning.
+
+`raw_task_grade_diagnostics` is independent of the grade. It reports observed
+output truncation, bounded Go/Rust compilation-failure signals and the native
+context-exhaustion counter when valid. A missing signal is unknown, not proof
+of absence. Valid observations without a terminal event retain partial
+coverage; invalid or contradictory terminal records make diagnostics
+unavailable without discarding an independently valid grade.
+
+The bounded request sidecar retains allowlisted `finish_reason` values and
+nullable prompt, completion, total and reasoning token usage. `length` is an
+observed output-truncation signal; it does not establish input-context
+exhaustion. Missing or malformed usage remains null, never zero. Reasoning
+usage is retained only when supplied, with valid nested completion details
+preferred over a valid top-level count. Do not infer missing counts by
+subtraction. Contained-command diagnostics retain status, timeout and bounded
+compiler signatures, not command output or generated text, and do not change
+the test oracle. Buffered Aider responses do not measure true TTFT or
+token-arrival timing.
+
 ### SWE retry timing and server-log coverage
 
 New SWE plans bind the observation adapter's hash, the pinned mini-SWE source,

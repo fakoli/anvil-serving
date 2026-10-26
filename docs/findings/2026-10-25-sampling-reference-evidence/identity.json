@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.sampling-reference-identity/v1",
+  "repository_revision": "3fa3d856ba3f5a797a661a50a468fdee481f58ab",
+  "runtime": {
+    "base_revision": "8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+    "upstream_patch_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+    "candidate_image": "sha256:67f0d352dc21a068fb310d2c4b06a08f66b7a798775f6f82c850cc0616eb20fc",
+    "baseline_sampler_sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
+    "patched_sampler_sha256": "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6"
+  },
+  "helpers": {
+    "kernel_regression.py": "9798b88ceaa95aba5d122bda7349c71469d8b6c395b588677a1e166e59fe69c1",
+    "reference.py": "e0a1dfe2f7f5aea547d38c60b69f03349bd14f3a0f64b25e5f836e3740f5f60f",
+    "verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c"
+  },
+  "intended_model": {
+    "repository": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "weights_loaded": false,
+    "inference_requests": 0
+  },
+  "measured_hardware": "One RTX PRO 6000 Blackwell Max-Q GPU; synthetic CUDA kernel diagnostic only",
+  "planned_unexercised_topology": "Two-GPU TP2/DCP2 model serve",
+  "independent_review": "Source and predeclared gate reviewed by Sol independently from the Astra implementation and evaluated model."
+}

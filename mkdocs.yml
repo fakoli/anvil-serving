@@ -87,11 +87,18 @@ nav:
       - Methods:
           - Shadow Jev evidence pilot: benchmarks/jev-pilot.md
           - Engine testing: benchmarks/engine-testing.md
+          - Isolated reasoning-limit probe: benchmarks/reasoning-limit-probe.md
           - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
           - Methodology and evidence rules: benchmarks/methodology.md
           - Finding publication format: benchmarks/finding-format.md
           - External benchmarks: EXTERNAL-BENCHMARKS.md
       - History and evidence:
+          - "2026-10-25 sampling-reference diagnostic": findings/2026-10-25-sampling-reference.md
+          - Sampling-reference evidence: findings/2026-10-25-sampling-reference-evidence/README.md
+          - "2026-10-25 sampling-fix kernel trial": findings/2026-10-25-sampling-fix.md
+          - Sampling-fix evidence: findings/2026-10-25-sampling-fix-evidence/README.md
+          - "2026-10-25 GLM Go/Rust diagnostics": findings/2026-10-25-glm-diagnostics.md
+          - GLM diagnostic evidence: findings/2026-10-25-glm-diagnostics-evidence/README.md
           - Run catalog: benchmarks/runs.md
           - Findings index: findings/README.md
           - Chronological results: BENCHMARKS.md

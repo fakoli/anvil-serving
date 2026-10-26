@@ -1,0 +1,10 @@
+{
+  "schema": "anvil-serving.serve-mode-restoration-public/v1",
+  "mode": "dual-gpu-exclusive",
+  "tensor_parallel_size": 2,
+  "gpu_roles": 2,
+  "exclusive_incumbent_owner_restored": true,
+  "candidate_workload_blocked": true,
+  "unresolved": [],
+  "private_receipt_sha256": "17c2af747475f020589c57a315924eecb2551dab567ba3a23cf564cacdc59b6c"
+}

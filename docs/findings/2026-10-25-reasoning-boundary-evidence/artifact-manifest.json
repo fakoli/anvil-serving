@@ -1,0 +1,159 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "capability": "Focused reasoning boundary diagnostic",
+    "completed_at": "2026-10-26T02:08:54.556605+00:00",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "Frozen private patch and file hashes in source-freeze.json; final offline usage fix postdates live request.",
+    "evidence_labels": [
+      "functional"
+    ],
+    "id": "glm-reasoning-boundary-20261025-r1",
+    "promoted": false,
+    "promotion_authorized": false,
+    "repository_revision": "3ccb65f1b886f527a2da98fc63439e9bd89fcf38",
+    "started_at": "2026-10-26T02:08:18.901938+00:00"
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "69edbb9fca176974722b1209f4122438b8265c5d5d020399b56a645b411e300e",
+          "bytes": 1261
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "6734535b0fd27e24dedc354e027c4606d5a77b4154ac842c08cd43c1b640e68b",
+          "bytes": 1286
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "b73b10100bef38f407760124edc9b11fd63d6d8606500f7c6f01ac4fca8ab244",
+          "bytes": 2335
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "26acec721216b56f3b15a72e7706b6ba908bf6b884cf54f26f56cb5167b095fe",
+          "bytes": 3240
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "26acec721216b56f3b15a72e7706b6ba908bf6b884cf54f26f56cb5167b095fe",
+          "bytes": 3240
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "c02b62c1bc0cbcda62b7046c9d0a2004ea7135ac071ffeef3ab03fc122b01fd0",
+          "bytes": 5171
+        },
+        {
+          "path": "source-freeze.json",
+          "sha256": "41aaa9fdeb4a7a123f7d36f8a4dcbe076d23482a188f76ac53e77710b8f3b044",
+          "bytes": 1536
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "result.json",
+          "sha256": "5bb6fc057558d89c9c7df458a3730af4bc2d2718e2b3a6538861fe98ca4cc6eb",
+          "bytes": 1983
+        },
+        {
+          "path": "observations.json",
+          "sha256": "b5151dc0d59dcef9e99591a1f8ce607cfbaae0a4fb9a578b4775a08791e3bd1a",
+          "bytes": 912
+        },
+        {
+          "path": "offline-response-replay.json",
+          "sha256": "435df799be5f1506cd0fb801d2a591591f38156253a9cdccc6da390d0940bff5",
+          "bytes": 692
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "f4e624397ce5b7cf6aa419270df83b273f8217545c3c6d7a050d4c74f7afca00",
+          "bytes": 1515
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "a2444e28cc476219078d6a13f28f3f2b5ee0578dfec2942a0970797da51744c1",
+          "bytes": 1100
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "ac5e59bf8ecb03f2af15e9689aca7b896fcf53b1617c61047e27e8f1ad71f554",
+          "bytes": 3332
+        }
+      ],
+      "reason": "Retained diagnostic scope and provenance; public derivatives are separately hashed."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social publication copy requested."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

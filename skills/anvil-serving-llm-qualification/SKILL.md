@@ -52,11 +52,11 @@ Budget one synthesis and keep local-only questions on retained local evidence.
 5. Pull exact revisions with `models pull`; a shell/client timeout does not
    prove failure. Before retrying, inspect whether the one downloader container
    remains active. Never start competing writers against the same cache.
-6. Load one isolated candidate at a time with a pinned recipe and discovered
-   GPU UUID. For a Windows/WSL GPU lane, credential handoff, unhealthy loaded
-   recipe, managed switch, or restore transaction, use
-   `.agents/skills/anvil-serving-candidate-operations/SKILL.md`. Do not change
-   a live alias.
+6. For every candidate load, managed switch or restoration on any host, use
+   `.agents/skills/anvil-serving-candidate-operations/SKILL.md`, including its
+   timestamped host-RAM attribution before the transition and on failure.
+   Load one isolated candidate at a time with a pinned recipe and discovered
+   GPU UUID. Do not change a live alias.
 7. Diagnose startup and request failures down-stack: caller, product status/logs,
    container exit/health, then engine/model-download error. Retain the earliest
    actionable error, research it, and test a versioned configuration remedy

@@ -63,7 +63,7 @@ def fake_execution(monkeypatch):
     monkeypatch.setattr(campaign_execution, "verify_prepared_child", lambda *args, **kwargs: {})
     monkeypatch.setattr(campaign_execution, "batch_ready", lambda *args, **kwargs: True)
     monkeypatch.setattr(campaign_execution, "reconcile_batch", lambda manifest, batch, **kwargs:
-        receipts.get(batch, {"status": "pending", "active_seconds": None}))
+        receipts.get(batch, {"status": "pending", "active_seconds": None, "reserved_seconds": 0}))
     return receipts, launches
 
 
@@ -178,6 +178,18 @@ def test_reconciles_other_arms_before_new_submission(store, fake_execution, monk
     with pytest.raises(BenchmarkJobError, match="prior batch"):
         campaigns.run_campaign(manifest, store, arm_id="arm-1")
     assert store.status(manifest["cells"][1]["spec"]["run_id"]) is None
+
+
+def test_insufficient_batch_remains_unsubmitted(store, fake_execution, monkeypatch):
+    manifest = campaigns.prepare_campaign(specification(), store)
+    monkeypatch.setattr(campaign_execution, '_remaining_budget', lambda *a, **k: 99)
+    monkeypatch.setattr(worker, 'launch_benchmark_job', lambda **kwargs: pytest.fail('unfunded batch launched'))
+    with pytest.raises(BenchmarkJobError, match='requires 100s.*remaining 99s'):
+        campaigns.run_campaign(manifest, store, arm_id='arm-0')
+    assert all(store.status(cell['spec']['run_id']) is None for cell in manifest['cells'])
+    directory = campaigns.campaign_directory(store.run_root, manifest['ownership_id'], manifest['campaign_id'])
+    assert campaigns._state(directory, manifest=manifest)['batches'] == {}
+    assert not (directory / 'batches').exists()
 
 
 def test_cancel_persists_intent_before_owned_cancellation(store, fake_execution, monkeypatch):

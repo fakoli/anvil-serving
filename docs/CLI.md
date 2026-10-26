@@ -220,6 +220,8 @@ required operands, choices, and defaults.
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
+| `eval reasoning-limit-probe` | Preview or execute an isolated, bounded reasoning-boundary diagnostic. | `mutate` / `bounded` | `--router-config`<br>`--plan`<br>`--boundary-config`<br>`--output`<br>`--confirm` |
+| `eval reasoning-limit-inspect` | Read pinned GLM runtime hashes and tokenizer markers without inference. | `read` / `bounded` | `--registry`<br>`--container`<br>`--plan` |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval routed` | Run fail-closed router and real-client acceptance for one alias. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--expected-served-model`<br>`--expected-config-fingerprint`<br>`--expected-router-config-sha256`<br>`--min-context-tokens`<br>`--clients`<br>`--openclaw-provider`<br>`--hermes-provider`<br>`--hermes-expected-provider`<br>`--no-harness-sync`<br>`--openclaw-config`<br>`--pi-models`<br>`--pi-settings`<br>`--client-state-path`<br>`--client-backup-root`<br>`--timeout-seconds`<br>`--run-id`<br>`--output` |

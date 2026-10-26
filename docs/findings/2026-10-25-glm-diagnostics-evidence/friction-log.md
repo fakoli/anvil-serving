@@ -1,0 +1,15 @@
+# Friction log
+
+- Independent review found impossible ordering and inconsistent coverage in retained diagnostic terminal records. The parser now rejects them; 140 focused checks and the unchanged historical replay passed. A valid native grade remains independent of invalid diagnostics.
+- Two time-budget regression subprocess hooks imported an older installed checkout. The fixtures now bind the current checkout explicitly; 127 checks plus 32 telemetry checks passed. The original source-mismatch failures remain retained privately.
+- An initial task claim used a directory where exact progress attestation requires file paths. Supported reconciliation released the unsuccessful reservation, preserved its checkout, and a file-scoped claim succeeded. No state database was edited.
+- An initial resource inventory had an incorrect capture timestamp. It is excluded from freshness claims. A replacement includes its raw read receipt; an unavailable process-count statistic remains unknown.
+- Offline harness preparation correctly refused the old image after instrumentation changed its content identity. Managed preparation rebuilt the pinned harness and passed its starter/reference oracle checks for all eight prepared cells. Subsequent use must match the prepared source and asset hashes.
+- The first full-suite capture inherited a 600-second helper timeout shorter than the historical suite duration. Only its owned offline test process was interrupted; a separate capture helper uses 1,800 seconds. The interrupted attempt is not passing evidence.
+- New profile registration changed generated CLI metadata and an explicit MCP catalog expectation. The full suite exposed the stale generated manifest; a focused catalog check exposed the second expectation. The existing generator and the exact profile enum repair preserve all other metadata and legacy digest assertions. The failed and interrupted validation attempts remain retained; final validation status is recorded separately.
+
+No live model traffic or lifecycle change is implied by these offline checks. The live campaign subsequently closed with six graded jobs and two unstarted jobs; see summary.json and restoration.json.
+
+- Three Rust request starts have no captured response. Retained logs are consistent with background summarization, but request-level attribution is unproven. Preserve unknown HTTP outcome and usage; a separate request-lifetime investigation is planned, not a zero-token workaround.
+- The full-job guard refused the next submission with 575.216 seconds remaining against a 780-second requirement. Preserve CLI exit2 and the budget error alongside six completed jobs and zero job cancellations; do not relabel unsubmitted work as failed model output.
+- Public projection validation rejected the 2.5 MB provenance ledger under the default 1 MiB per-file limit. Native shards remain below1 MiB; an exact-inventory ADR-0027 exception is required for the ledger and complete bundle before publication. No records were dropped to hide the size failure.
