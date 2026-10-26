@@ -15,6 +15,7 @@ from typing import Any, Mapping
 from .artifacts import atomic_write_json, is_filesystem_root, path_is_within, real_path
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import validate_profile
+from .swe_agent_adapter import SUPPORTED_DEPENDENCIES
 from .harness_runtime import (
     MAX_HARNESS_OUTPUT_BYTES as MAX_HARNESS_OUTPUT_BYTES,
     DEFAULT_HARNESS_COMMAND_TIMEOUT as DEFAULT_HARNESS_COMMAND_TIMEOUT,
@@ -90,6 +91,7 @@ def _swe_environment_identity(
         },
         "platform": platform.system().lower(),
         "architecture": platform.machine().lower(),
+        "dependency_versions": dict(SUPPORTED_DEPENDENCIES),
         "sources": {
             name: {
                 "source": assets[name]["source"],
@@ -98,6 +100,17 @@ def _swe_environment_identity(
             for name in required
         },
     }
+
+
+def _validate_swe_dependency_inventory(resolved_packages: list[str]) -> None:
+    for name, version in SUPPORTED_DEPENDENCIES.items():
+        observed = [entry for entry in resolved_packages
+                    if entry.partition("==")[0].lower() == name]
+        if observed != [f"{name}=={version}"]:
+            raise BenchmarkJobError(
+                "harness_environment_mismatch",
+                f"SWE instrumentation requires {name}=={version}",
+            )
 
 
 def _reuse_swe_python_environment(
@@ -132,6 +145,7 @@ def _reuse_swe_python_environment(
             "harness_environment_mismatch",
             "cached SWE Python environment no longer matches its recorded inventory",
         )
+    _validate_swe_dependency_inventory(observed)
     return {
         **identity,
         "cache_key": cache_key,
@@ -205,6 +219,7 @@ def _prepare_swe_python_environment(
                 "--disable-pip-version-check",
                 "--no-input",
                 *source_paths,
+                *(f"{name}=={version}" for name, version in sorted(SUPPORTED_DEPENDENCIES.items())),
             ),
             cwd=staging,
         )
@@ -232,6 +247,7 @@ def _prepare_swe_python_environment(
             raise BenchmarkJobError(
                 "harness_environment_failure", "installed SWE harness inventory is empty"
             )
+        _validate_swe_dependency_inventory(resolved)
         cache_bytes = _directory_bytes(staging)
         if cache_bytes > max_download_bytes:
             raise BenchmarkJobError(
