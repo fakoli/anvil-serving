@@ -446,9 +446,13 @@ exact-path shared-memory cleanup guard after removal.
 
 `--contains` is a case-insensitive literal filter and may be repeated; a line
 is emitted when it contains any selected literal. Filtering happens after the
-exact recipe/container ownership check and preserves stdout/stderr separation.
-Use it to inspect actionable startup signatures without returning every model
-load progress line. Remove the filter when the complete bounded tail is needed.
+exact recipe/container ownership check. Successful container log text from
+stdout and stderr is combined in the command data stream so stderr-only startup
+failures remain visible to managed callers. The streams are grouped by source
+stream, not reconstructed in chronological order. A nonzero Docker command
+keeps its diagnostic on stderr and preserves its failure status. Use the filter
+to inspect actionable startup signatures without returning every model load
+progress line. Remove the filter when the complete bounded tail is needed.
 
 Use these commands for isolated benchmark candidates. Use `serves status`,
 `serves logs`, and `serves down` for manifest-owned deployments. Do not use raw

@@ -2542,33 +2542,17 @@ def _recipe_container_logs(
         argv += ["--since", since]
     argv.append(identity["container_id"])
     try:
-        completed = _run(
-            argv,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
+    except serve_recipes.RecipeError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read recipe container logs: %s" % exc
+        ) from None
     except OSError as exc:
         raise serve_recipes.RecipeError(
             "cannot read recipe container logs: %s" % exc
         ) from None
-    def selected(value):
-        if not needles:
-            return value
-        return "".join(
-            line
-            for line in value.splitlines(keepends=True)
-            if any(needle in line.casefold() for needle in needles)
-        )
-
-    stdout = selected(completed.stdout or "")
-    stderr = selected(completed.stderr or "")
-    if stdout:
-        _write_console_text(sys.stdout, stdout)
-    if stderr:
-        _write_console_text(sys.stderr, stderr)
-    return completed.returncode
+    _render_recipe_container_logs(returncode, stdout, stderr, needles)
+    return returncode
 
 
 def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
@@ -2609,6 +2593,25 @@ def _bounded_recipe_log_capture(argv, *, _run=subprocess.run):
     except ServiceError as exc:
         raise serve_recipes.RecipeError("recipe log capture failed: " + exc.code) from exc
     return result.returncode, result.stdout, result.stderr
+
+
+def _render_recipe_container_logs(returncode, stdout, stderr, needles):
+    """Emit bounded, redacted log text while keeping Docker failures on stderr."""
+    def selected(value):
+        if not needles:
+            return value
+        return "".join(
+            line
+            for line in value.splitlines(keepends=True)
+            if any(needle in line.casefold() for needle in needles)
+        )
+
+    selected_stdout = selected(stdout or "")
+    selected_stderr = selected(stderr or "")
+    separator = "\n" if selected_stdout and selected_stderr and not selected_stdout.endswith(("\n", "\r")) else ""
+    combined = str(redact(selected_stdout + separator + selected_stderr))
+    if combined:
+        _write_console_text(sys.stderr if returncode else sys.stdout, combined)
 
 
 def collect_discovered_recipe_container_logs(
@@ -2659,7 +2662,7 @@ def collect_discovered_recipe_container_logs(
     returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
     if returncode:
         raise serve_recipes.RecipeError("cannot read recipe container logs")
-    lines = (stdout.splitlines() + stderr.splitlines())[-tail:]
+    lines = [str(redact(line)) for line in (stdout.splitlines() + stderr.splitlines())[-tail:]]
     return {
         "lines": lines,
         "observed_runtime": {key: current.get(key) for key in (
@@ -2706,34 +2709,17 @@ def _discovered_recipe_container_logs(
         argv += ["--since", since]
     argv.append(current["container_id"])
     try:
-        completed = _run(
-            argv,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
+    except serve_recipes.RecipeError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read recipe container logs: %s" % exc
+        ) from None
     except OSError as exc:
         raise serve_recipes.RecipeError(
             "cannot read recipe container logs: %s" % exc
         ) from None
-
-    def selected(value):
-        if not needles:
-            return value
-        return "".join(
-            line
-            for line in value.splitlines(keepends=True)
-            if any(needle in line.casefold() for needle in needles)
-        )
-
-    stdout = selected(completed.stdout or "")
-    stderr = selected(completed.stderr or "")
-    if stdout:
-        _write_console_text(sys.stdout, stdout)
-    if stderr:
-        _write_console_text(sys.stderr, stderr)
-    return completed.returncode
+    _render_recipe_container_logs(returncode, stdout, stderr, needles)
+    return returncode
 
 
 def _write_console_text(stream, value):
