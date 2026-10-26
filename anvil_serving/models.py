@@ -2489,12 +2489,12 @@ def _await_recipe_container_healthy(
         except serve_recipes.RecipeError:
             return False, "recipe container identity unavailable"
         last_state = identity.get("state")
+        if last_state not in {"created", "restarting", "running"}:
+            return False, last_state
         containment_error = serve_recipes.recipe_memory.containment_error(
             identity.get("host_memory") or {}, recipe.get("serve"))
         if containment_error:
             return False, containment_error
-        if last_state not in {"created", "restarting", "running"}:
-            return False, last_state
         if _health(serve["port"], serve.get("health", "/health")) == 200:
             return True, last_state
         now = _monotonic()
