@@ -71,6 +71,33 @@ def test_signal_writer_refuses_non_json_counter_values(tmp_path):
     assert not list(tmp_path.glob(".signal-*"))
 
 
+@pytest.mark.parametrize("denials", [2, 10])
+def test_signal_replacement_retries_transient_denial_but_remains_bounded(tmp_path, monkeypatch, denials):
+    from anvil_serving.media import memory_guard
+    target = tmp_path / "lease.json"
+    target.write_text('{"value":"old"}')
+    original = Path.replace
+    attempts, waits = [], []
+    def replace(source, destination):
+        attempts.append(source)
+        assert json.loads(target.read_text()) == {"value": "old"}
+        if len(attempts) <= denials:
+            raise PermissionError("Windows reader temporarily denies replacement")
+        return original(source, destination)
+    monkeypatch.setattr(Path, "replace", replace)
+    monkeypatch.setattr(memory_guard.time, "sleep", waits.append)
+    if denials == 10:
+        with pytest.raises(PermissionError):
+            memory_guard.write_signal(target, {"value": "new"})
+        assert len(attempts) == 10
+    else:
+        memory_guard.write_signal(target, {"value": "new"})
+        assert json.loads(target.read_text()) == {"value": "new"}
+        assert len(attempts) == denials + 1
+    assert sum(waits) < .5
+    assert not list(tmp_path.glob(".signal-*"))
+
+
 def test_supervisor_refuses_start_without_a_fresh_signal(tmp_path, monkeypatch):
     from anvil_serving.media.memory_guard import supervise
     settings = policy(tmp_path)

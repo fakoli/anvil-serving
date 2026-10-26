@@ -79,7 +79,15 @@ def write_signal(path: str | Path, value: dict) -> None:
             json.dump(value, stream, allow_nan=False)
             stream.flush()
             os.fsync(stream.fileno())
-        temporary.replace(target)
+        # Windows readers can briefly deny replacement; never extend a stale lease indefinitely.
+        for attempt in range(10):
+            try:
+                temporary.replace(target)
+                break
+            except PermissionError:
+                if attempt == 9:
+                    raise
+                time.sleep(.05)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
