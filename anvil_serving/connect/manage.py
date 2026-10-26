@@ -7,6 +7,7 @@ return structured data suitable for one CLI envelope.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import errno
 import hashlib
 from importlib import resources
 import json
@@ -547,6 +548,76 @@ def _safe_ingress_directory(data: dict[str, Any]) -> None:
             or info.st_uid != gateway_uid or info.st_gid != policy["group_id"]
             or stat.S_IMODE(info.st_mode) != 0o2710):
         raise ManageError("managed ingress directory is unsafe")
+
+
+def _recover_stale_gateway_socket(data: dict[str, Any], runner: Runner | None, *, administrative: bool = False) -> bool:
+    """Under the deployment lock, recover only a stopped gateway's owned socket."""
+    policy = data["service_identities"]["ingress"]
+    gateway_uid, gateway_gid = role_identity(data, "gateway")
+    directory = Path(data["gateway"]["state_directory"] if administrative else policy["directory"])
+    socket_name = "admin.sock" if administrative else "ingress.sock"
+    socket_mode = 0o600 if administrative else 0o660
+    socket_gid = gateway_gid if administrative else policy["group_id"]
+    path = directory / socket_name
+    if not os.path.lexists(path):
+        return False
+
+    def validate_directory() -> None:
+        if administrative:
+            _safe_private_runtime_directory(directory, gateway_uid, gateway_gid)
+        else:
+            _safe_ingress_directory(data)
+
+    validate_directory()
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        pinned = os.fstat(descriptor)
+
+        def owned_socket() -> os.stat_result:
+            info = os.stat(socket_name, dir_fd=descriptor, follow_symlinks=False)
+            if (not stat.S_ISSOCK(info.st_mode) or stat.S_IMODE(info.st_mode) != socket_mode
+                    or info.st_uid != gateway_uid or info.st_gid != socket_gid):
+                raise ManageError("refusing recovery of an unowned gateway socket")
+            return info
+
+        original = owned_socket()
+        unit = "anvil-connect-gateway.service"
+        _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "gateway recovery stop failed")
+        observed = _run(runner, (_SYSTEMCTL, "show", "--property=ActiveState,SubState,MainPID,ControlPID", unit), _VALIDATE_TIMEOUT)
+        lines = observed.stdout.decode("utf-8", "replace").splitlines()
+        fields = dict(line.split("=", 1) for line in lines if "=" in line)
+        if (observed.returncode != 0 or len(lines) != 4
+                or set(fields) != {"ActiveState", "SubState", "MainPID", "ControlPID"}
+                or fields.get("ActiveState") not in {"inactive", "failed"}
+                or fields.get("SubState") not in {"dead", "failed"}
+                or fields.get("MainPID") != "0" or fields.get("ControlPID") != "0"):
+            raise ManageError("gateway is not stopped; gateway socket recovery refused")
+        try:
+            current = owned_socket()
+        except FileNotFoundError:
+            return False  # A graceful stop removed its own listener.
+        if (original.st_dev, original.st_ino) != (current.st_dev, current.st_ino):
+            raise ManageError("gateway socket changed; recovery refused")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+            probe.settimeout(1)
+            try:
+                probe.connect(f"/proc/self/fd/{descriptor}/{socket_name}")
+            except OSError as exc:
+                if exc.errno != errno.ECONNREFUSED:
+                    raise ManageError("gateway socket liveness is unknown; recovery refused") from exc
+            else:
+                raise ManageError("gateway socket is still listening; recovery refused")
+        validate_directory()
+        current_directory = directory.lstat()
+        current = owned_socket()
+        if ((pinned.st_dev, pinned.st_ino) != (current_directory.st_dev, current_directory.st_ino)
+                or (original.st_dev, original.st_ino) != (current.st_dev, current.st_ino)):
+            raise ManageError("gateway socket ownership changed; recovery refused")
+        os.unlink(socket_name, dir_fd=descriptor)
+        os.fsync(descriptor)
+        return True
+    finally:
+        os.close(descriptor)
 
 
 def _validate_closed_memberships(data: dict[str, Any]) -> None:
@@ -2300,6 +2371,11 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     _oidc_ready(data["gateway"]["oidc"]["issuer"], data["caddy"].get("listen", ":443"),
                                 runner, _role_service_identity(data, "edge"), data["caddy"]["tls"]["certificate_file"])
                 touched[unit] = prior[unit]
+                if unit == "anvil-connect-gateway.service":
+                    result["recovered_gateway_sockets"] = [
+                        name for name, administrative in (("ingress", False), ("admin", True))
+                        if _recover_stale_gateway_socket(data, runner, administrative=administrative)
+                    ]
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
                     restarted.append(unit)
