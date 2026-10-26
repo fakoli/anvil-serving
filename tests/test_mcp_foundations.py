@@ -188,11 +188,18 @@ def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable
     # Force-content and temperature are intentionally additive parity fields.
     # Normalize only these exact fields to retain the accepted legacy digest.
     preflight = next(tool for tool in public_tools if tool["name"] == "preflight_probe")["inputSchema"]
-    assert preflight["maxProperties"] == 23
+    assert preflight["maxProperties"] == 26
     assert preflight["properties"].pop("temperature") == {
         "type": "number", "minimum": 0, "maximum": 2, "default": 0,
     }
     assert preflight["properties"].pop("force_nonempty_content") == {"type": "boolean"}
+    assert preflight["properties"].pop("tool_choice_mode") == {
+        "type": "string", "enum": ["auto", "required"], "default": "auto", "maxLength": 262144,
+    }
+    assert preflight["properties"].pop("seed") == {
+        "type": "integer", "minimum": -(2 ** 63), "maximum": 2 ** 63 - 1,
+    }
+    assert preflight["properties"].pop("capture_tool_transport") == {"type": "boolean"}
     preflight["maxProperties"] = 21
     _normalize_benchmark_profile_catalog_delta(public_tools)
     assert _canonical_sha256(public_tools) == PUBLIC_CATALOG_SHA256
@@ -217,11 +224,18 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
     assert schema["properties"].pop("barrier_token") == {"type": "string", "pattern": "^[0-9a-f]{64}$", "maxLength": 262144}
     schema["maxProperties"] = 7
     preflight = next(tool for tool in public_tools if tool["name"] == "preflight_probe")["inputSchema"]
-    assert preflight["maxProperties"] == 23
+    assert preflight["maxProperties"] == 26
     assert preflight["properties"].pop("temperature") == {
         "type": "number", "minimum": 0, "maximum": 2, "default": 0,
     }
     assert preflight["properties"].pop("force_nonempty_content") == {"type": "boolean"}
+    assert preflight["properties"].pop("tool_choice_mode") == {
+        "type": "string", "enum": ["auto", "required"], "default": "auto", "maxLength": 262144,
+    }
+    assert preflight["properties"].pop("seed") == {
+        "type": "integer", "minimum": -(2 ** 63), "maximum": 2 ** 63 - 1,
+    }
+    assert preflight["properties"].pop("capture_tool_transport") == {"type": "boolean"}
     preflight["maxProperties"] = 21
     _normalize_benchmark_profile_catalog_delta(public_tools)
     assert _canonical_sha256(public_tools) == PUBLIC_CATALOG_SHA256
