@@ -317,6 +317,33 @@ recipe TOML, ordered write actions, deferred gate, and manual recovery path. Cre
 and delete use atomic writes and numbered backups. A mutation never overwrites the
 packaged registry implicitly.
 
+### Prepare a Flare package
+
+The pinned Flare qualification candidate has a guarded, non-serving preparation
+path. It downloads the exact model revision and primary package into the recipe's
+persistent Flare home volume under an 8 GiB RAM and 8 GiB RAM-plus-swap ceiling.
+It does not request GPU devices or start a serving process.
+
+```bash
+anvil-serving models recipes prepare local-inference-lab/Qwen3.8-Flash-Next-FLARE \
+  --registry "$FLARE_RECIPE_REGISTRY" --dry-run
+anvil-serving models recipes prepare local-inference-lab/Qwen3.8-Flash-Next-FLARE \
+  --registry "$FLARE_RECIPE_REGISTRY" --confirm
+```
+
+The apply step runs Flare's native `download` with the immutable repository
+revision and exact primary filename, then accepts a receipt only when native
+`flare inspect --json` verifies the signed index and returns the publisher
+namespace and fingerprint pinned by the recipe. The image's embedded/default
+Flare trust profile must make that verification possible; a missing or mismatched
+profile fails closed. If the image and persistent home lack that profile, supply
+`--publisher-keys PATH` with the public `publisher.json` downloaded from the
+recipe's official model repository. An explicit file is accepted only when its
+public key fingerprint and namespace match the recipe pins, and it is mounted
+read-only for inspection. The receipt states that `inspect` does not verify every
+payload byte and that serving-loader validation has not run. Preparation preserves
+the existing Flare cache and does not approve publisher trust or change a serve.
+
 ### Load a recipe
 
 ```bash

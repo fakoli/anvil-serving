@@ -3842,6 +3842,9 @@ def main(argv):
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
     if argv and argv[0] == "recipe":
+        if len(argv) > 1 and argv[1] == "prepare":
+            from . import flare_package_prepare
+            return flare_package_prepare.main(argv[2:])
         return _recipe_main(argv[1:])
     if argv and argv[0] == "cache":
         if len(argv) > 1 and argv[1] == "inventory":

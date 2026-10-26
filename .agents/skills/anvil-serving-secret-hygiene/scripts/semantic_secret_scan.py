@@ -172,6 +172,13 @@ PUBLIC_PI_HOME_FILES = frozenset({
 PUBLIC_NATIVE_AGENT_HOME_FILES = frozenset({
     "anvil_serving/native_agents/sandbox.py", "tests/native_agents/fixtures/rootfs_probe.py",
 })
+# Exact public Flare container paths. These are fixed image-internal volume
+# targets, not operator homes; keep the exception limited to the adapter and
+# its focused offline tests so adjacent paths remain reportable.
+PUBLIC_CONTAINER_HOME_PATHS = {
+    "anvil_serving/flare_package_prepare.py": frozenset({"/".join(("", "home", "flare"))}),
+    "tests/test_flare_package_prepare.py": frozenset({"/".join(("", "home", "flare"))}),
+}
 
 
 def run_git(root: Path, *args: str) -> bytes:
@@ -355,7 +362,9 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
                         and not (normalized_path in PUBLIC_PI_HOME_FILES and match.group("name") == "pi")
                         and not (normalized_path in PUBLIC_NATIVE_AGENT_HOME_FILES
                                  and pattern is UNIX_HOME_PATTERN
-                                 and match.group(0) == "/".join(("", "home", "agent")))):
+                                 and match.group(0) == "/".join(("", "home", "agent")))
+                        and not (match.group(0) in PUBLIC_CONTAINER_HOME_PATHS.get(normalized_path, ())
+                                 and pattern is UNIX_HOME_PATTERN)):
                     findings.append(
                         {
                             "kind": "operator-home-path",
@@ -551,6 +560,12 @@ def self_test() -> int:
         and len(scan_text(separator.join(("C:", "Users", "agent")), path, "self-test")) == 1
         for path in PUBLIC_NATIVE_AGENT_HOME_FILES
     ) and len(scan_text(native_home, "docs/other.md", "self-test")) == 1
+    flare_container_home = "/".join(("", "home", "flare"))
+    container_home_safe = all(
+        not scan_text(flare_container_home, path, "self-test")
+        and len(scan_text(flare_container_home + " " + slash_home, path, "self-test")) == 1
+        for path in PUBLIC_CONTAINER_HOME_PATHS
+    ) and len(scan_text(flare_container_home, "docs/other.md", "self-test")) == 1
     local_hostname_boundary_safe = (
         not scan_text(
             f"https://{public_local_prefix_hostname}/aider",
@@ -569,6 +584,7 @@ def self_test() -> int:
     passed = (
         scoped_constants_safe
         and native_constants_safe
+        and container_home_safe
         and local_hostname_boundary_safe
         and
         Counter(finding["kind"] for finding in findings) == expected_semantic_kinds

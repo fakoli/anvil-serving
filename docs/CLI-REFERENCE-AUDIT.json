@@ -32,7 +32,7 @@
         "mcp-serve": 15,
         "mcp-tools": 4,
         "models-cache-prune": 4,
-        "models-recipes": 43,
+        "models-recipes": 45,
         "models-score": 2,
         "router-run": 16,
         "serves-multiplex": 1,
@@ -99,7 +99,7 @@
         "mcp-serve": 19,
         "mcp-tools": 5,
         "models-cache-prune": 9,
-        "models-recipes": 77,
+        "models-recipes": 80,
         "models-score": 5,
         "router-run": 36,
         "serves-multiplex": 4,
@@ -112,12 +112,12 @@
       "files_by_category": {
         "docs": 238,
         "examples": 253,
-        "implementation": 499,
+        "implementation": 500,
         "skills": 21,
-        "tests": 580,
+        "tests": 581,
         "tooling": 36
       },
-      "files_scanned": 1627,
+      "files_scanned": 1629,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

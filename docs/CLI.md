@@ -144,6 +144,7 @@ required operands, choices, and defaults.
 | `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes prepare` | Download and verify the pinned Flare package without starting a serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--publisher-keys` |
 | `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes status` | Inspect one recipe-loaded candidate container. | `read` / `bounded` | - |
 | `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
