@@ -44,12 +44,22 @@ def completed_receipt(path, stopped):
     return receipt
 
 
-def _snapshot(path, compose, service, container, stopped, *, _run, env_file, execution_env):
+def _snapshot(path, compose, service, container, stopped, *, _run, env_file, execution_env,
+              rollback_to_predecessor=False):
     receipt = completed_receipt(path, stopped)
     preview, auth = receipt['preview'], receipt['authorization']
     successor = auth['successor']
-    require(compose == successor['compose'] and service == lifecycle.DEFAULT_SERVICE
-        and container == lifecycle.DEFAULT_CONTAINER)
+    require(service == lifecycle.DEFAULT_SERVICE and container == lifecycle.DEFAULT_CONTAINER)
+    if rollback_to_predecessor:
+        target = {'compose': preview['compose_path'], 'image_id': stopped['image_id'],
+                  'configuration_revision': auth['expected_configuration_revision'],
+                  'compose_sha256': preview['compose_sha256']}
+        require(compose == target['compose'])
+        expected_compose_sha256 = preview['compose_sha256']
+    else:
+        target = successor
+        require(compose == target['compose'])
+        expected_compose_sha256 = target['compose_sha256']
     environment = preview.get('environment')
     if environment is None:
         require(env_file is None)
@@ -59,13 +69,16 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
             and '..' not in Path(environment['file']).parts and env_file == environment['file'])
         hex_id(environment['sha256'])
         require(hashlib.sha256(read_private_auth_file(env_file, max_bytes=65536)).hexdigest() == environment['sha256'])
-    for file, expected in ((preview['compose_path'], preview['compose_sha256']),
-                           (compose, successor['compose_sha256'])):
-        require(hashlib.sha256(read_private_auth_file(file, max_bytes=2*1024**2)).hexdigest() == expected)
-    candidate = _current_successor(successor, preview['incarnation'], _run=_run)
+    for target_path, expected_digest in ((preview['compose_path'], preview['compose_sha256']),
+                                         (compose, expected_compose_sha256)):
+        require(hashlib.sha256(read_private_auth_file(target_path, max_bytes=2*1024**2)).hexdigest()
+                == expected_digest)
+    candidate = _current_successor(target, preview['incarnation'], _run=_run)
     old = lifecycle._offline_compose_roster(preview['compose_path'], service, container, _run=_run,
         env_file=env_file, execution_env=execution_env, _metadata_only=True, _owner_state_only=True)
     require(old['owner_storage']['configuration_revision'] == auth['expected_configuration_revision'])
+    if rollback_to_predecessor:
+        require(candidate == old['rendered'] and target['image_id'] == stopped['image_id'])
     selected = candidate['services'][service]
     # Config aliases are declared mounts of the same old/new file. Preserve
     # their exact destinations and every other runtime/mount declaration.
@@ -90,7 +103,7 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
         require(result.returncode == 0 and len(result.stdout or '') <= lifecycle.MAX_COMPOSE_FILE_BYTES)
         return result.stdout or ''
     scope = lifecycle._owner_storage_scope(candidate, mounts, config, {}, read)
-    require(scope['configuration_revision'] == successor['configuration_revision']
+    require(scope['configuration_revision'] == target['configuration_revision']
         and all(scope[k] == old['owner_storage'][k] for k in ('sources', 'directories', 'lineages')))
     from .router.config import _parse_server_config
     def settings(rendered):
@@ -114,10 +127,32 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
     before = snapshot()
     receipt = before[0]
     preview, auth = receipt['preview'], receipt['authorization']
+    _verify_unconsumed_death(receipt, stopped, _run=_run, service=service, container=container,
+        env_file=env_file, execution_env=execution_env)
+    if auth['successor']['image_id'] != stopped['image_id']:
+        # An image update is bounded to unchanged config bytes. Probe the exact
+        # new image with the old bind sources so generic incumbent custody stays
+        # strict; the actual successor's source relocation is separately bound.
+        require(auth['successor']['configuration_revision'] == auth['expected_configuration_revision'])
+        probe = strict_json(read_private_auth_file(preview['compose_path'], max_bytes=2*1024**2))
+        probe['services'][service]['image'] = before[2]['services'][service]['image']
+        from .router.maintenance import _publish
+        with tempfile.TemporaryDirectory(prefix='anvil-router-successor-probe-') as directory:
+            probe_path = Path(directory) / 'compose.json'
+            _publish(probe_path, probe)
+            lifecycle.require_router_offline(str(probe_path), service, container=container, _run=_run,
+                env_file=env_file, execution_env=execution_env)
+    require(snapshot() == before)
+    return receipt
+
+
+def _verify_unconsumed_death(receipt, stopped, *, _run, service, container, env_file,
+                             execution_env):
+    preview, auth = receipt['preview'], receipt['authorization']
     native = preview['native']
     marker = {'schema': 'router-current-stop-permission/v1', 'authorization': auth,
               'native_sha256': digest(native)}
-    # Existing image primitives only: no package upgrade or proof publication.
+    # This helper runs the predecessor image and only reads its retained store.
     code = ("import json;from pathlib import Path;"
         "from anvil_serving.router.config import load_server_config;"
         "from anvil_serving.router.keys import KeyStore,_private_json;"
@@ -137,18 +172,18 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
         and record['death']['stopped'] == stopped and digest(record['death']) == receipt['death_sha256']
         and record['death']['closure_generation'] == native['observation']['closure']['generation']
         and record['death']['closure_consumed'] is False)
-    if auth['successor']['image_id'] != stopped['image_id']:
-        # An image update is bounded to unchanged config bytes. Probe the exact
-        # new image with the old bind sources so generic incumbent custody stays
-        # strict; the actual successor's source relocation is separately bound.
-        require(auth['successor']['configuration_revision'] == auth['expected_configuration_revision'])
-        probe = strict_json(read_private_auth_file(preview['compose_path'], max_bytes=2*1024**2))
-        probe['services'][service]['image'] = before[2]['services'][service]['image']
-        from .router.maintenance import _publish
-        with tempfile.TemporaryDirectory(prefix='anvil-router-successor-probe-') as directory:
-            probe_path = Path(directory) / 'compose.json'
-            _publish(probe_path, probe)
-            lifecycle.require_router_offline(str(probe_path), service, container=container, _run=_run,
-                env_file=env_file, execution_env=execution_env)
-    require(snapshot() == before)
+
+
+def require_predecessor(path, compose, service, container, stopped, *, _run, env_file=None,
+                        execution_env=None):
+    """Validate and select only the byte-pinned predecessor as an explicit rollback."""
+    before = _snapshot(path, compose, service, container, stopped, _run=_run,
+        env_file=env_file, execution_env=execution_env, rollback_to_predecessor=True)
+    receipt = before[0]
+    _verify_unconsumed_death(receipt, stopped, _run=_run, service=service, container=container,
+        env_file=env_file, execution_env=execution_env)
+    lifecycle.require_router_offline(compose, service, container=container, _run=_run,
+        env_file=env_file, execution_env=execution_env)
+    require(_snapshot(path, compose, service, container, stopped, _run=_run,
+        env_file=env_file, execution_env=execution_env, rollback_to_predecessor=True) == before)
     return receipt

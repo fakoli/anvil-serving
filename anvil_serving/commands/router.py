@@ -215,6 +215,7 @@ def commands() -> CommandNode:
                     _option("--recreate", summary="Force-recreate only the router service."),
                     _option("--startup-abort-config", summary="Exact completed failed-startup recovery declaration.", value_name="PATH"),
                     _option("--current-stop-receipt", summary="Completed current-owner stop authorizing this exact closed successor.", value_name="PATH"),
+                    _option("--rollback-current-stop", summary="Select only the exact predecessor bound by the completed stop receipt."),
                 ),
                 mutation="mutate",
                 remote_operation=_remote(

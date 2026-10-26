@@ -12932,6 +12932,15 @@
           "requires_confirmation": false,
           "summary": "Completed current-owner stop authorizing this exact closed successor.",
           "value_name": "PATH"
+        },
+        {
+          "flags": [
+            "--rollback-current-stop"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Select only the exact predecessor bound by the completed stop receipt.",
+          "value_name": null
         }
       ],
       "output_policy": "bounded",

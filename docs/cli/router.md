@@ -904,6 +904,26 @@ custody, starting a successor or changing admission. Confirmation starts the new
 owner CLOSED; it never readmits traffic or claims remote memory completion.
 `--current-stop-receipt` and `--startup-abort-config` are mutually exclusive.
 
+If the acknowledged successor fails its offline custody probe before it starts,
+the completed stop receipt also permits one explicit rollback to the exact
+predecessor recorded in its preview. Supply that original Compose path and the
+same declared environment file, when present:
+
+```bash
+anvil-serving router up --compose predecessor-compose.json --current-stop-receipt /protected/current-stop.json --rollback-current-stop --dry-run
+anvil-serving router up --compose predecessor-compose.json --current-stop-receipt /protected/current-stop.json --rollback-current-stop --confirm
+```
+
+This mode accepts only the receipt's original `preview.compose_path` and
+`preview.compose_sha256`, the stopped predecessor image ID, and the original
+configuration revision, mounts, storage lineage and environment declaration.
+It rechecks the unconsumed native death proof and exact stopped container before
+starting. It cannot retarget the receipt to another image or configuration,
+change its authorization or native marker, or recover a predecessor after the
+successor has started. Dry-run performs the same read-only custody checks and
+does not start the service. Confirmation starts the predecessor closed;
+successor readmission remains a separate guarded operation.
+
 This phase keeps the existing closure/anchor/death schemas. A predecessor that
 supports native maintenance-preview can be observed without replacing its
 running code. A successor supporting those custody schemas can recover the
