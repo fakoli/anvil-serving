@@ -24,8 +24,16 @@
   "captured_source_template_tokenizer_bytes_equal": true,
   "sampler_sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
   "runtime_template_sha256": "b5bbea09a508f00213386271fae738fb6373bf396e0cc19baaa9675a10952bb0",
-  "tokenizer_json_sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d",
-  "tokenizer_config_sha256": "98b1271574f41abf89427ae2dda030d94dc9478f0edc5a8bd240db213c6fd5fc",
+  "tokenizer_artifacts": [
+    {
+      "file": "tokenizer.json",
+      "sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d"
+    },
+    {
+      "file": "tokenizer_config.json",
+      "sha256": "98b1271574f41abf89427ae2dda030d94dc9478f0edc5a8bd240db213c6fd5fc"
+    }
+  ],
   "reasoning_start_token": 154841,
   "reasoning_end_token": 154842,
   "engine_running": 0,

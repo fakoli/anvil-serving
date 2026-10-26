@@ -56,8 +56,8 @@
         },
         {
           "path": "projection-ledger.json",
-          "sha256": "1b3c2c33d4215aa2429c860647bc6f737d432c8cc7f34e9e76646438492d803b",
-          "bytes": 6169
+          "sha256": "632a36fe884efa499ab24040dd6f2e6d5981fe71431030c752db877bda8fc6d9",
+          "bytes": 6286
         }
       ],
       "reason": "Dated primary sources, independent oracle design, and private-to-public provenance."
@@ -141,8 +141,8 @@
       "files": [
         {
           "path": "friction-log.md",
-          "sha256": "9a194cc0d05741e91bb9974e28e49ed1ca86c4b61630169e3f3c3bda926ff011",
-          "bytes": 2153
+          "sha256": "9645b3a9282abe1011a19934d714c50cd4829e88a5d49930cfecb16e88faaad4",
+          "bytes": 2228
         },
         {
           "path": "kernel-summary.json",
@@ -178,8 +178,8 @@
         },
         {
           "path": "runtime-restored.json",
-          "sha256": "8ff2d77e5f2639ab685776c900df97f96841a06955e3a18e4daca744cfc4d778",
-          "bytes": 1682
+          "sha256": "aec75ba0211fa4ada41c9f6cbafa57c1c19d0fc68649b887287a7343a83960b8",
+          "bytes": 1784
         },
         {
           "path": "router-restored.json",

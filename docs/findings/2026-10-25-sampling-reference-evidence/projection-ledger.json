@@ -61,7 +61,7 @@
       "private_artifact": "runtime-restored.json",
       "private_sha256": "f778c0d401e7fdff69afadbe3c54fa4b0c932484d526ccf5923ae341aec9ba19",
       "public_artifacts": ["runtime-restored.json"],
-      "projection": "Retained immutable model/image/source/template/tokenizer/launch identities, containment, memory events, and idle engine counts; omitted process inventory, PIDs, private paths, and host identity."
+      "projection": "Retained immutable model/image/source/template/tokenizer/launch identities, containment, memory events, and idle engine counts; represented tokenizer file digests as file/sha256 records to distinguish artifact hashes from credential signatures; omitted process inventory, PIDs, private paths, and host identity."
     },
     {
       "private_artifact": "router-restored.json",
