@@ -389,7 +389,8 @@ def split_into_deltas(text: str) -> List[str]:
     if not text:
         return []
     return [word if index == 0 else " " + word
-            for index, word in enumerate(text.split(" ")) if word]
+            for index, word in enumerate(text.split(" "))
+            if index > 0 or word]
 
 
 class RelayBackendError(RuntimeError):
