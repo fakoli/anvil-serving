@@ -504,3 +504,34 @@ def test_opaque_finish_reason_is_unknown_not_echoed(finish):
                             {**_MARKERS, "expected_model": "diagnostic-model"})
     assert result["finish_reason"] == "unknown" and result["response_anomalies"]
     assert "private-marker" not in json.dumps(result)
+
+
+def test_candidate_patch_is_explicit_and_preserves_original_packet(tmp_path):
+    plan = copy.deepcopy(_PLAN)
+    plan["runtime"]["image_digest"] = "sha256:" + "a" * 64
+    paths = _inputs(tmp_path, plan=plan)
+    with pytest.raises(ValueError, match="runtime differs"):
+        probe.run(*paths, False)
+    plan["runtime_patch"] = {
+        "base_image_digest": probe._RUNTIME["image_digest"],
+        "base_source_sha256": probe._PATCH_BASE_SOURCE,
+        "upstream_commit": probe._PATCH_COMMIT,
+        "source_sha256": probe._PATCH_SOURCE,
+    }
+    paths[1].write_text(json.dumps(plan))
+    assert probe.run(*paths, False)["network"] is False
+    for key in plan["runtime_patch"]:
+        altered = copy.deepcopy(plan)
+        altered["runtime_patch"][key] = "unreviewed"
+        paths[1].write_text(json.dumps(altered))
+        with pytest.raises(ValueError, match="pinned upstream"):
+            probe.run(*paths, False)
+    for source_hash in ("b" * 64, probe._PATCH_BASE_SOURCE):
+        altered = copy.deepcopy(plan)
+        altered["runtime_patch"]["source_sha256"] = source_hash
+        with pytest.raises(ValueError, match="pinned upstream"):
+            probe._validate_runtime_patch(altered)
+    plan["runtime"]["image_digest"] = probe._RUNTIME["image_digest"]
+    with pytest.raises(ValueError, match="distinct immutable"):
+        probe._validate_runtime_patch(plan)
+    assert not paths[-1].exists()

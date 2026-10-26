@@ -3,22 +3,33 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import heapq
 import json
+import shlex
 import subprocess
+import sys
 import time
-import urllib.request
 from pathlib import Path
 
 from . import serve_recipes
 from .models import _recipe_container_identity
+from .router.request_control import RequestControlError
 from .transports import _run_bounded_process
-from .router.backends.relay import _direct_open
-from .reasoning_probe import _json, _read_bytes
+from .reasoning_probe import _bounded_get, _json, _read_bytes, _validate_runtime_patch, _PATCH_BASE_SOURCE
 
 MODEL = "nvidia/GLM-5.3-Flash-FP4-Local"
 REVISION = "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5"
 TEMPLATE = "/opt/lil/runtime/templates/glm53-flash.jinja"
 MODEL_PATH = "/root/.cache/huggingface/hub/models--nvidia--GLM-5.3-Flash-FP4-Local/snapshots/" + REVISION
+_PATCH_ENTRYPOINT = ["python3", "/opt/anvil-sampling/launch.py", "vllm", "serve"]
+_PATCH_FILES = {
+    "launch.py": "24203cc50619e0b4116be44cecb14d800f6b2845298f998e1384c6adeb369cd1",
+    "kernel_regression.py": "2f2bdedf444d334fe9a984d884835e4524b331d1e453450cc1bb25e7b5d7b091",
+    "verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c",
+    "baseline.py": _PATCH_BASE_SOURCE,
+}
+_PROCESS_LIMIT = 4096
+_PROC_READ_BYTES = 64 * 1024
 SOURCE_FILES = (
     "sampling_params.py", "config/reasoning.py",
     "entrypoints/openai/chat_completion/protocol.py",
@@ -58,6 +69,8 @@ def read_file(label, path, maximum):
     return data
 for name in settings["source_files"]:
     read_file("vllm/" + name, root / name, 2 * 1024 * 1024)
+for name in settings["patch_files"]:
+    read_file("patch/" + name, Path("/opt/anvil-sampling") / name, 256 * 1024)
 read_file("runtime-template", Path(settings["template"]), 256 * 1024)
 model = Path(settings["model_path"])
 read_file("tokenizer.json", model / "tokenizer.json", 32 * 1024 * 1024)
@@ -106,7 +119,7 @@ def _launch_projection(row):
     for item in config.get("Env") or []:
         key, separator, value = item.partition("=")
         if separator and key in {"VLLM_USE_V2_MODEL_RUNNER", "VLLM_USE_FASTOKENS",
-                                  "VLLM_USE_FLASHINFER_SAMPLER"}:
+                                  "VLLM_USE_FLASHINFER_SAMPLER", "ANVIL_SAMPLING_TRACE"}:
             if key in environment:
                 raise ValueError("ambiguous diagnostic environment")
             environment[key] = value
@@ -116,40 +129,121 @@ def _launch_projection(row):
             "flags": flags, "selected_environment": environment,
             "bound_endpoints": serve_recipes._recipe_bound_endpoints(row),
             "command_sha256": hashlib.sha256(json.dumps(command).encode()).hexdigest(),
+            "entrypoint_sha256": hashlib.sha256(json.dumps(config.get("Entrypoint")).encode()).hexdigest(),
             "mounts_sha256": hashlib.sha256(json.dumps(row.get("Mounts"), sort_keys=True).encode()).hexdigest()}
 
 
-def resource_snapshot(port, *, runner=_run_bounded_process):
+def _collect_host_memory_snapshot(proc_root=Path("/proc")):
+    """Fixed child-process collector; the parent enforces the hard wall deadline."""
+    deadline = time.monotonic() + 4
+
+    def read(relative):
+        if time.monotonic() >= deadline:
+            raise TimeoutError("host memory snapshot deadline")
+        with (proc_root / relative).open("rb") as stream:
+            data = stream.read(_PROC_READ_BYTES + 1)
+        if len(data) > _PROC_READ_BYTES:
+            raise ValueError("oversized proc observation")
+        return data.decode()
+
+    def start_time(pid):
+        return int(read(f"{pid}/stat").rsplit(")", 1)[1].split()[19])
+
+    memory = {}
+    for line in read("meminfo").splitlines():
+        name, value = line.split(":", 1)
+        if name in {"MemTotal", "MemFree", "MemAvailable", "SwapTotal", "SwapFree",
+                    "Cached", "Shmem", "SReclaimable", "SUnreclaim"}:
+            memory[name + "_bytes"] = int(value.split()[0]) * 1024
+    if not {"MemTotal_bytes", "MemAvailable_bytes", "SwapTotal_bytes", "SwapFree_bytes"} <= memory.keys():
+        raise ValueError("incomplete host memory observation")
+    swap_io = {name: int(value) for name, value in
+               (line.split() for line in read("vmstat").splitlines())
+               if name in {"pswpin", "pswpout", "oom_kill"}}
+    if len(swap_io) != 3:
+        raise ValueError("incomplete host swap observation")
+    pressure = read("pressure/memory")
+    processes = []
+    start_times = {}
+    unavailable = 0
+    process_ids = heapq.nsmallest(_PROCESS_LIMIT + 1,
+                                (int(path.name) for path in proc_root.iterdir() if path.name.isdigit()))
+    for pid in process_ids[:_PROCESS_LIMIT]:
+        try:
+            incarnation = start_time(pid)
+            fields = dict(line.split(":", 1) for line in read(f"{pid}/status").splitlines())
+            processes.append({"pid": pid, "parent_pid": int(fields["PPid"]),
+                "name": fields["Name"].strip()[:64],
+                "rss_bytes": int(fields.get("VmRSS", "0 kB").split()[0]) * 1024})
+            start_times[pid] = incarnation
+        except (OSError, ValueError, KeyError, IndexError):
+            unavailable += 1
+            continue
+    processes.sort(key=lambda row: row["rss_bytes"], reverse=True)
+    for row in processes[:64]:
+        row["pss_bytes"] = None
+        try:
+            if start_time(row["pid"]) != start_times[row["pid"]]:
+                raise ValueError("process incarnation changed")
+            for line in read(f"{row['pid']}/smaps_rollup").splitlines():
+                if line.startswith("Pss:"):
+                    row["pss_bytes"] = int(line.split()[1]) * 1024
+            if start_time(row["pid"]) != start_times[row["pid"]]:
+                raise ValueError("process incarnation changed")
+        except (OSError, ValueError, IndexError):
+            row["pss_bytes"] = None
+    truncated = len(process_ids) > _PROCESS_LIMIT
+    return {"observed_at_unix": time.time(), "host_memory": memory,
+            "memory_pressure": pressure, "swap_io": swap_io,
+            "process_count_observed": len(processes), "process_inventory_truncated": truncated,
+            "process_inventory_incomplete": truncated or unavailable > 0,
+            "process_rows_unavailable": unavailable,
+            "largest_processes": processes[:64],
+            "process_scope": "Top 64 by RSS among at most 4096 readable PIDs in numeric order; PSS only for unchanged PIDs. RSS and cgroup totals overlap; do not sum them."}
+
+
+_HOST_SNAPSHOT_PROGRAM = ("import json; from anvil_serving.reasoning_probe_runtime import "
+                          "_collect_host_memory_snapshot; print(json.dumps(_collect_host_memory_snapshot()))")
+
+
+def _remaining_seconds(deadline, maximum=5):
+    remaining = maximum if deadline is None else min(maximum, deadline - time.monotonic())
+    if remaining <= 0:
+        raise TimeoutError("runtime inspection deadline")
+    return remaining
+
+
+def host_memory_snapshot(*, runner=_run_bounded_process, deadline=None):
+    """Bound the entire proc scan, including blocked kernel reads, in a child."""
+    result = runner([sys.executable, "-c", _HOST_SNAPSHOT_PROGRAM],
+                    timeout=_remaining_seconds(deadline), max_output_bytes=256 * 1024)
+    if result.returncode:
+        raise ValueError("host memory snapshot unavailable")
+    return _json(result.stdout)
+
+
+def resource_snapshot(port, *, runner=_run_bounded_process, deadline=None):
     """Read local counters; only the two engine occupancy gauges are mandatory."""
     from .benchmarking.campaign_telemetry import metric
     if type(port) is not int or not 1 <= port <= 65535:
         raise ValueError("invalid local metrics port")
-    memory = {}
-    for line in Path("/proc/meminfo").read_text().splitlines():
-        name, value = line.split(":", 1)
-        if name in {"MemTotal", "MemAvailable", "SwapTotal", "SwapFree", "Cached", "SReclaimable"}:
-            memory[name + "_bytes"] = int(value.split()[0]) * 1024
-    pressure = Path("/proc/pressure/memory").read_text()
-    swap_io = {name: int(value) for name, value in
-               (line.split() for line in Path("/proc/vmstat").read_text().splitlines())
-               if name in {"pswpin", "pswpout", "oom_kill"}}
+    host = host_memory_snapshot(runner=runner, deadline=deadline)
     gpu = runner(["nvidia-smi", "--query-gpu=index,memory.used,memory.total,utilization.gpu,power.draw",
-                  "--format=csv,noheader,nounits"], timeout=5, max_output_bytes=8192)
+                  "--format=csv,noheader,nounits"], timeout=_remaining_seconds(deadline), max_output_bytes=8192)
     if gpu.returncode:
         raise ValueError("GPU snapshot unavailable")
-    with _direct_open(urllib.request.Request(f"http://127.0.0.1:{port}/metrics"), timeout=5) as response:
-        raw = response.read(1024 * 1024 + 1)
-    if len(raw) > 1024 * 1024:
-        raise ValueError("oversized engine metrics")
+    raw = _bounded_get(f"http://127.0.0.1:{port}/metrics", {},
+                       timeout_s=_remaining_seconds(deadline), maximum_bytes=1024 * 1024)
     text = raw.decode()
     engine = {name: metric(text, "vllm:num_requests_" + name) for name in ("running", "waiting")}
-    return {"observed_at_unix": time.time(), "host_memory": memory, "memory_pressure": pressure,
-            "swap_io": swap_io, "gpu_csv": gpu.stdout.decode(), "engine": engine}
+    _remaining_seconds(deadline)
+    return {**host, "gpu_csv": gpu.stdout.decode(), "engine": engine}
 
 
 def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_process):
     plan = _json(_read_bytes(Path(plan_path)))
     runtime = plan["runtime"]
+    patch = _validate_runtime_patch(plan)
     recipe = serve_recipes.find_recipe(serve_recipes.load_registry(registry_path), MODEL)
     if (recipe is None or recipe["download"]["revision"] != REVISION
             or recipe["serve"].get("model_path") != MODEL_PATH
@@ -178,7 +272,29 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
         rows = json.loads(run(["docker", "inspect", identity]).stdout)
         if len(rows) != 1:
             raise ValueError("ambiguous runtime identity")
-        return _launch_projection(rows[0])
+        if patch is not None:
+            config = rows[0].get("Config") or {}
+            serve = recipe["serve"]
+            command = _PATCH_ENTRYPOINT[1:] + [MODEL_PATH] + [
+                token for flag in serve.get("flags", []) for token in shlex.split(flag)]
+            trace_settings = [item for item in serve.get("env", [])
+                              if item.partition("=")[0] == "ANVIL_SAMPLING_TRACE"]
+            if (serve.get("entrypoint") != _PATCH_ENTRYPOINT
+                    or serve.get("model_flag") or serve.get("model_env")
+                    or config.get("Entrypoint") != _PATCH_ENTRYPOINT[:1]
+                    or config.get("Cmd") != command
+                    or trace_settings != ["ANVIL_SAMPLING_TRACE=1"]):
+                raise ValueError("runtime patch startup wrapper mismatch")
+            labels = config.get("Labels") or {}
+            expected = {"io.anvil-serving.patch.base-image": patch["base_image_digest"],
+                        "io.anvil-serving.patch.upstream": patch["upstream_commit"],
+                        "io.anvil-serving.patch.source-sha256": patch["source_sha256"]}
+            if any(labels.get(key) != value for key, value in expected.items()):
+                raise ValueError("runtime patch image labels mismatch")
+        observed = _launch_projection(rows[0])
+        if patch is not None and observed["selected_environment"].get("ANVIL_SAMPLING_TRACE") != "1":
+            raise ValueError("runtime patch trace environment mismatch")
+        return observed
 
     projection = launch()
     flags = projection["flags"]
@@ -195,14 +311,20 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
             or any(value not in {"0", "1"} for value in projection["selected_environment"].values())
             or projection["bound_endpoints"] != [{"host_ip": "127.0.0.1", "host_port": port, "container_port": port}]):
         raise ValueError("unsupported reasoning or tokenizer launch configuration")
-    settings = {"source_files": SOURCE_FILES, "template": TEMPLATE, "model_path": MODEL_PATH}
+    settings = {"source_files": SOURCE_FILES, "template": TEMPLATE, "model_path": MODEL_PATH,
+                "patch_files": list(_PATCH_FILES) if patch else []}
     captured = json.loads(run(["docker", "exec", "--env", "CUDA_VISIBLE_DEVICES=",
                               "--env", "HF_HUB_OFFLINE=1", "--env", "TRANSFORMERS_OFFLINE=1",
                               "--env", "PYTHONDONTWRITEBYTECODE=1", identity, "python3", "-B", "-c",
                               CAPTURE_PROGRAM, json.dumps(settings)]).stdout)
     if captured["files"]["runtime-template"]["sha256"] != runtime["template_sha256"]:
         raise ValueError("runtime template hash mismatch")
-    resources = resource_snapshot(port, runner=runner)
+    if patch is not None and captured["files"]["vllm/v1/sample/ops/topk_topp_triton.py"]["sha256"] != patch["source_sha256"]:
+        raise ValueError("runtime patched source hash mismatch")
+    if patch is not None and any(captured["files"]["patch/" + name]["sha256"] != digest
+                                 for name, digest in _PATCH_FILES.items()):
+        raise ValueError("runtime patch regression helper hash mismatch")
+    resources = resource_snapshot(port, runner=runner, deadline=deadline)
     after = _recipe_container_identity(recipe, container, _run=run, require_recipe_digest=True)
     if (launch() != projection or after["container_id"] != identity or not after["running"]
             or after["image_id"] != before["image_id"]):
@@ -215,6 +337,7 @@ def inspect_runtime(registry_path, container, plan_path, *, runner=_run_bounded_
     return {"schema": "anvil-serving.reasoning-runtime-inspection/v1",
             "identity": before, "launch": safe_projection, "capture": captured,
             "resources": resources,
+            "runtime_patch": patch,
             "source_parity": "requires_comparison_with_pinned_source",
             "inference_requests": 0}
 
@@ -227,7 +350,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         result = inspect_runtime(args.registry, args.container, args.plan)
-    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError) as exc:
+    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError, RequestControlError) as exc:
         print(json.dumps({"ok": False, "error": type(exc).__name__}))
         return 1
     print(json.dumps(result, indent=2))

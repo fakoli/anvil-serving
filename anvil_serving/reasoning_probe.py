@@ -44,6 +44,28 @@ _RUNTIME = {
     "template_sha256": "b5bbea09a508f00213386271fae738fb6373bf396e0cc19baaa9675a10952bb0",
     "reasoning_parser": "glm45", "model_runner": "V2", "speculative_tokens": 3,
 }
+_PATCH_COMMIT = "0a1276e5e3d9000488e7590cc0957edd709f2152"
+_PATCH_BASE_SOURCE = "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2"
+_PATCH_SOURCE = "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6"
+
+
+def _validate_runtime_patch(plan: Mapping[str, Any]) -> dict[str, str] | None:
+    patch = plan.get("runtime_patch")
+    if patch is None:
+        return None
+    if not isinstance(patch, dict) or set(patch) != {
+            "base_image_digest", "base_source_sha256", "upstream_commit", "source_sha256"}:
+        raise ValueError("unsupported runtime patch declaration")
+    if (patch["base_image_digest"] != _RUNTIME["image_digest"]
+            or patch["base_source_sha256"] != _PATCH_BASE_SOURCE
+            or patch["upstream_commit"] != _PATCH_COMMIT
+            or patch["source_sha256"] != _PATCH_SOURCE):
+        raise ValueError("runtime patch differs from pinned upstream fix")
+    image = plan["runtime"].get("image_digest")
+    if (not isinstance(image, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image)
+            or image == _RUNTIME["image_digest"]):
+        raise ValueError("runtime patch requires a distinct immutable candidate image")
+    return patch
 _CASES = [
     {"id": "boundary", "prompt": "Solve SEND + MORE = MONEY in decimal. Different letters are different digits and leading digits cannot be zero. Return only the three integers SEND, MORE, MONEY separated by commas.", "expected_integers": [9567, 1085, 10652]},
     {"id": "natural_end_fallback", "condition": "Only if boundary case naturally ends reasoning below 64 tokens with coherent output and enforcement remains untested.", "prompt": "Solve CROSS + ROADS = DANGER in decimal. Different letters are different digits and leading digits cannot be zero. Return only the three integers CROSS, ROADS, DANGER separated by commas.", "expected_integers": [96233, 62513, 158746]},
@@ -117,22 +139,24 @@ def _loopback_endpoint(base_url: str) -> str:
     return f"http://127.0.0.1:{parsed.port}"
 
 
-def _bounded_get(url: str, headers: Mapping[str, str]) -> bytes:
-    control = RequestControl(admission_timeout_s=_CHECK_SECONDS,
-        startup_timeout_s=_CHECK_SECONDS, idle_timeout_s=_CHECK_SECONDS,
-        total_timeout_s=_CHECK_SECONDS)
-    timer = threading.Timer(_CHECK_SECONDS, control.cancel)
+def _bounded_get(url: str, headers: Mapping[str, str], *, timeout_s=None, maximum_bytes=None) -> bytes:
+    timeout_s = _CHECK_SECONDS if timeout_s is None else timeout_s
+    maximum_bytes = _CHECK_BYTES if maximum_bytes is None else maximum_bytes
+    control = RequestControl(admission_timeout_s=timeout_s,
+        startup_timeout_s=timeout_s, idle_timeout_s=timeout_s,
+        total_timeout_s=timeout_s)
+    timer = threading.Timer(timeout_s, control.cancel)
     timer.daemon = True
     response = None
     timer.start()
     try:
         control.start_upstream()
         response = _controlled_stream_open(url, data=None, headers=headers,
-            timeout=_CHECK_SECONDS, control=control, method="GET")
+            timeout=timeout_s, control=control, method="GET")
         control.set_upstream_close(lambda: _interrupt_response(response))
-        raw = response.read(_CHECK_BYTES + 1)
+        raw = response.read(maximum_bytes + 1)
         control.check()
-        if len(raw) > _CHECK_BYTES:
+        if len(raw) > maximum_bytes:
             raise ValueError("owner check exceeds size limit")
         return raw
     finally:
@@ -174,10 +198,12 @@ def _validate(plan: Mapping[str, Any], boundary: Mapping[str, Any]) -> None:
         raise ValueError("unsupported plan schema")
     allowed = {"schema", "status", "execution_authorized", "live_identity_verified", "ignis",
                "runtime", "limits", "isolated_tier_extra_body", "request_common", "cases",
-               "required_evidence", "stop_conditions", "execution_prerequisites"}
+               "required_evidence", "stop_conditions", "execution_prerequisites", "runtime_patch"}
     if set(plan) - allowed:
         raise ValueError("unsupported plan fields")
-    for key, expected in (("runtime", _RUNTIME), ("limits", _LIMITS),
+    patch = _validate_runtime_patch(plan)
+    expected_runtime = {**_RUNTIME, "image_digest": plan["runtime"]["image_digest"]} if patch else _RUNTIME
+    for key, expected in (("runtime", expected_runtime), ("limits", _LIMITS),
                           ("isolated_tier_extra_body", _SETTINGS),
                           ("request_common", _COMMON), ("cases", _CASES)):
         if not _same(plan.get(key), expected):
@@ -448,6 +474,7 @@ def run(router_config: Path, plan_path: Path, boundary_path: Path, output: Path,
     try:
         artifacts.record("start.json", {**preview, "status": "started", "network": True, "started_at": _timestamp(),
                          "authorization": "explicit_confirm", "runtime": plan["runtime"],
+                         "runtime_patch": plan.get("runtime_patch"),
                          "plan_sha256": _digest(plan_bytes), "boundary_sha256": _digest(boundary_bytes)})
         for index, case in enumerate(plan["cases"]):
             if time.monotonic() - started + 2 * _CHECK_SECONDS + _REQUEST_SECONDS + _CLEANUP_SECONDS > _WINDOW_SECONDS:
