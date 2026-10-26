@@ -45,8 +45,8 @@ def test_recipe_logs_filter_case_insensitive_literals_across_streams(capsys):
     ) == 0
 
     captured = capsys.readouterr()
-    assert captured.out == "KV cache ready\n"
-    assert captured.err == "CUDA ERROR at decode\n"
+    assert captured.out == "KV cache ready\nCUDA ERROR at decode\n"
+    assert captured.err == ""
 
 
 def test_recipe_logs_reject_multiline_filter_before_reading_logs():

@@ -25,6 +25,6 @@ managed log projection failed to put it in its normal output stream.
 
 ## Verification
 
-Focused regression selection: 7 passed, 221 deselected. Ruff checks passed for
-the changed Python modules, and `git diff --check` passed. No live container or
-model request was used.
+Affected test files: 233 passed. Ruff checks passed for the changed Python
+modules, and `git diff --check` passed. No live container or model request was
+used.

@@ -420,22 +420,40 @@ def test_recipe_logs_emit_redacted_stderr_only_container_output_as_data(
     assert "private-test-token" not in captured.out
 
 
+@pytest.mark.parametrize("registered", [False, True])
 def test_recipe_logs_keep_docker_failure_status_and_diagnostic_on_stderr(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
+    registered: bool,
 ) -> None:
     identity = serve_recipes._recipe_container_record(_row("candidate"))
     assert identity is not None
+    monkeypatch.setattr(models, "_recipe_container_identity", lambda *args, **kwargs: identity)
     monkeypatch.setattr(models, "_recheck_discovered_recipe_container", lambda *args, **kwargs: identity)
 
     def run(argv, **_kwargs):
         return _completed(argv, returncode=17, stderr="docker: token=private-test-token denied\n")
 
-    returncode = models._discovered_recipe_container_logs(identity, _run=run)
+    if registered:
+        returncode = models._recipe_container_logs(
+            {"model": "org/model"}, "candidate", _run=run,
+        )
+    else:
+        returncode = models._discovered_recipe_container_logs(identity, _run=run)
     captured = capsys.readouterr()
     assert returncode == 17
     assert captured.out == ""
     assert captured.err == "docker: token=<redacted> denied\n"
+
+
+def test_recipe_log_capture_rejects_output_over_byte_limit() -> None:
+    oversized_output = "x" * (models._RECIPE_LOG_CAPTURE_BYTES + 1)
+
+    with pytest.raises(serve_recipes.RecipeError, match="capture byte limit"):
+        models._bounded_recipe_log_capture(
+            ["docker", "logs", "container-id"],
+            _run=lambda argv, **_kwargs: _completed(argv, stdout=oversized_output),
+        )
 
 
 def test_recipe_log_metadata_rechecks_discovered_identity_and_uses_interval_flags(monkeypatch: pytest.MonkeyPatch) -> None:
