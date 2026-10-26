@@ -1,0 +1,69 @@
+name: Router image native WAL smoke
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile"
+      - "scripts/router_wal_image_smoke.py"
+      - "LICENSE"
+      - "README.md"
+      - "pyproject.toml"
+      - "anvil_serving/**"
+      - ".github/workflows/router-image.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "scripts/router_wal_image_smoke.py"
+      - "LICENSE"
+      - "README.md"
+      - "pyproject.toml"
+      - "anvil_serving/**"
+      - ".github/workflows/router-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: router-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  router-image:
+    name: Canonical router image (bounded native WAL smoke)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure a single-step BuildKit worker
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker-container
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 1
+
+      - name: Build the canonical router target with bounded build steps
+        run: >-
+          docker buildx build
+          --progress plain
+          --pull
+          --platform linux/amd64
+          --target router
+          --tag anvil-serving:router-wal-smoke
+          --load
+          --metadata-file "${{ runner.temp }}/router-image.json"
+          --resource memory=2048m
+          --resource memory-swap=2048m
+          --resource cpu-period=100000
+          --resource cpu-quota=200000
+          .
+
+      - name: Retain image identity
+        uses: actions/upload-artifact@v7
+        with:
+          name: router-image-identity
+          path: ${{ runner.temp }}/router-image.json
+          if-no-files-found: error
