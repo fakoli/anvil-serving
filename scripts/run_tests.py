@@ -10,6 +10,10 @@ untrusted: the native bootstrap file-read boundary walks every ancestor from
 fails that contract turns ``test_bootstrap_opened_file`` cases into a cryptic
 ``PRECONDITION_FAILED`` deep inside the suite, so the wrapper reports the
 offending directory and the remediation up front.
+
+POSIX temporary roots also satisfy native custody and remain outside Git.
+An unsuitable system temp directory falls back to the user runtime directory
+or home; only the unique run directory is created or removed, never a parent.
 """
 
 from __future__ import annotations
@@ -88,6 +92,36 @@ def source_identity() -> dict:
         raise ValueError("cannot establish Git source identity") from error
 
 
+def create_test_temporary_directory() -> str:
+    """Select a short, private fixture root without relaxing product custody."""
+    if sys.platform == "win32":
+        return tempfile.mkdtemp(prefix="as-test-")
+    from anvil_serving.propagation_native_acceptance import NativeAcceptanceError, _custody
+
+    problems = []
+    def runtime_directory() -> str:
+        return os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.geteuid()}"
+
+    for label, candidate in (("system temp", tempfile.gettempdir),
+                             ("user runtime", runtime_directory), ("home", Path.home)):
+        parent = label
+        directory = None
+        try:
+            parent = Path(candidate()).resolve()
+            _custody(parent, directory=True)
+            if any(os.path.lexists(item / ".git") for item in (parent, *parent.parents)):
+                raise ValueError("temporary root must be outside Git")
+            directory = tempfile.mkdtemp(prefix="as-test-", dir=parent)
+            _custody(directory, directory=True)
+            return directory
+        except (OSError, ValueError, RuntimeError, NativeAcceptanceError) as error:
+            if directory is not None:
+                shutil.rmtree(directory)
+            problems.append(f"{parent}: {error}")
+    raise ValueError("no suitable test temporary root; set TMPDIR to a trusted, non-Git directory: "
+                     + "; ".join(problems))
+
+
 def write_receipt(path: Path, receipt: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent, delete=False) as stream:
@@ -135,6 +169,12 @@ def main(argv: list[str] | None = None) -> int:
         env = dict(os.environ)
         env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
         problems.extend(preflight(Path.cwd(), env))
+        if not problems:
+            try:
+                base_temp = create_test_temporary_directory()
+                receipt["base_temp"] = base_temp
+            except (OSError, ValueError) as error:
+                problems.append(str(error))
         if problems:
             receipt.update(state="preflight_failed", exit_code=2, problems=problems)
             print("run_tests.py: " + "\n".join(problems), file=sys.stderr)
@@ -143,7 +183,8 @@ def main(argv: list[str] | None = None) -> int:
             receipt.update(state="preflight_passed", exit_code=0)
             return 0
         args = args or ["tests/", "-q"]
-        base_temp = tempfile.mkdtemp(prefix="anvil-serving-pytest-")
+        for name in ("TMPDIR", "TEMP", "TMP"):
+            env[name] = base_temp
         command = [sys.executable, "-m", "pytest", *args, "--basetemp", base_temp]
         receipt.update(state="running", command=command)
         write_receipt(options.receipt, receipt)
