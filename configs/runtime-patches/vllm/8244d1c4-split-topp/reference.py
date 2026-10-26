@@ -4,6 +4,9 @@ import hashlib
 import math
 import struct
 
+UPSTREAM_POLICY = "upstream-count-v1"
+STRICT_POLICY = "strict-reference-v1"
+
 
 class OracleBoundaryAmbiguous(ValueError):
     """Compensated scan and independent boundary summation disagree."""
@@ -56,8 +59,10 @@ def float32_sha256(values):
     return hashlib.sha256(struct.pack(">" + "f" * len(values), *values)).hexdigest()
 
 
-def compare_masks(logits, top_p, baseline_mask, patched_mask):
+def compare_masks(logits, top_p, baseline_mask, patched_mask, *, policy=STRICT_POLICY):
     """Return row diagnostics and the predeclared conservative acceptance gate."""
+    if policy not in {STRICT_POLICY, UPSTREAM_POLICY}:
+        raise ValueError("Unknown sampling admission policy")
     if len(logits) != len(baseline_mask) or len(logits) != len(patched_mask):
         raise ValueError("Mask length mismatch")
     if any(type(value) is not bool for mask in (baseline_mask, patched_mask) for value in mask):
@@ -96,7 +101,13 @@ def compare_masks(logits, top_p, baseline_mask, patched_mask):
         "patched_difference_not_worse": patched["reference_difference"]["count"] <= baseline["reference_difference"]["count"],
         "patched_count_error_bounded": count_error <= 3 or count_error * 200 < reference_count,
     }
+    strict_diagnostics = {name: checks[name] for name in
+                          ("patched_difference_not_worse", "patched_count_error_bounded")}
+    if policy == UPSTREAM_POLICY:
+        for name in strict_diagnostics:
+            del checks[name]
     return {"passed": all(checks.values()), "checks": checks, "input_sha256_f32be": input_sha256,
+            "policy": policy, "strict_diagnostics": strict_diagnostics,
             "reference": {"kept_count": reference_count, "retained_mass": mass(reference),
                           "remove_lowest_mass": mass(set(order[:reference_count - 1])),
                           "boundary": boundary(order[reference_count - 1])},
@@ -104,7 +115,7 @@ def compare_masks(logits, top_p, baseline_mask, patched_mask):
             "version_difference": _indices(masks[0] ^ masks[1])}
 
 
-def compare_outputs(logits, top_p, baseline_output, patched_output):
+def compare_outputs(logits, top_p, baseline_output, patched_output, *, policy=STRICT_POLICY):
     """Validate exact fp32 preservation before interpreting kernel masks."""
     input_bits = memoryview(struct.pack("=" + "f" * len(logits), *logits)).cast("I")
     masks, invalid_counts = [], []
@@ -117,8 +128,24 @@ def compare_outputs(logits, top_p, baseline_output, patched_output):
                                   else output[i] != -math.inf
                                   for i, finite in enumerate(kept)))
         masks.append(kept)
-    result = compare_masks(logits, top_p, *masks)
+    result = compare_masks(logits, top_p, *masks, policy=policy)
     result["invalid_output_counts"] = invalid_counts
     result["checks"]["valid_mask_outputs"] = not any(invalid_counts)
     result["passed"] = all(result["checks"].values())
     return result
+
+
+def upstream_count_tolerance(native_counts, candidate_counts):
+    """Official batch maximum count envelope; independent of fp64 row counts."""
+    if (not isinstance(native_counts, list) or not isinstance(candidate_counts, list)
+            or not native_counts or len(native_counts) != len(candidate_counts)
+            or any(type(count) is not int or count <= 0
+                   for count in native_counts + candidate_counts)):
+        raise ValueError("Native and candidate counts must be nonempty matching positive-integer lists")
+    difference = max(abs(native - candidate) for native, candidate
+                     in zip(native_counts, candidate_counts))
+    maximum_native = max(native_counts)
+    relative_percent = difference / maximum_native * 100
+    return {"policy": UPSTREAM_POLICY, "passed": difference <= 3 or relative_percent < 0.5,
+            "maximum_count_difference": difference, "maximum_native_count": maximum_native,
+            "relative_percent": relative_percent}

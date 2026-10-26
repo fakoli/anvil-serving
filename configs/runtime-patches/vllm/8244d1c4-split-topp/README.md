@@ -52,29 +52,45 @@ The input logits and `p` are the actual float32 tensor values. Peak PyTorch tens
 allocation must remain below 1 GiB; this excludes CUDA context/compiler overhead.
 This verifies kernel behavior, not model quality or the end-to-end sampling path.
 
-For this new attempt only, the independent numerical gate supersedes the exact
-original/patched parity assertion that stopped the prior attempt. That failure
-remains preserved in the dated evidence; it is not reclassified as a pass.
-`reference.py` uses only stdlib binary64 `math.exp`, `math.fsum` normalization,
-stable descending-logit sorting (lower token ID wins exact ties), and a Kahan
-prefix scan against `p * normalizer`. Two `math.fsum` boundary checks must certify
-the same minimal prefix. Disagreement is `oracle_boundary_ambiguous`, a failure;
-there is no mass tolerance or adaptive threshold. This is a binary64 numerical
-reference, not a proof over exact real arithmetic.
+The prospective admission policy is `upstream-count-v1`. Earlier exact-parity
+and strict-reference failures remain immutable evidence; this policy applies
+only to a newly frozen attempt. No threshold adapts to an observed result.
 
-Every ordinary row must satisfy all of these predeclared checks:
+`native_comparator.py` retains the exact `apply_top_k_top_p_pytorch` function
+and its `apply_top_k_only` dependency from the pinned official upstream source
+(Apache-2.0, attribution and source hash in the file). The runner calls this
+PyTorch function directly on a separate float32 CUDA clone with the same `p`,
+never the generic dispatcher that can call the Triton candidate itself. The
+comparator is hash checked before import and bound by the image and inspector.
+Its output must preserve input bits or contain negative infinity.
 
-- Both original and patched masks contain the entire reference prefix.
+For each ordinary batch, the native kept counts are the upstream count oracle.
+For each of stock and patch separately, let `D` be the maximum absolute count
+difference from native, and `K` the maximum native kept count across the batch.
+Admission requires `D <= 3` or `D / K * 100 < 0.5`. Zero, non-integer, missing
+or malformed counts fail closed. The denominator is the batch maximum, not a
+per-row count or a binary64 reference count. Both versions must pass.
+
+The independent `reference.py` binary64 numerical reference remains a
+separate guard. It uses stdlib `math.exp`, `math.fsum` normalization, stable
+sorting (lower token ID wins exact ties), and a Kahan prefix scan against
+`p * normalizer`. Two `math.fsum` boundary checks must certify the same minimal
+prefix. `oracle_boundary_ambiguous` fails; there is no probability-mass tolerance.
+Every ordinary row must still satisfy all of these checks:
+
+- Both original and patched masks contain the entire binary64 reference prefix.
 - The patched mask is a canonical prefix, including its exact-tie ordering.
-- Its symmetric-difference count against the reference is no greater than the
-  original's for the same row.
-- Patched kept-count error is at most three; otherwise it is strictly less than
-  0.5% of that row's reference count. This is a conservative per-row form of the
-  upstream count envelope, not a fitted probability-mass tolerance.
+- Inputs and retained output bits remain unchanged; invalid output fails.
+
+The former per-row no-worse symmetric-difference rule and binary64 count-error
+envelope remain reported as `strict_diagnostics`; they do not decide admission
+under `upstream-count-v1`. Their previous failed verdicts are not overwritten.
+The legacy strict policy remains available only to preserve its offline fixtures.
 
 Inputs are captured before both independent clones and checked bitwise after
-both kernels. Every case emits counts, exactness, an input-unchanged flag and
-a digest binding all float32 input rows.
+all three implementations. Every case emits counts, exactness, an input-unchanged flag and
+a digest binding all float32 input rows, native/stock/patch count vectors, and
+both native batch-tolerance verdicts with their `D`, `K`, and percentage.
 Differing original/patched rows and failing rows emit kept/missing/extra counts
 and masses, retained and remove-lowest mass, prefix holes, boundary values, and
 bounded differing indices (first 32 and a full big-endian uint32 index hash when

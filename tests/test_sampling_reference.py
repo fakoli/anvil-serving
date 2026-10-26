@@ -99,7 +99,7 @@ def test_invalid_masks_fail_closed():
 def test_image_and_runtime_bind_reviewed_helpers():
     from anvil_serving.reasoning_probe_runtime import _PATCH_FILES
     dockerfile = (DIRECTORY / "Dockerfile").read_text()
-    for name in ("reference.py", "kernel_regression.py", "verify_patch.py", "launch.py"):
+    for name in ("reference.py", "kernel_regression.py", "verify_patch.py", "launch.py", "native_comparator.py"):
         digest = hashlib.sha256((DIRECTORY / name).read_bytes()).hexdigest()
         assert _PATCH_FILES[name] == digest
         assert f"{digest}  /opt/anvil-sampling/{name}" in dockerfile
@@ -154,3 +154,72 @@ def test_input_fingerprint_detects_mutation_and_declares_big_endian_order():
     assert captured == hashlib.sha256(struct.pack(">fff", *logits)).hexdigest()
     logits[0] = -0.0
     assert reference.float32_sha256(logits) != captured
+
+
+@pytest.mark.parametrize("native,candidate,passed", [
+    ([1], [4], True),
+    ([801], [805], True),
+    ([800], [804], False),
+    ([1, 801], [5, 801], True),
+])
+def test_upstream_tolerance_uses_batch_maximum(native, candidate, passed):
+    result = reference.upstream_count_tolerance(native, candidate)
+    assert result["policy"] == "upstream-count-v1"
+    assert result["passed"] is passed
+    assert result["maximum_native_count"] == max(native)
+    assert result["maximum_count_difference"] == max(abs(a-b) for a, b in zip(native, candidate))
+
+
+@pytest.mark.parametrize("native,candidate", [
+    ([], []), ([0], [1]), ([1, 0], [1, 1]), ([1], [0]),
+    ([1], []), ([True], [1]), ([1.0], [1]), ([1], [math.nan]),
+    ([1], ["1"]), ([1], [-1]), (None, [1]), ([1], (1,)),
+])
+def test_upstream_tolerance_rejects_zero_or_malformed_counts(native, candidate):
+    with pytest.raises(ValueError):
+        reference.upstream_count_tolerance(native, candidate)
+
+
+def test_new_policy_keeps_old_strict_failures_as_diagnostics():
+    result = reference.compare_masks([0.] * 8, .5, mask(8, 0, 1, 2, 3),
+        mask(8, 0, 1, 2, 3, 4), policy=reference.UPSTREAM_POLICY)
+    assert result["passed"]
+    assert not result["strict_diagnostics"]["patched_difference_not_worse"]
+    assert "patched_difference_not_worse" not in result["checks"]
+    assert reference.upstream_count_tolerance([4], [5])["passed"]
+    # Retain the prior measured one-extra-token verdict unchanged; this fixture
+    # uses its counts to exercise the prospective policy, not a new native run.
+    import json
+    evidence = DIRECTORY.parents[3] / "docs/findings/2026-10-25-sampling-reference-evidence/kernel-summary.json"
+    prior = json.loads(evidence.read_text())
+    difference = prior["difference"]
+    assert prior["gate"] == "failed"
+    assert difference["failed_checks"] == ["patched_difference_not_worse"]
+    assert reference.upstream_count_tolerance(
+        [difference["baseline"]["kept_count"]], [difference["patched"]["kept_count"]]
+    )["passed"]
+
+
+def test_new_policy_does_not_relax_containment_or_canonical_prefix():
+    for baseline, patched in [(mask(8, 0, 1, 2), mask(8, 0, 1, 2, 3)),
+                              (mask(8, 0, 1, 2, 3), mask(8, 0, 1, 2, 4))]:
+        assert not reference.compare_masks([0.] * 8, .5, baseline, patched,
+                                           policy=reference.UPSTREAM_POLICY)["passed"]
+
+
+def test_native_comparator_is_exact_pinned_function_without_dispatcher():
+    import ast
+    source = (DIRECTORY / "native_comparator.py").read_text()
+    parsed = ast.parse(source)
+    functions = {node.name: ast.get_source_segment(source, node) for node in parsed.body
+                 if isinstance(node, ast.FunctionDef)}
+    expected = {
+        "apply_top_k_top_p_pytorch": "275eb41831b2e43964366495abfc8d222aac121da40245760d36537ac5449f40",
+        "apply_top_k_only": "2d58824a27f72f0a9f8f70b2d80fc212604e4d6177694209efce7aca8d05d57b",
+    }
+    assert set(functions) == set(expected)
+    for name, digest in expected.items():
+        assert hashlib.sha256(functions[name].encode()).hexdigest() == digest
+    assert [alias.name for node in parsed.body if isinstance(node, ast.Import)
+            for alias in node.names] == ["torch"]
+    assert not any(isinstance(node, ast.ImportFrom) for node in parsed.body)
