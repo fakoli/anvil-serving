@@ -96,7 +96,7 @@ Native evidence: [Ignis agentic](2026-10-26-flash-next-engine-qualification-evid
 
 ## Follow-up boundaries
 
-The campaign is closed with no promotion. Any future coding replay requires a separately frozen plan and must not overwrite these historical outcomes. Historical Aider attribution remains uncertain because original HTTP bodies are unavailable. The reviewed PR #704 overlay is part of the restored router runtime; the original router image was not restored. PR #705 remains a separate source-flag follow-up with CI pending. The canonical router image Python 3.11/native-WAL failure is tracked in the [product ticket](../../.tickets/2026-10-26-router-python311-native-wal-image-compatibility.md).
+The campaign is closed with no promotion. Any future coding replay requires a separately frozen plan and must not overwrite these historical outcomes. Historical Aider attribution remains uncertain because original HTTP bodies are unavailable. The reviewed PR #704 overlay is part of the restored router runtime; the original router image was not restored. The exact-predecessor rollback capability is tracked separately in PR #705; its status does not change the benchmark outcomes. The canonical router image Python 3.11/native-WAL failure is tracked in the [product ticket](../../.tickets/2026-10-26-router-python311-native-wal-image-compatibility.md).
 
 ## Evidence boundary
 
