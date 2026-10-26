@@ -64,7 +64,8 @@ def test_resolve_precedence_shell_then_config_home_then_user_home(env_homes, mon
     assert (value, source) == ("from-shell", "env")
 
 
-def test_resolve_falls_back_to_user_home(env_homes):
+def test_resolve_falls_back_to_user_home(env_homes, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     _config_home, user_home = env_homes
     (user_home / ".env").write_text("EXAMPLE_TOKEN=from-home\n", encoding="utf-8")
     value, source = envfile.resolve_env_value("EXAMPLE_TOKEN")
@@ -76,7 +77,8 @@ def test_resolve_unset_everywhere_returns_none(env_homes):
     assert envfile.resolve_env_value("EXAMPLE_TOKEN") == (None, "")
 
 
-def test_resolve_skips_unreadable_encoding(env_homes):
+def test_resolve_skips_unreadable_encoding(env_homes, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     config_home, user_home = env_homes
     (config_home / ".env").write_bytes(b"\xff\xfeinvalid")
     assert envfile.resolve_env_value("EXAMPLE_TOKEN") == (None, "")
@@ -100,7 +102,8 @@ def test_invalid_name_never_resolves(env_homes):
     assert envfile.resolve_env_value("") == (None, "")
 
 
-def test_env_sources_names_every_location(env_homes):
+def test_env_sources_names_every_location(env_homes, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "0")
     config_home, user_home = env_homes
     sources = envfile.env_sources("EXAMPLE_TOKEN")
     assert sources[0] == "environment variable EXAMPLE_TOKEN"
