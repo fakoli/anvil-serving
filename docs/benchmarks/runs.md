@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-25 pinned sampling-fix kernel trial
+
+| Configuration | Measured hardware and layer | Outcome | Evidence |
+|---|---|---|---|
+| GLM FP4 candidate image with exact vLLM split-top-p backport; model weights not loaded | One RTX PRO 6000 Blackwell Max-Q, synthetic CUDA device-0 kernel check; two cards reserved for planned TP2 | Ordinary parity failed after partial forced-case success; zero candidate model requests. Functional, no promotion, Ignis held; end-to-end fix unproven. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-fix.md) · [Authoritative counts](../findings/2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-fix-evidence/README.md) |
+
 ## 2026-10-25 isolated reasoning-boundary diagnostic
 
 | Configuration / scope | Hardware and evidence | Outcome / boundary | Links |

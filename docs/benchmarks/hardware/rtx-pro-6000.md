@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-25 sampling-fix trial:** [synthetic sampling-kernel checks](../../findings/2026-10-25-sampling-fix.md) measured CUDA device 0 on one RTX PRO 6000 Blackwell Max-Q. Two GPUs were reserved for the planned candidate serve, but model weights and distributed inference never started. Ordinary-mask parity failed after partial forced-token success. No hardware ranking, capacity or speed claim. [Authoritative summary](../../findings/2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-fix-evidence/README.md).
+
 **2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
 
 **2026-10-25 GLM Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) completed six measurements on the dual-card GLM configuration, with one passing and five failing task grades. Two supported cells remained unstarted and four reasoning controls were blocked. All six jobs have complete engine/GPU/host/cgroup telemetry and verified closure. Raw grades remain separate from completed measurements; this diagnostic establishes no causal cap benefit or hardware ranking. No Ignis run or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
@@ -102,7 +104,7 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-25 (Go/Rust completion-cap diagnostic). **Evidence
+history. **Last locally measured:** 2026-10-25 (synthetic sampling-kernel diagnostic on one card; prior online diagnostics used the pair). **Evidence
 interpretation reviewed:** 2026-10-25.
 
 > Side-by-side speed and recipe links for every configuration measured on this

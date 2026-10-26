@@ -116,9 +116,18 @@ The pinned fork's forced-logit sampling path warrants specific inspection:
 [upstream PR 58231](https://github.com/vllm-project/vllm/pull/58231) fixes a
 split-top-p rounding defect, while the inspected
 [fork kernel](https://github.com/local-inference-lab/vllm/blob/8244d1c44348ae8a5bbfc9f1b607021652283ed4/vllm/v1/sample/ops/topk_topp_triton.py)
-retains the older comparison. This is a source-level risk, not a demonstrated
-local failure or an explanation for runs below the 49,152 boundary. Preserve
-the current runtime until applicability and behavior are measured.
+retains the older comparison. The [executed baseline probe](../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up)
+subsequently measured a failed transition at the requested boundary. Its active
+kernel was not traced, so source applicability does not establish the request's
+root cause or explain the earlier runs below the 49,152 boundary.
+
+The [pinned patch trial](../findings/2026-10-25-sampling-fix.md) then completed
+six of eight forced-logit kernel checks and three of four ordinary exact-parity
+controls. The fourth ordinary comparison failed at GLM vocabulary 154,856 and
+batch 64, stopping startup before weights or candidate inference. The two
+remaining forced cases were not run. The model boundary failure is not proven
+fixed; retain the ordinary difference and obtain an independent mask/probability
+reference before revising the gate.
 
 Only after this gate passes should a separate coding comparison hold total
 output at 16K and compare an 8K reasoning budget against the original control,

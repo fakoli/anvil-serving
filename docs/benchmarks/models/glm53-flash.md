@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-25 sampling-fix trial:** the [candidate kernel gate](../../findings/2026-10-25-sampling-fix.md) failed ordinary-logit exact parity after partial forced-token success. Candidate weights and model inference never started; the earlier model reasoning-boundary failure remains unresolved. No promotion; Ignis held.
+
 **2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
 
 **2026-10-21–23 Flare engine investigations:** seven closed findings retain the
@@ -415,6 +417,13 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Split-top-p patch diagnostic, 2026-10-25
+
+- **Status:** partial functional kernel result; failed preweight gate, `no-promotion`.
+- **Measured:** original/patched synthetic logits on one RTX PRO 6000 Blackwell Max-Q, CUDA device 0; exact case counts are in the [authoritative summary](../../findings/2026-10-25-sampling-fix-evidence/summary.json).
+- **Limits:** the fourth ordinary-input mask comparison failed. No candidate model weights, inference, serving-worker boundary trace, peak-allocation pass, or timing comparison. Planned TP2/C4/context settings were not exercised.
+- **Evidence:** [dated finding](../../findings/2026-10-25-sampling-fix.md), [raw excerpt and case ledger](../../findings/2026-10-25-sampling-fix-evidence/README.md), and [restoration record](../../findings/2026-10-25-sampling-fix-evidence/restoration.json). Preserve the exact-parity failure; obtain a reference probability/mask oracle before changing the gate.
+
 ### Go/Rust completion-cap diagnostics, 2026-10-25
 
 - **Scope:** pinned Aider/Polyglot Go and Rust tasks at 16K/32K completion caps; diagnostic-only, no promotion.
@@ -608,6 +617,8 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-10-25 — [Sampling-fix kernel trial](../../findings/2026-10-25-sampling-fix.md): candidate stopped before model weights after ordinary-mask parity failure; partial forced-token correction does not prove the end-to-end boundary fix.
 
 - 2026-10-25 — [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal): R12 retained complete graded incumbent results and clean shared closure; R13 supplied no candidate measurement. Exact restoration and minimal-thinking Pi accepted, historical thinking-off failure open.
 - 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — partial incumbent grades, accepted bounded mixed-C4 closure, candidate unmeasured; service restored with strict Pi acceptance incomplete.
