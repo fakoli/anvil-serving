@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.shared-memory-restoration-public/v1",
+  "available": true,
+  "active_containers": 0,
+  "blocked_reasons": [],
+  "reclaimable_bytes": 0,
+  "private_receipt_sha256": "c05fa09d5ede1d37d5f98e97fe4cb3f3e749307e13c8c1bca953ed778c8222ac"
+}

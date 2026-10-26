@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-10-25 sampling-reference diagnostic:** the [independent numerical-reference run](2026-10-25-sampling-reference.md) passed all eight forced-logit cases but failed its stricter ordinary-row gate: stock and patch were identical on 271/272 rows, while the patch retained one extra boundary token on the remaining row. The candidate stopped before weights or inference. Exact operational restoration passed; the restored incumbent failed its single strict JSON smoke, leaving functional restoration acceptance incomplete. Functional diagnostic, no promotion, Ignis held. [Summary](2026-10-25-sampling-reference-evidence/summary.json) · [Evidence index](2026-10-25-sampling-reference-evidence/README.md).
+
 **2026-10-25 sampling-fix trial:** the [pinned kernel patch](2026-10-25-sampling-fix.md) stopped at an ordinary-logit parity failure before candidate weights or inference. Completed forced-token cases remain useful partial evidence; the model boundary fix is unproven. Functional diagnostic, no promotion, Ignis held. [Summary](2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](2026-10-25-sampling-fix-evidence/README.md).
 
 **2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
@@ -139,6 +141,7 @@ path and public-artifact audit remains tracked by
 
 | Date | File | Subject |
 |------|------|---------|
+| 2026-10-25 | [Sampling-reference diagnostic](2026-10-25-sampling-reference.md) | Independent binary64 reference: 8/8 forced cases passed; one patched ordinary row over-retained one token and failed the strict local gate. Zero candidate requests. Operational restoration passed; strict JSON smoke failed, so functional acceptance remains incomplete. No end-to-end claim or promotion. [Evidence index](2026-10-25-sampling-reference-evidence/README.md) |
 | 2026-10-25 | [Pinned sampling-fix trial](2026-10-25-sampling-fix.md) | Partial forced-logit success; ordinary exact-parity failure stopped before model weights/inference. No promotion or proven end-to-end fix. [Evidence index](2026-10-25-sampling-fix-evidence/README.md) |
 | 2026-10-25 | [GLM Go/Rust 16K/32K diagnostics](2026-10-25-glm-diagnostics.md) | Six completed measurements: one passing/five failing grades; two unstarted and four blocked cells. Aider completion-cap diagnostic only; no Ignis run or promotion. [Evidence index](2026-10-25-glm-diagnostics-evidence/README.md) |
 | 2026-10-25 | [R12/R13 successor](2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) | R12 incumbent: 44 complete measurements, 38 pass / six fail, four cancelled unknowns; separate R13 pre-create host-reserve refusal; exact restoration and minimal-thinking Pi acceptance, thinking-off failure open; no comparison or promotion |

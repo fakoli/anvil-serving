@@ -1,0 +1,43 @@
+{
+  "schema": "sampling-reference-experiment/v1",
+  "status": "executed_stopped_at_kernel_gate",
+  "source_head": "3fa3d856ba3f5a797a661a50a468fdee481f58ab",
+  "upstream_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+  "ignis": "hold",
+  "promoted": false,
+  "kernel_gate": {
+    "forced_cases": 8,
+    "ordinary_cases": 8,
+    "ordinary_rows": 272,
+    "seeds": [58231, 42],
+    "vocabularies": [131072, 154856],
+    "batch_sizes": [4, 64],
+    "top_p_input": 0.95,
+    "top_p_fp32": 0.949999988079071,
+    "active_top_k": false,
+    "dtype": "float32",
+    "oracle": "Independent CPU binary64 numerical stable sort over fp32 inputs and p; math.fsum normalizer and certified compensated prefix; lower token ID resolves exact ties.",
+    "criteria": [
+      "all eight forced-logit checks pass",
+      "baseline and patched each contain the sorted reference prefix",
+      "patched kept set is a canonical prefix",
+      "patched symmetric difference to reference is no greater than baseline per row",
+      "patched extra count is at most three or less than 0.005 times reference count per row",
+      "input fp32 bytes are unchanged around cloned kernel calls",
+      "retained output fp32 bits equal input and excluded output is exactly negative infinity; reject NaN and positive infinity",
+      "compensated prefix scan agrees with independent binary64 fsum boundary certification"
+    ],
+    "child_timeout_seconds": 180,
+    "tensor_peak_limit_bytes": 1073741824,
+    "gate_policy": "No adaptive thresholds, seeds, corpus, tolerance, or reruns; failure stops before weights. Exact equality is diagnostic, not an acceptance criterion."
+  },
+  "inference": {
+    "maximum_probe_invocations": 1,
+    "maximum_requests": 2,
+    "request_timeout_seconds": 120,
+    "total_window_seconds": 300,
+    "retries": 0,
+    "status": "not_run_due_to_kernel_gate"
+  },
+  "restoration": "Managed restoration required after the stopped candidate; verification pending in this draft."
+}

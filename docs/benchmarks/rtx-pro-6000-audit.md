@@ -7,6 +7,13 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-25-sampling-reference.md`;
+`docs/findings/2026-10-25-sampling-reference-evidence/README.md`
+(one-Max-Q synthetic sampling-reference checks before weights; 8/8 forced
+cases passed, one of 272 ordinary rows failed the strict local no-worse gate,
+no candidate inference or promotion; exact operational restoration passed,
+but the restored-incumbent strict JSON smoke failed).
+
 `docs/findings/2026-10-25-sampling-fix.md`;
 `docs/findings/2026-10-25-sampling-fix-evidence/README.md`
 (one-Max-Q synthetic sampling-kernel checks before weights; two GPUs reserved

@@ -1,6 +1,8 @@
 # GLM-5.3-Flash
 
-**2026-10-25 sampling-fix trial:** the [candidate kernel gate](../../findings/2026-10-25-sampling-fix.md) failed ordinary-logit exact parity after partial forced-token success. Candidate weights and model inference never started; the earlier model reasoning-boundary failure remains unresolved. No promotion; Ignis held.
+**2026-10-25 sampling-reference diagnostic:** the [independent numerical-reference gate](../../findings/2026-10-25-sampling-reference.md) passed 8/8 forced cases but rejected the patch after one of 272 ordinary rows retained one extra boundary token relative to stock/reference. Candidate weights and inference never started; the model reasoning-boundary failure remains unresolved. Exact operational restoration passed, but the restored incumbent failed its single strict JSON smoke, so functional restoration acceptance is incomplete. No promotion; Ignis held.
+
+**2026-10-25 sampling-fix trial:** the earlier [candidate kernel gate](../../findings/2026-10-25-sampling-fix.md) failed ordinary-logit exact parity after partial forced-token success. The later reference diagnostic above resolves that difference without rewriting this historical result.
 
 **2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
 
@@ -417,6 +419,13 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Split-top-p independent-reference diagnostic, 2026-10-25
+
+- **Status:** failed strict local functional kernel gate; `no-promotion`; exact operational restoration passed but functional restoration acceptance is incomplete.
+- **Measured:** eight forced cases and 272 ordinary rows on one RTX PRO 6000 Blackwell Max-Q. All forced cases passed; stock/patch masks were identical on 271 rows. On the remaining row, stock exactly matched the binary64 numerical reference and the patch retained one extra boundary token.
+- **Limits:** the one-token difference is within the predeclared count envelope derived from upstream tests, but failed the per-row local no-worse rule. This does not establish that the upstream test suite passed. Exact internal cause is unproven; no candidate weights, serving-worker trace, inference, end-to-end boundary result, or performance comparison. The restored-incumbent JSON smoke failed; no matched pretrial smoke exists, so regression is unproven and candidate causality is refuted.
+- **Evidence:** [dated finding](../../findings/2026-10-25-sampling-reference.md), [summary](../../findings/2026-10-25-sampling-reference-evidence/summary.json), [independent outcome review](../../findings/2026-10-25-sampling-reference-evidence/outcome-review.json), and [evidence index](../../findings/2026-10-25-sampling-reference-evidence/README.md).
+
 ### Split-top-p patch diagnostic, 2026-10-25
 
 - **Status:** partial functional kernel result; failed preweight gate, `no-promotion`.
@@ -617,6 +626,8 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-10-25 — [Sampling-reference diagnostic](../../findings/2026-10-25-sampling-reference.md): independent binary64 reference resolved the earlier unknown difference; 8/8 forced cases passed, but one patched ordinary row over-retained one token and failed the strict local no-worse gate. Zero candidate requests. Exact operational restoration passed; the strict JSON smoke failed. No end-to-end claim or promotion.
 
 - 2026-10-25 — [Sampling-fix kernel trial](../../findings/2026-10-25-sampling-fix.md): candidate stopped before model weights after ordinary-mask parity failure; partial forced-token correction does not prove the end-to-end boundary fix.
 
