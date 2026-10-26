@@ -2489,12 +2489,12 @@ def _await_recipe_container_healthy(
         except serve_recipes.RecipeError:
             return False, "recipe container identity unavailable"
         last_state = identity.get("state")
+        if last_state not in {"created", "restarting", "running"}:
+            return False, last_state
         containment_error = serve_recipes.recipe_memory.containment_error(
             identity.get("host_memory") or {}, recipe.get("serve"))
         if containment_error:
             return False, containment_error
-        if last_state not in {"created", "restarting", "running"}:
-            return False, last_state
         if _health(serve["port"], serve.get("health", "/health")) == 200:
             return True, last_state
         now = _monotonic()
@@ -3842,6 +3842,9 @@ def main(argv):
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
     if argv and argv[0] == "recipe":
+        if len(argv) > 1 and argv[1] == "prepare":
+            from . import flare_package_prepare
+            return flare_package_prepare.main(argv[2:])
         return _recipe_main(argv[1:])
     if argv and argv[0] == "cache":
         if len(argv) > 1 and argv[1] == "inventory":

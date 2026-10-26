@@ -424,6 +424,37 @@ def test_readiness_rechecks_containment_before_every_http_probe():
     assert probes == ['HTTP']
 
 
+def test_readiness_reports_exit_before_missing_cgroup_containment():
+    from anvil_serving import models
+
+    probes = []
+    ready, state = models._await_recipe_container_healthy(
+        {'model': 'example/model', 'serve': serve()}, 'candidate', {'port': 30123}, 30, 1,
+        _identity=lambda *_: {'state': 'exited', 'host_memory': {}},
+        _health=lambda *_: probes.append('HTTP') or 200,
+        _sleep=lambda _: pytest.fail('terminal state must not sleep'), _monotonic=lambda: 0)
+
+    assert ready is False
+    assert state == 'exited'
+    assert probes == []
+
+
+def test_readiness_rejects_running_container_with_missing_cgroup_before_http():
+    from anvil_serving import models
+
+    probes = []
+    ready, reason = models._await_recipe_container_healthy(
+        {'model': 'example/model', 'serve': serve()}, 'candidate', {'port': 30123}, 30, 1,
+        _identity=lambda *_: {'state': 'running', 'host_memory': {}},
+        _health=lambda *_: probes.append('HTTP') or 200,
+        _sleep=lambda _: pytest.fail('containment failure must return immediately'),
+        _monotonic=lambda: 0)
+
+    assert ready is False
+    assert 'containment failed' in reason
+    assert probes == []
+
+
 def test_status_reports_drift_without_blocking_owned_unload(monkeypatch, tmp_path, capsys):
     from anvil_serving import models
 
