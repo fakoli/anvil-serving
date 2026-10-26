@@ -338,15 +338,16 @@ def test_buffered_content_length_returns_before_upstream_keepalive_closes():
         assert record.attempts[-1].succeeded is True
 
 
-@pytest.mark.parametrize(("idle_timeout_s", "total_timeout_s"), ((0.07, 1), (1, 0.07)))
+@pytest.mark.parametrize(("idle_timeout_s", "total_timeout_s"), ((0.1, 2), (2, 1)))
 def test_first_byte_then_silence_obeys_idle_and_total_deadlines(idle_timeout_s, total_timeout_s):
+    # Leave dispatch margin so the absolute deadline tests a started stream.
     settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=idle_timeout_s,
                             total_timeout_s=total_timeout_s, heartbeat_interval_s=0.02)
     with _Upstream(first_then_silent=True) as upstream, _gateway(upstream, settings) as ((host, port), routing):
         with socket.create_connection((host, port), timeout=1) as client:
             _post(client)
             assert upstream.opened.wait(1)
-            wire = _read_until(client, b"0\r\n\r\n", timeout=1, body_only=True)
+            wire = _read_until(client, b"0\r\n\r\n", timeout=1.5, body_only=True)
     assert b'"content":"first"' in wire
     assert routing._decision_log.last.attempts[0].outcome == "error"
 

@@ -20,7 +20,7 @@ from .jobs import (
     validate_job_spec,
 )
 from .harnesses import resolve_container_binary
-from .profiles import PROFILE_NAMES, SUITE_NAMES, V1_PROFILE_NAMES
+from .profiles import PROFILE_NAMES, SUITE_NAMES, V1_PROFILE_NAMES, load_profile
 
 
 BENCHMARK_PREFLIGHT_SCHEMA = "anvil-serving.benchmark-preflight/v1"
@@ -107,7 +107,7 @@ def _requirements(value: Mapping[str, Any] | None) -> dict[str, Any]:
 
 def _endpoint_models(
     spec: Mapping[str, Any], *, opener: EndpointOpener, timeout_s: float
-) -> tuple[list[dict[str, Any]], int | None]:
+) -> tuple[list[dict[str, Any]], int | None, int | None, str]:
     endpoint = spec["endpoint"]
     auth_env = endpoint.get("auth_env")
     token = (os.environ.get(auth_env) or "").strip() if auth_env else None
@@ -166,7 +166,33 @@ def _endpoint_models(
         ),
         None,
     )
-    return models, context
+    output_cap_status = "unknown"
+    output_cap = None
+    if "max_output_tokens" in selected and selected["max_output_tokens"] is not None:
+        candidate_cap = selected["max_output_tokens"]
+        if isinstance(candidate_cap, int) and not isinstance(candidate_cap, bool) and candidate_cap > 0:
+            output_cap = candidate_cap
+            output_cap_status = "advertised"
+        else:
+            output_cap_status = "invalid"
+    return models, context, output_cap, output_cap_status
+
+
+def _declared_output_budget(spec: Mapping[str, Any]) -> int | None:
+    try:
+        profile = load_profile(spec["profile"])
+    except BenchmarkJobError as exc:
+        if exc.code == "profile_not_found":
+            return None
+        raise
+    if spec["suite"] not in profile["suites"]:
+        return None
+    suite = profile["suites"][spec["suite"]]
+    parameters = spec.get("parameters", {})
+    if spec["suite"] == "context":
+        selected_headroom = parameters.get("output_headroom_tokens")
+        return selected_headroom if selected_headroom is not None else suite["output_headroom_tokens"]
+    return suite.get("max_completion_tokens")
 
 
 def _asset_path(root: str, relative: str) -> Path:
@@ -358,9 +384,11 @@ def run_benchmark_preflight(
     )
     served_models = []
     configured_context = None
+    output_cap = None
+    output_cap_status = "unavailable"
     endpoint_error = None
     try:
-        served_models, configured_context = _endpoint_models(
+        served_models, configured_context, output_cap, output_cap_status = _endpoint_models(
             normalized, opener=opener, timeout_s=timeout_s
         )
     except BenchmarkJobError as exc:
@@ -373,6 +401,41 @@ def run_benchmark_preflight(
             endpoint_error.message if endpoint_error else "requested model is served",
         )
     )
+    declared_output_budget = _declared_output_budget(normalized)
+    output_budget_status = "unknown"
+    if endpoint_error is not None:
+        output_budget_status = "unavailable"
+    elif output_cap_status == "invalid":
+        output_budget_status = "invalid"
+        checks.append(
+            _check(
+                "endpoint_output_budget",
+                False,
+                "invalid_router_output_cap",
+                "endpoint max_output_tokens metadata must be a positive integer or null",
+            )
+        )
+    elif output_cap_status == "advertised" and declared_output_budget is not None:
+        if declared_output_budget > output_cap:
+            output_budget_status = "exceeds_limit"
+            checks.append(
+                _check(
+                    "endpoint_output_budget",
+                    False,
+                    "output_budget_exceeds_router_cap",
+                    f"declared_output_tokens={declared_output_budget} router_max_output_tokens={output_cap}",
+                )
+            )
+        else:
+            output_budget_status = "within_limit"
+            checks.append(
+                _check(
+                    "endpoint_output_budget",
+                    True,
+                    None,
+                    f"declared_output_tokens={declared_output_budget} router_max_output_tokens={output_cap}",
+                )
+            )
     unsupported = []
     if configured_context is None:
         unsupported.append("configured_context")
@@ -388,6 +451,11 @@ def run_benchmark_preflight(
                 "requested_model": normalized["endpoint"]["model"],
                 "served_models": [item.get("id") for item in served_models],
                 "configured_context": configured_context,
+                "output_budget": {
+                    "declared_tokens": declared_output_budget,
+                    "router_max_output_tokens": output_cap,
+                    "status": output_budget_status,
+                },
                 "authentication": "configured" if normalized["endpoint"].get("auth_env") else "none",
             },
             "worker": {
