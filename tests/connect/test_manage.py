@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import re
+import socket
 import stat
 import sys
 import tempfile
@@ -2033,3 +2034,119 @@ def test_restored_oidc_gate_uses_prior_owned_edge_and_issuer(tmp_path, monkeypat
     manage._restored_gateway_ready(value, Path(value["config_root"]), runner, before_start=True)
     assert probes == [(*expected, identity)]
     assert b"Caddy" in sources[-1] and b"User=1202" in sources[-1]
+
+
+@pytest.fixture(params=[False, True], ids=["ingress", "admin"])
+def stale_gateway_socket(tmp_path, monkeypatch, request):
+    administrative = request.param
+    directory = tmp_path / 'ingress'
+    directory.mkdir()
+    directory.chmod(0o700 if administrative else 0o2710)
+    path = directory / ('admin.sock' if administrative else 'ingress.sock')
+    with socket.socket(socket.AF_UNIX) as listener:
+        listener.bind(str(path))
+    path.chmod(0o600 if administrative else 0o660)
+    data = {'test_administrative': administrative, 'gateway': {'state_directory': str(directory)}, 'service_limits': {}, 'service_identities': {
+        'gateway': {'uid': os.getuid(), 'gid': os.getgid()},
+        'ingress': {'directory': str(directory), 'group_id': os.getgid()},
+    }}
+    monkeypatch.setattr(manage, '_safe_root_ancestors', lambda *_: None)
+    calls = []
+
+    def runner(argv, timeout, identity):
+        calls.append(argv)
+        return manage.RunResult(0, b'ActiveState=inactive\nSubState=dead\nMainPID=0\nControlPID=0\n')
+
+    return data, path, runner, calls
+
+
+def test_stale_ingress_recovery_removes_only_stopped_owned_socket(stale_gateway_socket):
+    data, path, runner, calls = stale_gateway_socket
+    account = path.parent / 'account-data'
+    account.write_bytes(b'preserved')
+    assert manage._recover_stale_gateway_socket(data, runner, administrative=data['test_administrative'])
+    assert not path.exists() and account.read_bytes() == b'preserved'
+    assert calls[0] == ('/usr/bin/systemctl', 'stop', 'anvil-connect-gateway.service')
+    calls.clear()
+    assert not manage._recover_stale_gateway_socket(data, runner, administrative=data['test_administrative'])
+    assert not calls
+
+
+@pytest.mark.parametrize('unsafe', ['file', 'symlink', 'mode', 'owner'])
+def test_stale_ingress_recovery_rejects_unsafe_entry_before_stop(stale_gateway_socket, unsafe):
+    data, path, runner, calls = stale_gateway_socket
+    if unsafe in {'file', 'symlink'}:
+        path.unlink()
+        if unsafe == 'file':
+            path.write_bytes(b'preserve')
+        else:
+            path.symlink_to('missing')
+    elif unsafe == 'mode':
+        path.chmod(0o666)
+    else:
+        data['service_identities']['gateway']['uid'] += 1
+    with pytest.raises(manage.ManageError):
+        manage._recover_stale_gateway_socket(data, runner, administrative=data['test_administrative'])
+    assert os.path.lexists(path) and not calls
+
+
+def test_stale_ingress_recovery_rejects_live_listener(stale_gateway_socket):
+    data, path, runner, _ = stale_gateway_socket
+    path.unlink()
+    with socket.socket(socket.AF_UNIX) as listener:
+        listener.bind(str(path))
+        path.chmod(0o600 if data['test_administrative'] else 0o660)
+        listener.listen()
+        with pytest.raises(manage.ManageError, match='still listening'):
+            manage._recover_stale_gateway_socket(data, runner, administrative=data['test_administrative'])
+        assert path.exists()
+
+
+@pytest.mark.parametrize('observation', [
+    b'ActiveState=activating\nSubState=auto-restart\nMainPID=0\nControlPID=0\n',
+    b'ActiveState=inactive\nSubState=dead\nMainPID=0\nControlPID=42\n', b'',
+    b'ActiveState=active\nActiveState=inactive\nSubState=dead\nMainPID=0\nControlPID=0\n',
+    b'ActiveState=inactive\nSubState=dead\nMainPID=0\nControlPID=0\nUnexpected=1\n',
+])
+def test_stale_ingress_recovery_requires_proven_stop(stale_gateway_socket, observation):
+    data, path, _, _ = stale_gateway_socket
+    with pytest.raises(manage.ManageError, match='not stopped'):
+        manage._recover_stale_gateway_socket(data, lambda *_: manage.RunResult(0, observation), administrative=data['test_administrative'])
+    assert path.exists()
+
+
+def test_stale_ingress_recovery_preserves_replaced_socket(stale_gateway_socket):
+    data, path, runner, _ = stale_gateway_socket
+    original = path.parent / 'original.sock'
+
+    def replacement(argv, timeout, identity):
+        if argv[1] == 'stop':
+            path.rename(original)
+            with socket.socket(socket.AF_UNIX) as listener:
+                listener.bind(str(path))
+            path.chmod(0o600 if data['test_administrative'] else 0o660)
+        return runner(argv, timeout, identity)
+
+    with pytest.raises(manage.ManageError, match='socket changed'):
+        manage._recover_stale_gateway_socket(data, replacement, administrative=data['test_administrative'])
+    assert original.exists() and path.exists()
+
+
+def test_gateway_recovery_is_apply_only_and_preserves_other_services(tmp_path, monkeypatch):
+    manifest, value, _ = deployment(tmp_path, monkeypatch)
+    units = tmp_path / 'units'
+    units.mkdir(mode=0o755)
+    runner = SyntheticRunner(active=True)
+    runner.unit_root = units
+    manage.up(manifest, manage.Target('gateway'), apply=True, runner=runner, unit_root=units)
+    runner.calls.clear()
+    monkeypatch.setattr(manage, '_runtime_healthy', lambda _d, _t, unit, *_a: unit != 'anvil-connect-gateway.service')
+    recovered = []
+    monkeypatch.setattr(manage, '_recover_stale_gateway_socket', lambda *_, administrative=False: recovered.append(administrative) or True)
+    manage.up(manifest, manage.Target('gateway'), runner=runner, unit_root=units)
+    assert not recovered
+    result = manage.up(manifest, manage.Target('gateway'), apply=True, runner=runner, unit_root=units)
+    assert recovered == [False, True] and result['recovered_gateway_sockets'] == ['ingress', 'admin']
+    assert result['restarted_units'] == ['anvil-connect-gateway.service']
+    assert not any(call[1] in {'stop', 'restart', 'enable', 'disable'} and call[-1] != 'anvil-connect-gateway.service'
+                   for call in runner.calls)

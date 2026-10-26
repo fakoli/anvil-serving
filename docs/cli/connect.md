@@ -798,6 +798,14 @@ an unchanged apply. Status does not replace an authenticated application request
 `connect status` reports bounded owned service metadata. `--service` narrows it.
 A process reported as running is not a claim that its origin is ready.
 
+If an interrupted gateway leaves ingress or administrative sockets behind, confirmed
+`connect up --service gateway` can recover it without restarting healthy
+Authelia or Caddy services. Recovery stops the gateway, verifies the declared
+directory and socket ownership, requires a refused socket connection, and
+rechecks the socket identity before removal. Live, replaced, or unowned sockets
+are refused. Preview performs no recovery; only `ingress.sock` and `admin.sock` are eligible. Account state and credentials
+are not part of socket recovery.
+
 ## Doctor
 
 `connect doctor` checks component paths and declared ownership. `--service`
