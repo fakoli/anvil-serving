@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.prepared-followup/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "name": "Ignis 0.8 twelve-cell coding campaign",
+  "status": "prepared-not-run",
+  "planned_cells": 12,
+  "submitted_cells": 0,
+  "completed_cells": 0,
+  "blocking_prerequisites": [
+    "explicit llm.evaluation route preparation through a supported managed product path",
+    "protected installed-router source access and exact owner-transfer evidence"
+  ],
+  "measurement_claims": [],
+  "decision_impact": "No coding, SWE, route-integration, performance, capacity, or promotion evidence was produced."
+}

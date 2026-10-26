@@ -1,0 +1,88 @@
+{
+  "schema": "anvil-serving.ignis-preflight-plan/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "frozen_source_commit": "dc576b25083d7cfdab1554db89379feee82346b5",
+  "private_plan_sha256": "b96a476a21f16e0598188cb663defb0039bf26ed4ba38ea5e5ceb21f38087e3c",
+  "correction": {
+    "field": "requests.http_requests",
+    "private_plan_value": 6,
+    "correct_value": 9,
+    "reason": "Six is the number of sequential phases. The tools phase makes four requests and the tool-result phase makes two requests.",
+    "execution_scope_changed": false
+  },
+  "target": {
+    "model": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+    "revision": "8d94db83cd8e58d6be31e796723e5e35b960638c",
+    "served_model": "qwen3.8-flash-next",
+    "runtime": "Ignis 0.8.0",
+    "image": "sha256:0226b62047113c219124ca4a02b1e52492402b44f5a3020db91e77756914b8cc",
+    "gpu_count": 1
+  },
+  "workload": {
+    "checks": ["smoke", "json", "tools", "streaming-tools", "tool-result"],
+    "sequential_phases": 6,
+    "http_requests": 9,
+    "phase_requests": [1, 1, 4, 1, 1, 1],
+    "tool_batch": 4,
+    "temperature": 0.6,
+    "thinking_mode": "default",
+    "visible_answer_tokens": 512,
+    "reasoning_headroom_tokens": 4096,
+    "maximum_completion_tokens": 4608,
+    "per_request_timeout_seconds": 60,
+    "external_watchdog_seconds": 480,
+    "retries": 0
+  },
+  "stop_conditions": [
+    "identity drift",
+    "OOM, CUDA, or Xid error",
+    "unexpected request loss",
+    "host MemAvailable below 16 GiB",
+    "candidate GPU selection includes the protected second GPU"
+  ],
+  "measurement_boundary": "focused direct functional preflight; no coding, SWE, performance, capacity, routed, client, or promotion claim",
+  "phase_two_followup": {
+    "schema": "ignis-tool-choice-followup/v1",
+    "purpose": "Validate the documented mandatory-tool request policy without changing runtime/model/profile.",
+    "private_plan_sha256": "b25696215b1cc58d927f0eb1dbe0d157acbf7fab53a5ea95deb1ee7ce14b5fb7",
+    "harness_patch_sha256": "0c9b211fd6bf8d49493a2db46f5def4ebfe9a887d2470d8a74f6f37331b46206",
+    "maximum_generation_requests": 16,
+    "maximum_sequential_phases": 10,
+    "per_request_timeout_seconds": 60,
+    "maximum_completion_tokens": 4608,
+    "retries": 0,
+    "stage_a": {
+      "requests": 3,
+      "cells": [
+        "auto/default/seed17",
+        "required/default/seed17",
+        "required/disabled/seed17"
+      ]
+    },
+    "selection_rule": "Prefer required/default if it passes; otherwise required/disabled if it passes; stop if neither passes.",
+    "stage_b": {
+      "condition": "selected required path exists",
+      "checks": [
+        "smoke",
+        "json",
+        "tools",
+        "streaming-tools",
+        "tool-result"
+      ],
+      "tool_batch": 4,
+      "seed": 17,
+      "requests": 9
+    },
+    "stage_c": {
+      "condition": "stage B passes completely",
+      "checks": [
+        "tools"
+      ],
+      "tool_batch": 4,
+      "seed": 18,
+      "requests": 4
+    },
+    "scope": "required is a per-request policy for mandatory-tool steps; no global agent default, auto reliability, coding, performance, capacity, or promotion claim"
+  },
+  "promoted": false
+}

@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-26 Ignis 0.8 mandatory-tool qualification
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Pinned Qwen3.8 Flash Next Trellis on Ignis 0.8.0; TP1, 131,072 configured context, eight lanes, MTP3; phase-one `auto`, phase-two `required` with normal thinking | One RTX PRO 6000 Blackwell Max-Q through the direct OpenAI-compatible endpoint; second equal card protected at 0 MiB candidate allocation | Original unseeded `auto` batch remains 3/4. Same-runtime phase two passed 3/3 mechanism cells, selected full preflight 5/5 checks and 9/9 observations, and seed-18 tools 4/4. Sixteen terminal engine events; HTTP 200 retained for 12 captured tool requests. Exact operational restoration passed after both phases. Functional request-policy evidence only; no coding, capacity, performance, client, or promotion claim. | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-26-ignis-080-preflight.md) · [Summary](../findings/2026-10-26-ignis-080-preflight-evidence/summary.json) · [Evidence index](../findings/2026-10-26-ignis-080-preflight-evidence/README.md) |
+
 ## 2026-10-26 GLM reasoning-close GPU marker trace
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
