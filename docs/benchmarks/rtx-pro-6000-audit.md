@@ -7,6 +7,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-25-sampling-fix.md`;
+`docs/findings/2026-10-25-sampling-fix-evidence/README.md`
+(one-Max-Q synthetic sampling-kernel checks before weights; two GPUs reserved
+for the unrun TP2 candidate, failed ordinary parity retained, no promotion).
+
 `docs/findings/2026-10-25-glm-diagnostics.md`
 (six bounded Go/Rust quality measurements on the dual-Max-Q incumbent;
 failed and unstarted cases retained, no engine comparison or promotion).
