@@ -147,6 +147,22 @@ def commands() -> CommandNode:
                         docs_anchor="docs/cli/models.md#create-update-or-delete-a-recipe",
                     ),
                     _resource_node(
+                        "prepare",
+                        "Download and verify the pinned Flare package without starting a serve.",
+                        "anvil_serving.models",
+                        role="model-serve",
+                        options=CONFIRM_OPTIONS + (
+                            _option("--registry", summary="Serve-recipe registry containing the pinned candidate.", value_name="PATH"),
+                            _option("--publisher-keys", summary="Optional public Flare profile; its exact namespace and fingerprint must match the recipe pins.", value_name="PATH"),
+                        ),
+                        mutation="mutate",
+                        execution_host_os=("linux",),
+                        execution_runtime_roles=("docker",),
+                        argv_prefix=("recipe", "prepare"),
+                        forward_confirm_flag=True,
+                        docs_anchor="docs/cli/models.md#prepare-a-flare-package",
+                    ),
+                    _resource_node(
                         "load",
                         "Load one recipe into a named local container.",
                         "anvil_serving.models",
