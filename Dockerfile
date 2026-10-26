@@ -5,18 +5,53 @@
 # unless-stopped`) alongside the compose-defined serves (ADR-0002). Docker is an
 # ADDITIONAL deployment option -- `pip install anvil-serving` still works unchanged.
 #
-# Build (from repo root): docker build -t anvil-serving:1.5.0 .
+# Build (from repo root): docker build -t anvil-serving:2.0.0 .
 # Run:   docker run -p 127.0.0.1:8000:8000 \
 #          -e ANVIL_ROUTER_TOKEN \
 #          -v ./configs/example-docker.toml:/etc/anvil/config.toml:ro \
-#          anvil-serving:1.5.0
+#          anvil-serving:2.0.0
 ARG DOCKER_CLI_IMAGE=docker:29.6.2-cli@sha256:be132a9f282288de4afaf63379dff75711fda0147c6b72a9df44e51841402144
+# Official Python 3.13.15 slim-bookworm source:
+# https://github.com/docker-library/python/blob/688a0b86bb44289df16a363e9f41d90514c1a5f9/3.13/slim-bookworm/Dockerfile
+ARG PYTHON_RUNTIME_IMAGE=python:3.13.15-slim-bookworm@sha256:2325bb286ec344af3e5898cc224b5844e2707ac6e26b1632516fd3edc84a5e26
+ARG SQLITE_SOURCE_SHA3_256=b6ced585c750916b1052667239a12c25a7ff34e7f06e1e6e01ecb0427657d9c4
+
+# Official SQLite source archive and published SHA3-256:
+# https://www.sqlite.org/2026/sqlite-autoconf-3540100.tar.gz
+# https://www.sqlite.org/download.html
 
 FROM ${DOCKER_CLI_IMAGE} AS docker-cli
 
-FROM python:3.11-slim AS runtime
+FROM ${PYTHON_RUNTIME_IMAGE} AS sqlite-builder
 
-ARG ANVIL_SERVING_VERSION=1.5.0
+ARG SQLITE_SOURCE_SHA3_256
+
+# Build the official SQLite amalgamation separately. The Python image's
+# _sqlite3 module exposes the Python 3.12+ connection API, but its linked
+# SQLite must also be new enough for the router's native WAL policy.
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends build-essential ca-certificates curl; \
+    rm -rf /var/lib/apt/lists/*; \
+    curl --fail --location --silent --show-error \
+      https://www.sqlite.org/2026/sqlite-autoconf-3540100.tar.gz \
+      --output /tmp/sqlite-autoconf.tar.gz; \
+    python -B -c "import hashlib, pathlib; archive=pathlib.Path('/tmp/sqlite-autoconf.tar.gz').read_bytes(); assert hashlib.sha3_256(archive).hexdigest() == '$SQLITE_SOURCE_SHA3_256'"; \
+    tar -xzf /tmp/sqlite-autoconf.tar.gz -C /tmp; \
+    cd /tmp/sqlite-autoconf-3540100; \
+    ./configure --prefix=/opt/sqlite --disable-static --enable-shared; \
+    make -j2; \
+    make install; \
+    rm -rf /tmp/sqlite-autoconf.tar.gz /tmp/sqlite-autoconf-3540100
+
+FROM ${PYTHON_RUNTIME_IMAGE} AS runtime
+
+COPY --from=sqlite-builder /opt/sqlite/lib/ /opt/sqlite/lib/
+ENV LD_LIBRARY_PATH=/opt/sqlite/lib
+
+RUN python -B -c "import sqlite3; assert sqlite3.sqlite_version == '3.54.1'; assert hasattr(sqlite3.Connection, 'setconfig') and hasattr(sqlite3.Connection, 'getconfig')"
+
+ARG ANVIL_SERVING_VERSION=2.0.0
 LABEL org.opencontainers.image.title="anvil-serving" \
       org.opencontainers.image.version="${ANVIL_SERVING_VERSION}"
 
@@ -26,6 +61,7 @@ WORKDIR /src
 COPY pyproject.toml README.md LICENSE ./
 COPY anvil_serving ./anvil_serving
 RUN pip install --no-cache-dir --no-compile .
+RUN python -B -c "from anvil_serving import __version__; assert __version__ == '${ANVIL_SERVING_VERSION}'"
 
 # Default config path the entrypoint reads unless ANVIL_CONFIG overrides it; the
 # actual file is normally bind-mounted or baked in by whoever builds/runs the image.
@@ -39,6 +75,10 @@ RUN useradd --system --create-home --shell /usr/sbin/nologin anvil \
 USER anvil
 
 WORKDIR /home/anvil
+
+# Run the storage smoke as the same non-root user used by the service.
+COPY --chown=anvil:anvil scripts/router_wal_image_smoke.py /tmp/router_wal_image_smoke.py
+RUN --network=none python -B /tmp/router_wal_image_smoke.py && rm /tmp/router_wal_image_smoke.py
 
 ENV ANVIL_CONFIG=/etc/anvil/config.toml
 

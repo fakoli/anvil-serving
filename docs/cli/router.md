@@ -159,7 +159,7 @@ api_keys_path = "/var/lib/anvil-serving/router-keys/keys.sqlite3"
 For the standard Compose deployment, use the dedicated durable
 `anvil-router-keys:/var/lib/anvil-serving/router-keys` mount from the updated
 Compose template. The image seeds it with the router user and private permissions.
-For an existing installation, update only the router image to `anvil-serving:1.5.0`
+For an existing installation, update only the router image to `anvil-serving:2.0.0`
 and add the following entries to the existing operator-home `docker-compose.yml`
 once, retaining its other services, ports, and settings. Do not rerun `init` over
 customized configuration to acquire this mount.
@@ -175,7 +175,7 @@ volumes:
 
 This is a partial configuration delta; merge these entries into the existing
 `services.router.volumes` list and top-level `volumes` mapping. After building or
-installing the 1.5.0 image, preview and recreate the router while retaining its
+installing the 2.0.0 image, preview and recreate the router while retaining its
 current installed router configuration:
 
 ```bash

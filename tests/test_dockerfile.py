@@ -20,16 +20,54 @@ def test_dockerfile_exists_at_repo_root():
     assert DOCKERFILE.is_file(), "Dockerfile must exist at repo root"
 
 
-def test_dockerfile_uses_slim_python_311_plus_base():
+def test_dockerfile_uses_pinned_slim_python_313_runtime():
     text = _text()
-    m = re.search(r"^FROM\s+python:(\S+)", text, re.MULTILINE)
-    assert m, "Dockerfile must have a `FROM python:...` base image"
-    tag = m.group(1)
-    assert "slim" in tag, f"base image tag should be a slim variant, got {tag!r}"
-    version_match = re.match(r"(\d+)\.(\d+)", tag)
-    assert version_match, f"could not parse a Python version out of tag {tag!r}"
-    major, minor = int(version_match.group(1)), int(version_match.group(2))
-    assert (major, minor) >= (3, 11), f"base image Python must be >=3.11, got {tag!r}"
+    assert re.search(
+        r"^ARG PYTHON_RUNTIME_IMAGE=python:3\.13\.15-slim-bookworm@sha256:[0-9a-f]{64}$",
+        text,
+        re.MULTILINE,
+    ), "router runtime must use a digest-pinned official Python slim image"
+
+
+def test_dockerfile_builds_and_selects_checksum_pinned_sqlite():
+    text = _text()
+    assert "FROM ${PYTHON_RUNTIME_IMAGE} AS sqlite-builder" in text
+    assert "FROM ${PYTHON_RUNTIME_IMAGE} AS runtime" in text
+    assert "sqlite-autoconf-3540100.tar.gz" in text
+    assert "b6ced585c750916b1052667239a12c25a7ff34e7f06e1e6e01ecb0427657d9c4" in text
+    assert "hashlib.sha3_256" in text
+    assert "./configure --prefix=/opt/sqlite --disable-static --enable-shared" in text
+    assert "make -j2" in text, "SQLite build must remain bounded to two compile jobs"
+    assert "COPY --from=sqlite-builder /opt/sqlite/lib/ /opt/sqlite/lib/" in text
+    assert "ENV LD_LIBRARY_PATH=/opt/sqlite/lib" in text
+    assert "assert sqlite3.sqlite_version == '3.54.1'" in text
+
+
+def test_dockerfile_runs_native_wal_key_store_smoke_before_activation():
+    text = _text()
+    smoke = text.split("# Run the storage smoke", 1)[1]
+    assert text.index("USER anvil") < text.index("# Run the storage smoke")
+    assert "RUN --network=none python -B /tmp/router_wal_image_smoke.py" in smoke
+    smoke_source = (REPO_ROOT / "scripts/router_wal_image_smoke.py").read_text(encoding="utf-8")
+    assert "_migrate_offline(" in smoke_source
+    assert 'journal_mode="WAL"' in smoke_source
+    assert '_managed_worker=True' in smoke_source
+    assert '"router image smoke"' in smoke_source
+    assert 'connection.execute("PRAGMA journal_mode").fetchone() != ("wal",)' in smoke_source
+    assert re.search(r"^FROM runtime AS (router|dashboard|controller)$", text, re.MULTILINE)
+    assert set(re.findall(r"^FROM runtime AS (router|dashboard|controller)$", text, re.MULTILINE)) == {
+        "router", "dashboard", "controller"
+    }
+
+
+def test_router_image_workflow_bounds_canonical_multistage_build():
+    workflow = (REPO_ROOT / ".github/workflows/router-image.yml").read_text(encoding="utf-8")
+    assert "max-parallelism = 1" in workflow
+    assert "--target router" in workflow
+    assert "--resource memory=2048m" in workflow
+    assert "--resource memory-swap=2048m" in workflow
+    assert "--resource cpu-period=100000" in workflow
+    assert "--resource cpu-quota=200000" in workflow
 
 
 def test_dockerfile_installs_package_with_no_extras():
