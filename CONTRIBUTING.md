@@ -105,8 +105,15 @@ silently change direction and never delete an ADR — supersede it.
   iterating: `python scripts/run_tests.py tests/router/ -q` or
   `python scripts/run_tests.py tests/test_mcp.py -q`. The wrapper gives each
   process a unique pytest base temp, avoiding cleanup collisions between
-  concurrent Windows worktrees. CI may invoke pytest directly on its isolated
-  runner.
+  concurrent Windows worktrees. On POSIX, it checks the system temporary parent
+  against native custody and Git ancestry, falling back to the user runtime
+  directory (`XDG_RUNTIME_DIR`, or `/run/user/<uid>`) and then the user's home.
+  It creates a private run directory and records the selected path in
+  the test receipt and passes it to child processes through `TMPDIR`, `TEMP`, and
+  `TMP`. Existing parents and Git markers are preserved. If no parent is
+  suitable, preflight fails; select a trusted, non-Git parent with `TMPDIR`.
+  `--preflight` checks this selection without starting pytest. CI may invoke
+  pytest directly on its isolated runner.
 - Measure the diagnostic branch-coverage baseline with
   `python -m coverage erase`, `python -m coverage run --branch -m pytest tests/`, and
   `python -m coverage report -m`. Coverage is development-only and has no arbitrary percentage
