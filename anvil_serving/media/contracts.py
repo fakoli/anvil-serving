@@ -96,6 +96,7 @@ class ParameterSpec:
     maximum: int | float | None = None
     max_length: int | None = None
     enum: tuple[str, ...] = ()
+    media_types: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.kind not in {"string", "integer", "number", "boolean", "artifact"}:
@@ -106,6 +107,15 @@ class ParameterSpec:
             raise MediaError("invalid_contract", "parameter max_length is invalid")
         if len(self.enum) > 64 or any(not isinstance(item, str) or not item for item in self.enum):
             raise MediaError("invalid_contract", "parameter enum is invalid")
+        if not isinstance(self.media_types, tuple) or (
+            self.media_types and (
+                self.kind != "artifact"
+                or len(self.media_types) > 16
+                or any(not isinstance(item, str) or not _MIME_RE.fullmatch(item) for item in self.media_types)
+                or len(set(self.media_types)) != len(self.media_types)
+            )
+        ):
+            raise MediaError("invalid_contract", "artifact parameter media types are invalid")
 
     def validate(self, name: str, value: Any) -> Any:
         if self.kind in {"string", "artifact"}:
@@ -147,6 +157,8 @@ class ParameterSpec:
             schema["enum"] = list(self.enum)
         if self.kind == "artifact":
             schema["format"] = "anvil-artifact-id"
+            if self.media_types:
+                schema["x-anvil-media-types"] = list(self.media_types)
         return schema
 
 

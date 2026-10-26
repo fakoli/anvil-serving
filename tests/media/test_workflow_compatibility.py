@@ -44,6 +44,7 @@ def inventory(workflow):
         "/models/vae": [],
         "/models/checkpoints": [],
         "/models/latent_upscale_models": [],
+        "/models/loras": [],
     }
     values.update({f"/object_info/{name}": {name: {}} for name in workflow.required_nodes})
     return values
@@ -95,6 +96,21 @@ def test_compatibility_includes_latent_upscale_model_inventory():
         opener=opener_for(values, []),
     ).compatibility(workflow, qualification=True)
 
+    assert result.available is True
+    assert result.missing_models == ()
+
+
+def test_compatibility_includes_required_lora_inventory():
+    workflow = replace(
+        WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1"),
+        required_models=("guide.safetensors",),
+    )
+    values = inventory(workflow)
+    values["/models/diffusion_models"] = []
+    values["/models/loras"] = ["guide.safetensors"]
+    result = ComfyUIClient(
+        "http://127.0.0.1:8188", opener=opener_for(values, [])
+    ).compatibility(workflow, qualification=True)
     assert result.available is True
     assert result.missing_models == ()
 

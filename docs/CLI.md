@@ -335,6 +335,13 @@ required operands, choices, and defaults.
 | `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
 | `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
 | `media` | Inspect and run bounded managed media workflows. | `read` / `bounded` | - |
+| `media memory-guard` | Publish Windows memory safety signals and supervise one worker. | `read` / `bounded` | - |
+| `media memory-guard sample` | Read native Windows available RAM and commit headroom. | `read` / `bounded` | `--config` |
+| `media memory-guard status` | Check the configured host memory signal. | `read` / `bounded` | `--config` |
+| `media memory-guard install` | Register and start the private Windows login memory guard. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `media memory-guard uninstall` | Remove this guard's login entry and request its stop. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `media memory-guard run` | Publish memory safety signals until explicitly stopped. | `mutate` / `foreground` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `media memory-guard supervise` | Run one worker child only while its host signal is safe and fresh. | `mutate` / `foreground` | `--config`<br>`--lease`<br>`--dry-run`<br>`--confirm` |
 | `media capabilities` | List deterministic media capabilities. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
 | `media bundle` | Inventory and stage exact pinned workflow assets. | `read` / `bounded` | - |
 | `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume` |
