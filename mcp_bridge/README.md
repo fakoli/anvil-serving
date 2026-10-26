@@ -3,7 +3,7 @@
 This package builds the bundled, model-free stdio bridge used by
 `anvil-serving mcp serve --controller-url ...`.
 
-The bridge uses the official Model Context Protocol TypeScript SDK `2.0.0`.
+The bridge uses the official Model Context Protocol TypeScript SDK `2.3.0`.
 Its stdio side accepts initialize-based clients through protocol
 `2025-11-25` and stateless clients pinned to `2026-07-28`. Its HTTP client side
 is pinned to `2026-07-28` and connects only to the authenticated Anvil
@@ -35,6 +35,12 @@ bridge against the exact legacy SDK generation observed in OpenClaw and the
 modern SDK. The test controller also verifies bearer authentication, modern
 downstream protocol metadata, schema validation before dispatch, and tool
 calls, including named media workflow parity.
+
+Confirmed calls (`confirm=true`, except `dry_run=true`) receive one HTTP
+operation idempotency key per bridge invocation. The SDK keeps that key with
+that request; concurrent calls have separate keys. A new invocation is a new
+operation: retain job IDs and lifecycle transaction receipts for recovery after
+a disconnect, and do not blindly repeat an ambiguous mutation.
 
 The packaged Hermes example at
 [`examples/hermes/`](../examples/hermes/README.md) uses this bridge with an
