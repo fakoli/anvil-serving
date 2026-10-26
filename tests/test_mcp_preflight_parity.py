@@ -79,12 +79,55 @@ def test_preflight_probe_schema_matches_local_bounds_and_controls():
         "none", "minimal", "low", "medium", "high", "max", "xhigh"
     ]
     assert schema["force_nonempty_content"] == {"type": "boolean"}
+    assert schema["tool_choice_mode"] == {
+        "type": "string", "enum": ["auto", "required"], "default": "auto", "maxLength": 262144,
+    }
+    assert schema["seed"]["minimum"] == -(2 ** 63)
+    assert schema["seed"]["maximum"] == 2 ** 63 - 1
+    assert schema["capture_tool_transport"] == {"type": "boolean"}
     assert "allowed_finish_reasons" in schema
     assert schema["image_expect"]["maxItems"] == 32
     assert schema["ocr_expect"]["items"]["maxLength"] == 256
     assert schema["video_expect"]["maxItems"] == 32
     assert "video_path" in schema
     assert "dry_run" in schema
+
+
+def test_preflight_probe_forwards_tool_diagnostic_controls_and_extended_checks(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        benchmark_tools, "_run_argv",
+        lambda argv, **kwargs: (
+            calls.append((argv, kwargs))
+            or {"command": argv, "returncode": 0, "stdout": "ok\n", "stderr": ""}
+        ),
+    )
+
+    result = mcp.call_tool("preflight_probe", {
+        "base_url": "http://127.0.0.1:30000/v1", "model": "local",
+        "checks": "tools,long-tools,streaming-tools,tool-result,responses",
+        "tool_choice_mode": "required", "seed": 17,
+        "capture_tool_transport": True, "dry_run": True,
+    })
+
+    assert result["ok"] is True
+    argv = calls[0][0]
+    assert argv[argv.index("--tool-choice-mode") + 1] == "required"
+    assert argv[argv.index("--seed") + 1] == "17"
+    assert "--capture-tool-transport" in argv
+
+
+@pytest.mark.parametrize("arguments", [
+    {"tool_choice_mode": "named"},
+    {"seed": 2 ** 63},
+    {"capture_tool_transport": True, "checks": "smoke"},
+])
+def test_preflight_probe_rejects_invalid_tool_diagnostic_controls(arguments):
+    result = mcp.call_tool("preflight_probe", {
+        "base_url": "http://127.0.0.1:30000/v1", "model": "local", **arguments,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "bad_argument"
 
 
 def test_preflight_probe_forwards_true_force_content_and_omits_false(monkeypatch):

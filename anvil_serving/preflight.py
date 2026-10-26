@@ -42,12 +42,14 @@ except ImportError:  # direct ``python anvil_serving/preflight.py`` compatibilit
 
 def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
          tools=None, tool_choice=None, timeout=900, chat_template_kwargs=None,
-         reasoning_effort=None, mm_processor_kwargs=None, top_p=None):
+         reasoning_effort=None, mm_processor_kwargs=None, top_p=None, seed=None,
+         native_tool_transport=None):
     url = base.rstrip("/") + "/chat/completions"
     body = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
     if top_p is not None: body["top_p"] = top_p
     if tools: body["tools"] = tools
     if tool_choice: body["tool_choice"] = tool_choice
+    if seed is not None: body["seed"] = seed
     # chat_template_kwargs (e.g. {"enable_thinking": False}) is honored by SGLang/vLLM
     # for Qwen3.x / GLM so reasoning models don't burn the token budget on hidden
     # thinking and return empty content. NOTE: gpt-oss ignores this kwarg (it gates
@@ -57,13 +59,34 @@ def chat(base, model, messages, key=None, max_tokens=256, temperature=0.0,
     if mm_processor_kwargs: body["mm_processor_kwargs"] = mm_processor_kwargs
     headers = {"Content-Type": "application/json"}
     if key: headers["Authorization"] = "Bearer " + key
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers)
+    request_bytes = json.dumps(body).encode()
+    if (native_tool_transport is not None
+            and len(request_bytes) > MAX_TOOL_TRANSPORT_CAPTURE_BYTES):
+        native_tool_transport.update({
+            "capture_refusal": "request_json_exceeds_capture_bound",
+            "request_bytes": len(request_bytes),
+        })
+        raise RuntimeError("tool transport request exceeded capture bound")
+    req = urllib.request.Request(url, data=request_bytes, headers=headers)
     t0 = time.time()
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read()), time.time() - t0
+            if native_tool_transport is not None:
+                raw = r.read(MAX_TOOL_TRANSPORT_CAPTURE_BYTES + 1)
+                _capture_tool_transport(
+                    native_tool_transport, request_bytes, raw, r.getcode(), r.headers
+                )
+                if len(raw) > MAX_TOOL_TRANSPORT_CAPTURE_BYTES:
+                    raise RuntimeError("tool transport response exceeded capture bound")
+            else:
+                raw = r.read()
+            return json.loads(raw), time.time() - t0
     except urllib.error.HTTPError as exc:
-        raw = exc.read(4097)
+        raw = exc.read(MAX_TOOL_TRANSPORT_CAPTURE_BYTES + 1 if native_tool_transport is not None else 4097)
+        if native_tool_transport is not None:
+            _capture_tool_transport(
+                native_tool_transport, request_bytes, raw, exc.code, exc.headers
+            )
         bounded = raw[:4096].decode("utf-8", errors="replace").strip()
         if len(raw) > 4096:
             bounded += "...[truncated]"
@@ -103,7 +126,8 @@ def responses_request(base, model, prompt, key=None, max_tokens=256,
 
 
 def chat_stream(base, model, messages, key=None, max_tokens=256, tools=None,
-                tool_choice=None, chat_template_kwargs=None, timeout=900, temperature=0.0):
+                tool_choice=None, chat_template_kwargs=None, timeout=900, temperature=0.0,
+                seed=None):
     """Read a bounded Chat Completions SSE stream and retain parsed events."""
     url = base.rstrip("/") + "/chat/completions"
     body = {
@@ -118,6 +142,8 @@ def chat_stream(base, model, messages, key=None, max_tokens=256, tools=None,
         body["tools"] = tools
     if tool_choice:
         body["tool_choice"] = tool_choice
+    if seed is not None:
+        body["seed"] = seed
     if chat_template_kwargs:
         body["chat_template_kwargs"] = chat_template_kwargs
     headers = {"Content-Type": "application/json"}
@@ -201,6 +227,44 @@ PREFLIGHT_CHECKS = frozenset({
     "smoke", "json", "needle", "tools", "long-tools", "streaming-tools",
     "tool-result", "responses", "image", "ocr", "video",
 })
+TOOL_CHOICE_MODES = ("auto", "required")
+MAX_TOOL_TRANSPORT_CAPTURE_BYTES = 1024 * 1024
+MAX_STREAM_TOOL_CONTENT_CHARS = 4096
+TOOL_CALL_ORACLE_REVISION = "tool-call/v2-exact-weather"
+
+
+def parse_signed_seed(value):
+    """Parse the OpenAI-compatible signed 64-bit sampling seed."""
+    try:
+        seed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError("--seed must be a signed 64-bit integer") from exc
+    if not -(2 ** 63) <= seed <= 2 ** 63 - 1:
+        raise argparse.ArgumentTypeError("--seed must be a signed 64-bit integer")
+    return seed
+
+
+def _capture_tool_transport(capture, request_bytes, response_bytes, status, headers):
+    """Retain bounded, header-redacted transport evidence for an opted-in probe."""
+    if capture is None:
+        return
+    request_ids = {}
+    for header_name in ("x-request-id", "request-id"):
+        value = headers.get(header_name) if headers is not None else None
+        if value:
+            request_ids[header_name] = value
+    captured_response = response_bytes[:MAX_TOOL_TRANSPORT_CAPTURE_BYTES]
+    capture.update({
+        "request_json": request_bytes.decode("utf-8"),
+        "request_sha256": hashlib.sha256(request_bytes).hexdigest(),
+        "response_http_status": status,
+        "response_body_base64": base64.b64encode(captured_response).decode("ascii"),
+        "captured_response_sha256": hashlib.sha256(captured_response).hexdigest(),
+        "captured_response_bytes": len(captured_response),
+        "response_truncated": len(response_bytes) > MAX_TOOL_TRANSPORT_CAPTURE_BYTES,
+        "server_request_ids": request_ids,
+        "terminal_server_correlation": "not_available_from_http_client",
+    })
 
 
 def parse_checks(value):
@@ -306,17 +370,25 @@ def _request_with_evidence(evidence, test, key, request, *args,
         }
         if request_index is not None:
             observation["request_index"] = request_index
+        native_tool_transport = kwargs.get("native_tool_transport")
+        if native_tool_transport is not None:
+            observation["native_tool_transport"] = native_tool_transport
         if evidence is not None:
             evidence.append(observation)
         # Existing probe catches also return this safe detail in CLI summaries.
         raise RuntimeError(detail) from exc
 
 
-def _capture(evidence, test, response, seconds, request_index=None):
+def _capture(evidence, test, response, seconds, request_index=None,
+             request_controls=None, native_tool_transport=None):
     observation = response_observation(response)
     observation.update({"test": test, "seconds": round(seconds, 3)})
     if request_index is not None:
         observation["request_index"] = request_index
+    if request_controls is not None:
+        observation["request_controls"] = request_controls
+    if native_tool_transport is not None:
+        observation["native_tool_transport"] = native_tool_transport
     if evidence is not None:
         evidence.append(observation)
     return observation
@@ -356,9 +428,11 @@ TOOLS = [{"type": "function", "function": {
     "description": "Get current weather for a city",
     "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]}}}]
 
-def validate_tool_call(message, expected_name="get_weather", required_args=None):
+def validate_tool_call(message, expected_name="get_weather", required_args=None,
+                       expected_argument_values=None):
     """Validate that a chat response produced a usable OpenAI-style tool call."""
     required_args = required_args or ["city"]
+    expected_argument_values = expected_argument_values or {}
     content = message.get("content") or ""
     if any(g in content for g in ("<<tool", "<|", "function=", "�")):
         return False, f"garbage content: {content[:60]!r}"
@@ -366,15 +440,23 @@ def validate_tool_call(message, expected_name="get_weather", required_args=None)
     tool_calls = message.get("tool_calls") or []
     if not tool_calls:
         return False, "response did not include tool_calls"
+    if len(tool_calls) != 1:
+        return False, "response included %s tool_calls; expected exactly one" % len(tool_calls)
 
     first = tool_calls[0] or {}
+    if first.get("type") != "function":
+        return False, "tool call type is %r; expected 'function'" % first.get("type")
+    if not isinstance(first.get("id"), str) or not first["id"].strip():
+        return False, "tool call id is missing or empty"
     function = first.get("function") or {}
     if function.get("name") != expected_name:
         return False, f"wrong function name: {function.get('name')!r}"
 
     raw_args = function.get("arguments")
+    if not isinstance(raw_args, str):
+        return False, "arguments are not an OpenAI JSON string"
     try:
-        args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
+        args = json.loads(raw_args)
     except Exception as exc:
         return False, f"arguments are not valid JSON: {exc}"
     if not isinstance(args, dict):
@@ -387,37 +469,70 @@ def validate_tool_call(message, expected_name="get_weather", required_args=None)
             missing.append(arg)
     if missing:
         return False, "missing required string argument(s): " + ", ".join(missing)
+    for argument_name, expected_value in expected_argument_values.items():
+        if args.get(argument_name) != expected_value:
+            return False, "wrong %s: expected %r, got %r" % (
+                argument_name, expected_value, args.get(argument_name),
+            )
 
     shown = ", ".join(f"{arg}={args[arg]!r}" for arg in required_args)
     return True, f"valid tool_call {expected_name}({shown})"
 
+
+def validate_tool_response(choice, expected_name="get_weather", required_args=None,
+                           expected_argument_values=None):
+    """Apply the preflight's exact tool-call protocol contract to one choice."""
+    if not isinstance(choice, dict):
+        return False, "response choice is not an object"
+    if choice.get("finish_reason") != "tool_calls":
+        return False, "finish_reason is %r; expected 'tool_calls'" % choice.get("finish_reason")
+    message = choice.get("message") if isinstance(choice.get("message"), dict) else {}
+    return validate_tool_call(
+        message, expected_name, required_args, expected_argument_values,
+    )
+
 def t_tool_one(base, model, key, shared_prefix, ctk=None, max_tokens=256,
-               reasoning_effort=None, evidence=None, request_index=None, timeout=900, temperature=0.0):
+               reasoning_effort=None, evidence=None, request_index=None, timeout=900, temperature=0.0,
+               tool_choice_mode="auto", seed=None, capture_tool_transport=False):
     msgs = [{"role": "system", "content": shared_prefix},
             {"role": "user", "content": "What's the weather in Oakland? Use the tool."}]
+    transport_capture = {} if capture_tool_transport else None
+    request_controls = {"tool_choice": tool_choice_mode}
+    if seed is not None:
+        request_controls["seed"] = seed
     try:
         resp, dt = _request_with_evidence(
             evidence, "tools", key, chat, base, model, msgs, key,
-            max_tokens=max_tokens, tools=TOOLS, tool_choice="auto",
+            max_tokens=max_tokens, tools=TOOLS, tool_choice=tool_choice_mode,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-            timeout=timeout, temperature=temperature, request_index=request_index,
+            timeout=timeout, temperature=temperature, seed=seed,
+            native_tool_transport=transport_capture, request_index=request_index,
         )
-        obs = _capture(evidence, "tools", resp, dt, request_index)
-        m = resp["choices"][0]["message"]
-        ok, detail = validate_tool_call(m)
+        obs = _capture(
+            evidence, "tools", resp, dt, request_index,
+            request_controls=request_controls, native_tool_transport=transport_capture,
+        )
+        choice = resp["choices"][0]
+        ok, detail = validate_tool_response(
+            choice, expected_argument_values={"city": "Oakland"},
+        )
         obs.update({"passed": ok, "validation_detail": detail})
         return ok, f"{dt:.1f}s {detail} {_evidence_note(obs)}"
     except Exception as e:
         return False, f"error: {e}"
 
 def t_tool_batch(base, model, key, n, ctk=None, max_tokens=256,
-                 reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
+                 reasoning_effort=None, evidence=None, timeout=900, temperature=0.0,
+                 tool_choice_mode="auto", seed=None, capture_tool_transport=False):
     # big stable shared prefix to exercise prefix cache + reproduce fan-out
     shared = ("You are a coding specialist agent. Follow the harness contract.\n" * 400)
     oks = []
     with ThreadPoolExecutor(max_workers=n) as ex:
-        futs = [ex.submit(t_tool_one, base, model, key, shared, ctk, max_tokens,
-                          reasoning_effort, evidence, index, timeout, temperature) for index in range(n)]
+        futs = [ex.submit(
+            t_tool_one, base, model, key, shared, ctk, max_tokens,
+            reasoning_effort, evidence, index, timeout, temperature,
+            tool_choice_mode, seed, capture_tool_transport,
+        ) for index in range(n)]
         details = []
         for f in as_completed(futs):
             ok, d = f.result(); oks.append(ok); details.append(d)
@@ -426,7 +541,8 @@ def t_tool_batch(base, model, key, n, ctk=None, max_tokens=256,
 
 
 def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
-                reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
+                reasoning_effort=None, evidence=None, timeout=900, temperature=0.0,
+                tool_choice_mode="auto", seed=None, capture_tool_transport=False):
     """Require a valid tool call with at least 100K measured prompt tokens."""
     line = "Archived repository telemetry remained nominal during this interval. "
     words = int(ctx_tokens * 0.75)
@@ -436,6 +552,10 @@ def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
         "role": "user",
         "content": record + "\n\nWhat's the weather in Oakland? Use the tool.",
     }]
+    transport_capture = {} if capture_tool_transport else None
+    request_controls = {"tool_choice": tool_choice_mode}
+    if seed is not None:
+        request_controls["seed"] = seed
     try:
         response, seconds = _request_with_evidence(
             evidence, "long-tools", key, chat,
@@ -445,14 +565,20 @@ def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
             key,
             max_tokens=max_tokens,
             tools=TOOLS,
-            tool_choice="auto",
+            tool_choice=tool_choice_mode,
             chat_template_kwargs=ctk,
             reasoning_effort=reasoning_effort,
-            timeout=timeout, temperature=temperature,
+            timeout=timeout, temperature=temperature, seed=seed,
+            native_tool_transport=transport_capture,
         )
-        observation = _capture(evidence, "long-tools", response, seconds)
-        message = response["choices"][0]["message"]
-        valid, detail = validate_tool_call(message)
+        observation = _capture(
+            evidence, "long-tools", response, seconds,
+            request_controls=request_controls, native_tool_transport=transport_capture,
+        )
+        choice = response["choices"][0]
+        valid, detail = validate_tool_response(
+            choice, expected_argument_values={"city": "Oakland"},
+        )
         usage = response.get("usage") if isinstance(response, dict) else None
         prompt_tokens = usage.get("prompt_tokens") if isinstance(usage, dict) else None
         measured = (
@@ -477,7 +603,8 @@ def t_long_tool(base, model, key, ctx_tokens, ctk=None, max_tokens=256,
 
 
 def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
-                     evidence=None, timeout=900, temperature=0.0):
+                     evidence=None, timeout=900, temperature=0.0,
+                     tool_choice_mode="auto", seed=None, capture_tool_transport=False):
     """Require one valid tool call reconstructed from an SSE stream."""
     messages = [{
         "role": "user",
@@ -487,12 +614,15 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
         events, done, seconds = _request_with_evidence(
             evidence, "streaming-tools", key, chat_stream,
             base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
-            tool_choice="auto", chat_template_kwargs=ctk, timeout=timeout, temperature=temperature,
+            tool_choice=tool_choice_mode, chat_template_kwargs=ctk, timeout=timeout,
+            temperature=temperature, seed=seed,
         )
         calls = {}
         finish_reason = None
         usage = None
         reasoning = ""
+        content = ""
+        content_truncated = False
         for event in events:
             if isinstance(event.get("usage"), dict):
                 usage = event["usage"]
@@ -502,6 +632,11 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
             choice = choices[0] if isinstance(choices[0], dict) else {}
             finish_reason = choice.get("finish_reason") or finish_reason
             delta = choice.get("delta") if isinstance(choice.get("delta"), dict) else {}
+            if isinstance(delta.get("content"), str):
+                remaining = MAX_STREAM_TOOL_CONTENT_CHARS - len(content)
+                if remaining > 0:
+                    content += delta["content"][:remaining]
+                content_truncated |= len(delta["content"]) > remaining
             for field in ("reasoning", "reasoning_content"):
                 if isinstance(delta.get(field), str):
                     reasoning += delta[field]
@@ -510,23 +645,30 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
                     continue
                 index = raw_call.get("index", 0)
                 call = calls.setdefault(index, {
-                    "id": "", "type": "function",
+                    "id": "", "type": None,
                     "function": {"name": "", "arguments": ""},
                 })
                 call["id"] += raw_call.get("id") or ""
+                if "type" in raw_call:
+                    call["type"] = raw_call["type"]
                 function = raw_call.get("function") or {}
                 call["function"]["name"] += function.get("name") or ""
                 call["function"]["arguments"] += function.get("arguments") or ""
-        message = {"content": "", "tool_calls": [calls[key] for key in sorted(calls)]}
-        valid, detail = validate_tool_call(message)
-        passed = done and valid and finish_reason == "tool_calls"
+        message = {"content": content, "tool_calls": [calls[key] for key in sorted(calls)]}
+        valid, detail = validate_tool_call(
+            message, expected_argument_values={"city": "Oakland"},
+        )
+        if content_truncated:
+            detail = "stream content exceeded evidence bound"
+        passed = done and valid and finish_reason == "tool_calls" and not content_truncated
         if evidence is not None:
-            evidence.append({
+            observation = {
                 "test": "streaming-tools",
                 "seconds": round(seconds, 3),
                 "finish_reason": finish_reason,
-                "content_chars": 0,
-                "content_excerpt": "",
+                "content_chars": len(content),
+                "content_excerpt": content[:200],
+                "content_truncated": content_truncated,
                 "reasoning_field": "stream_delta" if reasoning else None,
                 "reasoning_chars": len(reasoning),
                 "reasoning_excerpt": reasoning[:200],
@@ -536,7 +678,16 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
                 "event_count": len(events),
                 "passed": passed,
                 "validation_detail": detail,
-            })
+                "request_controls": {
+                    "tool_choice": tool_choice_mode,
+                    **({"seed": seed} if seed is not None else {}),
+                },
+            }
+            if capture_tool_transport:
+                observation["native_tool_transport"] = {
+                    "status": "unsupported_for_sse",
+                }
+            evidence.append(observation)
         return passed, (
             f"{seconds:.1f}s done={done} events={len(events)} {detail} "
             f"finish={finish_reason!r}"
@@ -546,25 +697,38 @@ def t_streaming_tool(base, model, key, ctk=None, max_tokens=256,
 
 
 def t_tool_result(base, model, key, ctk=None, max_tokens=256,
-                  reasoning_effort=None, evidence=None, timeout=900, temperature=0.0):
+                  reasoning_effort=None, evidence=None, timeout=900, temperature=0.0,
+                  tool_choice_mode="auto", seed=None, capture_tool_transport=False):
     """Complete a tool-call, tool-result, final-answer exchange."""
     messages = [{
         "role": "user",
         "content": "What's the weather in Oakland? Use the tool.",
     }]
+    initial_transport_capture = {} if capture_tool_transport else None
+    initial_request_controls = {"tool_choice": tool_choice_mode}
+    if seed is not None:
+        initial_request_controls["seed"] = seed
     try:
         first, first_seconds = _request_with_evidence(
             evidence, "tool-result-initial", key, chat,
             base, model, messages, key, max_tokens=max_tokens, tools=TOOLS,
-            tool_choice="auto", chat_template_kwargs=ctk,
+            tool_choice=tool_choice_mode, chat_template_kwargs=ctk,
             reasoning_effort=reasoning_effort, timeout=timeout, temperature=temperature,
+            seed=seed, native_tool_transport=initial_transport_capture,
         )
-        first_obs = _capture(evidence, "tool-result-initial", first, first_seconds)
-        assistant = first["choices"][0]["message"]
-        valid, detail = validate_tool_call(assistant)
+        first_obs = _capture(
+            evidence, "tool-result-initial", first, first_seconds,
+            request_controls=initial_request_controls,
+            native_tool_transport=initial_transport_capture,
+        )
+        first_choice = first["choices"][0]
+        valid, detail = validate_tool_response(
+            first_choice, expected_argument_values={"city": "Oakland"},
+        )
         first_obs.update({"passed": valid, "validation_detail": detail})
         if not valid:
             return False, detail
+        assistant = first_choice["message"]
         tool_call = assistant["tool_calls"][0]
         messages.extend([
             {
@@ -586,10 +750,14 @@ def t_tool_result(base, model, key, ctk=None, max_tokens=256,
             evidence, "tool-result-continuation", key, chat,
             base, model, messages, key, max_tokens=max_tokens,
             chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
-            timeout=timeout, temperature=temperature,
+            timeout=timeout, temperature=temperature, seed=seed,
         )
         final_obs = _capture(
-            evidence, "tool-result-continuation", final, final_seconds
+            evidence, "tool-result-continuation", final, final_seconds,
+            request_controls={
+                "tool_choice": None,
+                **({"seed": seed} if seed is not None else {}),
+            },
         )
         output = final_obs["content"].casefold().replace(" ", "")
         passed = "oakland" in output and "72f" in output
@@ -825,6 +993,12 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
     ap.add_argument("--long-tool-ctx", type=int, default=131072,
                     help="nominal filler target for the >=100K prompt tool-call gate")
     ap.add_argument("--tool-batch", type=int, default=20)
+    ap.add_argument("--tool-choice-mode", choices=TOOL_CHOICE_MODES, default="auto",
+                    help="tool-call-producing request mode (default: auto)")
+    ap.add_argument("--seed", type=parse_signed_seed,
+                    help="signed 64-bit sampling seed for reproducible requests")
+    ap.add_argument("--capture-tool-transport", action="store_true",
+                    help="opt in to bounded raw transport evidence for nonstreaming tool calls")
     ap.add_argument(
         "--checks", default="smoke,json,needle,tools",
         help=(
@@ -894,6 +1068,10 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         selected = parse_checks(a.checks)
     except ValueError as exc:
         ap.error(str(exc))
+    if a.capture_tool_transport and not (
+        {"tools", "long-tools", "streaming-tools", "tool-result"} & set(selected)
+    ):
+        ap.error("--capture-tool-transport requires a tool check")
     image_data = None
     image_identity = None
     if {"image", "ocr"} & set(selected):
@@ -962,7 +1140,21 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
             "checks": selected,
             "thinking": {"mode": a.thinking_mode, "chat_template_kwargs": ctk,
                          "reasoning_effort": a.reasoning_effort},
-            "sampling": {"temperature": a.temperature},
+            "sampling": {
+                "temperature": a.temperature,
+                **(
+                    {"seed": a.seed, "seed_scope": "tool_protocol_requests"}
+                    if a.seed is not None else {}
+                ),
+            },
+            "tool_choice": {
+                "oracle_revision": TOOL_CALL_ORACLE_REVISION,
+                "mode": a.tool_choice_mode,
+                "transport_capture": (
+                    "bounded_nonstreaming_tool_calls" if a.capture_tool_transport else "disabled"
+                ),
+                "raw_sse_capture": "unsupported",
+            },
             "budget": {"visible_answer_tokens": a.visible_answer_tokens,
                        "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                        "max_completion_tokens": max_tokens},
@@ -980,17 +1172,24 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "smoke": ("smoke (short coding)", lambda: t_smoke(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
         "json": ("structured JSON", lambda: t_json(a.base_url, a.model, api_key, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
         "needle": (f"needle @ ~{a.needle_ctx} ctx", lambda: t_needle(a.base_url, a.model, api_key, a.needle_ctx, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
-        "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens, a.reasoning_effort, evidence, a.timeout, a.temperature)),
+        "tools": (f"shared-prefix tool batch x{a.tool_batch}", lambda: t_tool_batch(
+            a.base_url, a.model, api_key, a.tool_batch, ctk, max_tokens,
+            a.reasoning_effort, evidence, a.timeout, a.temperature,
+            a.tool_choice_mode, a.seed, a.capture_tool_transport,
+        )),
         "long-tools": (f"tool call after >=100K prompt (target {a.long_tool_ctx})", lambda: t_long_tool(
             a.base_url, a.model, api_key, a.long_tool_ctx, ctk, max_tokens,
             a.reasoning_effort, evidence, a.timeout, a.temperature,
+            a.tool_choice_mode, a.seed, a.capture_tool_transport,
         )),
         "streaming-tools": ("streaming tool call", lambda: t_streaming_tool(
             a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout, a.temperature,
+            a.tool_choice_mode, a.seed, a.capture_tool_transport,
         )),
         "tool-result": ("tool-result continuation", lambda: t_tool_result(
             a.base_url, a.model, api_key, ctk, max_tokens,
             a.reasoning_effort, evidence, a.timeout, a.temperature,
+            a.tool_choice_mode, a.seed, a.capture_tool_transport,
         )),
         "responses": ("Responses API subset", lambda: t_responses(
             a.base_url, a.model, api_key, ctk, max_tokens, evidence, a.timeout,
@@ -1051,7 +1250,21 @@ def main(argv=None, *, prog="anvil-serving eval preflight"):
         "schema_version": "preflight/v2", "base_url": a.base_url, "model": a.model,
         "thinking": {"mode": a.thinking_mode, "chat_template_kwargs": ctk,
                      "reasoning_effort": a.reasoning_effort},
-        "sampling": {"temperature": a.temperature},
+        "sampling": {
+            "temperature": a.temperature,
+            **(
+                {"seed": a.seed, "seed_scope": "tool_protocol_requests"}
+                if a.seed is not None else {}
+            ),
+        },
+        "tool_choice": {
+            "oracle_revision": TOOL_CALL_ORACLE_REVISION,
+            "mode": a.tool_choice_mode,
+            "transport_capture": (
+                "bounded_nonstreaming_tool_calls" if a.capture_tool_transport else "disabled"
+            ),
+            "raw_sse_capture": "unsupported",
+        },
         "budget": {"visible_answer_tokens": a.visible_answer_tokens,
                    "reasoning_headroom_tokens": a.reasoning_headroom_tokens,
                    "max_completion_tokens": max_tokens},

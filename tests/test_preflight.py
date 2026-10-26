@@ -38,6 +38,111 @@ def test_chat_preserves_bounded_http_error_body(monkeypatch):
         )
 
 
+def test_chat_capture_retains_only_whitelisted_transport_fields(monkeypatch):
+    response_body = b'{"choices": []}'
+
+    class Response:
+        headers = {"x-request-id": "server-request-17", "authorization": "must-not-capture"}
+
+        def read(self, _size=None):
+            return response_body
+
+        def getcode(self):
+            return 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+    capture = {}
+    pf.chat(
+        "http://127.0.0.1:30000/v1", "candidate", [{"role": "user", "content": "test"}],
+        key="synthetic-secret", tools=pf.TOOLS, tool_choice="required", seed=17,
+        native_tool_transport=capture,
+    )
+
+    assert json.loads(capture["request_json"])["tool_choice"] == "required"
+    assert capture["response_http_status"] == 200
+    assert b64decode(capture["response_body_base64"]) == response_body
+    assert capture["server_request_ids"] == {"x-request-id": "server-request-17"}
+    assert "synthetic-secret" not in json.dumps(capture)
+    assert "authorization" not in json.dumps(capture)
+
+
+def test_chat_capture_bounds_response_read_and_fails_on_overflow(monkeypatch):
+    requested_read_limits = []
+
+    class Response:
+        headers = {"x-request-id": "server-request-19"}
+
+        def read(self, size=None):
+            requested_read_limits.append(size)
+            return b"x" * (pf.MAX_TOOL_TRANSPORT_CAPTURE_BYTES + 1)
+
+        def getcode(self):
+            return 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", lambda *_args, **_kwargs: Response())
+    capture = {}
+    with pytest.raises(RuntimeError, match="response exceeded capture bound"):
+        pf.chat(
+            "http://127.0.0.1:30000/v1", "candidate", [{"role": "user", "content": "test"}],
+            tools=pf.TOOLS, tool_choice="required", native_tool_transport=capture,
+        )
+
+    assert requested_read_limits == [pf.MAX_TOOL_TRANSPORT_CAPTURE_BYTES + 1]
+    assert capture["response_truncated"] is True
+    assert capture["captured_response_bytes"] == pf.MAX_TOOL_TRANSPORT_CAPTURE_BYTES
+    assert capture["response_http_status"] == 200
+
+
+def test_chat_capture_rejects_oversized_request_before_sending(monkeypatch):
+    monkeypatch.setattr(
+        pf.urllib.request, "urlopen", lambda *_args, **_kwargs: pytest.fail("request sent")
+    )
+    capture = {}
+    with pytest.raises(RuntimeError, match="request exceeded capture bound"):
+        pf.chat(
+            "http://127.0.0.1:30000/v1", "candidate",
+            [{"role": "user", "content": "x" * pf.MAX_TOOL_TRANSPORT_CAPTURE_BYTES}],
+            tools=pf.TOOLS, tool_choice="required", native_tool_transport=capture,
+        )
+
+    assert capture["capture_refusal"] == "request_json_exceeds_capture_bound"
+    assert capture["request_bytes"] > pf.MAX_TOOL_TRANSPORT_CAPTURE_BYTES
+
+
+def test_chat_capture_retains_http_error_status_and_body(monkeypatch):
+    response_body = b'{"error":"tool rejected"}'
+
+    def reject(*_args, **_kwargs):
+        raise HTTPError(
+            "http://127.0.0.1:30000/v1/chat/completions", 400, "Bad Request",
+            {"request-id": "server-request-18"}, BytesIO(response_body),
+        )
+
+    monkeypatch.setattr(pf.urllib.request, "urlopen", reject)
+    capture = {}
+    with pytest.raises(RuntimeError, match="HTTP 400"):
+        pf.chat(
+            "http://127.0.0.1:30000/v1", "candidate", [{"role": "user", "content": "test"}],
+            tools=pf.TOOLS, tool_choice="required", native_tool_transport=capture,
+        )
+
+    assert capture["response_http_status"] == 400
+    assert b64decode(capture["response_body_base64"]) == response_body
+    assert capture["server_request_ids"] == {"request-id": "server-request-18"}
+
+
 def test_response_observation_records_finish_and_reasoning_evidence():
     observation = pf.response_observation({
         "choices": [{
@@ -93,7 +198,7 @@ def test_preflight_force_nonempty_content_reaches_tool_request_and_evidence(
     class Response:
         def read(self):
             return json.dumps({"choices": [{"finish_reason": "tool_calls", "message": {
-                "tool_calls": [{"type": "function", "function": {
+                "tool_calls": [{"type": "function", "id": "call-1", "function": {
                     "name": "get_weather", "arguments": '{"city":"Oakland"}',
                 }}],
             }}]}).encode()
@@ -118,6 +223,8 @@ def test_preflight_force_nonempty_content_reaches_tool_request_and_evidence(
 
     expected = {"enable_thinking": True, "force_nonempty_content": True}
     assert requests[0]["chat_template_kwargs"] == expected
+    assert requests[0]["tool_choice"] == "auto"
+    assert "seed" not in requests[0]
     assert json.loads(out.read_text(encoding="utf-8"))["thinking"]["chat_template_kwargs"] == expected
 
 
@@ -227,6 +334,7 @@ def test_validate_tool_call_accepts_schema_valid_function_call():
     ok, detail = pf.validate_tool_call({
         "tool_calls": [{
             "type": "function",
+            "id": "call-1",
             "function": {
                 "name": "get_weather",
                 "arguments": '{"city": "Oakland"}',
@@ -251,6 +359,7 @@ def test_validate_tool_call_rejects_missing_required_argument():
     ok, detail = pf.validate_tool_call({
         "tool_calls": [{
             "type": "function",
+            "id": "call-1",
             "function": {
                 "name": "get_weather",
                 "arguments": "{}",
@@ -260,6 +369,36 @@ def test_validate_tool_call_rejects_missing_required_argument():
 
     assert ok is False
     assert "missing required string argument" in detail
+
+
+@pytest.mark.parametrize("choice, expected_detail", [
+    ({"finish_reason": "tool_calls", "message": {"tool_calls": [
+        {"type": "function", "id": "call-1", "function": {
+            "name": "get_weather", "arguments": '{"city":"Berkeley"}',
+        }},
+    ]}}, "wrong city"),
+    ({"finish_reason": "tool_calls", "message": {"tool_calls": [
+        {"type": "function", "id": "call-1", "function": {
+            "name": "get_weather", "arguments": '{"city":"Oakland"}',
+        }},
+        {"type": "function", "id": "call-2", "function": {
+            "name": "get_weather", "arguments": '{"city":"Oakland"}',
+        }},
+    ]}}, "exactly one"),
+    ({"finish_reason": "stop", "message": {"tool_calls": [
+        {"type": "function", "id": "call-1", "function": {
+            "name": "get_weather", "arguments": '{"city":"Oakland"}',
+        }},
+    ]}}, "expected 'tool_calls'"),
+])
+def test_validate_tool_response_rejects_wrong_city_multiple_calls_and_wrong_finish(
+    choice, expected_detail,
+):
+    ok, detail = pf.validate_tool_response(
+        choice, expected_argument_values={"city": "Oakland"},
+    )
+    assert ok is False
+    assert expected_detail in detail
 
 
 def test_t_tool_one_rejects_text_only_response(monkeypatch):
@@ -280,7 +419,7 @@ def test_t_tool_one_rejects_text_only_response(monkeypatch):
     )
 
     assert ok is False
-    assert "did not include tool_calls" in detail
+    assert "expected 'tool_calls'" in detail
 
 
 def test_long_tool_requires_valid_call_and_measured_100k_prompt(monkeypatch):
@@ -292,6 +431,7 @@ def test_long_tool_requires_valid_call_and_measured_100k_prompt(monkeypatch):
                     "content": None,
                     "tool_calls": [{
                         "type": "function",
+                        "id": "call-1",
                         "function": {
                             "name": "get_weather",
                             "arguments": '{"city":"Oakland"}',
@@ -598,7 +738,7 @@ def test_failed_batch_attempt_keeps_index_elapsed_and_safe_detail(monkeypatch, t
                 credential + " Authorization: Bearer synthetic-other-secret " + "x" * 3000
             )
         return {"choices": [{"finish_reason": "tool_calls", "message": {
-            "tool_calls": [{"function": {
+            "tool_calls": [{"type": "function", "id": "call-1", "function": {
                 "name": "get_weather", "arguments": '{"city":"Oakland"}',
             }}],
         }}]}, 0.5
@@ -666,7 +806,7 @@ def test_continuation_failure_keeps_initial_response_and_exact_stage(monkeypatch
         if calls == 2:
             raise ConnectionResetError("peer reset")
         return {"choices": [{"finish_reason": "tool_calls", "message": {
-            "tool_calls": [{"id": "call-1", "function": {
+            "tool_calls": [{"type": "function", "id": "call-1", "function": {
                 "name": "get_weather", "arguments": '{"city":"Oakland"}',
             }}],
         }}]}, 0.1
@@ -740,6 +880,120 @@ def test_preflight_sampling_reaches_image_and_video_probes(monkeypatch):
         {"sha256": "b" * 64}, ("VIDEO_OK",), temperature=1.0,
     )[0]
     assert temperatures == [1.0, 1.0]
+
+
+def test_tool_result_forces_only_the_tool_call_producing_request(monkeypatch):
+    requests = []
+
+    def chat(*_args, **kwargs):
+        requests.append(kwargs)
+        if len(requests) == 1:
+            return {"choices": [{"finish_reason": "tool_calls", "message": {
+                "tool_calls": [{"type": "function", "id": "call-1", "function": {
+                    "name": "get_weather", "arguments": '{"city":"Oakland"}',
+                }}],
+            }}]}, 0.1
+        return {"choices": [{"finish_reason": "stop", "message": {
+            "content": "OAKLAND 72F",
+        }}]}, 0.1
+
+    monkeypatch.setattr(pf, "chat", chat)
+    evidence = []
+    passed, _ = pf.t_tool_result(
+        "http://127.0.0.1:30000/v1", "candidate", None, evidence=evidence,
+        tool_choice_mode="required", seed=17, capture_tool_transport=True,
+    )
+
+    assert passed is True
+    assert requests[0]["tool_choice"] == "required"
+    assert requests[0]["seed"] == 17
+    assert requests[0]["native_tool_transport"] == {}
+    assert "tool_choice" not in requests[1]
+    assert requests[1]["seed"] == 17
+    assert "native_tool_transport" not in requests[1]
+    assert evidence[1]["request_controls"]["tool_choice"] is None
+
+
+def test_tool_choice_dry_run_and_seed_validation(capsys):
+    assert pf.main([
+        "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+        "--checks", "tools", "--tool-choice-mode", "required", "--seed", "17",
+        "--capture-tool-transport", "--dry-run",
+    ]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["sampling"] == {
+        "temperature": 0.0, "seed": 17, "seed_scope": "tool_protocol_requests",
+    }
+    assert plan["tool_choice"] == {
+        "oracle_revision": "tool-call/v2-exact-weather",
+        "mode": "required",
+        "transport_capture": "bounded_nonstreaming_tool_calls",
+        "raw_sse_capture": "unsupported",
+    }
+    with pytest.raises(SystemExit) as exc:
+        pf.main([
+            "--base-url", "http://127.0.0.1:30000/v1", "--model", "candidate",
+            "--checks", "tools", "--seed", str(2 ** 63), "--dry-run",
+        ])
+    assert exc.value.code == 2
+
+
+def test_streaming_tool_marks_raw_transport_capture_unsupported(monkeypatch):
+    def stream(*_args, **kwargs):
+        assert kwargs["tool_choice"] == "required"
+        assert kwargs["seed"] == 17
+        return [{"choices": [{"finish_reason": "tool_calls", "delta": {
+            "content": "I will use the weather tool. ",
+            "tool_calls": [{"index": 0, "id": "call-", "type": "function", "function": {
+                "name": "get_weather", "arguments": '{"city":"Oakland"}',
+            }}],
+        }}]}], True, 0.1
+
+    monkeypatch.setattr(pf, "chat_stream", stream)
+    evidence = []
+    passed, _ = pf.t_streaming_tool(
+        "http://127.0.0.1:30000/v1", "candidate", None, evidence=evidence,
+        tool_choice_mode="required", seed=17, capture_tool_transport=True,
+    )
+    assert passed is True
+    assert evidence[0]["native_tool_transport"] == {"status": "unsupported_for_sse"}
+    assert evidence[0]["content_excerpt"] == "I will use the weather tool. "
+
+
+@pytest.mark.parametrize("call_type", [None, "not_function"])
+def test_streaming_tool_requires_observed_openai_function_type(monkeypatch, call_type):
+    def stream(*_args, **_kwargs):
+        call = {"index": 0, "id": "call-", "function": {
+            "name": "get_weather", "arguments": '{"city":"Oakland"}',
+        }}
+        if call_type is not None:
+            call["type"] = call_type
+        return [{"choices": [{"finish_reason": "tool_calls", "delta": {
+            "tool_calls": [call],
+        }}]}], True, 0.1
+
+    monkeypatch.setattr(pf, "chat_stream", stream)
+    assert pf.t_streaming_tool("http://127.0.0.1:30000/v1", "candidate", None)[0] is False
+
+
+def test_streaming_tool_rejects_content_beyond_evidence_bound(monkeypatch):
+    def stream(*_args, **_kwargs):
+        return [{"choices": [{"finish_reason": "tool_calls", "delta": {
+            "content": "x" * (pf.MAX_STREAM_TOOL_CONTENT_CHARS + 1),
+            "tool_calls": [{"index": 0, "id": "call-", "type": "function", "function": {
+                "name": "get_weather", "arguments": '{"city":"Oakland"}',
+            }}],
+        }}]}], True, 0.1
+
+    monkeypatch.setattr(pf, "chat_stream", stream)
+    evidence = []
+    passed, detail = pf.t_streaming_tool(
+        "http://127.0.0.1:30000/v1", "candidate", None, evidence=evidence,
+    )
+    assert passed is False
+    assert detail.startswith("0.1s")
+    assert evidence[0]["content_truncated"] is True
+    assert evidence[0]["validation_detail"] == "stream content exceeded evidence bound"
 
 
 @pytest.mark.parametrize("value", ["-1", "2.1", "nan", "inf"])
