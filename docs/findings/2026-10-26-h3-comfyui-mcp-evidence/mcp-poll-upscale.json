@@ -1,0 +1,38 @@
+{
+  "job": {
+    "artifacts": [
+      {
+        "byteLength": 3163614,
+        "expiresAt": "2026-11-02T15:42:31.284940+00:00",
+        "id": "art_EaFrvw69dhcr6NXkzUG0ahuI3jK-dF93",
+        "jobId": "job_VADe7DsWSCL0SD2K6Dsil8QoNYqy_16H",
+        "mediaType": "video/mp4",
+        "resource": "/artifacts/art_EaFrvw69dhcr6NXkzUG0ahuI3jK-dF93",
+        "sha256": "810bd7217dc860b3eb54cc0404bd40f0afa1ce4df13fdef35b9b7d17f543f3e9",
+        "workflow": {
+          "id": "video.h3-cobijada-upscale-v1",
+          "version": "v1"
+        }
+      }
+    ],
+    "createdAt": "2026-10-26T15:39:55.338027+00:00",
+    "id": "job_VADe7DsWSCL0SD2K6Dsil8QoNYqy_16H",
+    "latency": {
+      "acceptedToQueuedSeconds": 0.063,
+      "endToEndSeconds": 155.957,
+      "generationSeconds": 155.816,
+      "queueSeconds": 0.078,
+      "recordedSeconds": 155.957,
+      "submissionSeconds": 0.047
+    },
+    "qualityProfile": "standard",
+    "sequence": 6,
+    "state": "completed",
+    "terminalReason": "completed",
+    "updatedAt": "2026-10-26T15:42:31.295458+00:00",
+    "workflow": {
+      "id": "video.h3-cobijada-upscale-v1",
+      "version": "v1"
+    }
+  }
+}

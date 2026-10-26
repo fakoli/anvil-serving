@@ -1,0 +1,220 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-26-h3-comfyui-mcp",
+  "complete": true,
+  "scope": "Functional MCP smoke and scoped resource/lifecycle acceptance; not full media quality qualification.",
+  "identity": {
+    "schema": "h3-mcp-runtime-identity/v1",
+    "code_revision": "e04a90e06f961e7c995cc402d36843bd993cf153",
+    "package_version": "1.5.0",
+    "wheel_sha256": "4e126a1dcffba0d19f5cbbbb89f6ec1c5c2d5a16c816cf144730a40331b6b26d",
+    "final_worker_image_id": "sha256:58d09e9aefead16989803ef80fda4e73ab7e8052e0b41984ed55612dc0d05f3c",
+    "runtime_base_image_id": "sha256:2745761f803e2c0ac93c5c852e7dfbf0b5b8568ac386aae14277a748f4571bdc",
+    "comfyui": "0.42.0",
+    "comfyui_git_revision": null,
+    "python_worker": "3.13.15",
+    "pytorch": "2.13.0+cu130",
+    "upsampler_revision": "3403ef7a81742fb76eb1633bdd5bb748ad85fd53",
+    "hardware": {
+      "gpu": "RTX5090",
+      "nvml_total_mib": 32607,
+      "windows_installed_ram": "96GB",
+      "wsl_configured_ram_gib": 72,
+      "wsl_swap_gib": 8,
+      "worker_ram_gib": 64,
+      "worker_ram_plus_swap_gib": 72
+    },
+    "admission": {
+      "gpu_capacity_mib": 32607,
+      "gpu_reserve_mib": 1024,
+      "h3_reservation_mib": 31583,
+      "max_concurrency": 1
+    },
+    "controls": [
+      "offline mode",
+      "PyTorch attention",
+      "pinned memory disabled",
+      "cache-none",
+      "reserve-vram1",
+      "read-only weights and node source",
+      "temporary directory /tmp/h3-mcp",
+      "only reviewed upsampler custom node enabled",
+      "Windows fresh-signal memory supervisor",
+      "45-minute worker lifetime"
+    ],
+    "network": "Loopback host-published endpoints; private bridge plus front bridge. Offline flags do not prove network egress isolation.",
+    "revision_boundary": "Initial generation used the preceding package; warm upscale used the progress correction. Final cold upscale used the named final wheel. Graphs and model assets unchanged; do not treat these as matched performance arms."
+  },
+  "workload": {
+    "frames": 124,
+    "fps": 24,
+    "seconds": 5.166666666666667,
+    "base": [
+      864,
+      480
+    ],
+    "upscaled": [
+      1728,
+      960
+    ],
+    "concurrency": 1
+  },
+  "measurement": {
+    "path": "Actual installed stdio MCP to authenticated HTTP gateway and managed ComfyUI worker, local GPU.",
+    "warm_cold_state": "Cold base start; warm upscale; new stopped-worker cold upscale after guard correction.",
+    "sample_count": 3,
+    "statistics": [
+      "individual run observations only"
+    ]
+  },
+  "headline_results": [
+    {
+      "phase": "base",
+      "queued_at": "2026-10-26T15:21:18.169084+00:00",
+      "completed_at": "2026-10-26T15:23:43.106539+00:00",
+      "sampled_gpu_peak_mib": 31301,
+      "sampled_container_current_peak_gib": 4.407962799072266,
+      "container_lifetime_peak_gib": 4.667327880859375,
+      "sampled_container_swap_peak_gib": 0.0,
+      "minimum_windows_available_gib": 55.85096740722656,
+      "minimum_windows_commit_headroom_gib": 53.70280838012695,
+      "samples": {
+        "gpu": 145,
+        "windows": 147,
+        "cgroup": 67
+      },
+      "oom_events": 0,
+      "guard_allows_all_phase_samples": true,
+      "mcp_observed_latency": {
+        "acceptedToQueuedSeconds": 2680.261,
+        "approvalWaitSeconds": 0.836,
+        "endToEndSeconds": 2825.198,
+        "generationSeconds": 0.038,
+        "queueSeconds": 144.9,
+        "recordedSeconds": 2825.198,
+        "submissionSeconds": 0.028
+      },
+      "timing_caveat": "Base observer predates running-state fix: generationSeconds=0.038 is invalid as model time; use native log 144.77s.",
+      "comfy_execution_seconds": 144.77
+    },
+    {
+      "phase": "warm-upscale",
+      "queued_at": "2026-10-26T15:39:55.401027+00:00",
+      "completed_at": "2026-10-26T15:42:31.295458+00:00",
+      "sampled_gpu_peak_mib": 30327,
+      "sampled_container_current_peak_gib": 7.288387298583984,
+      "container_lifetime_peak_gib": 8.800498962402344,
+      "sampled_container_swap_peak_gib": 0.0,
+      "minimum_windows_available_gib": 50.309783935546875,
+      "minimum_windows_commit_headroom_gib": 52.476863861083984,
+      "samples": {
+        "gpu": 157,
+        "windows": 158,
+        "cgroup": 73
+      },
+      "oom_events": 0,
+      "guard_allows_all_phase_samples": true,
+      "mcp_observed_latency": {
+        "acceptedToQueuedSeconds": 0.063,
+        "endToEndSeconds": 155.957,
+        "generationSeconds": 155.816,
+        "queueSeconds": 0.078,
+        "recordedSeconds": 155.957,
+        "submissionSeconds": 0.047
+      },
+      "timing_caveat": "MCP polling interval contributes observation latency; not a statistical speed comparison.",
+      "comfy_execution_seconds": 155.69
+    },
+    {
+      "phase": "cold-upscale-recheck",
+      "queued_at": "2026-10-26T16:10:55.253754+00:00",
+      "completed_at": "2026-10-26T16:13:50.460804+00:00",
+      "sampled_gpu_peak_mib": 30133,
+      "sampled_container_current_peak_gib": 7.936336517333984,
+      "container_lifetime_peak_gib": 9.603626251220703,
+      "sampled_container_swap_peak_gib": 0.0,
+      "minimum_windows_available_gib": 48.99387741088867,
+      "minimum_windows_commit_headroom_gib": 51.71708679199219,
+      "samples": {
+        "gpu": 175,
+        "windows": 177,
+        "cgroup": 81
+      },
+      "oom_events": 0,
+      "guard_allows_all_phase_samples": true,
+      "mcp_observed_latency": {
+        "acceptedToQueuedSeconds": 544.097,
+        "approvalWaitSeconds": 97.179,
+        "endToEndSeconds": 719.304,
+        "generationSeconds": 175.015,
+        "queueSeconds": 0.192,
+        "recordedSeconds": 719.304,
+        "submissionSeconds": 0.048
+      },
+      "timing_caveat": "MCP polling interval contributes observation latency; not a statistical speed comparison.",
+      "comfy_execution_seconds": 174.973
+    }
+  ],
+  "gates": [
+    {
+      "name": "cold MCP execution, artifacts, full decode, original-audio stream-copy finish",
+      "status": "passed"
+    },
+    {
+      "name": "idempotent replay, inspect and authenticated export",
+      "status": "passed"
+    },
+    {
+      "name": "pending cancellation and scoped teardown",
+      "status": "passed"
+    },
+    {
+      "name": "running cancellation",
+      "status": "unit-tested; not interrupted during GPU generation"
+    },
+    {
+      "name": "cast/recorded-master lip sync and long-form quality",
+      "status": "not_collected"
+    },
+    {
+      "name": "public clip redistribution rights",
+      "status": "blocked"
+    }
+  ],
+  "failures": [
+    "Initial base timing attribution invalid; retain native execution log instead.",
+    "Transient Windows publisher replace failed after completed outputs; fail-closed stop worked; bounded retry independently retested.",
+    "Native full-suite collection has existing Linux-only import failure."
+  ],
+  "limitations": [
+    "One synthetic prompt; no cast identity, recorded-master conditioning, LoRA training or long-form acceptance.",
+    "Sampled whole-GPU peaks include desktop; cgroup lifetime peak differs from per-phase sampled current.",
+    "Exact ComfyUI Git commit unavailable; retain immutable base image.",
+    "Guard login registration installed; full reboot recovery not tested.",
+    "Audio bitstream preservation is a separate finishing operation, not native SaveVideo."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Held-out three-host recorded excerpt; rights clearance before public clip release."
+  },
+  "evidence": [
+    "measurements.json",
+    "video-verification.json",
+    "mcp-replay-inspect.json",
+    "mcp-cancel-pending.json",
+    "mcp-teardown.json",
+    "restoration.json"
+  ],
+  "metrics_coverage": {
+    "profile": "functional-smoke",
+    "status": "complete-for-declared-scope",
+    "serving_comparison": false,
+    "performance_ranking_eligible": false
+  }
+}

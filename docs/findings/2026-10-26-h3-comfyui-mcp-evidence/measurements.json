@@ -1,0 +1,94 @@
+{
+  "schema": "h3-mcp-measurement-derivation/v1",
+  "phases": [
+    {
+      "phase": "base",
+      "queued_at": "2026-10-26T15:21:18.169084+00:00",
+      "completed_at": "2026-10-26T15:23:43.106539+00:00",
+      "sampled_gpu_peak_mib": 31301,
+      "sampled_container_current_peak_gib": 4.407962799072266,
+      "container_lifetime_peak_gib": 4.667327880859375,
+      "sampled_container_swap_peak_gib": 0.0,
+      "minimum_windows_available_gib": 55.85096740722656,
+      "minimum_windows_commit_headroom_gib": 53.70280838012695,
+      "samples": {
+        "gpu": 145,
+        "windows": 147,
+        "cgroup": 67
+      },
+      "oom_events": 0,
+      "guard_allows_all_phase_samples": true,
+      "mcp_observed_latency": {
+        "acceptedToQueuedSeconds": 2680.261,
+        "approvalWaitSeconds": 0.836,
+        "endToEndSeconds": 2825.198,
+        "generationSeconds": 0.038,
+        "queueSeconds": 144.9,
+        "recordedSeconds": 2825.198,
+        "submissionSeconds": 0.028
+      },
+      "timing_caveat": "Base observer predates running-state fix: generationSeconds=0.038 is invalid as model time; use native log 144.77s.",
+      "comfy_execution_seconds": 144.77
+    },
+    {
+      "phase": "warm-upscale",
+      "queued_at": "2026-10-26T15:39:55.401027+00:00",
+      "completed_at": "2026-10-26T15:42:31.295458+00:00",
+      "sampled_gpu_peak_mib": 30327,
+      "sampled_container_current_peak_gib": 7.288387298583984,
+      "container_lifetime_peak_gib": 8.800498962402344,
+      "sampled_container_swap_peak_gib": 0.0,
+      "minimum_windows_available_gib": 50.309783935546875,
+      "minimum_windows_commit_headroom_gib": 52.476863861083984,
+      "samples": {
+        "gpu": 157,
+        "windows": 158,
+        "cgroup": 73
+      },
+      "oom_events": 0,
+      "guard_allows_all_phase_samples": true,
+      "mcp_observed_latency": {
+        "acceptedToQueuedSeconds": 0.063,
+        "endToEndSeconds": 155.957,
+        "generationSeconds": 155.816,
+        "queueSeconds": 0.078,
+        "recordedSeconds": 155.957,
+        "submissionSeconds": 0.047
+      },
+      "timing_caveat": "MCP polling interval contributes observation latency; not a statistical speed comparison.",
+      "comfy_execution_seconds": 155.69
+    },
+    {
+      "phase": "cold-upscale-recheck",
+      "queued_at": "2026-10-26T16:10:55.253754+00:00",
+      "completed_at": "2026-10-26T16:13:50.460804+00:00",
+      "sampled_gpu_peak_mib": 30133,
+      "sampled_container_current_peak_gib": 7.936336517333984,
+      "container_lifetime_peak_gib": 9.603626251220703,
+      "sampled_container_swap_peak_gib": 0.0,
+      "minimum_windows_available_gib": 48.99387741088867,
+      "minimum_windows_commit_headroom_gib": 51.71708679199219,
+      "samples": {
+        "gpu": 175,
+        "windows": 177,
+        "cgroup": 81
+      },
+      "oom_events": 0,
+      "guard_allows_all_phase_samples": true,
+      "mcp_observed_latency": {
+        "acceptedToQueuedSeconds": 544.097,
+        "approvalWaitSeconds": 97.179,
+        "endToEndSeconds": 719.304,
+        "generationSeconds": 175.015,
+        "queueSeconds": 0.192,
+        "recordedSeconds": 719.304,
+        "submissionSeconds": 0.048
+      },
+      "timing_caveat": "MCP polling interval contributes observation latency; not a statistical speed comparison.",
+      "comfy_execution_seconds": 174.973
+    }
+  ],
+  "method": "Whole-GPU nvidia-smi and Windows guard sampled about 1Hz; cgroup about 2.2s. Phase windows include 1s margin. Lifetime cgroup peak is cumulative, current peak sampled per phase. GPU includes desktop. Zero captured OOM counters does not measure unseen transients.",
+  "timezone": "GPU timestamps America/Los_Angeles (UTC-07:00 on campaign date); native JSON timestamps epoch/UTC.",
+  "comparison": "Three different smoke operations, one sample each; no matched model/quantization/speed benchmark."
+}

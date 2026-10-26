@@ -1,0 +1,7 @@
+{
+  "image": "sha256:58d09e9aefead16989803ef80fda4e73ab7e8052e0b41984ed55612dc0d05f3c",
+  "memory": 68719476736,
+  "memory_swap": 77309411328,
+  "shm_size": 2147483648,
+  "oom_killed": false
+}

@@ -1,0 +1,70 @@
+{
+  "time": 1793032134.2737586,
+  "direction": "response",
+  "value": {
+    "result": {
+      "_meta": {
+        "io.modelcontextprotocol/serverInfo": {
+          "name": "anvil-serving",
+          "version": "1.5.0"
+        }
+      },
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"data\": {\"backendInterrupted\": false, \"canceled\": true, \"job\": {\"approval\": {\"action\": \"prepare\", \"approved\": false, \"humanRequired\": true, \"operatorAction\": {\"arguments\": {\"confirm\": true, \"dry_run\": false, \"human_approved\": true, \"job_id\": \"job_pTR6IZDaDo3DSgAa_b3JrhrgzfTRKnQm\", \"manifest\": \"serves.toml\", \"principal\": \"media-caller\", \"service\": \"media-worker-h3\", \"transaction_id\": \"ZN_CWiPb6p5ydytls_X0eZOz\"}, \"tool\": \"media_worker_prepare\"}, \"schema\": \"anvil-serving.media-lifecycle-approval/v1\", \"service\": \"media-worker-h3\", \"transactionId\": \"ZN_CWiPb6p5ydytls_X0eZOz\"}, \"artifacts\": [], \"createdAt\": \"2026-10-26T16:28:53.897858+00:00\", \"id\": \"job_pTR6IZDaDo3DSgAa_b3JrhrgzfTRKnQm\", \"latency\": {\"endToEndSeconds\": 0.369, \"recordedSeconds\": 0.369}, \"qualityProfile\": \"standard\", \"sequence\": 3, \"state\": \"canceled\", \"terminalReason\": \"canceled_by_principal\", \"updatedAt\": \"2026-10-26T16:28:54.266945+00:00\", \"workflow\": {\"id\": \"video.h3-cobijada-t2v-v1\", \"version\": \"v1\"}}, \"reason\": \"canceled\"}, \"ok\": true}"
+        }
+      ],
+      "structuredContent": {
+        "ok": true,
+        "data": {
+          "job": {
+            "id": "job_pTR6IZDaDo3DSgAa_b3JrhrgzfTRKnQm",
+            "workflow": {
+              "id": "video.h3-cobijada-t2v-v1",
+              "version": "v1"
+            },
+            "state": "canceled",
+            "sequence": 3,
+            "createdAt": "2026-10-26T16:28:53.897858+00:00",
+            "updatedAt": "2026-10-26T16:28:54.266945+00:00",
+            "artifacts": [],
+            "latency": {
+              "recordedSeconds": 0.369,
+              "endToEndSeconds": 0.369
+            },
+            "qualityProfile": "standard",
+            "approval": {
+              "action": "prepare",
+              "approved": false,
+              "humanRequired": true,
+              "operatorAction": {
+                "arguments": {
+                  "confirm": true,
+                  "dry_run": false,
+                  "human_approved": true,
+                  "job_id": "job_pTR6IZDaDo3DSgAa_b3JrhrgzfTRKnQm",
+                  "manifest": "serves.toml",
+                  "principal": "media-caller",
+                  "service": "media-worker-h3",
+                  "transaction_id": "ZN_CWiPb6p5ydytls_X0eZOz"
+                },
+                "tool": "media_worker_prepare"
+              },
+              "schema": "anvil-serving.media-lifecycle-approval/v1",
+              "service": "media-worker-h3",
+              "transactionId": "ZN_CWiPb6p5ydytls_X0eZOz"
+            },
+            "terminalReason": "canceled_by_principal"
+          },
+          "canceled": true,
+          "backendInterrupted": false,
+          "reason": "canceled"
+        }
+      },
+      "isError": false
+    },
+    "jsonrpc": "2.0",
+    "id": 3
+  }
+}

@@ -1,5 +1,7 @@
 # Benchmark results
 
+**2026-10-26 local H3 MCP:**new bounded functional media evidence is in the [finding](findings/2026-10-26-h3-comfyui-mcp.md) and [dossier](benchmarks/models/cobijada-h3.md). It adds an experimental generation/upscale recipe;it does not replace any LLM or media quality recommendation.
+
 **Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and

@@ -1,0 +1,60 @@
+{
+  "job": {
+    "approval": {
+      "action": "prepare",
+      "approved": true,
+      "humanRequired": true,
+      "operatorAction": {
+        "arguments": {
+          "confirm": true,
+          "dry_run": false,
+          "human_approved": true,
+          "job_id": "job_FnxlnQflj5IPQ83u-C-v-wgCOk2i8Gii",
+          "manifest": "serves.toml",
+          "principal": "media-caller",
+          "service": "media-worker-h3",
+          "transaction_id": "tFam6-QUiRBBVP4DHRAleuau"
+        },
+        "tool": "media_worker_prepare"
+      },
+      "schema": "anvil-serving.media-lifecycle-approval/v1",
+      "service": "media-worker-h3",
+      "transactionId": "tFam6-QUiRBBVP4DHRAleuau"
+    },
+    "artifacts": [
+      {
+        "byteLength": 1035988,
+        "expiresAt": "2026-11-02T15:23:43.095239+00:00",
+        "id": "art_09GKVZyFvJWsaE83zR7vAe7MDnIU14dQ",
+        "jobId": "job_FnxlnQflj5IPQ83u-C-v-wgCOk2i8Gii",
+        "mediaType": "video/mp4",
+        "resource": "/artifacts/art_09GKVZyFvJWsaE83zR7vAe7MDnIU14dQ",
+        "sha256": "c44c789922745154b0c08af4fcb828d7de8dcccd64a3edf59e20b9d051a90597",
+        "workflow": {
+          "id": "video.h3-cobijada-t2v-v1",
+          "version": "v1"
+        }
+      }
+    ],
+    "createdAt": "2026-10-26T14:36:37.908084+00:00",
+    "id": "job_FnxlnQflj5IPQ83u-C-v-wgCOk2i8Gii",
+    "latency": {
+      "acceptedToQueuedSeconds": 2680.261,
+      "approvalWaitSeconds": 0.836,
+      "endToEndSeconds": 2825.198,
+      "generationSeconds": 0.038,
+      "queueSeconds": 144.9,
+      "recordedSeconds": 2825.198,
+      "submissionSeconds": 0.028
+    },
+    "qualityProfile": "standard",
+    "sequence": 9,
+    "state": "completed",
+    "terminalReason": "completed",
+    "updatedAt": "2026-10-26T15:23:43.106539+00:00",
+    "workflow": {
+      "id": "video.h3-cobijada-t2v-v1",
+      "version": "v1"
+    }
+  }
+}

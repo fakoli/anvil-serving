@@ -1,0 +1,38 @@
+{
+  "videos": [
+    {
+      "kind": "base",
+      "width": 864,
+      "height": 480,
+      "frames": 124,
+      "fps": 24,
+      "audio": "AAC 32kHz stereo",
+      "full_decode": true
+    },
+    {
+      "kind": "upscale",
+      "width": 1728,
+      "height": 960,
+      "frames": 124,
+      "fps": 24,
+      "audio": "AAC 32kHz stereo",
+      "full_decode": true
+    },
+    {
+      "kind": "recheck",
+      "width": 1728,
+      "height": 960,
+      "frames": 124,
+      "fps": 24,
+      "audio": "AAC 32kHz stereo",
+      "full_decode": true
+    }
+  ],
+  "finishing": "separate FFmpeg stream-copy; not part of MCP graph",
+  "final_file": "h3-mcp-2x-original-audio.mp4",
+  "original_audio_bitstream_preserved": true,
+  "upscaled_video_bitstream_preserved": true,
+  "audio_hash": "SHA256=e3ebbdcc8d8e3dc4dde08ec1768aebbcde8072005b9114972ad3e0562d4e02a8",
+  "video_hash": "SHA256=b354e1e35781b51eb5fce40fa0c6e9b2892cfcdfa2997c3a9b4a0d17441ef569",
+  "final_full_decode": true
+}

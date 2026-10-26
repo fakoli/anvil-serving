@@ -1,9 +1,10 @@
 # Cobijada H3 through ComfyUI MCP
 
 This bundle exposes the retained generation and guided upscale recipes as two
-named Anvil Media workflows. Graph and packaging tests pass; deployment and an
-actual cold-start MCP qualification are still pending. Public templates remain
-unavailable until their operator deployment passes its own gates.
+named Anvil Media workflows. An installed local MCP deployment passed cold generation, owned-artifact upscaling,
+full decode, idempotent replay, pending cancellation and scoped worker teardown.
+[Measured results](findings/2026-10-26-h3-comfyui-mcp.md) retain failures and limits. Public templates
+remain unavailable; each operator must qualify assets, rights and resource policy.
 
 ## Input contract
 
@@ -98,3 +99,39 @@ Keep the podcast audio master in the editing application and remux it during
 final assembly when exact preservation is required. External recordings must
 first become supported bounded inputs through the owning application; arbitrary
 filesystem paths are never MCP parameters.
+
+## Operator readiness and recovery
+
+Install the reviewed wheel into a versioned client environment;do not overwrite a
+Windows executable while an MCP process is using it. Configure separate ordinary
+media and lifecycle operator connections with protected token-file references.
+The bridge accepts optional `ANVIL_MCP_EXECUTION_CONTEXT` JSON containing exactly
+`topology`,`execution_host`,`execution_runtime`;operators supply real approved labels.
+Confirmed operator calls receive independent HTTP idempotency keys automatically.
+Refresh MCP connections after replacing the configured client;the integration check
+used the actual installed stdio bridge rather than assuming an existing app session refreshed.
+
+Use the separate H3 registry and a shared durable job/artifact store for both control
+services. Keep model mounts read-only,enable only the pinned upsampler node,set
+`--temp-directory /tmp/h3-mcp`,and override inherited image healthchecks for each
+service's actual endpoint. Gateway liveness must work while the GPU worker is stopped.
+Lifecycle health remains authenticated. Offline flags do not establish network isolation.
+
+Before GPU preparation,verify all six asset hashes/lengths,model/node inventories,
+the current safe Windows guard signal and exclusive GPU admission. The measured
+profile declares32607MiB capacity,1024MiB reserve,31583MiB worker reservation,
+64GiB container RAM and72GiB combined RAM+swap. Align observer manifests used by
+older controllers;changing only the new worker's budget leaves a split admission view.
+
+Install the supported [Windows memory guard](cli/media.md) using one stable original
+operator config path;login registration identity derives from that path. Its signal
+is protected and fresh;the supervisor stops only its child on unsafe/stale state.
+Temporary atomic-write sharing denials are retried briefly;permanent failures remain
+fail-closed. Full reboot/login recovery was not exercised in this campaign.
+
+Keep the exact cold resume bundle. Apply only its matching prepare transaction,
+then replay the original workflow request/idempotency key. Poll status,inspect/export
+artifacts before retention expiry,and cancel pending work before teardown. Release
+only the worker owned by that lifecycle transaction. Keep the recorded audio master
+outside regeneration and use stream-copy finishing when exact compressed audio
+preservation is needed. The bounded graphs do not accept an external podcast master.

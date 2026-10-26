@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "base",
+    "sha256": "c44c789922745154b0c08af4fcb828d7de8dcccd64a3edf59e20b9d051a90597",
+    "bytes": 1035988,
+    "authenticated_download": true,
+    "wrong_token_denied": true,
+    "output": "base-from-mcp.mp4"
+  },
+  {
+    "kind": "upscale",
+    "sha256": "810bd7217dc860b3eb54cc0404bd40f0afa1ce4df13fdef35b9b7d17f543f3e9",
+    "bytes": 3163614,
+    "authenticated_download": true,
+    "wrong_token_denied": true,
+    "output": "upscale-from-mcp.mp4"
+  },
+  {
+    "kind": "recheck",
+    "sha256": "c0508cd86d53980d1bd6a89e3cf867d024ca0d897820262d0add80b47127534d",
+    "bytes": 3163757,
+    "authenticated_download": true,
+    "wrong_token_denied": true,
+    "output": "recheck-from-mcp.mp4"
+  }
+]

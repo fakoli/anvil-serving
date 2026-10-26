@@ -47,6 +47,7 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| Cobijada H3 generation + guided2× MCP |124frames/24fps,full decode and scoped cleanup | Functional smoke;cast/master continuity unqualified;no-promotion |2026-10-26|[Cobijada H3](cobijada-h3.md)|
 | ThinkingCap Qwen3.8 27B AWQ | 128K/C1; vision 18/18, limited quality 30/30, context 60/60, strict capacity 100/100 | `current` after authorized secondary promotion; mixed near-limit vision and soak untested | 2026-09-24 | [ThinkingCap Qwen3.8](thinkingcap-qwen38-27b.md) |
 | FLUX.2 Klein 4B | 6/8 bounded visual reviews pass | workflow `available=true`, not promoted | 2026-08-28 | [FLUX.2 Klein](flux2-klein.md) |
 | Wan2.2 TI2V 5B | Functional/decode and Hermes acceptance | unavailable, `no-promotion` | 2026-09-15 | [Wan2.2](wan22.md) |

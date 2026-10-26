@@ -1,0 +1,85 @@
+{
+  "action": "teardown",
+  "applied": true,
+  "controllerReceipt": {
+    "data": {
+      "applied": true,
+      "command": [
+        "/usr/local/bin/python",
+        "-m",
+        "anvil_serving.cli",
+        "serves",
+        "down",
+        "--confirm",
+        "--manifest",
+        "/etc/anvil/serves.toml",
+        "media-worker-h3"
+      ],
+      "dry_run": false,
+      "plan": {
+        "commands": [
+          {
+            "argv": [
+              "docker",
+              "stop",
+              "anvil-comfyui-h3"
+            ],
+            "kind": "docker_stop",
+            "target": "media-worker-h3"
+          },
+          {
+            "argv": [
+              "docker",
+              "rm",
+              "-f",
+              "anvil-comfyui-h3"
+            ],
+            "kind": "docker_rm_after_stop",
+            "target": "media-worker-h3"
+          }
+        ],
+        "mode": "manifest",
+        "targets": [
+          {
+            "container": "anvil-comfyui-h3",
+            "manifest_up": [
+              "docker",
+              "compose",
+              "--project-name",
+              "anvil-h3-worker",
+              "-f",
+              "/etc/anvil/compose.worker.yml",
+              "up",
+              "-d",
+              "--no-build",
+              "h3-worker"
+            ],
+            "name": "media-worker-h3"
+          }
+        ]
+      },
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "  stop anvil-comfyui-h3\n  stopped and removed anvil-comfyui-h3\n",
+      "target": {
+        "action": "down",
+        "allow_literal": false,
+        "compose": null,
+        "keep_container": false,
+        "manifest": "/etc/anvil/serves.toml",
+        "names": [
+          "media-worker-h3"
+        ],
+        "recreate": false,
+        "timeout_seconds": 300
+      }
+    },
+    "ok": true
+  },
+  "humanRequired": false,
+  "manifest": "serves.toml",
+  "ownsInstance": true,
+  "preexisting": false,
+  "service": "media-worker-h3",
+  "transactionId": "jckaCbH8tuKHXzcSXih6J74M"
+}

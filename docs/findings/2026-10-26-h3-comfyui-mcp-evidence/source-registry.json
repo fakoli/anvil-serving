@@ -1,0 +1,1674 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-26-h3-mcp-integration",
+  "observed_at": "2026-10-26T13:17:04.346434+00:00",
+  "sources": [
+    {
+      "id": "h3-license",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE",
+      "evidence_type": "primary-license",
+      "accessed_at": "2026-10-26T13:17:04.346434+00:00",
+      "notes": "Current territorial restrictions also cover outputs; address before public clip publication.",
+      "published_or_observed": "2026-10-26T13:17:04.346434+00:00",
+      "observed_at": "2026-10-26",
+      "age_class": "current-at-observation",
+      "hardware_runtime_relevance": "H3 local graph/assets/license; external source, not local measurement.",
+      "decision_impact": "Current territorial restrictions also cover outputs; address before public clip publication."
+    },
+    {
+      "id": "h3-comfy-components",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3",
+      "evidence_type": "publisher-model-card",
+      "accessed_at": "2026-10-26T13:17:04.346434+00:00",
+      "notes": "Links official reference, multiframe and ControlNet recipes plus Turbo and experimental variants; these leads are not qualification evidence.",
+      "published_or_observed": "2026-10-26T13:17:04.346434+00:00",
+      "observed_at": "2026-10-26",
+      "age_class": "current-at-observation",
+      "hardware_runtime_relevance": "H3 local graph/assets/license; external source, not local measurement.",
+      "decision_impact": "Links official reference, multiframe and ControlNet recipes plus Turbo and experimental variants; these leads are not qualification evidence."
+    },
+    {
+      "id": "h3-upscaler",
+      "url": "https://github.com/sandpies/ComfyUI-H3-Video-Upsampler",
+      "evidence_type": "author-code-and-recipe",
+      "accessed_at": "2026-10-26T13:17:04.346434+00:00",
+      "revision": "3403ef7a81742fb76eb1633bdd5bb748ad85fd53",
+      "notes": "Current README reviewed; local trial used pinned source. Hand-Tie-Clips is a relevant chain-workflow lead. Author blind comparisons are not independent benchmark results.",
+      "published_or_observed": "2026-10-26T13:17:04.346434+00:00",
+      "observed_at": "2026-10-26",
+      "age_class": "current-at-observation",
+      "hardware_runtime_relevance": "H3 local graph/assets/license; external source, not local measurement.",
+      "decision_impact": "Current README reviewed; local trial used pinned source. Hand-Tie-Clips is a relevant chain-workflow lead. Author blind comparisons are not independent benchmark results."
+    },
+    {
+      "id": "companion-000",
+      "url": "https://arena.ai/leaderboard/video/image-to-video",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-001",
+      "url": "https://arena.ai/leaderboard/video/text-to-video",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-002",
+      "url": "https://artificialanalysis.ai/video/leaderboard/image-to-video",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-003",
+      "url": "https://artificialanalysis.ai/video/leaderboard/text-to-video",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-004",
+      "url": "https://arxiv.org/html/2410.10122v3",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-005",
+      "url": "https://arxiv.org/html/2412.09262v2",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-006",
+      "url": "https://arxiv.org/html/2508.14033v1",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-007",
+      "url": "https://arxiv.org/html/2510.11000v2",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-008",
+      "url": "https://arxiv.org/html/2511.23475v1",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-009",
+      "url": "https://arxiv.org/html/2608.00079v1",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-010",
+      "url": "https://bfl.ai/blog/flux-3-image-klein",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-011",
+      "url": "https://bluepointdigital.github.io/minimax-h3-benchmarks/data/gallery-results.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-012",
+      "url": "https://bluepointdigital.github.io/minimax-h3-benchmarks/methodology.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-013",
+      "url": "https://developer.blender.org/docs/release_notes/4.4/cycles/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-014",
+      "url": "https://docs.blender.org/manual/en/latest/animation/markers.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-015",
+      "url": "https://docs.blender.org/manual/en/latest/compositing/types/color/alpha_over.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-016",
+      "url": "https://docs.blender.org/manual/en/latest/modeling/texts/introduction.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-017",
+      "url": "https://docs.blender.org/manual/en/latest/render/cycles/gpu_rendering.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-018",
+      "url": "https://docs.docker.com/engine/containers/resource_constraints/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-019",
+      "url": "https://docs.kdenlive.org/en/cutting_and_assembling/editing.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-020",
+      "url": "https://docs.kdenlive.org/en/cutting_and_assembling/right_click_menu.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-021",
+      "url": "https://docs.kdenlive.org/en/getting_started/configure_kdenlive/configuration_plugins.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-022",
+      "url": "https://docs.kdenlive.org/en/user_interface/monitors.html",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-023",
+      "url": "https://github.com/5461gpt/SoulX-LiveAct-RTX5090/blob/917fc4599d5970332b6866be9ac19cbce9d0b6fa/NOTICE.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-024",
+      "url": "https://github.com/5461gpt/SoulX-LiveAct-RTX5090/blob/917fc4599d5970332b6866be9ac19cbce9d0b6fa/artifacts/benchmarks/prequant_warm.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-025",
+      "url": "https://github.com/5461gpt/SoulX-LiveAct-RTX5090/blob/917fc4599d5970332b6866be9ac19cbce9d0b6fa/docs/FP4_PREQUANTIZED_BENCHMARK.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-026",
+      "url": "https://github.com/5461gpt/SoulX-LiveAct-RTX5090/blob/917fc4599d5970332b6866be9ac19cbce9d0b6fa/docs/RTX5090_REPRODUCTION_GUIDE_ZH-TW.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-027",
+      "url": "https://github.com/5461gpt/SoulX-LiveAct-RTX5090/tree/917fc4599d5970332b6866be9ac19cbce9d0b6fa",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-028",
+      "url": "https://github.com/ChrisJohnson89/minimax-h3-comfyui",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-029",
+      "url": "https://github.com/Comfy-Org/ComfyUI/blob/master/comfy_extras/nodes_wan.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-030",
+      "url": "https://github.com/Comfy-Org/ComfyUI/pull/16483",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-031",
+      "url": "https://github.com/Comfy-Org/comfy-kitchen/pull/191",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-032",
+      "url": "https://github.com/Comfy-Org/docs/blob/main/tutorials/video/minimax/minimax-h3-multiframe.mdx",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-033",
+      "url": "https://github.com/Comfy-Org/workflow_templates/blob/67984637eefcd4825dcf5c134e39034785be1682/templates/video_minimax_h3_multiframe_reference.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-034",
+      "url": "https://github.com/Comfy-Org/workflow_templates/blob/main/templates/video_wan2_1_infinitetalk.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-035",
+      "url": "https://github.com/DanielSWolf/rhubarb-lip-sync",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-036",
+      "url": "https://github.com/DanielSWolf/rhubarb-lip-sync/blob/master/LICENSE.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-037",
+      "url": "https://github.com/Francis-Rings/StableAvatar/tree/38625187dc10913ba4facc32341a841ce0a8f29b",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-038",
+      "url": "https://github.com/HKUST-C4G/AnyTalker#14b-inference",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-039",
+      "url": "https://github.com/HKUST-C4G/AnyTalker/blob/e5490b60dc6add439ff5ecec5bd7559606a78d53/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-040",
+      "url": "https://github.com/HKUST-C4G/AnyTalker/blob/e5490b60dc6add439ff5ecec5bd7559606a78d53/generate_a2v_batch_multiID.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-041",
+      "url": "https://github.com/HKUST-C4G/AnyTalker/tree/e5490b60dc6add439ff5ecec5bd7559606a78d53",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-042",
+      "url": "https://github.com/Luisacaotica/ComfyUI-MiniMaxH3Mod",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-043",
+      "url": "https://github.com/MeiGen-AI/InfiniteTalk#-quickstart",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-044",
+      "url": "https://github.com/MeiGen-AI/InfiniteTalk/issues/210",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-045",
+      "url": "https://github.com/MeiGen-AI/InfiniteTalk/tree/50aa0a94184315407a991ae804d9b58d6d311ba8",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-046",
+      "url": "https://github.com/ModelTC/LightX2V/blob/main/configs/infinitetalk/5090/infinitetalk_mutli_distilled.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-047",
+      "url": "https://github.com/ModelTC/Minimax-H3-Turbo/blob/02e26d591f7a04d5d1a074c9566d5dd4f22f6225/COMFYUI_SETUP_AND_INFERENCE.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-048",
+      "url": "https://github.com/ModelTC/Minimax-H3-Turbo/blob/02e26d591f7a04d5d1a074c9566d5dd4f22f6225/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-049",
+      "url": "https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context/issues/48",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-050",
+      "url": "https://github.com/NikoDemon80/ComfyUI-H3-Motion-Context/issues/57",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-051",
+      "url": "https://github.com/Nuos/rtx509032g-minimax-h3-comfyui/blob/0409aa4b18767cd7d18de66442671e6dfe7f2ea4/benchmarks/results.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-052",
+      "url": "https://github.com/Premik/blender_rhubarb_lipsync_ng",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-053",
+      "url": "https://github.com/ShmuelRonen/ComfyUI-LatentSyncWrapper",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-054",
+      "url": "https://github.com/Soul-AILab/SoulX-FlashHead",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-055",
+      "url": "https://github.com/Soul-AILab/SoulX-LiveAct",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-056",
+      "url": "https://github.com/Soul-AILab/SoulX-LiveAct/blob/ac8579b907756f228e975922a5159765c93c6a34/examples/example_edit.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-057",
+      "url": "https://github.com/Soul-AILab/SoulX-LiveAct/tree/ac8579b907756f228e975922a5159765c93c6a34",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-058",
+      "url": "https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-059",
+      "url": "https://github.com/TMElyralab/MuseTalk/issues/334",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-060",
+      "url": "https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-061",
+      "url": "https://github.com/TaoLiveAIGC/TaoMate-H3",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-062",
+      "url": "https://github.com/Wan-Video/Wan2.2",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-063",
+      "url": "https://github.com/akatz-ai/h3-relay/blob/e2a7665b6eb8ea37a88c0de2c9c6b69a8f7c9220/VALIDATION.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-064",
+      "url": "https://github.com/akatz-ai/h3-relay/blob/e2a7665b6eb8ea37a88c0de2c9c6b69a8f7c9220/VALIDATION.md#L389",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-065",
+      "url": "https://github.com/akatz-ai/h3-relay/tree/e2a7665b6eb8ea37a88c0de2c9c6b69a8f7c9220",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-066",
+      "url": "https://github.com/antgroup/echomimic_v3",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-067",
+      "url": "https://github.com/bensblueprints/lora-training-pipeline",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-068",
+      "url": "https://github.com/bytedance/LatentSync#-inference",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-069",
+      "url": "https://github.com/bytedance/LatentSync/blob/a229c3948406bc2cf6eaf4873e662e70c6a04746/latentsync/pipelines/lipsync_pipeline.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-070",
+      "url": "https://github.com/bytedance/LatentSync/blob/a229c3948406bc2cf6eaf4873e662e70c6a04746/latentsync/utils/face_detector.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-071",
+      "url": "https://github.com/bytedance/LatentSync/issues/355",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-072",
+      "url": "https://github.com/bytedance/LatentSync/issues/365",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-073",
+      "url": "https://github.com/bytedance/LatentSync/tree/a229c3948406bc2cf6eaf4873e662e70c6a04746",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-074",
+      "url": "https://github.com/cvlab-kaist/LipForcing",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-075",
+      "url": "https://github.com/deepinsight/insightface#license",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-076",
+      "url": "https://github.com/hiroki-abe-58/ComfyUI-LeapTalk/blob/041d7a7ec979489619a446478157055383d20532/docs/BENCHMARKS.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-077",
+      "url": "https://github.com/hiroki-abe-58/ComfyUI-LeapTalk/blob/041d7a7ec979489619a446478157055383d20532/docs/LICENSING.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-078",
+      "url": "https://github.com/hiroki-abe-58/ComfyUI-LeapTalk/blob/041d7a7ec979489619a446478157055383d20532/docs/SETUP.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-079",
+      "url": "https://github.com/hiroki-abe-58/ComfyUI-LeapTalk/blob/041d7a7ec979489619a446478157055383d20532/docs/results/gpu_e2e_report.json",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-080",
+      "url": "https://github.com/hiroki-abe-58/ComfyUI-LeapTalk/tree/041d7a7ec979489619a446478157055383d20532",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-081",
+      "url": "https://github.com/kijai/ComfyUI-WanVideoWrapper/issues/1308",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-082",
+      "url": "https://github.com/kohya-ss/musubi-tuner/blob/f8a1b03794a49239a3539015075f5123d6c07d66/docs/minimax_h3.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-083",
+      "url": "https://github.com/meituan-longcat/LongCat-Video/tree/6b3f4b8582a8bc3f20f795735f5383716c4ba794",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-084",
+      "url": "https://github.com/muse-collective-26/Muse-CharacterSheet-H3",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-085",
+      "url": "https://github.com/nenhang/ContextGen",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-086",
+      "url": "https://github.com/ostris/ai-toolkit/issues/1017",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-087",
+      "url": "https://github.com/ostris/ai-toolkit/issues/1050",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-089",
+      "url": "https://github.com/sandpies/ComfyUI-H3-Video-Upsampler/blob/3403ef7a81742fb76eb1633bdd5bb748ad85fd53/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-090",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/CHANGELOG.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-091",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/PROMPTING.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-092",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-093",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/audio_lock.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-094",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/h3_ref_chain.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-095",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/h3_ref_chain.py#L4887",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-096",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/blob/073104edd381b7b56d2f2ae80bbe3d9578f764ed/refmod.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-097",
+      "url": "https://github.com/sandpies/ComfyUI-Hand-Tie-Clips/tree/073104edd381b7b56d2f2ae80bbe3d9578f764ed",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-098",
+      "url": "https://github.com/scaredyfish/blender-rhubarb-lipsync",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-099",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/CLI.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-100",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/FLUX3.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-101",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/INSTALL.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-102",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/MINIMAX_H3.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-103",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/QWEN_IMAGE.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-104",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/REFMOD_HOWDOI.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-105",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/RELEASE_NOTES_v5.2.0.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-106",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/docs/RELEASE_NOTES_v5.4.1.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-107",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/families/lora.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-108",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/families/minimax.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-109",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/flux3/driver.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-110",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/flux3/model.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-111",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/minimax/driver.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-112",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/minimax/model.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-113",
+      "url": "https://github.com/shootthesound/Fizgig/blob/20331b14ae514013be8617d21e1cfa6fef592f9f/src/fizgig/training/automagic3.py",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-114",
+      "url": "https://github.com/smthemex/ComfyUI_EchoMimic",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-115",
+      "url": "https://github.com/snap-research/TalkVerse",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-116",
+      "url": "https://github.com/tight-studio/open-source-talking-avatar-benchmark/blob/f0fe080c14b1d814c1ca0d0ce493db04f74868bc/REPORT.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-117",
+      "url": "https://github.com/yuichi-suzuki-highdrama/minimax-h3-local-pipeline-notes/blob/55509fd16464f57512b6c35bf09255d74fa4fdd6/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-118",
+      "url": "https://github.com/zhangrongxiang/LeapTalk/tree/54dbd35d75ff69dc4f15f1855fd3bad10dad8a23",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-119",
+      "url": "https://huggingface.co/ByteDance/LatentSync-1.6/tree/c42c7e6c8e9c213626389fa7d9a3c444b8536353",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-120",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/tree/e5eb578a89295337b8ff433a035929ce0279e0b6",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-121",
+      "url": "https://huggingface.co/Kijai/MiniMax-H3-experimental/tree/382271aa8f5b97bc1b376d3f1f83f9a500c42a80",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-122",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-123",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/42ed227ee7df40d41602854ae760620d6eb651fe/LICENSE",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-124",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/42ed227ee7df40d41602854ae760620d6eb651fe/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-126",
+      "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/discussions",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-127",
+      "url": "https://huggingface.co/Qwen/Qwen-Image-2.1",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-128",
+      "url": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-129",
+      "url": "https://huggingface.co/Soul-AILab/SoulX-FlashHead-1_3B",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-130",
+      "url": "https://huggingface.co/Winnougan/Cobijada_Minimax-H3_Hybrid_Pruned_ComfyUI",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-131",
+      "url": "https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/96ea3407b230b6f7df71c58c70e31df96bd7e533/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-132",
+      "url": "https://huggingface.co/akatz-ai/MiniMax-H3-Character-Swap-LoRA/blob/96ea3407b230b6f7df71c58c70e31df96bd7e533/examples/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-133",
+      "url": "https://huggingface.co/alibaba-pai/MiniMax-H3-Acc-LoRAs",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-134",
+      "url": "https://huggingface.co/alibaba-pai/MiniMax-H3-Fun-Controlnet-Union",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-135",
+      "url": "https://huggingface.co/alibaba-pai/MiniMax-H3-Fun-Controlnet-Union-2.0/blob/7d2c95de2e351ed6a0b360af45f62daa04c26f88/README.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-136",
+      "url": "https://huggingface.co/api/models/Comfy-Org/MiniMax-H3?blobs=true",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-137",
+      "url": "https://huggingface.co/api/models/Kijai/MiniMax-H3-experimental?blobs=true",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-138",
+      "url": "https://huggingface.co/api/models/akatz-ai/MiniMax-H3-Character-Swap-LoRA?blobs=true",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-139",
+      "url": "https://huggingface.co/api/models/sandpies/ComfyUI-H3-Video-Upsampler?blobs=true",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-140",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4B",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-141",
+      "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-base-4B",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-142",
+      "url": "https://huggingface.co/black-forest-labs/flux-3-image-klein",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-143",
+      "url": "https://huggingface.co/black-forest-labs/flux-3-image-klein-base/blob/main/LICENSE.md",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-144",
+      "url": "https://huggingface.co/blog/flux-3",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-145",
+      "url": "https://huggingface.co/blog/hexgridcloud/qwen-image-21-edit-8-real-world-image-editing-stre",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-146",
+      "url": "https://huggingface.co/circlestone-labs/MiniMax-H3-Image-Training-Adapter",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-147",
+      "url": "https://huggingface.co/collections/black-forest-labs/flux-3-image-klein",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-148",
+      "url": "https://huggingface.co/collections/defhouse/talking-heads",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-149",
+      "url": "https://huggingface.co/collections/gotomypc/digital-human",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-150",
+      "url": "https://huggingface.co/docs/diffusers/main/api/pipelines/qwenimage21",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-151",
+      "url": "https://huggingface.co/docs/transformers/en/model_memory_anatomy",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-152",
+      "url": "https://huggingface.co/lightx2v/Minimax-h3-Turbo/tree/30f485ed874aa44c8183348ad361c5eabad318da",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-153",
+      "url": "https://huggingface.co/sandpies/ComfyUI-H3-Video-Upsampler/blob/4592d2b187255c433376bb426c0eec0e9ecdee35/lora/training_config.yaml",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-154",
+      "url": "https://huggingface.co/smgll/CharacterSheet",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-155",
+      "url": "https://huggingface.co/snap-research/talkverse-s2v-5b",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-156",
+      "url": "https://huggingface.co/z-rx/leaptalk/tree/b33b788fd1c9b3df11627e00c6a0415272d829dc",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-157",
+      "url": "https://kdenlive.org/about/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-158",
+      "url": "https://plox-1.github.io/h3-speedups/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-159",
+      "url": "https://pytorch.org/blog/pytorch-2-7/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-160",
+      "url": "https://studio.blender.org/blog/exploring-production-files/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-161",
+      "url": "https://studio.blender.org/blog/sprite-fright-edit-bundle/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-162",
+      "url": "https://studio.blender.org/films/sprite-fright/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-163",
+      "url": "https://www.blender.org/about/license/",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    },
+    {
+      "id": "companion-164",
+      "url": "https://zenn.dev/toki_mwc/articles/minimax-h3-rtx5090-benchmark",
+      "published_or_observed": "Observed 2026-10-26; publication date retained in linked angle report when known.",
+      "observed_at": "2026-10-26",
+      "age_class": "publication-age-unknown-see-report",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "See bounded claim and exact hardware/task context in research reports.",
+      "decision_impact": "Supports candidate recipe, benchmark, counterexample or licensing boundary; not local qualification."
+    }
+  ]
+}

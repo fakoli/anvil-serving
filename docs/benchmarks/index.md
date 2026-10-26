@@ -1,5 +1,7 @@
 # Benchmarks
 
+**2026-10-26 local video:**[Cobijada H3 MCP generation and guided2× finish](../findings/2026-10-26-h3-comfyui-mcp.md) completed on RTX5090. Functional smoke only;[dossier](models/cobijada-h3.md) and [companion research](../findings/2026-10-26-h3-comfyui-mcp-evidence/research/brief.md).
+
 **Current primary recommendation, 2026-10-17:** the operator selected
 `nvidia/GLM-5.3-Flash-FP4-Local` as the best current fit for this deployment.
 The pinned TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is promoted;

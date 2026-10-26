@@ -1,0 +1,26 @@
+{
+  "video.h3-cobijada-t2v-v1": {
+    "compatibility": {
+      "available": true,
+      "id": "video.h3-cobijada-t2v-v1",
+      "missingFeatures": [],
+      "missingModels": [],
+      "missingNodes": [],
+      "ready": true,
+      "reasons": [],
+      "version": "v1"
+    }
+  },
+  "video.h3-cobijada-upscale-v1": {
+    "compatibility": {
+      "available": true,
+      "id": "video.h3-cobijada-upscale-v1",
+      "missingFeatures": [],
+      "missingModels": [],
+      "missingNodes": [],
+      "ready": true,
+      "reasons": [],
+      "version": "v1"
+    }
+  }
+}

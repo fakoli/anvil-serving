@@ -1,0 +1,42 @@
+{
+  "schema": "h3-mcp-runtime-identity/v1",
+  "code_revision": "e04a90e06f961e7c995cc402d36843bd993cf153",
+  "package_version": "1.5.0",
+  "wheel_sha256": "4e126a1dcffba0d19f5cbbbb89f6ec1c5c2d5a16c816cf144730a40331b6b26d",
+  "final_worker_image_id": "sha256:58d09e9aefead16989803ef80fda4e73ab7e8052e0b41984ed55612dc0d05f3c",
+  "runtime_base_image_id": "sha256:2745761f803e2c0ac93c5c852e7dfbf0b5b8568ac386aae14277a748f4571bdc",
+  "comfyui": "0.42.0",
+  "comfyui_git_revision": null,
+  "python_worker": "3.13.15",
+  "pytorch": "2.13.0+cu130",
+  "upsampler_revision": "3403ef7a81742fb76eb1633bdd5bb748ad85fd53",
+  "hardware": {
+    "gpu": "RTX5090",
+    "nvml_total_mib": 32607,
+    "windows_installed_ram": "96GB",
+    "wsl_configured_ram_gib": 72,
+    "wsl_swap_gib": 8,
+    "worker_ram_gib": 64,
+    "worker_ram_plus_swap_gib": 72
+  },
+  "admission": {
+    "gpu_capacity_mib": 32607,
+    "gpu_reserve_mib": 1024,
+    "h3_reservation_mib": 31583,
+    "max_concurrency": 1
+  },
+  "controls": [
+    "offline mode",
+    "PyTorch attention",
+    "pinned memory disabled",
+    "cache-none",
+    "reserve-vram1",
+    "read-only weights and node source",
+    "temporary directory /tmp/h3-mcp",
+    "only reviewed upsampler custom node enabled",
+    "Windows fresh-signal memory supervisor",
+    "45-minute worker lifetime"
+  ],
+  "network": "Loopback host-published endpoints; private bridge plus front bridge. Offline flags do not prove network egress isolation.",
+  "revision_boundary": "Initial generation used the preceding package; warm upscale used the progress correction. Final cold upscale used the named final wheel. Graphs and model assets unchanged; do not treat these as matched performance arms."
+}

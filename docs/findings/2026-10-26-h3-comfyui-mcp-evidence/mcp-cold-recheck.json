@@ -1,0 +1,51 @@
+{
+  "created": true,
+  "job": {
+    "approval": {
+      "action": "prepare",
+      "approved": false,
+      "humanRequired": true,
+      "operatorAction": {
+        "arguments": {
+          "confirm": true,
+          "dry_run": false,
+          "human_approved": true,
+          "job_id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+          "manifest": "serves.toml",
+          "principal": "media-caller",
+          "service": "media-worker-h3",
+          "transaction_id": "jckaCbH8tuKHXzcSXih6J74M"
+        },
+        "tool": "media_worker_prepare"
+      },
+      "schema": "anvil-serving.media-lifecycle-approval/v1",
+      "service": "media-worker-h3",
+      "transactionId": "jckaCbH8tuKHXzcSXih6J74M"
+    },
+    "artifacts": [],
+    "createdAt": "2026-10-26T16:01:51.156754+00:00",
+    "id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+    "latency": {
+      "recordedSeconds": 0.931
+    },
+    "qualityProfile": "standard",
+    "sequence": 2,
+    "state": "awaiting_approval",
+    "updatedAt": "2026-10-26T16:01:52.088239+00:00",
+    "workflow": {
+      "id": "video.h3-cobijada-upscale-v1",
+      "version": "v1"
+    }
+  },
+  "resumeBundle": {
+    "approval_transaction_id": "jckaCbH8tuKHXzcSXih6J74M",
+    "idempotency_key": "h3-mcp-integration-20261026-upscale-guard-recheck-01",
+    "job_id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+    "parameters": {
+      "source_video": "art_09GKVZyFvJWsaE83zR7vAe7MDnIU14dQ"
+    },
+    "quality_profile": "standard",
+    "version": "v1",
+    "workflow_id": "video.h3-cobijada-upscale-v1"
+  }
+}

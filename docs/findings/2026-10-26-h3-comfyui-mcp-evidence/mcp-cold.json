@@ -1,0 +1,55 @@
+{
+  "data": {
+    "created": true,
+    "job": {
+      "approval": {
+        "action": "prepare",
+        "approved": false,
+        "humanRequired": true,
+        "operatorAction": {
+          "arguments": {
+            "confirm": true,
+            "dry_run": false,
+            "human_approved": true,
+            "job_id": "job_FnxlnQflj5IPQ83u-C-v-wgCOk2i8Gii",
+            "manifest": "serves.toml",
+            "principal": "media-caller",
+            "service": "media-worker-h3",
+            "transaction_id": "W98PKX-yoFc1atnr53gjGx8-"
+          },
+          "tool": "media_worker_prepare"
+        },
+        "schema": "anvil-serving.media-lifecycle-approval/v1",
+        "service": "media-worker-h3",
+        "transactionId": "W98PKX-yoFc1atnr53gjGx8-"
+      },
+      "artifacts": [],
+      "createdAt": "2026-10-26T14:36:37.908084+00:00",
+      "id": "job_FnxlnQflj5IPQ83u-C-v-wgCOk2i8Gii",
+      "latency": {
+        "recordedSeconds": 0.906
+      },
+      "qualityProfile": "standard",
+      "sequence": 2,
+      "state": "awaiting_approval",
+      "updatedAt": "2026-10-26T14:36:38.813822+00:00",
+      "workflow": {
+        "id": "video.h3-cobijada-t2v-v1",
+        "version": "v1"
+      }
+    },
+    "resumeBundle": {
+      "approval_transaction_id": "W98PKX-yoFc1atnr53gjGx8-",
+      "idempotency_key": "h3-mcp-integration-20261026-base-01",
+      "job_id": "job_FnxlnQflj5IPQ83u-C-v-wgCOk2i8Gii",
+      "parameters": {
+        "prompt": "This video has 2 shots. shot1: ID_A is Nathan Vale, a lean 39-year-old American man with dark wavy hair, gray-blue eyes, and a tired angular face. ID_A wears a white dinner jacket, black shirt, dark trousers, and polished shoes. ID_A's voice is dry, low, controlled, and quietly ironic. His mouth is clearly visible. At normal speed, Nathan turns from the radio toward a nervous patron and ID_A says, \"In San Cordoba, every table orders coffee and asks for a border.\" His lips remain synchronized with the line as he gives the patron a guarded look. A restrained medium close-up slowly pushes toward his face in smoky period lighting. Only the written spoken dialogue is voiced; no additional human vocalizations are audible. No prominent background music. No OCR or readable text appears anywhere in the frame. No on-screen text or subtitles. shot2: Cut to a wider view of the Blue Signal Cafe as refugees discreetly slide travel papers beneath coffee cups while Nathan turns back to the radio. Ceiling fans rotate above smoky tables, maps, period radio sets, and a small stage. Radio static, glasses, and a distant ship horn are audible as muted piano and low strings enter softly. Realistic live-action wartime romantic-thriller cinematography with restrained black-and-white-inspired lighting. No OCR or readable text appears anywhere in the frame. No on-screen text or subtitles.",
+        "seed": 42
+      },
+      "quality_profile": "standard",
+      "version": "v1",
+      "workflow_id": "video.h3-cobijada-t2v-v1"
+    }
+  },
+  "ok": true
+}

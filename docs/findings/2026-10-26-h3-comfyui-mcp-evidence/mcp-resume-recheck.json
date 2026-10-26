@@ -1,0 +1,43 @@
+{
+  "created": false,
+  "job": {
+    "approval": {
+      "action": "prepare",
+      "approved": true,
+      "humanRequired": true,
+      "operatorAction": {
+        "arguments": {
+          "confirm": true,
+          "dry_run": false,
+          "human_approved": true,
+          "job_id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+          "manifest": "serves.toml",
+          "principal": "media-caller",
+          "service": "media-worker-h3",
+          "transaction_id": "jckaCbH8tuKHXzcSXih6J74M"
+        },
+        "tool": "media_worker_prepare"
+      },
+      "schema": "anvil-serving.media-lifecycle-approval/v1",
+      "service": "media-worker-h3",
+      "transactionId": "jckaCbH8tuKHXzcSXih6J74M"
+    },
+    "artifacts": [],
+    "createdAt": "2026-10-26T16:01:51.156754+00:00",
+    "id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+    "latency": {
+      "acceptedToQueuedSeconds": 544.097,
+      "approvalWaitSeconds": 97.179,
+      "recordedSeconds": 544.097,
+      "submissionSeconds": 0.048
+    },
+    "qualityProfile": "standard",
+    "sequence": 5,
+    "state": "queued",
+    "updatedAt": "2026-10-26T16:10:55.253613+00:00",
+    "workflow": {
+      "id": "video.h3-cobijada-upscale-v1",
+      "version": "v1"
+    }
+  }
+}

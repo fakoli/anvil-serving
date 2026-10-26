@@ -50,26 +50,26 @@
 
 - [x] Derive immutable graph descriptors from retained trial graphs and pinned asset manifests; preserve the tested settings.
 - [x] Add graph/descriptor tests and the documented MCP input/output contract.
-- [ ] Reuse managed lifecycle verbs with a pinned H3 runtime, verified existing model mounts and reviewed custom nodes. Resolve the old 4-GiB reservation mismatch explicitly.
-- [ ] Configure the local MCP gateway and lifecycle controller against the same durable state, with protected secret references and no exposure beyond the intended local surface.
-- [ ] Validate compatibility and model readiness before generation.
+- [x] Reuse managed lifecycle verbs with a pinned H3 runtime, verified existing model mounts and reviewed custom nodes. Resolve the old 4-GiB reservation mismatch explicitly.
+- [x] Configure the local MCP gateway and lifecycle controller against the same durable state, with protected secret references and no exposure beyond the intended local surface.
+- [x] Validate compatibility and model readiness before generation.
 
 ### Task 3: Prove a cold MCP run and publish the evidence
 
 **Files:** Dated private campaign evidence; sanitized public finding, artifact set, model dossier, run catalog and measured GPU page.
 
-- [ ] Capture starting state, run generation through actual MCP from a stopped worker, then upscale its owned video artifact through MCP.
-- [ ] Verify decoding, dimensions/frame count/FPS/audio, idempotency, observable job states, cancellation behavior and scoped teardown. Record GPU, container and Windows memory, and distinguish engine from observation time.
-- [ ] Retain and sanitize the native evidence, failures and restoration receipts; derive public repeated metrics from retained JSON.
+- [x] Capture starting state, run generation through actual MCP from a stopped worker, then upscale its owned video artifact through MCP.
+- [x] Verify decoding, dimensions/frame count/FPS/audio, idempotency, observable job states, cancellation behavior and scoped teardown. Record GPU, container and Windows memory, and distinguish engine from observation time.
+- [x] Retain and sanitize the native evidence, failures and restoration receipts; derive public repeated metrics from retained JSON.
 - [ ] Apply the benchmark publication matrix and required documentation/code checks, review the changes, create/attach a PR and publish through the existing documentation owner. Verify the published surface or record its specific external blocker.
 
 ### Task 4: Recommend the next useful pipeline additions
 
 **Files:** Dated source registry, concise research brief and publication-safe recommendations.
 
-- [ ] Inventory current sources and existing recipes for H3 controls/adapters, character training, reference/studio construction, recorded speech/lip sync, restoration and assembly.
-- [ ] Verify promising candidates with original code/model cards, multiple relevant evaluation sources and real-project examples where available; explicitly record unavailable evidence.
-- [ ] Size weight residency plus workspaces/offload against the measured single-GPU and host-memory envelope. Rank a short list as worth testing, watch or skip, with reusable recipes and one informative next experiment each.
+- [x] Inventory current sources and existing recipes for H3 controls/adapters, character training, reference/studio construction, recorded speech/lip sync, restoration and assembly.
+- [x] Verify promising candidates with original code/model cards, multiple relevant evaluation sources and real-project examples where available; explicitly record unavailable evidence.
+- [x] Size weight residency plus workspaces/offload against the measured single-GPU and host-memory envelope. Rank a short list as worth testing, watch or skip, with reusable recipes and one informative next experiment each.
 
 ## Completion audit
 

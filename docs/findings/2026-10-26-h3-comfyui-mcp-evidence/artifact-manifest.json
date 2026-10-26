@@ -1,0 +1,436 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-26-h3-comfyui-mcp",
+    "capability": "video-generation-and-guided-upscale",
+    "repository_revision": "e04a90e06f961e7c995cc402d36843bd993cf153",
+    "dirty_state": "Final tested package source clean;publication derivative files added afterward.",
+    "started_at": "2026-10-26T13:17:04Z",
+    "completed_at": "2026-10-26T09:31:56.814392-07:00",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "JSON-RPC tools/call results",
+    "ComfyUI history",
+    "ffprobe JSON",
+    "nvidia-smi CSV",
+    "anvil-serving.host-memory-signal/v1",
+    "bounded cgroup counter captures"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "bc4560d693adf0b55d244d9082b9340dcd0cbf064cb8690e255cfcf460e8cdde",
+          "bytes": 1844
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "3ee25dfb70c790485d9c2fc89318789729d5f8dfda4439355d0272ffbbc34097",
+          "bytes": 104362
+        },
+        {
+          "path": "research/angle-h3.md",
+          "sha256": "8bc50d9104f090fd140f72011396a4997e89af90cb9cf2484ad1a9b980929420",
+          "bytes": 26239
+        },
+        {
+          "path": "research/angle-h3.provenance.md",
+          "sha256": "e0eec616bb116646d6c5daaf3024ed2efd0910ef101f60801859601f8ddcb7bd",
+          "bytes": 23297
+        },
+        {
+          "path": "research/angle-identity.md",
+          "sha256": "1b94877570123710ae663570bccf48886feb33c30f3ed1fd7f2ee481f491f6d4",
+          "bytes": 37331
+        },
+        {
+          "path": "research/angle-identity.provenance.md",
+          "sha256": "c76f5e3828d1124c59c2004c65e408eb4eb9795c4f974d3450a94ccb7577ef67",
+          "bytes": 59247
+        },
+        {
+          "path": "research/angle-speech.md",
+          "sha256": "86535ae3effd72408a19ec4b1e08de9af81d1c21c4bef4c5c7bc1f9a153f4e47",
+          "bytes": 37903
+        },
+        {
+          "path": "research/angle-speech.provenance.md",
+          "sha256": "aa3c9ad8d0694c794da6bc110575cff5e8c24f7b3310173445dda067ba8486ec",
+          "bytes": 63572
+        },
+        {
+          "path": "research/brief.md",
+          "sha256": "5c9c3a77d768b72ffa3f4e357bc6bae4481b890fe4673073ce7fbfeedaf026c3",
+          "bytes": 19796
+        },
+        {
+          "path": "research/brief.provenance.md",
+          "sha256": "b619afc9080ebbb480e0303c4d60bdc507d3e4c4aab243964a4505f899ab829e",
+          "bytes": 5340
+        },
+        {
+          "path": "research/review.md",
+          "sha256": "88cf890e8fb59f16854dd07b96ddb6bfa1fa8b40ff85403bc78d2e657625a769",
+          "bytes": 13451
+        },
+        {
+          "path": "research/review.provenance.md",
+          "sha256": "0885a9887a09b291c91e044fba1924ca5ead418d3a928068115b26ab534411d0",
+          "bytes": 7437
+        },
+        {
+          "path": "research/verified-claims.md",
+          "sha256": "19bb84b05a1e102fd87fb8d82c9ee36158b657502dc0e5d6b19dce72a3d7d8d1",
+          "bytes": 46118
+        },
+        {
+          "path": "research/verify.provenance.md",
+          "sha256": "4a120ce3bb116e7c7f93c4fb990c0c11ea606451ce07560259ea57656197a439",
+          "bytes": 36507
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload.md",
+          "sha256": "9bb46f8ca98560548e567bbdbdb857c0be8d7b8ed0f6bd33137f3bc9b07d86bb",
+          "bytes": 1486
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload.md",
+          "sha256": "9bb46f8ca98560548e567bbdbdb857c0be8d7b8ed0f6bd33137f3bc9b07d86bb",
+          "bytes": 1486
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "runtime-identity.json",
+          "sha256": "308dd437e6052c684c3c6265d16361197d29056d6c026710687dd336b5275d51",
+          "bytes": 1705
+        },
+        {
+          "path": "asset-lock.json",
+          "sha256": "e58d866257c85235e659d8c4204fc4a8a6e9afcb388f24b8bcc13ccb93483576",
+          "bytes": 6344
+        },
+        {
+          "path": "final-worker-identity.json",
+          "sha256": "10f23ce0e03950716b4628d2b1b32c56cb1cb91de3806347e00e02f68f657951",
+          "bytes": 193
+        },
+        {
+          "path": "sanitization.json",
+          "sha256": "b4de25096410abb58dae83928a049190df2cac8fef23defffedfa41f655dfc8e",
+          "bytes": 11354
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "artifact-export-verification.json",
+          "sha256": "f50529108911a03fcb10808ece1c25b81d218d02e8d040f05c967a8dacd7b280",
+          "bytes": 720
+        },
+        {
+          "path": "base-cgroup.jsonl",
+          "sha256": "d9972372d6d98f097c605cfe46731f60f0926db597bdffbdddef7c64460dae8f",
+          "bytes": 11173
+        },
+        {
+          "path": "base-decode.txt",
+          "sha256": "fc04eed6b70bfbacc8a6338ae60cb26d2ebfabe19a370ade4f0683744d310bad",
+          "bytes": 181
+        },
+        {
+          "path": "base-ffprobe.json",
+          "sha256": "b7744a76fbd3f2d19f8cd8de5eb6df3b0f9f4c67035d0e9b2f341d41dda4d7a0",
+          "bytes": 6992
+        },
+        {
+          "path": "base-gpu.csv",
+          "sha256": "620fb370dddb227f1fcc60bdaf82db3e40a88c20f1e180422d515fbe15ba4d09",
+          "bytes": 6483
+        },
+        {
+          "path": "base-windows-memory.jsonl",
+          "sha256": "d6c4e4da2c8747deb23c7b3dcb48cd8cfc43035c4f276a957ff56e9245016ac3",
+          "bytes": 51270
+        },
+        {
+          "path": "cold-upscale-recheck-cgroup.jsonl",
+          "sha256": "b5c2c62039d71f0b3f0b5c3931e8e48ffb1b13c5093317dd2f6d8b27a823107f",
+          "bytes": 13510
+        },
+        {
+          "path": "cold-upscale-recheck-gpu.csv",
+          "sha256": "99e95f904041b75e0ba901353bbb7d4ef91ada50de054ec6db7923144ae4f690",
+          "bytes": 7778
+        },
+        {
+          "path": "cold-upscale-recheck-windows-memory.jsonl",
+          "sha256": "7582fc5e2a1256e090dbc90aad35d5d0c7f611f5478c9455a3049fa60d619e71",
+          "bytes": 61536
+        },
+        {
+          "path": "mcp-cancel-pending.json",
+          "sha256": "a8b150a7449be6e9cb3b1ed2540435021fc63c502ff34191233e2649fcd167d3",
+          "bytes": 3918
+        },
+        {
+          "path": "mcp-cold-recheck.json",
+          "sha256": "a0e6033107fe3a97737487ac98f60a9375ecb762f440786cf5a0d5794993d334",
+          "bytes": 1539
+        },
+        {
+          "path": "mcp-cold.json",
+          "sha256": "a1fe33ba22c6be5d0e727184a3863e6b04b32685a69b19b126887af3907ae725",
+          "bytes": 3006
+        },
+        {
+          "path": "mcp-poll-base.json",
+          "sha256": "ecadff337516246619ece841239c100dd634c0229fe7d4a0bfa88c1e6a688f83",
+          "bytes": 1858
+        },
+        {
+          "path": "mcp-poll-recheck.json",
+          "sha256": "3705bfd77807c87529c45f9dfa19d6cc1082b05616f3df6be9caf95e0829d325",
+          "bytes": 1866
+        },
+        {
+          "path": "mcp-poll-upscale.json",
+          "sha256": "7b80742c071681b36a705896e6af4ad0e96588b0f6d3605a3e81f1c2d9aba0a5",
+          "bytes": 1147
+        },
+        {
+          "path": "mcp-prepare.json",
+          "sha256": "f18c2e7388250ecafb64e1f263fbf721498e31228e10ef0780727eead499a4a8",
+          "bytes": 2665
+        },
+        {
+          "path": "mcp-readiness.json",
+          "sha256": "476b30a3e4e014a2a676487ee06be342b14aeffdb64f596f0bd5f67a86641e1d",
+          "bytes": 565
+        },
+        {
+          "path": "mcp-replay-inspect.json",
+          "sha256": "57b21f78e6b2e28fe27b037bbbaaeb6c8df7e5742746b54edd67bf937575201a",
+          "bytes": 2540
+        },
+        {
+          "path": "mcp-resume-recheck.json",
+          "sha256": "46f53200b2f1c6d8d6b146f7f1cb043914e6cff16eb40107ec9d4c92fddce9b8",
+          "bytes": 1232
+        },
+        {
+          "path": "mcp-resume.json",
+          "sha256": "d97dd142c86dc7c90cb5291117a6c248e8b683e717847739b5b28b68fe867ec5",
+          "bytes": 1229
+        },
+        {
+          "path": "mcp-upscale.json",
+          "sha256": "869a5c0aa12971512616ace1601901e19720d76f6fff6eef8821042c66344dfd",
+          "bytes": 510
+        },
+        {
+          "path": "recheck-comfy-history.json",
+          "sha256": "5849c702432a189849292424442543ad10e41b865680e61484a75577ccf6eb03",
+          "bytes": 5105
+        },
+        {
+          "path": "recheck-decode.txt",
+          "sha256": "c5410eb2d9facfc375a0d2dad29f8289c33b13cf761159c3c0fc2ceecf13ce6c",
+          "bytes": 181
+        },
+        {
+          "path": "recheck-ffprobe.json",
+          "sha256": "7c5dc75ff1b18350f17ac22b86bd5d6650cb9dd5005f91358c95253b65db0255",
+          "bytes": 5400
+        },
+        {
+          "path": "recheck-worker-log.json",
+          "sha256": "cc45837e69a96718718459c942c579b55dd744f7186dfcb20377d56fda38d242",
+          "bytes": 17086
+        },
+        {
+          "path": "upscale-decode.txt",
+          "sha256": "e97e6b42b144c56b1e5b8a6f646aa99791a37cf524c74f4ec34c264aecf72316",
+          "bytes": 181
+        },
+        {
+          "path": "upscale-ffprobe.json",
+          "sha256": "7b68eef1778b991919a0fc8a4e0b491da03bcb62446aaa4702dcb1b1fb9c7b8b",
+          "bytes": 5400
+        },
+        {
+          "path": "video-verification.json",
+          "sha256": "c48b8dc2a8c158d557cc07c3a1a0bb774af0c33fa020d77ad268803130fb1b42",
+          "bytes": 974
+        },
+        {
+          "path": "warm-upscale-cgroup.jsonl",
+          "sha256": "5eee84f7726ee7bf6f2e00b973d497ae09470a318251b56586a1a3596ab68923",
+          "bytes": 12171
+        },
+        {
+          "path": "warm-upscale-gpu.csv",
+          "sha256": "a091482d6c5ced538d89d5ec5a850d776de99486f579c512c9dc96de14fa1fa5",
+          "bytes": 7001
+        },
+        {
+          "path": "warm-upscale-windows-memory.jsonl",
+          "sha256": "fb77d630a6ec6356630a6963e716eea523d9d2f12c0217b3de30ece8e4153cec",
+          "bytes": 55101
+        },
+        {
+          "path": "measurements.json",
+          "sha256": "3ee985000d5ba7f9e092f7e1cda5779144a60fa6d0f3d18f53c9f774eaab37a9",
+          "bytes": 3865
+        },
+        {
+          "path": "mcp-cancel-initial.json",
+          "sha256": "3a35a2c36cc2b9abc89a08eda501f0bdfc7be649efd3582f454916244483dec9",
+          "bytes": 3198
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "b3dbcd99ed3f2f61f00d3ff9bd25ceb1ad3a9e3c88559efaaabb9e91f2ca5c97",
+          "bytes": 2782
+        },
+        {
+          "path": "worker-final-log.json",
+          "sha256": "d0adaff1fe2219d9ad6d3e8388deb62404807fd854f165f45bc993ee05038f22",
+          "bytes": 21701
+        },
+        {
+          "path": "worker-final-state.json",
+          "sha256": "9178fb1a604784be2666f8e207fa53862a848ffdd9771d9b0c703650351817f1",
+          "bytes": 226
+        },
+        {
+          "path": "guard-sharing-previous.json",
+          "sha256": "e64bcc6eb0b7ac2bc6994ab387229ee0dbc01d54ab4cad9eef96ab0d5699bbc5",
+          "bytes": 211
+        },
+        {
+          "path": "guard-sharing-fixed.json",
+          "sha256": "9bda789bbf2825c2b6f6da8e8f2a619949800582b7356e226f324ca70c8190ea",
+          "bytes": 208
+        },
+        {
+          "path": "guard-sharing-installed.json",
+          "sha256": "d714fbd7f1e304921f627f79e1371139ad36750561aa23d51bbdce395cb331b3",
+          "bytes": 207
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "a3838091e187ab8fcb3925b0d9b52590a5992c59a448991db98e738528c029ce",
+          "bytes": 1484
+        },
+        {
+          "path": "mcp-teardown.json",
+          "sha256": "4789168ea56601dd0c20f818430ebcf2a435b0300adf717e747fc8b59cc77af1",
+          "bytes": 2015
+        },
+        {
+          "path": "restored-worker-status.json",
+          "sha256": "e1d8d13cda01bc8a943cc13e4f3e8e93a8238f2b09fff14878c1302484186b51",
+          "bytes": 1116
+        },
+        {
+          "path": "restored-control-status.json",
+          "sha256": "80667b69f1cbd671159244c9625e382a1ce5f9bcafdcb2793b60a3b6ce874d11",
+          "bytes": 1070
+        },
+        {
+          "path": "restored-gpu.txt",
+          "sha256": "d4e96f17d7b6acfd0d5726a6d7159f626854f7868bbf3f005cf2df1ca689e2b2",
+          "bytes": 44
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "af14cc11fdf4b8a18ff07db2aa125864665b3c6d3619bb099316f374731ad7e6",
+          "bytes": 8015
+        },
+        {
+          "path": "measurements.json",
+          "sha256": "3ee985000d5ba7f9e092f7e1cda5779144a60fa6d0f3d18f53c9f774eaab37a9",
+          "bytes": 3865
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "bc9d54bf8dacb8a15d11eca614bc996677dfb7fbc398e1aea7072f61e9aec67f",
+          "bytes": 2195
+        }
+      ],
+      "reason": "See evidence index; native formats retained."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": "Each retained public artifact is under 16 MiB.",
+  "generated_from": "artifact-manifest-source.json"
+}

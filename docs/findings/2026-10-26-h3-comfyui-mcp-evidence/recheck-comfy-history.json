@@ -1,0 +1,211 @@
+{
+  "903b717d-bd50-4923-8705-61af9e55bb12": {
+    "prompt": [
+      0,
+      "903b717d-bd50-4923-8705-61af9e55bb12",
+      {
+        "2": {
+          "class_type": "UNETLoader",
+          "inputs": {
+            "unet_name": "Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+            "weight_dtype": "default"
+          }
+        },
+        "3": {
+          "class_type": "CLIPLoader",
+          "inputs": {
+            "clip_name": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+            "type": "minimax",
+            "device": "default"
+          }
+        },
+        "4": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+          }
+        },
+        "5": {
+          "class_type": "VAELoader",
+          "inputs": {
+            "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+          }
+        },
+        "6": {
+          "class_type": "LoadVideo",
+          "inputs": {
+            "file": "anvil-c44c789922745154b0c08af4fcb828d7de8dcccd64a3edf59e20b9d051a90597.mp4"
+          }
+        },
+        "7": {
+          "class_type": "GetVideoComponents",
+          "inputs": {
+            "video": [
+              "6",
+              0
+            ]
+          }
+        },
+        "8": {
+          "class_type": "H3VideoUpsampler",
+          "inputs": {
+            "prompt": "h3upscale, increase resolution and restore fine details while preserving the original content and visual style.",
+            "upscale_model": "minimax_h3_latent_upscaler_3d_conv_v1_bf16.safetensors",
+            "megapixels": 1.58203125,
+            "denoise": 0.1,
+            "lora": "h3upscale_v2_x2.safetensors",
+            "lora_strength": 1.0,
+            "tile_tokens": 25000,
+            "sampler_name": "euler",
+            "model": [
+              "2",
+              0
+            ],
+            "clip": [
+              "3",
+              0
+            ],
+            "vae": [
+              "4",
+              0
+            ],
+            "images": [
+              "7",
+              0
+            ],
+            "audio": [
+              "7",
+              1
+            ],
+            "audio_vae": [
+              "5",
+              0
+            ]
+          }
+        },
+        "10": {
+          "class_type": "CreateVideo",
+          "inputs": {
+            "fps": [
+              "7",
+              2
+            ],
+            "bit_depth": "auto",
+            "color_space": "sRGB",
+            "images": [
+              "8",
+              0
+            ],
+            "audio": [
+              "8",
+              1
+            ]
+          }
+        },
+        "11": {
+          "class_type": "SaveVideo",
+          "inputs": {
+            "filename_prefix": "anvil_h3_cobijada_2x",
+            "format": "mp4",
+            "codec": "h264",
+            "video": [
+              "10",
+              0
+            ]
+          }
+        }
+      },
+      {
+        "client_id": "anvil-job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+        "create_time": 1793031055247
+      },
+      [
+        "11"
+      ]
+    ],
+    "outputs": {
+      "6": {
+        "images": [
+          {
+            "filename": "anvil-c44c789922745154b0c08af4fcb828d7de8dcccd64a3edf59e20b9d051a90597.mp4",
+            "subfolder": "",
+            "type": "input",
+            "metadata": {
+              "kind": "video",
+              "width": 864,
+              "height": 480,
+              "duration": 5.166666666666667,
+              "fps": 24.0,
+              "frame_count": 124
+            }
+          }
+        ],
+        "animated": [
+          true
+        ]
+      },
+      "11": {
+        "images": [
+          {
+            "filename": "anvil_h3_cobijada_2x_00002_.mp4",
+            "subfolder": "",
+            "type": "output",
+            "metadata": {
+              "kind": "video",
+              "width": 1728,
+              "height": 960,
+              "duration": 5.166666666666667,
+              "fps": 24.0,
+              "frame_count": 124
+            }
+          }
+        ],
+        "animated": [
+          true
+        ]
+      }
+    },
+    "status": {
+      "status_str": "success",
+      "completed": true,
+      "messages": [
+        [
+          "execution_start",
+          {
+            "prompt_id": "903b717d-bd50-4923-8705-61af9e55bb12",
+            "timestamp": 1793031055247
+          }
+        ],
+        [
+          "execution_cached",
+          {
+            "nodes": [],
+            "prompt_id": "903b717d-bd50-4923-8705-61af9e55bb12",
+            "timestamp": 1793031055248
+          }
+        ],
+        [
+          "execution_success",
+          {
+            "prompt_id": "903b717d-bd50-4923-8705-61af9e55bb12",
+            "timestamp": 1793031230220
+          }
+        ]
+      ]
+    },
+    "meta": {
+      "6": {
+        "node_id": "6",
+        "display_node": "6",
+        "parent_node": null,
+        "real_node_id": "6"
+      },
+      "11": {
+        "node_id": "11",
+        "display_node": "11",
+        "parent_node": null,
+        "real_node_id": "11"
+      }
+    }
+  }
+}

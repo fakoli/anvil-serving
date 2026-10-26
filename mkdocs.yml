@@ -93,6 +93,8 @@ nav:
           - Finding publication format: benchmarks/finding-format.md
           - External benchmarks: EXTERNAL-BENCHMARKS.md
       - History and evidence:
+          - "2026-10-26 H3 MCP video smoke": findings/2026-10-26-h3-comfyui-mcp.md
+          - H3 MCP evidence: findings/2026-10-26-h3-comfyui-mcp-evidence/README.md
           - "2026-10-25 sampling upstream-tolerance trial": findings/2026-10-25-sampling-upstream-tolerance.md
           - Sampling upstream-tolerance evidence: findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md
           - "2026-10-25 sampling-reference diagnostic": findings/2026-10-25-sampling-reference.md

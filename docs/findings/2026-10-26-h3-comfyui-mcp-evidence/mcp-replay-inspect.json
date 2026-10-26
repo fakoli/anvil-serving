@@ -1,0 +1,78 @@
+{
+  "replay": {
+    "created": false,
+    "job": {
+      "approval": {
+        "action": "prepare",
+        "approved": true,
+        "humanRequired": true,
+        "operatorAction": {
+          "arguments": {
+            "confirm": true,
+            "dry_run": false,
+            "human_approved": true,
+            "job_id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+            "manifest": "serves.toml",
+            "principal": "media-caller",
+            "service": "media-worker-h3",
+            "transaction_id": "jckaCbH8tuKHXzcSXih6J74M"
+          },
+          "tool": "media_worker_prepare"
+        },
+        "schema": "anvil-serving.media-lifecycle-approval/v1",
+        "service": "media-worker-h3",
+        "transactionId": "jckaCbH8tuKHXzcSXih6J74M"
+      },
+      "artifacts": [
+        {
+          "byteLength": 3163757,
+          "expiresAt": "2026-11-02T16:13:50.449239+00:00",
+          "id": "art_TttozhL9CBYWEqISBvNBqJ4TveGzc5-n",
+          "jobId": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+          "mediaType": "video/mp4",
+          "resource": "/artifacts/art_TttozhL9CBYWEqISBvNBqJ4TveGzc5-n",
+          "sha256": "c0508cd86d53980d1bd6a89e3cf867d024ca0d897820262d0add80b47127534d",
+          "workflow": {
+            "id": "video.h3-cobijada-upscale-v1",
+            "version": "v1"
+          }
+        }
+      ],
+      "createdAt": "2026-10-26T16:01:51.156754+00:00",
+      "id": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+      "latency": {
+        "acceptedToQueuedSeconds": 544.097,
+        "approvalWaitSeconds": 97.179,
+        "endToEndSeconds": 719.304,
+        "generationSeconds": 175.015,
+        "queueSeconds": 0.192,
+        "recordedSeconds": 719.304,
+        "submissionSeconds": 0.048
+      },
+      "qualityProfile": "standard",
+      "sequence": 7,
+      "state": "completed",
+      "terminalReason": "completed",
+      "updatedAt": "2026-10-26T16:13:50.460804+00:00",
+      "workflow": {
+        "id": "video.h3-cobijada-upscale-v1",
+        "version": "v1"
+      }
+    }
+  },
+  "inspect": {
+    "artifact": {
+      "byteLength": 3163757,
+      "expiresAt": "2026-11-02T16:13:50.449239+00:00",
+      "id": "art_TttozhL9CBYWEqISBvNBqJ4TveGzc5-n",
+      "jobId": "job_LNDthx-nYCOR5bk07WtWbtbWNwXuwiRU",
+      "mediaType": "video/mp4",
+      "resource": "/artifacts/art_TttozhL9CBYWEqISBvNBqJ4TveGzc5-n",
+      "sha256": "c0508cd86d53980d1bd6a89e3cf867d024ca0d897820262d0add80b47127534d",
+      "workflow": {
+        "id": "video.h3-cobijada-upscale-v1",
+        "version": "v1"
+      }
+    }
+  }
+}

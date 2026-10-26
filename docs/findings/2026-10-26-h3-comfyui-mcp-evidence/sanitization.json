@@ -1,0 +1,263 @@
+{
+  "schema": "h3-publication-transform/v1",
+  "sources": [
+    {
+      "public_file": "base-gpu.csv",
+      "private_source_basename": "gpu.csv",
+      "original_sha256": "359e7460479de91ac6c4bc1426b277b3c6f0a31b4557b5984effb8f1faefc903",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "base-windows-memory.jsonl",
+      "private_source_basename": "windows-memory.jsonl",
+      "original_sha256": "f9c105c8c4d191fddb300e4380abee75d8a8846ce697baaed9fe9bf472698058",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "base-cgroup.jsonl",
+      "private_source_basename": "cgroup.jsonl",
+      "original_sha256": "bf77f9857a80bca56b4ed65576667d8ae735075d2eed125831d185c2215f4ca8",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "warm-upscale-gpu.csv",
+      "private_source_basename": "gpu.csv",
+      "original_sha256": "359e7460479de91ac6c4bc1426b277b3c6f0a31b4557b5984effb8f1faefc903",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "warm-upscale-windows-memory.jsonl",
+      "private_source_basename": "windows-memory.jsonl",
+      "original_sha256": "f9c105c8c4d191fddb300e4380abee75d8a8846ce697baaed9fe9bf472698058",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "warm-upscale-cgroup.jsonl",
+      "private_source_basename": "cgroup.jsonl",
+      "original_sha256": "bf77f9857a80bca56b4ed65576667d8ae735075d2eed125831d185c2215f4ca8",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "cold-upscale-recheck-gpu.csv",
+      "private_source_basename": "gpu.csv",
+      "original_sha256": "74f757ce18fa159659036b34dce5a6b4d2c8a76cc941f8377e5069374e8be7e8",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "cold-upscale-recheck-windows-memory.jsonl",
+      "private_source_basename": "windows-memory.jsonl",
+      "original_sha256": "960deedbb8739a116970a02016809c31f22d88e036df18935e82665b7d924a49",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "cold-upscale-recheck-cgroup.jsonl",
+      "private_source_basename": "cgroup.jsonl",
+      "original_sha256": "78f0dad6d58a8cfb371098c3589c94554df4e8c6dd31ce93934522c99df5df71",
+      "transform": "retain native rows in accepted-to-queued through terminal window, plus/minus one second"
+    },
+    {
+      "public_file": "mcp-cold.json",
+      "private_source_basename": "mcp-cold.json",
+      "original_sha256": "84135b14a03988e0bf97b6f47aefaa69d53c42ef0b4f8169d6d0ffa61ed93b92",
+      "original_bytes": 3060
+    },
+    {
+      "public_file": "mcp-prepare.json",
+      "private_source_basename": "mcp-prepare.json",
+      "original_sha256": "de024ca3160d0173bf4e3db3f5d2f9159bc99ee9b7ee407c977ed77591880fd5",
+      "original_bytes": 2766
+    },
+    {
+      "public_file": "mcp-resume.json",
+      "private_source_basename": "mcp-resume.json",
+      "original_sha256": "b155fb094ae5d33817f1ceb3acb2a4d8f51a61c4650f54bb1ad43212261fee8d",
+      "original_bytes": 1271
+    },
+    {
+      "public_file": "mcp-poll-base.json",
+      "private_source_basename": "mcp-poll-base.json",
+      "original_sha256": "5de2a12c603b41feff7b1cb6f6bd7396041de89f849290b076e4fb132c48cfb2",
+      "original_bytes": 1917
+    },
+    {
+      "public_file": "mcp-upscale.json",
+      "private_source_basename": "mcp-upscale.json",
+      "original_sha256": "22fcb3c1da2fe411c45a24d9bfabb7cdcb28fc23d497d041bae60b2da1104532",
+      "original_bytes": 531
+    },
+    {
+      "public_file": "mcp-poll-upscale.json",
+      "private_source_basename": "mcp-poll-upscale.json",
+      "original_sha256": "c84a3567ce9584e893418362da91f696b6d12fddafaa6e61cf1541c1a5c12875",
+      "original_bytes": 1185
+    },
+    {
+      "public_file": "mcp-cold-recheck.json",
+      "private_source_basename": "mcp-cold-recheck.json",
+      "original_sha256": "0a0f00336bc4524b12ecf92277ba0e0b05d4c3d79590661dfd241aa83d6f9c8d",
+      "original_bytes": 1589
+    },
+    {
+      "public_file": "mcp-resume-recheck.json",
+      "private_source_basename": "mcp-resume-recheck.json",
+      "original_sha256": "515902a40130a81f7f13f32ae338bea66e98558dddb80c1486df300113a5157b",
+      "original_bytes": 1274
+    },
+    {
+      "public_file": "mcp-poll-recheck.json",
+      "private_source_basename": "mcp-poll-recheck.json",
+      "original_sha256": "1b94288469e92fd6014128f511ff3cd22c47d4463202fddb7d265cadd0279465",
+      "original_bytes": 1925
+    },
+    {
+      "public_file": "mcp-readiness.json",
+      "private_source_basename": "mcp-readiness.json",
+      "original_sha256": "cb5e46ae8f116a7c24141a64ee15aafb7b5001f7728fd2473af321e9a34ffdfd",
+      "original_bytes": 591
+    },
+    {
+      "public_file": "mcp-teardown.json",
+      "private_source_basename": "mcp-teardown.json",
+      "original_sha256": "154e9371d191f73ae39afe5417cbe1a9da14f8ac0f62e4e6133c823700e44793",
+      "original_bytes": 2100
+    },
+    {
+      "public_file": "mcp-replay-inspect.json",
+      "private_source_basename": "mcp-replay-inspect.json",
+      "original_sha256": "0f4f44ae8a69b81ffe0fc54a09b893b5339a9092d989f65b4f25bbb8f6ba708b",
+      "original_bytes": 2617
+    },
+    {
+      "public_file": "mcp-cancel-pending.json",
+      "private_source_basename": "mcp-cancel-pending.json",
+      "original_sha256": "623bd2ccb7f2de0a879771f393156b9fc6d968cb9ba88b06f4ead6305982453c",
+      "original_bytes": 4044
+    },
+    {
+      "public_file": "video-verification.json",
+      "private_source_basename": "video-verification.json",
+      "original_sha256": "5afc100087c6465019f4b234c0816be0432ae4227ec34c17a9d0993090342de1",
+      "original_bytes": 1012
+    },
+    {
+      "public_file": "artifact-export-verification.json",
+      "private_source_basename": "artifact-export-verification.json",
+      "original_sha256": "2f4989ca52a23a775c89f44c0df0b9c989f834565097a10776d7452549bd9cfb",
+      "original_bytes": 746
+    },
+    {
+      "public_file": "worker-final-log.json",
+      "private_source_basename": "worker-final-log.json",
+      "original_sha256": "f5f0370d171cb9359d6f72aa155ecf52f25c3d2de4f6ffb1766b99aeb2d0e79e",
+      "original_bytes": 21471
+    },
+    {
+      "public_file": "worker-final-state.json",
+      "private_source_basename": "worker-final-state.json",
+      "original_sha256": "150202070c1a7c4ba396660b5acbcb0e446c4d01f476f003b9003a1b9cf0b51a",
+      "original_bytes": 205
+    },
+    {
+      "public_file": "base-ffprobe.json",
+      "private_source_basename": "base-ffprobe.json",
+      "original_sha256": "cc8198d7b6e16a67cedca233ab5482d9d8bd33bb985b5ac4ef931572cadccc13",
+      "original_bytes": 7135
+    },
+    {
+      "public_file": "upscale-ffprobe.json",
+      "private_source_basename": "upscale-ffprobe.json",
+      "original_sha256": "3179910f69782b40894723442b5136d1a1b1b78ab59af1777f715215bd71cfb1",
+      "original_bytes": 5543
+    },
+    {
+      "public_file": "recheck-ffprobe.json",
+      "private_source_basename": "recheck-ffprobe.json",
+      "original_sha256": "4033a4d374947895b2e86220d34e88f7f88a693be1f64010ad57df71acd79293",
+      "original_bytes": 5543
+    },
+    {
+      "public_file": "base-decode.txt",
+      "private_source_basename": "base-decode.txt",
+      "original_sha256": "d64a5ec178c6f9569254ce032d8993b89bf816ad29b2085564e7d1664b615e91",
+      "original_bytes": 193
+    },
+    {
+      "public_file": "upscale-decode.txt",
+      "private_source_basename": "upscale-decode.txt",
+      "original_sha256": "bb8f09186bb9107d24dfb5cdcc12e15cf0a4ef2212f7abfebbef7230edc0a7f6",
+      "original_bytes": 193
+    },
+    {
+      "public_file": "recheck-decode.txt",
+      "private_source_basename": "recheck-decode.txt",
+      "original_sha256": "85ae7075a17b1b9bbd6ea2c7365c6796433b1a22379eac0e5f99c5bc3604583d",
+      "original_bytes": 193
+    },
+    {
+      "public_file": "restored-worker-status.json",
+      "private_source_basename": "restored-worker-status.json",
+      "original_sha256": "dc51fd9dfc5af08bad1b1b1804128809fa7a5388a111dd668a6250b3c5591e16",
+      "original_bytes": 986
+    },
+    {
+      "public_file": "restored-control-status.json",
+      "private_source_basename": "restored-control-status.json",
+      "original_sha256": "6dd97b18d225face0087fe07f55df4af37fbb5f71e7c7d0e48019d836a0ed849",
+      "original_bytes": 940
+    },
+    {
+      "public_file": "restored-gpu.txt",
+      "private_source_basename": "restored-gpu.txt",
+      "original_sha256": "9c577dec3d2c254d1fc61495983c0bb6f839dd2cefb8b8a1feecfa2ce59ef1ec",
+      "original_bytes": 45
+    },
+    {
+      "public_file": "recheck-comfy-history.json",
+      "private_source_basename": "comfy-history.json",
+      "original_sha256": "e7c89a2d3f227b0cdddf2f17aec449d415451ac1ae77b91f87635d611b83f459",
+      "original_bytes": 5314
+    },
+    {
+      "public_file": "recheck-worker-log.json",
+      "private_source_basename": "worker-log.json",
+      "original_sha256": "561d034b77bde960b4602ff443b2a655e724675c21b4f72a72a1c8b1d755a978",
+      "original_bytes": 16763
+    },
+    {
+      "public_file": "final-worker-identity.json",
+      "private_source_basename": "worker-container-identity.json",
+      "original_sha256": "85cb10d70fb5f6f345e13231fc6dd342e72863fe1bc25ae613dfd5bc8cfa4aa3",
+      "original_bytes": 200
+    },
+    {
+      "public_file": "guard-sharing-previous.json",
+      "private_source_basename": "guard-sharing-previous.json",
+      "original_sha256": "7d6ede1e7fe31cbc61c968e79411afb610c2977ce999e2f88f3b612335943c27",
+      "original_bytes": 219
+    },
+    {
+      "public_file": "guard-sharing-fixed.json",
+      "private_source_basename": "guard-sharing-fixed.json",
+      "original_sha256": "9001f0b44b5efe25324641729ab0d2b1b83fe235425140c98aea0dc1f450b366",
+      "original_bytes": 216
+    },
+    {
+      "public_file": "guard-sharing-installed.json",
+      "private_source_basename": "guard-sharing-installed.json",
+      "original_sha256": "5b309bb3bed892bb3a9d646bbdbe31bd28d8990a35d1abf3c9dc1b7ef60cadd0",
+      "original_bytes": 215
+    },
+    {
+      "public_file": "mcp-cancel-initial.json",
+      "private_source_basename": "stdio-transcript.jsonl",
+      "original_sha256": "48d2a7ef38364eb0af76d0349258804a9a1e1b71187a60b176742536d597e3be",
+      "transform": "Exact first successful cancellation JSON-RPC response excerpt; principal label substituted; source journal retains surrounding requests and responses."
+    }
+  ],
+  "transforms": [
+    "Identity labels/personal paths/GPU UUIDs replaced with placeholders.",
+    "No credentials, auth headers, model weights, videos or generated frames published.",
+    "Native RPC/probe/log schemas retained; collectors retain only declared phase windows."
+  ],
+  "limits": "Raw private evidence retained separately. This is functional MCP smoke evidence, not a synthesized media-qualification artifact."
+}

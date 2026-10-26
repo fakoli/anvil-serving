@@ -1,0 +1,27 @@
+{
+  "command": "serves status --manifest ${OPERATOR_HOME}/.anvil-serving/h3-studio/serves.toml",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "SERVE            CONTAINER        PORT   DOCKER    HEALTH\nmedia-worker-h3  anvil-comfyui-h3 8188   absent    -\n\nGPU memory (index, used MiB, total MiB):\n  0, 108, 32607\n\nGPU reservations (ADR-0017, derived from docker state):\n  gpu_role 'media-compute': capacity 32607 MiB, reserve 1024 MiB, committed 0 MiB, free 31583 MiB\n    media-worker-h3 31583 MiB (on-demand, absent) [not committed]\n\nOperating mode: split\n  media-compute owners: none\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

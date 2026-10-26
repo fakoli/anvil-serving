@@ -1,5 +1,12 @@
 # Benchmark run catalog
 
+## 2026-10-26 Cobijada H3 MCP functional smoke
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+| --- | --- | --- | --- |
+| Pinned H3 hybrid/INT8 encoder,guided2×,ComfyUI0.42.0,C1 | One RTX5090,Windows/Docker Desktop/WSL2;installed stdio MCP | Three short operations decoded;owned-artifact replay,cancel and teardown passed. No cast/recorded-master/long-form quality claim;no-promotion;media withheld. | [Dossier](models/cobijada-h3.md) · [Finding](../findings/2026-10-26-h3-comfyui-mcp.md) · [Summary](../findings/2026-10-26-h3-comfyui-mcp-evidence/summary.json) · [Evidence](../findings/2026-10-26-h3-comfyui-mcp-evidence/README.md) |
+
+
 ## 2026-10-26 Ignis 0.8 mandatory-tool qualification
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

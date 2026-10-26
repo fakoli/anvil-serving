@@ -1,0 +1,167 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "closed_inventory": true,
+  "campaign": {
+    "id": "2026-10-26-h3-comfyui-mcp",
+    "capability": "video-generation-and-guided-upscale",
+    "repository_revision": "e04a90e06f961e7c995cc402d36843bd993cf153",
+    "dirty_state": "Final tested package source clean;publication derivative files added afterward.",
+    "started_at": "2026-10-26T13:17:04Z",
+    "completed_at": "2026-10-26T09:31:56.814392-07:00",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "JSON-RPC tools/call results",
+    "ComfyUI history",
+    "ffprobe JSON",
+    "nvidia-smi CSV",
+    "anvil-serving.host-memory-signal/v1",
+    "bounded cgroup counter captures"
+  ],
+  "size_policy": "Each retained public artifact is under 16 MiB.",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "research/angle-h3.md",
+        "research/angle-h3.provenance.md",
+        "research/angle-identity.md",
+        "research/angle-identity.provenance.md",
+        "research/angle-speech.md",
+        "research/angle-speech.provenance.md",
+        "research/brief.md",
+        "research/brief.provenance.md",
+        "research/review.md",
+        "research/review.provenance.md",
+        "research/verified-claims.md",
+        "research/verify.provenance.md"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload.md"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "workload.md"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "runtime-identity.json",
+        "asset-lock.json",
+        "final-worker-identity.json",
+        "sanitization.json"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "artifact-export-verification.json",
+        "base-cgroup.jsonl",
+        "base-decode.txt",
+        "base-ffprobe.json",
+        "base-gpu.csv",
+        "base-windows-memory.jsonl",
+        "cold-upscale-recheck-cgroup.jsonl",
+        "cold-upscale-recheck-gpu.csv",
+        "cold-upscale-recheck-windows-memory.jsonl",
+        "mcp-cancel-pending.json",
+        "mcp-cold-recheck.json",
+        "mcp-cold.json",
+        "mcp-poll-base.json",
+        "mcp-poll-recheck.json",
+        "mcp-poll-upscale.json",
+        "mcp-prepare.json",
+        "mcp-readiness.json",
+        "mcp-replay-inspect.json",
+        "mcp-resume-recheck.json",
+        "mcp-resume.json",
+        "mcp-upscale.json",
+        "recheck-comfy-history.json",
+        "recheck-decode.txt",
+        "recheck-ffprobe.json",
+        "recheck-worker-log.json",
+        "upscale-decode.txt",
+        "upscale-ffprobe.json",
+        "video-verification.json",
+        "warm-upscale-cgroup.jsonl",
+        "warm-upscale-gpu.csv",
+        "warm-upscale-windows-memory.jsonl",
+        "measurements.json",
+        "mcp-cancel-initial.json"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "worker-final-log.json",
+        "worker-final-state.json",
+        "guard-sharing-previous.json",
+        "guard-sharing-fixed.json",
+        "guard-sharing-installed.json"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "mcp-teardown.json",
+        "restored-worker-status.json",
+        "restored-control-status.json",
+        "restored-gpu.txt"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "measurements.json"
+      ],
+      "reason": "See evidence index; native formats retained."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "See evidence index; native formats retained."
+    }
+  ]
+}

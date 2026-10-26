@@ -1,0 +1,21 @@
+{
+  "created": true,
+  "job": {
+    "artifacts": [],
+    "createdAt": "2026-10-26T15:39:55.338027+00:00",
+    "id": "job_VADe7DsWSCL0SD2K6Dsil8QoNYqy_16H",
+    "latency": {
+      "acceptedToQueuedSeconds": 0.063,
+      "recordedSeconds": 0.063,
+      "submissionSeconds": 0.047
+    },
+    "qualityProfile": "standard",
+    "sequence": 4,
+    "state": "queued",
+    "updatedAt": "2026-10-26T15:39:55.401437+00:00",
+    "workflow": {
+      "id": "video.h3-cobijada-upscale-v1",
+      "version": "v1"
+    }
+  }
+}

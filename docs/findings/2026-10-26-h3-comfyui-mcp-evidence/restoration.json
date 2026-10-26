@@ -1,0 +1,42 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "checked_at": "2026-10-26T09:31:56.814392-07:00",
+  "starting_state": "Generic ComfyUI and trial workers stopped; original resource controller running; media gateway absent.",
+  "ending_state": "H3 worker removed through actual MCP teardown; gateway and dedicated lifecycle controller retained ready; native Windows guard fresh and safe.",
+  "differences": [
+    "Versioned H3 package, dedicated control-plane services and protected guard login registration installed.",
+    "Legacy reservation and gateway owner metadata aligned; incumbent models remain stopped."
+  ],
+  "worker_absent": true,
+  "gateway_docker_health": "healthy",
+  "gateway_http": {
+    "gateway": {
+      "status": 200,
+      "body": {
+        "status": "ok",
+        "dialects": [
+          "anthropic",
+          "openai",
+          "responses"
+        ],
+        "routes": [
+          "/metrics",
+          "/v1/chat/completions",
+          "/v1/decisions",
+          "/v1/health/tiers",
+          "/v1/messages",
+          "/v1/models/capabilities",
+          "/v1/models/capacity",
+          "/v1/models/fingerprints",
+          "/v1/requests/{request_id}",
+          "/v1/responses",
+          "/v1/router/status",
+          "/v1/stats"
+        ]
+      }
+    }
+  },
+  "guard_fresh_safe": true,
+  "login_reboot_tested": false,
+  "verification": "MCP teardown receipt, managed serves status, independent Docker names/state and nvidia-smi readback."
+}
