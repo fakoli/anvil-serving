@@ -7,6 +7,12 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-26-ignis-080-preflight.md`;
+`docs/findings/2026-10-26-ignis-080-preflight-evidence/README.md`
+(one-Max-Q bounded functional and resource measurements; required-tool
+preflight and repeat passed, original auto-tool miss retained; exact operational
+incumbent restoration verified; no performance, capacity, or promotion claim).
+
 `docs/findings/2026-10-26-marker-gpu-trace.md`
 (one-Max-Q actual-CUDA startup gates and one dual-Max-Q C1 model request;
 first close observed budget-forced, second close not reproduced, complete
