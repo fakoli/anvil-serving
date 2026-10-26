@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
+
 **2026-10-25 sampling-reference diagnostic:** the [independent numerical-reference gate](../../findings/2026-10-25-sampling-reference.md) passed 8/8 forced cases but rejected the patch after one of 272 ordinary rows retained one extra boundary token relative to stock/reference. Candidate weights and inference never started; the model reasoning-boundary failure remains unresolved. Exact operational restoration passed, but the restored incumbent failed its single strict JSON smoke, so functional restoration acceptance is incomplete. No promotion; Ignis held.
 
 **2026-10-25 sampling-fix trial:** the earlier [candidate kernel gate](../../findings/2026-10-25-sampling-fix.md) failed ordinary-logit exact parity after partial forced-token success. The later reference diagnostic above resolves that difference without rewriting this historical result.
@@ -419,6 +421,13 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Prospective sampling count gate and model probe, 2026-10-25
+
+- **Status:** kernel gate passed; full reasoning-limit and exact-output gates failed; `no-promotion`.
+- **Measured:** synthetic kernels on one Max-Q and one C1 model request on the dual-Max-Q TP2/DCP2 FP4/FP8-KV, 327,680-context/C4/MTP3 recipe.
+- **Limits:** the prior one-token ordinary difference remains diagnostic. Two fresh worker receipts support split-mask dispatch, not per-token attribution or general causal proof. Both matched JSON smokes failed; no established quality regression. No performance or promotion claim.
+- **Evidence:** [finding](../../findings/2026-10-25-sampling-upstream-tolerance.md), [summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json), and [evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
+
 ### Split-top-p independent-reference diagnostic, 2026-10-25
 
 - **Status:** failed strict local functional kernel gate; `no-promotion`; exact operational restoration passed but functional restoration acceptance is incomplete.
@@ -626,6 +635,8 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-10-25 — [Sampling upstream-tolerance trial](../../findings/2026-10-25-sampling-upstream-tolerance.md): native count compatibility passed; one candidate request retained repeated-close/strict-output failure. Exact restoration; both matched JSON smokes failed, no established regression. No promotion.
 
 - 2026-10-25 — [Sampling-reference diagnostic](../../findings/2026-10-25-sampling-reference.md): independent binary64 reference resolved the earlier unknown difference; 8/8 forced cases passed, but one patched ordinary row over-retained one token and failed the strict local no-worse gate. Zero candidate requests. Exact operational restoration passed; the strict JSON smoke failed. No end-to-end claim or promotion.
 

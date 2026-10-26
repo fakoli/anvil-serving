@@ -1,0 +1,132 @@
+{
+  "schema": "sampling-upstream-tolerance-experiment/v1",
+  "status": "frozen_before_lifecycle",
+  "ignis": "hold",
+  "promoted": false,
+  "upstream_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+  "prior_baseline": "2026-10-25-reasoning-probe/live-1",
+  "candidate_changes": [
+    "exact upstream split-top-p fix",
+    "bounded forced-logit dispatch receipts",
+    "preweight kernel regression wrapper"
+  ],
+  "constants": [
+    "model and revision",
+    "all model flags and MTP3",
+    "GPU allocation and order",
+    "runtime/model cache volumes",
+    "TP2 and C4 capacity",
+    "request C1 64 reasoning / 512 total, max effort, temperature 0.6, top_p 0.95"
+  ],
+  "kernel_gate": {
+    "forced_cases": 8,
+    "ordinary_cases": 8,
+    "ordinary_rows": 272,
+    "seeds": [
+      58231,
+      42
+    ],
+    "vocabularies": [
+      131072,
+      154856
+    ],
+    "batch_sizes": [
+      4,
+      64
+    ],
+    "top_p": 0.95,
+    "active_top_k": false,
+    "dtype": "float32",
+    "oracle": "Pinned explicit upstream PyTorch fp32 sort comparator for count acceptance; independent stdlib binary64 stable reference for safety and diagnostics",
+    "criteria": [
+      "8/8 forced-logit cases pass before ordinary controls",
+      "original and patched masks each contain binary64 reference prefix; patch remains canonical prefix",
+      "native comparator is explicit pinned apply_top_k_top_p_pytorch, never Triton dispatcher; identical cloned fp32 inputs/p",
+      "native rows nonempty and all native/original/patched outputs preserve retained fp32 bits and exclude only with negative infinity",
+      "for original and patch separately, per batch D=max(abs(native_kept-other_kept)), K=max(native_kept); pass iff D<=3 or K>0 and 200*D<K",
+      "original input bytes unchanged; binary64 boundary certification succeeds",
+      "binary64 exactness, no-worse symmetric difference and per-row count envelope are diagnostics only"
+    ],
+    "child_timeout_seconds": 180,
+    "tensor_peak_limit_bytes": 1073741824,
+    "gate_policy": "One predeclared attempt; no adapted thresholds, corpus, seeds or reruns. Preserve previous failed evidence unchanged.",
+    "diagnostics": "bounded indices(first32 plus complete index hash), per-row details for failing or version-different rows, case aggregates for every row",
+    "policy": "upstream-count-v1",
+    "source": "https://github.com/vllm-project/vllm/blob/0a1276e5e3d9000488e7590cc0957edd709f2152/tests/v1/sample/test_topk_topp_sampler.py"
+  },
+  "inference": {
+    "maximum_probe_invocations": 1,
+    "maximum_requests": 2,
+    "request_timeout_seconds": 120,
+    "total_window_seconds": 300,
+    "retries": 0,
+    "second_case_only": "predeclared natural completion below boundary with correct first answer"
+  },
+  "stop": [
+    "kernel regression fail",
+    "identity/launch/source mismatch",
+    "nonzero engine occupancy",
+    "memory pressure or OOM delta",
+    "probe stop condition"
+  ],
+  "memory_phases": [
+    "before incumbent unload",
+    "Immediately before candidate load when observable; retain bounded transition samples and label nearest/missing exact guard sample explicitly.",
+    "after startup or immediate failure if safe",
+    "before/after probe if reached",
+    "during restoration",
+    "restored incumbent"
+  ],
+  "restore": "exact copied incumbent registry with managed mode leave or failed-entry rollback",
+  "interpretation": "Functional kernel, marker boundary, answer correctness, and serving-worker provenance reported separately. No performance claim with synchronized traces. One bounded probe is diagnostic; no promotion.",
+  "trace_gate": {
+    "required": "After the probe, fresh serving-worker receipt between readiness and request completion, excluding preweight child; rows=4,has_k=0,finite_min/max=1,token154842_finite_rows=forced_rows. It cannot be required before forcing occurs.",
+    "missing": "Report kernel_path_evidence=unknown and preserve independent token-boundary outcome; no adaptive rerun; restore incumbent.",
+    "scope": "Python dispatch-path evidence, not per-row kernel proof or timing"
+  },
+  "window": {
+    "target_seconds": 2700,
+    "candidate_startup_seconds": 900,
+    "request_seconds": 300,
+    "restoration_reserve_seconds": 1200,
+    "rule": "Stop candidate measurement by 20 minutes; restoration continues if needed to restore service and any overrun is reported."
+  },
+  "prior_failed_attempt": "../2026-10-25-sampling-reference.md",
+  "restore_smoke": {
+    "requests": 1,
+    "prompt": "Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.",
+    "oracle": {
+      "language": "python",
+      "ok": true
+    },
+    "retries": 0,
+    "limitations": "Shared tier retains max effort/budget/sampling overrides; template enable_thinking=false is requested, not proven effective. 120-second request timeout is enforced; output cap512 is requested. Existing preflight only checks language key; independently compare retained object to intended exact result."
+  },
+  "source_head": "80dacf71b72d9760cf539d7cbe8e9c8a88c25647",
+  "candidate_image": "sha256:41c4926b08c7298fb63bc7f1204926c4f95ce9083ff610069ab442141213b1aa",
+  "source_review": "approved",
+  "baseline_smoke": {
+    "requests": 1,
+    "prompt": "Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose.",
+    "oracle": {
+      "language": "python",
+      "ok": true
+    },
+    "retries": 0,
+    "limitations": "Shared tier retains max effort/budget/sampling overrides; template enable_thinking=false is requested, not proven effective. 120-second request timeout is enforced; output cap512 is requested. Existing preflight only checks language key; independently compare retained object to intended exact result.",
+    "policy": "One matching routed JSON check before unload and one after exact restoration; retain existing quality failures. Transport/readiness/identity failure blocks transaction; known JSON quality failure is baseline evidence, not candidate authorization failure."
+  },
+  "source_files": {
+    "Dockerfile": "6b2e06b18704d451f6e107a27a5314df2509c9a5fd481e51c4d08b25bb6178a0",
+    "README.md": "b1a9ec99af36a6eb2795ab75beae42b29d961af89d4aaf677ad4fef3f8da6694",
+    "kernel_regression.py": "86a15934b4b0a30f4514b410a51393d822e01f272eff65cfee07df97ca298159",
+    "launch.py": "24203cc50619e0b4116be44cecb14d800f6b2845298f998e1384c6adeb369cd1",
+    "reference.py": "69b39e22aca53be843b0fc2d4e5c6adf2c9d1e23e4e8d0a95dea1b9f598e64f8",
+    "split-topp.patch": "c30ca1225f4a3b36b1e015738d9cf34129b1876851122d9da1abea1e5097fc7c",
+    "trace.patch": "64aebd4552feb10b1a3120a521d9ff7df0ed199e7ebf376ee253b0c1aa3996a8",
+    "verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c",
+    "native_comparator.py": "1125d27ad9314ddd5ee27bf3f651e18fa0adfb5c3c9364765e9e17683b7e34c6",
+    "UPSTREAM-LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "frozen_at": "2026-10-26T04:54:31.429712+00:00"
+}

@@ -7,6 +7,12 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-25-sampling-upstream-tolerance.md`;
+`docs/findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md`
+(one-Max-Q synthetic kernel gate passed; one dual-Max-Q C1 model request failed
+repeated-close and strict-output gates; exact operational restoration passed,
+matched JSON smokes failed before and after; no speed claim or promotion).
+
 `docs/findings/2026-10-25-sampling-reference.md`;
 `docs/findings/2026-10-25-sampling-reference-evidence/README.md`
 (one-Max-Q synthetic sampling-reference checks before weights; 8/8 forced

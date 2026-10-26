@@ -1,0 +1,82 @@
+# GLM split-top-p: prospective upstream count gate
+
+**Date:** 2026-10-25 local time; execution on 2026-10-26 UTC.
+
+**Decision:** `functional`, `no-promotion`; Ignis remains held. The preweight kernel gate passed, but the single model request failed the reasoning-limit and strict-output gates. Exact operational restoration passed. Both matched JSON smokes failed strict output, leaving functional acceptance incomplete without an established regression.
+
+<!-- benchmark-result-card/v1 -->
+## Result card
+
+> The prospectively frozen `upstream-count-v1` gate passed all eight forced-logit cases and all eight ordinary cases, covering 272 rows. Both stock and patched kernels met the native upstream PyTorch kept-count tolerance. The one-token difference found in the preceding trial remains visible as a diagnostic. The candidate then completed one request without the earlier token-0 failure, but emitted two reasoning-end markers and a duplicated answer with prose. The full gate failed.
+
+| Setup | Qualified value |
+|---|---|
+| Model | `nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`; public served label `served-model-1` |
+| Kernel hardware | One RTX PRO 6000 Blackwell Max-Q GPU on Primary Node |
+| Measured model topology | Two RTX PRO 6000 Blackwell Max-Q GPUs, TP2/DCP2, FP4 weights, FP8 KV, context 327,680, configured concurrency 4, MTP 3 |
+| Runtime | vLLM fork `8244d1c44348ae8a5bbfc9f1b607021652283ed4` plus upstream fix `0a1276e5e3d9000488e7590cc0957edd709f2152` and bounded diagnostic tracing |
+| Reproduction | [Frozen source](https://github.com/fakoli/anvil-serving/tree/80dacf71b72d9760cf539d7cbe8e9c8a88c25647/configs/runtime-patches/vllm/8244d1c4-split-topp), [identity](2026-10-25-sampling-upstream-tolerance-evidence/identity.json), and [frozen plan](2026-10-25-sampling-upstream-tolerance-evidence/plan.json); managed lifecycle |
+| Measurement path | Synthetic CUDA kernels before weights, followed only on success by a bounded C1 reasoning probe; JIT/cache condition uncontrolled |
+
+| Headline measurement | Result | Boundary |
+|---|---:|---|
+| Forced-logit checks | 8 / 8 passed | Synthetic split-mask checks |
+| Ordinary count-compatibility batches | 8 / 8 passed for each version | 272 rows; native PyTorch comparator |
+| Stock/patch identical masks | 271 / 272 | Prior one-token difference retained |
+| Peak PyTorch tensor allocation | 519,289,856 bytes (495.23 MiB) | Below 1 GiB; excludes CUDA context/compiler overhead |
+| Candidate model request | 1; strict boundary and answer gates failed | 137 completion tokens; closing markers at zero-based positions 64 and 126; zero token-0 outputs |
+| Restoration | Operational passed; strict JSON failed before and after | Exact original identity and idle readiness restored; no established quality regression |
+
+[Authoritative summary](2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Artifact manifest](2026-10-25-sampling-upstream-tolerance-evidence/artifact-manifest.json) · [Evidence index](2026-10-25-sampling-upstream-tolerance-evidence/README.md) · [Raw kernel receipts](2026-10-25-sampling-upstream-tolerance-evidence/kernel-receipts.log) · [Derived kernel summary](2026-10-25-sampling-upstream-tolerance-evidence/kernel-summary.json)
+
+## Prospective policy and unchanged patch
+
+The [first trial](2026-10-25-sampling-fix.md) stopped on stock/patch mask inequality without enough evidence to explain it. The [second trial](2026-10-25-sampling-reference.md) used an independent binary64 numerical reference and identified one extra low-probability token under the patch. Its stricter local rule prohibited any increase in per-row symmetric difference from that reference, so it correctly stopped before model weights. Both earlier failed verdicts remain unchanged.
+
+This separately frozen and reviewed trial adopts the existing upstream kept-count compatibility contract prospectively. For each ordinary batch, `D` is the maximum absolute difference between the native comparator's kept counts and the tested kernel's counts; `K` is the maximum native count in that batch. Each of stock and patch must satisfy `D <= 3` or `200 * D < K`. Empty, malformed or zero native counts fail. The denominator is the batch maximum, not a per-row reference count. No numerical mass tolerance is introduced.
+
+The comparator is the exact narrow `apply_top_k_top_p_pytorch` function and its top-k helper from the pinned upstream source, with license and file hash retained. It sorts fp32 logits, computes fp32 softmax and cumulative probabilities, applies the lower-tail mask and scatters back. The generic dispatcher is excluded because it could select the patched Triton kernel and create a self-comparison. [Official source and tests](2026-10-25-sampling-upstream-tolerance-evidence/source-registry.json) bind the comparator and rule.
+
+The independent stdlib binary64 reference remains a safety check: original fp32 input values and `p` feed stable ordering by descending logit and ascending token ID, a `math.fsum` normalizer, and a compensated prefix scan with boundary certification. It is a numerical convention, not exact-real arithmetic. Both kernel masks must contain that reference; the patched mask must remain a canonical prefix. Input bytes must remain unchanged, retained values must preserve original fp32 bits, and excluded outputs must be negative infinity. NaNs, positive infinity and retained-value corruption fail. The former no-worse symmetric-difference rule and per-row binary64 count envelope are now recorded diagnostics, not admission gates.
+
+The production patch and trace patch are unchanged from the earlier trials. The source call chain sends the forced reasoning-end logit through temperature scaling and split top-p. The upstream hunk compares in probability space and preserves the maximum, avoiding the large-logit subtraction failure that previously left every token masked. Bounded tracing is default-off and enabled only for this diagnostic candidate: it skips graph capture, checks at most 256 noncapturing split calls and emits at most eight numeric receipts per process when a forced-logit row is observed. Synchronized dispatch receipts demonstrate mask completion, not profiler-level execution or performance.
+
+## Frozen workload and measured kernel result
+
+Source was frozen at `80dacf71b72d9760cf539d7cbe8e9c8a88c25647`; the built candidate is `sha256:41c4926b08c7298fb63bc7f1204926c4f95ce9083ff610069ab442141213b1aa`. [Source freeze](2026-10-25-sampling-upstream-tolerance-evidence/source-freeze.json) and [build receipt](2026-10-25-sampling-upstream-tolerance-evidence/build.json) retain helper and patch bindings. The fixed startup wrapper runs the kernel child with a 180-second timeout before invoking the original serving entrypoint.
+
+All eight forced cases run first: batches 4 and 64, vocabularies 131,072 and 154,856, token IDs 13 and 154,842, and forced values `1e9` and `1e9 / 0.6`. The eight ordinary cases preserve seed 58,231's earlier draw order and seed 42's holdout, with the same four shapes, actual fp32 `p = 0.949999988079071`, and no top-k. Each kernel and the native comparator receive independent clones of identical captured input bytes.
+
+All batches passed for both kernels. The largest batch count difference from the native comparator was 30 tokens, or approximately 0.02614% of that batch's maximum native count. All 272 rows passed the retained safety checks. Stock exactly matched the binary64 reference on 36 rows and the patch on 35; exact equality remains diagnostic. The previous differing row reproduced: seed 58,231, vocabulary 154,856, batch 64, row 31. Stock and the binary64 reference retained 114,428 tokens; the patch retained 114,429, adding token 30,317 with reference mass `2.0449949975313364e-6`. There was no missing reference token or prefix hole. The old `patched_difference_not_worse` diagnostic remains false. This is acceptance under a new declared policy, not evidence of exact-mask equivalence or a retrospective pass.
+
+## Model-request and restoration gates
+
+The frozen [probe plan](2026-10-25-sampling-upstream-tolerance-evidence/probe-plan.json) permits one invocation and at most two C1 requests, with no retries, a 120-second per-request timeout and a 300-second total request window. The first fixed arithmetic case requests a 64-token thinking budget, 512 maximum completion tokens, maximum reasoning effort, temperature 0.6 and top-p 0.95. A second case is allowed only if the first naturally ends reasoning below the boundary and answers correctly. Exact token-boundary evidence, answer correctness and a fresh serving-worker split-mask receipt are separate gates; synthetic-child receipts cannot substitute for request-path evidence.
+
+The single matched pretrial strict JSON smoke failed because reasoning-like prose preceded the requested object. It finished normally after 53 completion tokens; the [native preflight projection](2026-10-25-sampling-upstream-tolerance-evidence/baseline-smoke.json) preserves the complete synthetic response and parser error. The request asked to disable thinking, but the shared tier's controls remained in place and effective thinking disablement is unproven. This known baseline quality failure is separate from transport, readiness and identity.
+
+## Single candidate request: first closure recovered, full gate failed
+
+The probe cloned the declared tier controls in memory and contacted the same endpoint directly through `RelayBackend` while the shared route was quiesced. The isolated C1 request through the route-derived relay finished with `stop` after 137 completion tokens (48 prompt tokens). Native usage reported 64 reasoning tokens. The retained token sequence contains token 154,842 at zero-based positions **64 and 126**, and contains **zero token-0 outputs**. The first closing marker therefore appears immediately after 64 preceding tokens, but a second close makes the strict boundary verdict `invalid_repeated_or_missing_close`. The native reasoning-span fields remain null; the usage count alone cannot establish a clean single transition.
+
+The visible answer contains the correct integers `9567,1085,10652`, followed by reasoning-like prose and another copy of the answer. The exact answer oracle is false. No fallback case or retry ran because the first case failed the frozen gate. [Forwarded request](2026-10-25-sampling-upstream-tolerance-evidence/request.json), [complete synthetic response and token IDs](2026-10-25-sampling-upstream-tolerance-evidence/response.json), [native result](2026-10-25-sampling-upstream-tolerance-evidence/probe-result.json), and [derived boundary summary](2026-10-25-sampling-upstream-tolerance-evidence/boundary-summary.json) preserve the distinction between correct numeric content and a passing strict response.
+
+Two fresh serving-worker receipts, one from each tensor-parallel rank, reported split-mask completion with four rows, no top-k, two forced rows, exactly one finite output per forced row, and token 154,842 finite in both forced rows. The trace reported 154,880 logit entries, while the tokenizer and synthetic GLM fixture use 154,856. Padding is a possible explanation, but was not independently source-verified in this trial. These [numeric trace projections](2026-10-25-sampling-upstream-tolerance-evidence/serving-worker-traces.json) establish the observed dispatch path. They are not per-request or per-row kernel identifiers, and do not prove the cause of the later duplicate closing marker.
+
+The earlier all-masked/token-0 symptom did not recur in this single request. That supports a narrow correction at the first forced boundary; it does not establish a complete reasoning-limit fix, broad output equivalence or general model correctness. The repeated-close/strict-output failure remains the controlling result.
+
+The [candidate attestation](2026-10-25-sampling-upstream-tolerance-evidence/candidate-attestation.json) found only the expected sampler source difference; all other captured source, runtime-template and tokenizer bytes matched, as did the helper hashes, image and mounts. The independent [post-request runtime inspection](2026-10-25-sampling-upstream-tolerance-evidence/runtime-candidate-after.json) observed zero running and zero waiting engine requests and zero cgroup OOM events. The native probe receipt itself retains `runtime_verified=false`, `runtime_identity_authority=operator_attested` and `engine_drain=unknown`; subsequent inspection and source comparison supply separate evidence rather than rewriting those fields.
+
+## Restoration and decision
+
+Managed restoration returned the original image, model revision, every captured source/template/tokenizer byte, launch settings, mounts, router configuration and GPU ownership. A new container incarnation and start time are expected after reload. The engine was idle at zero running and zero waiting requests; the router was ready and admitting with zero active requests. Host OOM kills did not increase and container OOM events were zero. [Closure](2026-10-25-sampling-upstream-tolerance-evidence/closure.json) and [restoration evidence](2026-10-25-sampling-upstream-tolerance-evidence/restoration.json) bind the postchecks.
+
+The matched restored-incumbent JSON smoke also failed strict output, with prose preceding the object, after 66 completion tokens versus the baseline's 53. Both completed normally. Cached prompt counts differed (30 before, zero after), so smoke timing is not comparable. The [baseline](2026-10-25-sampling-upstream-tolerance-evidence/baseline-smoke.json) and [restored response](2026-10-25-sampling-upstream-tolerance-evidence/restoration-smoke.json) establish that this output-quality failure already existed. Exact response text differs, but no quality regression is established. Operational restoration is verified; functional restoration acceptance remains incomplete.
+
+Available host RAM was 69,471,178,752 bytes at the initial baseline inspection and 71,408,381,952 at closure. The first value is not an immediate pre-unload sample. Host swap counters increased by 19 input pages and 20 output pages; OOM delta was zero. Candidate and restored-container recorded peaks were 34,924,236,800 and 35,379,359,744 bytes respectively. The exact pre-candidate-load phase sample was unavailable; nearest transition samples and managed admission remain the declared observation boundary. Some bounded transition process snapshots had one or two unreadable rows; the final inventory was complete. These are resource observations, not proof of continuous coverage. The transaction took 1,188.794241 seconds (19.81 minutes), within its 2,700-second bound.
+
+The [independent kernel review](2026-10-25-sampling-upstream-tolerance-evidence/independent-kernel-review.json) recomputed the native count formula and matched the prior input hashes. The [independent live review](2026-10-25-sampling-upstream-tolerance-evidence/independent-live-review.json) confirmed request controls, token positions, failed strict oracle and fresh worker warnings. Both reviews are phase-scoped; their then-pending fields remain historical and final restoration is supplied by the separate closure receipt and [independent restoration review](2026-10-25-sampling-upstream-tolerance-evidence/independent-restoration-review.json). The retained local kernel cases passed the pinned helper's rule; the complete upstream test suite was not run.
+
+No promotion, complete end-to-end fix, broad quality improvement, capacity or performance claim follows. The candidate request used synchronized diagnostic tracing and had request-time JIT warnings; its approximately 1.50-second elapsed time is not a speed comparison. This closed campaign preserves a partial mechanism improvement and a failed full functional gate.
+
+The smallest next step is offline inspection of MTP/rejection-sampling, thinking-budget state and parser handling against the retained sequence. The tracked [repeated-close issue](https://github.com/fakoli/anvil-serving/blob/codex/glm-coding-diagnostics/.tickets/glm-repeated-reasoning-close.md) holds that investigation; the [separate JSON-smoke issue](https://github.com/fakoli/anvil-serving/blob/80dacf71b72d9760cf539d7cbe8e9c8a88c25647/.tickets/sampling-restoration-json-smoke.md) preserves its distinct quality limit. No extra requests, adaptive retry, runtime change or promotion are authorized by publication.

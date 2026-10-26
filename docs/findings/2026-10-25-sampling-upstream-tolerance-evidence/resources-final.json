@@ -1,0 +1,24 @@
+{
+  "observed_at_unix": 1792991685.3887637,
+  "host_memory": {
+    "MemTotal_bytes": 134164500480,
+    "MemFree_bytes": 11634434048,
+    "MemAvailable_bytes": 71408381952,
+    "Cached_bytes": 57178492928,
+    "SwapTotal_bytes": 8589930496,
+    "SwapFree_bytes": 3257454592,
+    "Shmem_bytes": 10347458560,
+    "SReclaimable_bytes": 12864520192,
+    "SUnreclaim_bytes": 4747489280
+  },
+  "memory_pressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=173969247\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=173405319\n",
+  "swap_io": {
+    "pswpin": 1748616,
+    "pswpout": 5425606,
+    "oom_kill": 3
+  },
+  "engine": {
+    "running": 0.0,
+    "waiting": 0.0
+  }
+}

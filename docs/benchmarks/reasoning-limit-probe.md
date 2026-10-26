@@ -129,6 +129,8 @@ remaining forced cases were not run. The model boundary failure is not proven
 fixed; retain the ordinary difference and obtain an independent mask/probability
 reference before revising the gate.
 
+The later [prospective upstream-tolerance trial](../findings/2026-10-25-sampling-upstream-tolerance.md) passed its native-count kernel gate and executed one candidate request. The earlier token-0 symptom did not recur, but closing markers appeared at zero-based positions 64 and 126 and the answer contained duplicated prose. The strict boundary and answer gates failed. Fresh worker dispatch receipts do not establish per-token provenance. Exact operational restoration passed; matched strict JSON smokes failed before and after with no established quality regression. The full reasoning-limit gate remains unresolved; earlier failed trials are not reclassified.
+
 Only after this gate passes should a separate coding comparison hold total
 output at 16K and compare an 8K reasoning budget against the original control,
 with the same task oracle, two-attempt policy and sampling. Changing effort is

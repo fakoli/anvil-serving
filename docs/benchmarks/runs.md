@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-25 prospective sampling upstream-tolerance trial
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM FP4, pinned split-top-p patch; native-count gate; TP2/DCP2, FP8 KV, 327,680 configured context/C4, MTP3; one C1 probe | One RTX PRO 6000 Blackwell Max-Q for synthetic kernels; dual-Max-Q model request through route-derived direct relay | The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. No performance comparison. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-upstream-tolerance.md) · [Summary](../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md) |
+
 ## 2026-10-25 split-top-p sampling-reference diagnostic
 
 | Configuration | Measured hardware and layer | Outcome | Evidence |

@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
+
 **2026-10-25 sampling-reference diagnostic:** [independent synthetic split-top-p checks](../../findings/2026-10-25-sampling-reference.md) measured one RTX PRO 6000 Blackwell Max-Q. All eight forced cases passed, but the patch retained one extra token on one of 272 ordinary rows and failed the strict local no-worse gate. Candidate weights and model inference never started; two GPUs were only reserved for the planned serve. Exact operational restoration passed, while the restored incumbent failed its single strict JSON smoke. No hardware ranking, capacity, speed, end-to-end fix, or promotion claim. [Summary](../../findings/2026-10-25-sampling-reference-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-reference-evidence/README.md).
 
 **2026-10-25 sampling-fix trial:** [synthetic sampling-kernel checks](../../findings/2026-10-25-sampling-fix.md) measured CUDA device 0 on one RTX PRO 6000 Blackwell Max-Q. Two GPUs were reserved for the planned candidate serve, but model weights and distributed inference never started. Ordinary-mask parity failed after partial forced-token success. No hardware ranking, capacity or speed claim. [Authoritative summary](../../findings/2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-fix-evidence/README.md).
@@ -106,7 +108,7 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-25 (synthetic sampling-kernel diagnostic on one card; prior online diagnostics used the pair). **Evidence
+history. **Last locally measured:** 2026-10-25 (synthetic sampling kernels on one card and one candidate C1 model request on the pair). **Evidence
 interpretation reviewed:** 2026-10-25.
 
 > Side-by-side speed and recipe links for every configuration measured on this

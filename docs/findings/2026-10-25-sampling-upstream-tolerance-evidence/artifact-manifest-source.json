@@ -1,0 +1,143 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "glm-sampling-upstream-tolerance-20261025",
+    "capability": "Focused split-top-p and reasoning-boundary functional diagnostic",
+    "repository_revision": "80dacf71b72d9760cf539d7cbe8e9c8a88c25647",
+    "dirty_state": "Executable source frozen before lifecycle; publication projections added after measurement.",
+    "started_at": "2026-10-26T04:54:56.908025+00:00",
+    "completed_at": "2026-10-26T05:14:45.702282+00:00",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "sampling-upstream-tolerance-experiment/v1",
+    "anvil-serving.reasoning-limit-probe-plan/v1",
+    "anvil-serving.image-build/v1",
+    "anvil-serving.reasoning-runtime-inspection/v1",
+    "preflight/v2",
+    "sampling-upstream-closure/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human evidence map and interpretation boundaries."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Primary sources and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "plan.json",
+        "probe-plan.json",
+        "request.json"
+      ],
+      "reason": "Frozen synthetic workload, controls and exact forwarded request projection."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "plan.json",
+        "probe-plan.json"
+      ],
+      "reason": "Prospective admission, stop, timeout and restoration rules."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity.json",
+        "source-freeze.json",
+        "build.json",
+        "candidate-attestation.json",
+        "runtime-before.json",
+        "runtime-candidate-before.json",
+        "runtime-candidate-after.json"
+      ],
+      "reason": "Pinned source/image/model and independent runtime comparisons."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "kernel-receipts.log",
+        "kernel-summary.json",
+        "request.json",
+        "response.json",
+        "probe-result.json",
+        "boundary-summary.json",
+        "serving-worker-traces.json",
+        "trace-freshness.json",
+        "baseline-smoke.json"
+      ],
+      "reason": "Native numerical/token evidence and explicitly derived summaries, including strict failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "probe-result.json",
+        "baseline-smoke.json",
+        "restoration-smoke.json"
+      ],
+      "reason": "Failed repeated-close/exact-output gates, known JSON quality failure and durable follow-up."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "closure.json",
+        "runtime-before.json",
+        "runtime-restored.json",
+        "router-restored.json",
+        "mode-restored.json",
+        "shared-memory-restored.json",
+        "resources-final.json",
+        "restoration-smoke.json",
+        "independent-restoration-review.json"
+      ],
+      "reason": "Exact operational restoration; functional acceptance remains incomplete; no established regression."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "independent-kernel-review.json",
+        "independent-live-review.json",
+        "independent-restoration-review.json"
+      ],
+      "reason": "Closed diagnostic with passed kernel gate, failed full probe and independent phase reviews."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; dated technical finding is the public report."
+    }
+  ],
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

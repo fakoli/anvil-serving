@@ -1,0 +1,28 @@
+{
+  "reviewer": "Sol independent protocol reviewer",
+  "verdict": "partial_mechanism_improvement_full_probe_failed",
+  "verified": [
+    "request controls match frozen packet",
+    "48 prompt plus137 generated equals185 total",
+    "64 native reasoning tokens",
+    "zero token0",
+    "closing marker positions64 and126",
+    "strict repeated-close boundary failure",
+    "strict answer oracle false: correct tuple twice plus prose",
+    "two fresh worker warnings appended to exact pre-request warning prefix",
+    "trace rows4 has_k0 forced_rows2 finite_min_max1 end_finite_rows2",
+    "before/after capture and launch identity identical",
+    "before/after engine0/0 and no OOM or swap counter changes",
+    "request response artifact hashes and sizes match"
+  ],
+  "limitations": [
+    "one request only; no general causal proof",
+    "Python dispatch receipt is not per-row kernel provenance",
+    "kernel tensor width154880 differs from synthetic154856; exact plan did not require equality",
+    "native runtime_verified=false; operator_attested; engine_drain=unknown retained; later idle samples are not continuous admission lease",
+    "request-time JIT and synchronized tracing exclude performance claims",
+    "restoration pending separately"
+  ],
+  "promoted": false,
+  "ignis": "hold"
+}
