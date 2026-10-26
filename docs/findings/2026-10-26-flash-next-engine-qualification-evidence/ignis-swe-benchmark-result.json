@@ -1,0 +1,169 @@
+{
+  "created_at": "2026-10-26T13:36:12.465274Z",
+  "failure": {
+    "class": "resource_exhaustion",
+    "code": "budget_exhausted",
+    "message": "benchmark suite did not complete"
+  },
+  "partial": true,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "ANVIL_EVALUATION_TOKEN",
+      "base_url": "http://127.0.0.1:8000/v1",
+      "model": "llm.evaluation.ignis"
+    },
+    "finished_at": "2026-10-26T13:36:12.465149Z",
+    "started_at": "2026-10-26T13:02:28.075158Z",
+    "submitted_at": "2026-10-26T13:02:12.510736Z",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "failed",
+      "created_at": "2026-10-26T13:36:12.455279Z",
+      "evidence_kind": "measured",
+      "failure": {
+        "class": "resource_exhaustion",
+        "code": "budget_exhausted",
+        "message": "benchmark suite did not complete"
+      },
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+          "gpu_uuids": [
+            "[REDACTED_PUBLIC_HARDWARE_ID]"
+          ]
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "id": "sha256:0226b62047113c219124ca4a02b1e52492402b44f5a3020db91e77756914b8cc"
+        },
+        "model": {
+          "repository": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+          "revision": "8d94db83cd8e58d6be31e796723e5e35b960638c"
+        },
+        "runtime": {
+          "engine": "ignis-0.8.0",
+          "recipe_sha256": "b5135421c217552c18bfffdcc2bbbd0e63e6d9e93f167d2014dc5a56c0fe47b0",
+          "source_revision": "950ee0d1c2cf6178cd7fec29df3f17c3e127f987"
+        },
+        "served_model": {
+          "configured_context_tokens": 131072,
+          "id": "qwen3.8-flash-next",
+          "router_alias": "llm.evaluation.ignis"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "evaluation-platform",
+        "profile": "scout",
+        "run_id": "ignis080-swe-normal-r2-20261026",
+        "spec_sha256": "3b2022333f386bb97939b0ac1e237958306f93e7ebdd4ceef35d7e0493699c73",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 11055,
+              "path": "evidence/0-assets.json",
+              "sha256": "93855017d50987aad18c94bc9754e909bfcfa3530911e417b258461f5b11de7a"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2208,
+              "path": "evidence/0-preflight.json",
+              "sha256": "fdeb59e20b126080af9912ff47f74ee4eb601033f1a9a7cf7169091badb9f074"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 7169,
+              "path": "evidence/0-swe-canonical-retention.json",
+              "sha256": "a965f4ca53c94cf0fe31d1c670e47ab239c6da600f624963730a44c303d8876d"
+            }
+          ],
+          "name": "swe_canonical_retention",
+          "sequence": 2,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 705377,
+              "path": "evidence/2-swe.json",
+              "sha256": "e4d93628f125fcaddf4e030a0dfc7bc7bdeb828bc88993babbf34a2a14a55dfa"
+            }
+          ],
+          "name": "swe",
+          "sequence": 3,
+          "status": "failed"
+        }
+      ],
+      "summary": {
+        "attempted": true,
+        "completed": false
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "evaluation-platform",
+    "profile": "scout",
+    "run_id": "ignis080-swe-normal-r2-20261026",
+    "spec_sha256": "3b2022333f386bb97939b0ac1e237958306f93e7ebdd4ceef35d7e0493699c73",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "failed"
+}

@@ -5,6 +5,11 @@
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
 | --- | --- | --- | --- |
 
+## 2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Distinct pinned Qwen3.8 Flash Next recipes: Ignis 0.8.0, vLLM r2, and Flare r2; serialized C1 agentic/Aider/SWE/context scouts | One RTX PRO 6000 Blackwell Max-Q per run; single-request workload. The second card was not used for performance measurements. | Agentic 6/6 and context 9/9 passed on each recipe; context prompts reached 114,588 actual tokens. Official SWE resolved 2/5, 3/5, and 0/5, respectively; the denominator is five attempted tasks per lane, with empty patches ungraded. Flare attempted five tasks but only Django produced a nonempty graded submission. Aider outcomes were mixed and include ungraded budget stops. Shared-router whitespace handling makes historical coding attribution uncertain. vLLM C1 was 0/8 performance-eligible; Flare C1 ended 0/8 performance-eligible, with native `native_control_mismatch` preserved; exact prior evaluation routes/output caps and GLM incumbent readmission passed local checks; the router uses reviewed PR #704 overlay, not the original image. Final no-promotion; no engine ranking, speed, full-window, or concurrency claim. | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-26-flash-next-engine-qualification.md) · [Evidence index](../findings/2026-10-26-flash-next-engine-qualification-evidence/README.md) |
 
 ## 2026-10-26 Ignis 0.8 mandatory-tool qualification
 

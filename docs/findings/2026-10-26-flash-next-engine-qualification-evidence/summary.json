@@ -1,0 +1,135 @@
+{
+  "campaign_id": "2026-10-26-flash-next-engine-qualification",
+  "comparison_evidence": null,
+  "complete": true,
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "historical-invalid"
+    ],
+    "next_gate": "Campaign closed after exact local route/cap restoration and GLM readmission; no-promotion decision retained.",
+    "promotion_authorized": false
+  },
+  "evidence": [
+    "flare-agentic-campaign-report.json",
+    "flare-aider-campaign-report-a.json",
+    "flare-aider-campaign-report-b.json",
+    "flare-context-benchmark-result.json",
+    "flare-swe-benchmark-result.json",
+    "flare-swe-official-grader-summary.json",
+    "ignis-agentic-campaign-report.json",
+    "ignis-aider-campaign-report-a.json",
+    "ignis-aider-campaign-report-b.json",
+    "ignis-context-benchmark-result.json",
+    "ignis-swe-benchmark-result.json",
+    "ignis-swe-official-grader-summary.json",
+    "vllm-agentic-campaign-report.json",
+    "vllm-aider-campaign-report-a.json",
+    "vllm-aider-campaign-report-b.json",
+    "vllm-context-benchmark-result.json",
+    "vllm-swe-benchmark-result.json",
+    "vllm-swe-official-grader-summary.json",
+    "flare-c1-offline-reconciliation.md",
+    "flare-serving-c1-native-capacity-result.json",
+    "vllm-serving-c1-native-capacity-result.json",
+    "final-restoration-evidence.json",
+    "glm-restoration-direct-preflight.json",
+    "glm-restoration-routed-preflight.json"
+  ],
+  "failures": [
+    "Historical Aider attribution is uncertain because original HTTP bodies were not retained and the frozen shared-router buffered-text path collapses repeated spaces.",
+    "Flare SWE had four empty/ungraded attempts at the declared 60-step ceiling and one graded unresolved task.",
+    "Flare C1 native output gate failed for all eight requests; the outer wrapper retained native_control_mismatch. Offline accounting is supplemental and yields no performance result."
+  ],
+  "gates": [
+    {
+      "name": "agentic",
+      "result": "6/6 passed on each variant",
+      "status": "passed"
+    },
+    {
+      "name": "context",
+      "result": "9/9 passed on each variant; maximum observed prompt 114588",
+      "status": "passed"
+    },
+    {
+      "name": "Aider",
+      "result": "Ignis 3 pass, 2 graded fail, 1 ungraded; vLLM and Flare each 4 pass, 1 graded fail, 1 ungraded",
+      "status": "mixed"
+    },
+    {
+      "name": "official SWE",
+      "result": "Ignis 2/5 resolved; vLLM 3/5; Flare 0/5; empty patches remain ungraded",
+      "status": "mixed_incomplete"
+    },
+    {
+      "name": "vLLM serving C1",
+      "result": "0/8 performance-eligible",
+      "status": "failed_output_gate"
+    },
+    {
+      "name": "Flare serving C1",
+      "result": "terminal: 8 HTTP responses, 0/8 performance-eligible; five no-visible-content length stops and three strict 128-word misses; wrapper native_control_mismatch preserved",
+      "status": "failed_output_gate"
+    },
+    {
+      "name": "restoration",
+      "result": "exact prior routes/output caps and GLM incumbent restored; direct/routed preflights 5/5 each; one Pi read-tool turn passed; reviewed PR #704 router image overlay used",
+      "status": "passed_with_runtime_image_difference"
+    }
+  ],
+  "headline_results": [
+    {
+      "metric": "engine ranking",
+      "reason": "Distinct model/engine/image recipes and unresolved router output-integrity attribution.",
+      "status": "not_collected"
+    },
+    {
+      "metric": "speed/throughput",
+      "reason": "No eligible matched performance population.",
+      "status": "not_collected"
+    },
+    {
+      "metric": "full-window context",
+      "reason": "Largest observed prompt was 114588; advertised 262144 was not tested at full length.",
+      "status": "not_collected"
+    }
+  ],
+  "identity": {
+    "benchmark_source_revision": "a5ccb7454ad49f47e5a953b130696fff69cdb829 (vLLM and Flare only); Ignis Git revision unknown, content SHA-256 daf9d724d6513c488667740e0e4db2ecc5e4ec6fad58b6fb2cac1694e101f83a",
+    "candidate": "Qwen3.8 Flash Next",
+    "hardware": "one RTX PRO 6000 Blackwell Max-Q per serialized run",
+    "variants": [
+      "Ignis 0.8.0",
+      "vLLM r2",
+      "Flare r2"
+    ]
+  },
+  "limitations": [
+    "No engine-only comparison, speed ranking, full-window claim, concurrent-capacity claim, or promotion.",
+    "One independently fixed-router capture is a separate diagnostic and does not rescore historical Aider outcomes.",
+    "Bounded functional outcomes may be compared by recipe; they do not isolate engine effects. No eligible performance population supports speed ranking.",
+    "Workload-manifest and frozen run-plan files are missing from the public artifact set; no qualification beyond the retained bounded outcomes follows.",
+    "Router configuration and incumbent were restored, but the router runtime image is the reviewed PR #704 overlay rather than the original image.",
+    "Local preflights and one Pi read-tool turn do not establish whole-fleet, reboot, or fresh-host acceptance.",
+    "Remote-memory terminal status is UNKNOWN and drained=false; no drained=true claim is made."
+  ],
+  "measurement": {
+    "path": "managed local candidate endpoints; single-request quality and bounded context",
+    "sample_count": null,
+    "statistics": [],
+    "warm_cold_state": "not applicable to this functional/context scout summary"
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "concurrency": "single request; scouts serialized",
+    "context_samples_per_variant": 9,
+    "max_observed_prompt_tokens": 114588,
+    "performance_comparison": false,
+    "scope": "bounded agentic, Aider, fixed-five SWE, context and terminal vLLM/Flare serving C1 scouts; plus verified local restoration"
+  }
+}

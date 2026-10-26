@@ -174,6 +174,9 @@ public-post merge and deployed readback remain pending);
 `docs/benchmarks/models/qwen36-27b.md`;
 `docs/benchmarks/models/qwen38-27b.md`;
 `docs/benchmarks/models/qwen38-flash-next.md`; `docs/benchmarks/runs.md`;
+`docs/findings/2026-10-26-flash-next-engine-qualification.md`;
+`docs/findings/2026-10-26-flash-next-engine-qualification-evidence/publication-summary.md`
+(three serialized recipe scouts on one RTX PRO 6000 Blackwell Max-Q; functional and context results retained, mixed coding outcomes and two failed C1 output gates; no engine ranking, speed claim, or promotion).
 `docs/findings/2026-07-10-blackwell-local-model-bakeoff.md`;
 `docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/failures.md`;
 `docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/preflight-transcripts.md`;
