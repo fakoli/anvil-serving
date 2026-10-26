@@ -1,0 +1,26 @@
+{
+  "status": "unknown",
+  "error": "GPU committed token sequence differs from native response",
+  "promoted": false,
+  "ignis": "hold",
+  "logs_sha256": "9e0902fa87dd0e01c522a88d3819c06b588dc3342769d18d90d96f044e9e1324",
+  "startup_logs_sha256": "57d1cc48f41e987656d5111887a96ae0558f6e8cae92ae14a87a43b233ef7c62",
+  "gpu_selftest": {
+    "schema": "marker-trace/v1",
+    "kind": "gpu_selftest",
+    "passed": true,
+    "steps": 2,
+    "original_logits_and_cache_equal": true,
+    "peak_tensor_bytes": 7447552,
+    "limit": "Synthetic selected tokens; does not test stochastic rejection sampling."
+  },
+  "response_sha256": [
+    "34c2827dab0ccc3baad01f3aeebc02564b20a219822c241e085aad99e69857dd"
+  ],
+  "projection": {
+    "native_source_sha256": "ce00bb94b5ac3dd0541d893f63bde2403b088df0aa037563ef00c813d636e281",
+    "transformations": [
+      "Preserved the frozen analyzer result and hashes without reinterpretation."
+    ]
+  }
+}

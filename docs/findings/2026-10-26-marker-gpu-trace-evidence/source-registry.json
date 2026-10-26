@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-26-marker-gpu-trace",
+  "observed_at": "2026-10-26",
+  "sources": [
+    {
+      "id": "upstream-split-top-p-test-contract",
+      "url": "https://github.com/vllm-project/vllm/blob/0a1276e5e3d9000488e7590cc0957edd709f2152/tests/v1/sample/test_topk_topp_sampler.py",
+      "published_or_observed": "commit 0a1276e5e3d9000488e7590cc0957edd709f2152",
+      "observed_at": "2026-10-26",
+      "age_class": "current",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Defines the frozen native fp32 kept-count comparator used by the preweight sampling gate; not model-level proof.",
+      "decision_impact": "Admission gate only; all trace and model conclusions remain separate."
+    },
+    {
+      "id": "pinned-runtime-source",
+      "url": "https://github.com/local-inference-lab/vllm/tree/8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+      "published_or_observed": "commit 8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+      "observed_at": "2026-10-26",
+      "age_class": "current",
+      "evidence_type": "runtime-source",
+      "hardware_runtime_relevance": "Pinned vLLM fork underlying the unchanged serving recipe and marker-trace patch.",
+      "decision_impact": "Binds source inspection; does not prove the running candidate without retained attestation."
+    },
+    {
+      "id": "prior-repeated-close-result",
+      "url": "../2026-10-25-sampling-upstream-tolerance.md",
+      "published_or_observed": "2026-10-25",
+      "observed_at": "2026-10-26",
+      "age_class": "current",
+      "evidence_type": "local-result",
+      "hardware_runtime_relevance": "The preceding one-request TP2/MTP3 result retained closing markers at positions 64 and 126 but lacked per-output-token force provenance.",
+      "decision_impact": "Defines the diagnostic question; its old output receives no retroactive attribution."
+    }
+  ]
+}

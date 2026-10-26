@@ -1,0 +1,43 @@
+{
+  "schema": "marker-gpu-trace-candidate-attestation/v1",
+  "verified": true,
+  "candidate_image": "sha256:789be89fc1f16c28673fad1dbb539974f7d363c6c04ee1372a22fd12b21090d3",
+  "package_version": "0.1.dev21830+g8244d1c44.cu134",
+  "attested_plan_sha256": "d7c98f5383a4ea4cee142c4cae3476249344c77d7e376b7db538425204b310b4",
+  "runtime_capture_sha256": "98636724589838ff99acafb91e33c52edb35559821871144355ddd245d2603e7",
+  "markers": {
+    "start": [154841],
+    "end": [154842],
+    "forced_end": [154842]
+  },
+  "expected_changed_sources": {
+    "vllm/v1/worker/gpu/sample/thinking_budget.py": {
+      "before": "020513e1d3406f367de6ad995a95055008fd0c28f2873647e8283c9870e22404",
+      "candidate": "df13a214922325296a00a7726bf3951ba942c47718a8db84f46c88e6f727ff3f"
+    },
+    "vllm/v1/worker/gpu/sample/sampler.py": {
+      "before": "832c9945d201a1e730ff9b4b52076aa83bd4a5064e1e4cfea952cf84d4a8d1f0",
+      "candidate": "37263a79c8527955fe150102b2ac150e023535c55a7b1c1fa71d62c90d797c43"
+    },
+    "vllm/v1/worker/gpu/spec_decode/rejection_sampler.py": {
+      "before": "030db5bfca162cc1f305112f299de5d6d61c59d3ed0807fee46575441ca4086d",
+      "candidate": "a95a8115117e76920bc8992ad772f676dfb12676fd4cdee0479007b1f657f748"
+    },
+    "vllm/v1/sample/ops/topk_topp_triton.py": {
+      "before": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
+      "candidate": "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6"
+    }
+  },
+  "pre_probe_engine": {
+    "running": 0,
+    "waiting": 0
+  },
+  "available_memory_gib": 70.07881164550781,
+  "projection": {
+    "native_source_sha256": "0d3f85e5aa9605027f0a1da23e64673072a407e599b7a5355ad04e52765bdf87",
+    "transformations": [
+      "Removed raw GPU query output and private runtime identity.",
+      "Preserved immutable image, package, plan, runtime-capture, marker, source-hash, occupancy and available-memory evidence."
+    ]
+  }
+}

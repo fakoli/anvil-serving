@@ -7,6 +7,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-10-26-marker-gpu-trace.md`
+(one-Max-Q actual-CUDA startup gates and one dual-Max-Q C1 model request;
+first close observed budget-forced, second close not reproduced, complete
+worker/API reconciliation unknown; no performance or promotion claim).
+
 `docs/findings/2026-10-25-sampling-upstream-tolerance.md`;
 `docs/findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md`
 (one-Max-Q synthetic kernel gate passed; one dual-Max-Q C1 model request failed

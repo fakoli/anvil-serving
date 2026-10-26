@@ -1,0 +1,52 @@
+{
+  "schema": "marker-gpu-trace-derived-summary/v1",
+  "status": "unknown",
+  "authority": "supplemental derivation from native response and bounded worker traces; the frozen analyzer verdict remains authoritative",
+  "native_response": {
+    "completion_tokens": 75,
+    "reasoning_tokens": 64,
+    "end_token_id": 154842,
+    "end_token_zero_based_indices": [64],
+    "stop_token_id": 154827,
+    "stop_token_zero_based_index": 74,
+    "second_end_observed": false,
+    "answer": "9567,1085,10652",
+    "answer_oracle": true,
+    "response_anomalies": []
+  },
+  "worker_trace": {
+    "tp_ranks": [0, 1],
+    "ranks_agree_on_observed_events": true,
+    "generated_tokens_reported_per_rank": 76,
+    "native_response_is_exact_prefix_tokens": 75,
+    "trace_only_suffix_token_ids": [1654],
+    "observed_end_event": {
+      "token_id": 154842,
+      "generated_zero_based_index": 64,
+      "absolute_position": 112,
+      "budget_store": true,
+      "stored_token": 154842,
+      "marker_matches_store": true,
+      "observed_on_both_ranks": true
+    },
+    "second_end_observed": false
+  },
+  "interpretation": {
+    "established": [
+      "The only native-response reasoning-close marker appeared at zero-based completion index 64.",
+      "Both TP ranks recorded a matching budget store for token 154842 at the corresponding observed trace position.",
+      "No second reasoning-close marker appeared in either the native response or the worker trace."
+    ],
+    "not_established": [
+      "The frozen analyzer did not reconcile the complete worker trace with the native response because the trace reports one token after the API stop token.",
+      "The target second-marker force-versus-sample question was not exercised because no second marker reproduced.",
+      "The run does not prove that the duplicate-close behavior is resolved, nor any performance, quality, model-state or KV-cache conclusion."
+    ]
+  },
+  "native_sources": {
+    "response_sha256": "34c2827dab0ccc3baad01f3aeebc02564b20a219822c241e085aad99e69857dd",
+    "worker_trace_sha256": "9e0902fa87dd0e01c522a88d3819c06b588dc3342769d18d90d96f044e9e1324",
+    "frozen_analyzer_result_sha256": "ce00bb94b5ac3dd0541d893f63bde2403b088df0aa037563ef00c813d636e281"
+  },
+  "privacy": "PIDs, request IDs, container IDs, private names and raw log lines are omitted."
+}

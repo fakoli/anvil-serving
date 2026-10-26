@@ -1,0 +1,166 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "request": "Independent post-probe review of the retained native response, TP2 GPU marker trace, frozen analyzer result and candidate runtime parity",
+  "gate_state": "blocked",
+  "targets": {
+    "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "pinned_vllm_commit": "8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+    "evaluated_model": "GLM-5.3-Flash-FP4-Local",
+    "implementing_model": "GPT-6 lead; exact variant unverified",
+    "reviewer_model": "Sol; independent from implementer and evaluated model",
+    "ignis": "hold"
+  },
+  "tools_used": [
+    {
+      "name": "retained_artifact_inspection",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "private campaign evidence",
+      "error": null
+    },
+    {
+      "name": "pinned_git_object_source_inspection",
+      "source_class": "local",
+      "ok": true,
+      "dry_run": true,
+      "confirmed": false,
+      "target": "pinned vLLM source at 8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+      "error": null
+    },
+    {
+      "name": "workflow_packet_validate",
+      "source_class": "mcp",
+      "ok": false,
+      "dry_run": true,
+      "confirmed": false,
+      "target": null,
+      "error": "Tool unavailable in reviewer session; packet shape checked against the anvil-serving-workbench contract."
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "findings_summary",
+      "status": "failed_full_sequence_gate",
+      "summary": "The native response was correct and contained one reasoning close at completion index 64. Both TP ranks directly observed that accepted close as an actual budget-kernel store of token 154842 with END logit 1e9. Both workers nevertheless committed 76 tokens while the API returned 75: the API sequence is an exact prefix and the worker-only suffix is token 1654 after EOS token 154827. The frozen analyzer correctly returned unknown. The prior repeated-close behavior was not reproduced, so attribution of a second close remains unknown and no end-to-end resolution is established."
+    },
+    {
+      "role": "finding",
+      "severity": "high",
+      "classification": "confirmed",
+      "title": "Frozen full-sequence provenance gate failed",
+      "concrete_state": "Each rank reports request_end generated=76, but the native API response contains 75 completion token IDs.",
+      "wrong_result_avoided": "Attributing the complete native response or any second closing marker from a non-identical worker sequence.",
+      "result": "The frozen analyzer returned unknown; the gate was not relaxed and no retry was authorized."
+    },
+    {
+      "role": "finding",
+      "severity": "medium",
+      "classification": "confirmed",
+      "title": "Original repeated-close behavior was not reproduced",
+      "concrete_state": "The API response has exactly one token 154842 and no duplicate answer; it stops on token 154827.",
+      "wrong_result_avoided": "Claiming that the earlier repeated-close defect is resolved from a single nonreproducing diagnostic request.",
+      "result": "Answer oracle passed, but second-close attribution was not exercised by this sample."
+    },
+    {
+      "role": "tp_trace_quantification",
+      "records": 66,
+      "ranks": [0, 1],
+      "per_rank": {
+        "request_start": 1,
+        "steps": 31,
+        "request_end": 1,
+        "committed_tokens": 76,
+        "forced_rows": 7
+      },
+      "rank_normalized_full_record_sha256": {
+        "rank_0": "653eb01a49a644e6e1266f9fbca1da3cee1bd288f21532602a5e4687eea3cb5c",
+        "rank_1": "653eb01a49a644e6e1266f9fbca1da3cee1bd288f21532602a5e4687eea3cb5c"
+      },
+      "committed_token_sequence_sha256": {
+        "rank_0": "789f76b32c9ce15c77be526e761590f7f2cc2c137f6ae2273397b9c3af42a679",
+        "rank_1": "789f76b32c9ce15c77be526e761590f7f2cc2c137f6ae2273397b9c3af42a679"
+      },
+      "tp_agreement": true
+    },
+    {
+      "role": "observed_first_close_store",
+      "classification": "confirmed_observation",
+      "rank_agreement": true,
+      "step": 26,
+      "row": 0,
+      "absolute_history_position": 112,
+      "zero_based_completion_position": 64,
+      "event": [1, 1, 154842, 47, -1, 112, 64, 0],
+      "marker_end_logit_after": 1000000000.0,
+      "committed_token_id": 154842,
+      "marker_matches_store": true,
+      "interpretation": "The first and only close in this run was observed after the actual budget-kernel store. This is observed correlation, not counterfactual proof that sampling could not otherwise select the token."
+    },
+    {
+      "role": "api_gpu_sequence_comparison",
+      "api_token_count": 75,
+      "gpu_committed_token_count_per_rank": 76,
+      "api_is_exact_gpu_prefix": true,
+      "api_final_token_id": 154827,
+      "gpu_only_suffix": [1654],
+      "gate_result": "unknown"
+    },
+    {
+      "role": "candidate_runtime_before_after",
+      "identity_core_equal": true,
+      "launch_equal": true,
+      "captured_bytes_equal": true,
+      "runtime_patch_equal": true,
+      "marker_trace_equal": true,
+      "engine_before": {"running": 0, "waiting": 0},
+      "engine_after": {"running": 0, "waiting": 0},
+      "host_oom_kill_counter_delta": 0,
+      "container_oom_killed_before": false,
+      "container_oom_killed_after": false,
+      "container_peak_unchanged": true,
+      "limitation": "Do not claim exact process-row parity because the before process inventory was incomplete."
+    },
+    {
+      "role": "source_backed_extra_step_hypothesis",
+      "classification": "plausible_not_proven",
+      "hypothesis": "The worker-only post-EOS token is consistent with one async-scheduled batch already being in flight when the scheduler recognized the stop token and trimmed API-visible output.",
+      "limits": "No retained scheduler queue or configuration trace proves this path for this request."
+    },
+    {
+      "role": "restoration_state",
+      "status": "pending_external_receipt_at_review_time",
+      "result": "This review does not claim restored readiness, router convergence, functional smoke success or transaction closure."
+    }
+  ],
+  "advisory_priors": [
+    {
+      "status": "observed",
+      "finding": "The first and only accepted close was budget-forced in this run."
+    },
+    {
+      "status": "unknown",
+      "finding": "A second close was not reproduced, so the original repeated-close provenance question remains unanswered."
+    },
+    {
+      "status": "unknown",
+      "finding": "Exact end-to-end worker/API token identity failed because of one post-EOS worker token."
+    },
+    {
+      "status": "limitation",
+      "finding": "One correct answer cannot establish general model quality, parser correctness or resolution of the earlier failure."
+    }
+  ],
+  "recommendation": "do_not_promote",
+  "human_gate_required": false,
+  "promoted": false,
+  "operator_conclusion": "Preserve the narrow observation that the accepted close at the 64-token boundary was budget-forced on both ranks, but retain full-sequence and second-close provenance as unknown. Ignis remains held; final campaign closure additionally requires independent restoration receipts.",
+  "projection": {
+    "native_source_sha256": "e726065ed0ba0b7da7f8b10c190ecf6434a8088d61244afc100cad4490f3b4df",
+    "transformations": [
+      "Removed private evidence roots, source roots, artifact paths and command paths.",
+      "Retained reviewer/model independence, findings, exact counts and hashes, classifications, recommendation and restoration boundary."
+    ]
+  }
+}

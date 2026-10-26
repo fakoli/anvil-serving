@@ -1,5 +1,7 @@
 # GLM-5.3-Flash
 
+**2026-10-26 reasoning-close GPU marker trace:** the [bounded actual-GPU diagnostic](../../findings/2026-10-26-marker-gpu-trace.md) returned one exact-answer C1 response with a single close at index 64. Both TP ranks observed its budget store, but the worker trace contained one token after the 75-token API response, so the frozen analyzer remained `unknown`. No second close reproduced and no end-to-end resolution is established. Exact operational restoration passed; strict JSON functional acceptance remained incomplete. No promotion; Ignis held. [Summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
+
 **2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
 
 **2026-10-25 sampling-reference diagnostic:** the [independent numerical-reference gate](../../findings/2026-10-25-sampling-reference.md) passed 8/8 forced cases but rejected the patch after one of 272 ordinary rows retained one extra boundary token relative to stock/reference. Candidate weights and inference never started; the model reasoning-boundary failure remains unresolved. Exact operational restoration passed, but the restored incumbent failed its single strict JSON smoke, so functional restoration acceptance is incomplete. No promotion; Ignis held.
@@ -421,6 +423,14 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### Actual-GPU reasoning-marker trace, 2026-10-26
+
+- **Status:** preweight gates passed; full worker/API reconciliation `unknown`; duplicate close not reproduced; `no-promotion`.
+- **Measured:** two-step actual-CUDA marker selftest, eight forced cases and 272 ordinary sampling rows on one Max-Q, then one C1 request on the dual-Max-Q TP2/DCP2 FP4/FP8-KV, 327,680-context/C4/MTP3 candidate.
+- **Result:** the response returned `9567,1085,10652` in 75 completion tokens with one close at index 64. Both ranks recorded a matching budget store for that close. Each trace reported 76 committed tokens; the API sequence was the exact first 75 and the trace-only suffix was token 1654 after stop token 154827.
+- **Limits:** the frozen analyzer correctly returned `unknown`; no second close reproduced, so its force-versus-sample provenance was not exercised. Synchronized tracing excludes performance claims. Exact operational restoration passed, while strict JSON failed before and after and no quality regression was established. Router custody was restored; mounted configuration-byte parity was not measured.
+- **Evidence:** [finding](../../findings/2026-10-26-marker-gpu-trace.md), [summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json), [frozen analyzer](../../findings/2026-10-26-marker-gpu-trace-evidence/trace-result.json), and [evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
+
 ### Prospective sampling count gate and model probe, 2026-10-25
 
 - **Status:** kernel gate passed; full reasoning-limit and exact-output gates failed; `no-promotion`.
@@ -635,6 +645,8 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-10-26 — [Reasoning-close GPU marker trace](../../findings/2026-10-26-marker-gpu-trace.md): one exact-answer response had a single boundary close with matching two-rank budget-store observations, but 76 trace tokens versus 75 API tokens kept the frozen analyzer `unknown`; no second close reproduced. Operational restoration passed, functional JSON acceptance incomplete. No promotion.
 
 - 2026-10-25 — [Sampling upstream-tolerance trial](../../findings/2026-10-25-sampling-upstream-tolerance.md): native count compatibility passed; one candidate request retained repeated-close/strict-output failure. Exact restoration; both matched JSON smokes failed, no established regression. No promotion.
 

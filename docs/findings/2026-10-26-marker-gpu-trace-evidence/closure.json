@@ -1,0 +1,38 @@
+{
+  "schema": "marker-gpu-trace-closure/v1",
+  "campaign_id": "2026-10-26-marker-gpu-trace",
+  "status": "closed_diagnostic_inconclusive",
+  "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+  "probe": {
+    "requests": 1,
+    "answer_oracle": true,
+    "duplicate_close_reproduced": false,
+    "frozen_analyzer_status": "unknown",
+    "reason": "GPU committed token sequence differs from native response"
+  },
+  "restoration": {
+    "operational_restoration_verified": true,
+    "functional_acceptance_complete": false,
+    "incumbent_identity_exact": true,
+    "router_custody_exact": true,
+    "router_ready_and_admitting": true,
+    "active_requests": 0,
+    "engine_running": 0,
+    "engine_waiting": 0,
+    "host_oom_kill_counter_delta": 0,
+    "cgroup_oom_event_delta": 0,
+    "strict_json_baseline_passed": false,
+    "strict_json_restored_passed": false,
+    "quality_regression_established": false,
+    "router_configuration_byte_parity_proven": false,
+    "router_configuration_byte_parity_limit": "Mounted configuration bytes were not separately captured before the trial; custody remained with the same running router and no router file mutation or restart was performed."
+  },
+  "decision": {
+    "diagnostic_result": "inconclusive",
+    "second_close_provenance": "unknown_not_exercised",
+    "duplicate_close_resolution_proven": false,
+    "performance_claim": false,
+    "promoted": false,
+    "ignis": "hold"
+  }
+}

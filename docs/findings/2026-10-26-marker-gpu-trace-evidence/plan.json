@@ -1,0 +1,74 @@
+{
+  "schema": "marker-gpu-trace-public-plan/v1",
+  "campaign_id": "2026-10-26-marker-gpu-trace",
+  "status": "frozen_before_lifecycle",
+  "question": "For each accepted second closing marker, was its exact verification row budget-forced or sampled without a budget force?",
+  "identity": {
+    "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "candidate_image": "sha256:789be89fc1f16c28673fad1dbb539974f7d363c6c04ee1372a22fd12b21090d3",
+    "runtime_source": "local-inference-lab/vllm@8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+    "upstream_split_top_p_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152"
+  },
+  "constants": [
+    "model and revision",
+    "all model flags and MTP3",
+    "GPU allocation and order",
+    "runtime/model cache volumes",
+    "TP2 and configured C4 capacity",
+    "C1 request with 64-token reasoning budget, 512-token completion cap, maximum reasoning effort, temperature 0.6 and top-p 0.95"
+  ],
+  "candidate_changes": [
+    "preceding upstream split-top-p patch unchanged",
+    "bounded actual-GPU force/cache/acceptance/commit tracing",
+    "preweight trace-kernel fixture before the existing sampler gate"
+  ],
+  "preweight_trace_gate": {
+    "timeout_seconds": 120,
+    "weights_loaded": false,
+    "gpu_memory_limit_bytes": 67108864,
+    "criteria": "Actual patched cache/budget kernel matches the uninstrumented baseline and expected force events on bounded marker-boundary fixtures."
+  },
+  "sampling_gate": {
+    "forced_cases": 8,
+    "ordinary_cases": 8,
+    "ordinary_rows": 272,
+    "seeds": [58231, 42],
+    "vocabularies": [131072, 154856],
+    "batch_sizes": [4, 64],
+    "top_p": 0.95,
+    "dtype": "float32",
+    "policy": "upstream-count-v1",
+    "one_predeclared_attempt": true,
+    "child_timeout_seconds": 180,
+    "tensor_peak_limit_bytes": 1073741824
+  },
+  "inference": {
+    "maximum_probe_invocations": 1,
+    "maximum_requests": 2,
+    "request_timeout_seconds": 120,
+    "total_window_seconds": 300,
+    "retries": 0,
+    "second_case_only": "The first response naturally closes below the boundary and answers correctly."
+  },
+  "trace_gate": {
+    "required": "Exact output-token reconciliation for every TP rank, including explicit force writes, GPU marker-cache values, row mapping and draft positions, acceptance and postcommit boundary metadata.",
+    "fail_closed": "Missing events, overflow, rank disagreement or nonreproduction remains unknown.",
+    "scope": "Synchronized device-state snapshots are diagnostic-only and cannot support performance claims or retroactively prove an older request's internal state."
+  },
+  "restoration": "Restore the exact copied incumbent registry through the managed mode boundary and verify identity, readiness, router admission, resources and one frozen smoke.",
+  "window": {
+    "target_seconds": 2700,
+    "candidate_startup_seconds": 900,
+    "request_seconds": 300,
+    "restoration_reserve_seconds": 1200
+  },
+  "ignis": "hold",
+  "promoted": false,
+  "projection": {
+    "native_source_sha256": "383c1a90ea02d04b01da62f8f4d4e8fb7424fe4147f065d015d79a2655ffb539",
+    "transformations": [
+      "Removed private paths and operator-only command context.",
+      "Preserved frozen limits, gates, identities and no-promotion boundary."
+    ]
+  }
+}

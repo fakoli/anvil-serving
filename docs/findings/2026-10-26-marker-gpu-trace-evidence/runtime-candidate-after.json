@@ -1,0 +1,64 @@
+{
+  "schema": "marker-gpu-trace-runtime-projection/v1",
+  "phase": "after_probe",
+  "identity": {
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "image": "sha256:789be89fc1f16c28673fad1dbb539974f7d363c6c04ee1372a22fd12b21090d3",
+    "state": "running",
+    "launch": {
+      "command_sha256": "c1ea572206f93d234ab22c14a9440bc3dfb0c5cf7625b582b66dac7e8564cdcc",
+      "entrypoint_sha256": "fe4a3cce7860df689ab93e0ba5af925c9a4e7eb8b1d2eaf2a363feea338dc95b",
+      "mounts_sha256": "ef9bac739b828b5e4924fba9fad62bf97623fd0979426d89bbdde96a9741174e",
+      "reasoning_parser": "glm45",
+      "speculative_tokens": 3,
+      "v2_model_runner": true,
+      "flashinfer_sampler": true,
+      "fastokens": true,
+      "sampling_trace": true,
+      "marker_trace": true
+    },
+    "runtime_patch": {
+      "base_image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+      "base_source_sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
+      "upstream_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+      "source_sha256": "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6"
+    },
+    "marker_trace_manifest_sha256": "a54f06ec8c12deb47f2abd5ef0ce099233a94d8135bbfef1cc6686eb1505630b"
+  },
+  "engine": {
+    "running": 0,
+    "waiting": 0,
+    "inference_requests": 0
+  },
+  "resources": {
+    "host_mem_available_bytes": 75643510784,
+    "cgroup_current_bytes": 24819036160,
+    "cgroup_peak_bytes": 34864513024,
+    "cgroup_effective_limit_bytes": 55834574848,
+    "cgroup_effective_swap_limit_bytes": 0,
+    "cgroup_oom_killed": false,
+    "cgroup_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    }
+  },
+  "comparison_to_before_probe": {
+    "identity_hashes_equal": true,
+    "engine_idle_equal": true,
+    "cgroup_oom_event_delta": 0,
+    "cgroup_oom_kill_event_delta": 0,
+    "cgroup_peak_bytes_delta": 0
+  },
+  "projection": {
+    "native_source_sha256": "77e8f126b4d9d36dabda2448600584e050a75ff6c0d0c4ec3014841f0fb628df",
+    "transformations": [
+      "Removed private host, container, network, process, path, command, environment and GPU identity data.",
+      "Preserved allowlisted model/image/source/launch hashes, trace switches, engine occupancy and bounded resource/OOM observations."
+    ]
+  }
+}

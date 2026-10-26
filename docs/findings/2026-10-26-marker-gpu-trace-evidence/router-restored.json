@@ -1,0 +1,21 @@
+{
+  "schema": "marker-gpu-trace-router-restoration/v1",
+  "router": {
+    "running": true,
+    "custody_available": true,
+    "compose_project": "anvil-serving",
+    "compose_service": "router",
+    "image_id": "sha256:6e6a216df049fe0a61041c2a9911bf8ddedb162c43db5a2cb1802367b9ca5d81",
+    "local_reference_matches": true,
+    "restart_count": 0,
+    "health_url": "http://127.0.0.1:8000/"
+  },
+  "scope": "Same running router container/image/mount custody. Actual mounted configuration bytes were not separately captured before the trial; no router file mutation or restart was performed.",
+  "projection": {
+    "native_source_sha256": "9afdc3a57cbb7e3ac34d741151c10f6332785b149794f3b96b1e3fd3d0983734",
+    "transformations": [
+      "Removed container identity and every private mount source/destination.",
+      "Preserved custody, image, local-reference, restart and loopback-health observations."
+    ]
+  }
+}

@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-10-26 GLM reasoning-close GPU marker trace
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM FP4 with pinned split-top-p patch and bounded marker trace; TP2/DCP2, FP8 KV, 327,680 configured context/C4, MTP3; one C1 probe | One RTX PRO 6000 Blackwell Max-Q for actual-CUDA startup gates; dual-Max-Q model request through route-derived direct relay | Preweight selftest and 272-row sampling gate passed. The one exact-answer response had one close at index 64 with matching budget-store events on both ranks, but the trace reported 76 tokens versus 75 from the API and the frozen analyzer returned `unknown`. No second close reproduced. Exact operational restoration passed; strict JSON failed before and after, with no established regression. No promotion, resolution, capacity or performance claim; Ignis held. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-26-marker-gpu-trace.md) · [Summary](../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../findings/2026-10-26-marker-gpu-trace-evidence/README.md) |
+
 ## 2026-10-25 prospective sampling upstream-tolerance trial
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
