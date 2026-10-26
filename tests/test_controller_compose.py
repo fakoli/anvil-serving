@@ -125,7 +125,7 @@ def test_controller_compose_pins_current_release():
 def test_controller_snapshot_root_is_private_and_persisted_without_a_host_home_mount():
     from anvil_serving import router_config_export
 
-    runtime_root = PurePosixPath("/home/anvil") / router_config_export.SNAPSHOT_ROOT.relative_to(Path.home())
+    runtime_root = PurePosixPath("/") / "home" / "anvil" / router_config_export.SNAPSHOT_ROOT.relative_to(Path.home())
     dockerfile = (REPO / "Dockerfile").read_text()
     controller_stage = dockerfile.split("FROM runtime AS controller\n", 1)[1]
     assert f"mkdir -p {runtime_root}" in controller_stage
