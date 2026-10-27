@@ -1,4 +1,7 @@
 docs/CLI-COMMAND-MANIFEST.json text eol=lf
+# The host publisher and container supervisor hash these exact implementation bytes.
+anvil_serving/media/memory_guard.py text eol=lf
+anvil_serving/media/worker_runtime.py text eol=lf
 # Recipe reports bind source bytes; preserve their hashes on Windows and Linux.
 docs/benchmarks/recipe-catalog.json text eol=lf
 docs/benchmarks/recipe-results.md text eol=lf
