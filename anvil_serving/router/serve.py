@@ -2179,6 +2179,7 @@ def build_server(
                     host, port, routing, timeout=timeout, model_routes=config.model_routes,
                     exhaustion_status=config.exhaustion_status, auth_token=auth_token,
                     purpose=purpose, audio=audio, gateway=gateway, memory=memory,
+                    media_signed_downloads=environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0"),
                     authorization_policy=scoped_policy,
                     operator_routes=operator_routes,
                     workload_host=server_config.workload_host,

@@ -46,7 +46,7 @@ import time
 import urllib.parse
 import uuid
 from contextlib import nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Iterable, Optional, Sequence
@@ -86,6 +86,7 @@ from .internal import (
 )
 from .purpose import PurposeError, PurposeRouter
 from .gateway import ARTIFACT_PREFIX, MCP_PATH, ProtocolGateway
+from ..media.downloads import ArtifactDownloadLinks
 from .keys import KeyStore, KeyStoreError
 from .identity import (IdentityError, configured_scope_caller, legacy_caller, load_webui_bindings,
                        select_webui_binding, verify_webui, forwarded_caller)
@@ -485,7 +486,20 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_registry=None,
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
-                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None):
+                  usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None,
+                  media_signed_downloads: str | None = None):
+    if gateway is not None:
+        signed_downloads = (os.environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0")
+                            if media_signed_downloads is None else media_signed_downloads)
+        if signed_downloads not in {"0", "1"}:
+            raise ValueError("ANVIL_MEDIA_SIGNED_DOWNLOADS must be 0 or 1")
+        if signed_downloads == "1":
+            if not auth_token:
+                raise ValueError("signed media downloads require a static authentication secret")
+            if api_keys is not None:
+                raise ValueError("signed media downloads require a dedicated static-auth gateway")
+            gateway = replace(gateway, download_links=ArtifactDownloadLinks(
+                auth_token, str(gateway.caller.get("principal") or ""), gateway.public_origin))
     router_admission = router_admission or getattr(backend, "_router_admission", None) or RouterAdmission()
     from .keys import KeyStore as NativeKeyStore
     for store in (api_keys, getattr(usage_store, "key_store", None)):
@@ -1511,11 +1525,18 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             self._json(200, gateway.a2a_request(body))
 
-        def _handle_protocol_get(self, route: str) -> None:
+        def _handle_protocol_get(self, route: str, *, head_only: bool = False) -> None:
             if self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Content-Length"):
                 self._reject_get_body_framing("protocol GET must not include a body")
                 return
-            if not self._authenticated():
+            query = urllib.parse.urlsplit(self.path).query
+            signed = bool(route.startswith(ARTIFACT_PREFIX) and query and gateway.download_links is not None)
+            if signed:
+                signed_id = urllib.parse.unquote(route[len(ARTIFACT_PREFIX):])
+                if not gateway.download_links.permits(signed_id, query):
+                    self._protocol_json_error(401, "authentication_error", "invalid or expired download link")
+                    return
+            elif not self._authenticated():
                 self._protocol_json_error(401, "authentication_error", "invalid or missing API key")
                 return
             if route == AGENT_CARD_PATH:
@@ -1535,6 +1556,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             if not self._admit_router("delivery", completion=True):
                 return
+            if signed:
+                self._write_signed_artifact(artifact_id, head_only=head_only)
+                return
             range_header = self.headers.get("Range")
             try:
                 start, end = _parse_artifact_range(range_header)
@@ -1551,7 +1575,47 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if status == 206:
                 self.send_header("Content-Range", f"bytes {payload.start}-{payload.end}/{payload.total}")
             self.end_headers()
-            self.wfile.write(payload.data)
+            if not head_only:
+                self.wfile.write(payload.data)
+
+        def _write_signed_artifact(self, artifact_id: str, *, head_only: bool) -> None:
+            ranges = self.headers.get_all("Range") or []
+            try:
+                if len(ranges) > 1:
+                    raise MediaError("artifact_range_invalid", "ambiguous range", status=416)
+                artifact, start, end, chunks = gateway.artifact_stream(
+                    artifact_id, ranges[0] if ranges else None)
+            except MediaError as exc:
+                if getattr(exc, "status", None) == 416:
+                    try:
+                        metadata, *_ = gateway.artifact_stream(artifact_id, None)
+                    except MediaError:
+                        self._protocol_json_error(404, "artifact_not_found", "artifact was not found")
+                        return
+                    self.send_response(416)
+                    self.send_header("Content-Range", f"bytes */{metadata.byte_length}")
+                    self.send_header("Content-Length", "0")
+                    self.send_header("Cache-Control", "private, no-store")
+                    self.end_headers()
+                else:
+                    self._protocol_json_error(getattr(exc, "status", 403), exc.code, exc.message)
+                return
+            status = 206 if ranges else 200
+            self.send_response(status)
+            self.send_header("Content-Type", artifact.media_type)
+            self.send_header("Content-Length", str(end - start + 1))
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "private, no-store")
+            self.send_header("Referrer-Policy", "no-referrer")
+            if ranges:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{artifact.byte_length}")
+            self.end_headers()
+            if not head_only:
+                try:
+                    for chunk in chunks:
+                        self.wfile.write(chunk)
+                except MediaError:
+                    self.close_connection = True
 
         def _no_tier_response(self, e: NoAvailableTierError,
                               dialect: Optional[Dialect] = None) -> None:
@@ -2013,6 +2077,23 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             self._json(200, {"applied": True, "action": action, "result": result})
 
         # --- routes ----------------------------------------------------------
+        @router_entry
+        def do_HEAD(self) -> None:
+            route = self.path.split("?", 1)[0].rstrip("/")
+            if gateway is None or not route.startswith(ARTIFACT_PREFIX):
+                self.send_response(405)
+                self.send_header("Allow", "GET")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
+                self._protocol_json_error(503, "server_busy", "protocol gateway busy")
+                return
+            try:
+                self._handle_protocol_get(route, head_only=True)
+            finally:
+                _PROTOCOL_CONCURRENCY_LIMIT.release()
+
         @router_entry
         def do_GET(self) -> None:
             if api_keys is None:
@@ -3143,6 +3224,7 @@ def make_server(host: str, port: int,
                 memory: Optional[MemoryRouter] = None,
                 usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=None,
                 usage_domain_id=None, usage_metrics=None, router_admission=None,
+                media_signed_downloads: str | None = None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -3239,6 +3321,7 @@ def make_server(host: str, port: int,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
             usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics, router_admission,
+            media_signed_downloads,
         ),
     )
     httpd.anvil_router_admission = router_admission
