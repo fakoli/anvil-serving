@@ -286,7 +286,7 @@ def test_interrupt_preserves_timeout_and_recoverable_registry(tmp_path):
         if argv[1:3] == ("container", "inspect"):
             raise OSError("daemon unreachable")
         return docker(argv, cwd, timeout)
-    with pytest.raises(subprocess.TimeoutExpired):
+    with pytest.raises(BenchmarkJobError, match="cleanup is unresolved"):
         containment.run_contained_test("false", runner=interrupted, **args)
     record, = (run / "aider/containers").glob("*.json")
     saved = json.loads(record.read_text())
@@ -310,7 +310,7 @@ def test_lost_create_absence_stays_recoverable_and_blocks_next_test(tmp_path):
         if argv[1] == "create":
             raise subprocess.TimeoutExpired(argv, timeout)
         return docker(argv, cwd, timeout)
-    with pytest.raises(subprocess.TimeoutExpired):
+    with pytest.raises(BenchmarkJobError, match="cleanup is unresolved"):
         containment.run_contained_test("false", runner=uncertain, **args)
     receipt = containment.cleanup_aider_containers(run_path=run, ownership_id="owner", run_id="run", runner=docker)
     assert receipt["status"] == "incomplete" and receipt["removed"] == []
@@ -475,3 +475,20 @@ print(json.dumps({'read_only_input': True, 'byte_quota': True, 'inode_quota': Tr
     assert {p.name: p.read_bytes() for p in task.iterdir()} == {".aider.chat.history.md": canonical}
     record, = (run / "aider/containers").glob("*.json")
     assert json.loads(record.read_text())["state"] == "removed"
+
+
+def test_cleanup_timeout_is_not_reported_as_test_timeout(tmp_path):
+    run, _, args = setup(tmp_path)
+    docker = Docker(run)
+    def runner(argv, cwd, timeout):
+        if argv[1:3] == ("container", "rm"):
+            raise subprocess.TimeoutExpired(argv, timeout)
+        return docker(argv, cwd, timeout)
+    with pytest.raises(BenchmarkJobError, match="cleanup is unresolved") as exc:
+        containment.run_contained_test("false", runner=runner, **args)
+    assert exc.value.code == "aider_cleanup_unresolved"
+    record, = (run / "aider/containers").glob("*.json")
+    saved = json.loads(record.read_text())
+    assert saved["cleanup_error"] == "TimeoutExpired" and saved["state"] != "removed"
+    with pytest.raises(BenchmarkJobError, match="previous container cleanup is unresolved"):
+        containment.run_contained_test("false", runner=docker, **args)

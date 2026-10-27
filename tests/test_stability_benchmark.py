@@ -425,3 +425,42 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+def test_explicit_llamacpp_chat_token_counter_uses_exact_generation_controls(monkeypatch):
+    config = scenario(tokenizer_api="llamacpp-chat", reasoning_effort="medium",
+                      chat_template_kwargs={"enable_thinking": True}, temperature=1, top_p=1)
+    calls = []
+    def count(url, key, timeout, body):
+        calls.append((url, key, timeout, body))
+        return {"object": "response.input_tokens", "input_tokens": 256}
+    monkeypatch.setattr(stability, "api_json", count)
+    prompt, _, tokens = stability.calibrated_prompt(config, "anchor", "salt", "key")
+    assert tokens == 256 and len(calls) == 1
+    url, key, timeout, body = calls[0]
+    assert url == "http://127.0.0.1:8001/v1/chat/completions/input_tokens"
+    assert (key, timeout) == ("key", 3)
+    assert body == stability.build_body("test-model", prompt, 128,
+        {"enable_thinking": True}, "medium", 1, 1)
+
+
+@pytest.mark.parametrize("response", [None, {}, {"input_tokens": 256},
+    {"object": "wrong", "input_tokens": 256}, {"object": "response.input_tokens", "input_tokens": True},
+    {"object": "response.input_tokens", "input_tokens": 0}])
+def test_llamacpp_counter_rejects_invalid_response_without_fallback(monkeypatch, response):
+    calls = []
+    def count(url, *args): calls.append(url); return response
+    monkeypatch.setattr(stability, "api_json", count)
+    with pytest.raises(ValueError): stability.calibrated_prompt(scenario(tokenizer_api="llamacpp-chat"), "anchor", "salt", None)
+    assert calls == ["http://127.0.0.1:8001/v1/chat/completions/input_tokens"]
+
+
+def test_tokenizer_api_is_explicit_and_legacy_default_unchanged(monkeypatch):
+    for bad in ("unknown", None, {}, ["llamacpp-chat"]):
+        with pytest.raises(ValueError): stability.validate_scenario(scenario(tokenizer_api=bad))
+    calls = []
+    def count(url, key, timeout, body): calls.append((url, body)); return {"count": 256}
+    monkeypatch.setattr(stability, "api_json", count)
+    stability.calibrated_prompt(scenario(), "anchor", "salt", None)
+    assert calls[0][0] == "http://127.0.0.1:8001/tokenize"
+    assert calls[0][1]["add_generation_prompt"] is True

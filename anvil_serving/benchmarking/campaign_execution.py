@@ -138,8 +138,10 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     profile = load_profile(spec['profile'])
     admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
     cache_root = cache_root or os.environ.get('ANVIL_BENCHMARK_CACHE_ROOT', os.path.expanduser('~/.anvil-serving/benchmark-harness-cache'))
+    selection = admission.get('selection', {}).get('instance_ids') if spec['suite'] == 'aider' else None
     assets = prepare_harness_assets(profile, suite=spec['suite'], run_root=run_root,
-        ownership_id=spec['ownership_id'], run_id=spec['run_id'], cache_root=cache_root, offline=offline)
+        ownership_id=spec['ownership_id'], run_id=spec['run_id'], cache_root=cache_root, offline=offline,
+        **({'aider_instance_ids': selection} if selection is not None else {}))
     common = dict(endpoint=spec['endpoint'], run_root=run_root, cache_root=cache_root,
                   ownership_id=spec['ownership_id'], run_id=spec['run_id'], timeout_s=spec['timeout_s'])
     params = spec.get('parameters', {})

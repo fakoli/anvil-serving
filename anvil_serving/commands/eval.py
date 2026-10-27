@@ -42,7 +42,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=confirm_options + (
+                options=confirm_options + ((_option("--spec", summary="Client-side Aider selection job spec.", value_name="PATH"),) if name == "aider" else ()) + (
                     _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
                     _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
                     _option("--offline", summary="Require exact assets to exist in cache."),

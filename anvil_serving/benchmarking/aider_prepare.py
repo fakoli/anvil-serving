@@ -203,11 +203,23 @@ def verify_aider_sources(cache_root, assets, *, runner=runtime._default_runner):
     return roots
 
 
-def _selection(polyglot):
+def _selection(polyglot, instance_ids=None):
+    from .aider_containment import validate_task_id
+    if instance_ids is not None:
+        try:
+            if not isinstance(instance_ids, list) or not 1 <= len(instance_ids) <= len(LANGUAGES):
+                raise ValueError("one to six task IDs required")
+            ids = [validate_task_id(value) for value in instance_ids]
+            if len(set(ids)) != len(ids) or len({value.split('/')[0] for value in ids}) != len(ids):
+                raise ValueError("one unique task per language required")
+        except ValueError as exc:
+            raise BenchmarkJobError("bad_aider_selection", "one to six unique supported language tasks required") from exc
+        by_language = {value.split('/')[0]: value for value in ids}
     selected = []
-    for language in LANGUAGES:
-        configs = sorted(polyglot.glob(f"{language}/exercises/practice/*/.meta/config.json"))
-        if not configs:
+    for language in (LANGUAGES if instance_ids is None else [lang for lang in LANGUAGES if lang in by_language]):
+        configs = ([polyglot / by_language[language] / '.meta/config.json'] if instance_ids is not None
+                   else sorted(polyglot.glob(f"{language}/exercises/practice/*/.meta/config.json")))
+        if not configs or not configs[0].is_file():
             _fail(f"missing {language} oracle task")
         task = configs[0].parent.parent
         task_id = task.relative_to(polyglot).as_posix()
@@ -423,6 +435,13 @@ def _oracle(roots, rows, run_path, ownership_id, run_id, image_id, container, ru
                 return value
             try:
                 contained_test_callback(callback, contained)(original, task, task / "oracle-history.md", row["tests"])
+            except BenchmarkJobError as exc:
+                if exc.code != "aider_cleanup_unresolved":
+                    raise
+                result[mode + "_returncode"] = observed[0] if len(observed) == 1 else None
+                result[mode + "_error"] = {"code": exc.code, "message": str(exc)}
+                atomic_write_json(str(receipt), {"status": "incomplete", "image_id": image_id, "results": [*results, result]})
+                raise
             except subprocess.TimeoutExpired:
                 result[mode + "_timeout"] = True
             result[mode + "_returncode"] = observed[0] if len(observed) == 1 else None
@@ -486,26 +505,36 @@ def validate_aider_environment(environment, *, cache_root, assets):
     for name in ("aider", "polyglot-benchmark"):
         _source(cache_root, assets, name)
     rows = environment.get("selection", [])
-    if (not isinstance(rows, list) or len(rows) != 6 or not all(isinstance(r, dict) for r in rows)
-            or {r.get("language") for r in rows} != set(LANGUAGES)):
-        _fail("six-language prepared selection is incomplete")
+    if (not isinstance(rows, list) or not 1 <= len(rows) <= len(LANGUAGES) or not all(isinstance(r, dict) for r in rows)
+            or any(not isinstance(r.get("language"), str) for r in rows)
+            or len({r.get("language") for r in rows}) != len(rows)
+            or not {r.get("language") for r in rows} <= set(LANGUAGES)):
+        _fail("prepared selection is incomplete or ambiguous")
     from .aider_containment import validate_task_id
     for row in rows:
         try:
             task_id = validate_task_id(row.get("task_id"))
         except ValueError as exc:
             raise BenchmarkJobError("aider_preparation_mismatch", "invalid prepared task identity") from exc
-        if task_id.split("/")[0] != row["language"] or not row.get("files"):
+        files = row.get("files")
+        solutions, examples, tests = (row.get(key) for key in ("solutions", "examples", "tests"))
+        if (task_id.split("/")[0] != row["language"] or not isinstance(files, dict) or not files
+                or not all(isinstance(group, list) and group for group in (solutions, examples, tests))
+                or len(solutions) != len(examples)
+                or any(not isinstance(name, str) or name not in files for group in (solutions, examples, tests) for name in group)):
             _fail("prepared task language or snapshot is invalid")
+    if "identity" in environment and (not isinstance(environment["identity"], dict)
+                                      or environment["identity"].get("selection") != rows):
+        _fail("prepared task identity changed")
     if environment.get("selection_sha256") != _digest(rows):
         _fail("prepared task selection changed")
     oracle = environment.get("oracle", {})
     if not isinstance(oracle, dict):
         _fail("invalid oracle receipt")
     results = oracle.get("results", [])
-    if (not isinstance(results, list) or not all(isinstance(r, dict) for r in results) or oracle.get("status") != "passed" or oracle.get("image_id") != environment["image_id"] or
-            len(results) != 6 or {r.get("task_id") for r in results} != {r["task_id"] for r in rows}):
-        _fail("six-language oracle is incomplete")
+    if (not isinstance(results, list) or not all(isinstance(r, dict) and isinstance(r.get("task_id"), str) for r in results) or oracle.get("status") != "passed" or oracle.get("image_id") != environment["image_id"] or
+            len(results) != len(rows) or {r.get("task_id") for r in results} != {r["task_id"] for r in rows}):
+        _fail("selected-task oracle is incomplete")
     for row in results:
         code = row.get("starter_returncode")
         if (type(code) is not int or not 0 < code < 125 or type(row.get("reference_returncode")) is not int or row.get("reference_returncode") != 0 or
@@ -518,8 +547,8 @@ def validate_aider_environment(environment, *, cache_root, assets):
 
 
 def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes,
-                              run_path, ownership_id, run_id, runner=runtime._default_runner):
-    """Return Python and image receipts only after all six independent oracles."""
+                              run_path, ownership_id, run_id, runner=runtime._default_runner, instance_ids=None):
+    """Return Python and image receipts only after all selected independent oracles."""
     if platform.system().lower() not in {"linux", "darwin"}:
         _fail("Aider execution requires a POSIX container worker")
     if runner is runtime._default_runner:
@@ -529,7 +558,8 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         roots = verify_aider_sources(cache_root, assets, runner=runner)
-        rows = _selection(roots["polyglot-benchmark"])
+        rows = (_selection(roots["polyglot-benchmark"], instance_ids) if instance_ids is not None
+                else _selection(roots["polyglot-benchmark"]))
         python = _python_environment(assets, cache_root, offline, max_download_bytes, runner, logs)
         identity = {"source_hashes": SOURCE_HASHES, "source_version": SOURCE_VERSION_METADATA,
                     "selection": rows, "adapter": _adapter_identity(),

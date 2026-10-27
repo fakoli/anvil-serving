@@ -354,6 +354,11 @@ def run_contained_test(command, *, task_dir, run_path, ownership_id, run_id, ima
             except Exception as cleanup_error:
                 record["cleanup_error"] = type(cleanup_error).__name__
                 atomic_write_json(record_path, record)
+                # A cleanup timeout is not a test timeout. In particular, callers
+                # may continue after a test timeout, so unresolved cleanup must
+                # propagate distinctly even when the test also timed out.
+                if isinstance(cleanup_error, subprocess.TimeoutExpired) or record.get("failure") == "TimeoutExpired":
+                    raise BenchmarkJobError("aider_cleanup_unresolved", "owned container cleanup is unresolved") from cleanup_error
                 # A test must never look successful while its generated code remains live.
                 if "failure" not in record:
                     raise

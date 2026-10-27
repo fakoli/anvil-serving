@@ -398,3 +398,75 @@ def test_failed_image_inventory_retains_bounded_combined_output_in_receipt(tmp_p
     assert result["stdout"].endswith("Permission denied\n")
     assert len(result["stdout"].encode()) == prep.runtime.MAX_HARNESS_OUTPUT_BYTES
     assert not list(cache.glob("aider-environments/*/environment.json"))
+
+
+def test_explicit_six_language_selection_and_receipt_binding(tmp_path):
+    rows = selection(tmp_path)
+    ids = [row["task_id"] for row in rows]
+    assert prep._selection(tmp_path, list(reversed(ids))) == rows
+    assert prep._selection(tmp_path, [ids[0]]) == [rows[0]]
+    single = environment([rows[0]])
+    assert prep.validate_aider_environment(single, cache_root=str(tmp_path), assets=assets())
+    single["oracle"]["results"] = []
+    with pytest.raises(BenchmarkJobError): prep.validate_aider_environment(single, cache_root=str(tmp_path), assets=assets())
+    for bad in ([], ids[:-1] + ids[:1], [ids[0], "cpp/exercises/practice/other"], ["go/../escape"], ["go/exercises/practice/absent"]):
+        with pytest.raises((BenchmarkJobError, ValueError)): prep._selection(tmp_path, bad)
+    receipt = environment(rows)
+    receipt["identity"] = {"selection": copy.deepcopy(rows)}
+    assert prep.validate_aider_environment(receipt, cache_root=str(tmp_path), assets=assets())
+    receipt["identity"]["selection"][0]["files"] = {}
+    with pytest.raises(BenchmarkJobError): prep.validate_aider_environment(receipt, cache_root=str(tmp_path), assets=assets())
+    malformed = environment(rows); malformed["selection"][0]["language"] = []
+    with pytest.raises(BenchmarkJobError): prep.validate_aider_environment(malformed, cache_root=str(tmp_path), assets=assets())
+    malformed = environment(rows); malformed["oracle"]["results"][0]["task_id"] = []
+    with pytest.raises(BenchmarkJobError): prep.validate_aider_environment(malformed, cache_root=str(tmp_path), assets=assets())
+    receipt = environment(rows); receipt["selection"][0]["solutions"] = ["missing"]
+    receipt["selection_sha256"] = prep._digest(receipt["selection"])
+    with pytest.raises(BenchmarkJobError): prep.validate_aider_environment(receipt, cache_root=str(tmp_path), assets=assets())
+
+
+def test_oracle_stops_immediately_on_unresolved_cleanup(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    rows = selection(source)
+    calls = []
+    def callback(original, task, history, tests):
+        return subprocess.run(["test-command"], timeout=180)
+    monkeypatch.setattr(aider_containment, "load_test_callback", lambda _: callback)
+    def contained(command, **kwargs):
+        calls.append(kwargs["task_dir"])
+        if len(calls) == 2:
+            raise BenchmarkJobError("aider_cleanup_unresolved", "owned container cleanup is unresolved") from subprocess.TimeoutExpired(command, 15)
+        return subprocess.CompletedProcess(command, 1, stdout="starter failed")
+    monkeypatch.setattr(aider_containment, "run_contained_test", contained)
+    run = tmp_path / "runs/owner/run"
+    with pytest.raises(BenchmarkJobError) as exc:
+        prep._oracle({"aider": tmp_path, "polyglot-benchmark": source}, rows,
+                     str(run), "owner", "run", "sha256:" + "1" * 64, "docker", None, [])
+    assert exc.value.code == "aider_cleanup_unresolved" and len(calls) == 2
+    receipt = json.loads((run / "aider/preparation/oracle.json").read_text())
+    assert receipt["status"] == "incomplete"
+    assert receipt["results"][0]["starter_returncode"] == 1
+    assert "reference_timeout" not in receipt["results"][0]
+
+
+def test_first_starter_cleanup_failure_retains_incomplete_oracle(tmp_path, monkeypatch):
+    source = tmp_path / "source"
+    rows = selection(source)
+    calls = []
+    def callback(original, task, history, tests):
+        return subprocess.run(["test-command"], timeout=180)
+    monkeypatch.setattr(aider_containment, "load_test_callback", lambda _: callback)
+    def contained(command, **kwargs):
+        calls.append(kwargs["task_dir"])
+        raise BenchmarkJobError("aider_cleanup_unresolved", "owned container cleanup is unresolved")
+    monkeypatch.setattr(aider_containment, "run_contained_test", contained)
+    run = tmp_path / "runs/owner/run"
+    with pytest.raises(BenchmarkJobError) as exc:
+        prep._oracle({"aider": tmp_path, "polyglot-benchmark": source}, rows,
+                     str(run), "owner", "run", "sha256:" + "1" * 64, "docker", None, [])
+    assert exc.value.code == "aider_cleanup_unresolved" and len(calls) == 1
+    receipt = json.loads((run / "aider/preparation/oracle.json").read_text())
+    assert receipt["status"] == "incomplete" and len(receipt["results"]) == 1
+    row = receipt["results"][0]
+    assert row["task_id"] == rows[0]["task_id"] and row["starter_returncode"] is None
+    assert row["starter_error"]["code"] == "aider_cleanup_unresolved" and "starter_timeout" not in row

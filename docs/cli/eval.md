@@ -298,3 +298,14 @@ input. Publication workflow: [Repeatable campaigns](../benchmarks/repeatable-cam
 
 External benchmark records are advisory priors. Keep their source and snapshot
 provenance separate from locally recorded preflight and benchmark evidence.
+
+### Explicit Aider preparation selection
+
+`anvil-serving eval benchmark aider prepare --spec job.json --offline --confirm`
+selects the explicit `parameters.instance_ids` in a validated Aider job spec,
+one to six tasks with at most one per supported language. It binds the prepared task snapshots, image, package
+inventory and starter/reference oracle evidence to that exact selection. The
+profile must admit the selected tasks. Use the existing `--profile`, `--run-id` and
+`--ownership-id` flags instead for the legacy default selection; they cannot
+be combined with `--spec`. Offline preparation fails when the exact prepared
+environment is not already cached.

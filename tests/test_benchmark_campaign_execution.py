@@ -608,3 +608,30 @@ def test_watchdog_acknowledgement_is_bounded_and_allows_verified_slow_start(tmp_
             if process.poll() is None:
                 process.kill()
             process.wait(timeout=2)
+
+
+def test_campaign_aider_child_forwards_admitted_task_to_preparation(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking import aider, harnesses
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    requested = ['python/exercises/practice/example']
+    child = spec()
+    child.update(suite='aider', profile='pilot-v2', parameters={'instance_ids': requested})
+    child = bind_submission_spec(child)
+    calls = []
+    def prepare(profile, **kwargs):
+        calls.append(kwargs)
+        return {'selection': kwargs.get('aider_instance_ids')}
+    def plan(profile, assets, **kwargs):
+        assert assets['selection'] == kwargs['instance_ids']
+        return {'selection': kwargs['instance_ids']}
+    monkeypatch.setattr(harnesses, 'prepare_harness_assets', prepare)
+    monkeypatch.setattr(aider, 'build_aider_run_plan', plan)
+    (tmp_path/'runs').mkdir()
+    execution.prepare_child(child, run_root=str(tmp_path/'runs'), cache_root=str(tmp_path/'cache'), offline=True)
+    assert calls[0]['aider_instance_ids'] == requested and calls[0]['offline'] is True
+    # An invalid child must fail admission without touching the preparer.
+    invalid = copy.deepcopy(child)
+    invalid['parameters']['instance_ids'] = ['python/../escape']
+    with pytest.raises(BenchmarkJobError):
+        execution.prepare_child(invalid, run_root=str(tmp_path/'runs'), cache_root=str(tmp_path/'cache'))
+    assert len(calls) == 1

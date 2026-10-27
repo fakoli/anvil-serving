@@ -185,7 +185,7 @@ def test_model_id_discovery_binds_monitoring_publication(tmp_path, monkeypatch, 
     assert fetch_calls == ['/ready', '/v1/models']
 
 
-@pytest.mark.parametrize('engine', ['vllm', 'sglang', 'flare', 'ignis'])
+@pytest.mark.parametrize('engine', ['vllm', 'sglang', 'flare', 'ignis', 'llamacpp'])
 def test_exact_binding_single_port_receipt(tmp_path, monkeypatch, engine):
     recipe, row = monitoring_slot(tmp_path, monkeypatch, engine)
     calls = []

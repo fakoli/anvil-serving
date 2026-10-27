@@ -144,7 +144,7 @@ def test_recipe_container_discovery_returns_only_safe_typed_fields() -> None:
     assert "127.0.0.1" in encoded
 
 
-@pytest.mark.parametrize("flag", ["--served-model-name", "--model-id"])
+@pytest.mark.parametrize("flag", ["--served-model-name", "--model-id", "--alias", "-a"])
 @pytest.mark.parametrize("equals", [False, True])
 @pytest.mark.parametrize("source", ["Args", "Cmd"])
 def test_recipe_discovery_parses_served_identity_flags(flag, equals, source):
@@ -162,7 +162,7 @@ def test_recipe_discovery_parses_served_identity_flags(flag, equals, source):
     assert "must-not-leak" not in json.dumps(inventory)
 
 
-@pytest.mark.parametrize("flag", ["--served-model-name", "--model-id"])
+@pytest.mark.parametrize("flag", ["--served-model-name", "--model-id", "--alias", "-a"])
 @pytest.mark.parametrize("tail", [[], [""], [None], ["x" * 513], ["bad\nname"], ["bad\x7fname"]])
 def test_recipe_discovery_served_identity_retains_value_bounds(flag, tail):
     row = _row("candidate")
@@ -173,6 +173,8 @@ def test_recipe_discovery_served_identity_retains_value_bounds(flag, tail):
 
 @pytest.mark.parametrize("tokens,expected", [
     (["--model-id=alias", "--served-model-name=override"], "override"),
+    (["-a", "short", "--alias=long", "--model-id=prior"], "prior"),
+    (["-a", "short", "--alias=long"], "long"),
     (["--served-model-name", "override", "--model-id", "alias"], "override"),
     (["--model-id=alias", "--served-model-name="], "org/model"),
     (["--model-id=alias", "--served-model-name"], "org/model"),

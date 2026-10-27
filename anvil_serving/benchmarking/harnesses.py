@@ -418,8 +418,11 @@ def prepare_harness_assets(
     offline: bool = False,
     max_download_bytes: int = 20 * 1024**3,
     runner: CommandRunner = _default_runner,
+    aider_instance_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     """Prepare exact profile assets through one bounded, owned product operation."""
+    if aider_instance_ids is not None and suite != "aider":
+        raise BenchmarkJobError("bad_aider_selection", "Aider selection requires Aider suite")
     if suite == "swe":
         require_swe_worker_platform()
     if suite == "performance" and platform.system() != "Linux":
@@ -481,6 +484,7 @@ def prepare_harness_assets(
             assets=assets, cache_root=cache, offline=offline,
             max_download_bytes=max_download_bytes, run_path=run_path,
             ownership_id=ownership_id, run_id=run_id, runner=runner,
+            **({"instance_ids": aider_instance_ids} if aider_instance_ids is not None else {}),
         )
         command_logs.extend(logs)
     performance_environments = None

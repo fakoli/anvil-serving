@@ -51,7 +51,7 @@ def configuration():
             or not isinstance(value["engine_contracts"], dict)
             or not 1 <= len(value["engine_contracts"]) <= 16
             or any(not isinstance(k, str) or not 1 <= len(k) <= 128
-                   or not isinstance(v, str) or v not in {"vllm", "sglang", "flare", "ignis"}
+                   or not isinstance(v, str) or v not in {"vllm", "sglang", "flare", "ignis", "llamacpp"}
                    for k, v in value["engine_contracts"].items())):
         raise ValueError("invalid recipe-monitoring.json contract")
     keys = value.get("model_api_key_files", {})

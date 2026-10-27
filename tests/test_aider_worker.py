@@ -89,3 +89,20 @@ def test_aider_requires_v2_profile_without_new_legacy_meaning():
     with pytest.raises(BenchmarkJobError) as error:
         validate_submission_spec(value)
     assert error.value.code == "unknown_suite"
+
+
+def test_owned_worker_prepares_exact_admitted_aider_task(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = bind_submission_spec(spec())
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    monkeypatch.setattr(worker.shutil, "disk_usage", lambda _: SimpleNamespace(free=10**15))
+    calls = []
+    def prepare(profile, **kwargs):
+        calls.append(kwargs)
+        raise BenchmarkJobError("fixture_stop", "stop before any model request")
+    monkeypatch.setattr(worker, "prepare_harness_assets", prepare)
+    monkeypatch.setattr(worker, "run_benchmark_preflight", lambda *a, **k: pytest.fail("unexpected preflight"))
+    result = worker.execute_benchmark_job(store, value["run_id"])
+    assert result["state"] == "failed"
+    assert calls[0]["aider_instance_ids"] == value["parameters"]["instance_ids"]

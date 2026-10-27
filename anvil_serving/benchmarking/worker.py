@@ -314,6 +314,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                     os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
                 ),
                 offline=bool(spec.get("parameters", {}).get("offline", False)),
+                **({"aider_instance_ids": admission["selection"]["instance_ids"]}
+                   if spec["suite"] == "aider" and admission["selection"]["instance_ids"] is not None else {}),
             )
         stages.append(_stage(len(stages), "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
         if store.status(run_id)["state"] != "running":

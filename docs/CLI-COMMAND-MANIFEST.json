@@ -24411,6 +24411,15 @@
         },
         {
           "flags": [
+            "--spec"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Client-side Aider selection job spec.",
+          "value_name": "PATH"
+        },
+        {
+          "flags": [
             "--run-id"
           ],
           "output_policy": null,
