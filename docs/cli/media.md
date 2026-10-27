@@ -195,6 +195,37 @@ Phase times are observation times; a delayed refresh is not engine latency.
 Cancellation is principal-scoped, idempotent, and reconciled with the selected
 backend. It never cancels unrelated backend work by filename or queue position.
 
+## Background completion
+
+Run a watcher on the harness host after MCP submission returns a job ID:
+
+```bash
+anvil-serving media job watch --job-id JOB_ID --client-config /path/to/client.json
+```
+
+The protected connection definition contains the existing stdio MCP `command`,
+`args`, and optional `env`. It refers to the existing credential file; no
+credential is added to the command line. The watcher calls only
+`media_job_status` and `media_artifact_inspect`. It emits state changes and a
+final JSON record containing completed artifact metadata and any download links
+returned by the gateway. A gateway without link support returns relative
+resources; the watcher never invents a URL.
+Polling defaults to five seconds, with a two-hour watcher deadline.
+
+In Pi, use its installed `bg_run` with `isAgent:false`,
+`notifyOnCompletion:true`, and `triggerOnCompletion:true`. Set that task's
+timeout at least 30 seconds longer than the watcher deadline for client cleanup.
+Keep the background registration
+receipt in the conversation, then continue independent work or end the turn.
+Completion wakes a follow-up turn in the same open Pi session; no manual
+"check" prompt is needed. See the `anvil-media-watch` companion skill.
+
+Exit 0 means completed; exit 1 means a failed/canceled job or observation
+error; exit 3 means operator approval is required; exit 4 means the watcher
+deadline expired. A watcher deadline or shutdown never cancels rendering.
+After a session restart, reattach to the saved job ID. The watcher cannot
+notify a closed Pi session and never starts workers or resubmits a job.
+
 ## Inspect opaque artifacts
 
 ```bash

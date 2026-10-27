@@ -355,6 +355,7 @@ required operands, choices, and defaults.
 | `media workflow prepare` | Compile a shot brief and return an exact bounded run request. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--brief`<br>`--quality-profile`<br>`--idempotency-key` |
 | `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--quality-profile`<br>`--idempotency-key`<br>`--plan-digest`<br>`--backend-url` |
 | `media job` | Inspect and cancel durable media jobs. | `read` / `bounded` | - |
+| `media job watch` | Wait for an owned MCP job and return its completed artifacts. | `read` / `foreground` | `--job-id`<br>`--client-config`<br>`--timeout-seconds`<br>`--poll-seconds` |
 | `media job status` | Inspect one durable media job. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
 | `media job cancel` | Cancel one caller-owned media job. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
 | `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
