@@ -183,6 +183,7 @@ def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: 
         names = archive.namelist()
         assert not any('/router/' in name or '/controller/' in name or '/observability/' in name for name in names)
         assert 'anvil_serving/connect/components.lock.json' in names
+        assert 'anvil_serving/paths.py' in names
     completed = subprocess.run([sys.executable, '-I', str(output), '--help'], cwd=tmp_path, capture_output=True, text=True)
     assert completed.returncode == 0, completed.stderr
     assert 'anvil-connect-ctl' in completed.stdout
@@ -198,6 +199,12 @@ def test_standalone_manager_contains_no_router_or_third_party_runtime(tmp_path: 
         'import sys,json;sys.path.insert(0,sys.argv[1]);from anvil_serving.connect.config import validate_manifest;validate_manifest(json.load(open(sys.argv[2])))',
         str(output), str(manifest)], cwd=tmp_path, capture_output=True, text=True)
     assert checked.returncode == 0, checked.stderr
+    edge_status = subprocess.run([sys.executable, '-I', str(output), 'edge-status',
+        '--manifest', str(tmp_path / 'missing-manifest.json'),
+        '--edge-config', str(tmp_path / 'missing-edge.json')],
+        cwd=tmp_path, capture_output=True, text=True)
+    assert edge_status.returncode == 1, edge_status.stderr
+    assert json.loads(edge_status.stdout)['code'] == 'connect_edge_invalid'
     value = json.loads(manifest.read_text())
     value["memory"] = {"base_url": "http://127.0.0.1:8888", "auth_file": "/protected/backend-key",
         "access_file": "/protected/policy/access.json", "reader_gid": 1000,
