@@ -16,6 +16,7 @@ from ..control_plane.mcp.tools.media import service_context
 from ..control_plane.mcp.errors import ToolError
 from ..control_plane.mcp.security import caller_context, require_scope
 from ..media.artifacts import ArtifactPayload, ArtifactStore
+from ..media.assets import LimitedReader
 from ..media.contracts import TERMINAL_STATES
 from ..media.errors import MediaError
 from ..media.downloads import ArtifactDownloadLinks, read_range
@@ -137,6 +138,16 @@ class ProtocolGateway:
                 yield self.artifact(artifact_id, start=offset, end=min(offset + 1024 * 1024 - 1, end)).data
 
         return artifact, start, end, chunks()
+
+    def asset_upload(self, source, *, length: int, media_type: str, sha256: str):
+        try:
+            with caller_context(self.caller):
+                identity = require_scope("media:submit")
+                return self.tasks.operations.asset_upload(
+                    LimitedReader(source, length), principal=identity.principal,
+                    media_type=media_type, sha256=sha256)
+        except ToolError as exc:
+            raise MediaError(exc.code, exc.message, status=403) from exc
 
 
 def _stream_task_request(params: Mapping[str, Any]) -> str:

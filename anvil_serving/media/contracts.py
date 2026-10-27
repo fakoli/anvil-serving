@@ -16,7 +16,7 @@ from .errors import MediaError
 _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _OPAQUE_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
-_MIME_RE = re.compile(r"^(?:image|video)/[a-z0-9][a-z0-9.+-]{0,63}$")
+_MIME_RE = re.compile(r"^(?:image|video|audio)/[a-z0-9][a-z0-9.+-]{0,63}$")
 SUBMISSION_RECOVERY_GRACE_SECONDS = 30
 
 
@@ -100,8 +100,16 @@ class ParameterSpec:
     media_types: tuple[str, ...] = ()
     description: str = ""
     role: str = ""
+    media_limits: Mapping[str, int | float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if (not isinstance(self.media_limits, Mapping) or self.media_limits and self.kind != "artifact"
+                or set(self.media_limits) - {"width", "height", "frames", "durationSeconds", "decodedBytes", "channels", "sampleRate"}
+                or any(isinstance(v, bool) or not isinstance(v, (int, float))
+                       or isinstance(v, float) and not math.isfinite(v) or v <= 0
+                       for v in self.media_limits.values())):
+            raise MediaError("invalid_contract", "artifact media limits are invalid")
+        object.__setattr__(self, "media_limits", MappingProxyType(dict(self.media_limits)))
         if not isinstance(self.description, str) or len(self.description) > 512:
             raise MediaError("invalid_contract", "parameter description is invalid")
         if not isinstance(self.role, str) or len(self.role) > 64:
@@ -183,6 +191,8 @@ class ParameterSpec:
             schema["x-anvil-role"] = self.role
         if self.kind == "artifact":
             schema["format"] = "anvil-artifact-id"
+            if self.media_limits:
+                schema["x-anvil-media-limits"] = dict(self.media_limits)
             if self.media_types:
                 schema["x-anvil-media-types"] = list(self.media_types)
         return schema
@@ -466,13 +476,26 @@ class MediaArtifact:
     sha256: str
     expires_at: dt.datetime
     source_path: str = field(default="", repr=False, compare=False)
+    origin: str = "generated"
+    media_info: Mapping[str, int | float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not _OPAQUE_RE.fullmatch(self.id) or not _OPAQUE_RE.fullmatch(self.job_id):
+        if self.origin not in {"generated", "input"}:
+            raise MediaError("invalid_contract", "artifact origin is invalid")
+        if not _OPAQUE_RE.fullmatch(self.id) or (self.origin == "generated" and not _OPAQUE_RE.fullmatch(self.job_id)):
             raise MediaError("invalid_contract", "artifact identity is invalid")
         _principal(self.principal, "artifact principal")
-        _identifier(self.workflow_id, "artifact workflow")
-        _identifier(self.workflow_version, "artifact workflow version")
+        if self.origin == "generated":
+            _identifier(self.workflow_id, "artifact workflow")
+            _identifier(self.workflow_version, "artifact workflow version")
+        elif self.job_id or self.workflow_id or self.workflow_version:
+            raise MediaError("invalid_contract", "input artifacts cannot claim a generation job")
+        if (not isinstance(self.media_info, Mapping) or len(self.media_info) > 16
+                or any(not isinstance(k, str) or len(k) > 64 or isinstance(v, bool)
+                       or not isinstance(v, (int, float)) or isinstance(v, float) and not math.isfinite(v) or v < 0
+                       for k, v in self.media_info.items())):
+            raise MediaError("invalid_contract", "artifact media metadata is invalid")
+        object.__setattr__(self, "media_info", MappingProxyType(dict(self.media_info)))
         if not _MIME_RE.fullmatch(self.media_type):
             raise MediaError("invalid_contract", "artifact MIME type is invalid")
         if isinstance(self.byte_length, bool) or self.byte_length < 1:
@@ -482,7 +505,7 @@ class MediaArtifact:
         _timestamp(self.expires_at, "artifact expiry")
 
     def as_public_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "id": self.id,
             "jobId": self.job_id,
             "mediaType": self.media_type,
@@ -492,6 +515,12 @@ class MediaArtifact:
             "expiresAt": self.expires_at.isoformat(),
             "resource": f"/artifacts/{self.id}",
         }
+        if self.origin == "input":
+            result.pop("jobId"); result.pop("workflow")
+            result["origin"] = self.origin
+        if self.media_info:
+            result["mediaInfo"] = dict(self.media_info)
+        return result
 
 
 @dataclass(frozen=True)
