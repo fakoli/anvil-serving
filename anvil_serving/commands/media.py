@@ -69,9 +69,10 @@ def commands() -> CommandNode:
                 argv_prefix=("capabilities",),
             ),
             _node("asset", "Upload owned reference media.", children=(
-                _resource_node("upload", "Decode and retain one bounded local reference file.",
-                               "anvil_serving.media.asset_client", role="media-gateway", mutation="mutate",
-                               argv_prefix=(), options=CONFIRM_OPTIONS + (
+                _node("upload", "Decode and retain one bounded local reference file.",
+                      handler=_handler("anvil_serving.media.asset_client", argv_prefix=()),
+                      mutation_class="mutate", execution_policy="offline",
+                      docs_anchor="docs/cli/media.md#upload-reference-media", options=CONFIRM_OPTIONS + (
                                    _option("--file", summary="Local PNG, JPEG, MP4 or WAV reference.", value_name="PATH"),
                                    _option("--client-config", summary="Protected stdio MCP client definition.", value_name="PATH"),
                                )),
