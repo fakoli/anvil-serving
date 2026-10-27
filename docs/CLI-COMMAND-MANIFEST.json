@@ -36500,13 +36500,10 @@
     },
     {
       "coowned_resource_roles": [],
-      "docs_anchor": "docs/cli/media.md",
+      "docs_anchor": "docs/cli/media.md#upload-reference-media",
       "execution_host_os": [],
-      "execution_policy": "resource-owner",
-      "execution_runtime_roles": [
-        "native",
-        "docker"
-      ],
+      "execution_policy": "offline",
+      "execution_runtime_roles": [],
       "gpu_role_required": false,
       "handler": "anvil_serving.media.asset_client:main",
       "mutation_class": "mutate",
@@ -36662,11 +36659,9 @@
       "product_family": "anvil-media",
       "recovery_capable": false,
       "remote_operation": null,
-      "resource_role": "media-gateway",
+      "resource_role": null,
       "summary": "Decode and retain one bounded local reference file.",
-      "transports": [
-        "local"
-      ],
+      "transports": [],
       "visible": true
     },
     {

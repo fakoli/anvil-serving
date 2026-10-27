@@ -165,12 +165,17 @@ def test_real_decoder_accepts_video_image_and_audio(tmp_path, suffix, media_type
 
 def test_cli_command_does_not_forward_resource_words(monkeypatch, capsys):
     from anvil_serving import cli
+    from anvil_serving.commands import manifest_data
     from anvil_serving.media import asset_client
     called = []
     monkeypatch.setattr(asset_client, "upload", lambda path, config, **kw: called.append((path, config, kw)) or {"dryRun": True})
     assert cli.main(["media", "asset", "upload", "--file", "reference.png", "--client-config", "connection.json", "--dry-run"]) == 0
     assert called == [("reference.png", "connection.json", {"dry_run": True})]
     assert json.loads(capsys.readouterr().out)["dryRun"]
+    command = next(c for c in manifest_data()["commands"] if c["path"] == "media asset upload")
+    assert command["execution_policy"] == "offline" and command["resource_role"] is None and not command["transports"]
+    assert cli.main(["media", "asset", "upload", "--file", "reference.png", "--client-config", "connection.json", "--confirm"]) == 0
+    assert called[-1] == ("reference.png", "connection.json", {"dry_run": False})
 
 
 def test_client_discovers_policy_and_uses_only_its_configured_origin(tmp_path, monkeypatch):
