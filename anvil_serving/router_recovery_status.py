@@ -279,7 +279,7 @@ def recovery_status(container=router_manage.DEFAULT_CONTAINER, *, ledger=False, 
     config = [m for m in mounts if m['destination'] == router_manage.DEFAULT_INSTALLED_CONFIG]
     require(len(config) == 1 and config[0]['type'] == 'bind' and config[0]['read_only'])
     source = Path(config[0]['source'])
-    require(source.is_absolute() and source.name == 'router.toml' and '..' not in source.parts)
+    require(source.is_absolute() and '..' not in source.parts)
     raw = operator_config._read_bounded(source, max_bytes=1024**2)
     settings = tomllib.loads(raw.decode())['server']
     require(settings['router_owner_backend'] == 'managed-container')
