@@ -599,7 +599,7 @@ media_public_origin = "http://127.0.0.1:8080"
         status, _, raw = request(address, "POST", "/mcp", body=mcp_request())
         assert status == 200
         tools = {tool["name"] for tool in json.loads(raw)["result"]["tools"]}
-        assert len(tools) == 8
+        assert len(tools) == 9
         assert "media_workflow_run" in tools
         status, _, raw = request(address, "GET", "/v1/models")
         assert (status, json.loads(raw)) == (200, {"object": "list", "data": []})

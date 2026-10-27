@@ -127,6 +127,16 @@ def tool_media_workflow_validate(args: dict) -> dict:
     )
 
 
+def tool_media_workflow_prepare(args: dict) -> dict:
+    caller = require_scope("media:read")
+    operations, _ = _services()
+    return _translate(lambda: operations.workflow_prepare(
+        _str_arg(args, "workflow_id", required=True), _str_arg(args, "version", required=True),
+        args.get("parameters", {}), principal=caller.principal,
+        idempotency_key=_str_arg(args, "idempotency_key", required=True),
+        brief=args.get("brief"), quality_profile=_str_arg(args, "quality_profile", "")))
+
+
 def tool_media_workflow_run(args: dict) -> dict:
     caller = require_scope("media:submit")
     operations, backend = _services()
@@ -137,6 +147,7 @@ def tool_media_workflow_run(args: dict) -> dict:
     version = _str_arg(args, "version", required=True)
     requested_profile = _str_arg(args, "quality_profile", "")
     idempotency_key = _str_arg(args, "idempotency_key", required=True)
+    plan_digest = _str_arg(args, "plan_digest", "") or None
     request_parameters = copy.deepcopy(dict(parameters))
 
     def submit() -> dict:
@@ -148,6 +159,7 @@ def tool_media_workflow_run(args: dict) -> dict:
             idempotency_key=idempotency_key,
             backend=_backend(backend),
             quality_profile=requested_profile,
+            plan_digest=plan_digest,
         )
         job = result.get("job")
         if isinstance(job, dict) and job.get("state") == "awaiting_approval":
@@ -186,6 +198,8 @@ def tool_media_workflow_run(args: dict) -> dict:
                 "job_id": job_id,
                 "approval_transaction_id": transaction_id,
             }
+            if plan_digest:
+                result["resumeBundle"]["plan_digest"] = plan_digest
         return result
 
     return _translate(submit)
@@ -290,6 +304,18 @@ FAMILY = ToolFamily(
             "Validate one exact named workflow against its configured worker.", _WORKFLOW,
             tool_media_workflow_validate, scope="media:read", required=("workflow_id", "version"),
         ),
+        "media_workflow_prepare": _tool(
+            "Compile a shot brief with the selected recipe, check owned references, and return exact runArguments. No job is submitted; backend readiness is checked separately.",
+            {**_WORKFLOW,
+             "parameters": {"type": "object", "additionalProperties": True, "maxProperties": 32},
+             "brief": {"type": "object", "additionalProperties": False, "maxProperties": 8,
+                       "properties": {name: {"type": "string", "maxLength": 4096} for name in
+                                      ("scene", "subjects", "action", "setting", "camera", "lighting", "style", "dialogue")}},
+             "quality_profile": {"type": "string", "minLength": 0, "maxLength": 128},
+             "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128}},
+            tool_media_workflow_prepare, scope="media:read",
+            required=("workflow_id", "version", "idempotency_key"),
+        ),
         "media_workflow_run": _tool(
             "Submit one allowlisted named workflow and return an opaque durable job.",
             {
@@ -301,6 +327,7 @@ FAMILY = ToolFamily(
                     "type": "string", "minLength": 0, "maxLength": 128,
                 },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
+                "plan_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
             },
             tool_media_workflow_run,
             scope="media:submit",

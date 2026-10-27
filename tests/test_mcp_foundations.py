@@ -22,10 +22,10 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "cfc2791aee6d91cd4ab363811542c7ba4d7267289a3424d8ee962a7c54b03baf"
+    "85bc86cc0ff3052fd5df5ef23b43479b20d214fb00d3f6aa77e61a9926dece34"
 )
 HANDLER_MAP_SHA256 = (
-    "7c235ff7468492ee6052e8a2886fc13e68ce18efa0ccef208810650efe592ee4"
+    "79fd026ba4940387e13f4d835de71fea70e167c74a64f6eaac4f15303d428123"
 )
 TOOL_NAMES = [
     "operation_contracts",
@@ -56,6 +56,7 @@ TOOL_NAMES = [
     "media_workflow_list",
     "media_workflow_show",
     "media_workflow_validate",
+    "media_workflow_prepare",
     "media_workflow_run",
     "media_job_status",
     "media_job_cancel",
@@ -288,7 +289,7 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
         assert services_schema["properties"].pop(name) == expected
     services_schema["maxProperties"] -= len(compose_fields)
     assert _canonical_sha256(public_tools) == (
-        "5ca7f55e5ea78d18fdeb927269c8ba6da2bc4e3b91096a568b6dbb9613afa899"
+        "992672122a0af4f2d7f3d0a1ef769ac306268610b568648761dbdfc93525974d"
     )
 
 
@@ -341,6 +342,11 @@ def test_media_run_catalog_accepts_explicit_profileless_resume_value():
         "minLength": 0,
         "maxLength": 128,
     }
+    prepare = mcp.TOOLS["media_workflow_prepare"]
+    assert prepare["requiredScope"] == "media:read"
+    assert prepare["inputSchema"]["required"] == ["workflow_id", "version", "idempotency_key"]
+    assert prepare["inputSchema"]["maxProperties"] == 6
+    assert mcp.TOOLS["media_workflow_validate"]["inputSchema"]["maxProperties"] == 2
 
 
 def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():

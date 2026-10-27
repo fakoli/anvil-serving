@@ -50,6 +50,7 @@ HERMES_MEDIA_TOOLS = (
     "media_workflow_list",
     "media_workflow_show",
     "media_workflow_validate",
+    "media_workflow_prepare",
     "media_workflow_run",
     "media_job_status",
     "media_job_cancel",

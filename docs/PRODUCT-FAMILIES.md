@@ -104,7 +104,9 @@ See the [Voice pipeline](VOICE.md) and [Voice commands](cli/voice.md).
 
 Anvil Media owns named workflow validation, exact bundle inventory and staging,
 durable jobs, idempotency, cancellation, restart reconciliation, qualification,
-and opaque artifact metadata. A caller selects one stable workflow id, version,
+opaque artifact metadata, recipe discovery and structured shot preparation.
+Its compiler, workflow renderer and durable executor share the Media domain;
+MCP/CLI adapters translate those operations. A caller selects one stable workflow id, version,
 and declared quality profile. The family never accepts a raw ComfyUI graph,
 model filename, filesystem path, installation request, host, or fallback list.
 
@@ -123,7 +125,8 @@ model filename, filesystem path, installation request, host, or fallback list.
 
 Read [Media commands](cli/media.md) for the complete worker-to-artifact journey
 and [ADR-0040](adr/0040-media-gateway-and-controller-authority.md) for the
-gateway/controller authority split.
+gateway/controller authority split. [ADR-0045](adr/0045-media-recipe-planning.md)
+records the recipe/planning boundary and its qualification requirements.
 
 ## Anvil Connect
 

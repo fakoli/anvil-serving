@@ -17,6 +17,7 @@ from .contracts import (
     WorkflowDescriptor,
 )
 from .errors import MediaError
+from .planning import validate_catalog
 
 
 REGISTRY_SCHEMA = "anvil-serving.media-workflow-registry/v1"
@@ -82,7 +83,7 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
     for name, spec in parameters_raw.items():
         if not isinstance(name, str) or not isinstance(spec, Mapping):
             raise MediaError("workflow_descriptor_invalid", "workflow parameter is invalid")
-        allowed = {"kind", "required", "minimum", "maximum", "max_length", "enum", "media_types"}
+        allowed = {"kind", "required", "minimum", "maximum", "max_length", "enum", "media_types", "description", "role"}
         if set(spec) - allowed:
             raise MediaError("workflow_descriptor_invalid", "workflow parameter has unknown fields")
         parameters[name] = ParameterSpec(
@@ -93,6 +94,7 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
             max_length=spec.get("max_length"),
             enum=tuple(spec.get("enum", ())),
             media_types=_string_tuple(spec.get("media_types", []), "artifact media types"),
+            description=spec.get("description", ""), role=spec.get("role", ""),
         )
     bindings_raw = raw.get("bindings")
     if not isinstance(bindings_raw, list) or len(bindings_raw) > 64:
@@ -160,6 +162,9 @@ def _descriptor(raw: Mapping[str, Any], graph: Mapping[str, Any]) -> WorkflowDes
         retention_seconds=limits.get("retention_seconds"),
         max_queue_depth=limits.get("queue_depth"),
         max_concurrency=limits.get("concurrency"),
+        category=raw.get("category", ""), description=raw.get("description", ""),
+        prompt_parameter=raw.get("prompt_parameter", "prompt"),
+        prompt_template=raw.get("prompt_template", ""),
     )
 
 
@@ -197,6 +202,13 @@ class WorkflowRegistry:
             graphs[descriptor.key] = copy.deepcopy(graph)
         self._descriptors = descriptors
         self._graphs = graphs
+        catalog = raw.get("catalog")
+        self._catalog = validate_catalog(
+            _read_json(_safe_child(root, catalog), max_bytes=MAX_DESCRIPTOR_BYTES) if catalog is not None else [],
+            descriptors)
+
+    def recipes(self) -> list[dict[str, Any]]:
+        return copy.deepcopy(list(self._catalog))
 
     def list(self) -> list[dict[str, Any]]:
         return [self._descriptors[key].as_public_dict() for key in sorted(self._descriptors)]
@@ -250,4 +262,13 @@ class WorkflowRegistry:
         )
 
 
-__all__ = ["WorkflowRegistry", "canonical_digest"]
+def render_request(registry, workflow_id, version, parameters, quality_profile):
+    """Resolve an explicit/default profile consistently across CLI and MCP."""
+    descriptor = registry.get(workflow_id, version)
+    selected = descriptor.default_quality_profile if quality_profile == "" else quality_profile
+    rendered = (registry.render(workflow_id, version, parameters, quality_profile=selected)
+                if selected else registry.render(workflow_id, version, parameters))
+    return descriptor, rendered
+
+
+__all__ = ["WorkflowRegistry", "canonical_digest", "render_request"]

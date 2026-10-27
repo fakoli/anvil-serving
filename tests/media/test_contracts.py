@@ -20,6 +20,20 @@ JOB_ID = "job_0123456789abcdef"
 ARTIFACT_ID = "art_0123456789abcdef"
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_nonfinite_numbers_fail_at_the_shared_parameter_boundary(value):
+    with pytest.raises(MediaError, match="finite"):
+        ParameterSpec("number").validate("amount", value)
+
+
+@pytest.mark.parametrize("changes", [{"minimum": float("nan")}, {"maximum": float("inf")},
+    {"minimum": True}, {"max_length": float("nan")}, {"required": float("nan")}])
+def test_invalid_operator_numeric_constraints_fail_when_loaded(changes):
+    with pytest.raises(MediaError) as error:
+        ParameterSpec("number", **changes)
+    assert error.value.code == "invalid_contract"
+
+
 def descriptor(**changes):
     values = {
         "id": "image.test-v1",

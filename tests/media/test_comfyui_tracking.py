@@ -129,6 +129,59 @@ def test_history_failure_is_terminal_and_truthful(tmp_path):
     assert failed.events[-1].reason == "execution_failed"
 
 
+def test_persistent_missing_prompt_fails_but_outages_and_transient_absence_do_not(tmp_path):
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = create(store)
+    now = [0]
+    observed = ["missing"]
+
+    def history(prompt):
+        if observed[0] == "outage":
+            raise MediaError("backend_unavailable", "backend unavailable", status=503)
+        return BackendStatus(prompt, "running" if observed[0] == "running" else "queued",
+                             error_code="backend_prompt_missing" if observed[0] == "missing" else "")
+
+    reconciler = MediaJobReconciler(store, history, backend_endpoint=ENDPOINT, clock=lambda: now[0])
+    assert reconciler.reconcile(job).state != JobState.FAILED
+    now[0] = 20; observed[0] = "running"
+    job = reconciler.reconcile(job)
+    assert job.state == JobState.RUNNING
+    now[0] = 30; observed[0] = "missing"
+    assert reconciler.reconcile(job).state == JobState.RUNNING
+    now[0] = 70; observed[0] = "outage"
+    with pytest.raises(MediaError):
+        reconciler.reconcile(job)
+    now[0] = 80; observed[0] = "missing"
+    assert reconciler.reconcile(job).state == JobState.RUNNING
+    now[0] = 109
+    assert reconciler.reconcile(job).state == JobState.RUNNING
+    now[0] = 110
+    failed = reconciler.reconcile(job)
+    assert failed.state == JobState.FAILED and failed.events[-1].reason == "backend_prompt_lost"
+    assert not reconciler._missing_since
+
+
+def test_final_missing_probe_rechecks_a_racing_completion(tmp_path):
+    from anvil_serving.media.contracts import MediaArtifact, utc_now
+    store = MediaJobStore(tmp_path / "jobs.sqlite3")
+    job = create(store)
+    now = [0]
+    statuses = iter([
+        BackendStatus("prompt_123", "queued", error_code="backend_prompt_missing"),
+        BackendStatus("prompt_123", "queued", error_code="backend_prompt_missing"),
+        BackendStatus("prompt_123", "completed", outputs=(BackendOutput("1", "output.mp4"),)),
+    ])
+    artifact = MediaArtifact("art_" + "x" * 24, job.id, job.principal, job.workflow_id,
+                             job.workflow_version, "video/mp4", 1, "f" * 64,
+                             utc_now() + dt.timedelta(minutes=1))
+    reconciler = MediaJobReconciler(store, lambda _: next(statuses), capture=lambda *_: artifact,
+                                    backend_endpoint=ENDPOINT, clock=lambda: now[0])
+    assert reconciler.reconcile(job).state != JobState.FAILED
+    now[0] = 30
+    complete = reconciler.reconcile(job)
+    assert complete.state == JobState.COMPLETED and complete.artifacts[0].id == artifact.id
+
+
 def test_restart_drift_and_legacy_jobs_never_contact_a_backend(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
     bound = create(store)
