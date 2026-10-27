@@ -338,6 +338,68 @@ def test_large_video_link_downloads_in_authenticated_bounded_ranges(tmp_path):
         assert digest.hexdigest() == value["sha256"]
 
 
+def test_signed_links_reject_device_key_policy_at_startup(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_MEDIA_SIGNED_DOWNLOADS", "1")
+    tasks = service(tmp_path)
+    gateway = ProtocolGateway(caller=CALLER, tasks=tasks, registry=tasks.operations.registry,
+                              artifacts=tasks.operations.artifacts, public_origin="http://127.0.0.1:8080")
+    with pytest.raises(ValueError, match="dedicated static-auth gateway"):
+        from anvil_serving.router.front_door import _make_handler
+        _make_handler(StaticBackend(["ok"]), None, (), auth_token="secret",
+                      gateway=gateway, api_keys=object())
+
+
+def test_signed_video_links_open_directly_and_stream_large_browser_ranges(tmp_path, monkeypatch):
+    import urllib.parse
+
+    monkeypatch.setenv("ANVIL_MEDIA_SIGNED_DOWNLOADS", "1")
+    with gateway_server(tmp_path, public_origin="http://127.0.0.1:8080") as (address, tasks):
+        job, _ = tasks.operations.jobs.create(
+            principal="hermes", workflow_id="video.test", workflow_version="v1",
+            input_digest="f" * 64, idempotency_key="signed-video",
+        )
+        video = b"\x00\x00\x00\x18ftypmp42" + b"x" * (MAX_RANGE_BYTES + 17)
+        artifact = tasks.operations.artifacts.ingest(
+            job, io.BytesIO(video), media_type="video/mp4", max_bytes=len(video), retention_seconds=60,
+        )
+        read_sizes = []
+        original_read = tasks.operations.artifacts.read
+
+        def bounded_read(*args, **kwargs):
+            read_sizes.append(kwargs["end"] - kwargs["start"] + 1)
+            return original_read(*args, **kwargs)
+
+        monkeypatch.setattr(tasks.operations.artifacts, "read", bounded_read)
+        body = mcp_request()
+        body["method"] = "tools/call"
+        body["params"].update(name="media_artifact_inspect", arguments={"artifact_id": artifact.id})
+        _, _, raw = request(address, "POST", "/mcp", body=body)
+        result = json.loads(raw)["result"]
+        value = result["structuredContent"]["data"]["artifact"]
+        assert value["requiresAuthentication"] is False and value["downloadAuthorization"] == "signed-url"
+        assert value["downloadExpiresAt"] and "secret" not in value["downloadUrl"]
+        assert any(x.get("uri") == value["downloadUrl"] for x in result["content"])
+        parsed = urllib.parse.urlsplit(value["downloadUrl"])
+        path = parsed.path + "?" + parsed.query
+        assert request(address, "GET", value["resource"], token=None)[0] == 401
+        status, headers, data = request(address, "GET", path, token=None)
+        assert status == 200 and hashlib.sha256(data).hexdigest() == value["sha256"]
+        assert headers["Referrer-Policy"] == "no-referrer" and "no-store" in headers["Cache-Control"]
+        assert max(read_sizes) <= 1024 * 1024
+        status, headers, data = request(address, "HEAD", path, token=None)
+        assert status == 200 and not data and int(headers["Content-Length"]) == len(video)
+        for selected, start, end in [("bytes=7-15", 7, 15), ("bytes=16-", 16, len(video)-1),
+                                     ("bytes=-8", len(video)-8, len(video)-1)]:
+            status, headers, data = request(address, "GET", path, token=None, headers={"Range": selected})
+            assert status == 206 and data == video[start:end+1]
+            assert headers["Content-Range"] == f"bytes {start}-{end}/{len(video)}"
+        status, headers, _ = request(address, "GET", path, token=None, headers={"Range": f"bytes={len(video)}-"})
+        assert status == 416 and headers["Content-Range"] == f"bytes */{len(video)}"
+        assert request(address, "GET", path.replace(artifact.id, "art_other"), token=None)[0] == 401
+        assert request(address, "GET", path + "&expires=1", token=None)[0] == 401
+        assert request(address, "POST", "/mcp?" + parsed.query, body=mcp_request(), token=None)[0] == 401
+
+
 def test_protocol_auth_precedes_dispatch_and_unknown_routes_do_not_fallback(tmp_path):
     with gateway_server(tmp_path) as (address, _tasks):
         status, _, _ = request(
@@ -693,6 +755,14 @@ media_public_origin = "http://127.0.0.1:8080"
         encoding="utf-8",
     )
     config = load(str(config_path))
+    forwarded_signed_mode = []
+    original_make_server = router_serve.make_server
+
+    def capture_signed_mode(*args, **kwargs):
+        forwarded_signed_mode.append(kwargs.get("media_signed_downloads"))
+        return original_make_server(*args, **kwargs)
+
+    monkeypatch.setattr(router_serve, "make_server", capture_signed_mode)
     server = build_server(
         str(config_path),
         port=0,
@@ -703,9 +773,11 @@ media_public_origin = "http://127.0.0.1:8080"
             "ANVIL_MEDIA_STATE_DB": str(tmp_path / "jobs.sqlite3"),
             "ANVIL_MEDIA_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
             "ANVIL_MEDIA_WORKFLOW_REGISTRY": str(tmp_path / "registry.json"),
+            "ANVIL_MEDIA_SIGNED_DOWNLOADS": "1",
         },
     )
     worker = server.anvil_media_worker
+    assert forwarded_signed_mode == ["1"]
     reconciled_after_submit = threading.Event()
     submitted_id = None
     reconcile_once = worker.reconcile_once

@@ -12,6 +12,7 @@ from typing import Mapping
 from ....media.artifacts import MAX_RANGE_BYTES, ArtifactStore
 from ....media.cli import DEFAULT_REGISTRY
 from ....media.comfyui import ComfyUIClient
+from ....media.downloads import ArtifactDownloadLinks
 from ....media.errors import MediaError
 from ....media.jobs import MediaJobStore
 from ....media.operations import MediaOperations
@@ -25,16 +26,17 @@ from ..security import CallerContext, require_scope
 
 
 _SERVICE_OVERRIDE: contextvars.ContextVar[
-    tuple[MediaOperations, ComfyUIClient | None, str] | None
+    tuple[MediaOperations, ComfyUIClient | None, str, ArtifactDownloadLinks | None] | None
 ] = contextvars.ContextVar("anvil_media_service_override", default=None)
 
 
 @contextmanager
 def service_context(
-    operations: MediaOperations, backend: ComfyUIClient | None, *, public_origin: str = ""
+    operations: MediaOperations, backend: ComfyUIClient | None, *, public_origin: str = "",
+    download_links: ArtifactDownloadLinks | None = None,
 ):
     """Bind one request to the gateway's shared durable media service."""
-    token = _SERVICE_OVERRIDE.set((operations, backend, public_origin))
+    token = _SERVICE_OVERRIDE.set((operations, backend, public_origin, download_links))
     try:
         yield
     finally:
@@ -226,6 +228,8 @@ def tool_media_artifact_inspect(args: dict) -> dict:
             artifact["downloadUrl"] = override[2].rstrip("/") + artifact["resource"]
             artifact["requiresAuthentication"] = True
             artifact["maxRangeBytes"] = MAX_RANGE_BYTES
+            if override[3] is not None:
+                artifact.update(override[3].issue(artifact))
             if artifact["mediaType"] == "video/mp4":
                 result["_mcpContent"] = [{
                     "type": "resource_link",
@@ -233,7 +237,11 @@ def tool_media_artifact_inspect(args: dict) -> dict:
                     "name": artifact_id + ".mp4",
                     "mimeType": artifact["mediaType"],
                     "size": artifact["byteLength"],
-                    "description": "Video download; use the existing MCP credential in the Authorization header and bounded Range requests for larger files.",
+                    "description": (
+                        "Scoped video download; opens directly until downloadExpiresAt."
+                        if not artifact["requiresAuthentication"] else
+                        "Video download; use the existing MCP credential in the Authorization header and bounded Range requests for larger files."
+                    ),
                 }]
         image_content = operations.artifacts.mcp_image_content(
             artifact_id,
@@ -309,7 +317,7 @@ FAMILY = ToolFamily(
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
         ),
         "media_artifact_inspect": _tool(
-            "Inspect owned artifact metadata and its authenticated downloadUrl. Use HTTP GET/Range with the existing MCP credential in the Authorization header; credentials are never embedded in the URL. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",
+            "Inspect owned artifact metadata and downloadUrl. Follow requiresAuthentication and downloadExpiresAt: signed URLs open directly; otherwise use the existing MCP credential in the Authorization header. Reusable credentials are never embedded in URLs. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",
             {"artifact_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_artifact_inspect, scope="media:read", required=("artifact_id",),
         ),
