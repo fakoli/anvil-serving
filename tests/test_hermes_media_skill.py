@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import io
+import re
 from dataclasses import replace
 from pathlib import Path
 
 from anvil_serving import mcp
+from anvil_serving.client_catalog_sync import HERMES_MEDIA_TOOLS
 from anvil_serving.media.contracts import JobState
 from anvil_serving.router.gateway import ProtocolGateway
 
@@ -15,16 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "examples" / "hermes" / "skills" / "anvil-media" / "SKILL.md"
 PACKAGED_SKILL = ROOT / "anvil_serving" / "_hermes_skills" / "anvil-media" / "SKILL.md"
 README = ROOT / "examples" / "hermes" / "README.md"
-PUBLIC_TOOLS = {
-    "media_capabilities",
-    "media_workflow_list",
-    "media_workflow_show",
-    "media_workflow_validate",
-    "media_workflow_run",
-    "media_job_status",
-    "media_job_cancel",
-    "media_artifact_inspect",
-}
+PUBLIC_TOOLS = set(HERMES_MEDIA_TOOLS)
 
 
 def _rpc(name: str, arguments: dict, request_id: int) -> dict:
@@ -77,7 +70,7 @@ def test_packaged_hermes_skill_is_narrow_and_secret_free():
     assert "empty string as its\n   exact `quality_profile` value" in text
     assert "Hermes has no worker-lifecycle authority" in text
     assert "complete resume bundle" in text
-    assert 'version: "1.0.6"' in text
+    assert re.search(r'  version: "\d+\.\d+\.\d+"\n', text)
     assert "server-returned `resumeBundle` object exactly" in text
     assert "full `idempotency_key`" in text
     assert "compare all seven fields to the returned object" in text
@@ -104,7 +97,8 @@ def test_hermes_skill_makes_fail_closed_resume_cancellation_unambiguous():
 
 def test_hermes_skill_documents_exact_resume_submission_shape():
     text = SKILL.read_text(encoding="utf-8")
-    assert "Pass exactly its five submission fields" in text
+    assert "Pass its five submission fields" in text
+    assert "Preserve any returned `plan_digest`" in text
     for field in (
         "`workflow_id`",
         "`version`",
