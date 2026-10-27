@@ -887,8 +887,8 @@ must match the stop preview's `environment` declaration; omit `--env-file` when
 there is no declaration and no implicit environment file. The receipt must name
 the exact stopped incarnation, finalized native death proof, retained store and
 closed generation. Its original acknowledgement must have been valid; expiry
-after a completed stop does not invalidate that proof. Pending, changed or
-already-transferred ownership refuses.
+after a completed stop does not invalidate that proof. Pending or changed
+ownership refuses. Already-transferred ownership cannot authorize another start.
 
 This path supports an explicitly acknowledged successor image with unchanged
 configuration bytes, or a configuration change on the same image. Both may
@@ -903,6 +903,17 @@ match the receipt. Preview performs fenced native readback without publishing
 custody, starting a successor or changing admission. Confirmation starts the new
 owner CLOSED; it never readmits traffic or claims remote memory completion.
 `--current-stop-receipt` and `--startup-abort-config` are mutually exclusive.
+
+If the exact successor is already running but its native custody handoff was
+interrupted, repeat the current-stop command without `--recreate`. Its dry-run
+validates the protected receipt, predecessor death and transfer, current physical
+run and closed generation, and exact successor configuration, image, environment and
+storage bindings. Confirmation completes only that successor's native custody
+handshake; it does not start, stop, recreate or readmit a container. An exact
+already-finalized successor is an idempotent result. A changed or restarted
+successor, admitted or consumed closure, conflicting record, or mismatched
+transfer remains HOLD. Reopening traffic still requires its own fresh preview
+and human acknowledgement.
 
 If the acknowledged successor fails its offline custody probe before it starts,
 the completed stop receipt also permits one explicit rollback to the exact

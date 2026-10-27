@@ -346,8 +346,10 @@ def cmd_up(
     rollback_current_stop=False,
 ):
     if current_stop_receipt is not None or rollback_current_stop:
+        stage = 'current-stop-observation'
         try:
-            from .router_current_stop import completed_receipt, require_predecessor, require_successor
+            from .router_current_stop import (completed_receipt, require_predecessor,
+                                              require_running_successor, require_successor)
             if startup_abort_config is not None:
                 raise ValueError('router_recovery_proofs_are_exclusive')
             if current_stop_receipt is None:
@@ -355,7 +357,45 @@ def cmd_up(
             execution_env = {'PATH': os.defpath}
             def native(argv, **kwargs):
                 return _run(argv, **{**kwargs, 'env': execution_env})
-            stopped = _container_incarnation(container, _run=native, stopped=True)
+            try:
+                stopped = _container_incarnation(container, _run=native, stopped=True)
+            except ValueError:
+                if rollback_current_stop:
+                    raise ValueError('router_current_stop_rollback_requires_stopped_predecessor')
+                if recreate:
+                    raise ValueError('router_current_stop_resume_recreate_refused')
+                running = _container_incarnation(container, _run=native)
+                saved = completed_receipt(current_stop_receipt)
+                expected_compose = saved['authorization']['successor']['compose']
+                if (compose != expected_compose or service != DEFAULT_SERVICE
+                        or container != DEFAULT_CONTAINER):
+                    raise ValueError('router_current_stop_target_mismatch')
+                environment = saved['preview'].get('environment')
+                if (environment is None and env_file is not None or environment is not None
+                        and (type(environment) is not dict or environment.get('file') != env_file)):
+                    raise ValueError('router_current_stop_environment_mismatch')
+                execution_env = (_compose_execution_env(compose, env_file, environ={'PATH': os.defpath})
+                                 or {'PATH': os.defpath})
+                stage = 'running-successor-proof'
+                before = require_running_successor(current_stop_receipt, compose, service, container,
+                    _run=native, env_file=env_file, execution_env=execution_env)
+                if before['incarnation'] != running:
+                    raise ValueError('router_current_stop_incarnation_changed')
+                if dry_run:
+                    return 0
+                if before['phase'] == 'live':
+                    return 0
+                stage = 'native-custody-handshake'
+                finalized = _managed_container_custody('live', compose, service, container, _run=native,
+                    env_file=env_file, execution_env=execution_env)
+                if finalized != {'finalized': 'live', 'run_id': before['run_id']}:
+                    raise ValueError('router_current_stop_resume_commit_refused')
+                stage = 'running-successor-postcheck'
+                after = require_running_successor(current_stop_receipt, compose, service, container,
+                    _run=native, env_file=env_file, execution_env=execution_env, require_live_anchor=True)
+                if after['incarnation'] != before['incarnation'] or after['run_id'] != before['run_id']:
+                    raise ValueError('router_current_stop_incarnation_changed')
+                return 0
             saved = completed_receipt(current_stop_receipt, stopped)
             expected_compose = (saved['preview']['compose_path'] if rollback_current_stop
                                 else saved['authorization']['successor']['compose'])
@@ -369,18 +409,24 @@ def cmd_up(
             execution_env = (_compose_execution_env(compose, env_file, environ={'PATH': os.defpath})
                              or {'PATH': os.defpath})
             validate_target = require_predecessor if rollback_current_stop else require_successor
+            stage = 'stopped-successor-proof'
             validate_target(current_stop_receipt, compose, service, container, stopped,
                 _run=native, env_file=env_file, execution_env=execution_env)
             if dry_run:
                 return 0
+            stage = 'compose-start'
             rc = _run_argv(_compose_up_argv(compose, service, env_file=env_file, recreate=recreate),
                            native, env=execution_env)
             if rc == 0:
+                stage = 'native-custody-handshake'
                 _managed_container_custody('live', compose, service, container, _run=native,
                     env_file=env_file, execution_env=execution_env)
             return rc
-        except (ValueError, OSError, subprocess.SubprocessError, TypeError, KeyError):
-            print('router lifecycle HOLD: completed current-stop custody is required; admission remains closed', file=sys.stderr)
+        except (ValueError, OSError, subprocess.SubprocessError, TypeError, KeyError) as exc:
+            error = str(exc)
+            code = error if re.fullmatch(r'router_[a-z0-9_]{1,96}', error) else 'router_current_stop_custody_refused'
+            print('router lifecycle HOLD: current-stop custody failed '
+                  '(stage=%s; code=%s); admission remains closed' % (stage, code), file=sys.stderr)
             return 1
     try:
         execution_env = _compose_execution_env(

@@ -116,6 +116,56 @@ def invoke(f, **kwargs):
                                _run=f.run, **kwargs)
 
 
+def prepare_running_successor(f, monkeypatch, *, phases=('absent', 'live')):
+    authorization = f.receipt['authorization']
+    original_run = f.run
+    running = dict(f.stopped)
+    running.update(container_id='8' * 64, image_id=authorization['successor']['image_id'],
+                   started_at='2026-10-26T18:00:00Z', restart_count=0)
+    calls = []
+
+    def incarnation(container, *, _run, stopped=False):
+        assert container == 'anvil-router'
+        if stopped:
+            raise ValueError('router_container_custody_unknown')
+        return deepcopy(running)
+
+    def roster(compose, service, container, **kwargs):
+        assert service == 'router' and container == 'anvil-router'
+        assert kwargs.get('live_target') is True
+        if compose == str(f.old_compose):
+            assert kwargs.get('_metadata_only') is True
+            rendered = f.old
+        else:
+            assert compose == str(f.compose)
+            assert kwargs.get('_metadata_only') is not True
+            rendered = f.candidate
+        return {'rendered': rendered, 'owner_storage': f.scope,
+                'roster': [], 'target': deepcopy(running)}
+
+    def current_successor(target, incarnation, *, _run, _read_config=None):
+        return deepcopy(f.old if target['compose'] == str(f.old_compose) else f.candidate)
+
+    def run(argv, **kwargs):
+        if argv[:3] == ['docker', 'exec', running['container_id']]:
+            code = argv[-1]
+            assert 'with live_writer(store)' in code
+            assert 'native_transaction' not in code and 'write(' not in code
+            compile(code, '<running-successor-proof>', 'exec')
+            calls.append('native-proof')
+            phase = phases[min(calls.count('native-proof') - 1, len(phases) - 1)]
+            return SimpleNamespace(returncode=0, stdout=json.dumps(
+                {'ok': True, 'phase': phase, 'run_id': '12345678-1234-4234-8234-123456789abc'}))
+        return original_run(argv, **kwargs)
+
+    monkeypatch.setattr(router_manage, '_container_incarnation', incarnation)
+    monkeypatch.setattr(router_manage, '_offline_compose_roster', roster)
+    monkeypatch.setattr(router_manage, '_owner_storage_scope', lambda *a, **k: f.scope)
+    monkeypatch.setattr(bootstrap, '_current_successor', current_successor)
+    f.run = run
+    return running, calls
+
+
 def enable_predecessor_runtime(f, monkeypatch):
     f.compose = f.old_compose
     original = f.run
@@ -214,6 +264,81 @@ def test_changed_image_and_source_require_exact_receipt_and_preview_is_read_only
     # Expiry after the completed physical stop does not invalidate its receipt.
     monkeypatch.setattr(bootstrap.time, 'time', lambda: f.receipt['authorization']['expires_at'] + 10)
     assert invoke(f, dry_run=True) == 0
+
+
+def test_running_exact_successor_resumes_native_custody_without_compose_up(successor, monkeypatch):
+    f = successor
+    running, proof_calls = prepare_running_successor(f, monkeypatch)
+    custody = []
+    monkeypatch.setattr(router_manage, '_managed_container_custody',
+        lambda kind, *a, **k: custody.append(kind) or
+            {'finalized': 'live', 'run_id': '12345678-1234-4234-8234-123456789abc'})
+
+    assert invoke(f) == 0
+    assert custody == ['live'] and proof_calls == ['native-proof', 'native-proof']
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+    assert running['image_id'] == f.receipt['authorization']['successor']['image_id']
+
+
+def test_running_exact_successor_dry_run_only_validates(successor, monkeypatch):
+    f = successor
+    prepare_running_successor(f, monkeypatch, phases=('live-pending',))
+    custody = []
+    monkeypatch.setattr(router_manage, '_managed_container_custody',
+        lambda *a, **k: custody.append(a) or pytest.fail('dry-run must not finalize custody'))
+
+    assert invoke(f, dry_run=True) == 0
+    assert not custody
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+
+
+def test_exact_live_anchor_is_idempotent_without_native_helper(successor, monkeypatch):
+    f = successor
+    prepare_running_successor(f, monkeypatch, phases=('live',))
+    monkeypatch.setattr(router_manage, '_managed_container_custody',
+        lambda *a, **k: pytest.fail('exact live anchor must not run a helper'))
+
+    assert invoke(f) == 0
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+
+
+def test_running_successor_resume_rejects_recreate_flag(successor, monkeypatch, capsys):
+    f = successor
+    prepare_running_successor(f, monkeypatch, phases=('absent',))
+    monkeypatch.setattr(router_manage, '_managed_container_custody',
+        lambda *a, **k: pytest.fail('recreate request must not resume custody'))
+
+    assert invoke(f, recreate=True) == 1
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+    assert 'stage=current-stop-observation' in capsys.readouterr().err
+
+
+@pytest.mark.parametrize('damage', ['wrong-image', 'bad-anchor-phase', 'postcheck-pending'])
+def test_running_successor_resume_fails_closed_without_restarting(successor, monkeypatch, capsys, damage):
+    f = successor
+    phases = ('other', 'live') if damage == 'bad-anchor-phase' else (
+        ('absent', 'live-pending') if damage == 'postcheck-pending' else ('absent', 'live'))
+    running, proof_calls = prepare_running_successor(f, monkeypatch, phases=phases)
+    if damage == 'wrong-image':
+        running['image_id'] = 'sha256:' + '0' * 64
+        monkeypatch.setattr(router_manage, '_container_incarnation',
+            lambda container, *, _run, stopped=False: (_ for _ in ()).throw(ValueError('router_container_custody_unknown'))
+            if stopped else deepcopy(running))
+    custody = []
+    monkeypatch.setattr(router_manage, '_managed_container_custody',
+        lambda *a, **k: custody.append(a) or
+            {'finalized': 'live', 'run_id': '12345678-1234-4234-8234-123456789abc'})
+
+    assert invoke(f) == 1
+    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
+    assert 'docker exec' not in ' '.join(str(call) for call in f.calls)
+    if damage != 'wrong-image':
+        assert bool(custody) is (damage == 'postcheck-pending')
+        if custody:
+            assert custody[0][0] == 'live'
+    err = capsys.readouterr().err
+    assert 'stage=' in err and 'code=' in err
+    assert 'fixture' not in err and 'successor.toml' not in err
 
 
 
