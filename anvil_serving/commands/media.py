@@ -249,6 +249,19 @@ def commands() -> CommandNode:
                 "job",
                 "Inspect and cancel durable media jobs.",
                 children=(
+                    _node(
+                        "watch",
+                        "Wait for an owned MCP job and return its completed artifacts.",
+                        handler=_handler("anvil_serving.media.watch", argv_prefix=()),
+                        output_policy="foreground",
+                        options=(
+                            _option("--job-id", summary="Existing caller-owned job.", value_name="ID"),
+                            _option("--client-config", summary="Protected stdio MCP client definition.", value_name="PATH"),
+                            _option("--timeout-seconds", summary="Watcher deadline; does not cancel rendering.", value_name="SECONDS"),
+                            _option("--poll-seconds", summary="Bounded MCP polling interval.", value_name="SECONDS"),
+                        ),
+                        docs_anchor="docs/cli/media.md#background-completion",
+                    ),
                     _resource_node(
                         "status",
                         "Inspect one durable media job.",
