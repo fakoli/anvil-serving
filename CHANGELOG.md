@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-26
+
+### Fixed
+
+- Router recovery accepts valid read-only mounted configuration files with a
+  custom basename while retaining path, mount and custody validation.
+- Standalone Connect manager bundles include the shared paths module, restoring
+  structured edge-status diagnostics instead of an import failure.
+- Benchmark campaign duration tests use a deterministic clock and a bounded
+  floating-point comparison; production accounting is unchanged.
+
+### Upgrade notes
+
+- Rebuild the router/controller artifacts and standalone Connect manager to
+  install their fixes. Installing the CLI alone does not replace running
+  services, change routes, or promote a model.
+
 ## [2.0.0] - 2026-10-26
 
 ### Added
@@ -2678,7 +2695,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/fakoli/anvil-serving/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fakoli/anvil-serving/compare/v1.5.0...v2.0.0
 [1.5.0]: https://github.com/fakoli/anvil-serving/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/fakoli/anvil-serving/compare/v1.3.0...v1.4.0
