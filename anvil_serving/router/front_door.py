@@ -45,6 +45,7 @@ import threading
 import time
 import urllib.parse
 import uuid
+from ..media.assets import ASSET_PATH, MAX_ASSET_BYTES, MEDIA_FORMATS
 from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -354,6 +355,7 @@ _CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(
 # not run in these request threads.
 _PROTOCOL_CONCURRENCY_LIMIT: threading.BoundedSemaphore = threading.BoundedSemaphore(16)
 _PROTOCOL_MAX_BODY_BYTES = 64 * 1024
+_ASSET_CONCURRENCY_LIMIT = threading.BoundedSemaphore(1)
 
 # Drain waits must not consume a data-plane request slot.  This small separate
 # pool bounds administrative waits for the single-operator deployment.
@@ -1525,6 +1527,45 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 return
             self._json(200, gateway.a2a_request(body))
 
+        def _handle_asset_upload(self) -> None:
+            # Every failure closes the stream: unread binary bytes cannot become another request.
+            self.close_connection = True
+            if not self._authenticated():
+                self._protocol_json_error(401, "authentication_error", "invalid or missing API key")
+                return
+            if not self._admit_router("media"):
+                return
+            lengths = self.headers.get_all("Content-Length") or []
+            types = self.headers.get_all("Content-Type") or []
+            digests = self.headers.get_all("X-Content-SHA256") or []
+            if (self.path != ASSET_PATH or self.headers.get_all("Transfer-Encoding")
+                    or self.headers.get_all("Content-Encoding") or len(lengths) != 1
+                    or not _DIGIT_RE.fullmatch(lengths[0]) or len(lengths[0]) > 10
+                    or len(types) != 1 or len(digests) != 1
+                    or not re.fullmatch(r"[0-9a-f]{64}", digests[0])):
+                self._protocol_json_error(400, "invalid_request", "upload requires unambiguous length, media type and SHA256")
+                return
+            length = int(lengths[0])
+            if not 0 < length <= MAX_ASSET_BYTES:
+                self._protocol_json_error(413, "asset_too_large", "reference exceeds upload bytes")
+                return
+            if types[0] not in MEDIA_FORMATS:
+                self._protocol_json_error(415, "artifact_media_type", "reference media type is unsupported")
+                return
+            previous_timeout = self.connection.gettimeout()
+            try:
+                self.connection.settimeout(30)
+                result = gateway.asset_upload(self.rfile, length=length, media_type=types[0], sha256=digests[0])
+            except MediaError as exc:
+                self._protocol_json_error(exc.status, exc.code, exc.message)
+                return
+            except OSError:
+                self._protocol_json_error(400, "asset_incomplete", "upload did not complete")
+                return
+            finally:
+                self.connection.settimeout(previous_timeout)
+            self._json(201, result, extra_headers={"Cache-Control": "private, no-store"})
+
         def _handle_protocol_get(self, route: str, *, head_only: bool = False) -> None:
             if self.headers.get_all("Transfer-Encoding") or self.headers.get_all("Content-Length"):
                 self._reject_get_body_framing("protocol GET must not include a body")
@@ -2586,6 +2627,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             operator_route = self._operator_route("POST")
             if operator_route is not None:
                 self._handle_operator_route(operator_route)
+                return
+            if gateway is not None and route == ASSET_PATH:
+                if not _ASSET_CONCURRENCY_LIMIT.acquire(blocking=False):
+                    self.close_connection = True
+                    self._protocol_json_error(503, "server_busy", "reference intake busy")
+                    return
+                try:
+                    self._handle_asset_upload()
+                finally:
+                    _ASSET_CONCURRENCY_LIMIT.release()
                 return
             if gateway is not None and route in {MCP_PATH, A2A_PATH}:
                 if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):

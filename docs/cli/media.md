@@ -9,8 +9,8 @@ workflows, exact worker bundles, durable jobs, qualification, cancellation,
 and opaque artifacts. The CLI and the gateway's MCP/A2A projections use the
 same operation contracts.
 
-Anvil Media never accepts a caller-supplied ComfyUI graph, node name, model
-filename, filesystem path, install request, backend route, host selection, or
+The gateway never accepts a caller-supplied ComfyUI graph, node name, model
+filename, server filesystem path, install request, backend route, host selection, or
 fallback list. Operator configuration maps one workflow version to one media
 service and resource owner.
 
@@ -22,6 +22,7 @@ service and resource owner.
 | Prepare a media worker | `media bundle inventory` | Preview missing exact assets with `media bundle stage --dry-run`; apply only with `--confirm`. |
 | Check workflow compatibility | `media workflow validate` | Keep the workflow unavailable when any required feature, node, model, or backend fact is unknown. |
 | Compile a shot brief | `media workflow prepare` | Inspect exact run arguments; submit them unchanged through existing admission. |
+| Provide a reference | `media asset upload --dry-run` | Confirm the same bounded local file; bind its returned owned artifact ID. |
 | Run a named workflow | `media workflow run ... --dry-run` | Review the binding, then submit the same request with `--confirm`. |
 | Follow or cancel work | `media job status` | Use `media job cancel --dry-run`, then `--confirm`, for the same principal. |
 | Inspect a result | `media artifact inspect` | Fetch bytes only through the authenticated gateway artifact boundary. |
@@ -82,6 +83,44 @@ CLI callers can pass compiled parameters with `media workflow run` and its
 owned opaque artifact IDs in declared slots, never caller filesystem paths or
 node IDs. An image input does not imply face replacement, a speaker map or
 lip synchronization; the chosen recipe must declare and qualify those roles.
+
+## Upload reference media
+
+When MCP capabilities report `assetUpload.available=true`, use the existing
+protected MCP connection definition to upload a local PNG, JPEG, MP4 or WAV:
+
+```bash
+anvil-serving media asset upload --file reference.png --client-config connection.json --dry-run
+anvil-serving media asset upload --file reference.png --client-config connection.json --confirm
+```
+
+The client discovers the intake policy, hashes the file and sends its bytes to
+`POST /media/assets` on the configured gateway origin. It reuses the protected
+credential source; it sends neither server paths nor credentials in tool
+arguments or URLs. The raw intake route requires `media:submit`, one strict
+Content-Length, a supported Content-Type and X-Content-SHA256. It does not accept
+chunked/compressed bodies, remote source URLs or signed download authorization.
+Retries create new owned input artifacts; they never submit generation jobs.
+
+Intake permits at most32MiB and retains inputs for24hours. The managed gateway
+must include `ffprobe`; otherwise intake stays unavailable. It checks signatures,
+actual decoding, stream count, dimensions, decoded frame count, duration and
+audio channels/rate. Decoder calls have deadlines, one thread, a file/pipe
+protocol whitelist and disabled external MOV tracks, following the
+[FFmpeg demuxer controls](https://ffmpeg.org/ffprobe-all.html#mov_002fmp4_002f3gp).
+The global RGB-float32 extent bound is2GiB, with at most4096pixels per axis,
+3600frames,120seconds, two audio channels and96kHz. This tensor estimate is not
+a prediction of the complete generative runtime's memory requirement.
+
+An imported reference can enter only a recipe declaring tighter applicable
+`media_limits` for that artifact parameter; these appear as
+`x-anvil-media-limits` in its schema. Existing generated outputs remain usable
+by legacy recipes. Ownership, expiry, content hash and per-recipe bounds still
+apply at submission. Unsupported audio/reference roles are rejected. Importing
+three face images does not establish subject tracking, identity replacement or
+three-speaker support. Original audio bytes remain a separate retained input;
+native video saving can trim/re-encode audio and needs a separately qualified
+master-preservation step.
 
 ## Prepare the worker bundle
 

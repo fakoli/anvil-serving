@@ -9,10 +9,12 @@ import hashlib
 import json
 import threading
 from dataclasses import fields, is_dataclass, replace
+from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .admission import MediaAdmissionService
 from .artifacts import ArtifactStore
+from .assets import MAX_ASSET_BYTES, MEDIA_FORMATS, enforce_limits, inspect_media, policy as asset_policy
 from .cancellation import MediaCancellationService
 from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient
 from .contracts import JobState, MediaArtifact, RenderedWorkflow, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
@@ -75,6 +77,7 @@ class MediaOperations:
         return {
             "capabilities": ["image-generation", "video-generation", "named-workflow"],
             "workflows": workflows,
+            "assetUpload": asset_policy(),
             "recipes": recipes,
             "categories": [{"id": key, "description": description,
                             "workflows": [w["id"] + "@" + w["version"] for w in workflows if w.get("category") == key],
@@ -548,10 +551,15 @@ class MediaOperations:
             artifact = self.artifacts.metadata(rendered.resolved_parameters[name], principal=principal)
             if spec.media_types and artifact.media_type not in spec.media_types:
                 raise MediaError("artifact_media_type", "input artifact has an unsupported media type")
-            if artifact.media_type not in {"image/png", "video/mp4"}:
+            if artifact.media_type not in MEDIA_FORMATS:
                 raise MediaError("artifact_media_type", "input artifact has an unsupported media type")
             if artifact.byte_length > maximum:
                 raise MediaError("artifact_too_large", "input artifact exceeds upload policy", status=413)
+            if artifact.origin == "input" and not spec.media_limits:
+                raise MediaError("asset_limits_required", "this recipe has no qualified reference extent limits", status=409)
+            if spec.media_limits:
+                info = artifact.media_info or inspect_media(Path(artifact.source_path), artifact.media_type)
+                enforce_limits(info, spec.media_limits)
             inputs[name] = artifact
         return inputs
 
@@ -572,7 +580,7 @@ class MediaOperations:
                 payload = self.artifacts.read(artifact.id, principal=principal, max_bytes=maximum)
                 if hashlib.sha256(payload.data).hexdigest() != artifact.sha256:
                     raise MediaError("artifact_digest_mismatch", "input artifact content changed", status=409)
-                extension = "mp4" if artifact.media_type == "video/mp4" else "png"
+                extension = MEDIA_FORMATS[artifact.media_type][1]
                 uploaded[artifact.id] = _backend_method(backend, "upload_input")(
                     f"anvil-{artifact.sha256}.{extension}", payload.data, max_bytes=maximum
                 )
@@ -682,6 +690,14 @@ class MediaOperations:
 
     def artifact_inspect(self, artifact_id: str, *, principal: str) -> dict[str, Any]:
         return {"artifact": self.artifacts.metadata(artifact_id, principal=principal).as_public_dict()}
+
+    @_owned_media
+    def asset_upload(self, source, *, principal, media_type, sha256):
+        artifact = self.artifacts.ingest(None, source, principal=principal, media_type=media_type,
+                                         max_bytes=MAX_ASSET_BYTES, retention_seconds=86400,
+                                         expected_sha256=sha256,
+                                         validate=lambda path: inspect_media(path, media_type))
+        return {"artifact": artifact.as_public_dict()}
 
 
 def parameters_from_json(raw: str, *, max_bytes: int = 65536) -> dict[str, Any]:

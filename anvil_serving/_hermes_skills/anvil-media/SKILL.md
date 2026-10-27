@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.7"
+  version: "1.0.8"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -22,6 +22,12 @@ an earlier Anvil media job. A slash-command invocation is optional.
    reasons and stop.
    Candidate recipe categories marked `static-reviewed` or `needs-qualification`
    are discovery only. Execute only the exact available registered workflow.
+   If references are requested, inspect `assetUpload` and the exact artifact
+   roles/media limits. When intake is available, use the supported
+   `anvil-serving media asset upload --file <local-file> --client-config <protected-definition>`
+   preview/confirmation path and bind the returned owned artifact ID. Never
+   send local paths, arbitrary URLs or base64 blobs as workflow parameters.
+   Missing reference/audio roles or intake remain explicit unsupported inputs.
 2. Call `mcp__anvil_media__media_workflow_show` for that exact workflow and
    version. Treat its parameter schema, quality profiles, availability, and
    limits as authoritative.

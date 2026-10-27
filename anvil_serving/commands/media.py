@@ -69,6 +69,14 @@ def commands() -> CommandNode:
                 options=STATE_OPTIONS,
                 argv_prefix=("capabilities",),
             ),
+            _node("asset", "Upload owned reference media.", children=(
+                _resource_node("upload", "Decode and retain one bounded local reference file.",
+                               "anvil_serving.media.asset_client", role="media-gateway", mutation="mutate",
+                               argv_prefix=(), options=CONFIRM_OPTIONS + (
+                                   _option("--file", summary="Local PNG, JPEG, MP4 or WAV reference.", value_name="PATH"),
+                                   _option("--client-config", summary="Protected stdio MCP client definition.", value_name="PATH"),
+                               )),
+            )),
             _node(
                 "bundle",
                 "Inventory and stage exact pinned workflow assets.",
