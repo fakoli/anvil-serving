@@ -265,6 +265,13 @@ launch. Use the controller transport for a registered remote worker rather
 than SSH. The complete specification, profile costs, evidence semantics, and
 examples are in [Context, agentic, and SWE benchmark jobs](../benchmarks/context-agentic-swe.md).
 
+The built-in `qualification-64k-v1` profile retains the pinned `pilot-v2`
+adapters and non-coding suites. Its Aider and SWE jobs each admit one task,
+with a 65,536-token per-request completion cap and respective suite execution
+deadlines of 600 and 1,200 seconds. Asset preparation and cleanup are outside
+these execution deadlines; a profile does not establish model compatibility or
+qualification on its own.
+
 ## Benchmark evidence
 
 Run preflight before a benchmark and retain artifact identity, endpoint, served model, hardware,

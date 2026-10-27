@@ -163,7 +163,7 @@ def _normalize_benchmark_profile_catalog_delta(public_tools):
         "type": "string",
         "enum": [
             "aider-diagnostic-16k-v1", "aider-diagnostic-32k-v1",
-            "deep", "pilot-v2", "scout", "smoke",
+            "deep", "pilot-v2", "qualification-64k-v1", "scout", "smoke",
         ],
         "maxLength": 262144,
     }
