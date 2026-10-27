@@ -96,7 +96,9 @@ anvil-serving media asset upload --file reference.png --client-config connection
 
 The client discovers the intake policy, hashes the file and sends its bytes to
 `POST /media/assets` on the configured gateway origin. It reuses the protected
-credential source; it sends neither server paths nor credentials in tool
+credential source and runs on the machine containing the local file, without
+resource-owner dispatch to the gateway host. It sends neither server paths nor
+credentials in tool
 arguments or URLs. The raw intake route requires `media:submit`, one strict
 Content-Length, a supported Content-Type and X-Content-SHA256. It does not accept
 chunked/compressed bodies, remote source URLs or signed download authorization.
