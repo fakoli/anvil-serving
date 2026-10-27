@@ -5,11 +5,11 @@
 # unless-stopped`) alongside the compose-defined serves (ADR-0002). Docker is an
 # ADDITIONAL deployment option -- `pip install anvil-serving` still works unchanged.
 #
-# Build (from repo root): docker build -t anvil-serving:2.0.0 .
+# Build (from repo root): docker build -t anvil-serving:2.0.1 .
 # Run:   docker run -p 127.0.0.1:8000:8000 \
 #          -e ANVIL_ROUTER_TOKEN \
 #          -v ./configs/example-docker.toml:/etc/anvil/config.toml:ro \
-#          anvil-serving:2.0.0
+#          anvil-serving:2.0.1
 ARG DOCKER_CLI_IMAGE=docker:29.6.2-cli@sha256:be132a9f282288de4afaf63379dff75711fda0147c6b72a9df44e51841402144
 # Official Python 3.13.15 slim-bookworm source:
 # https://github.com/docker-library/python/blob/688a0b86bb44289df16a363e9f41d90514c1a5f9/3.13/slim-bookworm/Dockerfile
@@ -51,7 +51,7 @@ ENV LD_LIBRARY_PATH=/opt/sqlite/lib
 
 RUN python -B -c "import sqlite3; assert sqlite3.sqlite_version == '3.54.1'; assert hasattr(sqlite3.Connection, 'setconfig') and hasattr(sqlite3.Connection, 'getconfig')"
 
-ARG ANVIL_SERVING_VERSION=2.0.0
+ARG ANVIL_SERVING_VERSION=2.0.1
 LABEL org.opencontainers.image.title="anvil-serving" \
       org.opencontainers.image.version="${ANVIL_SERVING_VERSION}"
 

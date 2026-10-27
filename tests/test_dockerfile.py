@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pathlib
 import re
+import tomllib
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCKERFILE = REPO_ROOT / "Dockerfile"
@@ -18,6 +19,11 @@ def _text() -> str:
 
 def test_dockerfile_exists_at_repo_root():
     assert DOCKERFILE.is_file(), "Dockerfile must exist at repo root"
+
+
+def test_dockerfile_default_version_matches_package():
+    version = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
+    assert re.search(r"^ARG ANVIL_SERVING_VERSION=" + re.escape(version) + r"$", _text(), re.MULTILINE)
 
 
 def test_dockerfile_uses_pinned_slim_python_313_runtime():
