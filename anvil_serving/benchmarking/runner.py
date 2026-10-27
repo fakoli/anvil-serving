@@ -192,6 +192,9 @@ def result_timing(result, fallback_index=None):
         ),
         "finish_reasons": _bounded_finish_reasons(result.get("finish_reasons")),
     }
+    for field in ("case_label", "total_tokens", "max_tokens", "native_input_tokens", "native_usage_parity"):
+        if field in result:
+            row[field] = result[field]
     return row
 
 

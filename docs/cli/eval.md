@@ -196,6 +196,33 @@ without `--top-p`, no `top_p` field is sent. Artifacts retain requested,
 effective, and sent sampler values. Comparison and recipe reporting bind those
 values, so runs with different or unrecorded sampling are not comparable.
 
+For a mixed request population, `--request-plan PATH` selects native-token
+calibration instead of estimated `--ctx-tokens`. The versioned JSON contains
+only a tokenizer adapter and ordered request rows; `total_tokens` includes the
+input and `max_tokens` generation reserve. For example:
+
+```json
+{"schema":"anvil-serving.capacity-plan/v1","tokenizer_api":"llamacpp-chat","requests":[
+  {"label":"anchor","total_tokens":327680,"max_tokens":65536},
+  {"label":"peer","total_tokens":32768,"max_tokens":16384},
+  {"label":"peer","total_tokens":32768,"max_tokens":16384},
+  {"label":"peer","total_tokens":32768,"max_tokens":16384}
+]}
+```
+
+Use `--request-plan plan.json --max-model-len 327680 --margin 0 --concurrency 4 --output capacity.json`
+with the same sampling, canary and controlled-output flags on each comparison
+arm. `tokenizer_api` also accepts `vllm-chat`. The default margin is 1024
+and is deducted from each input target. Plan mode rejects `--requests`,
+`--burst`, `--ctx-tokens` and `--max-tokens`; its request rows own those
+values. Each actual prompt is calibrated via the native chat token endpoint,
+and generation usage must match the calibrated input and respect the declared
+window and reserve. Missing or mismatched usage fails the request. Calibration
+is bounded to eight count calls per request and no transport retry; a native
+count is not proof of scheduler overlap. Calibration completes for every request before dispatch; request timings, capacity
+wall time and aggregate throughput exclude it. The durable
+journal retains each result or failure; it does not record per-token events.
+
 The capacity artifact records the requested context distribution, the sampling
 seed, engine/hardware target, completed and failed requests, sanitized failure
 classes, and how output tokens were counted. Measurement protocol `capacity-v3`

@@ -37,6 +37,7 @@ from .limits import (
     MAX_EVAL_REPETITIONS as _MAX_EVAL_REPETITIONS,
     MAX_TOTAL_CAPACITY_PROMPT_TOKENS as _MAX_TOTAL_CAPACITY_PROMPT_TOKENS,
 )
+from .capacity_plan import calibrate as calibrate_capacity, load_plan as load_capacity_plan
 from .recipes import emit_recipe
 from .requests import (
     DEFAULT_CTX_MARGIN,
@@ -156,6 +157,7 @@ def main(
     recipe.add_argument("--registry", help="serve-recipe registry used with --recipe")
     ap.add_argument("--api-key-env", default=None,
                     help="read the bearer token from this environment variable")
+    ap.add_argument("--request-plan", help=help_for("versioned mixed capacity request plan with native token calibration", "capacity"))
     ap.add_argument("--requests", type=int, default=60,
                     help=help_for("number of requests (1..10000; default %(default)s)", "capacity"))
     ap.add_argument("--concurrency", type=int, default=20,
@@ -326,6 +328,8 @@ def main(
         help="validate and print the resolved workload without sending requests or writing",
     )
     a = ap.parse_args(argv)
+    if a.request_plan and workload != "capacity":
+        ap.error("--request-plan requires capacity")
     if workload == "quality":
         a.bakeoff = True
     elif workload == "capacity":
@@ -479,7 +483,7 @@ def main(
     ):
         if value is not None and (not math.isfinite(value) or value < 0):
             ap.error("%s must be a finite, non-negative number" % flag)
-    if a.max_model_len and a.max_model_len <= a.max_tokens + a.margin:
+    if not a.request_plan and a.max_model_len and a.max_model_len <= a.max_tokens + a.margin:
         ap.error("--max-model-len must exceed --max-tokens plus --margin")
 
     # Dry-run plans are an operator contract, not just a request-count preview.
@@ -609,6 +613,21 @@ def main(
         if a.prompt_cache_mode == "unique"
         else None
     )
+    request_plan = None
+    if a.request_plan:
+        if not a.json_out:
+            ap.error("--request-plan requires --output for its durable journal")
+        if not a.base_url.rstrip("/").endswith("/v1"):
+            ap.error("--request-plan requires a /v1 base URL")
+        if workload != "capacity" or any(arg.split("=", 1)[0] in ("--requests", "--burst", "--ctx-tokens", "--max-tokens") for arg in argv):
+            ap.error("--request-plan cannot be combined with requests, burst, ctx-tokens or max-tokens")
+        try:
+            request_plan = load_capacity_plan(a.request_plan, a.max_model_len, a.margin)
+            if a.request_canaries and any(row["max_tokens"] < 16 for row in request_plan["requests"]):
+                raise ValueError("request canaries require a reserve of at least 16")
+        except (OSError, ValueError) as exc:
+            ap.error("--request-plan: %s" % exc)
+
     if a.dry_run:
         print(json.dumps({
             "schema": "anvil-serving.eval-plan/v1",
@@ -622,11 +641,11 @@ def main(
                 "manifest": a.manifest,
             },
             "capacity": {
-                "requests": a.burst or a.requests,
+                "requests": len(request_plan["requests"]) if request_plan else a.burst or a.requests,
                 "concurrency": a.burst or a.concurrency,
                 "context_tokens": a.ctx_tokens or "measured-distribution",
                 "context_seed": a.seed,
-                "max_tokens": a.max_tokens,
+                "max_tokens": None if request_plan else a.max_tokens,
                 "response_words": a.response_words,
                 "prompt_cache_mode": a.prompt_cache_mode,
                 "unique_prefix_namespace": unique_prefix_namespace,
@@ -637,6 +656,7 @@ def main(
                 "configuration_fingerprint": a.configuration_fingerprint,
                 "timeout_seconds": a.timeout,
             },
+            **({"request_plan": request_plan} if request_plan else {}),
             "thinking": planned_thinking,
             "sampling": planned_sampling,
             "output": a.json_out,
@@ -649,7 +669,7 @@ def main(
         a.base_url, a.model, api_key
     )
     try:
-        cap = ctx_cap(max_model_len, a.max_tokens, a.margin)
+        cap = None if request_plan else ctx_cap(max_model_len, a.max_tokens, a.margin)
     except ValueError as exc:
         ap.error(str(exc))
     ctk, reasoning_effort, thinking = resolve_thinking_settings(a)
@@ -657,9 +677,9 @@ def main(
     sampling = resolve_sampling_settings(a)
     sampling_kwargs = _request_sampling_kwargs(sampling)
 
-    n = a.burst if a.burst else a.requests
+    n = len(request_plan["requests"]) if request_plan else a.burst if a.burst else a.requests
     conc = a.burst if a.burst else a.concurrency
-    planned_context = a.ctx_tokens or min(cap or 262144, 262144)
+    planned_context = max((r["total_tokens"] - r["max_tokens"] for r in request_plan["requests"]), default=0) if request_plan else a.ctx_tokens or min(cap or 262144, 262144)
     if n * planned_context > _MAX_TOTAL_CAPACITY_PROMPT_TOKENS:
         ap.error(
             "capacity workload exceeds %d aggregate prompt tokens; reduce "
@@ -672,10 +692,10 @@ def main(
         else ""
     )
     rng = random.Random(a.seed)
-    planned_contexts = [
+    planned_contexts = ([r["total_tokens"] - r["max_tokens"] - a.margin for r in request_plan["requests"]] if request_plan else [
         clamp_ctx(a.ctx_tokens or sample_ctx(rng.random()), cap)
         for _ in range(n)
-    ]
+    ])
     canaries = [f"ANVIL_REQ_{a.seed}_{i:05d}" for i in range(n)]
     client_lock = threading.Lock()
     client_active = 0
@@ -686,6 +706,8 @@ def main(
         ctx = planned_contexts[i]
         request_started = time.perf_counter()
         result = None
+        native_count = None
+        case = request_plan["requests"][i] if request_plan else None
 
         def failed(exc, failure_class):
             message = str(exc) or "<empty exception message>"
@@ -700,6 +722,8 @@ def main(
                 "performance_eligible": False,
                 "elapsed_ms": (time.perf_counter() - request_started) * 1000.0,
             }
+            if case is not None:
+                failure.update(case_label=case["label"], total_tokens=case["total_tokens"], max_tokens=case["max_tokens"], native_input_tokens=native_count)
             if isinstance(result, dict):
                 safe_result = {
                     **result,
@@ -748,25 +772,18 @@ def main(
             return {"failure": failure}
 
         try:
-            prompt = make_prompt(
-                shared,
-                ctx,
-                i,
-                max_prompt_tokens=cap,
-                marker=canaries[i] if a.request_canaries else None,
-                response_words=a.response_words,
-                unique_prefix=(
-                    f"seed={a.seed} index={i:05d}"
-                    if a.prompt_cache_mode == "unique"
-                    else False
-                ),
-            )
+            if case is not None:
+                prompt, native_count = prepared[i]
+            else:
+                prompt = make_prompt(shared, ctx, i, max_prompt_tokens=cap,
+                    marker=canaries[i] if a.request_canaries else None, response_words=a.response_words,
+                    unique_prefix=f"seed={a.seed} index={i:05d}" if a.prompt_cache_mode == "unique" else False)
             with client_lock:
                 client_active += 1
                 client_peak = max(client_peak, client_active)
             try:
                 result = stream_request(
-                    a.base_url, a.model, prompt, api_key, a.max_tokens,
+                    a.base_url, a.model, prompt, api_key, case["max_tokens"] if case is not None else a.max_tokens,
                     timeout=a.timeout, **control_kwargs, **sampling_kwargs,
                 )
             finally:
@@ -780,6 +797,18 @@ def main(
             "request_index": i,
             "planned_context_tokens": ctx,
         }
+        if case is not None:
+            usage = result.get("usage") or {}
+            actual = usage.get("prompt_tokens")
+            completion = usage.get("completion_tokens")
+            total_usage = usage.get("total_tokens")
+            if (total_usage is not None and (type(total_usage) is not int or type(actual) is not int or type(completion) is not int or total_usage != actual + completion)):
+                return failed(ValueError("inconsistent total token usage"), "native_usage_mismatch")
+            if (type(actual) is not int or actual != native_count or type(completion) is not int or completion < 0
+                    or completion > case["max_tokens"] or actual + completion > case["total_tokens"]):
+                return failed(ValueError("native count or request window mismatch"), "native_usage_mismatch")
+            result.update(case_label=case["label"], total_tokens=case["total_tokens"],
+                          max_tokens=case["max_tokens"], native_input_tokens=native_count, native_usage_parity=True)
         try:
             validate_stream_result(result)
         except Exception as exc:
@@ -816,13 +845,13 @@ def main(
     print(_console_safe(
         f"BENCH {a.base_url} model={a.model}  n={n} concurrency={conc} "
         f"{'BURST(shared-prefix)' if a.burst else 'mixed'} "
-        f"max_tokens={a.max_tokens} cache={a.prompt_cache_mode} "
+        f"max_tokens={'per-request' if request_plan else a.max_tokens} cache={a.prompt_cache_mode} "
         f"canaries={bool(a.request_canaries)} response_words={a.response_words}"
         f"{capnote}{thinknote}"
     ))
     started_at_unix_ns = time.time_ns()
     started_at = started_at_unix_ns / 1_000_000_000
-    t0 = time.perf_counter()
+    prepared = {}
     results = []
     failures = []
     journal_path = a.json_out + ".journal.jsonl" if a.json_out else None
@@ -850,7 +879,8 @@ def main(
         "planned_context_tokens": planned_contexts,
         "context_seed": a.seed,
         "max_context_tokens": max_model_len,
-        "max_tokens": a.max_tokens,
+        "max_tokens": None if request_plan else a.max_tokens,
+        **({"request_plan": request_plan} if request_plan else {}),
         "timeout_seconds": a.timeout,
         "response_words": a.response_words,
         "prompt_cache_mode": a.prompt_cache_mode,
@@ -878,6 +908,28 @@ def main(
         write_journal(journal, mode="x")
     except FileExistsError:
         ap.error("capacity journal already exists; choose a new --output path")
+    if request_plan:
+        for index, case in enumerate(request_plan["requests"]):
+            try:
+                prompt, count = calibrate_capacity(request_plan, case, base_url=a.base_url, model=a.model, key=api_key,
+                    timeout=a.timeout, shared=shared, index=index, marker=canaries[index] if a.request_canaries else None,
+                    response_words=a.response_words,
+                    unique_prefix=f"seed={a.seed} index={index:05d}" if a.prompt_cache_mode == "unique" else False,
+                    chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
+                    temperature=sampling["temperature"]["effective_request"], top_p=sampling["top_p"]["effective_request"],
+                    margin=a.margin)
+                prepared[index] = (prompt, count)
+                write_journal({"record_type": "calibration", "request_index": index,
+                    "case_label": case["label"], "native_input_tokens": count})
+            except Exception as exc:
+                message = str(exc)[:2048]
+                if api_key:
+                    message = message.replace(api_key, "[REDACTED]")
+                write_journal({"record_type": "calibration_failure", "request_index": index,
+                    "case_label": case["label"], "error_type": type(exc).__name__, "error_message": message})
+                print("capacity calibration failed for request %d: %s" % (index, message), file=sys.stderr)
+                return 1
+    t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=conc) as ex:
         # Each worker builds at most one prompt, so memory scales with
         # concurrency rather than request count.
@@ -1048,7 +1100,7 @@ def main(
         "context_seed": a.seed,
         "context_distribution": context_distribution,
         "max_context_tokens": max_model_len,
-        "max_tokens": a.max_tokens,
+        "max_tokens": None if request_plan else a.max_tokens,
         "response_words": a.response_words,
         "prompt_cache_mode": a.prompt_cache_mode,
         "unique_prefix_namespace": unique_prefix_namespace,
@@ -1167,6 +1219,10 @@ def main(
         print("prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens")
     print("-"*60)
     print("Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.")
+    if request_plan:
+        summary["request_plan"] = request_plan
+        summary["timing_methodology"]["wall_clock_scope"] = "excludes native prompt calibration, which completes before request dispatch"
+        summary["native_calibration_margin_tokens"] = a.margin
     if a.json_out:
         write_journal({
             "record_type": "completion",
