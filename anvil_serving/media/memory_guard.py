@@ -19,6 +19,7 @@ import time
 import tomllib
 
 from ..paths import config_path
+from . import worker_runtime
 
 
 DEFAULTS = {
@@ -38,7 +39,7 @@ def load_policy(path: str | Path) -> dict:
     raw = source.read_bytes()
     values = tomllib.loads(raw.decode("utf-8"))
     if (values.get("schema") != "anvil-serving.media-memory-guard/v1"
-            or set(values) - {"schema", "lease_path", *DEFAULTS}
+            or set(values) - {"schema", "lease_path", "admission_seconds", "admission_margin_seconds", *DEFAULTS}
             or not isinstance(values.get("lease_path"), str)
             or not 1 <= len(values["lease_path"]) <= 4096):
         raise ValueError("invalid memory guard configuration")
@@ -50,8 +51,16 @@ def load_policy(path: str | Path) -> dict:
             or not 2 <= policy["max_age_seconds"] <= 30
             or not 30 <= policy["timeout_seconds"] <= 7200):
         raise ValueError("invalid memory guard threshold order or time limits")
-    # A code/policy update must restart the host publisher before a worker can start.
-    policy["sha256"] = hashlib.sha256(raw + Path(__file__).read_bytes()).hexdigest()
+    if "admission_seconds" in policy or "admission_margin_seconds" in policy:
+        reservation, margin = policy.get("admission_seconds"), policy.get("admission_margin_seconds")
+        if (type(reservation) not in (int, float) or not math.isfinite(reservation) or reservation <= 0
+                or type(margin) not in (int, float) or not math.isfinite(margin) or not 0 <= margin <= 300
+                or reservation + margin >= policy["timeout_seconds"]):
+            raise ValueError("worker reservation plus margin must fit inside its lifetime")
+    # Both enforcement modules and policy must match the restarted host publisher.
+    policy["sha256"] = hashlib.sha256(
+        raw + Path(__file__).read_bytes() + Path(worker_runtime.__file__).read_bytes()
+    ).hexdigest()
     return policy
 
 
@@ -162,6 +171,7 @@ def run_host(policy: dict) -> int:
         kernel.CloseHandle(handle)
         return 0
     low_since = None
+    replace_denied = False
     stop = Path(policy["lease_path"]).with_suffix(".stop")
     try:
         while not stop.exists():
@@ -180,7 +190,14 @@ def run_host(policy: dict) -> int:
                              allow=not reason, reason=reason)
             except (OSError, ValueError):
                 value.update(allow=False, reason="host memory sampling failed")
-            write_signal(policy["lease_path"], value)
+            try:
+                write_signal(policy["lease_path"], value)
+                replace_denied = False
+            except PermissionError:
+                # A reader may outlast bounded replace retries; the old signal still expires.
+                if not replace_denied:
+                    print("[media-memory-guard] signal replacement denied; retrying next sample", file=sys.stderr, flush=True)
+                replace_denied = True
             time.sleep(1)
         return 0
     finally:
@@ -202,12 +219,12 @@ def supervise(policy: dict, command: list[str], *, poll_seconds: float = 1) -> i
     if reason:
         print("[media-memory-guard] " + reason, file=sys.stderr, flush=True)
         return 74
-    child = subprocess.Popen(command, start_new_session=os.name != "nt")
-    started = time.monotonic()
+    environment, deadline = worker_runtime.child_environment(policy)
+    child = subprocess.Popen(command, start_new_session=os.name != "nt", env=environment)
     try:
         while child.poll() is None:
             reason = signal_reason(policy)
-            if time.monotonic() - started > policy["timeout_seconds"]:
+            if time.monotonic_ns() >= deadline:
                 reason = "worker runtime deadline reached"
             if reason:
                 print("[media-memory-guard] " + reason, file=sys.stderr, flush=True)

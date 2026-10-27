@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import secrets
 import urllib.error
@@ -14,7 +15,8 @@ from typing import Any, Callable, Mapping
 from ..transports import _urlopen_no_proxy_no_redirect
 from .backends import BackendOutput, BackendStatus
 from .contracts import RenderedWorkflow, WorkflowDescriptor
-from .errors import MediaError
+from .errors import MediaError, MediaSubmissionRefused
+from .worker_runtime import FEATURE as RUNTIME_FEATURE, REFUSAL_SCHEMA, SCHEMA as RUNTIME_SCHEMA
 
 
 MAX_METADATA_BYTES = 2 * 1024 * 1024
@@ -24,6 +26,74 @@ MAX_UPLOAD_BYTES = 32 * 1024 * 1024
 _PROMPT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 _UPLOAD_NAME_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
 _BACKEND_UNAVAILABLE_HTTP_STATUSES = frozenset({502, 503, 504})
+_RUNTIME_REASONS = frozenset({"ready", "worker_budget_insufficient", "worker_busy", "worker_budget_unknown"})
+_REFUSAL_REASONS = (_RUNTIME_REASONS - {"ready"}) | {"worker_reservation_invalid", "worker_instance_changed"}
+
+
+def _runtime_reservation(stats: Any, workflow: WorkflowDescriptor) -> dict[str, Any] | None:
+    system = stats.get("system") if isinstance(stats, Mapping) else None
+    if isinstance(system, Mapping) and "anvil_runtime" not in system and RUNTIME_FEATURE not in workflow.required_features:
+        return None
+    runtime = system.get("anvil_runtime") if isinstance(system, Mapping) else None
+    invalid = MediaSubmissionRefused("worker_budget_unknown", "worker runtime reservation is unavailable or invalid", status=503)
+    if not isinstance(runtime, Mapping) or set(runtime) != {
+        "schema", "runId", "totalSeconds", "reservationSeconds", "marginSeconds",
+        "remainingSeconds", "acceptingNewWork", "reason",
+    }:
+        raise invalid
+    if (runtime["schema"] != RUNTIME_SCHEMA or not isinstance(runtime["runId"], str)
+            or not re.fullmatch(r"[a-f0-9]{32}", runtime["runId"])
+            or type(runtime["acceptingNewWork"]) is not bool
+            or not isinstance(runtime["reason"], str) or runtime["reason"] not in _RUNTIME_REASONS):
+        raise invalid
+    for field, minimum, maximum in (
+        ("totalSeconds", 0, 7200), ("reservationSeconds", 0, 7200),
+        ("marginSeconds", 0, 300), ("remainingSeconds", 0, 7200),
+    ):
+        value = runtime[field]
+        if not (type(value) in (int, float) and minimum <= value <= maximum and math.isfinite(value)):
+            raise invalid
+    total, reservation, margin = (runtime[name] for name in ("totalSeconds", "reservationSeconds", "marginSeconds"))
+    if (total <= 0 or reservation <= 0 or reservation + margin >= total
+            or runtime["remainingSeconds"] > total
+            or runtime["acceptingNewWork"] != (runtime["reason"] == "ready")):
+        raise invalid
+    if workflow.timeout_seconds > reservation:
+        raise MediaSubmissionRefused("worker_reservation_invalid", "workflow timeout exceeds the worker reservation", status=409)
+    if not runtime["acceptingNewWork"] or runtime["remainingSeconds"] <= reservation + margin:
+        reason = runtime["reason"] if runtime["reason"] != "ready" else "worker_budget_insufficient"
+        raise MediaSubmissionRefused(reason, "worker is not accepting new media work", status=409)
+    return {"runId": runtime["runId"], "requiredSeconds": workflow.timeout_seconds}
+
+
+def _worker_refusal(raw: bytes, payload: Mapping[str, Any] | None) -> str | None:
+    """Recognize only the exact correlated native pre-enqueue refusal."""
+    if len(raw) > MAX_ERROR_BYTES or not isinstance(payload, Mapping):
+        return None
+    extra = payload.get("extra_data")
+    runtime = extra.get("anvil_runtime") if isinstance(extra, Mapping) else None
+    run_id = runtime.get("runId") if isinstance(runtime, Mapping) else None
+    client_id = payload.get("client_id")
+    if (not isinstance(run_id, str) or not re.fullmatch(r"[a-f0-9]{32}", run_id)
+            or not isinstance(client_id, str) or not re.fullmatch(r"anvil-[A-Za-z0-9_-]{1,128}", client_id)):
+        return None
+
+    def unique_object(pairs):
+        value = dict(pairs)
+        if len(value) != len(pairs):
+            raise ValueError("duplicate refusal field")
+        return value
+
+    try:
+        value = json.loads(raw.decode("utf-8"), object_pairs_hook=unique_object)
+    except (UnicodeError, ValueError, RecursionError):
+        return None
+    if (isinstance(value, dict) and set(value) == {"schema", "accepted", "reason", "requestRunId", "clientId"}
+            and value["schema"] == REFUSAL_SCHEMA and value["accepted"] is False
+            and isinstance(value["reason"], str) and value["reason"] in _REFUSAL_REASONS
+            and value["requestRunId"] == run_id and value["clientId"] == client_id):
+        return value["reason"]
+    return None
 
 
 class _CanonicalBaseURL(str):
@@ -156,6 +226,10 @@ class ComfyUIClient:
                 raw = exc.read(MAX_ERROR_BYTES + 1)
             except Exception:
                 raw = b""
+            if exc.code == 409 and method == "POST" and path == "/prompt":
+                reason = _worker_refusal(raw, payload)
+                if reason is not None:
+                    raise MediaSubmissionRefused(reason, "worker refused media work before enqueue", status=409) from exc
             raise MediaError(
                 "backend_http_error",
                 f"ComfyUI returned HTTP {exc.code}",
@@ -195,6 +269,11 @@ class ComfyUIClient:
             return WorkflowCompatibility(workflow.id, workflow.version, False, False, reasons=("not_ready",))
         features_raw = self.request_json("GET", "/features")
         features = _bounded_strings(features_raw, label="feature")
+        runtime_reasons = ()
+        try:
+            _runtime_reservation(stats, workflow)
+        except MediaSubmissionRefused as exc:
+            runtime_reasons = (exc.code,)
         nodes: set[str] = set()
         # A current ComfyUI installation with curated node packs can return an
         # /object_info document far larger than the bounded metadata policy.
@@ -222,7 +301,7 @@ class ComfyUIClient:
         missing_features = tuple(sorted(set(workflow.required_features) - features))
         missing_nodes = tuple(sorted(set(workflow.required_nodes) - nodes))
         missing_models = tuple(sorted(set(workflow.required_models) - models))
-        reasons = tuple(
+        reasons = runtime_reasons + tuple(
             reason
             for condition, reason in (
                 (missing_features, "missing_feature"),
@@ -245,10 +324,19 @@ class ComfyUIClient:
 
     def submit(self, workflow: RenderedWorkflow, *, job_id: str) -> str:
         client_id = "anvil-" + job_id
+        try:
+            stats = self.request_json("GET", "/system_stats")
+        except MediaError as exc:
+            # No /prompt request has been sent; even a failed status read is definite.
+            raise MediaSubmissionRefused(exc.code, exc.message, status=exc.status, details=exc.details) from exc
+        runtime = _runtime_reservation(stats, workflow.descriptor)
+        payload = {"prompt": workflow.graph, "client_id": client_id}
+        if runtime is not None:
+            payload["extra_data"] = {"anvil_runtime": runtime}
         response = self.request_json(
             "POST",
             "/prompt",
-            {"prompt": workflow.graph, "client_id": client_id},
+            payload,
             max_bytes=64 * 1024,
         )
         prompt_id = response.get("prompt_id") if isinstance(response, Mapping) else None

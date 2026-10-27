@@ -42,6 +42,8 @@ def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():
     seen = {}
 
     def opener(request, timeout):
+        if request.full_url.endswith("/system_stats"):
+            return Response({"system": {}})
         seen["url"] = request.full_url
         seen["body"] = json.loads(request.data)
         return Response({"prompt_id": "prompt_123"})

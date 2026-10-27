@@ -374,6 +374,9 @@ commit counters; it does not load a model or operate other services. Its global
 mutex prevents duplicate publishers across login sessions. The dedicated
 signal directory has private ACLs, with existing explicit permissions reset.
 Its policy and implementation digest must match the worker's expectations.
+The digest includes both guard and worker-runtime enforcement modules. After
+bounded Windows file-replacement retries fail, the publisher retries a fresh
+sample on its next iteration; the previous signal still expires normally.
 
 The Linux worker's fixed entrypoint uses `memory-guard supervise --confirm`
 with its declared ComfyUI command after `--`. Mount the signal directory
@@ -382,6 +385,31 @@ worker. Unsafe, missing, invalid or stale signals prevent startup or immediately
 terminate only the supervisor's own child process group. The lifetime limit is
 for the worker container, including idle time, rather than an individual shot.
 Normal job-owned teardown remains the lifecycle owner's responsibility.
+
+A reviewed worker image can declare `anvil.media.runtime-reservation.v1`.
+Its operator policy also sets `admission_seconds` and
+`admission_margin_seconds`; their sum must be less than `timeout_seconds`.
+For example, a7200-second lifetime may reserve2700seconds plus30seconds of
+margin for each admitted job. Choose the reservation from the allowed recipes'
+qualified envelope. This reserves time; it does not guarantee a stalled render
+will finish or turn the descriptor timeout into a hard per-job deadline.
+
+The supervisor sets one fixed monotonic deadline before starting the child.
+The image must wire the supplied runtime helper into native queue insertion
+under its existing lock, advertise the feature, and expose bounded
+`system.anvil_runtime` status. Installing the helper alone does not enforce
+native queue admission. Status is a receipt-time snapshot; the final queue
+check is authoritative. That check refuses unknown/changed instances, a busy
+queue, insufficient remaining time or a requested workflow timeout above the
+approved reservation. Requests never reset the worker lifetime.
+
+Require the feature in descriptors using that contract. The adapter checks it
+again after reference uploads and sends the expected worker instance. Only an
+exact correlated pre-enqueue refusal becomes an unambiguous failed job; a lost
+or malformed submission response retains existing durable recovery without a
+second submission. History, status, cancellation and output retrieval remain
+usable when new admission closes. Restarting an expired worker still requires
+the existing owner-controlled lifecycle procedure.
 
 `install` and `uninstall` preview unless `--confirm` is supplied. To update a
 guard policy or implementation, run `uninstall --confirm`, allow the publisher

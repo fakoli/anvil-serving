@@ -142,6 +142,40 @@ def test_policy_rejects_unknown_fields_and_invalid_threshold_order(tmp_path):
             load_policy(path)
 
 
+@pytest.mark.parametrize("extra", [
+    'admission_seconds = 2700',
+    'admission_seconds = true\nadmission_margin_seconds = 0',
+    'admission_seconds = 2699\nadmission_margin_seconds = 1',
+    'admission_seconds = 600\nadmission_margin_seconds = -1',
+])
+def test_admission_policy_requires_bounded_pair_inside_lifetime(tmp_path, extra):
+    from anvil_serving.media.memory_guard import load_policy
+    path = tmp_path / "guard.toml"
+    path.write_text('schema = "anvil-serving.media-memory-guard/v1"\nlease_path = "x"\n' + extra)
+    with pytest.raises(ValueError, match="reservation"):
+        load_policy(path)
+
+
+def test_supervisor_anchors_deadline_before_spawn_and_overrides_inherited_metadata(tmp_path, monkeypatch):
+    from anvil_serving.media import memory_guard
+    settings = policy(tmp_path)
+    write_lease(settings)
+    settings.update(admission_seconds=600, admission_margin_seconds=30)
+    clock, children = [10**12], []
+    monkeypatch.setattr(memory_guard.time, "monotonic_ns", lambda: clock[0])
+    monkeypatch.setenv(memory_guard.worker_runtime.ENVIRONMENT, "untrusted inherited metadata")
+    def spawn(_command, **kwargs):
+        value = json.loads(kwargs["env"][memory_guard.worker_runtime.ENVIRONMENT])
+        assert value["startedNs"] == clock[0]
+        clock[0] = value["deadlineNs"]
+        child = SimpleNamespace(pid=123, poll=lambda: None, kill=lambda: children.append("killed"), wait=lambda **_: 0)
+        return child
+    monkeypatch.setattr(subprocess, "Popen", spawn)
+    monkeypatch.setattr(memory_guard.os, "killpg", lambda *_: children.append("killed"), raising=False)
+    assert memory_guard.supervise(settings, [sys.executable, "-c", "pass"]) == 74
+    assert children == ["killed"]
+
+
 def test_install_preview_does_not_touch_registry_or_spawn(tmp_path, monkeypatch, capsys):
     from anvil_serving.media import memory_guard
     settings = policy(tmp_path)
@@ -168,6 +202,33 @@ def test_guard_mutex_is_global_and_duplicate_does_not_replace_signal(tmp_path, m
     assert memory_guard.run_host(settings) == 0
     assert names[0].startswith("Global\\AnvilMediaMemoryGuard-")
     assert Path(settings["lease_path"]).read_bytes() == before
+
+
+def test_publisher_survives_bounded_replace_denial_without_refreshing_old_signal(tmp_path, monkeypatch, capsys):
+    from anvil_serving.media import memory_guard
+    settings = policy(tmp_path)
+    write_lease(settings)
+    previous = Path(settings["lease_path"]).read_bytes()
+    original_writer, attempts = memory_guard.write_signal, []
+    kernel = SimpleNamespace(CreateMutexW=lambda *_: 123, CloseHandle=lambda *_: None)
+    monkeypatch.setattr(memory_guard.sys, "platform", "win32")
+    monkeypatch.setattr(memory_guard.ctypes, "WinDLL", lambda *_a, **_k: kernel, raising=False)
+    monkeypatch.setattr(memory_guard.ctypes, "set_last_error", lambda _: None, raising=False)
+    monkeypatch.setattr(memory_guard.ctypes, "get_last_error", lambda: 0, raising=False)
+    monkeypatch.setattr(memory_guard, "windows_memory", lambda: (20, 30))
+    monkeypatch.setattr(memory_guard.time, "sleep", lambda _: None)
+    def write(path, value):
+        attempts.append(value)
+        if len(attempts) < 3:
+            assert Path(path).read_bytes() == previous
+            raise PermissionError("reader still holds file")
+        original_writer(path, value)
+        Path(path).with_suffix(".stop").touch()
+    monkeypatch.setattr(memory_guard, "write_signal", write)
+    assert memory_guard.run_host(settings) == 0
+    assert len(attempts) == 4 and attempts[2]["allow"]
+    assert attempts[3]["reason"] == "guard stopped"
+    assert capsys.readouterr().err.count("signal replacement denied") == 1
 
 
 @pytest.mark.parametrize("stopped_signal", [False, True])
