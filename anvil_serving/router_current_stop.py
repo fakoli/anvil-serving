@@ -14,7 +14,7 @@ from .router.container_owner import digest, docker_identity, hex_id, require, va
 from .router.maintenance import authorization, _current_observation, _current_successor
 
 
-def completed_receipt(path, stopped):
+def completed_receipt(path, stopped=None):
     receipt = strict_json(read_private_auth_file(path, max_bytes=32768))
     require(type(receipt) is dict and set(receipt) == {'schema', 'authorization', 'preview',
         'acknowledged_at', 'stopped', 'death_sha256', 'local_frontier', 'remote_memory_terminal',
@@ -37,15 +37,17 @@ def completed_receipt(path, stopped):
     old = Path(preview['compose_path'])
     require(old.is_absolute() and '..' not in old.parts)
     hex_id(preview['compose_sha256'])
-    docker_identity(stopped, stopped=True)
-    require(receipt['stopped'] == stopped
-        and all(stopped[k] == v for k, v in docker_identity(preview['incarnation']).items()))
+    recorded_stop = docker_identity(receipt['stopped'], stopped=True)
+    if stopped is not None:
+        docker_identity(stopped, stopped=True)
+        require(recorded_stop == stopped)
+    require(all(recorded_stop[k] == v for k, v in docker_identity(preview['incarnation']).items()))
     _current_observation(preview['native'], auth, preview['incarnation'], at=receipt['acknowledged_at'])
     return receipt
 
 
 def _snapshot(path, compose, service, container, stopped, *, _run, env_file, execution_env,
-              rollback_to_predecessor=False):
+              rollback_to_predecessor=False, running_incarnation=None):
     receipt = completed_receipt(path, stopped)
     preview, auth = receipt['preview'], receipt['authorization']
     successor = auth['successor']
@@ -73,9 +75,22 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
                                          (compose, expected_compose_sha256)):
         require(hashlib.sha256(read_private_auth_file(target_path, max_bytes=2*1024**2)).hexdigest()
                 == expected_digest)
+    def read(argv):
+        result = _run(argv, capture_output=True, text=True, timeout=10, env=execution_env)
+        require(result.returncode == 0 and len(result.stdout or '') <= lifecycle.MAX_COMPOSE_FILE_BYTES)
+        return result.stdout or ''
     candidate = _current_successor(target, preview['incarnation'], _run=_run)
-    old = lifecycle._offline_compose_roster(preview['compose_path'], service, container, _run=_run,
-        env_file=env_file, execution_env=execution_env, _metadata_only=True, _owner_state_only=True)
+    if running_incarnation is None:
+        old = lifecycle._offline_compose_roster(preview['compose_path'], service, container, _run=_run,
+            env_file=env_file, execution_env=execution_env, _metadata_only=True, _owner_state_only=True)
+    else:
+        prior_target = {'compose': preview['compose_path'], 'image_id': stopped['image_id'],
+                        'configuration_revision': auth['expected_configuration_revision']}
+        old_rendered = _current_successor(prior_target, preview['incarnation'], _run=_run)
+        old_mounts = old_rendered['services'][service]['volumes']
+        old_config = next(m for m in old_mounts if m['target'] == lifecycle.DEFAULT_INSTALLED_CONFIG)
+        old_scope = lifecycle._owner_storage_scope(old_rendered, old_mounts, old_config, {}, read)
+        old = {'rendered': old_rendered, 'owner_storage': old_scope}
     require(old['owner_storage']['configuration_revision'] == auth['expected_configuration_revision'])
     if rollback_to_predecessor:
         require(candidate == old['rendered'] and target['image_id'] == stopped['image_id'])
@@ -98,10 +113,6 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
     require(normalized(candidate) == normalized(old['rendered']))
     mounts = selected['volumes']
     config = next(m for m in mounts if m['target'] == lifecycle.DEFAULT_INSTALLED_CONFIG)
-    def read(argv):
-        result = _run(argv, capture_output=True, text=True, timeout=10, env=execution_env)
-        require(result.returncode == 0 and len(result.stdout or '') <= lifecycle.MAX_COMPOSE_FILE_BYTES)
-        return result.stdout or ''
     scope = lifecycle._owner_storage_scope(candidate, mounts, config, {}, read)
     require(scope['configuration_revision'] == target['configuration_revision']
         and all(scope[k] == old['owner_storage'][k] for k in ('sources', 'directories', 'lineages')))
@@ -115,7 +126,16 @@ def _snapshot(path, compose, service, container, stopped, *, _run, env_file, exe
     require(before.router_owner_backend == after.router_owner_backend == 'managed-container'
         and all(getattr(before, k) == getattr(after, k) for k in ('api_keys_path', 'admission_state_path',
             'router_owner_id', 'router_owner_roster', 'usage_domain_id')))
-    require(lifecycle._container_incarnation(container, _run=_run, stopped=True) == stopped)
+    if running_incarnation is None:
+        require(lifecycle._container_incarnation(container, _run=_run, stopped=True) == stopped)
+    else:
+        active = lifecycle._offline_compose_roster(compose, service, container, _run=_run,
+            env_file=env_file, execution_env=execution_env, live_target=True, _owner_state_only=True)
+        require(active['target'] is not None
+            and all(active['target'].get(k) == running_incarnation[k] for k in
+                ('container_id', 'image_id', 'started_at', 'restart_count', 'compose_project', 'compose_service'))
+            and all(active['owner_storage'][k] == scope[k] for k in ('sources', 'directories', 'lineages'))
+            and lifecycle._container_incarnation(container, _run=_run) == running_incarnation)
     return receipt, old, candidate, scope
 
 
@@ -187,3 +207,81 @@ def require_predecessor(path, compose, service, container, stopped, *, _run, env
     require(_snapshot(path, compose, service, container, stopped, _run=_run,
         env_file=env_file, execution_env=execution_env, rollback_to_predecessor=True) == before)
     return receipt
+
+
+def _running_successor_code(receipt, docker):
+    """Return a bounded native readback for an already-started exact successor."""
+    native = receipt['preview']['native']
+    auth = receipt['authorization']
+    old_record = native['record']
+    old_closure = {'schema': 'router-admission/v1', 'owner_id': native['observation']['owner_id'],
+                   'closure': native['observation']['closure']}
+    marker = {'schema': 'router-current-stop-permission/v1', 'authorization': auth,
+              'native_sha256': digest(native)}
+    return ("import json,os;from pathlib import Path;"
+        "from anvil_serving.router.config import load_server_config;"
+        "from anvil_serving.router.keys import KeyStore,_private_json;"
+        "from anvil_serving.router.usage_store import UsageStore;"
+        "from anvil_serving.router.container_owner import binding,closure,digest,live_record,live_writer,location,require,validate;"
+        "from anvil_serving.router_manage import DEFAULT_INSTALLED_CONFIG,_transition_request;"
+        "settings=load_server_config(DEFAULT_INSTALLED_CONFIG);store=KeyStore(settings.api_keys_path);"
+        "usage=UsageStore(store);usage.owner_config=settings\n"
+        "with live_writer(store):\n"
+        f" proposed=live_record(usage,{docker!r})\n"
+        f" prior=validate(_private_json(location(store,{old_record['anchor']['run_id']!r})))\n"
+        f" marker=_private_json(Path(str(store.path)+'.maintenance-current-stops')/({auth['operation_id']!r}+'.json'))\n"
+        f" require(marker=={marker!r} and binding(store)=={native['observation']['store_binding']!r})\n"
+        f" require(prior['phase']=='transferred' and prior['anchor']=={old_record['anchor']!r})\n"
+        f" require(digest(prior['death'])=={receipt['death_sha256']!r} and prior['death']['stopped']=={receipt['stopped']!r})\n"
+        f" require(prior['death']['closure_sha256']==digest({old_closure!r}) and prior['death']['closure_generation']=={native['observation']['closure']['generation']!r} and prior['death']['closure_consumed'] is False)\n"
+        " current=closure(store)['closure']\n"
+        " require(type(current) is dict and current['consumed'] is False)\n"
+        " token=os.environ.get(settings.auth_env or '', '')\n"
+        " require(bool(token))\n"
+        " status=_transition_request('status',scope='router',router_url='http://127.0.0.1:8000',env={'ANVIL_ROUTER_TOKEN':token}).get('result',{})\n"
+        " expected_counts={'chat','purpose','audio','memory','media','internal','delivery','maintenance'}\n"
+        " counts=status.get('counts')\n"
+        " require(status.get('state')=='quiesced' and status.get('durable') is True and status.get('cutover_pending') is False and status.get('generation')==current['generation'] and status.get('configuration_revision')==current['configuration_revision'] and status.get('roster_revision')==current['roster_revision'])\n"
+        " require(type(counts) is dict and set(counts)==expected_counts and all(type(value) is int and value==0 for value in counts.values()))\n"
+        " transfer=prior['transfer']\n"
+        " require(transfer=={'successor_run_id':proposed['anchor']['run_id'],'successor_roster_revision':proposed['anchor']['roster_revision'],'successor_configuration_revision':proposed['anchor']['configuration_revision'],'successor_generation':current['generation']})\n"
+        " require(current['generation']==(prior['death']['closure_generation'] or 0)+1 and current['roster_revision']==proposed['anchor']['roster_revision'] and current['configuration_revision']==proposed['anchor']['configuration_revision'])\n"
+        " path=location(store,proposed['anchor']['run_id'])\n"
+        " existing=validate(_private_json(path)) if os.path.lexists(path) else None\n"
+        " phase='absent' if existing is None else existing['phase']\n"
+        " require(phase in {'absent','live-pending','live'} and (existing is None or existing['anchor']==proposed['anchor']))\n"
+        " print(json.dumps({'ok':True,'phase':phase,'run_id':proposed['anchor']['run_id']}),flush=True)\n")
+
+
+def _verify_running_successor(receipt, incarnation, *, _run, env_file, execution_env,
+                              require_live_anchor=False):
+    code = _running_successor_code(receipt, incarnation)
+    result = _run(['docker', 'exec', incarnation['container_id'], 'python', '-c', code],
+                  capture_output=True, text=True, encoding='utf-8', timeout=15, env=execution_env)
+    require(result.returncode == 0 and len(result.stdout or '') <= 1024)
+    value = strict_json((result.stdout or '').encode())
+    require(type(value) is dict and set(value) == {'ok', 'phase', 'run_id'} and value['ok'] is True
+            and value['phase'] in {'absent', 'live-pending', 'live'}
+            and (not require_live_anchor or value['phase'] == 'live'))
+    from .router.usage_store import _uuid
+    _uuid(value['run_id'])
+    return value
+
+
+def require_running_successor(path, compose, service, container, *, _run, env_file=None,
+                             execution_env=None, require_live_anchor=False):
+    """Validate an already-running exact successor without stopping or recreating it."""
+    receipt = completed_receipt(path)
+    stopped = receipt['stopped']
+    auth = receipt['authorization']
+    require(compose == auth['successor']['compose'] and service == lifecycle.DEFAULT_SERVICE
+            and container == lifecycle.DEFAULT_CONTAINER)
+    before_incarnation = lifecycle._container_incarnation(container, _run=_run)
+    require(before_incarnation['image_id'] == auth['successor']['image_id'])
+    before = _snapshot(path, compose, service, container, stopped, _run=_run,
+        env_file=env_file, execution_env=execution_env, running_incarnation=before_incarnation)
+    proof = _verify_running_successor(receipt, before_incarnation, _run=_run,
+        env_file=env_file, execution_env=execution_env, require_live_anchor=require_live_anchor)
+    require(_snapshot(path, compose, service, container, stopped, _run=_run,
+        env_file=env_file, execution_env=execution_env, running_incarnation=before_incarnation) == before)
+    return {'receipt': receipt, 'incarnation': before_incarnation, **proof}

@@ -14,6 +14,24 @@ All notable changes to this project are documented here. The format is based on
   playback, HEAD and bounded streaming of full files and single byte ranges.
   Reusable MCP credentials remain outside URLs.
 
+## [2.0.2] - 2026-10-27
+
+### Fixed
+
+- Interrupted current-stop recovery can finish the ownership handoff for the
+  exact already-running successor without recreating the router. Recovery
+  validates the protected receipt, closed admission generation, zero local
+  work counts, and unchanged container, image and configuration bindings.
+- Repeating recovery after a completed ownership handoff is read-only.
+  Recreate and rollback requests against a running successor fail closed;
+  reopening admission still requires its separate authorization.
+
+### Upgrade notes
+
+- Install the updated CLI to obtain the recovery command. Rebuild managed
+  router/controller images when updating those installed package versions.
+  This release does not change routes, models or admission policy.
+
 ## [2.0.1] - 2026-10-26
 
 ### Fixed
@@ -2703,7 +2721,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/fakoli/anvil-serving/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/fakoli/anvil-serving/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fakoli/anvil-serving/compare/v1.5.0...v2.0.0
 [1.5.0]: https://github.com/fakoli/anvil-serving/compare/v1.4.0...v1.5.0
