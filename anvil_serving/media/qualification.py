@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .artifacts import ArtifactStore
-from .bundle import DEFAULT_LOCK, inventory as bundle_inventory
+from .bundle import DEFAULT_LOCK, inventory as bundle_inventory, _read_lock, _workflow
 from .comfyui import ComfyUIClient
 from .contracts import JobState, MediaArtifact, TERMINAL_STATES
 from .errors import MediaError
@@ -158,20 +158,16 @@ def _video_metadata(
 
 
 def _model_provenance(
-    lock_path: str | Path,
+    lock: Mapping[str, Any],
     workflow_id: str,
     version: str,
+    *, expected_graph: str,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    try:
-        lock = json.loads(Path(lock_path).read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-        raise MediaError("media_bundle_invalid", "media bundle lock is unavailable or invalid") from exc
-    matches = [
-        item for item in lock.get("workflows", [])
-        if isinstance(item, Mapping) and item.get("id") == workflow_id and item.get("version") == version
-    ]
-    if len(matches) != 1 or not isinstance(lock.get("runtime"), Mapping):
+    workflow = _workflow(lock, workflow_id, version)
+    if not isinstance(lock.get("runtime"), Mapping):
         raise MediaError("media_bundle_invalid", "media bundle provenance is incomplete")
+    if workflow["graph_sha256"] != expected_graph:
+        raise MediaError("media_bundle_invalid", "bundle graph differs from the selected workflow", status=409)
     models = [
         {
             "repository": item["repository"],
@@ -180,7 +176,7 @@ def _model_provenance(
             "bytes": item["size"],
             "sha256": item["sha256"],
         }
-        for item in matches[0]["models"]
+        for item in workflow["models"]
     ]
     return dict(lock["runtime"]), models
 
@@ -197,7 +193,8 @@ def qualify(
     principal: str,
     quality_profile: str | None = None,
     lock_path: str | Path = DEFAULT_LOCK,
-    models_volume: str,
+    models_volume: str | None = None,
+    models_root: str | Path | None = None,
     gpu_index: int = 0,
     poll_seconds: float = 2.0,
     ffprobe: str = "ffprobe",
@@ -216,6 +213,8 @@ def qualify(
     ):
         raise MediaError("media_qualification_invalid", "qualification sampler settings are invalid")
     descriptor = registry.get(workflow_id, version)
+    lock = _read_lock(lock_path)
+    runtime, models = _model_provenance(lock, workflow_id, version, expected_graph=descriptor.graph_digest)
     selected_profile = quality_profile
     if selected_profile == "":
         selected_profile = descriptor.default_quality_profile or None
@@ -228,6 +227,8 @@ def qualify(
         version,
         lock_path=lock_path,
         models_volume=models_volume,
+        models_root=models_root,
+        _lock=lock,
     )
     if not exact_assets["ready"]:
         raise MediaError(
@@ -397,7 +398,6 @@ def qualify(
                     },
                 },
             )
-    runtime, models = _model_provenance(lock_path, workflow_id, version)
     latency = max(0.0, finished - started)
     return {
         "schema": "anvil-serving.media-qualification/v1",

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 
 import pytest
@@ -173,3 +174,52 @@ def test_volume_names_are_fail_closed(tmp_path, volume):
             "image.test", "v1", lock_path=_lock(tmp_path), models_volume=volume,
             runner=lambda *_args, **_kwargs: pytest.fail("Docker was called"),
         )
+
+
+def test_host_inventory_hashes_only_safe_pinned_targets_without_docker_or_writes(tmp_path):
+    lock = _lock(tmp_path)
+    value = json.loads(lock.read_text())
+    model = value["workflows"][0]["models"][0]
+    data = b"pinned model fixture"
+    model.update(size=len(data), sha256=hashlib.sha256(data).hexdigest())
+    lock.write_text(json.dumps(value))
+    root = tmp_path / "models"; target = root / model["target"]
+    target.parent.mkdir(parents=True)
+    def check(**kwargs):
+        return inventory("image.test", "v1", lock_path=lock,
+                         runner=lambda *a, **k: pytest.fail("Docker called"), **kwargs)
+    assert check(models_root=root)["assets"][0]["state"] == "missing"
+    target.write_bytes(data)
+    assert check(models_root=root)["ready"]
+    target.write_bytes(b"wrong")
+    assert check(models_root=root)["assets"][0]["state"] == "mismatch"
+    assert target.read_bytes() == b"wrong"
+    for kwargs in ({}, {"models_root": root, "models_volume": "models"}):
+        with pytest.raises(MediaError, match="exactly one"):
+            check(**kwargs)
+    model["target"] = "../outside.bin"; lock.write_text(json.dumps(value))
+    with pytest.raises(MediaError, match="unsafe"):
+        check(models_root=root)
+
+
+def test_host_inventory_rejects_symlink_escape(tmp_path):
+    lock = _lock(tmp_path); root = tmp_path / "models"; root.mkdir()
+    outside = tmp_path / "outside"; outside.mkdir()
+    try:
+        (root / "diffusion_models").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("test host cannot create directory symlinks")
+    with pytest.raises(MediaError, match="escapes"):
+        inventory("image.test", "v1", lock_path=lock, models_root=root)
+
+
+def test_host_inventory_does_not_hash_wrong_size_or_reopen_supplied_lock(tmp_path, monkeypatch):
+    from anvil_serving.media import bundle
+    lock_path = _lock(tmp_path)
+    lock = bundle._read_lock(lock_path)
+    root = tmp_path / "models"; path = root / "diffusion_models/one.safetensors"
+    path.parent.mkdir(parents=True); path.write_bytes(b"wrong-size")
+    monkeypatch.setattr(bundle.hashlib, "sha256", lambda: pytest.fail("wrong-size file was hashed"))
+    lock_path.write_text("invalid replacement")
+    result = inventory("image.test", "v1", lock_path=lock_path, models_root=root, _lock=lock)
+    assert result["assets"][0]["state"] == "mismatch" and "observedSha256" not in result["assets"][0]
