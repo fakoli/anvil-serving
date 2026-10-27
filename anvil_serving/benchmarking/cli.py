@@ -643,7 +643,7 @@ def main(
             "capacity": {
                 "requests": len(request_plan["requests"]) if request_plan else a.burst or a.requests,
                 "concurrency": a.burst or a.concurrency,
-                "context_tokens": a.ctx_tokens or "measured-distribution",
+                "context_tokens": "native-per-request-plan" if request_plan else a.ctx_tokens or "measured-distribution",
                 "context_seed": a.seed,
                 "max_tokens": None if request_plan else a.max_tokens,
                 "response_words": a.response_words,
@@ -909,6 +909,7 @@ def main(
     except FileExistsError:
         ap.error("capacity journal already exists; choose a new --output path")
     if request_plan:
+        calibration_deadline = time.monotonic() + a.timeout
         for index, case in enumerate(request_plan["requests"]):
             try:
                 prompt, count = calibrate_capacity(request_plan, case, base_url=a.base_url, model=a.model, key=api_key,
@@ -917,7 +918,7 @@ def main(
                     unique_prefix=f"seed={a.seed} index={index:05d}" if a.prompt_cache_mode == "unique" else False,
                     chat_template_kwargs=ctk, reasoning_effort=reasoning_effort,
                     temperature=sampling["temperature"]["effective_request"], top_p=sampling["top_p"]["effective_request"],
-                    margin=a.margin)
+                    margin=a.margin, overall_deadline=calibration_deadline)
                 prepared[index] = (prompt, count)
                 write_journal({"record_type": "calibration", "request_index": index,
                     "case_label": case["label"], "native_input_tokens": count})
@@ -929,6 +930,11 @@ def main(
                     "case_label": case["label"], "error_type": type(exc).__name__, "error_message": message})
                 print("capacity calibration failed for request %d: %s" % (index, message), file=sys.stderr)
                 return 1
+    if request_plan and time.monotonic() >= calibration_deadline:
+        write_journal({"record_type": "calibration_failure", "error_type": "TimeoutError",
+                       "error_message": "capacity plan calibration deadline before dispatch"})
+        print("capacity plan calibration deadline before dispatch", file=sys.stderr)
+        return 1
     t0 = time.perf_counter()
     with ThreadPoolExecutor(max_workers=conc) as ex:
         # Each worker builds at most one prompt, so memory scales with
@@ -950,6 +956,7 @@ def main(
                 error_message = str(exc) or "<empty exception message>"
                 failure = {
                     "request_index": futures[future],
+                    **({"case_label": request_plan["requests"][futures[future]]["label"]} if request_plan else {}),
                     "error_type": type(exc).__name__,
                     "error_message": error_message[:2048],
                     "error_message_truncated": len(error_message) > 2048,
@@ -1006,60 +1013,61 @@ def main(
     print("-"*60)
     print(f"completed:        {len(results)}/{n} in {wall:.1f}s")
     print(f"client overlap:   {client_peak} observed peak / {conc} requested")
-    p99_note = (
-        "tail estimate; N>=100" if len(results) >= 100
-        else "descriptive only; N<100"
-    )
-    if metrics["reasoning_chunks"]:
-        print(
-            "TTFO  p50/p95:    %.2fs / %.2fs (reasoning or visible)"
-            % (
-                metrics["time_to_first_output_p50_ms"] / 1000.0,
-                metrics["time_to_first_output_p95_ms"] / 1000.0,
+    if not request_plan:
+        p99_note = (
+            "tail estimate; N>=100" if len(results) >= 100
+            else "descriptive only; N<100"
+        )
+        if metrics["reasoning_chunks"]:
+            print(
+                "TTFO  p50/p95:    %.2fs / %.2fs (reasoning or visible)"
+                % (
+                    metrics["time_to_first_output_p50_ms"] / 1000.0,
+                    metrics["time_to_first_output_p95_ms"] / 1000.0,
+                )
             )
-        )
-    if metrics["ttft_p50_ms"] is not None:
-        print(
-            "TTFT  mean/p50/p95/p99 (%s): %.2fs / %.2fs / %.2fs / %.2fs"
-            % (p99_note, metrics["ttft_mean_ms"] / 1000.0, metrics["ttft_p50_ms"] / 1000.0,
-               metrics["ttft_p95_ms"] / 1000.0, metrics["ttft_p99_ms"] / 1000.0)
-        )
-    if metrics["e2e_p50_ms"] is not None:
-        print(
-            "E2E   mean/p50/p95/p99 (%s): %.2fs / %.2fs / %.2fs / %.2fs"
-            % (p99_note, metrics["e2e_mean_ms"] / 1000.0, metrics["e2e_p50_ms"] / 1000.0,
-               metrics["e2e_p95_ms"] / 1000.0, metrics["e2e_p99_ms"] / 1000.0)
-        )
-    if metrics["generation_p50_ms"] is not None:
-        print(
-            "GEN   p50/p95:    %.2fs / %.2fs"
-            % (
-                metrics["generation_p50_ms"] / 1000.0,
-                metrics["generation_p95_ms"] / 1000.0,
+        if metrics["ttft_p50_ms"] is not None:
+            print(
+                "TTFT  mean/p50/p95/p99 (%s): %.2fs / %.2fs / %.2fs / %.2fs"
+                % (p99_note, metrics["ttft_mean_ms"] / 1000.0, metrics["ttft_p50_ms"] / 1000.0,
+                   metrics["ttft_p95_ms"] / 1000.0, metrics["ttft_p99_ms"] / 1000.0)
             )
-        )
-    if metrics["effective_prefill_tok_s_p50"] is not None:
-        print(
-            "prefill mean/p50/p95/p99: %.0f / %.0f / %.0f / %.0f effective input tok/s"
-            % (
-                metrics["effective_prefill_tok_s_mean"],
-                metrics["effective_prefill_tok_s_p50"],
-                metrics["effective_prefill_tok_s_p95"],
-                metrics["effective_prefill_tok_s_p99"],
+        if metrics["e2e_p50_ms"] is not None:
+            print(
+                "E2E   mean/p50/p95/p99 (%s): %.2fs / %.2fs / %.2fs / %.2fs"
+                % (p99_note, metrics["e2e_mean_ms"] / 1000.0, metrics["e2e_p50_ms"] / 1000.0,
+                   metrics["e2e_p95_ms"] / 1000.0, metrics["e2e_p99_ms"] / 1000.0)
             )
-        )
-    if metrics["decode_tok_s_p50"] is not None:
-        print(
-            "decode mean/p50/p95/p99: %.1f / %.1f / %.1f / %.1f tok/s per request"
-            % (metrics["decode_tok_s_mean"], metrics["decode_tok_s_p50"],
-               metrics["decode_tok_s_p95"], metrics["decode_tok_s_p99"])
-        )
-    if metrics["completion_tokens_p50"] is not None:
-        print(
-            "completion tokens mean/p50/p95/p99: %.1f / %.0f / %.0f / %.0f"
-            % (metrics["completion_tokens_mean"], metrics["completion_tokens_p50"],
-               metrics["completion_tokens_p95"], metrics["completion_tokens_p99"])
-        )
+        if metrics["generation_p50_ms"] is not None:
+            print(
+                "GEN   p50/p95:    %.2fs / %.2fs"
+                % (
+                    metrics["generation_p50_ms"] / 1000.0,
+                    metrics["generation_p95_ms"] / 1000.0,
+                )
+            )
+        if metrics["effective_prefill_tok_s_p50"] is not None:
+            print(
+                "prefill mean/p50/p95/p99: %.0f / %.0f / %.0f / %.0f effective input tok/s"
+                % (
+                    metrics["effective_prefill_tok_s_mean"],
+                    metrics["effective_prefill_tok_s_p50"],
+                    metrics["effective_prefill_tok_s_p95"],
+                    metrics["effective_prefill_tok_s_p99"],
+                )
+            )
+        if metrics["decode_tok_s_p50"] is not None:
+            print(
+                "decode mean/p50/p95/p99: %.1f / %.1f / %.1f / %.1f tok/s per request"
+                % (metrics["decode_tok_s_mean"], metrics["decode_tok_s_p50"],
+                   metrics["decode_tok_s_p95"], metrics["decode_tok_s_p99"])
+            )
+        if metrics["completion_tokens_p50"] is not None:
+            print(
+                "completion tokens mean/p50/p95/p99: %.1f / %.0f / %.0f / %.0f"
+                % (metrics["completion_tokens_mean"], metrics["completion_tokens_p50"],
+                   metrics["completion_tokens_p95"], metrics["completion_tokens_p99"])
+            )
     if throughput_eligible:
         print(f"throughput:       {(out_tot / wall if wall else 0.0):.0f} output tok/s (aggregate)")
     elif out_tot is not None:
@@ -1220,6 +1228,32 @@ def main(
     print("-"*60)
     print("Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.")
     if request_plan:
+        by_label = {}
+        for case in request_plan["requests"]:
+            label = case["label"]
+            if label in by_label:
+                continue
+            selected = [result for result in results if result.get("case_label") == label]
+            case_failures = [failure for failure in failures if failure.get("case_label") == label]
+            by_label[label] = {
+                "total_tokens": case["total_tokens"], "max_tokens": case["max_tokens"],
+                "attempted": sum(row["label"] == label for row in request_plan["requests"]),
+                "completed": len(selected), "failed": len(case_failures),
+                "failures": case_failures, "metrics": _result_metrics(selected),
+            }
+        summary["case_metrics"] = by_label
+        summary["metrics"] = {
+            "output_tokens": out_tot, "content_chunks": metrics["content_chunks"],
+            "reasoning_chunks": metrics["reasoning_chunks"],
+            "throughput_tok_s": out_tot / wall if throughput_eligible else None,
+            "throughput_performance_eligible": throughput_eligible,
+            "output_token_sources": token_sources,
+        }
+        summary["metric_population"].pop("p99_minimum_recommended_samples", None)
+        summary["metric_population"].pop("p99_interpretation", None)
+        summary["metric_population"].pop("p99_samples_by_metric", None)
+        summary["metric_population"].pop("p99_interpretation_by_metric", None)
+        summary["metric_population"]["distribution_scope"] = "case label only"
         summary["request_plan"] = request_plan
         summary["timing_methodology"]["wall_clock_scope"] = "excludes native prompt calibration, which completes before request dispatch"
         summary["native_calibration_margin_tokens"] = a.margin

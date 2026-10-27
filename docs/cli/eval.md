@@ -215,11 +215,16 @@ with the same sampling, canary and controlled-output flags on each comparison
 arm. `tokenizer_api` also accepts `vllm-chat`. The default margin is 1024
 and is deducted from each input target. Plan mode rejects `--requests`,
 `--burst`, `--ctx-tokens` and `--max-tokens`; its request rows own those
-values. Each actual prompt is calibrated via the native chat token endpoint,
+values. Repeated labels must use the same window and reserve. Case metrics are
+reported separately by label; mixed latency percentiles are not pooled. Each
+actual prompt is calibrated via the native chat token endpoint,
 and generation usage must match the calibrated input and respect the declared
 window and reserve. Missing or mismatched usage fails the request. Calibration
-is bounded to eight count calls per request and no transport retry; a native
-count is not proof of scheduler overlap. Calibration completes for every request before dispatch; request timings, capacity
+is bounded to eight count calls per request, 30 seconds per count call and the
+existing `--timeout` across the whole preparation, with no transport retry; a native
+count is not proof of scheduler overlap. Safe plan reads and absolute native-count
+deadlines currently require POSIX no-follow/nonblocking file flags and main-thread
+interval timers; unsupported environments fail closed. Calibration completes for every request before dispatch; request timings, capacity
 wall time and aggregate throughput exclude it. The durable
 journal retains each result or failure; it does not record per-token events.
 

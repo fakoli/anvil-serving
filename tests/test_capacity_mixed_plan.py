@@ -16,7 +16,7 @@ def plan(path):
     return value
 
 
-def test_mixed_capacity_native_calibration_and_journal(tmp_path, monkeypatch):
+def test_mixed_capacity_native_calibration_and_journal(tmp_path, monkeypatch, capsys):
     path = tmp_path / 'plan.json'; plan(path)
     counts = {}; captured = []
     def tokenize(url, key, timeout, body):
@@ -28,7 +28,7 @@ def test_mixed_capacity_native_calibration_and_journal(tmp_path, monkeypatch):
     monkeypatch.setattr(capacity_plan, 'api_json', tokenize)
     def stream(base, model, prompt, key, max_tokens, **kwargs):
         marker = re.search(r'ANVIL_REQ_\d+_\d+', prompt).group()
-        return {'ttft': .1, 'time_to_first_output': .05, 'e2e': .2, 'out_toks': 128,
+        return {'ttft': 1.0 if max_tokens == 65536 else .1, 'time_to_first_output': .05, 'e2e': 1.2 if max_tokens == 65536 else .2, 'out_toks': 128,
                 'output_token_source': 'usage', 'usage': {'prompt_tokens': counts[prompt], 'completion_tokens': 128},
                 'finish_reasons': ['stop'], 'stream_terminal_observed': True,
                 'visible_content': marker + ' ' + ' '.join(['code'] * 128)}
@@ -41,6 +41,10 @@ def test_mixed_capacity_native_calibration_and_journal(tmp_path, monkeypatch):
     data = json.loads(out.read_text())
     rows = data['request_timings']
     assert [row['case_label'] for row in rows] == ['anchor', 'peer', 'peer', 'peer']
+    assert data['case_metrics']['anchor']['metrics']['ttft_p50_ms'] == 1000
+    assert data['case_metrics']['peer']['metrics']['ttft_p50_ms'] == 100
+    assert 'ttft_p50_ms' not in data['metrics']
+    assert 'TTFT  mean' not in capsys.readouterr().out
     assert [row['max_tokens'] for row in rows] == [65536, 16384, 16384, 16384]
     assert all(row['native_usage_parity'] and row['native_input_tokens'] == row['prompt_tokens'] for row in rows)
     assert all(row['native_input_tokens'] + row['max_tokens'] <= row['total_tokens'] for row in rows)
@@ -77,6 +81,8 @@ def test_native_adapters_match_controls_and_fail_closed(monkeypatch):
 def test_invalid_plan_is_rejected(tmp_path):
     path = tmp_path / 'plan.json'; value = plan(path)
     value['requests'][0]['max_tokens'] = 65537; path.write_text(json.dumps(value))
+    with pytest.raises(ValueError): capacity_plan.load_plan(path, 327680, 0)
+    value = plan(path); value['requests'][2]['max_tokens'] = 12000; path.write_text(json.dumps(value))
     with pytest.raises(ValueError): capacity_plan.load_plan(path, 327680, 0)
     value = plan(path); value['requests'][0]['extra'] = 1; path.write_text(json.dumps(value))
     with pytest.raises(ValueError): capacity_plan.load_plan(path, 327680, 0)
@@ -134,3 +140,90 @@ def test_calibration_failure_journal_precedes_any_generation(tmp_path, monkeypat
     assert count_calls == [1] and not out.exists()
     journal = [json.loads(line) for line in (tmp_path / 'partial.json.journal.jsonl').read_text().splitlines()]
     assert [row['record_type'] for row in journal] == ['header', 'calibration_failure']
+
+
+def test_plan_file_rejects_symlink_fifo_and_accepts_crlf(tmp_path):
+    import os
+    path = tmp_path / 'plan.json'; value = plan(path)
+    path.write_bytes(json.dumps(value, indent=2).replace('\n', '\r\n').encode())
+    assert capacity_plan.load_plan(path, 327680, 0) == value
+    link = tmp_path / 'link'; link.symlink_to(path)
+    with pytest.raises((OSError, ValueError)): capacity_plan.load_plan(link, 327680, 0)
+    fifo = tmp_path / 'fifo'; os.mkfifo(fifo)
+    with pytest.raises(ValueError): capacity_plan.load_plan(fifo, 327680, 0)
+    path.write_text('[' * 1100 + ']' * 1100)
+    with pytest.raises(ValueError): capacity_plan.load_plan(path, 327680, 0)
+
+
+def test_native_http_wall_deadline_rejects_slow_response():
+    import http.server
+    import threading
+    import time
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.send_response(200); self.end_headers()
+            time.sleep(.4)
+            try: self.wfile.write(b'{}')
+            except OSError: pass
+        def log_message(self, *args): pass
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+    start = time.monotonic()
+    try:
+        with pytest.raises((TimeoutError, OSError)):
+            capacity_plan.api_json('http://127.0.0.1:%d/tokenize' % server.server_port, None, .05, {})
+        assert time.monotonic() - start < .25
+    finally:
+        server.shutdown(); server.server_close(); thread.join()
+
+
+def test_aggregate_calibration_deadline_blocks_dispatch(tmp_path, monkeypatch):
+    import time
+    import anvil_serving.benchmarking.cli as cli
+    path = tmp_path / 'plan.json'
+    path.write_text(json.dumps({'schema':'anvil-serving.capacity-plan/v1', 'tokenizer_api':'llamacpp-chat',
+                                'requests':[{'label':'anchor','total_tokens':200,'max_tokens':100}]}))
+    def slow(*args, **kwargs):
+        time.sleep(.05)
+        return 'prompt', 100
+    monkeypatch.setattr(cli, 'calibrate_capacity', slow)
+    out = tmp_path / 'out.json'
+    assert main(['capacity','--base-url','http://127.0.0.1:30002/v1','--model','test',
+                 '--request-plan',str(path),'--max-model-len','200','--margin','0','--timeout','.01','--output',str(out)],
+                stream_request=lambda *a, **k: pytest.fail('generation dispatched')) == 1
+    journal = [json.loads(line) for line in (tmp_path / 'out.json.journal.jsonl').read_text().splitlines()]
+    assert journal[-1]['record_type'] == 'calibration_failure'
+
+
+def test_native_http_trickle_cannot_extend_wall_deadline():
+    import http.server
+    import threading
+    import time
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_POST(self):
+            self.send_response(200); self.end_headers()
+            try:
+                for byte in b'{"count":123456789}':
+                    self.wfile.write(bytes([byte])); self.wfile.flush(); time.sleep(.02)
+            except OSError: pass
+        def log_message(self, *args): pass
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+    start = time.monotonic()
+    try:
+        with pytest.raises((TimeoutError, OSError)):
+            capacity_plan.api_json('http://127.0.0.1:%d/tokenize' % server.server_port, None, .08, {})
+        assert time.monotonic() - start < .25
+    finally:
+        server.shutdown(); server.server_close(); thread.join()
+
+
+def test_mixed_dry_run_labels_native_plan(tmp_path, capsys):
+    path = tmp_path / 'plan.json'; plan(path)
+    out = tmp_path / 'result.json'
+    assert main(['capacity', '--base-url', 'http://127.0.0.1:30002/v1', '--model', 'test',
+                 '--request-plan', str(path), '--max-model-len', '327680', '--margin', '0',
+                 '--output', str(out), '--dry-run']) == 0
+    preview = json.loads(capsys.readouterr().out)
+    assert preview['capacity']['context_tokens'] == 'native-per-request-plan'
+    assert [case['label'] for case in preview['request_plan']['requests']] == ['anchor', 'peer', 'peer', 'peer']
