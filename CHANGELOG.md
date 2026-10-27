@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Media artifact inspection returns authenticated download URLs and native MP4
+  resource links, with explicit bounded-range metadata for larger downloads.
+
 ## [2.0.1] - 2026-10-26
 
 ### Fixed

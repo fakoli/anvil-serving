@@ -167,6 +167,21 @@ are never public identifiers. Full bytes are delivered through the
 authenticated `/artifacts/{opaque-id}` boundary; eligible small images may
 also be returned as bounded native MCP image content. Video is resource-only.
 
+Through a gateway with `media_public_origin` configured, `media_artifact_inspect`
+also returns `artifact.downloadUrl` and `requiresAuthentication: true` for
+caller-owned artifacts. MP4
+results include a native MCP resource link to the same URL. Clients can present
+that link or download it with HTTP GET using their existing MCP Bearer
+credential; the URL itself does not grant access or contain credentials.
+Each response remains bounded by `artifact.maxRangeBytes` (16 MiB). Larger
+files require sequential bounded HTTP Range requests; a full GET above that
+limit returns 416. The client verifies the assembled size and SHA-256 against
+the inspection metadata. All chunks use the same authentication. The URL
+uses the configured origin, never a caller-supplied Host header. Without an
+origin, inspection keeps the relative `resource` path instead of guessing a URL.
+Cross-principal inspection also keeps the relative path; its metadata scope
+does not grant cross-principal HTTP downloads.
+
 ### Use an owned result as workflow input
 
 A descriptor may declare a parameter with `kind: "artifact"` and optional

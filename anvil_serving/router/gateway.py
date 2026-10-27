@@ -37,7 +37,9 @@ class ProtocolGateway:
     mcp_handler: Callable[..., dict | None] = mcp.handle_request
 
     def mcp_request(self, request: dict) -> dict | None:
-        with service_context(self.tasks.operations, self.tasks.backend):
+        with service_context(
+            self.tasks.operations, self.tasks.backend, public_origin=self.public_origin
+        ):
             return self.mcp_handler(request, caller=self.caller, audience="media")
 
     def a2a_request(self, request: dict) -> dict:

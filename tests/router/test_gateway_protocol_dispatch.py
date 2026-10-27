@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import http.client
+import hashlib
 import io
 import json
 import threading
@@ -12,6 +13,7 @@ import pytest
 from anvil_serving import mcp
 from anvil_serving.a2a.protocol import A2A_PATH, A2A_VERSION, AGENT_CARD_PATH
 from anvil_serving.media.contracts import JobState
+from anvil_serving.media.artifacts import MAX_RANGE_BYTES
 from anvil_serving.media.backends import BackendOutput, BackendStatus
 from anvil_serving.media.comfyui import WorkflowCompatibility
 from anvil_serving.router.front_door import make_server
@@ -27,7 +29,9 @@ CONFIG = Path(__file__).resolve().parents[2] / "configs" / "example.toml"
 
 
 @contextmanager
-def gateway_server(tmp_path, *, enabled=True, caller=CALLER):
+def gateway_server(
+    tmp_path, *, enabled=True, caller=CALLER, public_origin="http://127.0.0.1:8080"
+):
     tmp_path.mkdir(parents=True, exist_ok=True)
     tasks = service(tmp_path)
     gateway = (
@@ -36,7 +40,7 @@ def gateway_server(tmp_path, *, enabled=True, caller=CALLER):
             tasks=tasks,
             registry=tasks.operations.registry,
             artifacts=tasks.operations.artifacts,
-            public_origin="http://127.0.0.1:8080",
+            public_origin=public_origin,
         )
         if enabled
         else None
@@ -215,6 +219,123 @@ def test_artifact_delivery_requires_media_read_scope(tmp_path):
         status, _, raw = request(address, "GET", f"/artifacts/{artifact.id}")
         assert status == 403
         assert json.loads(raw)["error"]["type"] == "scope_denied"
+
+
+@pytest.mark.parametrize("suffix", ["", "/"])
+def test_video_inspection_returns_authenticated_download_link(tmp_path, suffix):
+    with gateway_server(
+        tmp_path, public_origin="http://127.0.0.1:8080" + suffix
+    ) as (address, tasks):
+        job, _ = tasks.operations.jobs.create(
+            principal="hermes", workflow_id="video.test", workflow_version="v1",
+            input_digest="b" * 64, idempotency_key="video-download-link",
+        )
+        video = b"\x00\x00\x00\x18ftypmp42video-content"
+        artifact = tasks.operations.artifacts.ingest(
+            job, io.BytesIO(video), media_type="video/mp4", max_bytes=1024,
+            retention_seconds=60,
+        )
+        body = mcp_request()
+        body["method"] = "tools/call"
+        body["params"].update(
+            name="media_artifact_inspect", arguments={"artifact_id": artifact.id}
+        )
+        status, _, raw = request(
+            address, "POST", "/mcp", body=body, headers={"Host": "untrusted.example"}
+        )
+        result = json.loads(raw)["result"]
+        value = result["structuredContent"]["data"]["artifact"]
+        url = "http://127.0.0.1:8080/artifacts/" + artifact.id
+        assert status == 200 and not result["isError"]
+        assert value["downloadUrl"] == url
+        assert value["requiresAuthentication"] is True
+        assert value["maxRangeBytes"] == MAX_RANGE_BYTES
+        link = next(item for item in result["content"] if item["type"] == "resource_link")
+        assert (link["uri"], link["mimeType"], link["name"]) == (
+            url, "video/mp4", artifact.id + ".mp4"
+        )
+        assert "secret" not in json.dumps(value)
+        path = value["resource"]
+        assert request(address, "GET", path, token=None)[0] == 401
+        status, _, raw = request(address, "GET", path)
+        assert (status, raw) == (200, video)
+        status, headers, raw = request(
+            address, "GET", path, headers={"Range": "bytes=0-7"}
+        )
+        assert (status, raw) == (206, video[:8])
+        assert headers["Content-Range"] == f"bytes 0-7/{len(video)}"
+
+        other_job, _ = tasks.operations.jobs.create(
+            principal="another", workflow_id="video.test", workflow_version="v1",
+            input_digest="c" * 64, idempotency_key="other-video-download-link",
+        )
+        other = tasks.operations.artifacts.ingest(
+            other_job, io.BytesIO(video), media_type="video/mp4", max_bytes=1024,
+            retention_seconds=60,
+        )
+        body["params"]["arguments"]["artifact_id"] = other.id
+        _, _, raw = request(address, "POST", "/mcp", body=body)
+        assert json.loads(raw)["result"]["isError"]
+        assert b"downloadUrl" not in raw
+
+
+def test_cross_principal_inspection_keeps_http_ownership_boundary(tmp_path):
+    caller = {"principal": "operator", "scopes": ["media:read", "operator:media"]}
+    with gateway_server(tmp_path, caller=caller) as (address, tasks):
+        job, _ = tasks.operations.jobs.create(
+            principal="hermes", workflow_id="video.test", workflow_version="v1",
+            input_digest="d" * 64, idempotency_key="cross-principal-video",
+        )
+        artifact = tasks.operations.artifacts.ingest(
+            job, io.BytesIO(b"\x00\x00\x00\x18ftypmp42video"),
+            media_type="video/mp4", max_bytes=1024, retention_seconds=60,
+        )
+        body = mcp_request()
+        body["method"] = "tools/call"
+        body["params"].update(
+            name="media_artifact_inspect",
+            arguments={"artifact_id": artifact.id, "owner": "hermes"},
+        )
+        _, _, raw = request(address, "POST", "/mcp", body=body)
+        result = json.loads(raw)["result"]
+        assert not result["isError"]
+        assert "downloadUrl" not in result["structuredContent"]["data"]["artifact"]
+        assert all(item["type"] != "resource_link" for item in result["content"])
+        assert request(address, "GET", "/artifacts/" + artifact.id)[0] == 404
+
+
+def test_large_video_link_downloads_in_authenticated_bounded_ranges(tmp_path):
+    with gateway_server(tmp_path) as (address, tasks):
+        job, _ = tasks.operations.jobs.create(
+            principal="hermes", workflow_id="video.test", workflow_version="v1",
+            input_digest="e" * 64, idempotency_key="large-video-link",
+        )
+        video = b"\x00\x00\x00\x18ftypmp42" + b"x" * MAX_RANGE_BYTES
+        artifact = tasks.operations.artifacts.ingest(
+            job, io.BytesIO(video), media_type="video/mp4", max_bytes=len(video),
+            retention_seconds=60,
+        )
+        body = mcp_request()
+        body["method"] = "tools/call"
+        body["params"].update(
+            name="media_artifact_inspect", arguments={"artifact_id": artifact.id}
+        )
+        _, _, raw = request(address, "POST", "/mcp", body=body)
+        value = json.loads(raw)["result"]["structuredContent"]["data"]["artifact"]
+        path = value["resource"]
+        assert request(address, "GET", path)[0] == 416
+        digest = hashlib.sha256()
+        size = 0
+        for start in range(0, value["byteLength"], value["maxRangeBytes"]):
+            end = min(start + value["maxRangeBytes"], value["byteLength"]) - 1
+            status, _, chunk = request(
+                address, "GET", path, headers={"Range": f"bytes={start}-{end}"}
+            )
+            assert status == 206 and len(chunk) == end - start + 1
+            size += len(chunk)
+            digest.update(chunk)
+        assert size == value["byteLength"]
+        assert digest.hexdigest() == value["sha256"]
 
 
 def test_protocol_auth_precedes_dispatch_and_unknown_routes_do_not_fallback(tmp_path):

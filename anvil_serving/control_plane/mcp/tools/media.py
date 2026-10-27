@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Mapping
 
-from ....media.artifacts import ArtifactStore
+from ....media.artifacts import MAX_RANGE_BYTES, ArtifactStore
 from ....media.cli import DEFAULT_REGISTRY
 from ....media.comfyui import ComfyUIClient
 from ....media.errors import MediaError
@@ -25,14 +25,16 @@ from ..security import CallerContext, require_scope
 
 
 _SERVICE_OVERRIDE: contextvars.ContextVar[
-    tuple[MediaOperations, ComfyUIClient | None] | None
+    tuple[MediaOperations, ComfyUIClient | None, str] | None
 ] = contextvars.ContextVar("anvil_media_service_override", default=None)
 
 
 @contextmanager
-def service_context(operations: MediaOperations, backend: ComfyUIClient | None):
+def service_context(
+    operations: MediaOperations, backend: ComfyUIClient | None, *, public_origin: str = ""
+):
     """Bind one request to the gateway's shared durable media service."""
-    token = _SERVICE_OVERRIDE.set((operations, backend))
+    token = _SERVICE_OVERRIDE.set((operations, backend, public_origin))
     try:
         yield
     finally:
@@ -42,7 +44,7 @@ def service_context(operations: MediaOperations, backend: ComfyUIClient | None):
 def _services() -> tuple[MediaOperations, ComfyUIClient | None]:
     override = _SERVICE_OVERRIDE.get()
     if override is not None:
-        return override
+        return override[0], override[1]
     registry = os.environ.get("ANVIL_MEDIA_WORKFLOW_REGISTRY", str(DEFAULT_REGISTRY))
     state = os.environ.get(
         "ANVIL_MEDIA_STATE_DB",
@@ -218,6 +220,21 @@ def tool_media_artifact_inspect(args: dict) -> dict:
 
     def inspect() -> dict:
         result = operations.artifact_inspect(artifact_id, principal=owner)
+        artifact = result["artifact"]
+        override = _SERVICE_OVERRIDE.get()
+        if override is not None and override[2] and owner == caller.principal:
+            artifact["downloadUrl"] = override[2].rstrip("/") + artifact["resource"]
+            artifact["requiresAuthentication"] = True
+            artifact["maxRangeBytes"] = MAX_RANGE_BYTES
+            if artifact["mediaType"] == "video/mp4":
+                result["_mcpContent"] = [{
+                    "type": "resource_link",
+                    "uri": artifact["downloadUrl"],
+                    "name": artifact_id + ".mp4",
+                    "mimeType": artifact["mediaType"],
+                    "size": artifact["byteLength"],
+                    "description": "Video download; requires the existing MCP Bearer credential and bounded Range requests for larger files.",
+                }]
         image_content = operations.artifacts.mcp_image_content(
             artifact_id,
             principal=owner,
@@ -292,7 +309,7 @@ FAMILY = ToolFamily(
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
         ),
         "media_artifact_inspect": _tool(
-            "Inspect authenticated artifact metadata; eligible bounded images include native content, while video and oversized images remain resource-only.",
+            "Inspect owned artifact metadata and its authenticated downloadUrl. Use the existing MCP Bearer credential for HTTP GET/Range; credentials are never embedded in the URL. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",
             {"artifact_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_artifact_inspect, scope="media:read", required=("artifact_id",),
         ),

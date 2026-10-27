@@ -22,7 +22,7 @@ from anvil_serving.control_plane.mcp.tools import router as router_tools
 
 
 PUBLIC_CATALOG_SHA256 = (
-    "a6df7ebf5b8306f112ccb8ea27b68d4fe32107e962e4f3cc779fe6c2413c506b"
+    "31f46c4c30cc8e28ca68d09d7f92e2635d69c42864a726990bb2070718359516"
 )
 HANDLER_MAP_SHA256 = (
     "7c235ff7468492ee6052e8a2886fc13e68ce18efa0ccef208810650efe592ee4"
@@ -288,7 +288,7 @@ def test_member_transition_catalog_has_only_the_intended_compatibility_delta():
         assert services_schema["properties"].pop(name) == expected
     services_schema["maxProperties"] -= len(compose_fields)
     assert _canonical_sha256(public_tools) == (
-        "d2145a64f57a847b97e0b72f36f59cf853fc11e76d5c9b89b98860b2c4654954"
+        "f402351774fbb17c4a9e2a5c22f9eb7f68e98be084e0796d7e0cc65987b2b8cf"
     )
 
 
@@ -325,8 +325,10 @@ def test_controller_diagnostic_tools_have_exact_bounded_public_contracts():
 
 def test_media_artifact_discovery_describes_bounded_native_image_content():
     assert mcp.TOOLS["media_artifact_inspect"]["description"] == (
-        "Inspect authenticated artifact metadata; eligible bounded images include "
-        "native content, while video and oversized images remain resource-only."
+        "Inspect owned artifact metadata and its authenticated downloadUrl. "
+        "Use the existing MCP Bearer credential for HTTP GET/Range; credentials "
+        "are never embedded in the URL. Eligible bounded images include native "
+        "content; videos include resource links when the gateway origin is configured."
     )
 
 
