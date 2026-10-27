@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- Media artifact inspection returns authenticated download URLs and native MP4
+  resource links, with explicit bounded-range metadata for larger downloads.
+- Opt-in artifact-scoped, expiring read links support direct browser video
+  playback, HEAD and bounded streaming of full files and single byte ranges.
+  Reusable MCP credentials remain outside URLs.
+
 ## [2.0.2] - 2026-10-27
 
 ### Fixed

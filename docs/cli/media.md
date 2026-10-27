@@ -167,6 +167,33 @@ are never public identifiers. Full bytes are delivered through the
 authenticated `/artifacts/{opaque-id}` boundary; eligible small images may
 also be returned as bounded native MCP image content. Video is resource-only.
 
+Through a gateway with `media_public_origin` configured, `media_artifact_inspect`
+also returns `artifact.downloadUrl` for caller-owned artifacts. MP4 results
+include a native MCP resource link to the same URL. By default,
+`requiresAuthentication: true` means HTTP GET/Range requires the existing MCP
+credential in the Authorization header. Each response remains bounded by
+`artifact.maxRangeBytes` (16 MiB); larger files require sequential bounded
+Range requests. A full GET above that limit returns 416.
+
+For direct browser playback, an operator can set `ANVIL_MEDIA_SIGNED_DOWNLOADS=1`
+on a dedicated gateway using static MCP authentication (device-key policy is
+unsupported and rejected at startup). Inspection then returns
+`requiresAuthentication: false`, `downloadAuthorization: "signed-url"` and
+`downloadExpiresAt`. This URL authorizes reads of that one artifact for at most
+one hour, capped by artifact expiry; it never contains the reusable MCP key.
+Anyone holding it can read the video until expiry, so keep it private. Key
+rotation revokes outstanding links. Inspect the artifact again to refresh an
+expired link. This mode supports full GET, HEAD and one fixed, open-ended or
+suffix byte range, streaming in bounded chunks. It does not authorize MCP calls
+or other artifacts. No network exposure or tailnet configuration is changed.
+
+The client verifies downloaded size and SHA-256 against inspection metadata.
+The URL
+uses the configured origin, never a caller-supplied Host header. Without an
+origin, inspection keeps the relative `resource` path instead of guessing a URL.
+Cross-principal inspection also keeps the relative path; its metadata scope
+does not grant cross-principal HTTP downloads.
+
 ### Use an owned result as workflow input
 
 A descriptor may declare a parameter with `kind: "artifact"` and optional
