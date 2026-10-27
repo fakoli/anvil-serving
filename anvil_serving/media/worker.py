@@ -77,12 +77,15 @@ class MediaJobReconciler:
         find_prompt: Callable[[str], str | None] | None = None,
         *,
         backend_endpoint: str,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.store = store
         self.history = history
         self.capture = capture
         self.find_prompt = find_prompt
         self.backend_endpoint = backend_endpoint
+        self.clock = clock
+        self._missing_since: dict[str, float] = {}
 
     def _check_backend(self, job: MediaJob) -> None:
         """Fail closed before each job-specific backend observation or fetch."""
@@ -150,7 +153,22 @@ class MediaJobReconciler:
         if not job.backend_prompt_id:
             return job
         self._check_backend(job)
-        status = self.history(job.backend_prompt_id)
+        try:
+            status = self.history(job.backend_prompt_id)
+            if status.error_code == "backend_prompt_missing":
+                first_missing = self._missing_since.setdefault(job.id, self.clock())
+                if self.clock() - first_missing < SUBMISSION_RECOVERY_GRACE_SECONDS:
+                    return job
+                # Recheck a completion racing the last queue/history observation.
+                status = self.history(job.backend_prompt_id)
+        except MediaError:
+            self._missing_since.pop(job.id, None)
+            raise
+        if status.error_code == "backend_prompt_missing":
+            self._missing_since.pop(job.id, None)
+            return self.store.transition(job.id, JobState.FAILED, principal=job.principal,
+                                         reason="backend_prompt_lost")
+        self._missing_since.pop(job.id, None)
         if status.state == "queued":
             return self._advance(job, JobState.QUEUED)
         if status.state == "running":
@@ -190,7 +208,10 @@ class MediaJobReconciler:
 
     def reconcile_all(self) -> list[MediaJob]:
         results: list[MediaJob] = []
-        for job in self.store.nonterminal():
+        jobs = self.store.nonterminal()
+        active = {job.id for job in jobs}
+        self._missing_since = {key: value for key, value in self._missing_since.items() if key in active}
+        for job in jobs:
             try:
                 results.append(self.reconcile(job))
             except MediaError:
@@ -337,7 +358,7 @@ class MediaReconciliationLoop:
                             "(j.state='canceled' AND j.backend_prompt_id IS NOT NULL) OR "
                             "EXISTS(SELECT 1 FROM media_job_events e WHERE e.job_id=j.id AND "
                             "e.reason IN ('backend_submission_recovery_failed','backend_submission_outcome_unknown',"
-                            "'backend_submission_recovery_unavailable','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None
+                            "'backend_submission_recovery_unavailable','backend_prompt_lost','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None
                 finally:
                     store._lock.release()
             else:
@@ -355,7 +376,7 @@ class MediaReconciliationLoop:
                     self._unknown_jobs.add(job.id)
             result = self.reconciler.reconcile_all()
             for job in result:
-                if job.backend_prompt_id and job.state in {JobState.COMPLETED, JobState.FAILED} and job.events[-1].reason not in {"backend_submission_recovery_failed", "backend_submission_outcome_unknown", "backend_submission_recovery_unavailable"}:
+                if job.backend_prompt_id and job.state in {JobState.COMPLETED, JobState.FAILED} and job.events[-1].reason not in {"backend_submission_recovery_failed", "backend_submission_outcome_unknown", "backend_submission_recovery_unavailable", "backend_prompt_lost"}:
                     self._unknown_jobs.discard(job.id)
             return result
         finally:

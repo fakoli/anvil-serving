@@ -72,6 +72,7 @@ def test_history_observes_live_queue_before_completed_history_exists(running, pe
         raise AssertionError(request.full_url)
     result = ComfyUIClient("http://127.0.0.1:8188", opener=opener).history("prompt_123")
     assert result.state == expected
+    assert result.error_code == ("backend_prompt_missing" if not running and not pending else "")
 
 
 def test_find_prompt_recovers_deterministic_client_identity_from_queue():
@@ -96,6 +97,21 @@ def test_find_prompt_recovers_deterministic_client_identity_from_queue():
     client = ComfyUIClient("http://127.0.0.1:8188", opener=opener)
     assert client.find_prompt(job_id) == "prompt_123"
     assert paths == ["http://127.0.0.1:8188/queue"]
+
+
+def test_completion_racing_queue_probe_is_not_reported_missing():
+    history_reads = [0]
+
+    def opener(request, timeout):
+        if request.full_url.endswith("/queue"):
+            return Response({"queue_running": [], "queue_pending": []})
+        history_reads[0] += 1
+        return Response({} if history_reads[0] == 1 else {
+            "prompt_123": {"status": {"completed": True}, "outputs": {}}
+        })
+
+    status = ComfyUIClient("http://127.0.0.1:8188", opener=opener).history("prompt_123")
+    assert status.error_code == "" and status.state == "queued"
 
 
 def test_delete_queued_prompt_rechecks_a_queued_to_running_race():
