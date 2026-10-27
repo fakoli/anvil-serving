@@ -20,7 +20,7 @@ from tests.router.test_owner_recovery import config as config
 pytestmark = pytest.mark.skipif(not sys.platform.startswith('linux'), reason='native Docker custody uses Linux')
 
 
-@pytest.mark.parametrize('change', ['none', 'atime', 'old_boot', 'broad_mount', 'duplicate_mount', 'readonly_mount', 'bad_binding', 'symlink', 'oversized',
+@pytest.mark.parametrize('change', ['none', 'alternate_config_name', 'atime', 'old_boot', 'broad_mount', 'duplicate_mount', 'readonly_mount', 'bad_binding', 'symlink', 'oversized',
                                   'public_record', 'invalid_record', 'changed_container',
                                   'ledger', 'ledger_restart', 'closure_replace', 'closure_write'])
 def test_bounded_sidecar_diagnostic_preserves_store_and_never_authorizes(
@@ -38,6 +38,10 @@ def test_bounded_sidecar_diagnostic_preserves_store_and_never_authorizes(
         value['anchor']['roster_revision'] = custody.roster(owner)
     # Configure the diagnostic after the fixture has established native storage.
     config.write_text(config.read_text() + '\nrouter_owner_backend="managed-container"\n')
+    if change == 'alternate_config_name':
+        alternate_config = config.with_name('candidate.toml')
+        config.rename(alternate_config)
+        config = alternate_config
     value['anchor']['configuration_revision'] = hashlib.sha256(config.read_bytes()).hexdigest()
     custody.write(store, value, None)
     path = custody.location(store, value['anchor']['run_id'])
@@ -103,7 +107,7 @@ def test_bounded_sidecar_diagnostic_preserves_store_and_never_authorizes(
     def execute(argv, **kwargs):
         output = value['anchor']['docker']['daemon_id'] if argv[1] == 'info' else json.dumps(f'{os.getuid()}:{os.getgid()}')
         return SimpleNamespace(returncode=0, stdout=output)
-    if change in {'none', 'atime', 'old_boot', 'broad_mount', 'ledger', 'ledger_restart'}:
+    if change in {'none', 'alternate_config_name', 'atime', 'old_boot', 'broad_mount', 'ledger', 'ledger_restart'}:
         result = diagnostic.recovery_status(ledger=use_ledger, _run=execute)
         assert result['phases']['live'] == dict(records=1, same_boot=int(change != 'old_boot'),
             same_container=1, same_image=1, same_configuration=1, same_incarnation=int(change != 'ledger_restart'),
