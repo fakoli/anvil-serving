@@ -18,7 +18,7 @@ from .assets import MAX_ASSET_BYTES, MEDIA_FORMATS, enforce_limits, inspect_medi
 from .cancellation import MediaCancellationService
 from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient
 from .contracts import JobState, MediaArtifact, RenderedWorkflow, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
-from .errors import MediaError
+from .errors import MediaError, MediaSubmissionRefused
 from .jobs import MAX_IDEMPOTENCY_KEY, MediaJobStore
 from .planning import CATEGORIES, compile_brief
 from .workflows import WorkflowRegistry, canonical_digest, render_request
@@ -512,9 +512,8 @@ class MediaOperations:
                 principal=principal,
                 reason="backend_submission_started",
             )
-            # SUBMITTING is durable before the remote request. Any exception
-            # after this point is outcome-ambiguous and must never cause an
-            # automatic second submission.
+            # SUBMITTING is durable before the remote request. Unknown outcomes
+            # must never cause an automatic second submission.
             self.jobs.check_backend_endpoint(
                 job_id,
                 getattr(backend, "base_url", ""),
@@ -531,7 +530,13 @@ class MediaOperations:
                     job_id, JobState.FAILED, principal=principal, reason=exc.code
                 )
                 raise
-            prompt_id = backend.submit(rendered, job_id=job_id)
+            try:
+                prompt_id = backend.submit(rendered, job_id=job_id)
+            except MediaSubmissionRefused as exc:
+                self.jobs.transition(
+                    job_id, JobState.FAILED, principal=principal, reason=exc.code
+                )
+                raise
             self.jobs.set_backend_prompt(job_id, prompt_id, principal=principal)
             return self.jobs.transition(
                 job_id,
