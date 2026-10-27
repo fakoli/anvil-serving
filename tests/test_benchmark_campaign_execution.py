@@ -230,13 +230,14 @@ def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_p
     assert stopped == [True]
 
 
-def install_test_owned_activation(tmp_path, monkeypatch, activation):
+def install_test_owned_activation(tmp_path, monkeypatch, activation, *, watchdog_startup_delay_s=0):
     """Pin source before startup hooks can import a different editable checkout."""
     hook = tmp_path / 'hook'
     hook.mkdir()
     source_root = Path(__file__).resolve().parents[1]
     (hook / 'sitecustomize.py').write_text(
-        'import sys\n'
+        'import sys, time\n'
+        f'if "--campaign-watchdog" in sys.argv: time.sleep({watchdog_startup_delay_s!r})\n'
         f'sys.path.insert(0, {str(source_root)!r})\n'
         'from anvil_serving.benchmarking import campaign_execution as e\n'
         'a = ' + repr(activation) + '\n'
@@ -331,23 +332,25 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
             'metrics_url': address + '/engine/' + 'a' * 64 + '/metrics', 'container_id': 'b' * 64,
             'started_at': 'test', 'served_model': 'model'}
         activation['binding_sha256'] = execution._digest({key: activation[key] for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')})
-        install_test_owned_activation(tmp_path, monkeypatch, activation)
-        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=1)
+        # Reproduce a loaded runner where watchdog startup exceeds the former
+        # two-second traffic window, without weakening real process custody.
+        install_test_owned_activation(tmp_path, monkeypatch, activation, watchdog_startup_delay_s=3)
+        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=30)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
-        deadline = time.monotonic() + 15
+        deadline = time.monotonic() + 30
         while time.monotonic() < deadline and not execution.batch_ready(manifest, 'batch-0', run_root=root): time.sleep(.02)
         assert execution.batch_ready(manifest, 'batch-0', run_root=root), store.logs(bound[0]['run_id'])
         # Model a historical short release: reading it must retain watchdog
         # enforcement even though new admission now refuses this allowance.
         with monkeypatch.context() as historical:
             historical.setattr(execution, 'require_batch_allowance', lambda *a, **k: k['allowance_s'])
-            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=12)
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=20)
         while time.monotonic() < deadline:
             result = store.status(bound[0]['run_id'])
             if result['state'] in {'completed', 'failed', 'cancelled'}: break
             time.sleep(.05)
-        assert result['state'] == 'cancelled', store.logs(bound[0]['run_id'])
+        assert result['state'] == 'cancelled', json.dumps(store.logs(bound[0]['run_id']), sort_keys=True)
         assert not worker._process_group_running(launched['pid'])
     finally:
         if launched and worker._process_group_running(launched['pid']): worker.cancel_benchmark_job(store, bound[0]['run_id'])
