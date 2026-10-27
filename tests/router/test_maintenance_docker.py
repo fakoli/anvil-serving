@@ -244,9 +244,61 @@ server.serve_forever()
         current_stop_receipt=values['receipt_out'],dry_run=True,_run=diagnostic_run)==0
     assert (root/'intent.json.router').read_bytes()==before_state
     assert f['rows']('SELECT * FROM usage_runs')==before_runs
+    original_custody=router_manage._managed_container_custody
+    original_run_argv=router_manage._run_argv
+    custody_calls=[]; compose_activations=[]
+    def fail_first_live_custody(kind,*args,**kwargs):
+        custody_calls.append(kind)
+        if kind=='live' and custody_calls.count('live')==1:
+            raise ValueError('synthetic interrupted native custody')
+        return original_custody(kind,*args,**kwargs)
+    def count_compose_activation(argv, runner, **kwargs):
+        if 'up' in argv: compose_activations.append(tuple(argv))
+        return original_run_argv(argv,runner,**kwargs)
+    monkeypatch.setattr(router_manage,'_managed_container_custody',fail_first_live_custody)
+    monkeypatch.setattr(router_manage,'_run_argv',count_compose_activation)
+    # The first command starts the exact authorized successor but loses native
+    # custody before any helper writes. Subsequent calls resume the same
+    # running container and must never activate Compose again.
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],
+        current_stop_receipt=values['receipt_out'],_run=diagnostic_run)==1
+    for _ in range(100):
+        try:
+            status=f['transition']('status')
+            if status['state']=='quiesced' and status['configuration_revision']==candidate_revision:break
+        except (subprocess.CalledProcessError, KeyError):
+            pass
+        time.sleep(.05)
+    else: pytest.fail('interrupted successor did not finish its closed startup')
+    first_running=router_manage._container_incarnation(f['name'],_run=f['run'])
+    first_namespace=f['code']("import json,os; s=os.stat('/proc/self/ns/pid');print(json.dumps([s.st_dev,s.st_ino]))")
+    live_rows=f['rows']("SELECT run_id,state FROM usage_runs WHERE state!='dead'")
+    assert len(live_rows)==1 and live_rows[0][1]=='live'
+    successor_state=(root/'intent.json.router').read_bytes()
+    assert len(compose_activations)==1 and custody_calls==['live']
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],
+        current_stop_receipt=values['receipt_out'],dry_run=True,_run=diagnostic_run)==0
+    assert len(compose_activations)==1 and custody_calls==['live']
     assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],
         current_stop_receipt=values['receipt_out'],_run=diagnostic_run)==0
-    f['start'](compose_path=candidate_compose)
+    successor=router_manage._container_incarnation(f['name'],_run=f['run'])
+    namespace_after=f['code']("import json,os; s=os.stat('/proc/self/ns/pid');print(json.dumps([s.st_dev,s.st_ino]))")
+    assert successor==first_running and namespace_after==first_namespace
+    assert f['rows']("SELECT run_id,state FROM usage_runs WHERE state!='dead'")==live_rows
+    assert f['rows']('SELECT count(*) FROM usage_details')==[(1,)]
+    assert (root/'intent.json.router').read_bytes()==successor_state
+    assert len(compose_activations)==1 and custody_calls==['live','live']
+    sidecar=root/'keys.sqlite3.router-incarnations'/(live_rows[0][0]+'.json')
+    live_anchor= json.loads(sidecar.read_text())
+    assert live_anchor['phase']=='live'
+    live_anchor_bytes=sidecar.read_bytes()
+    # A replay after exact live finalization is a read-only idempotent success.
+    assert router_manage.cmd_up(str(candidate_compose),service='router',container=f['name'],
+        current_stop_receipt=values['receipt_out'],_run=diagnostic_run)==0
+    assert sidecar.read_bytes()==live_anchor_bytes
+    assert len(compose_activations)==1 and custody_calls==['live','live']
+    monkeypatch.setattr(router_manage,'_managed_container_custody',original_custody)
+    monkeypatch.setattr(router_manage,'_run_argv',original_run_argv)
     status=f['transition']('status')
     assert status['state']=='quiesced' and status['configuration_revision']==candidate_revision
     assert status['generation']>current_preview['native']['observation']['closure']['generation']
