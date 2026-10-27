@@ -34,7 +34,7 @@ def _parser() -> argparse.ArgumentParser:
     bundle = sub.add_parser("bundle")
     bundle_sub = bundle.add_subparsers(dest="action", required=True)
     inventory = bundle_sub.add_parser("inventory")
-    _bundle_identity(inventory)
+    _bundle_identity(inventory, host_root=True)
     stage = bundle_sub.add_parser("stage")
     _bundle_identity(stage)
     stage.add_argument("--user-volume", required=True)
@@ -52,7 +52,9 @@ def _parser() -> argparse.ArgumentParser:
     qualify_run.add_argument("--principal", required=True)
     qualify_run.add_argument("--backend-url", required=True)
     qualify_run.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
-    qualify_run.add_argument("--models-volume", required=True)
+    models = qualify_run.add_mutually_exclusive_group(required=True)
+    models.add_argument("--models-volume")
+    models.add_argument("--models-root")
     qualify_run.add_argument("--gpu-index", type=int, default=0)
     qualify_run.add_argument("--poll-seconds", type=float, default=2.0)
     qualify_run.add_argument("--ffprobe", default="ffprobe")
@@ -120,11 +122,14 @@ def _workflow_identity(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--version", required=True)
 
 
-def _bundle_identity(parser: argparse.ArgumentParser) -> None:
+def _bundle_identity(parser: argparse.ArgumentParser, *, host_root=False) -> None:
     parser.add_argument("workflow_id")
     parser.add_argument("--version", required=True)
     parser.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
-    parser.add_argument("--models-volume", required=True)
+    models = parser.add_mutually_exclusive_group(required=True)
+    models.add_argument("--models-volume")
+    if host_root:
+        models.add_argument("--models-root")
 
 
 def _job_identity(parser: argparse.ArgumentParser) -> None:
@@ -151,6 +156,7 @@ def run(args: argparse.Namespace) -> dict:
                 args.version,
                 lock_path=args.bundle_lock,
                 models_volume=args.models_volume,
+                models_root=args.models_root,
             )
         return bundle_stage(
             args.workflow_id,
@@ -236,6 +242,7 @@ def run(args: argparse.Namespace) -> dict:
             lock_path=args.bundle_lock,
             models_volume=args.models_volume,
             gpu_index=args.gpu_index,
+            models_root=args.models_root,
             poll_seconds=args.poll_seconds,
             ffprobe=args.ffprobe,
         )

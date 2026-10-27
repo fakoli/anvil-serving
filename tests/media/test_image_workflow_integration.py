@@ -92,14 +92,18 @@ def _registry(
         encoding="utf-8",
     )
     lock = {
+        "schema": "anvil-serving.media-bundle-lock/v1",
+        "staging": {"container": "example/stager@sha256:" + "f" * 64},
         "runtime": {"comfyui_release": "v-test"},
         "workflows": [{
             "id": f"{kind}.test",
             "version": "v1",
+            "graph_sha256": canonical_digest(graph),
             "models": [{
                 "repository": "org/repo",
                 "revision": "a" * 40,
                 "path": "test.safetensors",
+                "target": "diffusion_models/test.safetensors",
                 "size": 7,
                 "sha256": "b" * 64,
             }],

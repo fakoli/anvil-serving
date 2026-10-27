@@ -20,6 +20,7 @@ BUNDLE_IDENTITY_OPTIONS = (
     _option("--bundle-lock", summary="Pinned media bundle lock.", value_name="PATH"),
     _option("--models-volume", summary="Protected ComfyUI model volume.", value_name="NAME"),
 )
+HOST_MODELS_OPTION = (_option("--models-root", summary="Read-only host model root instead of a Docker volume.", value_name="PATH"),)
 
 
 @command_family(category="Anvil Media")
@@ -86,7 +87,7 @@ def commands() -> CommandNode:
                         "Verify exact model assets for one workflow.",
                         "anvil_serving.media.cli",
                         role="media-worker",
-                        options=BUNDLE_IDENTITY_OPTIONS,
+                        options=BUNDLE_IDENTITY_OPTIONS + HOST_MODELS_OPTION,
                         argv_prefix=("bundle", "inventory"),
                     ),
                     _resource_node(
@@ -132,6 +133,7 @@ def commands() -> CommandNode:
                         options=CONFIRM_OPTIONS
                         + IDENTITY_OPTIONS
                         + BUNDLE_IDENTITY_OPTIONS
+                        + HOST_MODELS_OPTION
                         + (
                             _option(
                                 "--parameters",

@@ -36942,6 +36942,15 @@
           "requires_confirmation": false,
           "summary": "Protected ComfyUI model volume.",
           "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--models-root"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Read-only host model root instead of a Docker volume.",
+          "value_name": "PATH"
         }
       ],
       "output_policy": "bounded",
@@ -37495,6 +37504,15 @@
           "requires_confirmation": false,
           "summary": "Protected ComfyUI model volume.",
           "value_name": "NAME"
+        },
+        {
+          "flags": [
+            "--models-root"
+          ],
+          "output_policy": null,
+          "requires_confirmation": false,
+          "summary": "Read-only host model root instead of a Docker volume.",
+          "value_name": "PATH"
         },
         {
           "flags": [

@@ -346,10 +346,10 @@ required operands, choices, and defaults.
 | `media asset` | Upload owned reference media. | `read` / `bounded` | - |
 | `media asset upload` | Decode and retain one bounded local reference file. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--file`<br>`--client-config` |
 | `media bundle` | Inventory and stage exact pinned workflow assets. | `read` / `bounded` | - |
-| `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume` |
+| `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--models-root` |
 | `media bundle stage` | Add missing exact model assets without replacing existing files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--user-volume`<br>`--runtime-uid`<br>`--runtime-gid` |
 | `media qualify` | Qualify an unavailable pinned workflow without promoting it. | `read` / `bounded` | - |
-| `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--parameters`<br>`--quality-profile`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
+| `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--models-root`<br>`--parameters`<br>`--quality-profile`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
 | `media workflow` | Inspect, validate, and run named workflows. | `read` / `bounded` | - |
 | `media workflow list` | List named workflows. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
 | `media workflow show` | Show one named workflow. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version` |

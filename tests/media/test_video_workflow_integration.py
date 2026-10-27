@@ -52,13 +52,16 @@ def _registry(tmp_path):
         encoding="utf-8",
     )
     lock = {
+        "schema": "anvil-serving.media-bundle-lock/v1",
+        "staging": {"container": "example/stager@sha256:" + "f" * 64},
         "runtime": {"comfyui_release": "v-test"},
         "workflows": [{
             "id": "video.test",
             "version": "v1",
+            "graph_sha256": canonical_digest(graph),
             "models": [{
                 "repository": "org/repo", "revision": "a" * 40,
-                "path": "test.safetensors", "size": 7, "sha256": "b" * 64,
+                "path": "test.safetensors", "target": "diffusion_models/test.safetensors", "size": 7, "sha256": "b" * 64,
             }],
         }],
     }
@@ -249,6 +252,17 @@ def test_qualification_retries_transient_backend_unavailability_after_submission
     assert backend.queue_calls == 3
     assert backend.submit_calls == 1
     assert result["job"]["finalState"] == "completed"
+
+
+def test_qualification_rejects_changed_lock_graph_before_backend_or_gpu(tmp_path):
+    registry, lock_path = _registry(tmp_path)
+    lock = json.loads(lock_path.read_text())
+    lock["workflows"][0]["graph_sha256"] = "f" * 64
+    lock_path.write_text(json.dumps(lock))
+    with pytest.raises(MediaError, match="bundle graph differs"):
+        qualify("video.test", "v1", {"prompt": "test"}, registry=registry,
+                jobs=MediaJobStore(tmp_path / "jobs.sqlite3"), artifacts=ArtifactStore(tmp_path / "artifacts"),
+                backend=object(), principal="qualifier", lock_path=lock_path, models_root=tmp_path)
 
 
 def test_qualification_times_out_after_persistent_post_submission_unavailability(tmp_path, monkeypatch):

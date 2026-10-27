@@ -139,6 +139,16 @@ anvil-serving media bundle inventory <WORKFLOW> \
   --models-volume <VOLUME>
 ```
 
+For an existing host directory or downloaded snapshot cache mounted read-only
+into the worker, inventory and qualification accept `--models-root <PATH>`
+instead of `--models-volume`. Locked targets must resolve inside that root;
+missing files and size/hash mismatches stay unavailable. This path reads files
+without creating volumes, installing helpers or copying/downloading weights.
+It does not prove which file a running loader selected: separately verify the
+declared read-only mount, model search paths and loader filenames. The lock's
+canonical graph digest must match the selected qualification workflow before
+any backend or GPU probe. Staging continues to require a named volume.
+
 Stage only the missing, digest-pinned assets after reviewing the same plan:
 
 ```bash
