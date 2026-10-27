@@ -208,6 +208,14 @@ def test_documented_invocation_resolves_and_supplies_required_arguments(doc: str
     valued = set(re.findall(r"(--[a-z][a-z0-9-]*) (?:[A-Za-z_][A-Za-z0-9_]*|\{[^}]*\})", tail))
     valued |= GLOBAL_VALUED_OPTIONS
 
+    # Required argparse alternatives need one choice, not every member.
+    for group in re.findall(r"\((--[^()]*\|[^()]*)\)", tail):
+        options = re.findall(r"--[a-z][a-z0-9-]*", group)
+        assert sum(option in tokens for option in options) == 1, (
+            f"{doc}: '{invocation}' requires exactly one of {', '.join(options)}"
+        )
+        tail = tail.replace("(" + group + ")", " ")
+
     # Required options appear unbracketed in an argparse usage line.
     for option in re.findall(r"(?<![\[\w-])(--[a-z][a-z0-9-]*)", tail):
         assert option in tokens, (
@@ -262,6 +270,15 @@ def test_documented_invocation_resolves_and_supplies_required_arguments(doc: str
         f"{command} accepts {lower}-{upper} "
         f"(required: {', '.join(required_positionals) or 'none'})\n  usage: {usage}"
     )
+
+
+def test_required_option_alternatives_accept_one_and_reject_zero_or_both():
+    base = "media bundle inventory recipe --version v1"
+    for selection in (" --models-root models", " --models-volume models"):
+        test_documented_invocation_resolves_and_supplies_required_arguments("synthetic", base + selection)
+    for selection in ("", " --models-root models --models-volume models"):
+        with pytest.raises(AssertionError, match="requires exactly one"):
+            test_documented_invocation_resolves_and_supplies_required_arguments("synthetic", base + selection)
 
 
 def test_router_transition_forms_use_the_tier_option():
