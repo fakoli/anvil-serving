@@ -88,7 +88,7 @@ def test_workflow_contract_validates_bounds_and_schema():
 
 @pytest.mark.parametrize(("kind", "media_types"), [
     ("string", ("video/mp4",)),
-    ("artifact", ("audio/wav",)),
+    ("artifact", ("application/json",)),
     ("artifact", ("video/mp4", "video/mp4")),
     ("artifact", ["video/mp4"]),
 ])

@@ -343,6 +343,8 @@ required operands, choices, and defaults.
 | `media memory-guard run` | Publish memory safety signals until explicitly stopped. | `mutate` / `foreground` | `--config`<br>`--dry-run`<br>`--confirm` |
 | `media memory-guard supervise` | Run one worker child only while its host signal is safe and fresh. | `mutate` / `foreground` | `--config`<br>`--lease`<br>`--dry-run`<br>`--confirm` |
 | `media capabilities` | List deterministic media capabilities. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
+| `media asset` | Upload owned reference media. | `read` / `bounded` | - |
+| `media asset upload` | Decode and retain one bounded local reference file. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--file`<br>`--client-config` |
 | `media bundle` | Inventory and stage exact pinned workflow assets. | `read` / `bounded` | - |
 | `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume` |
 | `media bundle stage` | Add missing exact model assets without replacing existing files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--user-volume`<br>`--runtime-uid`<br>`--runtime-gid` |
