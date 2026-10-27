@@ -2,7 +2,7 @@
 name: anvil-media
 description: Generate, inspect, or cancel images and videos through Anvil's bounded named-workflow MCP tools.
 metadata:
-  version: "1.0.6"
+  version: "1.0.7"
   hermes:
     tags: [media, image-generation, video-generation, mcp]
     category: media
@@ -20,6 +20,8 @@ an earlier Anvil media job. A slash-command invocation is optional.
    `mcp__anvil_media__media_workflow_list`. Select one exact returned workflow
    whose kind matches the request. If it is unavailable, report its stated
    reasons and stop.
+   Candidate recipe categories marked `static-reviewed` or `needs-qualification`
+   are discovery only. Execute only the exact available registered workflow.
 2. Call `mcp__anvil_media__media_workflow_show` for that exact workflow and
    version. Treat its parameter schema, quality profiles, availability, and
    limits as authoritative.
@@ -37,6 +39,7 @@ an earlier Anvil media job. A slash-command invocation is optional.
    integer without asking. Ask only when a genuinely required creative choice
    cannot be inferred.
 5. Call `mcp__anvil_media__media_workflow_validate` for the selected workflow.
+   Pass only `workflow_id` and `version`; this tool does not accept parameters.
    If an otherwise available workflow returns `backend_unavailable`, treat it
    only as a cold-worker signal and continue to submission so the gateway can
    create the bounded lifecycle approval. Do not diagnose, name, or offer to
@@ -49,6 +52,11 @@ an earlier Anvil media job. A slash-command invocation is optional.
    changed request gets a new key. Preserve a resume bundle containing the exact
    workflow ID and version, quality profile, full parameters, and idempotency
    key; never reconstruct those fields from conversation or session history.
+   When advertised, call `mcp__anvil_media__media_workflow_prepare` with this
+   workflow/version/key/profile and either literal parameters or the recipe's
+   supported structured brief. Preserve its exact `runArguments`, including
+   `plan_digest`. Unsupported reference roles and negative controls must fail
+   explicitly; never turn an identity image or source video into prompt prose.
 7. Call `mcp__anvil_media__media_workflow_run` with the exact
    `quality_profile`. Preserve the returned job ID and state. Do not resubmit
    merely because generation is long-running. If it returns
@@ -69,14 +77,18 @@ an earlier Anvil media job. A slash-command invocation is optional.
    bundle as a user-facing result, not internal bookkeeping.
    Hermes has no worker-lifecycle authority; stop without changing the worker.
    Do not omit the caller-generated idempotency key.
+   If preparation returned `runArguments`, submit that object unchanged.
+   Preserve any returned `plan_digest` in the exact resume mapping and compare
+   it too; include it when replaying the five submission fields below.
 8. Poll `mcp__anvil_media__media_job_status` at a bounded cadence until the job
    is terminal or the interaction's wait budget ends. Report
    `awaiting_approval`, `preparing`, `queued`, and `running` as real
    states; never invent completion. After an operator applies a reported cold
    lifecycle approval, retry from the complete resume bundle so the reserved job
-   resumes exactly once. Pass exactly its five submission fields to
+   resumes exactly once. Pass its five submission fields to
    `media_workflow_run`: `workflow_id`, `version`, `parameters`,
-   `quality_profile`, and `idempotency_key`. Do not pass `job_id` or
+   `quality_profile`, and `idempotency_key`, plus `plan_digest` when present.
+   Do not pass `job_id` or
    `approval_transaction_id` to that tool: use `job_id` only for the same-job
    equality check, and use `approval_transaction_id` only to correlate the
    reported operator approval. Require `created: false` and the same job ID
@@ -117,11 +129,16 @@ an earlier Anvil media job. A slash-command invocation is optional.
     artifact metadata advertises a `resource` path (it answers `Method not
     found`). Retrieve artifact bytes through the authenticated artifact
     origin instead of assuming resource support, and verify the downloaded
-    bytes against the artifact's `sha256` before presenting them.
+    bytes against the artifact's `sha256` before presenting them. Prefer the
+    returned `downloadUrl`: when `requiresAuthentication` is false it is an
+    artifact-scoped capability until `downloadExpiresAt`; keep it private and
+    inspect again after expiry. When true, use existing MCP credentials in the
+    Authorization header and the advertised bounded ranges. Never invent a URL
+    or put the reusable credential in it.
 14. The results are transport-shaped, not client-specific: the same envelope
     nesting and the two-block content array appear whether the call arrives
     through Hermes' MCP client or a direct stdio JSON-RPC client, so this
-    section applies to any client of the eight media tools.
+    section applies to any client of the nine media tools.
 
 ## Completion invariant
 
@@ -139,7 +156,7 @@ of actions that were not completed in the turn.
 
 ## Boundaries
 
-- Use only the eight tool names in the procedure above.
+- Use only the nine tool names in the procedure above.
 - Treat workflow IDs, versions, quality profiles, parameters, availability,
   limits, job states, latency, and artifact resources returned by Anvil as
   authoritative.

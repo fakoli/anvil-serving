@@ -208,6 +208,22 @@ def commands() -> CommandNode:
                         argv_prefix=("workflow", "validate"),
                     ),
                     _resource_node(
+                        "prepare",
+                        "Compile a shot brief and return an exact bounded run request.",
+                        "anvil_serving.media.cli",
+                        role="media-gateway",
+                        options=IDENTITY_OPTIONS + tuple(
+                            _option(flag, summary=summary, value_name=value)
+                            for flag, summary, value in (
+                                ("--version", "Pinned workflow version.", "VERSION"),
+                                ("--parameters", "Bounded workflow parameters.", "JSON"),
+                                ("--brief", "Structured shot brief accepted by the recipe.", "JSON"),
+                                ("--quality-profile", "Exact declared quality profile.", "PROFILE"),
+                                ("--idempotency-key", "Stable caller request key.", "KEY"),
+                            )),
+                        argv_prefix=("workflow", "prepare"),
+                    ),
+                    _resource_node(
                         "run",
                         "Submit one bounded named media workflow.",
                         "anvil_serving.media.cli",
@@ -235,6 +251,7 @@ def commands() -> CommandNode:
                             _option(
                                 "--idempotency-key", summary="Caller retry key.", value_name="KEY"
                             ),
+                            _option("--plan-digest", summary="Digest returned by workflow preparation.", value_name="SHA256"),
                             _option(
                                 "--backend-url",
                                 summary="Declared adapter endpoint.",

@@ -15,7 +15,7 @@ from .errors import MediaError
 from .jobs import MediaJobStore
 from .operations import MediaOperations, parameters_from_json, stable_request_key
 from .qualification import qualify as qualify_media
-from .workflows import WorkflowRegistry
+from .workflows import WorkflowRegistry, render_request as _render_request
 from .worker import MediaArtifactCapture, MediaJobReconciler
 
 
@@ -69,6 +69,14 @@ def _parser() -> argparse.ArgumentParser:
     _storage_options(validate)
     _workflow_identity(validate)
     validate.add_argument("--backend-url", required=True)
+    prepare = workflow_sub.add_parser("prepare")
+    _storage_options(prepare)
+    _workflow_identity(prepare)
+    prepare.add_argument("--parameters", default="{}")
+    prepare.add_argument("--brief", default="")
+    prepare.add_argument("--quality-profile", default="")
+    prepare.add_argument("--principal", required=True)
+    prepare.add_argument("--idempotency-key", required=True)
     run = workflow_sub.add_parser("run")
     _storage_options(run)
     _workflow_identity(run)
@@ -77,6 +85,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--principal", required=True)
     run.add_argument("--idempotency-key", default="")
     run.add_argument("--backend-url", required=True)
+    run.add_argument("--plan-digest", default=None)
     run.add_argument("--dry-run", action="store_true")
 
     job = sub.add_parser("job")
@@ -132,21 +141,6 @@ def _operations(args: argparse.Namespace) -> MediaOperations:
         MediaJobStore(state_path),
         ArtifactStore(artifact_root),
     )
-
-
-def _render_request(registry, workflow_id, version, parameters, quality_profile):
-    descriptor = registry.get(workflow_id, version)
-    selected_profile = quality_profile or descriptor.default_quality_profile
-    if selected_profile:
-        rendered = registry.render(
-            workflow_id,
-            version,
-            parameters,
-            quality_profile=selected_profile,
-        )
-    else:
-        rendered = registry.render(workflow_id, version, parameters)
-    return descriptor, rendered
 
 
 def run(args: argparse.Namespace) -> dict:
@@ -252,12 +246,19 @@ def run(args: argparse.Namespace) -> dict:
             return operations.workflow_list()
         if args.action == "show":
             return operations.workflow_show(args.workflow_id, args.version)
+        if args.action == "prepare":
+            return operations.workflow_prepare(args.workflow_id, args.version,
+                parameters_from_json(args.parameters), principal=args.principal,
+                idempotency_key=args.idempotency_key,
+                brief=parameters_from_json(args.brief) if args.brief else None,
+                quality_profile=args.quality_profile)
         backend = ComfyUIClient(args.backend_url)
         if args.action == "validate":
             return operations.workflow_validate(args.workflow_id, args.version, backend=backend)
         parameters = parameters_from_json(args.parameters)
-        descriptor = operations.registry.get(args.workflow_id, args.version)
-        selected_profile = args.quality_profile or descriptor.default_quality_profile
+        _, rendered = _render_request(operations.registry, args.workflow_id, args.version,
+                                      parameters, args.quality_profile)
+        selected_profile = rendered.quality_profile
         key = args.idempotency_key or stable_request_key(
             args.workflow_id,
             args.version,
@@ -272,6 +273,7 @@ def run(args: argparse.Namespace) -> dict:
             idempotency_key=key,
             backend=backend,
             quality_profile=args.quality_profile,
+            plan_digest=getattr(args, "plan_digest", None),
         )
     if args.family == "job":
         if args.action == "status":

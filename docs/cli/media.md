@@ -21,12 +21,19 @@ service and resource owner.
 | Discover callable and blocked workflows | `media capabilities` | Inspect the exact version with `media workflow show`. |
 | Prepare a media worker | `media bundle inventory` | Preview missing exact assets with `media bundle stage --dry-run`; apply only with `--confirm`. |
 | Check workflow compatibility | `media workflow validate` | Keep the workflow unavailable when any required feature, node, model, or backend fact is unknown. |
+| Compile a shot brief | `media workflow prepare` | Inspect exact run arguments; submit them unchanged through existing admission. |
 | Run a named workflow | `media workflow run ... --dry-run` | Review the binding, then submit the same request with `--confirm`. |
 | Follow or cancel work | `media job status` | Use `media job cancel --dry-run`, then `--confirm`, for the same principal. |
 | Inspect a result | `media artifact inspect` | Fetch bytes only through the authenticated gateway artifact boundary. |
 | Qualify a blocked workflow | `media qualify run ... --dry-run` | Apply with `--confirm`, retain evidence, and require independent quality review. |
 
 ## Discover capabilities
+
+Discovery includes workflow categories and an optional operator-owned recipe
+catalog. `discovered`, `static-reviewed` and `needs-qualification` entries are
+research candidates; they cannot execute merely because their source JSON
+parsed. A `ready` catalog entry must name an available registered workflow.
+UI workflow imports still require a reviewed API export and local qualification.
 
 ```bash
 anvil-serving media capabilities
@@ -43,6 +50,38 @@ meet a perceptual goal, and it does not set `promoted=true` automatically.
 `--registry`, `--state-db`, and `--artifact-root` select operator-owned state.
 Public packaged workflow descriptors remain templates and pinned defaults; real
 deployment values belong in the private operator home.
+
+## Prepare a shot request
+
+`media_workflow_prepare` accepts an explicit workflow/version, a stable
+`idempotency_key`, optional `parameters`, `quality_profile`, and a structured
+`brief`. `media_workflow_show` exposes each recipe's supported brief fields,
+literal prompt template, reference roles and bounded parameter schema. The
+server compiles those fields into declared bindings. It uses no LLM and does
+not infer identity mapping, invent unsupported controls or choose another model.
+Dialogue is inserted verbatim; unsupported brief fields and profile overrides
+fail before submission.
+
+```bash
+anvil-serving media workflow prepare '<WORKFLOW>' --version '<VERSION>' --principal caller-1 --idempotency-key shot-01 --brief '{"scene":"Three hosts in a studio.","camera":"Wide shot."}'
+```
+
+Select a workflow that declares a prompt template and replace the quoted
+placeholders with its advertised id and version. The result contains
+`runArguments` and a digest covering the owner, complete workflow contract,
+rendered graph, resolved parameters and request key.
+Preparation checks owned reference metadata but does not contact/start the
+worker, create a render job, or establish backend readiness. Call
+`media_workflow_validate` with **only** `workflow_id` and `version`, then pass
+`runArguments` unchanged to `media_workflow_run`. A changed/stale prepared
+request fails with `media_plan_changed`. Existing direct submissions remain
+supported and retain all validation/admission gates.
+
+CLI callers can pass compiled parameters with `media workflow run` and its
+`--plan-digest`; the MCP uses the same compiler and renderer. References are
+owned opaque artifact IDs in declared slots, never caller filesystem paths or
+node IDs. An image input does not imply face replacement, a speaker map or
+lip synchronization; the chosen recipe must declare and qualify those roles.
 
 ## Prepare the worker bundle
 
@@ -298,7 +337,7 @@ authenticated `[server]` media declaration (`auth_env`, `media_principal`,
 deployment. No chat route or chat-model serve is required. An ordinary empty
 router without that media declaration remains invalid.
 
-Verify the connection by listing the eight `media_*` tools, validating an
+Verify the connection by listing the nine `media_*` tools, validating an
 available workflow, submitting a named image workflow, polling its job to
 completion, and inspecting the resulting artifact. The image content digest
 must match the artifact metadata. Wrong-token and cross-principal access must
@@ -309,7 +348,7 @@ startup path.
 The resource-owning host operates ComfyUI through managed `serves` and
 controller tools; raw Docker is not the operational path. The caller-facing
 media catalog excludes lifecycle and general operator tools. To reconcile the
-packaged media-only skill and eight-tool allowlist into selected Hermes
+packaged media-only skill and nine-tool allowlist into selected Hermes
 profiles, use `anvil-serving harness sync hermes-media --dry-run` and review
 the [Control Plane & Fleet reference](control-plane.md#harness).
 
