@@ -84,6 +84,8 @@ def test_frozen_plan_and_closed_binding_reject_drift_before_traffic(tmp_path, mo
 
 def test_ready_barrier_union_budget_unknown_closure_and_no_clamp(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch, count=2)
+    release_clock = 492.40178837899526  # Reproduces the hosted Python 3.11 binary64 subtraction.
+    monkeypatch.setattr(execution.time, 'monotonic', lambda: release_clock)
     with pytest.raises(BenchmarkJobError, match='all frozen children'):
         execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=80)
     store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
@@ -106,7 +108,8 @@ def test_ready_barrier_union_budget_unknown_closure_and_no_clamp(tmp_path, monke
     target.parent.mkdir(parents=True)
     atomic_write_json(target, shared)
     store.transition(bound[0]['run_id'], 'completed', results=execution.campaign_result_reference(store, bound[0]))
-    assert execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['active_seconds'] == 20
+    active_seconds = execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['active_seconds']
+    assert active_seconds == pytest.approx(20, rel=0, abs=1e-12)
     with pytest.raises(BenchmarkJobError, match='requires 80s.*remaining 60s'):
         execution.release_batch(manifest, 'batch-1', run_root=root, allowance_s=80, store=store)
     assert not (execution._directory(manifest, root) / 'batches/batch-1.json').exists()
