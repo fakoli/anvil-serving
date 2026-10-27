@@ -1,10 +1,19 @@
 import json
+import os
 import re
+import signal
 
 import pytest
 
 from anvil_serving.benchmarking import capacity_plan
 from anvil_serving.benchmarking.cli import main
+
+
+requires_safe_posix = pytest.mark.skipif(
+    not all(hasattr(os, name) for name in ("O_NOFOLLOW", "O_NONBLOCK", "mkfifo"))
+    or not all(hasattr(signal, name) for name in ("setitimer", "getitimer", "ITIMER_REAL", "SIGALRM")),
+    reason="mixed capacity requires safe POSIX plan reads and interval timers",
+)
 
 
 def plan(path):
@@ -16,6 +25,7 @@ def plan(path):
     return value
 
 
+@requires_safe_posix
 def test_mixed_capacity_native_calibration_and_journal(tmp_path, monkeypatch, capsys):
     path = tmp_path / 'plan.json'; plan(path)
     counts = {}; captured = []
@@ -78,6 +88,7 @@ def test_native_adapters_match_controls_and_fail_closed(monkeypatch):
     with pytest.raises(ValueError): capacity_plan.calibrate({'tokenizer_api': 'llamacpp-chat'}, row, **kwargs)
 
 
+@requires_safe_posix
 def test_invalid_plan_is_rejected(tmp_path):
     path = tmp_path / 'plan.json'; value = plan(path)
     value['requests'][0]['max_tokens'] = 65537; path.write_text(json.dumps(value))
@@ -92,6 +103,7 @@ def test_invalid_plan_is_rejected(tmp_path):
     with pytest.raises(ValueError): capacity_plan.load_plan(path, 327680, 0)
 
 
+@requires_safe_posix
 def test_missing_or_mismatched_usage_is_retained_as_failure(tmp_path, monkeypatch):
     path = tmp_path / 'plan.json'
     path.write_text(json.dumps({'schema': 'anvil-serving.capacity-plan/v1', 'tokenizer_api': 'llamacpp-chat',
@@ -124,6 +136,7 @@ def test_calibration_transport_error_is_not_retried(monkeypatch):
     assert len(calls) == 1
 
 
+@requires_safe_posix
 def test_calibration_failure_journal_precedes_any_generation(tmp_path, monkeypatch):
     path = tmp_path / 'plan.json'; plan(path)
     count_calls = []
@@ -142,6 +155,7 @@ def test_calibration_failure_journal_precedes_any_generation(tmp_path, monkeypat
     assert [row['record_type'] for row in journal] == ['header', 'calibration_failure']
 
 
+@requires_safe_posix
 def test_plan_file_rejects_symlink_fifo_and_accepts_crlf(tmp_path):
     import os
     path = tmp_path / 'plan.json'; value = plan(path)
@@ -155,6 +169,7 @@ def test_plan_file_rejects_symlink_fifo_and_accepts_crlf(tmp_path):
     with pytest.raises(ValueError): capacity_plan.load_plan(path, 327680, 0)
 
 
+@requires_safe_posix
 def test_native_http_wall_deadline_rejects_slow_response():
     import http.server
     import threading
@@ -177,6 +192,7 @@ def test_native_http_wall_deadline_rejects_slow_response():
         server.shutdown(); server.server_close(); thread.join()
 
 
+@requires_safe_posix
 def test_aggregate_calibration_deadline_blocks_dispatch(tmp_path, monkeypatch):
     import time
     import anvil_serving.benchmarking.cli as cli
@@ -195,6 +211,7 @@ def test_aggregate_calibration_deadline_blocks_dispatch(tmp_path, monkeypatch):
     assert journal[-1]['record_type'] == 'calibration_failure'
 
 
+@requires_safe_posix
 def test_native_http_trickle_cannot_extend_wall_deadline():
     import http.server
     import threading
@@ -218,6 +235,7 @@ def test_native_http_trickle_cannot_extend_wall_deadline():
         server.shutdown(); server.server_close(); thread.join()
 
 
+@requires_safe_posix
 def test_mixed_dry_run_labels_native_plan(tmp_path, capsys):
     path = tmp_path / 'plan.json'; plan(path)
     out = tmp_path / 'result.json'
@@ -227,3 +245,14 @@ def test_mixed_dry_run_labels_native_plan(tmp_path, capsys):
     preview = json.loads(capsys.readouterr().out)
     assert preview['capacity']['context_tokens'] == 'native-per-request-plan'
     assert [case['label'] for case in preview['request_plan']['requests']] == ['anchor', 'peer', 'peer', 'peer']
+
+
+def test_unsupported_native_guards_fail_closed(tmp_path, monkeypatch):
+    with monkeypatch.context() as context:
+        context.delattr(capacity_plan.os, "O_NOFOLLOW", raising=False)
+        with pytest.raises(ValueError, match="safe capacity plan reads are unavailable"):
+            capacity_plan.load_plan(tmp_path / "ignored.json", 1000, 0)
+    with monkeypatch.context() as context:
+        context.delattr(capacity_plan.signal, "setitimer", raising=False)
+        with pytest.raises(RuntimeError, match="main-thread deadline support"):
+            capacity_plan.api_json("http://127.0.0.1:30002/v1", None, 1, {})
