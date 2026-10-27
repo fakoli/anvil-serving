@@ -233,7 +233,7 @@ def tool_media_artifact_inspect(args: dict) -> dict:
                     "name": artifact_id + ".mp4",
                     "mimeType": artifact["mediaType"],
                     "size": artifact["byteLength"],
-                    "description": "Video download; requires the existing MCP Bearer credential and bounded Range requests for larger files.",
+                    "description": "Video download; use the existing MCP credential in the Authorization header and bounded Range requests for larger files.",
                 }]
         image_content = operations.artifacts.mcp_image_content(
             artifact_id,
@@ -309,7 +309,7 @@ FAMILY = ToolFamily(
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
         ),
         "media_artifact_inspect": _tool(
-            "Inspect owned artifact metadata and its authenticated downloadUrl. Use the existing MCP Bearer credential for HTTP GET/Range; credentials are never embedded in the URL. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",
+            "Inspect owned artifact metadata and its authenticated downloadUrl. Use HTTP GET/Range with the existing MCP credential in the Authorization header; credentials are never embedded in the URL. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",
             {"artifact_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_artifact_inspect, scope="media:read", required=("artifact_id",),
         ),
