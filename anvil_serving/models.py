@@ -2555,8 +2555,8 @@ def _recipe_container_logs(
     return returncode
 
 
-def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
-    inventory = serve_recipes.discover_recipe_containers(_run=_run)
+def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run, strict=False):
+    inventory = serve_recipes.discover_recipe_containers(_run=_run, strict=True) if strict else serve_recipes.discover_recipe_containers(_run=_run)
     current = serve_recipes.select_recipe_container(
         inventory,
         model=identity["model"],
@@ -2565,6 +2565,7 @@ def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
     fingerprint_fields = (
         "container",
         "container_id",
+        "started_at",
         "model",
         "revision",
         "recipe_digest",
@@ -2813,9 +2814,16 @@ def _discovered_recipe_container_unload(
     recipe=None,
     dry_run=False,
     confirm=False,
+    expected_container_id=None,
+    expected_started_at=None,
     _run=subprocess.run,
 ):
     """Remove one selected Anvil recipe container without registry dependence."""
+    if expected_container_id is not None and (
+        identity.get("container_id") != expected_container_id
+        or identity.get("started_at") != expected_started_at
+    ):
+        raise serve_recipes.RecipeError("recipe container does not match expected incarnation")
     cleanup_required = identity.get("native_kv_offload") is not False
     if recipe is not None and serve_recipes.uses_native_kv_offload(recipe):
         cleanup_required = True
@@ -2840,10 +2848,14 @@ def _discovered_recipe_container_unload(
         dry_run=False,
     ):
         return 3
-    current = _recheck_discovered_recipe_container(identity, _run=_run)
+    current = _recheck_discovered_recipe_container(identity, _run=_run, strict=expected_container_id is not None)
     from . import recipe_monitoring
     try:
-        recipe_monitoring.withdraw(container=current["container"])
+        if expected_container_id is None:
+            recipe_monitoring.withdraw(container=current["container"])
+        else:
+            recipe_monitoring.withdraw(container=current["container"],
+                expected_container_id=expected_container_id, expected_started_at=expected_started_at)
     except (ValueError, OSError, TypeError) as exc:
         raise serve_recipes.RecipeError("monitoring withdrawal failed before unload") from exc
     completed = _run(
@@ -3126,6 +3138,10 @@ def _build_recipe_parser():
                 help="emit lines containing this literal, case-insensitive; repeat for OR matching",
             )
         if action == "unload":
+            parser.add_argument("--expected-container-id", metavar="ID",
+                                help="full container ID; requires --expected-started-at")
+            parser.add_argument("--expected-started-at", metavar="UTC",
+                                help="exact container start timestamp; requires --expected-container-id")
             parser.add_argument("--dry-run", action="store_true",
                                 help="verify identity and preview removal")
             parser.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -3134,6 +3150,16 @@ def _build_recipe_parser():
 
 def _recipe_main(argv):
     a = _build_recipe_parser().parse_args(argv)
+    if a.recipe_action == "unload":
+        expected_id, expected_started = a.expected_container_id, a.expected_started_at
+        if (expected_id is None) != (expected_started is None):
+            print("--expected-container-id and --expected-started-at must be supplied together", file=sys.stderr)
+            return 2
+        if expected_id is not None and (not re.fullmatch(r"[0-9a-f]{64}", expected_id)
+                or serve_recipes._recipe_time(expected_started) is None
+                or serve_recipes._recipe_time(expected_started) <= serve_recipes._recipe_time(serve_recipes._RECIPE_ZERO_TIME)):
+            print("expected container ID or start timestamp is invalid", file=sys.stderr)
+            return 2
 
     if a.recipe_action == "running":
         try:
@@ -3189,6 +3215,9 @@ def _recipe_main(argv):
                 print(str(exc), file=sys.stderr)
                 return 1
             if native is not None:
+                if a.recipe_action == "unload" and a.expected_container_id is not None:
+                    print("expected container identity is unsupported for native service-bound recipes", file=sys.stderr)
+                    return 2
                 if a.container:
                     print("native service-bound recipes do not accept --container", file=sys.stderr)
                     return 2
@@ -3210,7 +3239,7 @@ def _recipe_main(argv):
                     transport=a.transport,
                     timeout_seconds=a.operation_timeout,
                 )
-        if recipe is not None and a.container:
+        if recipe is not None and a.container and not (a.recipe_action == "unload" and a.expected_container_id is not None):
             try:
                 if a.recipe_action == "status":
                     identity = _recipe_container_identity(recipe, a.container)
@@ -3234,7 +3263,8 @@ def _recipe_main(argv):
                 print(str(exc), file=sys.stderr)
                 return 1
         try:
-            inventory = serve_recipes.discover_recipe_containers()
+            bound_unload = a.recipe_action == "unload" and a.expected_container_id is not None
+            inventory = serve_recipes.discover_recipe_containers(strict=True) if bound_unload else serve_recipes.discover_recipe_containers()
             identity = serve_recipes.select_recipe_container(
                 inventory,
                 model=a.model,
@@ -3250,9 +3280,18 @@ def _recipe_main(argv):
                     since=a.since,
                     contains=a.contains,
                 )
+            if bound_unload and recipe is not None and (
+                identity.get("model") != recipe["model"]
+                or identity.get("recipe_digest") != serve_recipes.recipe_digest(recipe)
+                or identity.get("revision") != recipe.get("download", {}).get("revision")
+                or identity.get("registry_digest") != serve_recipes.registry_digest(registry_path)
+            ):
+                raise serve_recipes.RecipeError("recipe container does not match selected recipe pins")
             return _discovered_recipe_container_unload(
                 identity,
                 recipe=recipe,
+                expected_container_id=a.expected_container_id,
+                expected_started_at=a.expected_started_at,
                 dry_run=a.dry_run,
                 confirm=a.confirm,
             )

@@ -444,6 +444,16 @@ an exact `--container`. An unload without a current recipe treats a missing
 native-offload label conservatively and invokes the existing twice-verified,
 exact-path shared-memory cleanup guard after removal.
 
+For an unload bound to a previously observed incarnation, supply both
+`--expected-container-id` (the full 64-character ID) and
+`--expected-started-at` (the exact UTC start timestamp from discovery). The
+command checks the selected recipe pins and rechecks the full identity before
+withdrawing its matching monitoring receipt and removing that immutable ID.
+A missing or changed incarnation is an error, not proof of absence. These
+options apply to recipe containers, not native service-bound recipes. Omit both
+for the existing unload behavior. `--dry-run` still previews without removal;
+`--confirm` is still required to apply.
+
 `--contains` is a case-insensitive literal filter and may be repeated; a line
 is emitted when it contains any selected literal. Filtering happens after the
 exact recipe/container ownership check. Successful container log text from

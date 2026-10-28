@@ -1232,3 +1232,51 @@ def test_recipe_unload_failure_redacts_before_truncation():
     assert "token=<redacted>" in detail
     assert detail.endswith(" [truncated]\n")
     assert len(detail) <= len("recipe unload failed: ") + 2048 + len(" [truncated]\n")
+
+@pytest.mark.parametrize("registry_selected", [False, True])
+@pytest.mark.parametrize("scenario", ["matching", "selected_replacement", "recheck_replacement", "restarted", "missing", "dry_run", "no_confirm", "pin_drift"])
+def test_cli_bound_unload_preserves_selected_incarnation(monkeypatch, tmp_path, registry_selected, scenario):
+    """Exercise handler, selection, native recheck and exact immutable removal."""
+    from anvil_serving import recipe_monitoring
+    start = "2026-01-01T00:00:00.123456789Z"
+    selected = serve_recipes._recipe_container_record(_row("candidate", container_id="a" * 64))
+    assert selected is not None
+    selected["started_at"] = start
+    replacement = dict(selected, container_id="b" * 64)
+    if scenario == "restarted": replacement = dict(selected, started_at="2026-01-01T00:00:01Z")
+    recipe = {"model":"org/model", "download":{"revision":"a" * 40}, "serve":{}}
+    monkeypatch.setattr(models, "_recipe_registry", lambda *args, **kwargs: {"recipe": [recipe] if registry_selected else []})
+    monkeypatch.setattr(models, "_native_recipe_binding", lambda *args: None)
+    monkeypatch.setattr(serve_recipes, "recipe_digest", lambda value: "b" * 64)
+    monkeypatch.setattr(serve_recipes, "registry_digest", lambda value: "c" * 64)
+    if scenario == "pin_drift": selected["recipe_digest"] = "d" * 64
+    calls=[]; discovery_count=0
+    def discover(**kwargs):
+        nonlocal discovery_count
+        discovery_count+=1
+        if scenario == "missing": rows=[]
+        elif scenario == "selected_replacement" or (scenario in {"recheck_replacement", "restarted"} and discovery_count > 1): rows=[replacement]
+        else: rows=[selected]
+        return {"schema":serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA,"containers":rows}
+    monkeypatch.setattr(serve_recipes,"discover_recipe_containers",discover)
+    monkeypatch.setattr(recipe_monitoring,"withdraw",lambda **kwargs:calls.append(("withdraw",kwargs)))
+    original=models._discovered_recipe_container_unload
+    monkeypatch.setattr(models,"_discovered_recipe_container_unload",lambda identity,**kwargs:original(identity,**kwargs,_run=lambda argv,**kw:calls.append(("rm",argv)) or _completed(argv)))
+    argv=["unload","org/model","--registry",str(tmp_path/"registry.toml"),"--container","candidate", "--expected-container-id","a"*64,"--expected-started-at",start]
+    argv+= ["--dry-run"] if scenario=="dry_run" else [] if scenario=="no_confirm" else ["--confirm"]
+    if scenario=="no_confirm":monkeypatch.setattr(models,"_confirm_recipe_mutation",lambda *a,**k:False)
+    code=models._recipe_main(argv)
+    if scenario=="matching" or (scenario=="pin_drift" and not registry_selected):
+        assert code==0 and calls==[("withdraw",{"container":"candidate","expected_container_id":"a"*64,"expected_started_at":start}),("rm",["docker","rm","-f","a"*64])]
+    elif scenario in {"dry_run","no_confirm"}:
+        assert code==(0 if scenario=="dry_run" else 3) and calls==[]
+    else: assert code==1 and calls==[]
+
+@pytest.mark.parametrize('options',[
+ ['--expected-container-id','a'*64],['--expected-started-at','2026-01-01T00:00:00Z'],
+ ['--expected-container-id','abc','--expected-started-at','2026-01-01T00:00:00Z'],
+ ['--expected-container-id','a'*64,'--expected-started-at','nonsense'],
+ ['--expected-container-id','a'*64,'--expected-started-at','0001-01-01T00:00:00Z']])
+def test_cli_bound_unload_rejects_incomplete_or_invalid_intent_before_discovery(monkeypatch, options):
+    monkeypatch.setattr(serve_recipes,'discover_recipe_containers',lambda **kwargs:pytest.fail('discovery must not run'))
+    assert models._recipe_main(['unload','--container','candidate',*options,'--confirm'])==2
