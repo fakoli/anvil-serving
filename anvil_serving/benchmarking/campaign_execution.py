@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -264,6 +265,10 @@ def reconcile_batch(manifest, batch_id, *, run_root, store=None):
                 # Missing finalization cannot reclaim the remaining reservation.
                 end = release['deadline_monotonic']
         return {**result, 'status': 'closed', 'active_seconds': end - release['released_monotonic']}
+    try:
+        _require_observer_readiness(release, manifest)
+    except BenchmarkJobError:
+        return {**result, 'status': 'blocked'}
     active = release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic'] and all(r['status'] in {'active', 'draining', 'ready', 'closed'} for r in rows)
     return {**result, 'status': 'active' if active else 'blocked'}
 
@@ -288,6 +293,20 @@ def _validate_release(release, manifest, batch_id):
             or not math.isclose(release['deadline_monotonic'] - release['released_monotonic'], release['allowance_s'], rel_tol=0, abs_tol=.000001)
             or not math.isclose(release['deadline_monotonic'] - release['traffic_deadline_monotonic'], release['drain_reserve_s'], rel_tol=0, abs_tol=.000001)):
         raise BenchmarkJobError('campaign_release_invalid', 'release binding, allowance or deadlines are invalid')
+    readiness = release.get('observer_readiness')
+    if readiness is not None and (not isinstance(readiness, dict)
+            or set(readiness) != {'status', 'source_timestamp_seconds'} or readiness.get('status') != 'ready'
+            or not _finite(readiness.get('source_timestamp_seconds'))):
+        raise BenchmarkJobError('campaign_release_invalid', 'release observer readiness evidence is invalid')
+
+
+def _require_observer_readiness(release, manifest):
+    if 'telemetry_collection' not in manifest:
+        return
+    readiness = release.get('observer_readiness')
+    if (not isinstance(readiness, dict) or set(readiness) != {'status', 'source_timestamp_seconds'}
+            or readiness.get('status') != 'ready' or not _finite(readiness.get('source_timestamp_seconds'))):
+        raise BenchmarkJobError('campaign_observer_not_ready', 'traffic requires fresh observer readiness evidence')
 
 
 def _anchored_closure(store, cell, manifest, root):
@@ -599,6 +618,7 @@ def require_batch_allowance(manifest, batch_id, *, run_root, store, allowance_s=
 
 def require_campaign_suite_window(context):
     release, spec = context['release'], context['spec']
+    _require_observer_readiness(release, context['manifest'])
     remaining = release['traffic_deadline_monotonic'] - time.monotonic()
     if release['boot_id'] != _boot_id() or not _finite(remaining) or remaining < spec['timeout_s']:
         raise BenchmarkJobError('campaign_budget_exceeded',
@@ -623,6 +643,8 @@ def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None, samp
     arm = next(arm for arm in manifest['arms'] if arm['arm_id'] == cells[0]['arm_id'])
     validate_drain_policy(arm.get('drain_policy', manifest.get('drain_policy', {})), reserve_s=reserve)
     activation = _activation(arm)
+    readiness = (_release_readiness(arm, manifest, batch_id, directory, activation)
+                 if 'telemetry_collection' in manifest else None)
     if sampler is not None:
         sampler.start(activation)
         _activation(arm, expected=activation)
@@ -635,11 +657,52 @@ def release_batch(manifest, batch_id, *, run_root, allowance_s, store=None, samp
         'allowance_s': allowance_s, 'drain_reserve_s': reserve,
         'traffic_deadline_monotonic': now + allowance_s - reserve, 'deadline_monotonic': now + allowance_s}
     value['activation'] = activation
+    if readiness is not None:
+        value['observer_readiness'] = readiness
+    _require_observer_readiness(value, manifest)
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(str(path), value)
     if sampler is not None:
         sampler.release = value
     return value
+
+
+def _release_readiness(arm, manifest, batch_id, directory, activation):
+    """Require one fresh idle observer read before sampler or worker traffic."""
+    policy = arm.get('drain_policy', manifest.get('drain_policy', {}))
+    policy = {**policy, 'metrics_url': activation['metrics_url'], 'generation': activation['generation']}
+    reason = 'invalid_policy'
+    try:
+        validate_drain_policy(policy, resolved=True)
+        from ..router.model_capacity import _default_metrics_read
+        status, raw = _default_metrics_read(policy['metrics_url'], {},
+            timeout=min(2, policy['timeout_s'], 3), max_bytes=1024 * 1024)
+        if status != 200:
+            reason = 'http_status'
+            raise ValueError()
+        if len(raw) > 1024 * 1024:
+            reason = 'oversized'
+            raise ValueError()
+        from .campaign_telemetry import engine_sample
+        stamp, values = engine_sample(raw.decode('utf-8'), policy, activation['served_model'], time.time())
+        if values['running_metric'] != 0 or values['waiting_metric'] != 0:
+            reason = 'busy'
+            raise ValueError()
+        return {'status': 'ready', 'source_timestamp_seconds': stamp}
+    except (OSError, http.client.HTTPException):
+        reason = 'transport'
+    except UnicodeDecodeError:
+        reason = 'decode'
+    except ValueError as exc:
+        if reason == 'invalid_policy':
+            reason = str(exc) if str(exc) in {'stale_engine_sample', 'missing_or_ambiguous_series'} else 'parse'
+    evidence = {'schema': 'anvil-serving.campaign-observer-readiness/v1', 'status': 'not_ready',
+                'batch_id': batch_id, 'activation_sha256': _digest(activation), 'reason': reason}
+    path = directory / 'readiness' / (batch_id + '.json')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        atomic_write_json(str(path), evidence)
+    raise BenchmarkJobError('campaign_observer_not_ready', 'generation-bound observer readiness is not idle')
 
 
 def _clients_stopped():
@@ -761,6 +824,7 @@ def enter_campaign(store, spec):
             time.sleep(.05)
         release = _read(release_path)
         _validate_release(release, manifest, binding['batch_id'])
+        _require_observer_readiness(release, manifest)
         with campaign_lock(_directory(manifest, store.run_root)):
             if _state(_directory(manifest, store.run_root), manifest=manifest).get('cancel_requested') is True:
                 raise BenchmarkJobError('campaign_cancelled', 'campaign cancellation was requested before traffic')

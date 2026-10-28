@@ -173,6 +173,68 @@ def test_engine_drain_requires_fresh_resolved_zero(monkeypatch):
     assert execution.observe_drain(policy, deadline=50)['status'] == 'verified'
 
 
+@pytest.mark.parametrize('outcome, reason', [
+    ('http', 'http_status'), ('stale', 'stale_engine_sample'), ('busy', 'busy'),
+    ('transport', 'transport'), ('ready', None),
+])
+def test_release_requires_single_fresh_idle_observer_read_before_sampler(tmp_path, monkeypatch, outcome, reason):
+    """Observer readiness fails before telemetry setup, receipt, or worker traffic."""
+    from anvil_serving.router import model_capacity
+    root, manifest, bound = campaign(tmp_path, monkeypatch, drain_reserve_s=70,
+        drain={'running_metric': 'running', 'waiting_metric': 'waiting',
+               'metric_labels': {'model_name': 'model'}, 'timeout_s': 40, 'poll_s': .1})
+    manifest['telemetry_collection'] = {}
+    manifest['manifest_sha256'] = execution._manifest_digest(manifest)
+    atomic_write_json(execution._directory(manifest, root) / 'manifest.json', manifest)
+    bound = [execution.bind_campaign_child(manifest['cells'][0]['spec'], manifest_sha256=manifest['manifest_sha256'],
+        campaign_id=manifest['campaign_id'], cell_id='cell-0', arm_id='arm', batch_id='batch-0')]
+    ready(root, manifest, bound)
+    monkeypatch.setattr(execution.time, 'time', lambda: 100.0)
+    calls = []
+    def read(*args, **kwargs):
+        calls.append((args, kwargs))
+        if outcome == 'transport':
+            raise OSError('offline')
+        if outcome == 'http':
+            return 503, b'unavailable'
+        stamp = '0' if outcome == 'stale' else '100'
+        running = '1' if outcome == 'busy' else '0'
+        raw = ('running{model_name="model"} ' + running + '\n'
+               'waiting{model_name="model"} 0\n'
+               'anvil_observer_metrics_sample_timestamp_seconds{model="model"} ' + stamp).encode()
+        return 200, raw
+    monkeypatch.setattr(model_capacity, '_default_metrics_read', read)
+    class Sampler:
+        started = None
+        def start(self, activation): self.started = activation
+    sampler = Sampler()
+    release_path = execution._directory(manifest, root) / 'batches/batch-0.json'
+    if reason is not None:
+        with pytest.raises(BenchmarkJobError) as error:
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140, sampler=sampler)
+        assert error.value.code == 'campaign_observer_not_ready'
+        evidence = execution._read(execution._directory(manifest, root) / 'readiness/batch-0.json')
+        assert evidence['status'] == 'not_ready' and evidence['reason'] == reason
+        outcome = 'busy'
+        with pytest.raises(BenchmarkJobError):
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140, sampler=sampler)
+        assert execution._read(execution._directory(manifest, root) / 'readiness/batch-0.json') == evidence
+        assert sampler.started is None and not release_path.exists()
+        assert not (execution._directory(manifest, root) / 'telemetry').exists()
+    else:
+        release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140, sampler=sampler)
+        assert release['observer_readiness'] == {'status': 'ready', 'source_timestamp_seconds': 100.0}
+        assert sampler.started == release['activation'] and release_path.exists()
+        legacy = dict(release); legacy.pop('observer_readiness')
+        execution._validate_release(legacy, manifest, 'batch-0')
+        with pytest.raises(BenchmarkJobError) as error:
+            execution._require_observer_readiness(legacy, manifest)
+        assert error.value.code == 'campaign_observer_not_ready'
+        atomic_write_json(release_path, legacy)
+        assert execution.reconcile_batch(manifest, 'batch-0', run_root=root)['status'] == 'blocked'
+    assert len(calls) == (2 if reason is not None else 1) and calls[0][1]['timeout'] == 2 and calls[0][1]['max_bytes'] == 1024 * 1024
+
+
 def test_worker_rejects_drift_before_preflight(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch)
     path = execution._path(bound[0], root, 'campaign-prepared/plan.json')
@@ -457,6 +519,8 @@ def entry_campaign(tmp_path, monkeypatch):
     monkeypatch.setattr(execution, '_clients_stopped', lambda: True)
     monkeypatch.setattr(execution, 'observe_drain', lambda *args, **kwargs:
                         {'status': 'unknown', 'reason': 'offline_drain_fixture'})
+    monkeypatch.setattr(execution, '_release_readiness', lambda *args, **kwargs:
+                        {'status': 'ready', 'source_timestamp_seconds': 0})
     monkeypatch.setattr(worker, 'run_benchmark_preflight', lambda *args, **kwargs: pytest.fail('model traffic'))
     monkeypatch.setattr(worker, '_run_suite', lambda *args, **kwargs: pytest.fail('model traffic'))
     sampler = telemetry.BatchSampler(manifest, cell['batch_id'], run_root=root)
