@@ -823,7 +823,7 @@ def test_swe_preparation_receipt_binds_job_and_image_id_and_registry_digest(tmp_
         execution._swe_image_receipt(value, str(tmp_path), reference)
 
 
-@pytest.mark.parametrize('custody', ['completed', 'partial', 'unknown', 'cancel_unknown'])
+@pytest.mark.parametrize('custody', ['completed', 'partial', 'partial_deleted_before', 'partial_deleted_after', 'partial_cleanup_before', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after', 'unknown', 'cancel_unknown', 'cancel_partial', 'cancel_partial_stop_after', 'cancel_prework'])
 def test_swe_real_entry_and_closure_keep_unknown_custody_blocked(tmp_path, monkeypatch, custody):
     from concurrent.futures import ThreadPoolExecutor
     from anvil_serving.benchmarking.submission import bind_submission_spec
@@ -851,8 +851,6 @@ def test_swe_real_entry_and_closure_keep_unknown_custody_blocked(tmp_path, monke
     monkeypatch.setattr(execution, 'verify_prepared_child', lambda *a, **k: {'assets': {}, 'plan': frozen})
     monkeypatch.setattr(execution, '_clients_stopped', lambda: True)
     monkeypatch.setattr(execution, 'observe_drain', lambda *a, **k: {'status': 'verified'})
-    monkeypatch.setattr(worker, 'run_benchmark_preflight', lambda *a, **k:
-        {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []})
     class FakeWatchdog:
         def __init__(self):
             reader, writer = os.pipe()
@@ -862,25 +860,50 @@ def test_swe_real_entry_and_closure_keep_unknown_custody_blocked(tmp_path, monke
     monkeypatch.setattr(execution.subprocess, 'Popen', lambda *a, **k: FakeWatchdog())
     import threading
     events, entered, resume, exited = [], threading.Event(), threading.Event(), threading.Event()
+    def preflight(*args, **kwargs):
+        if custody == 'cancel_prework':
+            events.append('preflight')
+            entered.set()
+            assert resume.wait(5)
+        return {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []}
+    monkeypatch.setattr(worker, 'run_benchmark_preflight', preflight)
     def run(plan, **kwargs):
         assert plan == frozen
         events.append('run')
-        execution._path(child, root, 'work').mkdir(parents=True, exist_ok=True)
+        work = execution._path(child, root, 'work')
+        work.mkdir(parents=True, exist_ok=True)
+        if custody == 'completed':
+            for relative, value in {'swe-plan.json': json.dumps({'run_id': child['run_id']}),
+                    'anvil-swe-config.yaml': 'fixture', 'predictions.jsonl': '{}',
+                    'mini-output/example.traj.json': '{}', 'official-grader/test.' + child['run_id'] + '.json': '{}'}.items():
+                path = work / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(value)
+        elif custody.startswith('partial') or custody in {'cancel_partial', 'cancel_partial_stop_after'}:
+            (work / 'swe-plan.json').write_text(json.dumps({'run_id': child['run_id']}))
         entered.set()
-        if custody == 'cancel_unknown':
+        if custody in {'cancel_unknown', 'cancel_partial', 'cancel_partial_stop_after'}:
             assert resume.wait(5)
-        return {'state': 'incomplete' if custody == 'partial' else 'completed', 'summary': {'completed': True}}
+        return {'state': 'incomplete' if custody.startswith('partial') else 'completed', 'summary': {'completed': True}}
     def retain(*args, **kwargs):
+        from anvil_serving.benchmarking.retention import retain_swe_artifacts
+        from anvil_serving.benchmarking.artifacts import evidence_file_reference
+        from anvil_serving.benchmarking.swe_container_custody import CLEANUP_SCHEMA
         events.append('retention')
-        if custody == 'partial':
-            from anvil_serving.benchmarking.retention import retain_swe_artifacts
-            return {**retain_swe_artifacts(run_path=kwargs['run_path'], work_path=kwargs['work_path']), 'containers': {'status': 'completed'}}
-        return {'state': 'retained' if custody == 'completed' else 'incomplete' if custody == 'cancel_unknown' else 'failed',
-                'reason': 'swe_container_cleanup_unverified', 'containers': {'status': 'unknown' if custody == 'cancel_unknown' else custody}, 'manifest_reference': {'path': 'fixture'}}
+        if custody == 'completed' or custody.startswith('partial') or custody in {'cancel_partial', 'cancel_partial_stop_after'}:
+            run_path = Path(kwargs['run_path'])
+            path = run_path / ('evidence/swe-container-cleanup-terminal-' + 'a' * 32 + '.json')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            cleanup = {'schema': CLEANUP_SCHEMA, 'ownership_id': child['ownership_id'], 'run_id': child['run_id'],
+                       'status': 'completed', 'containers': [], 'errors': []}
+            atomic_write_json(path, cleanup)
+            return {**retain_swe_artifacts(run_path=str(run_path), work_path=kwargs['work_path']),
+                    'containers': {**cleanup, 'receipt': evidence_file_reference(str(path), root=str(run_path))}}
+        return {'state': 'incomplete' if custody == 'cancel_unknown' else 'failed',
+                'reason': 'swe_container_cleanup_unverified', 'containers': {'status': 'unknown'}}
     monkeypatch.setattr(worker, 'run_swe_benchmark', run)
-    monkeypatch.setattr(worker, '_retain_stopped_swe', retain)
-    real_retention_check = worker._swe_retention_complete
-    monkeypatch.setattr(worker, '_swe_retention_complete', lambda value, path: real_retention_check(value, path) if custody == 'partial' else value.get('state') == 'retained' and value.get('containers', {}).get('status') == 'completed')
+    if custody != 'cancel_prework':
+        monkeypatch.setattr(worker, '_retain_stopped_swe', retain)
     def execute():
         try:
             return worker.execute_benchmark_job(store, child['run_id'])
@@ -899,16 +922,26 @@ def test_swe_real_entry_and_closure_keep_unknown_custody_blocked(tmp_path, monke
         assert execution.batch_ready(manifest, cell['batch_id'], run_root=root)
         execution.release_batch(manifest, cell['batch_id'], run_root=root, allowance_s=140, store=store)
         assert entered.wait(5)
-        if custody == 'cancel_unknown':
+        if custody in {'cancel_unknown', 'cancel_partial', 'cancel_partial_stop_after', 'cancel_prework'}:
             cancelled = worker.cancel_campaign_jobs(manifest, store)
             assert cancelled['children'][0]['state'] == 'cancelled'
-            assert cancelled['children'][0]['cleanup_deferred'] is True
-            assert execution._path(child, root, 'work').is_dir()
+            assert cancelled['children'][0]['cleanup_deferred'] is (custody == 'cancel_unknown')
+            assert execution._path(child, root, 'work').is_dir() is (custody == 'cancel_unknown')
             receipt = execution._read(execution._path(child, root, 'campaign-execution.json'))
             closure = execution.batch_closure(manifest, cell['batch_id'], execution._read(directory / 'batches' / (cell['batch_id'] + '.json')), run_root=root)[0]
-            assert events[:2] == ['run', 'retention']
-            assert closure['status'] == 'blocked' and receipt['clients_stopped'] is False
-            assert execution.reconcile_batch(manifest, cell['batch_id'], run_root=root, store=store)['active_seconds'] is None
+            assert events == ['preflight'] if custody == 'cancel_prework' else events[:2] == ['run', 'retention']
+            assert closure['status'] == ('blocked' if custody == 'cancel_unknown' else 'closed')
+            assert receipt['clients_stopped'] is (custody != 'cancel_unknown')
+            if custody == 'cancel_partial_stop_after':
+                execution._path(child, root, 'evidence/worker-stop-receipt.json').unlink()
+            reconciled = execution.reconcile_batch(manifest, cell['batch_id'], run_root=root, store=store)
+            assert reconciled['status'] == ('blocked' if custody == 'cancel_partial_stop_after' else closure['status'])
+            if custody == 'cancel_unknown':
+                assert reconciled['active_seconds'] is None
+            elif custody != 'cancel_partial_stop_after':
+                assert execution._anchored_closure(store, cell, manifest, root)
+            else:
+                assert not execution._anchored_closure(store, cell, manifest, root)
             return
         while time.monotonic() < deadline:
             receipt = execution._read(execution._path(child, root, 'campaign-execution.json'))
@@ -916,12 +949,26 @@ def test_swe_real_entry_and_closure_keep_unknown_custody_blocked(tmp_path, monke
                 break
             time.sleep(.01)
         assert events[0:2] == ['run', 'retention']
+        if custody == 'partial_deleted_before':
+            execution._path(child, root, 'evidence/swe-canonical/manifest.json').unlink()
+        if custody == 'partial_cleanup_before':
+            execution._path(child, root, 'evidence/swe-container-cleanup-terminal-' + 'a' * 32 + '.json').unlink()
         closure = execution.coordinate_batch(manifest, cell['batch_id'], store=store, force=True)
         result = future.result(timeout=5)
+    if custody == 'partial_deleted_after':
+        execution._path(child, root, 'evidence/swe-canonical/manifest.json').unlink()
+    if custody == 'partial_cleanup_after':
+        execution._path(child, root, 'evidence/swe-container-cleanup-terminal-' + 'a' * 32 + '.json').unlink()
+    if custody == 'partial_stop_after':
+        execution._path(child, root, 'evidence/0-swe-campaign-stop.json').write_text('{}')
+    if custody == 'partial_contents_after':
+        execution._path(child, root, 'evidence/swe-canonical/swe-plan.json').write_text('changed')
     assert result['state'] == ('completed' if custody == 'completed' else 'failed')
-    assert closure['status'] == ('closed' if custody in {'completed', 'partial'} else 'blocked')
+    assert closure['status'] == ('closed' if custody in {'completed', 'partial', 'partial_deleted_after', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after'} else 'blocked')
     reconciled = execution.reconcile_batch(manifest, cell['batch_id'], run_root=root, store=store)
-    assert reconciled['status'] == closure['status']
+    assert reconciled['status'] == ('blocked' if custody in {'partial_deleted_after', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after'} else closure['status'])
+    if custody in {'unknown', 'partial_deleted_before', 'partial_cleanup_before', 'partial_deleted_after', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after'}:
+        assert reconciled['active_seconds'] is None
     if custody == 'unknown':
         assert reconciled['active_seconds'] is None
         assert not receipt['clients_stopped']

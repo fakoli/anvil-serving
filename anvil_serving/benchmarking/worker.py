@@ -301,6 +301,14 @@ def _swe_retention_complete(retention, run_path):
         return False
 
 
+def _swe_campaign_stop_reference(store, record, retention, run_path, *, cancelling=False):
+    proof = {"schema": "anvil-serving.swe-campaign-stop/v1", "ownership_id": record["spec"]["ownership_id"],
+             "run_id": record["spec"]["run_id"], "spec_sha256": record["spec_sha256"], "retention": retention}
+    if cancelling or retention.get("state") == "absent":
+        proof["worker_stop"] = evidence_file_reference(os.path.join(run_path, "evidence", "worker-stop-receipt.json"), root=run_path)
+    return _write_stage(store, record, "swe-campaign-stop", proof)
+
+
 def _run_suite(
     store: BenchmarkJobStore,
     record: Mapping[str, Any],
@@ -378,7 +386,12 @@ def _finish_job(store, spec, target, *, results, failure=None):
             finished = {**finished, "container_custody": results.get("container_custody", {"status": "incomplete"})}
         return finished
     # Waiting must never hold the write lock: cancellation must stop all siblings.
-    reference = campaign_result_reference(store, spec)
+    try:
+        reference = campaign_result_reference(store, spec)
+    except (OSError, ValueError, BenchmarkJobError, BenchmarkArtifactError):
+        if target != "failed" or spec["suite"] != "swe":
+            raise
+        reference = {}  # An unanchored failed child cannot release its reservation.
     with child_lock(store, spec):
         current = store.status(spec['run_id'])
         if current['state'] != 'running':
@@ -532,7 +545,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             if not _swe_retention_complete(retention, run_path):
                 raise BenchmarkJobError("swe_artifact_retention_incomplete", "SWE campaign retention is incomplete")
             from .campaign_execution import close_campaign
-            campaign_closure = close_campaign(campaign_context)
+            stop_reference = _swe_campaign_stop_reference(store, record, retention, run_path)
+            campaign_closure = close_campaign(campaign_context, swe_stop=stop_reference)
             if retention["state"] != "retained" and suite_result.get("state", "completed") == "completed":
                 raise BenchmarkJobError("swe_artifact_retention_incomplete", "SWE canonical artifacts are incomplete")
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
@@ -604,8 +618,13 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                     retention = {"state": "failed"}
         if campaign_context and spec["suite"] == "swe" and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
-            custody_verified = _swe_retention_complete(retention, run_path)
-            close_campaign(campaign_context, **({} if custody_verified else {"clients_stopped": False, "wait": False}))
+            try:
+                custody_verified = _swe_retention_complete(retention, run_path)
+                stop_reference = _swe_campaign_stop_reference(store, record, retention, run_path) if custody_verified else None
+                close_campaign(campaign_context, **({"swe_stop": stop_reference} if custody_verified else {"clients_stopped": False, "wait": False}))
+            except (OSError, ValueError, BenchmarkJobError, BenchmarkArtifactError):
+                # Preserve the original suite failure; an uncommitted stop cannot release a batch.
+                pass
         try:
             failure_class = normalize_evidence_failure_class(code)
         except BenchmarkArtifactError:
@@ -1031,7 +1050,10 @@ def _prepare_cancellation(store, run_id):
             retention = {"state": "failed", "reason": "worker_termination_unverified"}
         if "campaign" in record["spec"]:
             from .campaign_execution import close_cancelled_campaign
-            close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and (_swe_retention_complete(retention, run_path) if record["spec"]["suite"] == "swe" else retention["state"] != "failed"))
+            custody_verified = termination["stopped"] and (_swe_retention_complete(retention, run_path) if record["spec"]["suite"] == "swe" else retention["state"] != "failed")
+            stop_reference = (_swe_campaign_stop_reference(store, record, retention, run_path, cancelling=True)
+                              if custody_verified and record["spec"]["suite"] == "swe" else None)
+            close_cancelled_campaign(store, record["spec"], clients_stopped=custody_verified, swe_stop=stop_reference)
     except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {'state': 'failed', 'reason': 'cancellation_retention_unavailable'}
     return {'record': record, 'termination': termination, 'retention': retention,

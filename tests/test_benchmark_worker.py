@@ -1446,7 +1446,7 @@ def test_swe_campaign_executes_prepared_plan_and_closes_after_custody(monkeypatc
     monkeypatch.setattr(benchmark_worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained' and value.get('containers', {}).get('status') == 'completed')
     def close(context, **kwargs):
         events.append(('close', kwargs.get('clients_stopped')))
-        context['receipt']['status'] = 'closed' if not kwargs else 'blocked'
+        context['receipt']['status'] = 'blocked' if kwargs.get('clients_stopped') is False else 'closed'
         return context['receipt']
     monkeypatch.setattr(execution, 'close_campaign', close)
     monkeypatch.setattr(benchmark_worker, 'campaign_result_reference', lambda *a, **k: {})
@@ -1493,3 +1493,29 @@ def test_swe_partial_retention_requires_verified_bytes_and_completed_custody(tmp
     assert not benchmark_worker._swe_retention_complete({**retained, 'manifest_reference': None}, str(run_path))
     (run_path / 'evidence/swe-canonical/swe-plan.json').write_text('changed')
     assert not benchmark_worker._swe_retention_complete(retained, str(run_path))
+
+
+@pytest.mark.parametrize('reference_unavailable', [False, True])
+def test_swe_campaign_closure_error_does_not_mask_original_suite_failure(monkeypatch, tmp_path, reference_unavailable):
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': ['example__project-1'], 'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64}})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'}}
+    monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
+    monkeypatch.setattr(execution, 'verify_child', lambda *a, **k: ({}, {'plan': {}}))
+    monkeypatch.setattr(execution, 'require_campaign_suite_window', lambda *a, **k: None)
+    monkeypatch.setattr(execution, 'close_campaign', lambda *a, **k: (_ for _ in ()).throw(OSError('receipt storage unavailable')))
+    monkeypatch.setattr(benchmark_worker, 'campaign_result_reference', lambda *a, **k: (_ for _ in ()).throw(OSError('unavailable')) if reference_unavailable else {})
+    monkeypatch.setattr(benchmark_worker, 'run_benchmark_preflight', lambda *a, **k:
+        {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []})
+    monkeypatch.setattr(benchmark_worker, 'run_swe_benchmark', lambda *a, **k: (_ for _ in ()).throw(TimeoutError('original suite timeout')))
+    result = execute_benchmark_job(store, value['run_id'])
+    assert result['state'] == 'failed'
+    assert result['failure']['code'] == 'TimeoutError'
+    assert result['failure']['message'] == 'original suite timeout'
