@@ -277,6 +277,18 @@ def commands() -> CommandNode:
         "Run quality evaluation workflows.",
         children=(
             _resource_node(
+                "runtime-source-inspect",
+                "Read fixed accounting source hashes from a bound managed runtime.",
+                "anvil_serving.runtime_source_inspection",
+                role="model-serve", argv_prefix=(), execution_host_os=("linux",),
+                options=(
+                    _option("--registry", summary="Managed recipe registry.", value_name="PATH"),
+                    _option("--container", summary="Managed recipe container name.", value_name="NAME"),
+                    _option("--plan", summary="Fixed profile and expected generation pins.", value_name="PATH"),
+                ),
+                docs_anchor="docs/cli/runtime-source-inspection.md",
+            ),
+            _resource_node(
                 "reasoning-limit-probe",
                 "Preview or execute an isolated, bounded reasoning-boundary diagnostic.",
                 "anvil_serving.reasoning_probe",

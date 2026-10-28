@@ -221,6 +221,7 @@ required operands, choices, and defaults.
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
+| `eval runtime-source-inspect` | Read fixed accounting source hashes from a bound managed runtime. | `read` / `bounded` | `--registry`<br>`--container`<br>`--plan` |
 | `eval reasoning-limit-probe` | Preview or execute an isolated, bounded reasoning-boundary diagnostic. | `mutate` / `bounded` | `--router-config`<br>`--plan`<br>`--boundary-config`<br>`--output`<br>`--confirm` |
 | `eval reasoning-limit-inspect` | Read pinned GLM runtime hashes and tokenizer markers without inference. | `read` / `bounded` | `--registry`<br>`--container`<br>`--plan` |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
