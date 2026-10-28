@@ -379,12 +379,13 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     assets = None
     preflight = None
     swe_container_custody = None
+    retention = None
     campaign_context = None
     campaign_closure = None
     try:
         profile = load_profile(spec["profile"])
         admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
-        if "campaign" in spec and spec["suite"] not in {"context", "agentic", "aider", "performance"}:
+        if "campaign" in spec and spec["suite"] not in {"context", "agentic", "aider", "performance", "swe"}:
             raise BenchmarkJobError("unsupported_campaign_suite", "campaign cannot execute this suite")
         if "budgets" in admission:
             stages.append(_stage(len(stages), "admission", "completed", _write_stage(store, record, "admission", admission)))
@@ -458,14 +459,18 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             return store.status(run_id)
 
         store.append_log(run_id, level="info", message=f"executing {spec['suite']} suite")
-        if campaign_context and spec["suite"] in {"aider", "performance"}:
+        if campaign_context and spec["suite"] in {"aider", "performance", "swe"}:
             from .campaign_execution import verify_child
             _, prepared = verify_child(spec, run_root=store.run_root)
         if campaign_context:
             from .campaign_execution import require_campaign_suite_window
             require_campaign_suite_window(campaign_context)
-        if campaign_context and spec["suite"] in {"aider", "performance"}:
-            if spec["suite"] == "aider":
+        if campaign_context and spec["suite"] in {"aider", "performance", "swe"}:
+            if spec["suite"] == "swe":
+                selector = prepared["plan"].get("server_log")
+                collector = server_log_collector(selector) if selector is not None else None
+                suite_result = run_swe_benchmark(prepared["plan"], **({"log_collector": collector} if collector else {}))
+            elif spec["suite"] == "aider":
                 from .aider import run_aider_benchmark
                 suite_result = run_aider_benchmark(prepared["plan"])
             else:
@@ -473,7 +478,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 suite_result = run_performance_benchmark(prepared["plan"])
         else:
             suite_result = _run_suite(store, record, profile, assets)
-        if campaign_context:
+        if campaign_context and spec["suite"] != "swe":
             from .campaign_execution import close_campaign
             campaign_closure = close_campaign(campaign_context)
         if store.status(run_id)["state"] != "running":
@@ -502,6 +507,11 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                     raise BenchmarkJobError(code, "SWE container cleanup or canonical artifact retention could not be verified")
                 retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
                 stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+        if campaign_context and spec["suite"] == "swe":
+            if not os.path.isdir(work_path) or retention["state"] != "retained":
+                raise BenchmarkJobError("swe_artifact_retention_incomplete", "SWE campaign retention is incomplete")
+            from .campaign_execution import close_campaign
+            campaign_closure = close_campaign(campaign_context)
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
         stages.append(_stage(len(stages), spec["suite"], "completed" if suite_complete else "failed", suite_ref))
@@ -540,7 +550,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             results["container_custody"] = swe_container_custody or {"status": "incomplete"}
         return _finish_job(store, spec, "completed", results=results)
     except Exception as exc:
-        if campaign_context and campaign_context["receipt"]["status"] == "active":
+        if campaign_context and spec["suite"] != "swe" and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
             close_campaign(campaign_context)
         current = store.status(run_id)
@@ -561,11 +571,19 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
             work_path = os.path.join(run_path, "work")
             if os.path.isdir(work_path) and not any(stage["name"] == "swe_canonical_retention" for stage in stages):
-                retention = _retain_stopped_swe(record, run_path=run_path, work_path=work_path, phase="failed")
-                swe_container_custody = retention.get("containers")
-                if retention["state"] != "failed":
-                    retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
-                    stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+                try:
+                    retention = _retain_stopped_swe(record, run_path=run_path, work_path=work_path, phase="failed")
+                    swe_container_custody = retention.get("containers")
+                    if retention["state"] != "failed":
+                        retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
+                        stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+                except (BenchmarkJobError, OSError, ValueError):
+                    retention = {"state": "failed"}
+        if campaign_context and spec["suite"] == "swe" and campaign_context["receipt"]["status"] == "active":
+            from .campaign_execution import close_campaign
+            custody_verified = ((retention or {}).get("state") == "retained" and
+                                (swe_container_custody or {}).get("status") == "completed")
+            close_campaign(campaign_context, **({} if custody_verified else {"clients_stopped": False, "wait": False}))
         try:
             failure_class = normalize_evidence_failure_class(code)
         except BenchmarkArtifactError:
@@ -990,7 +1008,7 @@ def _prepare_cancellation(store, run_id):
             retention = {"state": "failed", "reason": "worker_termination_unverified"}
         if "campaign" in record["spec"]:
             from .campaign_execution import close_cancelled_campaign
-            close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and retention["state"] != "failed")
+            close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and (retention["state"] == "retained" if record["spec"]["suite"] == "swe" else retention["state"] != "failed"))
     except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {'state': 'failed', 'reason': 'cancellation_retention_unavailable'}
     return {'record': record, 'termination': termination, 'retention': retention,

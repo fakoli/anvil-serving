@@ -311,3 +311,21 @@ def test_performance_cells_freeze_finite_basic_serial_workload():
     cell["cache_condition"] = "cold"
     with pytest.raises(BenchmarkJobError, match="finite basic"):
         campaigns.plan_campaign(value)
+
+
+def test_swe_quality_cell_requires_one_task_pinned_images_and_no_regrade():
+    value = specification(tasks=[('swe', 'example__project-1')])
+    params = value['cells'][0]['spec']['parameters']
+    params['paired_image_ids'] = {'example__project-1': 'sha256:' + 'a' * 64}
+    assert campaigns.plan_campaign(value)['cells'][0]['spec']['suite'] == 'swe'
+    for change in ('selection', 'image', 'regrade'):
+        candidate = copy.deepcopy(value)
+        params = candidate['cells'][0]['spec']['parameters']
+        if change == 'selection':
+            params['instance_ids'] = ['example__project-2']
+        elif change == 'image':
+            params.pop('paired_image_ids')
+        else:
+            params['operation'] = 'regrade'
+        with pytest.raises(BenchmarkJobError):
+            campaigns.plan_campaign(candidate)

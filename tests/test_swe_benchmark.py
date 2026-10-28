@@ -982,3 +982,27 @@ def test_v2_bounded_runner_exposes_typed_failures(monkeypatch, error, code):
         swe._budget_runner(["fixture"], ".", 1, {})
     assert caught.value.code == code
     assert "private details" not in str(caught.value)
+
+
+def test_campaign_swe_pre_release_checks_pinned_inputs(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking import swe_agent_adapter, swe_grader_adapter
+
+    pinned = plan(tmp_path, paired_image_ids={INSTANCE: 'sha256:' + 'a' * 64})
+    checks = []
+    monkeypatch.setattr(swe, '_verify_dataset_snapshot', lambda snapshot: checks.append('dataset'))
+    monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: checks.append('agent'))
+    monkeypatch.setattr(swe_grader_adapter, 'verify_source', lambda root: checks.append('grader'))
+    monkeypatch.setattr(swe.swe_container_custody, 'verify_source_hash', lambda digest: checks.append('custody'))
+    monkeypatch.setattr(swe, 'observe_paired_images', lambda images, **kw: checks.append('image'))
+    swe.verify_campaign_swe_plan(pinned)
+    assert checks == ['dataset', 'agent', 'grader', 'custody', 'image']
+    monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: (_ for _ in ()).throw(RuntimeError('drift')))
+    with pytest.raises(BenchmarkJobError):
+        swe.verify_campaign_swe_plan(pinned)
+    monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: None)
+    monkeypatch.setattr(swe, 'observe_paired_images', lambda *a, **k: (_ for _ in ()).throw(BenchmarkJobError('swe_image_identity_mismatch', 'changed')))
+    with pytest.raises(BenchmarkJobError, match='changed'):
+        swe.verify_campaign_swe_plan(pinned)
+    monkeypatch.setattr(swe, '_verify_dataset_snapshot', lambda snapshot: (_ for _ in ()).throw(BenchmarkJobError('swe_dataset_mismatch', 'dataset changed')))
+    with pytest.raises(BenchmarkJobError, match='dataset changed'):
+        swe.verify_campaign_swe_plan(pinned)

@@ -817,14 +817,7 @@ def _base_result(plan: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_swe_benchmark(
-    plan: Mapping[str, Any],
-    *,
-    runner: SWECommandRunner = _default_runner,
-    environ: Mapping[str, str] | None = None,
-    log_collector: Callable[[str, str], dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Run mini-SWE-agent, normalize predictions, then require the official grader."""
+def verify_swe_plan(plan):
     require_swe_worker_platform()
     if not isinstance(plan, Mapping) or plan.get("schema") not in {SWE_PLAN_SCHEMA, SWE_PLAN_SCHEMA_V2}:
         raise BenchmarkJobError("bad_swe_plan", "SWE run plan is invalid")
@@ -834,11 +827,40 @@ def run_swe_benchmark(
     if plan.get("plan_sha256") != expected_sha:
         raise BenchmarkJobError("swe_plan_digest_mismatch", "SWE run plan identity changed")
     budgets = validate_budgets(plan.get("budgets")) if plan["schema"] == SWE_PLAN_SCHEMA_V2 else None
-    if budgets is not None and runner is _default_runner:
-        runner = _budget_runner
     if budgets is not None and (type(plan["timeout_s"]) not in {int, float} or not 0 < plan["timeout_s"] <= budgets["deadline_s"]):
         raise BenchmarkJobError("bad_swe_budget", "SWE timeout must fit the admitted deadline")
     _verify_dataset_snapshot(plan["dataset_snapshot"])
+    validate_paired_image_ids(plan.get("paired_image_ids"), plan["selection"]["instance_ids"])
+    return budgets
+
+
+def verify_campaign_swe_plan(plan):
+    verify_swe_plan(plan)
+    from .swe_agent_adapter import verify_source as verify_agent_source
+    from .swe_grader_adapter import verify_source as verify_grader_source
+    try:
+        verify_agent_source(plan["paths"]["mini_root"])
+        verify_grader_source(plan["paths"]["grader_root"])
+        swe_container_custody.verify_source_hash(plan["harnesses"]["container_custody"]["adapter_sha256"])
+        if not plan.get("paired_image_ids"):
+            raise ValueError("paired images required")
+        observe_paired_images(plan["paired_image_ids"], executable=plan["container_executable"],
+                              runner=_default_runner, cwd=plan["paths"]["run"], env=os.environ)
+    except (KeyError, OSError, ValueError, RuntimeError) as exc:
+        raise BenchmarkJobError("swe_campaign_input_mismatch", "SWE campaign inputs changed or are unavailable") from exc
+
+
+def run_swe_benchmark(
+    plan: Mapping[str, Any],
+    *,
+    runner: SWECommandRunner = _default_runner,
+    environ: Mapping[str, str] | None = None,
+    log_collector: Callable[[str, str], dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Run mini-SWE-agent, normalize predictions, then require the official grader."""
+    budgets = verify_swe_plan(plan)
+    if budgets is not None and runner is _default_runner:
+        runner = _budget_runner
     paired_images = validate_paired_image_ids(plan.get("paired_image_ids"), plan["selection"]["instance_ids"])
     result = _base_result(plan)
     paths = plan["paths"]

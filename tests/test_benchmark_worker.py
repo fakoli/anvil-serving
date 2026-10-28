@@ -113,7 +113,9 @@ def test_campaign_requires_full_timeout_after_preflight_and_prepared_verificatio
     monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0],
         perf_counter=time.perf_counter, sleep=time.sleep))
     context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'},
-               'release': {'boot_id': execution._boot_id(), 'traffic_deadline_monotonic': 90}}
+               'manifest': {'telemetry_collection': {}},
+               'release': {'boot_id': execution._boot_id(), 'traffic_deadline_monotonic': 90,
+                           'observer_readiness': {'status': 'ready', 'source_timestamp_seconds': 1}}}
     monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
     def preflight(*args, **kwargs):
         calls.append('preflight')
@@ -1406,3 +1408,70 @@ def test_competing_deadline_watchdog_stop_is_idempotent_for_campaign_owner(monke
     assert benchmark_worker.cancel_campaign_jobs(manifest, store)["phase"] == "completed"
     assert all(p.read_bytes() == raw for p, raw in saved.items())
     assert len(signals) == 4 and len(drains) == 1
+
+
+@pytest.mark.parametrize('cleanup_state,run_failure', [('retained', False), ('failed', False), ('retained', True), ('failed', True)])
+def test_swe_campaign_executes_prepared_plan_and_closes_after_custody(monkeypatch, tmp_path, cleanup_state, run_failure):
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': ['example__project-1'], 'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64}})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    events = []
+    prepared_plan = {'fixture': 'frozen'}
+    context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'}}
+    monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
+    monkeypatch.setattr(execution, 'verify_child', lambda *a, **k: ({}, {'plan': prepared_plan}))
+    monkeypatch.setattr(execution, 'require_campaign_suite_window', lambda *a, **k: None)
+    monkeypatch.setattr(benchmark_worker, 'run_benchmark_preflight', lambda *a, **k:
+        {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []})
+    def run(plan, **kwargs):
+        assert plan is prepared_plan
+        events.append('run')
+        (tmp_path / 'runs' / 'campaign' / 'worker-run' / 'work').mkdir(parents=True, exist_ok=True)
+        if run_failure:
+            raise TimeoutError('fixture timeout')
+        return {'state': 'completed', 'summary': {'completed': True}}
+    monkeypatch.setattr(benchmark_worker, 'run_swe_benchmark', run)
+    monkeypatch.setattr(benchmark_worker, 'build_swe_run_plan', lambda *a, **k: pytest.fail('rebuilt plan'))
+    def retain(*args, **kwargs):
+        events.append('retain')
+        return {'state': cleanup_state, 'reason': 'swe_container_cleanup_unverified',
+                'containers': {'status': 'completed' if cleanup_state == 'retained' else 'unknown'}}
+    monkeypatch.setattr(benchmark_worker, '_retain_stopped_swe', retain)
+    def close(context, **kwargs):
+        events.append(('close', kwargs.get('clients_stopped')))
+        context['receipt']['status'] = 'closed' if not kwargs else 'blocked'
+        return context['receipt']
+    monkeypatch.setattr(execution, 'close_campaign', close)
+    monkeypatch.setattr(benchmark_worker, 'campaign_result_reference', lambda *a, **k: {})
+    result = execute_benchmark_job(store, value['run_id'])
+    assert events[:2] == ['run', 'retain']
+    assert events[-1] == ('close', None if cleanup_state == 'retained' else False)
+    assert result['state'] == ('completed' if cleanup_state == 'retained' and not run_failure else 'failed')
+
+
+@pytest.mark.parametrize('retention_state,stopped,expected', [('retained', True, True), ('incomplete', True, False), ('failed', True, False), ('retained', False, False)])
+def test_swe_campaign_cancellation_blocks_without_stopped_custody(monkeypatch, tmp_path, retention_state, stopped, expected):
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': ['example__project-1'], 'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64}})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    events = []
+    monkeypatch.setattr(benchmark_worker, '_stop_owned_worker', lambda *a, **k: {'stopped': stopped})
+    def retain(*args, **kwargs):
+        events.append('retain')
+        return {'state': retention_state}
+    monkeypatch.setattr(benchmark_worker, '_retain_stopped_swe', retain)
+    monkeypatch.setattr(execution, 'close_cancelled_campaign', lambda *a, **k: events.append(('close', k['clients_stopped'])))
+    benchmark_worker._prepare_cancellation(store, value['run_id'])
+    assert events == (['retain'] if stopped else []) + [('close', expected)]

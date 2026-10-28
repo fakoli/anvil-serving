@@ -860,3 +860,15 @@ def test_campaign_batch_wall_starts_at_release_and_missing_drain_invalidates_tot
     assert timing["active_wall_seconds"] is None
     assert timing["known_active_wall_seconds"] == 11
     assert timing["unknown_batch_intervals"] == 1
+
+
+@pytest.mark.parametrize('completed,resolved,expected', [(True, True, True), (True, False, False), (False, True, None), (True, None, None)])
+def test_campaign_swe_samples_only_score_official_completed_grades(completed, resolved, expected):
+    from anvil_serving.benchmarking.campaign_report import _samples
+    cell = {'spec': {'suite': 'swe'}, 'task_id': 'example__project-1'}
+    native = {'schema': 'anvil-serving.swe-run/v1', 'official_grader_complete': True,
+              'instances': [{'instance_id': cell['task_id'], 'grader': {'name': 'swe-bench', 'completed': completed, 'resolved': resolved}}]}
+    rows, reason = _samples(cell, native)
+    assert reason is None and rows[0]['passed'] is expected
+    native['official_grader_complete'] = False
+    assert _samples(cell, native)[0][0]['passed'] is None

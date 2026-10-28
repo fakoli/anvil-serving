@@ -146,8 +146,10 @@ def plan_campaign(value):
             raise BenchmarkJobError("bad_campaign", "child run IDs must be unique and distinct from the campaign")
         runs.add(spec["run_id"])
         parameters = spec["parameters"]
-        if spec["suite"] not in {"agentic", "aider", "performance"}:
-            raise BenchmarkJobError("campaign_suite_unsupported", "campaigns currently support agentic, Aider and finite performance cells")
+        if spec["suite"] not in {"agentic", "aider", "performance", "swe"}:
+            raise BenchmarkJobError("campaign_suite_unsupported", "campaign suite is unsupported")
+        if spec["suite"] == "swe" and (parameters.get("operation") == "regrade" or not parameters.get("paired_image_ids")):
+            raise BenchmarkJobError("bad_campaign", "SWE quality cells require pinned images and cannot regrade")
         selection = parameters.get("case_ids") if spec["suite"] == "agentic" else parameters.get("instance_ids")
         if spec["suite"] != "performance" and selection != [cell["task_id"]]:
             raise BenchmarkJobError("bad_campaign", "each child must explicitly select exactly its one task")

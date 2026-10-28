@@ -150,6 +150,14 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
         from .aider import build_aider_run_plan
         plan = build_aider_run_plan(profile, assets, **common, instance_ids=params.get('instance_ids'),
             request_controls={k: params[k] for k in ('thinking_mode', 'reasoning_effort', 'temperature', 'top_p') if k in params})
+    elif spec['suite'] == 'swe':
+        from .swe import build_swe_run_plan
+        from .profiles import suite_budgets
+        plan = build_swe_run_plan(profile, assets, **{k: v for k, v in common.items() if k != 'timeout_s'},
+            instance_ids=params.get('instance_ids'), paired_image_ids=params.get('paired_image_ids'),
+            server_log=params.get('server_log'), prompt_contract=params.get('prompt_contract', 'legacy/v1'),
+            request_controls={k: params[k] for k in ('thinking_mode', 'reasoning_effort', 'temperature', 'top_p', 'force_nonempty_content') if k in params},
+            **({'timeout_s': spec['timeout_s']} if suite_budgets(profile, 'swe') is not None else {}))
     elif spec['suite'] == 'performance':
         from .performance import build_performance_run_plan
         from .submission import _SUITE_PARAMETERS
@@ -165,7 +173,7 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     atomic_write_json(str(path), payload)
     return {'path': 'campaign-prepared/plan.json', 'sha256': _digest(payload),
             'plan_sha256': _digest(plan), 'source_sha256': _digest(payload['source_hashes']),
-            'matching': {'workload_sha256': _digest(plan.get('selection', admission)),
+            'matching': {'workload_sha256': _digest({'selection': plan.get('selection'), 'dataset': plan.get('dataset_snapshot', {}).get('files'), 'paired_image_ids': plan.get('paired_image_ids')} if spec['suite'] == 'swe' else plan.get('selection', admission)),
                          'oracle_sha256': _digest(payload['source_hashes'])}}
 
 
@@ -180,6 +188,9 @@ def verify_prepared_child(spec, prepared, *, run_root):
     if spec['suite'] == 'aider':
         from .aider import verify_plan
         verify_plan(plan)
+    elif spec['suite'] == 'swe':
+        from .swe import verify_campaign_swe_plan
+        verify_campaign_swe_plan(plan)
     elif spec['suite'] == 'performance':
         from .performance import verify_plan
         verify_plan(plan)
