@@ -1441,8 +1441,9 @@ def test_swe_campaign_executes_prepared_plan_and_closes_after_custody(monkeypatc
     def retain(*args, **kwargs):
         events.append('retain')
         return {'state': cleanup_state, 'reason': 'swe_container_cleanup_unverified',
-                'containers': {'status': 'completed' if cleanup_state == 'retained' else 'unknown'}}
+                'containers': {'status': 'completed' if cleanup_state == 'retained' else 'unknown'}, 'manifest_reference': {'path': 'fixture'}}
     monkeypatch.setattr(benchmark_worker, '_retain_stopped_swe', retain)
+    monkeypatch.setattr(benchmark_worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained' and value.get('containers', {}).get('status') == 'completed')
     def close(context, **kwargs):
         events.append(('close', kwargs.get('clients_stopped')))
         context['receipt']['status'] = 'closed' if not kwargs else 'blocked'
@@ -1470,8 +1471,25 @@ def test_swe_campaign_cancellation_blocks_without_stopped_custody(monkeypatch, t
     monkeypatch.setattr(benchmark_worker, '_stop_owned_worker', lambda *a, **k: {'stopped': stopped})
     def retain(*args, **kwargs):
         events.append('retain')
-        return {'state': retention_state}
+        return {'state': retention_state, 'containers': {'status': 'completed'}, **({'manifest_reference': {'path': 'fixture'}} if retention_state == 'retained' else {})}
     monkeypatch.setattr(benchmark_worker, '_retain_stopped_swe', retain)
+    monkeypatch.setattr(benchmark_worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained' and value.get('containers', {}).get('status') == 'completed')
     monkeypatch.setattr(execution, 'close_cancelled_campaign', lambda *a, **k: events.append(('close', k['clients_stopped'])))
     benchmark_worker._prepare_cancellation(store, value['run_id'])
     assert events == (['retain'] if stopped else []) + [('close', expected)]
+
+
+def test_swe_partial_retention_requires_verified_bytes_and_completed_custody(tmp_path):
+    from anvil_serving.benchmarking.retention import retain_swe_artifacts
+    run_path = tmp_path / 'run'
+    work = run_path / 'work'
+    work.mkdir(parents=True)
+    (work / 'swe-plan.json').write_text('{"prompt_contract":"legacy/v1"}')
+    retained = retain_swe_artifacts(run_path=str(run_path), work_path=str(work))
+    retained['containers'] = {'status': 'completed'}
+    assert retained['state'] == 'incomplete'
+    assert benchmark_worker._swe_retention_complete(retained, str(run_path))
+    assert not benchmark_worker._swe_retention_complete({**retained, 'containers': {'status': 'unknown'}}, str(run_path))
+    assert not benchmark_worker._swe_retention_complete({**retained, 'manifest_reference': None}, str(run_path))
+    (run_path / 'evidence/swe-canonical/swe-plan.json').write_text('changed')
+    assert not benchmark_worker._swe_retention_complete(retained, str(run_path))

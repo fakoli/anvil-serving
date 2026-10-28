@@ -317,6 +317,7 @@ def test_swe_quality_cell_requires_one_task_pinned_images_and_no_regrade():
     value = specification(tasks=[('swe', 'example__project-1')])
     params = value['cells'][0]['spec']['parameters']
     params['paired_image_ids'] = {'example__project-1': 'sha256:' + 'a' * 64}
+    params['paired_image_repo_digests'] = {'example__project-1': 'sha256:' + 'b' * 64}
     assert campaigns.plan_campaign(value)['cells'][0]['spec']['suite'] == 'swe'
     for change in ('selection', 'image', 'regrade'):
         candidate = copy.deepcopy(value)

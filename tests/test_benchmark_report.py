@@ -872,3 +872,17 @@ def test_campaign_swe_samples_only_score_official_completed_grades(completed, re
     assert reason is None and rows[0]['passed'] is expected
     native['official_grader_complete'] = False
     assert _samples(cell, native)[0][0]['passed'] is None
+
+
+def test_campaign_swe_ungraded_remains_in_planned_denominator(tmp_path):
+    from anvil_serving.benchmarking.campaign_report import report_campaign
+    manifest, store = campaign_fixture(tmp_path, suite='swe')
+    native = {'schema': 'anvil-serving.swe-run/v1', 'official_grader_complete': False,
+              'instances': [{'instance_id': 'tool-sequence', 'grader': {'name': 'swe-bench', 'completed': False, 'resolved': None}}]}
+    campaign_result(manifest, store, 0, native=native, state='failed')
+    row = report_campaign(manifest, store)['cells'][0]
+    assert row['samples']['planned'] == 1
+    assert row['samples']['scored'] == 0
+    assert row['samples']['unfinished'] == 1
+    assert row['outcomes'][0]['passed'] is None
+    assert row['measurement_complete'] is False

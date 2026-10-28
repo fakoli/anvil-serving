@@ -347,7 +347,7 @@ anvil-serving eval benchmark campaign report pilot --ownership-id evaluation
 anvil-serving eval benchmark campaign cancel pilot --ownership-id evaluation --confirm
 ```
 
-Campaigns coordinate existing durable agentic, Aider, or finite performance
+Campaigns coordinate existing durable agentic, Aider, SWE, or finite performance
 jobs. Each cell selects one explicit task and belongs to a frozen batch of
 one or four serial workers. Preparation binds the profile, product source,
 prepared inputs, model and recipe identities, controls, task order, repeats,
@@ -364,6 +364,17 @@ this binds the selected URL, model, and dialect without emitting the URL.
 It is a comparison binding, not an anonymization guarantee. Replica pools
 are unsupported for this initial campaign contract. Existing terminal children are retained; repeating a measurement
 requires a new explicit cell rather than retrying its run ID.
+
+Each SWE quality cell selects one instance and uses a budgeted v2 profile. Before
+campaign preparation, prepare its paired images with the `swe images` command
+above using that cell's exact job specification. It must include both the image ID
+and registry digest; the per-run verified receipt binds those identities to the
+job and worker. Preparation freezes the native SWE plan. Before release, the
+campaign rechecks the receipt, cached image identities, pinned sources, dataset,
+and no-pull policy. The worker executes that exact plan. Closure waits for owned
+container cleanup and verified canonical or partial retention; unknown custody
+blocks further admission. Only completed official grades score as resolved or
+unresolved, and ungraded work remains unscored.
 
 The diagnostic pilot contains 12 tasks, C1 and C4 batches, two repeats, and
 two deployment arms: 96 planned children. Six native tasks use 24 steps,

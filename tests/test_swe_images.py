@@ -489,3 +489,25 @@ def test_image_runner_retains_bounded_head_and_tail(monkeypatch, tmp_path):
     assert "...[bounded output omitted]..." in result.stdout
     assert len(result.stdout.encode()) <= 64 * 1024
     assert result.stderr == "diagnostic"
+
+
+def test_campaign_consumes_actual_verified_image_preparation_receipt(tmp_path):
+    import socket
+    from anvil_serving.benchmarking import campaign_execution
+    from anvil_serving.benchmarking.jobs import job_spec_sha256
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    hostname = socket.gethostname()
+    value = bind_submission_spec(_job_spec(worker_id=hostname))
+    calls = []
+    options = _prepare(tmp_path, calls)
+    run_root = Path(options['lock_root'])
+    spec_hash = job_spec_sha256(value)
+    receipt_path = campaign_execution._path(value, str(run_root), 'swe-images/' + spec_hash + '/receipt-' + 'd' * 32 + '.json')
+    receipt_path.parent.mkdir(parents=True)
+    options.update(receipt_path=str(receipt_path), ownership_id=value['ownership_id'], run_id=value['run_id'],
+                   spec_sha256=spec_hash, worker_id=hostname, observed_hostname=hostname)
+    result = prepare_paired_images({INSTANCE: IMAGE_ID}, {INSTANCE: REGISTRY_DIGEST}, confirm=True, **options)
+    assert result['status'] == 'verified'
+    binding = campaign_execution._swe_image_receipt(value, str(run_root))
+    assert campaign_execution._swe_image_receipt(value, str(run_root), binding) == binding
+    assert any('pull' in call for call in calls)  # Fake runner only.

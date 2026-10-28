@@ -33,6 +33,7 @@ def setup(tmp_path, monkeypatch, *, count=1, mixed=False, swe=False):
     value = specification(concurrency=count, tasks=tasks)
     if swe:
         value['cells'][0]['spec']['parameters']['paired_image_ids'] = {'example__project-1': 'sha256:' + 'a' * 64}
+        value['cells'][0]['spec']['parameters']['paired_image_repo_digests'] = {'example__project-1': 'sha256:' + 'b' * 64}
     value['budgets']['drain_reserve_s'] = 120
     value['telemetry_collection'] = contract()
     value['drain_policy'] = {'running_metric': 'running', 'waiting_metric': 'waiting',
@@ -362,6 +363,7 @@ def test_swe_worker_and_real_sampler_overlap_with_frozen_identity(tmp_path, monk
     from pathlib import Path
     monkeypatch.setattr(worker, 'run_swe_benchmark', run)
     monkeypatch.setattr(worker, '_retain_stopped_swe', lambda *a, **k: {'state': 'retained', 'containers': {'status': 'completed'}})
+    monkeypatch.setattr(worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained')
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(worker.execute_benchmark_job, store, child['run_id'])
         assert entered.wait(5)

@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import re
 import select
+import socket
 import sqlite3
 import stat
 import time
@@ -132,6 +133,52 @@ def _source_hashes():
             for path in sorted(directory.glob('*.py'))}
 
 
+def _swe_image_receipt(spec, run_root, reference=None):
+    """Bind a verified per-job image preparation receipt, then recheck its bytes."""
+    from .swe_images import instance_image_tag, _has_registry_digest
+    parameters = spec['parameters']
+    selected = parameters['instance_ids']
+    ids, digests = parameters['paired_image_ids'], parameters['paired_image_repo_digests']
+    spec_hash = job_spec_sha256(spec)
+    directory = _path(spec, run_root, 'swe-images/' + spec_hash)
+    if reference is not None and (not isinstance(reference, dict) or set(reference) != {"name", "sha256"}
+            or not isinstance(reference["name"], str) or Path(reference["name"]).name != reference["name"]):
+        raise BenchmarkJobError("swe_image_receipt_unverified", "image receipt reference is invalid")
+    paths = [directory / reference['name']] if reference else sorted(directory.glob('receipt-*.json'))
+    for path in paths:
+        if not re.fullmatch(r'receipt-[0-9a-f]{32}\.json', path.name):
+            continue
+        try:
+            receipt = _read(path)
+            images = receipt['images']
+            if (receipt.get('schema') != 'anvil-serving.swe-image-preparation/v1'
+                    or receipt.get('status') != 'verified' or receipt.get('spec_sha256') != spec_hash
+                    or receipt.get('ownership_id') != spec['ownership_id'] or receipt.get('run_id') != spec['run_id']
+                    or receipt.get('worker', {}).get('declared_id') != spec['worker']['id']
+                    or receipt.get('worker', {}).get('observed_hostname') != socket.gethostname().strip()
+                    or spec['worker']['id'].casefold() not in {socket.gethostname().strip().casefold(), socket.gethostname().strip().split('.', 1)[0].casefold()}
+                    or not isinstance(images, list) or len(images) != len(selected)):
+                continue
+            for instance, row in zip(selected, images):
+                tag, digest = instance_image_tag(instance), digests[instance]
+                if (row.get('instance_id') != instance or row.get('tag') != tag
+                        or row.get('image_id') != ids[instance] or row.get('registry_digest') != digest
+                        or row.get('status') != 'verified'):
+                    raise ValueError('image receipt mismatch')
+                for key, expected_tag in (('observation', tag), ('pinned_observation', 'docker.io/' + tag + '@' + digest)):
+                    observed = row[key]
+                    if (observed.get('tag') != expected_tag or observed.get('image_id') != ids[instance]
+                            or not _has_registry_digest(observed, digest)):
+                        raise ValueError('image observation mismatch')
+            result = {'name': path.name, 'sha256': _digest(receipt)}
+            if reference is not None and result != reference:
+                raise ValueError('image receipt changed')
+            return result
+        except (OSError, ValueError, KeyError, TypeError, AttributeError, BenchmarkJobError):
+            continue
+    raise BenchmarkJobError('swe_image_receipt_unverified', 'verified image preparation receipt is absent or changed')
+
+
 def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     from .harnesses import prepare_harness_assets
     from .profiles import load_profile
@@ -168,12 +215,14 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     else:
         raise BenchmarkJobError('unsupported_campaign_suite', 'campaign supports native, Aider and performance children')
     payload = {'plan': plan, 'assets': assets, 'source_hashes': _source_hashes()}
+    if spec['suite'] == 'swe':
+        payload['image_receipt'] = _swe_image_receipt(spec, run_root)
     path = _path(spec, run_root, 'campaign-prepared/plan.json')
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(str(path), payload)
     return {'path': 'campaign-prepared/plan.json', 'sha256': _digest(payload),
             'plan_sha256': _digest(plan), 'source_sha256': _digest(payload['source_hashes']),
-            'matching': {'workload_sha256': _digest({'selection': plan.get('selection'), 'dataset': plan.get('dataset_snapshot', {}).get('files'), 'paired_image_ids': plan.get('paired_image_ids')} if spec['suite'] == 'swe' else plan.get('selection', admission)),
+            'matching': {'workload_sha256': _digest({'selection': plan.get('selection'), 'dataset': plan.get('dataset_snapshot', {}).get('files'), 'paired_image_ids': plan.get('paired_image_ids'), 'paired_image_repo_digests': params.get('paired_image_repo_digests')} if spec['suite'] == 'swe' else plan.get('selection', admission)),
                          'oracle_sha256': _digest(payload['source_hashes'])}}
 
 
@@ -190,7 +239,8 @@ def verify_prepared_child(spec, prepared, *, run_root):
         verify_plan(plan)
     elif spec['suite'] == 'swe':
         from .swe import verify_campaign_swe_plan
-        verify_campaign_swe_plan(plan)
+        _swe_image_receipt(spec, run_root, payload['image_receipt'])
+        verify_campaign_swe_plan(plan, spec['parameters']['paired_image_repo_digests'])
     elif spec['suite'] == 'performance':
         from .performance import verify_plan
         verify_plan(plan)

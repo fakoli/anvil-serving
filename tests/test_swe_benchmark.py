@@ -987,22 +987,40 @@ def test_v2_bounded_runner_exposes_typed_failures(monkeypatch, error, code):
 def test_campaign_swe_pre_release_checks_pinned_inputs(tmp_path, monkeypatch):
     from anvil_serving.benchmarking import swe_agent_adapter, swe_grader_adapter
 
-    pinned = plan(tmp_path, paired_image_ids={INSTANCE: 'sha256:' + 'a' * 64})
+    pinned = plan(tmp_path, paired_image_ids={INSTANCE: 'sha256:' + 'a' * 64}, profile_name='pilot-v2', timeout_s=30)
+    digests = {INSTANCE: 'sha256:' + 'b' * 64}
     checks = []
     monkeypatch.setattr(swe, '_verify_dataset_snapshot', lambda snapshot: checks.append('dataset'))
     monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: checks.append('agent'))
     monkeypatch.setattr(swe_grader_adapter, 'verify_source', lambda root: checks.append('grader'))
     monkeypatch.setattr(swe.swe_container_custody, 'verify_source_hash', lambda digest: checks.append('custody'))
-    monkeypatch.setattr(swe, 'observe_paired_images', lambda images, **kw: checks.append('image'))
-    swe.verify_campaign_swe_plan(pinned)
+    monkeypatch.setattr(swe, 'observe_paired_images', lambda images, **kw: checks.append('image') or [{'instance_id': INSTANCE, 'repo_digests': ['example@' + digests[INSTANCE]]}])
+    swe.verify_campaign_swe_plan(pinned, digests)
     assert checks == ['dataset', 'agent', 'grader', 'custody', 'image']
     monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: (_ for _ in ()).throw(RuntimeError('drift')))
     with pytest.raises(BenchmarkJobError):
-        swe.verify_campaign_swe_plan(pinned)
+        swe.verify_campaign_swe_plan(pinned, digests)
     monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: None)
     monkeypatch.setattr(swe, 'observe_paired_images', lambda *a, **k: (_ for _ in ()).throw(BenchmarkJobError('swe_image_identity_mismatch', 'changed')))
     with pytest.raises(BenchmarkJobError, match='changed'):
-        swe.verify_campaign_swe_plan(pinned)
+        swe.verify_campaign_swe_plan(pinned, digests)
     monkeypatch.setattr(swe, '_verify_dataset_snapshot', lambda snapshot: (_ for _ in ()).throw(BenchmarkJobError('swe_dataset_mismatch', 'dataset changed')))
     with pytest.raises(BenchmarkJobError, match='dataset changed'):
-        swe.verify_campaign_swe_plan(pinned)
+        swe.verify_campaign_swe_plan(pinned, digests)
+
+
+def test_campaign_rejects_unbudgeted_swe_and_wrong_registry_digest(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking import swe_agent_adapter, swe_grader_adapter
+    ids = {INSTANCE: 'sha256:' + 'a' * 64}
+    digests = {INSTANCE: 'sha256:' + 'b' * 64}
+    legacy = plan(tmp_path / 'legacy', paired_image_ids=ids)
+    with pytest.raises(BenchmarkJobError, match='budgeted'):
+        swe.verify_campaign_swe_plan(legacy, digests)
+    pinned = plan(tmp_path / 'budgeted', paired_image_ids=ids, profile_name='pilot-v2', timeout_s=30)
+    monkeypatch.setattr(swe, '_verify_dataset_snapshot', lambda snapshot: None)
+    monkeypatch.setattr(swe_agent_adapter, 'verify_source', lambda root: None)
+    monkeypatch.setattr(swe_grader_adapter, 'verify_source', lambda root: None)
+    monkeypatch.setattr(swe.swe_container_custody, 'verify_source_hash', lambda digest: None)
+    monkeypatch.setattr(swe, 'observe_paired_images', lambda images, **kw: [{'instance_id': INSTANCE, 'repo_digests': ['example@sha256:' + 'd' * 64]}])
+    with pytest.raises(BenchmarkJobError, match='inputs changed'):
+        swe.verify_campaign_swe_plan(pinned, digests)

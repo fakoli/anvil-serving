@@ -834,8 +834,12 @@ def verify_swe_plan(plan):
     return budgets
 
 
-def verify_campaign_swe_plan(plan):
+def verify_campaign_swe_plan(plan, repo_digests):
+    from .swe_images import validate_paired_image_repo_digests, _has_registry_digest
+    if plan.get("schema") != SWE_PLAN_SCHEMA_V2:
+        raise BenchmarkJobError("bad_swe_budget", "SWE campaigns require a budgeted plan")
     verify_swe_plan(plan)
+    repo_digests = validate_paired_image_repo_digests(repo_digests, plan["selection"]["instance_ids"])
     from .swe_agent_adapter import verify_source as verify_agent_source
     from .swe_grader_adapter import verify_source as verify_grader_source
     try:
@@ -844,9 +848,19 @@ def verify_campaign_swe_plan(plan):
         swe_container_custody.verify_source_hash(plan["harnesses"]["container_custody"]["adapter_sha256"])
         if not plan.get("paired_image_ids"):
             raise ValueError("paired images required")
-        observe_paired_images(plan["paired_image_ids"], executable=plan["container_executable"],
+        policy_hash = hashlib.sha256(canonical_json_bytes(
+            {instance_image_tag(k): v for k, v in plan["paired_image_ids"].items()})).hexdigest()
+        command = plan["commands"]["grader"]
+        if (command.count("--image-identities") != 1 or command.count("--image-identities-sha256") != 1
+                or command[command.index("--image-identities") + 1] != plan["paths"]["image_policy"]
+                or command[command.index("--image-identities-sha256") + 1] != policy_hash
+                or "    - --pull\n    - never\n" not in plan["config_text"]):
+            raise ValueError("image containment policy differs")
+        observations = observe_paired_images(plan["paired_image_ids"], executable=plan["container_executable"],
                               runner=_default_runner, cwd=plan["paths"]["run"], env=os.environ)
-    except (KeyError, OSError, ValueError, RuntimeError) as exc:
+        if any(not _has_registry_digest(row, repo_digests[row["instance_id"]]) for row in observations):
+            raise ValueError("registry digest differs")
+    except (KeyError, IndexError, TypeError, OSError, ValueError, RuntimeError) as exc:
         raise BenchmarkJobError("swe_campaign_input_mismatch", "SWE campaign inputs changed or are unavailable") from exc
 
 
