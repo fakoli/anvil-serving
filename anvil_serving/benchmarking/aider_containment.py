@@ -18,7 +18,7 @@ import subprocess
 import uuid
 
 from ..transports import _run_bounded_process
-from .artifacts import atomic_write_json
+from .artifacts import atomic_write_json, evidence_file_reference
 from .harness_runtime import resolve_container_binary
 from .jobs import BenchmarkJobError, resolve_owned_run_path
 
@@ -389,3 +389,37 @@ def cleanup_aider_containers(*, run_path, ownership_id, run_id, runner=_default_
     if receipt["errors"]:
         receipt["status"] = "incomplete"
     return receipt
+
+
+def aider_custody_snapshot(*, run_path, ownership_id, run_id):
+    """Read and bind all removed container records without invoking the runtime."""
+    registry = _registry(run_path, ownership_id, run_id)
+    if not registry.exists():
+        _require(not os.path.lexists(os.path.join(run_path, "aider")), "container registry is missing")
+        return []
+    entries = []
+    with os.scandir(registry) as iterator:
+        for item in iterator:
+            if item.name.endswith(".json"):
+                entries.append(registry / item.name)
+                _require(len(entries) <= 512, "container record count exceeds bound")
+    entries.sort()
+    records = []
+    for path in entries:
+        _no_symlinks(path)
+        _require(path.is_file() and path.stat().st_size <= MAX_OUTPUT_BYTES, "invalid container record")
+        with open(path, "rb", opener=lambda p, f: os.open(p, f | os.O_NOFOLLOW | os.O_NONBLOCK)) as stream:
+            _require(stat.S_ISREG(os.fstat(stream.fileno()).st_mode), "nonregular container record")
+            raw = stream.read(MAX_OUTPUT_BYTES + 1)
+        _require(len(raw) <= MAX_OUTPUT_BYTES, "container record exceeds bound")
+        record = json.loads(raw)
+        _require(record.get("schema") == "anvil-serving.aider-container/v1"
+                 and record.get("ownership_id") == ownership_id and record.get("run_id") == run_id
+                 and record.get("token") == path.stem and re.fullmatch(r"[0-9a-f]{32}", path.stem)
+                 and record.get("name") == "anvil-aider-" + path.stem and record.get("state") == "removed",
+                 "container record custody mismatch")
+        reference = evidence_file_reference(str(path), root=run_path)
+        _require(reference["bytes"] == len(raw) and reference["sha256"] == hashlib.sha256(raw).hexdigest(),
+                 "container record changed during verification")
+        records.append(reference)
+    return records

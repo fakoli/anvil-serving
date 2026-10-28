@@ -376,6 +376,13 @@ container cleanup and verified canonical or partial retention; unknown custody
 blocks further admission. Only completed official grades score as resolved or
 unresolved, and ungraded work remains unscored.
 
+Newly prepared Aider campaign cells bind their container cleanup and retained
+artifact manifest before batch closure. The coordinator rechecks removed-container
+records and retained bytes before closure and before releasing a reservation.
+Unknown cleanup or changed evidence blocks further admission. Earlier campaign
+receipts retain their original interpretation; this contract does not certify
+historical cleanup retroactively.
+
 The diagnostic pilot contains 12 tasks, C1 and C4 batches, two repeats, and
 two deployment arms: 96 planned children. Six native tasks use 24 steps,
 8,192 completion tokens per request, and 600 seconds per task. Six Aider

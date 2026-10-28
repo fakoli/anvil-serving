@@ -220,14 +220,18 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     path = _path(spec, run_root, 'campaign-prepared/plan.json')
     path.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(str(path), payload)
-    return {'path': 'campaign-prepared/plan.json', 'sha256': _digest(payload),
+    return {**({'custody_contract': 'aider-stop/v1'} if spec['suite'] == 'aider' else {}),
+            'path': 'campaign-prepared/plan.json', 'sha256': _digest(payload),
             'plan_sha256': _digest(plan), 'source_sha256': _digest(payload['source_hashes']),
             'matching': {'workload_sha256': _digest({'selection': plan.get('selection'), 'dataset': plan.get('dataset_snapshot', {}).get('files'), 'paired_image_ids': plan.get('paired_image_ids'), 'paired_image_repo_digests': params.get('paired_image_repo_digests')} if spec['suite'] == 'swe' else plan.get('selection', admission)),
                          'oracle_sha256': _digest(payload['source_hashes'])}}
 
 
 def verify_prepared_child(spec, prepared, *, run_root):
-    if set(prepared) != {'path', 'sha256', 'plan_sha256', 'source_sha256', 'matching'} or prepared['path'] != 'campaign-prepared/plan.json':
+    fields = {'path', 'sha256', 'plan_sha256', 'source_sha256', 'matching'}
+    if (set(prepared) != (fields | {'custody_contract'} if spec['suite'] == 'aider' else fields)
+            or (spec['suite'] == 'aider' and prepared['custody_contract'] != 'aider-stop/v1')
+            or prepared['path'] != 'campaign-prepared/plan.json'):
         raise BenchmarkJobError('campaign_prepared_mismatch', 'prepared child binding is invalid')
     payload = _read(_path(spec, run_root, prepared['path']))
     if (_digest(payload) != prepared['sha256'] or _digest(payload['plan']) != prepared['plan_sha256']
@@ -327,10 +331,11 @@ def reconcile_batch(manifest, batch_id, *, run_root, store=None):
                 end = release['deadline_monotonic']
         return {**result, 'status': 'closed', 'active_seconds': end - release['released_monotonic']}
     for cell, row in zip(cells, rows):
-        if cell['spec']['suite'] == 'swe' and row.get('clients_stopped') is True and row.get('status') in {'draining', 'closed'}:
+        if (cell['spec']['suite'] == 'swe' or _requires_aider_stop(cell)) and row.get('clients_stopped') is True and row.get('status') in {'draining', 'closed'}:
             expected = bind_campaign_child(cell['spec'], manifest_sha256=_manifest_digest(manifest),
                 campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
-            if not _swe_stop_verified(expected, row, run_root):
+            valid = _swe_stop_verified(expected, row, run_root) if cell['spec']['suite'] == 'swe' else _aider_stop_verified(expected, row, run_root)
+            if not valid:
                 return {**result, 'status': 'blocked'}
     try:
         _require_observer_readiness(release, manifest)
@@ -431,6 +436,52 @@ def _swe_stop_verified(spec, row, run_root):
         return False
 
 
+def _aider_stop_verified(spec, row, run_root):
+    """Bind Aider's cleanup result, removed-container ledger, and retained bytes."""
+    from .worker import _aider_retention_complete
+    from .aider_containment import aider_custody_snapshot
+    try:
+        root = _path(spec, run_root, None)
+        reference = row['aider_stop']
+        if not isinstance(reference, dict) or reference.get('path') != 'evidence/0-aider-campaign-stop.json':
+            return False
+        path = root / reference['path']
+        if path.is_symlink() or path.parent.is_symlink() or evidence_file_reference(str(path), root=str(root)) != reference:
+            return False
+        proof = _read(path)
+        if (proof.get('schema') != 'anvil-serving.aider-campaign-stop/v1'
+                or proof.get('ownership_id') != spec['ownership_id'] or proof.get('run_id') != spec['run_id']
+                or proof.get('spec_sha256') != job_spec_sha256(spec)):
+            return False
+        retention = proof['retention']
+        fields = {'schema', 'ownership_id', 'run_id', 'spec_sha256', 'retention', 'records'}
+        if 'worker_stop' in proof:
+            fields.add('worker_stop')
+        if (set(proof) != fields or (retention.get('state') == 'absent' and 'worker_stop' not in proof)
+                or not _aider_retention_complete(retention, str(root), spec)
+                or proof['records'] != aider_custody_snapshot(run_path=str(root), ownership_id=spec['ownership_id'], run_id=spec['run_id'])):
+            return False
+        if 'worker_stop' in proof:
+            reference = proof['worker_stop']
+            if reference.get('path') != 'evidence/worker-stop-receipt.json':
+                return False
+            path = root / reference['path']
+            if path.is_symlink() or evidence_file_reference(str(path), root=str(root)) != reference:
+                return False
+            stop = _read(path)
+            if (stop.get('schema') != 'anvil-serving.worker-stop-receipt/v1'
+                    or stop.get('run_id') != spec['run_id'] or stop.get('termination', {}).get('stopped') is not True):
+                return False
+        return True
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, BenchmarkJobError, BenchmarkArtifactError):
+        return False
+
+
+def _requires_aider_stop(cell):
+    # Older frozen manifests have no such claim; do not retroactively certify them.
+    return cell['spec']['suite'] == 'aider' and cell.get('prepared', {}).get('custody_contract') == 'aider-stop/v1'
+
+
 def _anchored_closure(store, cell, manifest, root):
     """Mutable execution receipts alone never release a reservation."""
     try:
@@ -441,6 +492,8 @@ def _anchored_closure(store, cell, manifest, root):
             return False
         artifact = store.artifact(expected['run_id'])
         if expected['suite'] == 'swe' and not _swe_stop_verified(expected, _receipt(cell, manifest, root), root):
+            return False
+        if _requires_aider_stop(cell) and not _aider_stop_verified(expected, _receipt(cell, manifest, root), root):
             return False
         root_path = _path(expected, root, 'campaign-execution.json').parent
         return artifact['results'].get('campaign_execution') == evidence_file_reference(str(root_path / 'campaign-execution.json'), root=str(root_path))
@@ -470,8 +523,9 @@ def _commit_receipt(store, spec, value, *, cancelling=False):
 def _stop_fact(row):
     value = {k: row.get(k) for k in ('campaign', 'spec_sha256', 'boot_id', 'activation',
             'started_monotonic', 'clients_stopped', 'clients_stopped_wall')}
-    if 'swe_stop' in row:
-        value['swe_stop'] = row['swe_stop']
+    for key in ('swe_stop', 'aider_stop'):
+        if key in row:
+            value[key] = row[key]
     return value
 
 
@@ -493,6 +547,11 @@ def _stopped_rows(manifest, batch_id, release, root):
                 campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
             if not _swe_stop_verified(expected, row, root):
                 raise BenchmarkJobError('swe_stop_proof_invalid', 'SWE custody or retained evidence changed')
+        elif _requires_aider_stop(cell):
+            expected = bind_campaign_child(cell['spec'], manifest_sha256=_manifest_digest(manifest),
+                campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+            if not _aider_stop_verified(expected, row, root):
+                raise BenchmarkJobError('aider_stop_proof_invalid', 'Aider custody or retained evidence changed')
     return rows
 
 
@@ -557,21 +616,21 @@ def coordinate_batch(manifest, batch_id, *, store, sampler=None, force=False):
                 closure_path.parent.mkdir(parents=True, exist_ok=True)
                 atomic_write_json(closure_path, value)
                 return value
-            rows, invalid_swe_proof = None, False
+            rows, invalid_stop_reason = None, None
             try:
                 rows = _stopped_rows(manifest, batch_id, release, store.run_root)
             except BenchmarkJobError as exc:
-                invalid_swe_proof = exc.code == 'swe_stop_proof_invalid'
+                invalid_stop_reason = exc.code if exc.code in {'swe_stop_proof_invalid', 'aider_stop_proof_invalid'} else None
             except (OSError, ValueError, TypeError, KeyError, AttributeError):
                 pass
             if sampler is None and 'telemetry_collection' in manifest:
                 from .campaign_telemetry import BatchSampler
                 sampler = BatchSampler.recover(manifest, batch_id, release, run_root=store.run_root)
-            if not rows and not force and not invalid_swe_proof and release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic']:
+            if not rows and not force and not invalid_stop_reason and release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic']:
                 if sampler is not None:
                     sampler.tick()
                 return None
-            drain = {'status': 'unknown', 'reason': 'swe_stop_proof_invalid' if invalid_swe_proof else 'batch_clients_not_stopped'}
+            drain = {'status': 'unknown', 'reason': invalid_stop_reason or 'batch_clients_not_stopped'}
             if rows and release['boot_id'] == _boot_id() and time.monotonic() < release['deadline_monotonic']:
                 arm = next(a for a in manifest['arms'] if a['arm_id'] == _cells(manifest, batch_id)[0]['arm_id'])
                 policy = arm.get('drain_policy', manifest.get('drain_policy'))
@@ -1046,7 +1105,7 @@ def _abort_campaign_entry(context, supervisor, error):
     _commit_receipt(store, spec, value)
 
 
-def close_campaign(context, *, clients_stopped=None, wait=True, cancelling=False, swe_stop=None):
+def close_campaign(context, *, clients_stopped=None, wait=True, cancelling=False, swe_stop=None, aider_stop=None):
     """Publish only this worker's stop fact; global drain belongs to the batch."""
     store, spec = context['store'], context['spec']
     if store.status(spec['run_id'])['state'] in TERMINAL:
@@ -1059,13 +1118,15 @@ def close_campaign(context, *, clients_stopped=None, wait=True, cancelling=False
         value.setdefault('clients_stopped_wall', time.time())
         if spec['suite'] == 'swe' and swe_stop is not None:
             value['swe_stop'] = swe_stop
+        if spec['suite'] == 'aider' and aider_stop is not None:
+            value['aider_stop'] = aider_stop
     context['receipt'] = _commit_receipt(store, spec, value, cancelling=cancelling)
     if wait and clients:
         context['receipt'] = _await_batch(context, cancelling=cancelling)
     return context['receipt']
 
 
-def close_cancelled_campaign(store, spec, *, clients_stopped, swe_stop=None):
+def close_cancelled_campaign(store, spec, *, clients_stopped, swe_stop=None, aider_stop=None):
     path = _path(spec, store.run_root, 'campaign-execution.json')
     if not path.exists():
         return None
@@ -1077,7 +1138,7 @@ def close_cancelled_campaign(store, spec, *, clients_stopped, swe_stop=None):
     _validate_release(release, manifest, spec['campaign']['batch_id'])
     return close_campaign({'receipt': _read(path), 'path': path, 'manifest': manifest,
         'release': release, 'store': store, 'spec': spec}, clients_stopped=clients_stopped,
-        wait=False, cancelling=True, swe_stop=swe_stop)
+        wait=False, cancelling=True, swe_stop=swe_stop, aider_stop=aider_stop)
 
 
 def _watchdog(database, run_root, run_id, *, cancel_job, stop_worker):

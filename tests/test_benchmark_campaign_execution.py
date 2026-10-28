@@ -786,7 +786,12 @@ def test_campaign_aider_child_forwards_admitted_task_to_preparation(tmp_path, mo
     monkeypatch.setattr(harnesses, 'prepare_harness_assets', prepare)
     monkeypatch.setattr(aider, 'build_aider_run_plan', plan)
     (tmp_path/'runs').mkdir()
-    execution.prepare_child(child, run_root=str(tmp_path/'runs'), cache_root=str(tmp_path/'cache'), offline=True)
+    prepared = execution.prepare_child(child, run_root=str(tmp_path/'runs'), cache_root=str(tmp_path/'cache'), offline=True)
+    assert prepared['custody_contract'] == 'aider-stop/v1'
+    monkeypatch.setattr(aider, 'verify_plan', lambda plan: None)
+    execution.verify_prepared_child(child, prepared, run_root=str(tmp_path/'runs'))
+    with pytest.raises(BenchmarkJobError, match='prepared child binding'):
+        execution.verify_prepared_child(child, {k: v for k, v in prepared.items() if k != 'custody_contract'}, run_root=str(tmp_path/'runs'))
     assert calls[0]['aider_instance_ids'] == requested and calls[0]['offline'] is True
     # An invalid child must fail admission without touching the preparer.
     invalid = copy.deepcopy(child)
