@@ -315,6 +315,11 @@ def write_agent_wrapper(path, *, python_executable, ledger, owner, run_id, binar
 
 
 def main(argv=None):
+    argv = list(sys.argv[1:] if argv is None else argv)
+    try:
+        delimiter = argv.index("--")
+    except ValueError:
+        delimiter = None
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("agent-wrapper",))
     parser.add_argument("--ledger", required=True)
@@ -322,11 +327,13 @@ def main(argv=None):
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--binary", required=True)
     parser.add_argument("--source-sha256", required=True)
-    parser.add_argument("docker_args", nargs=argparse.REMAINDER)
-    args = parser.parse_args(argv)
-    if not args.docker_args or args.docker_args[0] != "--":
+    if delimiter is None:
         parser.error("Docker arguments must follow --")
-    return agent_wrapper(args.docker_args[1:], ledger=args.ledger, owner=args.owner,
+    args = parser.parse_args(argv[:delimiter])
+    docker_args = argv[delimiter + 1:]
+    if not docker_args:
+        parser.error("Docker arguments must follow --")
+    return agent_wrapper(docker_args, ledger=args.ledger, owner=args.owner,
                          run_id=args.run_id, binary=args.binary, source_sha256=args.source_sha256)
 
 
