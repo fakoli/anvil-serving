@@ -57,10 +57,37 @@ def campaign(tmp_path, monkeypatch, count=1, endpoint=None, drain=None, activati
 
 
 def ready(root, manifest, bound, index=0):
-    value = {'campaign': bound[index]['campaign'], 'spec_sha256': job_spec_sha256(bound[index]),
-             'status': 'ready', 'boot_id': execution._boot_id()}
+    value = {'schema': 'anvil-serving.campaign-execution/v1', 'campaign': bound[index]['campaign'],
+             'spec_sha256': job_spec_sha256(bound[index]), 'status': 'ready', 'boot_id': execution._boot_id(),
+             'ready_at': 'fixture', 'clients_stopped': False,
+             'telemetry_coverage': {key: {'status': 'unavailable'} for key in ('engine', 'gpu', 'host', 'cgroup')}}
     atomic_write_json(execution._path(bound[index], root, 'campaign-execution.json'), value)
     return value
+
+
+def test_cancel_before_release_preserves_ready_receipt_as_unavailable(tmp_path, monkeypatch):
+    root, manifest, bound = campaign(tmp_path, monkeypatch, count=2)
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.sqlite'), run_root=root)
+    store.submit(bound[0])
+    store.claim(bound[0]['run_id'])
+    ready(root, manifest, bound)
+    stopped = []
+    monkeypatch.setattr(worker, '_stop_owned_worker', lambda *args, **kwargs:
+                        stopped.append(args[1]) or {'stopped': True})
+    monkeypatch.setattr(worker, '_retain_native_partial_outputs', lambda **kwargs: {'state': 'retained'})
+
+    result = worker.cancel_campaign_jobs(manifest, store)
+
+    assert result['phase'] == 'completed'
+    assert store.status(bound[0]['run_id'])['state'] == 'cancelled'
+    assert store.status(bound[1]['run_id']) is None
+    receipt = execution._read(execution._path(bound[0], root, 'campaign-execution.json'))
+    assert receipt['status'] == 'ready'
+    assert receipt['telemetry_terminal'] == {'status': 'unavailable', 'reason': 'campaign_cancelled_before_release'}
+    assert all(value == {'status': 'unavailable'} for value in receipt['telemetry_coverage'].values())
+    assert not (execution._directory(manifest, root) / 'batches' / 'batch-0.json').exists()
+    assert worker.cancel_campaign_jobs(manifest, store)['phase'] == 'completed'
+    assert stopped == [bound[0]['run_id']]
 
 
 def test_frozen_plan_and_closed_binding_reject_drift_before_traffic(tmp_path, monkeypatch):
@@ -436,6 +463,54 @@ def entry_campaign(tmp_path, monkeypatch):
     release = execution.release_batch(manifest, cell['batch_id'], run_root=root,
                                       allowance_s=190, store=store, sampler=sampler)
     return store, manifest, child, sampler, release
+
+
+@pytest.mark.parametrize('damage', ['malformed', 'symlink', 'unreadable'])
+def test_unreleased_cancellation_requires_genuinely_absent_release(tmp_path, monkeypatch, damage):
+    root, manifest, bound = campaign(tmp_path, monkeypatch)
+    child = bound[0]
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.sqlite'), run_root=root)
+    store.submit(child)
+    store.claim(child['run_id'])
+    store.transition(child['run_id'], 'cancelling')
+    ready(root, manifest, bound)
+    release_path = execution._directory(manifest, root) / 'batches' / 'batch-0.json'
+    release_path.parent.mkdir()
+    if damage == 'malformed':
+        release_path.write_text('{')
+    elif damage == 'symlink':
+        target = release_path.with_name('saved-release.json')
+        target.write_text('{}')
+        release_path.symlink_to(target)
+    else:
+        monkeypatch.setattr(Path, 'lstat', lambda self: (_ for _ in ()).throw(PermissionError()))
+
+    with pytest.raises((OSError, ValueError)):
+        execution.campaign_result_reference(store, child, cancelling=True)
+
+    receipt = execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))
+    assert receipt['status'] == 'ready' and 'telemetry_terminal' not in receipt
+    assert store.status(child['run_id'])['state'] == 'cancelling'
+
+
+@pytest.mark.parametrize('field, value', [('clients_stopped', True), ('drain', {'status': 'unknown'})])
+def test_unreleased_cancellation_rejects_lifecycle_smuggling(tmp_path, monkeypatch, field, value):
+    root, manifest, bound = campaign(tmp_path, monkeypatch)
+    child = bound[0]
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.sqlite'), run_root=root)
+    store.submit(child)
+    store.claim(child['run_id'])
+    store.transition(child['run_id'], 'cancelling')
+    receipt = ready(root, manifest, bound)
+    receipt[field] = value
+    path = execution._path(child, root, 'campaign-execution.json')
+    atomic_write_json(path, receipt)
+
+    with pytest.raises(BenchmarkJobError, match='receipt shows traffic or closure'):
+        execution.campaign_result_reference(store, child, cancelling=True)
+
+    assert execution._read(path) == receipt
+    assert store.status(child['run_id'])['state'] == 'cancelling'
 
 
 @pytest.mark.parametrize('failure', ['no_ack', 'early_exit', 'spawn', 'activation', 'closure', 'prepared', 'cancel', 'budget'])

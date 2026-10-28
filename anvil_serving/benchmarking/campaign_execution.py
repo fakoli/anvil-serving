@@ -507,6 +507,32 @@ def campaign_result_reference(store, spec, *, cancelling=False):
         manifest = _read(manifest_path)
         release_path = _directory(manifest, store.run_root) / 'batches' / (spec['campaign']['batch_id'] + '.json')
         value = _read(path)
+        # cancel_campaign_jobs reaches this seam only after it has stopped the
+        # owned worker. A ready receipt with no release cannot have sent traffic.
+        cancelling_record = cancelling and record['state'] == 'cancelling'
+        release_missing = False
+        if cancelling_record:
+            try:
+                release_path.lstat()
+            except FileNotFoundError:
+                release_missing = True
+            if not release_missing:
+                release = _read(release_path)
+                _validate_release(release, manifest, spec['campaign']['batch_id'])
+        if cancelling_record and release_missing:
+            cell = next(c for c in manifest['cells'] if c['cell_id'] == spec['campaign']['cell_id'])
+            value = _receipt(cell, manifest, store.run_root)
+            unavailable = {key: {'status': 'unavailable'} for key in ('engine', 'gpu', 'host', 'cgroup')}
+            if (set(value) != {'schema', 'campaign', 'spec_sha256', 'status', 'boot_id', 'ready_at',
+                              'clients_stopped', 'telemetry_coverage'}
+                    or value.get('schema') != 'anvil-serving.campaign-execution/v1'
+                    or value.get('status') != 'ready' or value.get('clients_stopped') is not False
+                    or value.get('telemetry_coverage') != unavailable):
+                raise BenchmarkJobError('campaign_release_missing', 'unreleased cancellation receipt shows traffic or closure')
+            value['telemetry_terminal'] = {'status': 'unavailable', 'reason': 'campaign_cancelled_before_release'}
+            value['telemetry_coverage'] = unavailable
+            _commit_receipt(store, spec, value, cancelling=True)
+            return {'campaign_execution': evidence_file_reference(str(path), root=str(path.parent))}
         if value.get('status') in {'draining', 'closed'} and 'batch_closure' not in value:
             release = _read(release_path)
             _validate_release(release, manifest, spec['campaign']['batch_id'])
