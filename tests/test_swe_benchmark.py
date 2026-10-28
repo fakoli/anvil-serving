@@ -15,6 +15,7 @@ from anvil_serving.benchmarking.harnesses import HARNESS_ASSETS_SCHEMA
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking import swe
+from anvil_serving.benchmarking import swe_container_custody
 from anvil_serving.benchmarking import harnesses
 from anvil_serving.benchmarking import swe_agent_adapter as adapter
 from anvil_serving.benchmarking.swe import (
@@ -873,6 +874,11 @@ def test_v2_plan_freezes_exact_budgets_config_argv_and_adapter_hash(tmp_path):
     assert json.loads(config_budget) == budgets
     assert yaml.safe_load(value["config_text"])["model"]["model_kwargs"]["max_tokens"] == budgets["max_completion_tokens"]
     assert hashlib.sha256(Path(argv[1]).read_bytes()).hexdigest() == value["harnesses"]["agent_observation"]["adapter_sha256"]
+    custody_hash = value["harnesses"]["container_custody"]["adapter_sha256"]
+    assert custody_hash == hashlib.sha256(Path(swe_container_custody.__file__).read_bytes()).hexdigest()
+    assert argv[argv.index("--container-custody-adapter-sha256") + 1] == custody_hash
+    grader = value["commands"]["grader"]
+    assert grader[grader.index("--container-custody-adapter-sha256") + 1] == custody_hash
     assert hashlib.sha256(canonical_json_bytes({key: item for key, item in value.items() if key != "plan_sha256"})).hexdigest() == value["plan_sha256"]
     legacy = plan(tmp_path / "legacy")
     assert "budgets" not in legacy and "--budgets" not in legacy["commands"]["agent"]

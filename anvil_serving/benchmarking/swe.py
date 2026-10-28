@@ -31,6 +31,7 @@ from .swe_logs import validate_server_log_selector
 from .swe_agent_adapter import (
     MINI_REVISION, SOURCE_HASHES as AGENT_SOURCE_HASHES, read_attempt_evidence, validate_budgets,
 )
+from . import swe_container_custody
 
 
 SWE_RUN_SCHEMA = "anvil-serving.swe-run/v1"
@@ -438,6 +439,8 @@ def build_swe_run_plan(
         raise BenchmarkJobError("unsupported_agent_observation", "agent observation requires its qualified revision")
     agent_adapter_path = str(Path(__file__).with_name("swe_agent_adapter.py"))
     agent_adapter_sha256 = _sha256_file(agent_adapter_path)
+    custody_adapter_path = str(Path(__file__).with_name("swe_container_custody.py"))
+    custody_adapter_sha256 = _sha256_file(custody_adapter_path)
     # Keep flushed attempt evidence outside disposable work, including cancellation.
     request_events_path = os.path.join(run_path, "swe-request-events.jsonl")
     adapter_path = str(Path(__file__).with_name("swe_grader_adapter.py"))
@@ -447,7 +450,11 @@ def build_swe_run_plan(
     image_policy_sha256 = (hashlib.sha256(canonical_json_bytes(
         {instance_image_tag(k): v for k, v in paired_images.items()}
     )).hexdigest() if paired_images is not None else None)
-    container_executable = resolve_container_binary() or "docker"
+    container_executable = resolve_container_binary()
+    if not container_executable or not os.path.isabs(container_executable):
+        raise BenchmarkJobError("container_capability_absent", "SWE container custody requires an absolute Docker executable")
+    container_ledger = os.path.join(run_path, "swe-containers")
+    agent_container_wrapper = os.path.join(work, "anvil-swe-container-wrapper")
     mini_command = [
         python_executable,
         agent_adapter_path,
@@ -466,6 +473,15 @@ def build_swe_run_plan(
         ),
         "--config", config_path,
     ]
+    mini_command[8:8] = [
+        "--container-custody-ledger", container_ledger,
+        "--container-custody-owner", ownership_id,
+        "--container-custody-run-id", run_id,
+        "--container-custody-binary", container_executable,
+        "--container-custody-wrapper", agent_container_wrapper,
+        "--container-custody-python", python_executable,
+        "--container-custody-adapter-sha256", custody_adapter_sha256,
+    ]
     if prompt_contract == "disclosed/v2":
         mini_command[8:8] = ["--prompt-disclosure", _prompt_disclosure(suite)]
     if budgets is not None:
@@ -475,6 +491,11 @@ def build_swe_run_plan(
         adapter_path, "--grader-root", grader_root,
         "--adapter-sha256", adapter_sha256,
         "--receipt", containment_receipt,
+        "--container-custody-ledger", container_ledger,
+        "--container-custody-owner", ownership_id,
+        "--container-custody-run-id", run_id,
+        "--container-custody-binary", container_executable,
+        "--container-custody-adapter-sha256", custody_adapter_sha256,
         *(["--image-identities", image_policy_path,
            "--image-identities-sha256", image_policy_sha256] if paired_images is not None else []), "--",
         "--dataset_name", dataset_snapshot["root"],
@@ -521,6 +542,7 @@ def build_swe_run_plan(
                 "source_hashes": dict(SOURCE_HASHES),
                 "receipt": containment_receipt,
             },
+            "container_custody": {"adapter_sha256": custody_adapter_sha256},
             "python_environment": {
                 "schema": python_environment["schema"],
                 "python": python_environment["python"],
@@ -542,6 +564,8 @@ def build_swe_run_plan(
             "result": os.path.join(run_path, "swe-result.json"),
             "image_policy": image_policy_path,
             "request_events": request_events_path,
+            "container_ledger": container_ledger,
+            "agent_container_wrapper": agent_container_wrapper,
             "plan": os.path.join(work, "swe-plan.json"),
         },
         "commands": {"agent": mini_command, "grader": grader_command},
@@ -824,6 +848,22 @@ def run_swe_benchmark(
     Path(paths["mini_config_home"]).mkdir(parents=True, exist_ok=True)
     suite_started = time.monotonic()
 
+    try:
+        swe_container_custody.verify_source_hash(plan["harnesses"]["container_custody"]["adapter_sha256"])
+        swe_container_custody.initialize(paths["run"], plan["ownership_id"], plan["run_id"], plan["container_executable"])
+    except (KeyError, OSError, ValueError) as exc:
+        raise BenchmarkJobError("swe_container_custody_unavailable", "SWE container custody ledger could not be initialized") from exc
+
+    def cleanup_containers(stage):
+        receipt = os.path.join(paths["run"], "evidence", f"swe-container-cleanup-{stage}.json")
+        Path(receipt).parent.mkdir(parents=True, exist_ok=True)
+        cleanup = swe_container_custody.cleanup(
+            paths["container_ledger"], plan["ownership_id"], plan["run_id"], receipt_path=receipt,
+        )
+        result.setdefault("container_custody", {})[stage] = cleanup
+        atomic_write_json(paths["result"], result)
+        return cleanup
+
     def budget_boundary(stage):
         if budgets is None:
             return plan["timeout_s"]
@@ -889,6 +929,7 @@ def run_swe_benchmark(
                 "status": "unavailable", "error": type(exc).__name__,
                 "requested_interval": {"started_at": agent_started_at, "ended_at": ended_at},
             }
+    agent_cleanup = None
     try:
         try:
             allowance = budget_boundary("agent")
@@ -914,12 +955,15 @@ def run_swe_benchmark(
                         "status": "unavailable", "error": type(exc).__name__, "events": [],
                     }
             atomic_write_json(paths["result"], result)
+            agent_cleanup = cleanup_containers("agent")
     except subprocess.TimeoutExpired as exc:
         stage = _result_record(plan["commands"]["agent"], exc, agent_duration, agent_started_at, agent_ended_at)
         failure = "timeout" if budgets is None else "budget_exhausted"
         stage.update({"name": "agent", "status": "failed", "failure_class": failure})
         result["stages"].append(stage)
-        result["failure"] = {"class": failure, "stage": "agent", **({"code": "deadline_s"} if budgets is not None else {})}
+        result["failure"] = ({"class": "infrastructure_failure", "stage": "agent_container_cleanup", "code": "cleanup_unverified"}
+                             if agent_cleanup is not None and agent_cleanup["status"] != "completed"
+                             else {"class": failure, "stage": "agent", **({"code": "deadline_s"} if budgets is not None else {})})
         atomic_write_json(paths["result"], result)
         return result
     agent_stage = _result_record(
@@ -927,6 +971,11 @@ def run_swe_benchmark(
     )
     agent_stage.update({"name": "agent", "status": "completed"})
     result["stages"].append(agent_stage)
+    if agent_cleanup is None or agent_cleanup["status"] != "completed":
+        agent_stage.update({"status": "failed", "failure_class": "infrastructure_failure"})
+        result["failure"] = {"class": "infrastructure_failure", "stage": "agent_container_cleanup", "code": "cleanup_unverified"}
+        atomic_write_json(paths["result"], result)
+        return result
     if budgets is not None:
         observations = result.get("request_observations", {})
         exhausted = next((event for event in observations.get("events", []) if event["event"] == "budget_exhausted"), None)
@@ -956,6 +1005,7 @@ def run_swe_benchmark(
         return result
 
     predictions_path = os.path.join(paths["output"], "preds.json")
+    grader_cleanup = None
     try:
         predictions = _read_json(predictions_path, code="missing_swe_predictions")
         if not isinstance(predictions, Mapping) or set(predictions) != set(plan["selection"]["instance_ids"]):
@@ -1049,22 +1099,30 @@ def run_swe_benchmark(
             plan["commands"]["grader"], paths["grader_work"], allowance, child_env
         )
     except subprocess.TimeoutExpired as exc:
+        grader_cleanup = cleanup_containers("grader")
         stage = _result_record(plan["commands"]["grader"], exc, time.monotonic() - grader_started, grader_started_at)
         failure = "timeout" if budgets is None else "budget_exhausted"
         stage.update({"name": "official_grader", "status": "failed", "failure_class": failure})
         result["stages"].append(stage)
-        result["failure"] = agent_failure or {
+        result["failure"] = ({"class": "infrastructure_failure", "stage": "grader_container_cleanup", "code": "cleanup_unverified"}
+                             if grader_cleanup["status"] != "completed" else agent_failure or {
             "class": failure,
             "stage": "official_grader",
             **({"code": "deadline_s"} if budgets is not None else {}),
-        }
+        })
         atomic_write_json(paths["result"], result)
         return result
+    grader_cleanup = cleanup_containers("grader")
     grader_stage = _result_record(
         plan["commands"]["grader"], grader_process, time.monotonic() - grader_started, grader_started_at
     )
     grader_stage.update({"name": "official_grader", "status": "completed"})
     result["stages"].append(grader_stage)
+    if grader_cleanup["status"] != "completed":
+        grader_stage.update({"status": "failed", "failure_class": "infrastructure_failure"})
+        result["failure"] = {"class": "infrastructure_failure", "stage": "grader_container_cleanup", "code": "cleanup_unverified"}
+        atomic_write_json(paths["result"], result)
+        return result
     if budget_boundary("official_grader") is None:
         return result
     if not image_boundary("after_grader"):

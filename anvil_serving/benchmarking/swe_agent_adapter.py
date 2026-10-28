@@ -27,6 +27,7 @@ from datetime import UTC, datetime
 MINI_REVISION = "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
 SOURCE_HASHES = {
     "src/minisweagent/agents/default.py": "e8ef8aa365942d739c2ec5cb0879f60f377d2dc2de8ec670aaedf3bafb45a4c2",
+    "src/minisweagent/environments/docker.py": "21d389122b008e7b743d1e640207fda0b08d9010cf6323ddd02f0742b33b96a6",
     "src/minisweagent/run/benchmarks/utils/common.py": "618776d688f11018827ea8eb48ab20839d2d0ec182b4bd844a08af48937df398",
     "src/minisweagent/models/litellm_model.py": "6df4483bcdc9620b2f9d7f8bb1027a7fb9729b739976cbcf1a9d18fb58c48227",
     "src/minisweagent/models/utils/retry.py": "fb9dd9d9ca0253a2b2ac86907fea4c34fe75c55af6d443781e1ab02229a1ac18",
@@ -648,13 +649,38 @@ def validate_budget_agent_config(argv, budgets, config_loader, merge):
         raise ValueError("unsupported SWE budget model configuration")
 
 
-def run_agent(root, argv, *, adapter_sha256, events, prompt_disclosure=None, budgets=None, run_module=runpy.run_module):
+def run_agent(root, argv, *, adapter_sha256, events, prompt_disclosure=None, budgets=None,
+              container_custody=None, run_module=runpy.run_module):
     if budgets is not None:
         budgets = validate_budgets(budgets)
     own_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if own_hash != adapter_sha256:
         raise RuntimeError("SWE agent observation adapter changed after planning")
     root = verify_source(root)
+    if container_custody is not None:
+        if not isinstance(container_custody, dict) or set(container_custody) != {
+                "ledger", "owner", "run_id", "binary", "wrapper", "python", "adapter_sha256"}:
+            raise RuntimeError("SWE container custody configuration is invalid")
+        try:
+            from . import swe_container_custody
+        except ImportError:  # The pinned environment executes this file directly.
+            import swe_container_custody
+        swe_container_custody.write_agent_wrapper(
+            container_custody["wrapper"], python_executable=container_custody["python"],
+            ledger=container_custody["ledger"], owner=container_custody["owner"],
+            run_id=container_custody["run_id"], binary=container_custody["binary"],
+            source_sha256=container_custody["adapter_sha256"],
+        )
+        config_paths = [Path(argv[index + 1]) for index, value in enumerate(argv[:-1]) if value == "--config"]
+        if not config_paths:
+            raise RuntimeError("SWE container custody requires a generated config")
+        config_path = config_paths[-1]
+        original = "  executable: " + json.dumps(container_custody["binary"], ensure_ascii=True) + "\n"
+        replacement = "  executable: " + json.dumps(container_custody["wrapper"], ensure_ascii=True) + "\n"
+        text = config_path.read_text(encoding="utf-8")
+        if text.count(original) != 1:
+            raise RuntimeError("SWE container custody config seam changed")
+        config_path.write_text(text.replace(original, replacement), encoding="utf-8", newline="\n")
     original_path = sys.path[:]
     adapter_directory = Path(__file__).resolve().parent
     sys.path[:] = [str(root / "src"), *(entry for entry in original_path if Path(entry).resolve() != adapter_directory)]
@@ -712,12 +738,33 @@ def main():
     parser.add_argument("--events", required=True)
     parser.add_argument("--prompt-disclosure")
     parser.add_argument("--budgets", type=json.loads)
+    parser.add_argument("--container-custody-ledger")
+    parser.add_argument("--container-custody-owner")
+    parser.add_argument("--container-custody-run-id")
+    parser.add_argument("--container-custody-binary")
+    parser.add_argument("--container-custody-wrapper")
+    parser.add_argument("--container-custody-python")
+    parser.add_argument("--container-custody-adapter-sha256")
     parser.add_argument("agent_args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if not args.agent_args or args.agent_args[0] != "--":
         parser.error("mini-SWE arguments must follow --")
+    custody_values = (args.container_custody_ledger, args.container_custody_owner,
+                      args.container_custody_run_id, args.container_custody_binary,
+                      args.container_custody_wrapper, args.container_custody_python,
+                      args.container_custody_adapter_sha256)
+    if any(value is not None for value in custody_values) and not all(custody_values):
+        parser.error("SWE container custody arguments must be supplied together")
     run_agent(args.mini_root, args.agent_args[1:], adapter_sha256=args.adapter_sha256,
-              events=args.events, prompt_disclosure=args.prompt_disclosure, budgets=args.budgets)
+              events=args.events, prompt_disclosure=args.prompt_disclosure, budgets=args.budgets,
+              container_custody=({"ledger": args.container_custody_ledger,
+                                  "owner": args.container_custody_owner,
+                                  "run_id": args.container_custody_run_id,
+                                  "binary": args.container_custody_binary,
+                                  "wrapper": args.container_custody_wrapper,
+                                  "python": args.container_custody_python,
+                                  "adapter_sha256": args.container_custody_adapter_sha256}
+                                 if all(custody_values) else None))
 
 
 if __name__ == "__main__":

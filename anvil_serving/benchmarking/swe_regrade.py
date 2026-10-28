@@ -159,6 +159,15 @@ def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]
     adapter_sha256 = _sha256_file(str(adapter))
     if containment.get("adapter_sha256") != adapter_sha256:
         _fail("untrusted_swe_grader", "retained SWE grader adapter identity changed")
+    custody = plan.get("harnesses", {}).get("container_custody") if isinstance(plan.get("harnesses"), Mapping) else None
+    custody_adapter = Path(__file__).with_name("swe_container_custody.py")
+    custody_sha256 = _sha256_file(str(custody_adapter))
+    if (not isinstance(custody, Mapping) or set(custody) != {"adapter_sha256"}
+            or custody.get("adapter_sha256") != custody_sha256):
+        _fail("untrusted_swe_custody", "retained SWE container custody identity changed")
+    container_binary = plan.get("container_executable")
+    if not isinstance(container_binary, str) or not os.path.isabs(container_binary):
+        _fail("untrusted_swe_custody", "retained SWE container executable is invalid")
     assets_path = source_root / "assets.json"
     assets = _read_json(str(assets_path), code="missing_harness_asset")
     profile = load_profile(source_spec["profile"])
@@ -196,6 +205,8 @@ def prepare_swe_regrade(store: Any, record: Mapping[str, Any]) -> dict[str, Any]
         "selection": plan["selection"], "dataset": plan["dataset"], "dataset_snapshot": plan["dataset_snapshot"],
         "grader": {"revision": GRADER_REVISION, "source_hashes": dict(SOURCE_HASHES), "adapter_sha256": adapter_sha256,
                    "root": grader_root, "python": python, "limits": dict(LIMITS)},
+        "container_custody": {"adapter_sha256": custody_sha256, "binary": container_binary,
+                              "ledger": os.path.join(target_root, "swe-containers")},
         "predictions_path": str(retained / "predictions.jsonl"),
         "paired_image_ids": plan.get("paired_image_ids"),
         "paired_image_path": str(retained / "paired-image-ids.json") if plan.get("paired_image_ids") is not None else None,
@@ -224,6 +235,32 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_r
             or _sha256_file(str(predictions_path)) != plan.get("source_predictions_sha256")):
         _fail("swe_canonical_hash_mismatch", "retained SWE predictions changed")
     grader = plan["grader"]
+    custody = plan.get("container_custody")
+    if (not isinstance(custody, Mapping) or set(custody) != {"adapter_sha256", "binary", "ledger"}
+            or not all(isinstance(custody[name], str) for name in custody)
+            or not os.path.isabs(custody["binary"])
+            or custody["ledger"] != os.path.join(paths["run"], "swe-containers")):
+        _fail("bad_swe_regrade_plan", "SWE regrade custody plan is invalid")
+    from . import swe_container_custody
+    try:
+        swe_container_custody.verify_source_hash(custody["adapter_sha256"])
+        binding = {
+            "schema": "anvil-serving.swe-regrade-custody-binding/v1",
+            "run_id": plan["run_id"], "ownership_id": plan["ownership_id"],
+            "harnesses": {"container_custody": {"adapter_sha256": custody["adapter_sha256"]}},
+            "source": {"plan_sha256": plan["source_plan_sha256"],
+                       "predictions_sha256": plan["source_predictions_sha256"]},
+        }
+        binding_path = Path(paths["work"]) / "swe-plan.json"
+        durable_binding = Path(paths["run"]) / "evidence" / "swe-regrade-custody-binding.json"
+        if binding_path.exists() or binding_path.is_symlink() or durable_binding.exists() or durable_binding.is_symlink():
+            _fail("regrade_destination_exists", "SWE regrade custody binding already exists")
+        atomic_write_json(str(binding_path), binding)
+        durable_binding.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write_json(str(durable_binding), binding)
+        swe_container_custody.initialize(paths["run"], plan["ownership_id"], plan["run_id"], custody["binary"])
+    except (OSError, TypeError, ValueError) as exc:
+        _fail("swe_container_custody_unavailable", "SWE regrade container custody could not be initialized")
     adapter = str(Path(__file__).with_name("swe_grader_adapter.py"))
     receipt = os.path.join(paths["grader_work"], "containment.json")
     selected = plan["selection"]["instance_ids"]
@@ -238,9 +275,27 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_r
             _fail("swe_canonical_hash_mismatch", "retained paired image evidence changed")
         paired_args = ["--image-identities", str(image_path), "--image-identities-sha256", expected]
     command = [grader["python"], adapter, "--grader-root", grader["root"], "--adapter-sha256", grader["adapter_sha256"],
-               "--receipt", receipt, *paired_args, "--", "--dataset_name", plan["dataset_snapshot"]["root"], "--split", plan["dataset_snapshot"].get("split", "test"),
+               "--receipt", receipt, "--container-custody-ledger", custody["ledger"],
+               "--container-custody-owner", plan["ownership_id"], "--container-custody-run-id", plan["run_id"],
+               "--container-custody-binary", custody["binary"], "--container-custody-adapter-sha256", custody["adapter_sha256"],
+               *paired_args, "--", "--dataset_name", plan["dataset_snapshot"]["root"], "--split", plan["dataset_snapshot"].get("split", "test"),
                "--predictions_path", plan["predictions_path"], "--max_workers", "1", "--namespace", "swebench",
                "--run_id", plan["run_id"], "--timeout", str(plan["timeout_s"]), "--report_dir", paths["grader_work"], "--instance_ids", *selected]
+
+    def finalize(result: dict[str, Any]) -> dict[str, Any]:
+        custody_result = swe_container_custody.cleanup(
+            custody["ledger"], plan["ownership_id"], plan["run_id"],
+            receipt_path=os.path.join(paths["grader_work"], "container-custody-cleanup.json"),
+        )
+        result["container_custody"] = custody_result
+        if custody_result["status"] != "completed":
+            result["state"] = "incomplete"
+            result["failure"] = {"class": "infrastructure_failure", "stage": "container_custody",
+                                 "code": "swe_container_cleanup_unverified"}
+        atomic_write_json(str(result_path), result)
+        atomic_write_json(str(artifact_path), result)
+        return result
+
     started_at, started = utc_now(), time.monotonic()
     clean_env = {"PATH": os.environ.get("PATH", ""), "PYTHONPATH": grader["root"]}
     try:
@@ -248,21 +303,15 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_r
     except subprocess.TimeoutExpired:
         result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "incomplete",
                   "failure": {"class": "timeout", "stage": "official_grader", "code": "grader_timeout"}, "stages": []}
-        atomic_write_json(str(result_path), result)
-        atomic_write_json(str(artifact_path), result)
-        return result
+        return finalize(result)
     except _ProcessOutputOverflow:
         result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "incomplete",
                   "failure": {"class": "infrastructure_failure", "stage": "official_grader", "code": "grader_output_overflow"}, "stages": []}
-        atomic_write_json(str(result_path), result)
-        atomic_write_json(str(artifact_path), result)
-        return result
+        return finalize(result)
     except (_ProcessPipeError, OSError) as exc:
         result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "incomplete",
                   "failure": {"class": "infrastructure_failure", "stage": "official_grader", "code": type(exc).__name__}, "stages": []}
-        atomic_write_json(str(result_path), result)
-        atomic_write_json(str(artifact_path), result)
-        return result
+        return finalize(result)
     stage = _result_record(command, process, time.monotonic() - started, started_at)
     stage.update({"name": "official_grader", "status": "completed" if stage["returncode"] == 0 else "failed"})
     report_path = _find_official_report(paths["grader_work"], plan["run_id"])
@@ -270,7 +319,14 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_r
     resolved: set[str] = set()
     report_sha256 = None
     if report_path and stage["returncode"] == 0:
-        completed, resolved, report_sha256 = _official_report(report_path, selected)
+        try:
+            completed, resolved, report_sha256 = _official_report(report_path, selected)
+        except BenchmarkJobError:
+            swe_container_custody.cleanup(
+                custody["ledger"], plan["ownership_id"], plan["run_id"],
+                receipt_path=os.path.join(paths["grader_work"], "container-custody-cleanup.json"),
+            )
+            raise
     result = {"schema": REVIEW_SCHEMA, "run_id": plan["run_id"], "source_run_id": plan["source_run_id"], "state": "completed" if len(completed) == len(selected) else "incomplete",
               "source_plan_sha256": plan["source_plan_sha256"], "source_predictions_sha256": plan["source_predictions_sha256"],
               "stages": [stage], "official_grader_complete": len(completed) == len(selected),
@@ -278,6 +334,4 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_r
                           "resolve_rate": len(resolved) / len(completed) if completed else None},
               "report_sha256": report_sha256,
               "failure": None if len(completed) == len(selected) else {"class": "test_failure", "stage": "official_grader"}}
-    atomic_write_json(str(result_path), result)
-    atomic_write_json(str(artifact_path), result)
-    return result
+    return finalize(result)

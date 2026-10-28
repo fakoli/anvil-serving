@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -10,6 +11,7 @@ import pytest
 
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
 from anvil_serving.benchmarking import swe_regrade
+from anvil_serving.benchmarking import worker as benchmark_worker
 from anvil_serving.benchmarking.swe_grader_adapter import GRADER_REVISION, SOURCE_HASHES
 from anvil_serving import transports
 
@@ -43,12 +45,14 @@ def _retained(tmp_path, source, *, v2=False, timeout_s=None):
     grader_root.mkdir()
     (tmp_path / "campaign" / "source" / "assets.json").write_text("{}")
     adapter = Path(swe_regrade.__file__).with_name("swe_grader_adapter.py")
+    custody = Path(swe_regrade.__file__).with_name("swe_container_custody.py")
     plan = {"schema": swe_regrade.SWE_PLAN_SCHEMA, "run_id": "source", "ownership_id": "campaign", "profile": "smoke",
             "dataset": swe_regrade.SWE_DATASET, "dataset_snapshot": {"root": str(tmp_path), "files": {}}, "split": "test",
             "selection": {"instance_ids": [INSTANCE]}, "paths": {"grader_root": str(grader_root)},
-            "commands": {"grader": [sys.executable]},
+            "commands": {"grader": [sys.executable]}, "container_executable": sys.executable,
             "harnesses": {"grader": {"revision": GRADER_REVISION},
-                          "grader_containment": {"source_hashes": SOURCE_HASHES, "adapter_sha256": hashlib.sha256(adapter.read_bytes()).hexdigest()}}}
+                          "grader_containment": {"source_hashes": SOURCE_HASHES, "adapter_sha256": hashlib.sha256(adapter.read_bytes()).hexdigest()},
+                          "container_custody": {"adapter_sha256": hashlib.sha256(custody.read_bytes()).hexdigest()}}}
     if v2:
         profile = swe_regrade.load_profile("pilot-v2")
         source["spec"]["profile"] = "pilot-v2"
@@ -94,6 +98,8 @@ def test_prepare_regrade_rejects_other_owner_without_model_calls(tmp_path, monke
 
 
 def test_regrade_only_runs_regenerated_grader_and_preserves_source(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking.retention import retain_swe_artifacts
+
     plan, retained = _prepared_regrade(tmp_path, monkeypatch)
     original = (retained / "predictions.jsonl").read_bytes()
     calls = []
@@ -107,8 +113,20 @@ def test_regrade_only_runs_regenerated_grader_and_preserves_source(tmp_path, mon
 
     result = swe_regrade.regrade_swe_predictions(plan, runner=grader)
     assert result["state"] == "completed"
+    assert result["container_custody"]["status"] == "completed"
+    assert json.loads((Path(plan["paths"]["work"]) / "swe-plan.json").read_text())["harnesses"]["container_custody"] == {
+        "adapter_sha256": plan["container_custody"]["adapter_sha256"],
+    }
+    binding = json.loads((Path(plan["paths"]["work"]) / "swe-plan.json").read_text())
+    assert binding["source"] == {"plan_sha256": plan["source_plan_sha256"],
+                                 "predictions_sha256": plan["source_predictions_sha256"]}
+    assert (Path(plan["paths"]["run"]) / "evidence" / "swe-regrade-custody-binding.json").is_file()
     assert result["summary"] == {"attempted": 1, "graded": 1, "resolved": 1, "resolve_rate": 1.0}
     assert len(calls) == 1
+    assert "--container-custody-ledger" in calls[0][0]
+    assert "--container-custody-adapter-sha256" in calls[0][0]
+    retention = retain_swe_artifacts(run_path=plan["paths"]["run"], work_path=plan["paths"]["work"])
+    assert "official-grader/fake.target.json" in {entry["path"] for entry in retention["manifest"]["files"]}
     assert (retained / "predictions.jsonl").read_bytes() == original
 
 
@@ -122,6 +140,28 @@ def test_regrade_excludes_official_error_ids_from_completion(tmp_path, monkeypat
     result = swe_regrade.regrade_swe_predictions(plan, runner=grader)
     assert result["state"] == "incomplete"
     assert result["summary"] == {"attempted": 1, "graded": 0, "resolved": 0, "resolve_rate": None}
+
+
+def test_regrade_custody_binding_survives_retention_for_cancel_cleanup(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking import swe_container_custody
+
+    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
+
+    def grader(_argv, cwd, _timeout, _env):
+        (Path(cwd) / "fake.target.json").write_text(json.dumps({
+            "completed_ids": [INSTANCE], "resolved_ids": [INSTANCE], "error_ids": [],
+        }))
+        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
+
+    assert swe_regrade.regrade_swe_predictions(plan, runner=grader)["state"] == "completed"
+    shutil.rmtree(plan["paths"]["work"])
+    monkeypatch.setattr(swe_container_custody, "_inspect", lambda *_a, **_k: pytest.fail("empty ledger must not inspect Docker"))
+    cleanup = benchmark_worker._swe_container_cleanup(
+        {"spec": {"ownership_id": plan["ownership_id"], "run_id": plan["run_id"]}},
+        run_path=plan["paths"]["run"], phase="cancel",
+    )
+
+    assert cleanup["status"] == "completed"
 
 
 @pytest.mark.parametrize("report", [

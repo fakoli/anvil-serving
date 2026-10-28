@@ -25,6 +25,7 @@ from ...benchmarking.jobs import (
     new_job_record,
     resolve_owned_run_path,
     transition_job,
+    utc_now,
     validate_job_id,
     validate_job_record,
     validate_job_spec,
@@ -1070,6 +1071,24 @@ class BenchmarkJobStore:
                 "artifact_digest_mismatch", "benchmark artifact digest does not match"
             )
         return value
+
+    def replace_terminal_results(self, run_id: str, *, results: Mapping[str, Any]) -> dict[str, Any]:
+        """Publish a later bounded receipt for a terminal run through the store."""
+        def change(record: dict[str, Any]) -> dict[str, Any]:
+            if record["state"] not in {"completed", "failed", "cancelled"}:
+                raise BenchmarkJobError(
+                    "job_not_terminal", "terminal results require a terminal benchmark job"
+                )
+            updated = dict(record)
+            updated["revision"] += 1
+            updated["updated_at"] = utc_now()
+            artifact = build_artifact_envelope(
+                updated, results=results, failure=updated.get("failure")
+            )
+            updated["artifact"] = self._write_artifact(updated, artifact)
+            return updated
+
+        return self._mutate(run_id, change)
 
     def _required(self, run_id: str) -> dict[str, Any]:
         record = self.status(run_id)
