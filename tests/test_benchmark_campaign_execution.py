@@ -315,10 +315,28 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
     import threading
     from tests.test_benchmark_worker import EndpointHandler
 
+    post_started = threading.Event()
+    stop_stream = threading.Event()
+
     class SlowEndpoint(EndpointHandler):
         def do_POST(self):
-            time.sleep(60)
-            super().do_POST()
+            size = int(self.headers.get("Content-Length", "0"))
+            self.rfile.read(size)
+            post_started.set()
+            # Keep an actual in-flight HTTP response active past the socket
+            # timeout: urllib's timeout applies to an idle recv, not its
+            # total response lifetime.  The watchdog must own cancellation.
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(65536))
+            self.end_headers()
+            try:
+                while not stop_stream.is_set():
+                    self.wfile.write(b" ")
+                    self.wfile.flush()
+                    time.sleep(0.05)
+            except OSError:
+                pass
 
     class SlowServer(ThreadingHTTPServer):
         daemon_threads = True
@@ -335,7 +353,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         # Reproduce a loaded runner where watchdog startup exceeds the former
         # two-second traffic window, without weakening real process custody.
         install_test_owned_activation(tmp_path, monkeypatch, activation, watchdog_startup_delay_s=3)
-        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=30)
+        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=1)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
         deadline = time.monotonic() + 30
@@ -346,6 +364,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         with monkeypatch.context() as historical:
             historical.setattr(execution, 'require_batch_allowance', lambda *a, **k: k['allowance_s'])
             execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=20)
+        assert post_started.wait(timeout=5), store.logs(bound[0]['run_id'])
         while time.monotonic() < deadline:
             result = store.status(bound[0]['run_id'])
             if result['state'] in {'completed', 'failed', 'cancelled'}: break
@@ -354,6 +373,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         assert not worker._process_group_running(launched['pid'])
     finally:
         if launched and worker._process_group_running(launched['pid']): worker.cancel_benchmark_job(store, bound[0]['run_id'])
+        stop_stream.set()
         server.shutdown(); server.server_close(); thread.join(timeout=3)
 
 
