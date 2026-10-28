@@ -437,9 +437,11 @@ def _finish_job(store, spec, target, *, results, failure=None):
     # Waiting must never hold the write lock: cancellation must stop all siblings.
     try:
         reference = campaign_result_reference(store, spec)
-    except (OSError, ValueError, BenchmarkJobError, BenchmarkArtifactError):
+    except Exception as secondary:
         if target != "failed" or spec["suite"] not in {"swe", "aider"}:
             raise
+        results = dict(results)
+        results.setdefault("secondary_failures", []).append({"stage": "campaign_result_reference", "type": type(secondary).__name__})
         reference = {}  # An unanchored failed child cannot release its reservation.
     with child_lock(store, spec):
         current = store.status(spec['run_id'])
@@ -644,9 +646,13 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             results["container_custody"] = swe_container_custody or {"status": "incomplete"}
         return _finish_job(store, spec, "completed", results=results)
     except Exception as exc:
+        secondary_failures = []
         if campaign_context and spec["suite"] not in {"swe", "aider"} and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
-            close_campaign(campaign_context)
+            try:
+                close_campaign(campaign_context)
+            except Exception as secondary:
+                secondary_failures.append({"stage": "campaign_close", "type": type(secondary).__name__})
         current = store.status(run_id)
         if current is not None and current["state"] in {"cancelled", "cancelling"}:
             return current
@@ -658,9 +664,9 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 retention = _retain_external_artifacts(record, run_path=run_path)
                 retention_ref = _write_stage(store, record, f"{spec['suite']}-retention", retention)
                 stages.append(_stage(len(stages), f"{spec['suite']}_retention", "incomplete", retention_ref))
-            except (BenchmarkJobError, OSError, ValueError):
-                # Preserve the original error and all run files if retention itself failed.
-                pass
+            except Exception as secondary:
+                retention = None
+                secondary_failures.append({"stage": "retention", "type": type(secondary).__name__})
         if spec["suite"] == "swe":
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
             work_path = os.path.join(run_path, "work")
@@ -671,25 +677,25 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                     if retention["state"] != "failed":
                         retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
                         stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
-                except (BenchmarkJobError, OSError, ValueError):
-                    retention = {"state": "failed"}
+                except Exception as secondary:
+                    retention = None
+                    secondary_failures.append({"stage": "retention", "type": type(secondary).__name__})
         if campaign_context and spec["suite"] == "aider" and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
             try:
                 custody_verified = _aider_retention_complete(retention, run_path, spec)
                 stop_reference = _aider_campaign_stop_reference(store, record, retention, run_path) if custody_verified else None
                 close_campaign(campaign_context, **({"aider_stop": stop_reference} if custody_verified else {"clients_stopped": False, "wait": False}))
-            except (OSError, ValueError, BenchmarkJobError, BenchmarkArtifactError):
-                pass  # The original suite failure remains authoritative; no proof means no reclaim.
+            except Exception as secondary:
+                secondary_failures.append({"stage": "campaign_stop_proof_or_close", "type": type(secondary).__name__})
         if campaign_context and spec["suite"] == "swe" and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
             try:
                 custody_verified = _swe_retention_complete(retention, run_path)
                 stop_reference = _swe_campaign_stop_reference(store, record, retention, run_path) if custody_verified else None
                 close_campaign(campaign_context, **({"swe_stop": stop_reference} if custody_verified else {"clients_stopped": False, "wait": False}))
-            except (OSError, ValueError, BenchmarkJobError, BenchmarkArtifactError):
-                # Preserve the original suite failure; an uncommitted stop cannot release a batch.
-                pass
+            except Exception as secondary:
+                secondary_failures.append({"stage": "campaign_stop_proof_or_close", "type": type(secondary).__name__})
         try:
             failure_class = normalize_evidence_failure_class(code)
         except BenchmarkArtifactError:
@@ -722,8 +728,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             store, spec,
             "failed",
             failure={"class": failure_class, "code": code, "message": message[:1024]},
-            results={"evidence": evidence, **({"container_custody": swe_container_custody or {"status": "incomplete"}}
-                                                 if spec["suite"] == "swe" else {})},
+            results={"evidence": evidence, **({"secondary_failures": secondary_failures} if secondary_failures else {}),
+                     **({"container_custody": swe_container_custody or {"status": "incomplete"}} if spec["suite"] == "swe" else {})},
         )
 
 

@@ -185,6 +185,31 @@ def _locked(record_path):
         os.close(descriptor)
 
 
+
+def _read_owned_record(path, ownership_id, run_id):
+    """Decode a bounded, regular, identity-bound registry record or fail closed."""
+    _no_symlinks(path)
+    with open(path, "rb", opener=lambda p, f: os.open(p, f | os.O_NOFOLLOW | os.O_NONBLOCK)) as stream:
+        _require(stat.S_ISREG(os.fstat(stream.fileno()).st_mode), "nonregular container record")
+        raw = stream.read(MAX_OUTPUT_BYTES + 1)
+    _require(len(raw) <= MAX_OUTPUT_BYTES, "container record exceeds bound")
+    try:
+        record = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise BenchmarkJobError("aider_containment_invalid", "invalid container record JSON") from exc
+    _require(isinstance(record, dict), "invalid container record object")
+    _require(record.get("schema") == "anvil-serving.aider-container/v1"
+             and record.get("ownership_id") == ownership_id and record.get("run_id") == run_id
+             and record.get("token") == path.stem and re.fullmatch(r"[0-9a-f]{32}", path.stem)
+             and record.get("name") == "anvil-aider-" + path.stem
+             and record.get("state") in ("planned", "creation_failed", "created", "verified", "removed")
+             and isinstance(record.get("container_binary"), str) and bool(record["container_binary"])
+             and isinstance(record.get("image_id"), str) and re.fullmatch(r"sha256:[0-9a-f]{64}", record["image_id"])
+             and "container_id" in record and (record["container_id"] is None or
+                 isinstance(record["container_id"], str) and re.fullmatch(r"[0-9a-f]{64}", record["container_id"])),
+             "container record identity or schema mismatch")
+    return record, raw
+
 def _labels(record):
     return {_LABEL + key: record[key] for key in ("ownership_id", "run_id", "token")}
 
@@ -273,9 +298,7 @@ def run_contained_test(command, *, task_dir, run_path, ownership_id, run_id, ima
              "test image must be an immutable image ID")
     registry = _registry(run_path, ownership_id, run_id, create=True)
     for previous in registry.glob("*.json"):
-        _no_symlinks(previous)
-        _require(previous.stat().st_size <= MAX_OUTPUT_BYTES, "container record exceeds its bound")
-        prior = json.loads(previous.read_text())
+        prior, _ = _read_owned_record(previous, ownership_id, run_id)
         _require(prior.get("state") == "removed" or not prior.get("cleanup_error"),
                  "previous container cleanup is unresolved")
     task = Path(task_dir)
@@ -375,12 +398,7 @@ def cleanup_aider_containers(*, run_path, ownership_id, run_id, runner=_default_
         try:
             _no_symlinks(path)
             with _locked(path):
-                _require(path.stat().st_size <= MAX_OUTPUT_BYTES, "container record exceeds its bound")
-                record = json.loads(path.read_text())
-                _require(record["ownership_id"] == ownership_id and record["run_id"] == run_id
-                         and record["token"] == path.stem and re.fullmatch(r"[0-9a-f]{32}", path.stem)
-                         and record["name"] == "anvil-aider-" + path.stem,
-                         "container record ownership mismatch")
+                record, _ = _read_owned_record(path, ownership_id, run_id)
                 if record["state"] != "removed":
                     _remove(path, record, runner)
                     receipt["removed"].append(record["container_id"] or record["name"])
@@ -406,18 +424,8 @@ def aider_custody_snapshot(*, run_path, ownership_id, run_id):
     entries.sort()
     records = []
     for path in entries:
-        _no_symlinks(path)
-        _require(path.is_file() and path.stat().st_size <= MAX_OUTPUT_BYTES, "invalid container record")
-        with open(path, "rb", opener=lambda p, f: os.open(p, f | os.O_NOFOLLOW | os.O_NONBLOCK)) as stream:
-            _require(stat.S_ISREG(os.fstat(stream.fileno()).st_mode), "nonregular container record")
-            raw = stream.read(MAX_OUTPUT_BYTES + 1)
-        _require(len(raw) <= MAX_OUTPUT_BYTES, "container record exceeds bound")
-        record = json.loads(raw)
-        _require(record.get("schema") == "anvil-serving.aider-container/v1"
-                 and record.get("ownership_id") == ownership_id and record.get("run_id") == run_id
-                 and record.get("token") == path.stem and re.fullmatch(r"[0-9a-f]{32}", path.stem)
-                 and record.get("name") == "anvil-aider-" + path.stem and record.get("state") == "removed",
-                 "container record custody mismatch")
+        record, raw = _read_owned_record(path, ownership_id, run_id)
+        _require(record["state"] == "removed", "container record custody mismatch")
         reference = evidence_file_reference(str(path), root=run_path)
         _require(reference["bytes"] == len(raw) and reference["sha256"] == hashlib.sha256(raw).hexdigest(),
                  "container record changed during verification")
