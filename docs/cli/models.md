@@ -435,7 +435,9 @@ inventory: container name and immutable ID, model/revision, available recipe
 and registry digests, image digest, served identity, bound port, GPU selection,
 state, and health. It does not return environment values, raw launch commands,
 credentials, or endpoint addresses. Exited retained candidates are included.
-Missing or malformed identities and non-Anvil containers are excluded.
+Missing or malformed identities and non-Anvil containers are excluded. Use `running --strict` when an empty inventory must establish
+that all discovered managed identities were inspectable: malformed or
+uninspectable managed rows then fail the command instead of being omitted.
 
 When one discovered container matches, `status`, `logs`, and `unload` no longer
 require its name to be recovered out of band or its recipe to remain in the

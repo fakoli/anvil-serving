@@ -1280,3 +1280,24 @@ def test_cli_bound_unload_preserves_selected_incarnation(monkeypatch, tmp_path, 
 def test_cli_bound_unload_rejects_incomplete_or_invalid_intent_before_discovery(monkeypatch, options):
     monkeypatch.setattr(serve_recipes,'discover_recipe_containers',lambda **kwargs:pytest.fail('discovery must not run'))
     assert models._recipe_main(['unload','--container','candidate',*options,'--confirm'])==2
+
+@pytest.mark.parametrize('entry', ['handler','typed'])
+@pytest.mark.parametrize('scenario', ['invalid_owner','absent','discovery_error','inspection_error'])
+def test_strict_running_uses_actual_native_discovery(monkeypatch, entry, scenario, capsys):
+    bad=_row('candidate',container_id='a'*64,labels={serve_recipes.RECIPE_DIGEST_LABEL:'not-a-digest'})
+    def fake_docker(argv,**kwargs):
+        if argv[1]=='ps':
+            if scenario=='discovery_error':return _completed(argv,returncode=1)
+            return _completed(argv,stdout='' if scenario=='absent' else 'a'*12+'\n')
+        if scenario=='inspection_error':return _completed(argv,returncode=1)
+        return _completed(argv,stdout=json.dumps([bad]))
+    native=serve_recipes.discover_recipe_containers
+    monkeypatch.setattr(serve_recipes,'discover_recipe_containers',lambda **kw:native(_run=fake_docker,**kw))
+    if entry=='handler':
+        result=models._recipe_main(['running','--strict','--json'])
+        assert result==(0 if scenario=='absent' else 1)
+        if scenario=='absent':assert json.loads(capsys.readouterr().out)['containers']==[]
+    else:
+        result=models.recipe_containers_result(['--strict'])
+        if scenario=='absent':assert result.error is None and result.data['containers']==[]
+        else:assert result.error is not None

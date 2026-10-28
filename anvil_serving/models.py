@@ -2911,8 +2911,8 @@ def _format_running_recipe_containers(inventory):
     return "\n".join(lines) + "\n"
 
 
-def _running_recipe_inventory(model=None, container=None):
-    inventory = serve_recipes.discover_recipe_containers()
+def _running_recipe_inventory(model=None, container=None, *, strict=False):
+    inventory = serve_recipes.discover_recipe_containers(strict=True) if strict else serve_recipes.discover_recipe_containers()
     if model or container:
         selected = serve_recipes.select_recipe_container(
             inventory, model=model, container=container
@@ -2929,9 +2929,10 @@ def recipe_containers_result(argv):
     parser = argparse.ArgumentParser(prog="anvil-serving models recipes running")
     parser.add_argument("model", nargs="?", metavar="MODEL")
     parser.add_argument("--container", metavar="NAME")
+    parser.add_argument("--strict", action="store_true")
     args = parser.parse_args(argv)
     try:
-        inventory = _running_recipe_inventory(args.model, args.container)
+        inventory = _running_recipe_inventory(args.model, args.container, strict=args.strict)
     except serve_recipes.RecipeError as exc:
         return CommandResult(
             error=OperatorError(
@@ -3023,6 +3024,8 @@ def _build_recipe_parser():
                            help="optional exact model id or unambiguous basename")
     p_running.add_argument("--container", metavar="NAME",
                            help="optional exact container name")
+    p_running.add_argument("--strict", action="store_true",
+                           help="fail if any managed container identity cannot be verified")
     p_running.add_argument("--json", action="store_true",
                            help="emit the stable JSON inventory")
     for action, summary in (
@@ -3163,7 +3166,7 @@ def _recipe_main(argv):
 
     if a.recipe_action == "running":
         try:
-            inventory = _running_recipe_inventory(a.model, a.container)
+            inventory = _running_recipe_inventory(a.model, a.container, strict=a.strict)
         except serve_recipes.RecipeError as exc:
             print(str(exc), file=sys.stderr)
             return 1
