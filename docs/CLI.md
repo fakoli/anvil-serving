@@ -417,6 +417,7 @@ required operands, choices, and defaults.
 | `host shared-memory status` | Inspect ownership of vLLM offload mmap files. | `read` / `bounded` | - |
 | `host shared-memory reclaim` | Remove only twice-verified orphan vLLM offload mmap files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host docker-image` | Build, inspect, or remove a declared local Docker image. | `read` / `bounded` | - |
+| `host docker-image build-history` | Read bounded Buildx record metadata for one bound builder. | `read` / `bounded` | `--plan` |
 | `host docker-image build` | Build a declared local image with CPU and memory limits. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `host docker-image inspect` | Read the platform and selected build labels of one cached image. | `read` / `bounded` | `--label` |
 | `host docker-image remove` | Remove one unreferenced full image ID or digest. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config-home` |
