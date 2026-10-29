@@ -64,7 +64,9 @@ invalid samples, observer exit, either floor, or the build deadline stop the
 owned build client group. Results retain observed minima, the observer source
 hash and failure reason. These sampled floors do not prove available resources
 will remain above the limits. An aborted build leaves daemon cancellation
-unverified: reconcile the builder before retrying or using the result.
+unverified: reconcile the builder before retrying or using the result. SIGTERM
+requests owned-client and observer cleanup; SIGKILL, process crashes, and
+uninterruptible I/O cannot guarantee cleanup.
 
 Before a confirmed build, the command also checks that the exact target tag is
 absent. A failed or malformed check refuses the build. This is a bounded

@@ -9,6 +9,7 @@ import math
 import os
 import re
 import selectors
+import signal
 import sys
 import subprocess
 import tempfile
@@ -166,6 +167,22 @@ def _stream_build(argv, *, source_bytes, log, timeout, max_log_bytes=MAX_LOG_BYT
 
 
 def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, guard):
+    """Route SIGTERM through owned cleanup without interrupting child registration."""
+    interrupted = [False]
+    previous = signal.getsignal(signal.SIGTERM)
+    def handle_termination(signum, frame):
+        interrupted[0] = True
+    # signal.signal rejects non-main threads before any child is launched.
+    signal.signal(signal.SIGTERM, handle_termination)
+    try:
+        return _guarded_stream_build_inner(argv, source_bytes=source_bytes, log=log,
+                                           timeout=timeout, max_log_bytes=max_log_bytes,
+                                           guard=guard, interrupted=interrupted)
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
+def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_bytes, guard, interrupted):
     """Own the observer and build client; daemon cancellation remains unverified."""
     from .reasoning_probe import _read_bytes
     observer_path = Path(__file__).with_name("image_build_observer.py")
@@ -179,10 +196,15 @@ def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, gu
                                     stderr=subprocess.DEVNULL, env={"LANG": "C.UTF-8"},
                                     **_process_group_options())
     except BaseException:
-        selector.close()
+        try:
+            selector.close()
+        except BaseException:
+            pass
         raise
     process = None
     reader = None
+    reader_started = False
+    reader_start_attempted = False
     state = {"log_truncated": False, "observer_sha256": observer_sha256,
              "min_available_bytes": None, "min_free_bytes": None}
     pending = b""
@@ -190,20 +212,32 @@ def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, gu
     last_observed = time.monotonic()
     started = last_observed
 
-    def stop_owned(child):
+    def cleanup_failure(stage, exc):
+        state.setdefault("cleanup_errors", []).append({"stage": stage, "type": type(exc).__name__})
+        state["cleanup"] = "unknown"
+        state.setdefault("error", "owned process cleanup unknown")
+        state["returncode"] = -1
+        if process is not None:
+            state.setdefault("cancellation", "daemon_state_unverified")
+
+    def cleanup_step(stage, action):
+        try:
+            action()
+        except BaseException as exc:
+            cleanup_failure(stage, exc)
+
+    def stop_owned(child, stage):
         try:
             _terminate_process_tree(child)
             if child.poll() is None:
                 raise OSError("owned process still running")
-        except (OSError, subprocess.SubprocessError):
-            state["cleanup"] = "unknown"
-            state.setdefault("error", "owned process cleanup unknown")
-            state["returncode"] = -1
-            if process is not None:
-                state["cancellation"] = "client_tree_termination_requested; daemon_state_unverified"
+        except BaseException as exc:
+            cleanup_failure(stage, exc)
 
     def heartbeat(wait):
         nonlocal pending, last_sample, last_observed
+        if interrupted[0]:
+            raise InterruptedError("build interrupted by SIGTERM")
         if observer.poll() is not None:
             raise ValueError("host observer exited")
         if selector.select(wait):
@@ -235,6 +269,8 @@ def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, gu
             raise ValueError("host observer heartbeat gap")
 
     try:
+        if interrupted[0]:
+            raise InterruptedError("build interrupted by SIGTERM")
         selector.register(observer.stdout, selectors.EVENT_READ)
         os.set_blocking(observer.stdout.fileno(), False)
         while last_sample is None:
@@ -243,8 +279,12 @@ def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, gu
         with tempfile.TemporaryFile() as source:
             source.write(source_bytes)
             source.seek(0)
+            if interrupted[0]:
+                raise InterruptedError("build interrupted by SIGTERM")
             process = subprocess.Popen(argv, stdin=source, stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT, bufsize=0, **_process_group_options())
+            if interrupted[0]:
+                raise InterruptedError("build interrupted by SIGTERM")
             def drain():
                 retained = 0
                 try:
@@ -259,7 +299,9 @@ def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, gu
                 except (OSError, ValueError):
                     state["output_error"] = True
             reader = threading.Thread(target=drain, daemon=True)
+            reader_start_attempted = True
             reader.start()
+            reader_started = True
             while process.poll() is None:
                 if time.monotonic() - started >= timeout:
                     raise TimeoutError("build client timed out")
@@ -271,26 +313,48 @@ def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, gu
             reader.join(timeout=5)
             if reader.is_alive() or state.get("output_error"):
                 raise ValueError("build output drain incomplete")
+            if interrupted[0]:
+                raise InterruptedError("build interrupted by SIGTERM")
             if _read_bytes(observer_path) != observer_source:
                 raise ValueError("host observer source changed")
     except (OSError, ValueError, TimeoutError, json.JSONDecodeError) as exc:
         state.update({"returncode": -1, "error": str(exc)})
         if process is not None:
-            stop_owned(process)
+            stop_owned(process, "build_client")
             state["cancellation"] = "client_tree_termination_requested; daemon_state_unverified"
     except BaseException as exc:
-        state.update({"returncode": -1, "error": "build interrupted: " + type(exc).__name__})
+        state.update({"returncode": -1, "error": "build interrupted: " + type(exc).__name__,
+                      "failure_type": type(exc).__name__})
         if process is not None:
-            stop_owned(process)
+            stop_owned(process, "build_client")
             state["cancellation"] = "client_tree_termination_requested; daemon_state_unverified"
     finally:
-        if reader is not None:
-            reader.join(timeout=2)
+        if reader_start_attempted and not reader_started:
+            cleanup_failure("reader_start", RuntimeError("reader start outcome unknown"))
+            try:
+                reader_started = reader.ident is not None
+            except BaseException as exc:
+                cleanup_failure("reader_status", exc)
+        if reader_started:
+            cleanup_step("reader_join", lambda: reader.join(timeout=2))
+            reader_alive = True
+            try:
+                reader_alive = reader.is_alive()
+            except BaseException as exc:
+                cleanup_failure("reader_status", exc)
+            if reader_alive:
+                cleanup_failure("reader_join", RuntimeError("reader still running"))
+                if process is not None:
+                    stop_owned(process, "build_client")
         if process is not None and process.stdout is not None:
-            process.stdout.close()
-        selector.close()
-        stop_owned(observer)
-        observer.stdout.close()
+            cleanup_step("build_output_close", process.stdout.close)
+        cleanup_step("selector_close", selector.close)
+        stop_owned(observer, "observer")
+        cleanup_step("observer_output_close", observer.stdout.close)
+    if interrupted[0] and "error" not in state:
+        state.update({"returncode": -1, "error": "build interrupted by SIGTERM"})
+        if process is not None:
+            state.setdefault("cancellation", "daemon_state_unverified")
     return state
 
 def execute_build(plan: dict, *, confirm=False, dry_run=False, log_dir: Path,

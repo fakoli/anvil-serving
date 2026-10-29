@@ -285,3 +285,167 @@ def test_guarded_build_interruption_retains_unknown_daemon_state(tmp_path, monke
             guard={'context': str(tmp_path), 'min_host_available_mib': 1, 'min_context_free_mib': 1})
     assert result['returncode'] == -1 and 'KeyboardInterrupt' in result['error']
     assert 'daemon_state_unverified' in result['cancellation']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux-only guard')
+def test_guarded_reader_start_failure_stops_both_owned_processes(tmp_path, monkeypatch):
+    from anvil_serving import reasoning_probe
+    code = b"import json,time\nprint(json.dumps({'available_bytes':2097152,'free_bytes':2097152,'monotonic':time.monotonic()}),flush=True)\ntime.sleep(30)\n"
+    monkeypatch.setattr(reasoning_probe, '_read_bytes', lambda _: code)
+    original_popen = subprocess.Popen
+    children = []
+    def popen(*args, **kwargs):
+        child = original_popen(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(image_build.subprocess, 'Popen', popen)
+    def failed_start(self):
+        raise RuntimeError('reader cannot start')
+    monkeypatch.setattr(image_build.threading.Thread, 'start', failed_start)
+    with (tmp_path / 'output').open('wb') as log:
+        result = image_build._stream_build([sys.executable, '-c', 'import time; time.sleep(30)'],
+            source_bytes=b'', log=log, timeout=5,
+            guard={'context': str(tmp_path), 'min_host_available_mib': 1, 'min_context_free_mib': 1})
+    assert result['returncode'] == -1 and result['failure_type'] == 'RuntimeError'
+    assert result['cleanup_errors'] == [{'stage': 'reader_start', 'type': 'RuntimeError'}]
+    assert 'daemon_state_unverified' in result['cancellation']
+    assert len(children) == 2 and all(child.poll() is not None for child in children)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux-only guard')
+def test_guarded_selector_cleanup_failure_does_not_skip_observer(tmp_path, monkeypatch):
+    from anvil_serving import reasoning_probe
+    code = b"import json,time\nprint(json.dumps({'available_bytes':2097152,'free_bytes':2097152,'monotonic':time.monotonic()}),flush=True)\ntime.sleep(30)\n"
+    monkeypatch.setattr(reasoning_probe, '_read_bytes', lambda _: code)
+    original_popen = subprocess.Popen
+    children = []
+    def popen(*args, **kwargs):
+        child = original_popen(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(image_build.subprocess, 'Popen', popen)
+    native_selector = image_build.selectors.DefaultSelector
+    class BrokenCloseSelector:
+        def __init__(self): self.selector = native_selector()
+        def register(self, *args): return self.selector.register(*args)
+        def select(self, timeout): return self.selector.select(timeout)
+        def close(self):
+            self.selector.close()
+            raise OSError('selector cleanup error')
+    monkeypatch.setattr(image_build.selectors, 'DefaultSelector', BrokenCloseSelector)
+    with (tmp_path / 'output').open('wb') as log:
+        result = image_build._stream_build([sys.executable, '-c', 'pass'], source_bytes=b'', log=log, timeout=5,
+            guard={'context': str(tmp_path), 'min_host_available_mib': 1, 'min_context_free_mib': 1})
+    assert result['returncode'] == -1 and result['cleanup'] == 'unknown'
+    assert result['cleanup_errors'] == [{'stage': 'selector_close', 'type': 'OSError'}]
+    assert 'daemon_state_unverified' in result['cancellation']
+    assert len(children) == 2 and all(child.poll() is not None for child in children)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux-only guard')
+def test_guarded_owner_sigterm_reaps_owned_children(tmp_path):
+    import json
+    import os
+    import signal
+    import time
+    receipt = tmp_path / 'pids.json'
+    output = tmp_path / 'result.json'
+    log = tmp_path / 'build.log'
+    owner_source = '''
+import json, subprocess, sys
+from pathlib import Path
+from anvil_serving import image_build, reasoning_probe
+code = b"import json,time\\nprint(json.dumps({'available_bytes':2097152,'free_bytes':2097152,'monotonic':time.monotonic()}),flush=True)\\ntime.sleep(30)\\n"
+reasoning_probe._read_bytes = lambda _: code
+real_popen = subprocess.Popen
+children = []
+def popen(*a, **kw):
+    child = real_popen(*a, **kw)
+    children.append(child.pid)
+    Path(%r).write_text(json.dumps(children))
+    return child
+image_build.subprocess.Popen = popen
+with open(%r, 'wb') as log:
+    result = image_build._stream_build([sys.executable, '-c', 'import time; time.sleep(30)'], source_bytes=b'', log=log, timeout=15,
+        guard={'context':%r, 'min_host_available_mib':1, 'min_context_free_mib':1})
+Path(%r).write_text(json.dumps(result))
+''' % (str(receipt), str(log), str(tmp_path), str(output))
+    owner = subprocess.Popen([sys.executable, '-B', '-c', owner_source],
+                             cwd=str(Path(__file__).resolve().parents[1]),
+                             stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    try:
+        deadline = time.monotonic() + 5
+        pids = []
+        while time.monotonic() < deadline:
+            try:
+                pids = json.loads(receipt.read_text())
+            except (OSError, ValueError):
+                pass
+            if len(pids) == 2:
+                break
+            if owner.poll() is not None:
+                break
+            time.sleep(0.02)
+        assert len(pids) == 2
+        os.kill(owner.pid, signal.SIGTERM)
+        assert owner.wait(timeout=8) == 0
+        result = json.loads(output.read_text())
+        assert result['returncode'] == -1 and 'SIGTERM' in result['error']
+        assert 'daemon_state_unverified' in result['cancellation']
+        assert all(not Path('/proc', str(pid)).exists() for pid in pids)
+    finally:
+        if owner.poll() is None:
+            owner.kill()
+            owner.wait(timeout=3)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux-only guard')
+@pytest.mark.parametrize('signal_on_child', [1, 2])
+def test_sigterm_during_spawn_keeps_child_custody(tmp_path, monkeypatch, signal_on_child):
+    import os
+    import signal
+    from anvil_serving import reasoning_probe
+    code = b"import json,time\nprint(json.dumps({'available_bytes':2097152,'free_bytes':2097152,'monotonic':time.monotonic()}),flush=True)\ntime.sleep(30)\n"
+    monkeypatch.setattr(reasoning_probe, '_read_bytes', lambda _: code)
+    original_popen = subprocess.Popen
+    children = []
+    previous = signal.getsignal(signal.SIGTERM)
+    def popen(*args, **kwargs):
+        child = original_popen(*args, **kwargs)
+        children.append(child)
+        if len(children) == signal_on_child:
+            os.kill(os.getpid(), signal.SIGTERM)
+        return child
+    monkeypatch.setattr(image_build.subprocess, 'Popen', popen)
+    with (tmp_path / 'output').open('wb') as log:
+        result = image_build._stream_build([sys.executable, '-c', 'import time; time.sleep(30)'],
+            source_bytes=b'', log=log, timeout=5,
+            guard={'context': str(tmp_path), 'min_host_available_mib': 1, 'min_context_free_mib': 1})
+    assert result['returncode'] == -1 and 'SIGTERM' in result['error']
+    assert len(children) == signal_on_child and all(child.poll() is not None for child in children)
+    assert signal.getsignal(signal.SIGTERM) is previous
+    if signal_on_child == 2:
+        assert 'daemon_state_unverified' in result['cancellation']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux-only guard')
+def test_reader_join_failure_is_secondary_and_observer_still_stops(tmp_path, monkeypatch):
+    from anvil_serving import reasoning_probe
+    code = b"import json,time\nprint(json.dumps({'available_bytes':2097152,'free_bytes':2097152,'monotonic':time.monotonic()}),flush=True)\ntime.sleep(30)\n"
+    monkeypatch.setattr(reasoning_probe, '_read_bytes', lambda _: code)
+    original_popen = subprocess.Popen
+    children = []
+    def popen(*args, **kwargs):
+        child = original_popen(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr(image_build.subprocess, 'Popen', popen)
+    def bad_join(self, timeout=None): raise RuntimeError('join failed')
+    monkeypatch.setattr(image_build.threading.Thread, 'join', bad_join)
+    with (tmp_path / 'output').open('wb') as log:
+        result = image_build._stream_build([sys.executable, '-c', 'pass'], source_bytes=b'', log=log, timeout=5,
+            guard={'context': str(tmp_path), 'min_host_available_mib': 1, 'min_context_free_mib': 1})
+    assert result['returncode'] == -1 and result['failure_type'] == 'RuntimeError'
+    assert {'stage': 'reader_join', 'type': 'RuntimeError'} in result['cleanup_errors']
+    assert 'daemon_state_unverified' in result['cancellation']
+    assert len(children) == 2 and all(child.poll() is not None for child in children)
