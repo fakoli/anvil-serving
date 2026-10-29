@@ -18,7 +18,7 @@ def scenario(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(subject.serve_recipes, "recipe_digest", lambda _: "c" * 64)
     monkeypatch.setattr(subject, "_recipe_container_identity", lambda *a, **k: {
         "container_id": plan["container_id"], "running": True, "image_id": plan["image_id"], "revision": plan["revision"]})
-    capture = {"files": {name: {"bytes": 7, "sha256": "d" * 64} for name in subject.FILES}, "package_version": "1"}
+    capture = {"roots": {"checkout": {name: {"bytes": 7, "sha256": "d" * 64} for name in subject.FILES}}}
     rows = [{"Id": plan["container_id"], "Image": plan["image_id"],
              "State": {"Running": True, "StartedAt": plan["started_at"]}}]
     calls = []
@@ -41,9 +41,11 @@ def test_cli_captures_fixed_manifest_without_inference(scenario):
     plan, rows, capture, calls, execute = scenario
     rc, result = execute()
     assert rc == 0 and result["inference_requests"] == 0
-    assert result["identity"] == plan and set(result["capture"]["files"]) == set(subject.FILES)
+    assert result["identity"] == plan and set(result["capture"]["roots"]["checkout"]) == set(subject.FILES)
     assert [x[1] for x in calls] == ["inspect", "exec", "inspect"]
     assert calls[1][-1] == subject.CAPTURE and plan["container_id"] in calls[1]
+    assert calls[1][-7:-1] == [plan["container_id"], "/opt/venv/bin/python3", "-I", "-S", "-B", "-c"]
+    assert "LD_PRELOAD=" in calls[1] and "LD_AUDIT=" in calls[1]
     assert "import vllm" not in subject.CAPTURE and "torch" not in subject.CAPTURE
 
 
@@ -71,10 +73,10 @@ def test_wrong_generation_is_refused_before_capture(scenario, change):
 @pytest.mark.parametrize("change", ["missing", "extra", "oversize", "hash"])
 def test_malformed_capture_fails(scenario, change):
     _, _, capture, _, execute = scenario
-    if change == "missing": capture["files"].pop(subject.FILES[0])
-    if change == "extra": capture["files"]["../outside"] = {"bytes": 1, "sha256": "a" * 64}
-    if change == "oversize": capture["files"][subject.FILES[0]]["bytes"] = 2 * 1024 * 1024 + 1
-    if change == "hash": capture["files"][subject.FILES[0]]["sha256"] = "wrong"
+    if change == "missing": capture["roots"]["checkout"].pop(subject.FILES[0])
+    if change == "extra": capture["roots"]["checkout"]["../outside"] = {"bytes": 1, "sha256": "a" * 64}
+    if change == "oversize": capture["roots"]["checkout"][subject.FILES[0]]["bytes"] = 2 * 1024 * 1024 + 1
+    if change == "hash": capture["roots"]["checkout"][subject.FILES[0]]["sha256"] = "wrong"
     assert execute()[0] == 1
 
 
@@ -93,31 +95,47 @@ def test_restart_after_capture_refused(scenario, monkeypatch, capsys, tmp_path):
         subject.inspect_runtime("registry", "example", path, runner=runner)
 
 
-def test_fixed_capture_reads_regular_files_and_rejects_symlink(tmp_path):
+def test_fixed_capture_is_isolated_and_checks_both_roots(tmp_path):
     import os
     import sys
-    root = tmp_path / "vllm"
-    root.mkdir()
-    (root / "__init__.py").write_text("")
-    for name in subject.FILES:
-        path = root / name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("source")
-    metadata = tmp_path / "vllm-1.0.dist-info"
-    metadata.mkdir()
-    (metadata / "METADATA").write_text("Name: vllm\nVersion: 1.0\n")
+    checkout = tmp_path / "checkout"
+    venv = tmp_path / "venv"
+    for root in (checkout, venv):
+        for name in subject.FILES:
+            path = root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("source")
+    marker = tmp_path / "hook-ran"
+    (tmp_path / "sitecustomize.py").write_text("open(" + repr(str(marker)) + ", 'w').write('unsafe')")
+    program = subject.CAPTURE.replace('"/opt/vllm/vllm"', repr(str(checkout))).replace(
+        '"/opt/venv/lib/python%d.%d/site-packages/vllm" % sys.version_info[:2]', repr(str(venv)))
     env = {"PATH": os.environ["PATH"], "PYTHONPATH": str(tmp_path)}
-    def run():
-        return subprocess.run([sys.executable, "-B", "-c", subject.CAPTURE], env=env,
-                              capture_output=True, text=True, timeout=10)
+    def run(source=program):
+        return subprocess.run([sys.executable, "-I", "-S", "-B", "-c", source], env=env,
+                              capture_output=True, text=True, timeout=5)
     ok = run()
-    assert ok.returncode == 0 and set(json.loads(ok.stdout)["files"]) == set(subject.FILES)
-    path = root / subject.FILES[0]
+    assert ok.returncode == 0 and set(json.loads(ok.stdout)["roots"]) == {"checkout", "venv"}
+    assert not marker.exists()
+    path = checkout / subject.FILES[0]
     path.unlink()
-    path.symlink_to(root / subject.FILES[1])
+    path.symlink_to(checkout / subject.FILES[1])
     assert run().returncode != 0
     path.unlink()
-    assert run().returncode != 0
+    assert run().returncode != 0  # Existing but incomplete root fails.
+    import shutil
+    shutil.rmtree(checkout)
+    assert set(json.loads(run().stdout)["roots"]) == {"venv"}
+    shutil.rmtree(venv)
+    assert run().returncode != 0  # Neither supported root exists.
+
+
+def test_fixed_capture_internal_alarm_interrupts_blocked_child(tmp_path):
+    import sys
+    program = subject.CAPTURE.replace("ITIMER_REAL, 10", "ITIMER_REAL, 0.05").replace(
+        "import hashlib, json, os, stat, sys", "import time; time.sleep(1)\nimport hashlib, json, os, stat, sys")
+    result = subprocess.run([sys.executable, "-I", "-S", "-B", "-c", program],
+                            capture_output=True, text=True, timeout=3)
+    assert result.returncode != 0 and "capture deadline" in result.stderr
 
 
 def test_command_manifest_has_read_only_inspector():
@@ -179,3 +197,17 @@ def test_cli_real_owner_identity_chain_blocks_wrong_label(tmp_path, monkeypatch,
     monkeypatch.setattr(subject, "inspect_runtime", lambda r, c, p: original(r, c, p, runner=runner))
     assert cli.main(["eval", "runtime-source-inspect", "--registry", "x", "--container", "example", "--plan", str(path), "--transport", "local"]) != 0
     assert [c[1] for c in calls] == ["inspect"]
+
+
+def test_parent_timeout_is_failure_without_claiming_exec_termination(scenario, tmp_path):
+    plan, rows, _, calls, _ = scenario
+    path = tmp_path / "timeout.json"
+    path.write_text(json.dumps(plan))
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        if argv[1] == "exec":
+            raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        return subprocess.CompletedProcess(argv, 0, json.dumps(rows).encode(), b"")
+    with pytest.raises(subprocess.TimeoutExpired):
+        subject.inspect_runtime("registry", "example", path, runner=runner)
+    assert [call[1] for call in calls] == ["inspect", "exec"]

@@ -19,16 +19,27 @@ FILES = ("v1/metrics/loggers.py", "v1/metrics/stats.py", "v1/engine/async_llm.py
 # Fixed program: paths are product-owned, never plan-controlled. Open each component
 # without following links; compare hashes from two complete reads.
 CAPTURE = r'''
-import hashlib, importlib.metadata, importlib.util, json, os, stat
-spec = importlib.util.find_spec("vllm")
-if spec is None or spec.origin is None:
-    raise ValueError("package unavailable")
-root = os.path.dirname(os.path.realpath(spec.origin))
+import signal
+signal.signal(signal.SIGALRM, lambda *_: (_ for _ in ()).throw(TimeoutError("capture deadline")))
+signal.setitimer(signal.ITIMER_REAL, 10)
+import hashlib, json, os, stat, sys
+roots = {"checkout": "/opt/vllm/vllm", "venv": "/opt/venv/lib/python%d.%d/site-packages/vllm" % sys.version_info[:2]}
 files = ("v1/metrics/loggers.py", "v1/metrics/stats.py", "v1/engine/async_llm.py", "v1/engine/output_processor.py", "v1/core/sched/scheduler.py")
 def identity(info):
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
-def read(name):
-    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+def open_root(root):
+    fd = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for part in root.strip("/").split("/"):
+            child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            os.close(fd)
+            fd = child
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+def read(root_fd, name):
+    fd = os.dup(root_fd)
     try:
         root_identity = identity(os.fstat(fd))
         parts = name.split("/")
@@ -54,11 +65,25 @@ def read(name):
             if child != -1: os.close(child)
     finally:
         os.close(fd)
-first = {name: read(name) for name in files}
-if first != {name: read(name) for name in files}:
+def snapshot():
+    found = {}
+    for label, root in roots.items():
+        try:
+            fd = open_root(root)
+        except FileNotFoundError:
+            continue
+        try:
+            found[label] = {name: read(fd, name) for name in files}
+        finally:
+            os.close(fd)
+    if not found:
+        raise ValueError("no supported source root")
+    return found
+first = snapshot()
+if first != snapshot():
     raise ValueError("source changed")
-print(json.dumps({"files": {name: value[0] for name, value in first.items()},
-                  "package_version": importlib.metadata.version("vllm")}))
+print(json.dumps({"roots": {label: {name: value[0] for name, value in entries.items()}
+                            for label, entries in first.items()}}))
 '''
 
 
@@ -115,18 +140,22 @@ def inspect_runtime(registry, container, plan_path, *, runner=_run_bounded_proce
     identity()
     result = run(["docker", "exec", "--env", "CUDA_VISIBLE_DEVICES=", "--env", "HF_HUB_OFFLINE=1",
                   "--env", "TRANSFORMERS_OFFLINE=1", "--env", "PYTHONDONTWRITEBYTECODE=1",
-                  plan["container_id"], "python3", "-B", "-c", CAPTURE])
+                  "--env", "LD_PRELOAD=", "--env", "LD_AUDIT=",
+                  plan["container_id"], "/opt/venv/bin/python3", "-I", "-S", "-B", "-c", CAPTURE])
     captured = _json(result.stdout.encode())
-    if set(captured) != {"files", "package_version"} or not isinstance(captured["package_version"], str) or not 1 <= len(captured["package_version"]) <= 256:
+    if set(captured) != {"roots"} or not isinstance(captured["roots"], dict):
         raise ValueError("invalid capture")
-    files = captured["files"]
-    if not isinstance(files, dict) or set(files) != set(FILES):
-        raise ValueError("invalid capture files")
-    for item in files.values():
-        if (not isinstance(item, dict) or set(item) != {"bytes", "sha256"} or type(item["bytes"]) is not int
-                or not 0 <= item["bytes"] <= 2 * 1024 * 1024 or not isinstance(item["sha256"], str)
-                or not re.fullmatch(r"[0-9a-f]{64}", item["sha256"])):
-            raise ValueError("invalid captured file")
+    roots = captured["roots"]
+    if not roots or set(roots) - {"checkout", "venv"}:
+        raise ValueError("invalid capture roots")
+    for files in roots.values():
+        if not isinstance(files, dict) or set(files) != set(FILES):
+            raise ValueError("invalid capture files")
+        for item in files.values():
+            if (not isinstance(item, dict) or set(item) != {"bytes", "sha256"} or type(item["bytes"]) is not int
+                    or not 0 <= item["bytes"] <= 2 * 1024 * 1024 or not isinstance(item["sha256"], str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", item["sha256"])):
+                raise ValueError("invalid captured file")
     identity()
     return {"schema": "anvil-serving.runtime-source-inspection-result/v1", "identity": plan,
             "capture": captured, "source_parity": "requires_independent_comparison",
