@@ -1,9 +1,19 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
 from anvil_serving import runtime_source_inspection as subject
+
+
+@pytest.fixture
+def local_cli_context(tmp_path):
+    reference = Path(__file__).parents[1] / 'examples/primary-node/operator-topology.toml'
+    topology = tmp_path / 'operator-topology.toml'
+    topology.write_text(reference.read_text().replace('os = "windows"', 'os = "linux"'))
+    return ['--topology', str(topology), '--command-host', 'host:primary-node',
+            '--command-runtime', 'runtime:dark-native', '--transport', 'local']
 
 
 @pytest.fixture
@@ -145,7 +155,7 @@ def test_command_manifest_has_read_only_inspector():
     assert row["mutation_class"] == "read"
 
 
-def test_cli_dispatch_to_handler_rejects_invalid_plan_before_process(tmp_path, monkeypatch, capsys):
+def test_cli_dispatch_to_handler_rejects_invalid_plan_before_process(tmp_path, local_cli_context, monkeypatch, capsys):
     from anvil_serving import cli
     path = tmp_path / "plan.json"
     path.write_text('{"profile":"wrong"}')
@@ -153,12 +163,12 @@ def test_cli_dispatch_to_handler_rejects_invalid_plan_before_process(tmp_path, m
         pytest.fail("invalid plan reached process runner")
     original = subject.inspect_runtime
     monkeypatch.setattr(subject, "inspect_runtime", lambda r, c, p: original(r, c, p, runner=forbidden))
-    result = cli.main(["eval", "runtime-source-inspect", "--registry", "unused", "--container", "example", "--plan", str(path), "--transport", "local"])
+    result = cli.main(["eval", "runtime-source-inspect", "--registry", "unused", "--container", "example", "--plan", str(path), *local_cli_context])
     assert result != 0
     assert "ValueError" in capsys.readouterr().out
 
 
-def test_cli_dispatch_runs_bound_capture(scenario, tmp_path, monkeypatch, capsys):
+def test_cli_dispatch_runs_bound_capture(scenario, tmp_path, local_cli_context, monkeypatch, capsys):
     from anvil_serving import cli
     plan, rows, capture, calls, _ = scenario
     path = tmp_path / "plan.json"
@@ -168,12 +178,12 @@ def test_cli_dispatch_runs_bound_capture(scenario, tmp_path, monkeypatch, capsys
         return subprocess.CompletedProcess(argv, 0, json.dumps(capture if argv[1] == "exec" else rows).encode(), b"")
     original = subject.inspect_runtime
     monkeypatch.setattr(subject, "inspect_runtime", lambda r, c, p: original(r, c, p, runner=runner))
-    assert cli.main(["eval", "runtime-source-inspect", "--registry", "unused", "--container", "example", "--plan", str(path), "--transport", "local"]) == 0
+    assert cli.main(["eval", "runtime-source-inspect", "--registry", "unused", "--container", "example", "--plan", str(path), *local_cli_context]) == 0
     assert '"inference_requests": 0' in capsys.readouterr().out
     assert [call[1] for call in calls] == ["inspect", "exec", "inspect"]
 
 
-def test_cli_real_owner_identity_chain_blocks_wrong_label(tmp_path, monkeypatch, capsys):
+def test_cli_real_owner_identity_chain_blocks_wrong_label(tmp_path, local_cli_context, monkeypatch, capsys):
     from anvil_serving import cli, models
     plan = {"schema": "anvil-serving.runtime-source-inspection/v1", "profile": "vllm-accounting",
             "model": "example/model", "revision": "rev", "image_id": "sha256:" + "b" * 64,
@@ -195,7 +205,7 @@ def test_cli_real_owner_identity_chain_blocks_wrong_label(tmp_path, monkeypatch,
         return subprocess.CompletedProcess(argv, 0, json.dumps([row]).encode(), b"")
     original = subject.inspect_runtime
     monkeypatch.setattr(subject, "inspect_runtime", lambda r, c, p: original(r, c, p, runner=runner))
-    assert cli.main(["eval", "runtime-source-inspect", "--registry", "x", "--container", "example", "--plan", str(path), "--transport", "local"]) != 0
+    assert cli.main(["eval", "runtime-source-inspect", "--registry", "x", "--container", "example", "--plan", str(path), *local_cli_context]) != 0
     assert [c[1] for c in calls] == ["inspect"]
 
 

@@ -35,7 +35,9 @@ from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
 from .swe_logs import server_log_collector
-from .retention import read_retained_swe_artifacts, retain_swe_artifacts
+from .retention import (
+    _aider_retention_complete, _swe_retention_complete, read_retained_swe_artifacts, retain_swe_artifacts,
+)
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -193,23 +195,6 @@ def _aider_campaign_requires_stop(store, spec):
         return True  # Unknown history cannot authorize deletion or closure.
 
 
-def _aider_retention_complete(retention, run_path, spec):
-    from .aider import verify_retained_aider_artifacts
-    if not isinstance(retention, Mapping):
-        return False
-    cleanup = retention.get("containers")
-    if (not isinstance(cleanup, Mapping) or cleanup.get("schema") != "anvil-serving.aider-container-cleanup/v1"
-            or cleanup.get("ownership_id") != spec["ownership_id"] or cleanup.get("run_id") != spec["run_id"]
-            or set(cleanup) != {"schema", "ownership_id", "run_id", "status", "removed", "errors"}
-            or not isinstance(cleanup.get("removed"), list)
-            or cleanup.get("status") != "completed" or cleanup.get("errors") != []):
-        return False
-    if retention.get("state") == "absent":
-        return retention.get("reason") == "not_started" and not os.path.lexists(os.path.join(run_path, "aider"))
-    return (retention.get("state") in {"retained", "incomplete"}
-            and verify_retained_aider_artifacts(run_path=run_path, retention=retention))
-
-
 def _aider_campaign_stop_reference(store, record, retention, run_path, *, cancelling=False):
     from .aider_containment import aider_custody_snapshot
     spec = record["spec"]
@@ -234,7 +219,8 @@ def _read_swe_custody_plan(path: str, *, expected_sha256: str | None = None,
         raw = stream.read(262_145)
         after = os.fstat(stream.fileno())
     current = os.stat(path, follow_symlinks=False)
-    identity = lambda item: (item.st_dev, item.st_ino, item.st_mode, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+    def identity(item):
+        return (item.st_dev, item.st_ino, item.st_mode, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
     if len(raw) > 262_144 or identity(before) != identity(after) or identity(after) != identity(current):
         raise ValueError("SWE plan changed or exceeds its bound")
     if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
@@ -331,23 +317,6 @@ def _retain_stopped_swe(record: Mapping[str, Any], *, run_path: str, work_path: 
             and not os.path.lexists(os.path.join(run_path, "swe-containers"))):
         return {"state": "absent", "reason": "not_started", "containers": cleanup}
     return {**retain_swe_artifacts(run_path=run_path, work_path=work_path), "containers": cleanup}
-
-
-def _swe_retention_complete(retention, run_path):
-    if not isinstance(retention, Mapping) or retention.get("containers", {}).get("status") != "completed":
-        return False
-    if retention.get("state") == "absent":
-        return (retention.get("reason") == "not_started"
-                and not os.path.lexists(os.path.join(run_path, "work"))
-                and not os.path.lexists(os.path.join(run_path, "swe-containers")))
-    try:
-        manifest = read_retained_swe_artifacts(run_path=run_path)
-        reference = evidence_file_reference(os.path.join(run_path, "evidence", "swe-canonical", "manifest.json"), root=run_path)
-        return (retention.get("state") in {"retained", "incomplete"}
-                and manifest == retention.get("manifest") and manifest["state"] == retention["state"]
-                and retention.get("manifest_reference") == reference)
-    except (OSError, ValueError, KeyError, TypeError, BenchmarkArtifactError):
-        return False
 
 
 def _swe_campaign_stop_reference(store, record, retention, run_path, *, cancelling=False):

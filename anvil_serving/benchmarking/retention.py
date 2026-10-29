@@ -9,9 +9,9 @@ from pathlib import Path
 import shutil
 import stat
 import tempfile
-from typing import Any
+from typing import Any, Mapping
 
-from .artifacts import atomic_write_json, evidence_file_reference
+from .artifacts import BenchmarkArtifactError, atomic_write_json, evidence_file_reference
 
 
 SWE_CANONICAL_RETENTION_SCHEMA = "anvil-serving.swe-canonical-retention/v1"
@@ -256,3 +256,37 @@ def retain_swe_artifacts(*, run_path: str, work_path: str) -> dict[str, Any]:
     finally:
         if staging and os.path.isdir(staging):
             shutil.rmtree(staging, ignore_errors=True)
+
+
+def _aider_retention_complete(retention, run_path, spec):
+    from .aider import verify_retained_aider_artifacts
+    if not isinstance(retention, Mapping):
+        return False
+    cleanup = retention.get("containers")
+    if (not isinstance(cleanup, Mapping) or cleanup.get("schema") != "anvil-serving.aider-container-cleanup/v1"
+            or cleanup.get("ownership_id") != spec["ownership_id"] or cleanup.get("run_id") != spec["run_id"]
+            or set(cleanup) != {"schema", "ownership_id", "run_id", "status", "removed", "errors"}
+            or not isinstance(cleanup.get("removed"), list)
+            or cleanup.get("status") != "completed" or cleanup.get("errors") != []):
+        return False
+    if retention.get("state") == "absent":
+        return retention.get("reason") == "not_started" and not os.path.lexists(os.path.join(run_path, "aider"))
+    return (retention.get("state") in {"retained", "incomplete"}
+            and verify_retained_aider_artifacts(run_path=run_path, retention=retention))
+
+
+def _swe_retention_complete(retention, run_path):
+    if not isinstance(retention, Mapping) or retention.get("containers", {}).get("status") != "completed":
+        return False
+    if retention.get("state") == "absent":
+        return (retention.get("reason") == "not_started"
+                and not os.path.lexists(os.path.join(run_path, "work"))
+                and not os.path.lexists(os.path.join(run_path, "swe-containers")))
+    try:
+        manifest = read_retained_swe_artifacts(run_path=run_path)
+        reference = evidence_file_reference(os.path.join(run_path, "evidence", "swe-canonical", "manifest.json"), root=run_path)
+        return (retention.get("state") in {"retained", "incomplete"}
+                and manifest == retention.get("manifest") and manifest["state"] == retention["state"]
+                and retention.get("manifest_reference") == reference)
+    except (OSError, ValueError, KeyError, TypeError, BenchmarkArtifactError):
+        return False

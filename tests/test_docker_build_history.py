@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -8,6 +9,15 @@ from anvil_serving import docker_build_history as history
 REVISION = 'a' * 40
 REF = 'example/example0/' + 'b' * 25
 SECRET_NAME = 'do-not-retain-build-name'
+
+
+@pytest.fixture
+def local_cli_context(tmp_path):
+    reference = Path(__file__).parents[1] / 'examples/primary-node/operator-topology.toml'
+    topology = tmp_path / 'operator-topology.toml'
+    topology.write_text(reference.read_text().replace('os = "windows"', 'os = "linux"'))
+    return ['--topology', str(topology), '--command-host', 'host:primary-node',
+            '--command-runtime', 'runtime:dark-native', '--transport', 'local']
 
 
 @pytest.fixture
@@ -110,13 +120,13 @@ def test_command_manifest_declares_read_only():
     assert row['mutation_class'] == 'read'
 
 
-def test_actual_cli_dispatch_does_not_return_name(setup, monkeypatch, capsys):
+def test_actual_cli_dispatch_does_not_return_name(setup, local_cli_context, monkeypatch, capsys):
     from anvil_serving import cli
     _, path = setup
     docker = FakeDocker()
     native = history.inspect_history
     monkeypatch.setattr(history, 'inspect_history', lambda p: native(p, runner=docker))
-    assert cli.main(['host', 'docker-image', 'build-history', '--plan', str(path), '--transport', 'local']) == 0
+    assert cli.main(['host', 'docker-image', 'build-history', '--plan', str(path), *local_cli_context]) == 0
     output = capsys.readouterr().out
     assert 'anvil-serving.build-history/v1' in output and SECRET_NAME not in output
 

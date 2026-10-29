@@ -259,7 +259,7 @@ def regrade_swe_predictions(plan: Mapping[str, Any], *, runner: Any = _regrade_r
         durable_binding.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(str(durable_binding), binding)
         swe_container_custody.initialize(paths["run"], plan["ownership_id"], plan["run_id"], custody["binary"])
-    except (OSError, TypeError, ValueError) as exc:
+    except (OSError, TypeError, ValueError):
         _fail("swe_container_custody_unavailable", "SWE regrade container custody could not be initialized")
     adapter = str(Path(__file__).with_name("swe_grader_adapter.py"))
     receipt = os.path.join(paths["grader_work"], "containment.json")

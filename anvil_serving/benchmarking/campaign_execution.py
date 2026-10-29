@@ -383,7 +383,7 @@ def _require_observer_readiness(release, manifest):
 
 def _swe_stop_verified(spec, row, run_root):
     """Recheck the exact daemon cleanup and retained bytes through closure and reclaim."""
-    from .worker import _swe_retention_complete
+    from .retention import _swe_retention_complete
     from .swe_container_custody import CLEANUP_SCHEMA
     try:
         root = _path(spec, run_root, None)
@@ -438,7 +438,7 @@ def _swe_stop_verified(spec, row, run_root):
 
 def _aider_stop_verified(spec, row, run_root):
     """Bind Aider's cleanup result, removed-container ledger, and retained bytes."""
-    from .worker import _aider_retention_complete
+    from .retention import _aider_retention_complete
     from .aider_containment import aider_custody_snapshot
     try:
         root = _path(spec, run_root, None)

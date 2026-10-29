@@ -52,6 +52,7 @@ def test_posix_private_descriptor_rejects_every_group_or_other_permission(tmp_pa
 
 
 def test_posix_private_descriptor_rejects_foreign_owner(monkeypatch):
+    monkeypatch.setattr(auth_file, "os", SimpleNamespace(**vars(auth_file.os)))
     metadata = SimpleNamespace(
         st_mode=stat.S_IFREG | 0o600,
         st_nlink=1,
@@ -79,6 +80,7 @@ def test_macos_dispatch_uses_the_held_descriptor_reader(tmp_path, monkeypatch):
 
 
 def test_macos_acl_policy_rejects_leaf_extended_entries(monkeypatch):
+    monkeypatch.setattr(auth_file, "os", SimpleNamespace(**vars(auth_file.os)))
     mode = stat.S_IFREG | 0o600
     metadata = SimpleNamespace(st_mode=mode, st_nlink=1, st_uid=1001)
     monkeypatch.setattr(auth_file.sys, "platform", "darwin")
@@ -91,6 +93,7 @@ def test_macos_acl_policy_rejects_leaf_extended_entries(monkeypatch):
 
 
 def test_macos_acl_policy_fails_closed_when_inspection_is_unavailable(monkeypatch):
+    monkeypatch.setattr(auth_file, "os", SimpleNamespace(**vars(auth_file.os)))
     metadata = SimpleNamespace(st_mode=stat.S_IFREG | 0o600, st_nlink=1, st_uid=1001)
     monkeypatch.setattr(auth_file.sys, "platform", "darwin")
     monkeypatch.setattr(auth_file.os, "fstat", lambda _descriptor: metadata)
@@ -108,6 +111,7 @@ def test_macos_acl_policy_fails_closed_when_inspection_is_unavailable(monkeypatc
 
 
 def test_macos_acl_policy_rejects_uninspectable_ancestor(monkeypatch):
+    monkeypatch.setattr(auth_file, "os", SimpleNamespace(**vars(auth_file.os)))
     metadata = SimpleNamespace(st_mode=stat.S_IFDIR | 0o700, st_uid=1001)
     monkeypatch.setattr(auth_file.sys, "platform", "darwin")
     monkeypatch.setattr(auth_file.os, "fstat", lambda _descriptor: metadata)

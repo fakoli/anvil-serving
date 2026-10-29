@@ -45,7 +45,8 @@ def _read_json(path):
         raw = stream.read(MAX_RECORD_BYTES + 1)
         after = os.fstat(stream.fileno())
     current = os.stat(path, follow_symlinks=False)
-    identity = lambda item: (item.st_dev, item.st_ino, item.st_mode, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+    def identity(item):
+        return (item.st_dev, item.st_ino, item.st_mode, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
     _require(len(raw) <= MAX_RECORD_BYTES and identity(before) == identity(after) == identity(current),
              "custody record changed or exceeds its bound")
     try:
