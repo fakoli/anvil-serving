@@ -24,11 +24,16 @@ def contract():
             'metrics': {'node_memory_bytes': 'gauge', 'node_oom_total': 'counter'}}}
 
 
-def setup(tmp_path, monkeypatch, *, count=1, mixed=False):
+def setup(tmp_path, monkeypatch, *, count=1, mixed=False, swe=False):
     tasks = [('agentic', task) for task in ('structured-edit', 'tool-sequence', 'parallel-tools', 'dependent-result')][:count]
     if mixed:
         tasks[2:] = [('aider', lang + '/exercises/practice/task') for lang in ('cpp', 'go')]
+    if swe:
+        tasks = [('swe', 'example__project-1')]
     value = specification(concurrency=count, tasks=tasks)
+    if swe:
+        value['cells'][0]['spec']['parameters']['paired_image_ids'] = {'example__project-1': 'sha256:' + 'a' * 64}
+        value['cells'][0]['spec']['parameters']['paired_image_repo_digests'] = {'example__project-1': 'sha256:' + 'b' * 64}
     value['budgets']['drain_reserve_s'] = 120
     value['telemetry_collection'] = contract()
     value['drain_policy'] = {'running_metric': 'running', 'waiting_metric': 'waiting',
@@ -66,7 +71,10 @@ def setup(tmp_path, monkeypatch, *, count=1, mixed=False):
     for cell in manifest['cells']:
         spec = execution.bind_campaign_child(cell['spec'], manifest_sha256=manifest['manifest_sha256'],
             campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
-        store.submit(spec); store.claim(spec['run_id']); bound.append(spec)
+        store.submit(spec)
+        if not swe:
+            store.claim(spec['run_id'])
+        bound.append(spec)
         execution._path(spec, store.run_root, 'campaign-execution.json').parent.mkdir(parents=True)
         atomic_write_json(execution._path(spec, store.run_root, 'campaign-execution.json'), {
             'schema': 'anvil-serving.campaign-execution/v1', 'campaign': spec['campaign'],
@@ -328,3 +336,43 @@ def test_cached_source_regression_retains_failure_and_reset_segments(tmp_path, m
     assert summary['host']['failures'] == 1
     assert summary['host']['sample_count'] == 2
     assert not summary['host']['complete']
+
+
+def test_swe_worker_and_real_sampler_overlap_with_frozen_identity(tmp_path, monkeypatch):
+    import threading
+    from anvil_serving.benchmarking import worker
+
+    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch, swe=True)
+    child = specs[0]
+    frozen_plan = {'fixture': 'frozen-swe'}
+    context = {'spec': child, 'payload': {'assets': {}}, 'receipt': {'status': 'active'}}
+    monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
+    monkeypatch.setattr(execution, 'verify_child', lambda *a, **k: ({}, {'plan': frozen_plan}))
+    monkeypatch.setattr(execution, 'require_campaign_suite_window', lambda *a, **k: None)
+    monkeypatch.setattr(execution, 'close_campaign', lambda *a, **k: {'status': 'closed'})
+    monkeypatch.setattr(worker, 'campaign_result_reference', lambda *a, **k: {})
+    monkeypatch.setattr(worker, 'run_benchmark_preflight', lambda *a, **k:
+        {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []})
+    entered, resume = threading.Event(), threading.Event()
+    def run(plan, **kwargs):
+        assert plan is frozen_plan
+        Path(execution._path(child, store.run_root, 'work')).mkdir(parents=True, exist_ok=True)
+        entered.set()
+        assert resume.wait(5)
+        return {'state': 'completed', 'summary': {'completed': True}}
+    from pathlib import Path
+    monkeypatch.setattr(worker, 'run_swe_benchmark', run)
+    monkeypatch.setattr(worker, '_retain_stopped_swe', lambda *a, **k: {'state': 'retained', 'containers': {'status': 'completed'}})
+    monkeypatch.setattr(worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained')
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(worker.execute_benchmark_job, store, child['run_id'])
+        assert entered.wait(5)
+        clock[0] += 5
+        sampler.tick(force=True)
+        assert not future.done()
+        row = sampler.rows[-1]
+        assert row['manifest_sha256'] == manifest['manifest_sha256']
+        assert row['activation_sha256'] == release['activation']['binding_sha256']
+        assert all(plane['status'] == 'measured' for plane in row['planes'].values())
+        resume.set()
+        assert future.result(timeout=5)['state'] == 'completed'

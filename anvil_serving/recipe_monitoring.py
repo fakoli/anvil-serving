@@ -51,7 +51,7 @@ def configuration():
             or not isinstance(value["engine_contracts"], dict)
             or not 1 <= len(value["engine_contracts"]) <= 16
             or any(not isinstance(k, str) or not 1 <= len(k) <= 128
-                   or not isinstance(v, str) or v not in {"vllm", "sglang", "flare", "ignis"}
+                   or not isinstance(v, str) or v not in {"vllm", "sglang", "flare", "ignis", "llamacpp"}
                    for k, v in value["engine_contracts"].items())):
         raise ValueError("invalid recipe-monitoring.json contract")
     keys = value.get("model_api_key_files", {})
@@ -91,13 +91,27 @@ def _write(value):
             os.unlink(temporary)
 
 
-def withdraw(*, port=None, container=None, pending=False):
+def withdraw(*, port=None, container=None, pending=False, expected_container_id=None, expected_started_at=None):
     """Invalidate old scrape paths before a selected lifecycle mutation."""
+    if (expected_container_id is None) != (expected_started_at is None):
+        raise ValueError("monitoring expected identity must include ID and start time")
     config = configuration()
     if config is None and not os.path.lexists(receipt_path()):
         return None
     from .serve_recipes import registry_lock
     with registry_lock(receipt_path()):
+        if expected_container_id is not None:
+            try:
+                previous = read_json(receipt_path())
+            except FileNotFoundError:
+                return None
+            if previous.get("schema") != SCHEMA:
+                raise ValueError("invalid monitoring receipt schema")
+            if previous.get("container") != container:
+                return None
+            if (previous.get("container_id") != expected_container_id
+                    or previous.get("started_at") != expected_started_at):
+                raise ValueError("monitoring receipt incarnation differs from expected container")
         if config is None or port not in config["ports"]:
             try:
                 previous = read_json(receipt_path())

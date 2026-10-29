@@ -182,7 +182,7 @@ def test_process_failure_retains_safe_evidence_and_sanitizes_client_environment(
         "plan": "plan.json", "selection": "selection.json", "result": "result.json",
         "process": "process.json", "adapter_result": "adapter-result.json", "request_events": "requests.jsonl"}.items()}
     paths.update(polyglot_root=str(source), aider_root=str(source))
-    plan = {"paths": paths, "run_path": str(base.parent), "run_id": "run", "profile": "pilot-v2",
+    plan = {"paths": paths, "run_path": str(base.parent), "ownership_id": tmp_path.name, "run_id": "run", "profile": "pilot-v2",
             "plan_sha256": "a" * 64, "adapter_sha256": "b" * 64, "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary", "auth_env": "TEST_KEY"},
             "request_controls": {}, "selection": {"instance_ids": [task]}, "command": ["python", "adapter"], "timeout_s": 10}
     monkeypatch.setattr(aider, "verify_plan", lambda value: None)

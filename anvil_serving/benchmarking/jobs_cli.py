@@ -64,9 +64,11 @@ def _parser() -> argparse.ArgumentParser:
         preflight_spec.add_argument("--spec-json", metavar="JSON", help="inline job specification JSON")
         preflight.add_argument("--requirements-json", default="{}")
         prepare = actions.add_parser("prepare")
-        prepare.add_argument("--profile", choices=sorted(PROFILE_NAMES), required=True)
-        prepare.add_argument("--run-id", required=True)
-        prepare.add_argument("--ownership-id", required=True)
+        if suite == "aider":
+            prepare.add_argument("--spec", help="job spec selecting prepared tasks")
+        prepare.add_argument("--profile", choices=sorted(PROFILE_NAMES), required=suite != "aider")
+        prepare.add_argument("--run-id", required=suite != "aider")
+        prepare.add_argument("--ownership-id", required=suite != "aider")
         prepare.add_argument("--offline", action="store_true")
         prepare.add_argument("--max-download-bytes", type=int, default=20 * 1024**3)
         prepare.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -287,6 +289,18 @@ def run(argv: list[str]) -> dict:
             confirm=confirm,
             min_free_bytes=args.min_free_bytes,
         )
+    prepared_selection = None
+    if args.action == "prepare" and args.suite == "aider":
+        if args.spec:
+            if any((args.profile, args.run_id, args.ownership_id)):
+                raise BenchmarkJobError("bad_aider_selection", "spec and legacy preparation identifiers are exclusive")
+            spec = bind_submission_spec(load_job_spec(spec_path=args.spec, suite="aider"))
+            prepared_selection = validate_submission_spec(spec)["selection"]["instance_ids"]
+            if prepared_selection is None or len({x.split("/")[0] for x in prepared_selection}) != len(prepared_selection):
+                raise BenchmarkJobError("bad_aider_selection", "preparation requires explicit tasks with at most one per language")
+            args.profile, args.run_id, args.ownership_id = spec["profile"], spec["run_id"], spec["ownership_id"]
+        elif not all((args.profile, args.run_id, args.ownership_id)):
+            raise BenchmarkJobError("bad_aider_selection", "legacy preparation requires profile, run-id and ownership-id")
     submitted_spec = None
     if args.action in {"submit", "preflight"}:
         submitted_spec = load_job_spec(spec_path=args.spec, spec_json=args.spec_json, suite=args.suite)
@@ -344,6 +358,7 @@ def run(argv: list[str]) -> dict:
             cache_root=cache_root,
             offline=args.offline,
             max_download_bytes=args.max_download_bytes,
+            **({"aider_instance_ids": prepared_selection} if prepared_selection is not None else {}),
         )
     if args.action == "preflight":
         return run_benchmark_preflight(

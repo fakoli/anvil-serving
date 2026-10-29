@@ -277,6 +277,22 @@ def _samples(cell, native):
                  "passed": row.get("resolved") if type(row.get("resolved")) is bool else None,
                  "failed": not row["resolved"] if type(row.get("resolved")) is bool else None,
                  "latency_sum_ms": None} for row in rows], None
+    if suite == "swe" and native.get("schema") == "anvil-serving.swe-run/v1":
+        rows = native.get("instances")
+        if not isinstance(rows, list) or any(not isinstance(row, dict) or row.get("instance_id") != task for row in rows):
+            return None, "sample_identity_mismatch"
+        if not rows:
+            return [], "empty_native_population"
+        samples = []
+        for row in rows:
+            grader = row.get("grader")
+            resolved = (grader.get("resolved") if isinstance(grader, dict)
+                        and native.get("official_grader_complete") is True
+                        and grader.get("name") == "swe-bench" and grader.get("completed") is True
+                        and type(grader.get("resolved")) is bool else None)
+            samples.append({"attempted": True, "passed": resolved,
+                            "failed": not resolved if resolved is not None else None, "latency_sum_ms": None})
+        return samples, None
     if suite == "performance" and native.get("schema") == "anvil-serving.performance-run/v1":
         return None, None  # Native aggregates do not establish per-request IDs or quality scores.
     return None, "unsupported_native_schema"
@@ -485,7 +501,7 @@ def report_campaign(manifest, store, *, state=None):
         if requested_cache not in {"basic", "cold", "warm", "unknown", "unique", "shared", "uncontrolled"}:
             requested_cache = "unspecified"
         row = {"cell": f"cell-{index + 1}", "arm": arms[cell["arm_id"]], "task": tasks[task_key],
-               "suite": spec["suite"] if spec["suite"] in {"agentic", "aider", "performance"} else "unsupported",
+               "suite": spec["suite"] if spec["suite"] in {"agentic", "aider", "performance", "swe"} else "unsupported",
                "repeat": cell["repeat"], "requested_concurrency": cell["concurrency"], "state": status,
                "spec_sha256": job_spec_sha256(expected),
                "matching": {key: _digest(cell.get("matching", {}).get(key)) for key in _HASHES},

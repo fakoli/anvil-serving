@@ -57,10 +57,37 @@ def campaign(tmp_path, monkeypatch, count=1, endpoint=None, drain=None, activati
 
 
 def ready(root, manifest, bound, index=0):
-    value = {'campaign': bound[index]['campaign'], 'spec_sha256': job_spec_sha256(bound[index]),
-             'status': 'ready', 'boot_id': execution._boot_id()}
+    value = {'schema': 'anvil-serving.campaign-execution/v1', 'campaign': bound[index]['campaign'],
+             'spec_sha256': job_spec_sha256(bound[index]), 'status': 'ready', 'boot_id': execution._boot_id(),
+             'ready_at': 'fixture', 'clients_stopped': False,
+             'telemetry_coverage': {key: {'status': 'unavailable'} for key in ('engine', 'gpu', 'host', 'cgroup')}}
     atomic_write_json(execution._path(bound[index], root, 'campaign-execution.json'), value)
     return value
+
+
+def test_cancel_before_release_preserves_ready_receipt_as_unavailable(tmp_path, monkeypatch):
+    root, manifest, bound = campaign(tmp_path, monkeypatch, count=2)
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.sqlite'), run_root=root)
+    store.submit(bound[0])
+    store.claim(bound[0]['run_id'])
+    ready(root, manifest, bound)
+    stopped = []
+    monkeypatch.setattr(worker, '_stop_owned_worker', lambda *args, **kwargs:
+                        stopped.append(args[1]) or {'stopped': True})
+    monkeypatch.setattr(worker, '_retain_native_partial_outputs', lambda **kwargs: {'state': 'retained'})
+
+    result = worker.cancel_campaign_jobs(manifest, store)
+
+    assert result['phase'] == 'completed'
+    assert store.status(bound[0]['run_id'])['state'] == 'cancelled'
+    assert store.status(bound[1]['run_id']) is None
+    receipt = execution._read(execution._path(bound[0], root, 'campaign-execution.json'))
+    assert receipt['status'] == 'ready'
+    assert receipt['telemetry_terminal'] == {'status': 'unavailable', 'reason': 'campaign_cancelled_before_release'}
+    assert all(value == {'status': 'unavailable'} for value in receipt['telemetry_coverage'].values())
+    assert not (execution._directory(manifest, root) / 'batches' / 'batch-0.json').exists()
+    assert worker.cancel_campaign_jobs(manifest, store)['phase'] == 'completed'
+    assert stopped == [bound[0]['run_id']]
 
 
 def test_frozen_plan_and_closed_binding_reject_drift_before_traffic(tmp_path, monkeypatch):
@@ -144,6 +171,68 @@ def test_engine_drain_requires_fresh_resolved_zero(monkeypatch):
               'running_metric': 'running', 'waiting_metric': 'waiting', 'metric_labels': {'model_name': 'candidate'}, 'poll_s': .1, 'timeout_s': 40}
     monkeypatch.setattr(model_capacity, '_default_metrics_read', lambda *a, **k: (200, ('running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0\nanvil_observer_metrics_sample_timestamp_seconds{model="candidate"} ' + str(clock[0])).encode()))
     assert execution.observe_drain(policy, deadline=50)['status'] == 'verified'
+
+
+@pytest.mark.parametrize('outcome, reason', [
+    ('http', 'http_status'), ('stale', 'stale_engine_sample'), ('busy', 'busy'),
+    ('transport', 'transport'), ('ready', None),
+])
+def test_release_requires_single_fresh_idle_observer_read_before_sampler(tmp_path, monkeypatch, outcome, reason):
+    """Observer readiness fails before telemetry setup, receipt, or worker traffic."""
+    from anvil_serving.router import model_capacity
+    root, manifest, bound = campaign(tmp_path, monkeypatch, drain_reserve_s=70,
+        drain={'running_metric': 'running', 'waiting_metric': 'waiting',
+               'metric_labels': {'model_name': 'model'}, 'timeout_s': 40, 'poll_s': .1})
+    manifest['telemetry_collection'] = {}
+    manifest['manifest_sha256'] = execution._manifest_digest(manifest)
+    atomic_write_json(execution._directory(manifest, root) / 'manifest.json', manifest)
+    bound = [execution.bind_campaign_child(manifest['cells'][0]['spec'], manifest_sha256=manifest['manifest_sha256'],
+        campaign_id=manifest['campaign_id'], cell_id='cell-0', arm_id='arm', batch_id='batch-0')]
+    ready(root, manifest, bound)
+    monkeypatch.setattr(execution.time, 'time', lambda: 100.0)
+    calls = []
+    def read(*args, **kwargs):
+        calls.append((args, kwargs))
+        if outcome == 'transport':
+            raise OSError('offline')
+        if outcome == 'http':
+            return 503, b'unavailable'
+        stamp = '0' if outcome == 'stale' else '100'
+        running = '1' if outcome == 'busy' else '0'
+        raw = ('running{model_name="model"} ' + running + '\n'
+               'waiting{model_name="model"} 0\n'
+               'anvil_observer_metrics_sample_timestamp_seconds{model="model"} ' + stamp).encode()
+        return 200, raw
+    monkeypatch.setattr(model_capacity, '_default_metrics_read', read)
+    class Sampler:
+        started = None
+        def start(self, activation): self.started = activation
+    sampler = Sampler()
+    release_path = execution._directory(manifest, root) / 'batches/batch-0.json'
+    if reason is not None:
+        with pytest.raises(BenchmarkJobError) as error:
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140, sampler=sampler)
+        assert error.value.code == 'campaign_observer_not_ready'
+        evidence = execution._read(execution._directory(manifest, root) / 'readiness/batch-0.json')
+        assert evidence['status'] == 'not_ready' and evidence['reason'] == reason
+        outcome = 'busy'
+        with pytest.raises(BenchmarkJobError):
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140, sampler=sampler)
+        assert execution._read(execution._directory(manifest, root) / 'readiness/batch-0.json') == evidence
+        assert sampler.started is None and not release_path.exists()
+        assert not (execution._directory(manifest, root) / 'telemetry').exists()
+    else:
+        release = execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=140, sampler=sampler)
+        assert release['observer_readiness'] == {'status': 'ready', 'source_timestamp_seconds': 100.0}
+        assert sampler.started == release['activation'] and release_path.exists()
+        legacy = dict(release); legacy.pop('observer_readiness')
+        execution._validate_release(legacy, manifest, 'batch-0')
+        with pytest.raises(BenchmarkJobError) as error:
+            execution._require_observer_readiness(legacy, manifest)
+        assert error.value.code == 'campaign_observer_not_ready'
+        atomic_write_json(release_path, legacy)
+        assert execution.reconcile_batch(manifest, 'batch-0', run_root=root)['status'] == 'blocked'
+    assert len(calls) == (2 if reason is not None else 1) and calls[0][1]['timeout'] == 2 and calls[0][1]['max_bytes'] == 1024 * 1024
 
 
 def test_worker_rejects_drift_before_preflight(tmp_path, monkeypatch):
@@ -315,10 +404,28 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
     import threading
     from tests.test_benchmark_worker import EndpointHandler
 
+    post_started = threading.Event()
+    stop_stream = threading.Event()
+
     class SlowEndpoint(EndpointHandler):
         def do_POST(self):
-            time.sleep(60)
-            super().do_POST()
+            size = int(self.headers.get("Content-Length", "0"))
+            self.rfile.read(size)
+            post_started.set()
+            # Keep an actual in-flight HTTP response active past the socket
+            # timeout: urllib's timeout applies to an idle recv, not its
+            # total response lifetime.  The watchdog must own cancellation.
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(65536))
+            self.end_headers()
+            try:
+                while not stop_stream.is_set():
+                    self.wfile.write(b" ")
+                    self.wfile.flush()
+                    time.sleep(0.05)
+            except OSError:
+                pass
 
     class SlowServer(ThreadingHTTPServer):
         daemon_threads = True
@@ -335,7 +442,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         # Reproduce a loaded runner where watchdog startup exceeds the former
         # two-second traffic window, without weakening real process custody.
         install_test_owned_activation(tmp_path, monkeypatch, activation, watchdog_startup_delay_s=3)
-        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=30)
+        root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=1)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
         deadline = time.monotonic() + 30
@@ -346,6 +453,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         with monkeypatch.context() as historical:
             historical.setattr(execution, 'require_batch_allowance', lambda *a, **k: k['allowance_s'])
             execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=20)
+        assert post_started.wait(timeout=5), store.logs(bound[0]['run_id'])
         while time.monotonic() < deadline:
             result = store.status(bound[0]['run_id'])
             if result['state'] in {'completed', 'failed', 'cancelled'}: break
@@ -354,6 +462,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         assert not worker._process_group_running(launched['pid'])
     finally:
         if launched and worker._process_group_running(launched['pid']): worker.cancel_benchmark_job(store, bound[0]['run_id'])
+        stop_stream.set()
         server.shutdown(); server.server_close(); thread.join(timeout=3)
 
 
@@ -410,12 +519,62 @@ def entry_campaign(tmp_path, monkeypatch):
     monkeypatch.setattr(execution, '_clients_stopped', lambda: True)
     monkeypatch.setattr(execution, 'observe_drain', lambda *args, **kwargs:
                         {'status': 'unknown', 'reason': 'offline_drain_fixture'})
+    monkeypatch.setattr(execution, '_release_readiness', lambda *args, **kwargs:
+                        {'status': 'ready', 'source_timestamp_seconds': 0})
     monkeypatch.setattr(worker, 'run_benchmark_preflight', lambda *args, **kwargs: pytest.fail('model traffic'))
     monkeypatch.setattr(worker, '_run_suite', lambda *args, **kwargs: pytest.fail('model traffic'))
     sampler = telemetry.BatchSampler(manifest, cell['batch_id'], run_root=root)
     release = execution.release_batch(manifest, cell['batch_id'], run_root=root,
                                       allowance_s=190, store=store, sampler=sampler)
     return store, manifest, child, sampler, release
+
+
+@pytest.mark.parametrize('damage', ['malformed', 'symlink', 'unreadable'])
+def test_unreleased_cancellation_requires_genuinely_absent_release(tmp_path, monkeypatch, damage):
+    root, manifest, bound = campaign(tmp_path, monkeypatch)
+    child = bound[0]
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.sqlite'), run_root=root)
+    store.submit(child)
+    store.claim(child['run_id'])
+    store.transition(child['run_id'], 'cancelling')
+    ready(root, manifest, bound)
+    release_path = execution._directory(manifest, root) / 'batches' / 'batch-0.json'
+    release_path.parent.mkdir()
+    if damage == 'malformed':
+        release_path.write_text('{')
+    elif damage == 'symlink':
+        target = release_path.with_name('saved-release.json')
+        target.write_text('{}')
+        release_path.symlink_to(target)
+    else:
+        monkeypatch.setattr(Path, 'lstat', lambda self: (_ for _ in ()).throw(PermissionError()))
+
+    with pytest.raises((OSError, ValueError)):
+        execution.campaign_result_reference(store, child, cancelling=True)
+
+    receipt = execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))
+    assert receipt['status'] == 'ready' and 'telemetry_terminal' not in receipt
+    assert store.status(child['run_id'])['state'] == 'cancelling'
+
+
+@pytest.mark.parametrize('field, value', [('clients_stopped', True), ('drain', {'status': 'unknown'})])
+def test_unreleased_cancellation_rejects_lifecycle_smuggling(tmp_path, monkeypatch, field, value):
+    root, manifest, bound = campaign(tmp_path, monkeypatch)
+    child = bound[0]
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.sqlite'), run_root=root)
+    store.submit(child)
+    store.claim(child['run_id'])
+    store.transition(child['run_id'], 'cancelling')
+    receipt = ready(root, manifest, bound)
+    receipt[field] = value
+    path = execution._path(child, root, 'campaign-execution.json')
+    atomic_write_json(path, receipt)
+
+    with pytest.raises(BenchmarkJobError, match='receipt shows traffic or closure'):
+        execution.campaign_result_reference(store, child, cancelling=True)
+
+    assert execution._read(path) == receipt
+    assert store.status(child['run_id'])['state'] == 'cancelling'
 
 
 @pytest.mark.parametrize('failure', ['no_ack', 'early_exit', 'spawn', 'activation', 'closure', 'prepared', 'cancel', 'budget'])
@@ -608,3 +767,243 @@ def test_watchdog_acknowledgement_is_bounded_and_allows_verified_slow_start(tmp_
             if process.poll() is None:
                 process.kill()
             process.wait(timeout=2)
+
+
+def test_campaign_aider_child_forwards_admitted_task_to_preparation(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking import aider, harnesses
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    requested = ['python/exercises/practice/example']
+    child = spec()
+    child.update(suite='aider', profile='pilot-v2', parameters={'instance_ids': requested})
+    child = bind_submission_spec(child)
+    calls = []
+    def prepare(profile, **kwargs):
+        calls.append(kwargs)
+        return {'selection': kwargs.get('aider_instance_ids')}
+    def plan(profile, assets, **kwargs):
+        assert assets['selection'] == kwargs['instance_ids']
+        return {'selection': kwargs['instance_ids']}
+    monkeypatch.setattr(harnesses, 'prepare_harness_assets', prepare)
+    monkeypatch.setattr(aider, 'build_aider_run_plan', plan)
+    (tmp_path/'runs').mkdir()
+    prepared = execution.prepare_child(child, run_root=str(tmp_path/'runs'), cache_root=str(tmp_path/'cache'), offline=True)
+    assert prepared['custody_contract'] == 'aider-stop/v1'
+    monkeypatch.setattr(aider, 'verify_plan', lambda plan: None)
+    execution.verify_prepared_child(child, prepared, run_root=str(tmp_path/'runs'))
+    with pytest.raises(BenchmarkJobError, match='prepared child binding'):
+        execution.verify_prepared_child(child, {k: v for k, v in prepared.items() if k != 'custody_contract'}, run_root=str(tmp_path/'runs'))
+    assert calls[0]['aider_instance_ids'] == requested and calls[0]['offline'] is True
+    # An invalid child must fail admission without touching the preparer.
+    invalid = copy.deepcopy(child)
+    invalid['parameters']['instance_ids'] = ['python/../escape']
+    with pytest.raises(BenchmarkJobError):
+        execution.prepare_child(invalid, run_root=str(tmp_path/'runs'), cache_root=str(tmp_path/'cache'))
+    assert len(calls) == 1
+
+
+def test_swe_preparation_receipt_binds_job_and_image_id_and_registry_digest(tmp_path):
+    from anvil_serving.benchmarking.swe_images import instance_image_tag
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    import socket
+    value = spec()
+    value['worker']['id'] = socket.gethostname()
+    instance, image, digest = 'example__project-1', 'sha256:' + 'a' * 64, 'sha256:' + 'b' * 64
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': [instance], 'paired_image_ids': {instance: image}, 'paired_image_repo_digests': {instance: digest}})
+    value = bind_submission_spec(value)
+    tag = instance_image_tag(instance)
+    observed = {'tag': tag, 'image_id': image, 'repo_digests': ['example@' + digest]}
+    row = {'instance_id': instance, 'tag': tag, 'image_id': image, 'registry_digest': digest, 'status': 'verified',
+           'observation': observed, 'pinned_observation': {**observed, 'tag': 'docker.io/' + tag + '@' + digest}}
+    receipt = {'schema': 'anvil-serving.swe-image-preparation/v1', 'status': 'verified',
+        'spec_sha256': job_spec_sha256(value), 'ownership_id': value['ownership_id'], 'run_id': value['run_id'],
+        'worker': {'declared_id': value['worker']['id'], 'observed_hostname': socket.gethostname()}, 'images': [row]}
+    path = execution._path(value, str(tmp_path), 'swe-images/' + job_spec_sha256(value) + '/receipt-' + 'c' * 32 + '.json')
+    path.parent.mkdir(parents=True); atomic_write_json(path, receipt)
+    reference = execution._swe_image_receipt(value, str(tmp_path))
+    assert execution._swe_image_receipt(value, str(tmp_path), reference) == reference
+    receipt['images'][0]['observation']['repo_digests'] = ['example@sha256:' + 'd' * 64]
+    atomic_write_json(path, receipt)
+    with pytest.raises(BenchmarkJobError, match='absent or changed'):
+        execution._swe_image_receipt(value, str(tmp_path), reference)
+
+
+@pytest.mark.parametrize('custody', ['completed', 'partial', 'partial_deleted_before', 'partial_deleted_after', 'partial_cleanup_before', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after', 'unknown', 'cancel_unknown', 'cancel_partial', 'cancel_partial_stop_after', 'cancel_prework'])
+def test_swe_real_entry_and_closure_keep_unknown_custody_blocked(tmp_path, monkeypatch, custody):
+    from concurrent.futures import ThreadPoolExecutor
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+
+    root, manifest, _ = campaign(tmp_path, monkeypatch, timeout_s=10, drain_reserve_s=70,
+        drain={'running_metric': 'running', 'waiting_metric': 'waiting',
+               'metric_labels': {'model_name': 'model'}, 'timeout_s': 40, 'poll_s': .01})
+    cell = manifest['cells'][0]
+    base = copy.deepcopy(cell['spec'])
+    base.update(suite='swe', profile='pilot-v2', parameters={
+        'instance_ids': ['example__project-1'],
+        'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64},
+        'paired_image_repo_digests': {'example__project-1': 'sha256:' + 'b' * 64}})
+    base = bind_submission_spec(base)
+    cell.update(spec=base, spec_sha256=job_spec_sha256(base))
+    manifest['manifest_sha256'] = execution._manifest_digest(manifest)
+    directory = execution._directory(manifest, root)
+    atomic_write_json(directory / 'manifest.json', manifest)
+    atomic_write_json(directory / 'state.json', execution._new_state(manifest))
+    child = execution.bind_campaign_child(base, manifest_sha256=manifest['manifest_sha256'],
+        campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=root)
+    store.submit(child)
+    frozen = {'fixture': 'exact-prepared-plan'}
+    monkeypatch.setattr(execution, 'verify_prepared_child', lambda *a, **k: {'assets': {}, 'plan': frozen})
+    monkeypatch.setattr(execution, '_clients_stopped', lambda: True)
+    monkeypatch.setattr(execution, 'observe_drain', lambda *a, **k: {'status': 'verified'})
+    class FakeWatchdog:
+        def __init__(self):
+            reader, writer = os.pipe()
+            os.write(writer, b'ready\n'); os.close(writer)
+            self.stdout = os.fdopen(reader, 'rb', buffering=0)
+        def poll(self): return None
+    monkeypatch.setattr(execution.subprocess, 'Popen', lambda *a, **k: FakeWatchdog())
+    import threading
+    events, entered, resume, exited = [], threading.Event(), threading.Event(), threading.Event()
+    def preflight(*args, **kwargs):
+        if custody == 'cancel_prework':
+            events.append('preflight')
+            entered.set()
+            assert resume.wait(5)
+        return {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []}
+    monkeypatch.setattr(worker, 'run_benchmark_preflight', preflight)
+    def run(plan, **kwargs):
+        assert plan == frozen
+        events.append('run')
+        work = execution._path(child, root, 'work')
+        work.mkdir(parents=True, exist_ok=True)
+        if custody == 'completed':
+            for relative, value in {'swe-plan.json': json.dumps({'run_id': child['run_id']}),
+                    'anvil-swe-config.yaml': 'fixture', 'predictions.jsonl': '{}',
+                    'mini-output/example.traj.json': '{}', 'official-grader/test.' + child['run_id'] + '.json': '{}'}.items():
+                path = work / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(value)
+        elif custody.startswith('partial') or custody in {'cancel_partial', 'cancel_partial_stop_after'}:
+            (work / 'swe-plan.json').write_text(json.dumps({'run_id': child['run_id']}))
+        entered.set()
+        if custody in {'cancel_unknown', 'cancel_partial', 'cancel_partial_stop_after'}:
+            assert resume.wait(5)
+        return {'state': 'incomplete' if custody.startswith('partial') else 'completed', 'summary': {'completed': True}}
+    def retain(*args, **kwargs):
+        from anvil_serving.benchmarking.retention import retain_swe_artifacts
+        from anvil_serving.benchmarking.artifacts import evidence_file_reference
+        from anvil_serving.benchmarking.swe_container_custody import CLEANUP_SCHEMA
+        events.append('retention')
+        if custody == 'completed' or custody.startswith('partial') or custody in {'cancel_partial', 'cancel_partial_stop_after'}:
+            run_path = Path(kwargs['run_path'])
+            path = run_path / ('evidence/swe-container-cleanup-terminal-' + 'a' * 32 + '.json')
+            path.parent.mkdir(parents=True, exist_ok=True)
+            cleanup = {'schema': CLEANUP_SCHEMA, 'ownership_id': child['ownership_id'], 'run_id': child['run_id'],
+                       'status': 'completed', 'containers': [], 'errors': []}
+            atomic_write_json(path, cleanup)
+            return {**retain_swe_artifacts(run_path=str(run_path), work_path=kwargs['work_path']),
+                    'containers': {**cleanup, 'receipt': evidence_file_reference(str(path), root=str(run_path))}}
+        return {'state': 'incomplete' if custody == 'cancel_unknown' else 'failed',
+                'reason': 'swe_container_cleanup_unverified', 'containers': {'status': 'unknown'}}
+    monkeypatch.setattr(worker, 'run_swe_benchmark', run)
+    if custody != 'cancel_prework':
+        monkeypatch.setattr(worker, '_retain_stopped_swe', retain)
+    def execute():
+        try:
+            return worker.execute_benchmark_job(store, child['run_id'])
+        finally:
+            exited.set()
+    def stop(*args, **kwargs):
+        resume.set()
+        assert exited.wait(5)
+        return {'stopped': True}
+    monkeypatch.setattr(worker, '_stop_owned_worker', stop)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(execute)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and not execution.batch_ready(manifest, cell['batch_id'], run_root=root):
+            time.sleep(.01)
+        assert execution.batch_ready(manifest, cell['batch_id'], run_root=root)
+        execution.release_batch(manifest, cell['batch_id'], run_root=root, allowance_s=140, store=store)
+        assert entered.wait(5)
+        if custody in {'cancel_unknown', 'cancel_partial', 'cancel_partial_stop_after', 'cancel_prework'}:
+            cancelled = worker.cancel_campaign_jobs(manifest, store)
+            assert cancelled['children'][0]['state'] == 'cancelled'
+            assert cancelled['children'][0]['cleanup_deferred'] is (custody == 'cancel_unknown')
+            assert execution._path(child, root, 'work').is_dir() is (custody == 'cancel_unknown')
+            receipt = execution._read(execution._path(child, root, 'campaign-execution.json'))
+            closure = execution.batch_closure(manifest, cell['batch_id'], execution._read(directory / 'batches' / (cell['batch_id'] + '.json')), run_root=root)[0]
+            assert events == ['preflight'] if custody == 'cancel_prework' else events[:2] == ['run', 'retention']
+            assert closure['status'] == ('blocked' if custody == 'cancel_unknown' else 'closed')
+            assert receipt['clients_stopped'] is (custody != 'cancel_unknown')
+            if custody == 'cancel_partial_stop_after':
+                execution._path(child, root, 'evidence/worker-stop-receipt.json').unlink()
+            reconciled = execution.reconcile_batch(manifest, cell['batch_id'], run_root=root, store=store)
+            assert reconciled['status'] == ('blocked' if custody == 'cancel_partial_stop_after' else closure['status'])
+            if custody == 'cancel_unknown':
+                assert reconciled['active_seconds'] is None
+            elif custody != 'cancel_partial_stop_after':
+                assert execution._anchored_closure(store, cell, manifest, root)
+            else:
+                assert not execution._anchored_closure(store, cell, manifest, root)
+            return
+        while time.monotonic() < deadline:
+            receipt = execution._read(execution._path(child, root, 'campaign-execution.json'))
+            if receipt['status'] in {'draining', 'blocked'}:
+                break
+            time.sleep(.01)
+        assert events[0:2] == ['run', 'retention']
+        if custody == 'partial_deleted_before':
+            execution._path(child, root, 'evidence/swe-canonical/manifest.json').unlink()
+        if custody == 'partial_cleanup_before':
+            execution._path(child, root, 'evidence/swe-container-cleanup-terminal-' + 'a' * 32 + '.json').unlink()
+        closure = execution.coordinate_batch(manifest, cell['batch_id'], store=store, force=True)
+        result = future.result(timeout=5)
+    if custody == 'partial_deleted_after':
+        execution._path(child, root, 'evidence/swe-canonical/manifest.json').unlink()
+    if custody == 'partial_cleanup_after':
+        execution._path(child, root, 'evidence/swe-container-cleanup-terminal-' + 'a' * 32 + '.json').unlink()
+    if custody == 'partial_stop_after':
+        execution._path(child, root, 'evidence/0-swe-campaign-stop.json').write_text('{}')
+    if custody == 'partial_contents_after':
+        execution._path(child, root, 'evidence/swe-canonical/swe-plan.json').write_text('changed')
+    assert result['state'] == ('completed' if custody == 'completed' else 'failed')
+    assert closure['status'] == ('closed' if custody in {'completed', 'partial', 'partial_deleted_after', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after'} else 'blocked')
+    reconciled = execution.reconcile_batch(manifest, cell['batch_id'], run_root=root, store=store)
+    assert reconciled['status'] == ('blocked' if custody in {'partial_deleted_after', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after'} else closure['status'])
+    if custody in {'unknown', 'partial_deleted_before', 'partial_cleanup_before', 'partial_deleted_after', 'partial_cleanup_after', 'partial_stop_after', 'partial_contents_after'}:
+        assert reconciled['active_seconds'] is None
+    if custody == 'unknown':
+        assert reconciled['active_seconds'] is None
+        assert not receipt['clients_stopped']
+
+
+def test_swe_campaign_early_cancellation_records_proven_absence(tmp_path, monkeypatch):
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    root, manifest, _ = campaign(tmp_path, monkeypatch)
+    cell = manifest['cells'][0]
+    base = copy.deepcopy(cell['spec'])
+    base.update(suite='swe', profile='pilot-v2', parameters={
+        'instance_ids': ['example__project-1'],
+        'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64},
+        'paired_image_repo_digests': {'example__project-1': 'sha256:' + 'b' * 64}})
+    base = bind_submission_spec(base)
+    cell.update(spec=base, spec_sha256=job_spec_sha256(base))
+    manifest['manifest_sha256'] = execution._manifest_digest(manifest)
+    directory = execution._directory(manifest, root)
+    atomic_write_json(directory / 'manifest.json', manifest)
+    atomic_write_json(directory / 'state.json', execution._new_state(manifest))
+    child = execution.bind_campaign_child(base, manifest_sha256=manifest['manifest_sha256'],
+        campaign_id=manifest['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=root)
+    store.submit(child)
+    monkeypatch.setattr(worker, '_stop_owned_worker', lambda *a, **k: {'stopped': True})
+    result = worker.cancel_campaign_jobs(manifest, store)
+    assert result['phase'] == 'completed'
+    assert result['children'][0]['state'] == 'cancelled'
+    assert result['children'][0]['failure']['code'] == 'cancelled'
+    assert result['children'][0]['cleanup_deferred'] is False
+    artifact = store.artifact(child['run_id'])
+    assert artifact['results']['container_custody']['reason'] == 'not_started'
+    assert not execution._path(child, root, 'work').exists()

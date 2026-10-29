@@ -9,6 +9,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 from anvil_serving.benchmarking import swe_grader_adapter as adapter
+from anvil_serving.benchmarking import swe_container_custody as custody
 
 
 def test_actual_create_receives_limits_and_inspection_confirms_them():
@@ -158,6 +159,38 @@ def test_paired_grader_resolves_selected_tag_and_creates_by_immutable_id(observe
         with pytest.raises(RuntimeError, match="image identity changed"):
             Collection().create(image=tag)
         assert calls == []
+
+
+def test_grader_records_immutable_id_before_post_create_inspection(tmp_path):
+    image_id = "sha256:" + "a" * 64
+    ledger = custody.initialize(tmp_path, "owner", "run", "/usr/bin/docker")
+    seen = []
+
+    class Container:
+        id = "b" * 64
+        attrs = {"Id": id, "Name": None, "Image": image_id, "Config": {"Labels": None}, "HostConfig": {
+            "Memory": 8589934592, "MemorySwap": 8589934592, "NanoCpus": 4000000000,
+            "PidsLimit": 512, "NetworkMode": "none",
+        }}
+        def reload(self):
+            records = [path for path in (tmp_path / "swe-containers").glob("*.json") if path.name != "contract.json"]
+            record = custody._read_json(records[0])
+            assert record["state"] == "created" and record["container_id"] == self.id
+            self.attrs["Name"] = "/" + record["name"]
+            self.attrs["Config"]["Labels"] = custody.labels(record)
+
+    class Collection:
+        client = SimpleNamespace(images=SimpleNamespace(get=lambda _value: SimpleNamespace(id=image_id)))
+        def create(self, **kwargs):
+            seen.append(kwargs)
+            return Container()
+
+    adapter.install_container_guard(Collection, custody={"module": custody, "ledger": ledger,
+                                                          "owner": "owner", "run_id": "run",
+                                                          "binary": "/usr/bin/docker"})
+    Collection().create(image="grader:tag")
+    assert seen[0]["name"].startswith("anvil-swe-")
+    assert seen[0]["labels"][custody.LABEL_PREFIX + "run_id"] == "run"
 
 
 def test_paired_policy_file_digest_prevents_replacement(tmp_path):

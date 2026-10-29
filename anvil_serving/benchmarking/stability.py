@@ -18,7 +18,7 @@ import urllib.request
 import urllib.error
 
 from .artifacts import atomic_write_json, validate_write_target
-from .requests import resolve_api_key, stream_chat, validate_stream_result
+from .requests import build_body, resolve_api_key, stream_chat, validate_stream_result
 
 SCENARIO_SCHEMA = "anvil-serving.stability-scenario/v1"
 EVIDENCE_SCHEMA = "anvil-serving.stability/v1"
@@ -56,7 +56,7 @@ def validate_scenario(value):
                 "anchor_tokens", "contender_tokens", "anchor_max_tokens",
                 "contender_max_tokens", "rounds", "mode", "prefix_mode",
                 "timeout_seconds", "run_timeout_seconds", "managed_container"}
-    optional = {"api_key_env", "chat_template_kwargs", "reasoning_effort", "temperature", "top_p"}
+    optional = {"api_key_env", "chat_template_kwargs", "reasoning_effort", "temperature", "top_p", "tokenizer_api"}
     if not isinstance(value, dict) or not required <= value.keys() or value.keys() - required - optional:
         raise ValueError("scenario has missing or unknown fields")
     if value["schema"] != SCENARIO_SCHEMA:
@@ -96,6 +96,8 @@ def validate_scenario(value):
             raise ValueError(f"{role} lacks context/output headroom")
     if value["mode"] not in {"serial", "overlap"} or value["prefix_mode"] not in {"unique", "repeat"}:
         raise ValueError("invalid mode or prefix_mode")
+    if value.get("tokenizer_api", "vllm-chat") not in ("vllm-chat", "llamacpp-chat"):
+        raise ValueError("unsupported tokenizer_api")
     kwargs = value.get("chat_template_kwargs", {})
     if not isinstance(kwargs, dict):
         raise ValueError("chat_template_kwargs must be an object")
@@ -146,16 +148,29 @@ def make_prompt(size, salt, role):
 def calibrated_prompt(config, role, salt, key):
     target = config[role + "_tokens"]
     size = max(1, target)
-    url = config["base_url"].rstrip("/")[:-3] + "/tokenize"
+    tokenizer_api = config.get("tokenizer_api", "vllm-chat")
+    if tokenizer_api not in ("vllm-chat", "llamacpp-chat"):
+        raise ValueError("unsupported tokenizer_api")
     for _ in range(8):
         prompt, expected = make_prompt(size, salt, role)
-        body = {"model": config["model"], "messages": [{"role": "user", "content": prompt}],
-                "add_generation_prompt": True,
-                "chat_template_kwargs": config.get("chat_template_kwargs", {})}
-        if "reasoning_effort" in config:
-            body["reasoning_effort"] = config["reasoning_effort"]
-        result = api_json(url, key, config["timeout_seconds"], body)
-        count = result.get("count")
+        if tokenizer_api == "llamacpp-chat":
+            url = config["base_url"].rstrip("/") + "/chat/completions/input_tokens"
+            body = build_body(config["model"], prompt, config[role + "_max_tokens"],
+                              config.get("chat_template_kwargs"), config.get("reasoning_effort"),
+                              config.get("temperature", 0.0), config.get("top_p"))
+            result = api_json(url, key, config["timeout_seconds"], body)
+            if not isinstance(result, dict) or result.get("object") != "response.input_tokens":
+                raise ValueError("invalid chat input token response")
+            count = result.get("input_tokens")
+        else:
+            url = config["base_url"].rstrip("/")[:-3] + "/tokenize"
+            body = {"model": config["model"], "messages": [{"role": "user", "content": prompt}],
+                    "add_generation_prompt": True,
+                    "chat_template_kwargs": config.get("chat_template_kwargs", {})}
+            if "reasoning_effort" in config:
+                body["reasoning_effort"] = config["reasoning_effort"]
+            result = api_json(url, key, config["timeout_seconds"], body)
+            count = result.get("count") if isinstance(result, dict) else None
         if type(count) is not int or count <= 0:
             raise ValueError("tokenizer did not return a positive count")
         if abs(count - target) <= max(8, target * .005):

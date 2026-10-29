@@ -29,7 +29,7 @@ LIMITS = {
     "pids_limit": 512,
     "network_mode": "none",
 }
-_PINNED_CREATE_KEYS = {"image", "name", "user", "detach", "command", "platform", "cap_add"}
+_PINNED_CREATE_KEYS = {"image", "name", "user", "detach", "command", "platform", "cap_add", "labels"}
 
 
 def contained_kwargs(kwargs):
@@ -40,10 +40,12 @@ def contained_kwargs(kwargs):
     for key, expected in LIMITS.items():
         if key in kwargs and (type(kwargs[key]) is not type(expected) or kwargs[key] != expected):
             raise RuntimeError("official grader requested conflicting container limits")
+    if kwargs.get("labels") not in (None, {}):
+        raise RuntimeError("official grader requested unsupported container labels")
     return {**kwargs, **LIMITS}
 
 
-def install_container_guard(collection_class, image_ids=None):
+def install_container_guard(collection_class, image_ids=None, custody=None):
     """Guard every create through the exact SDK seam used by pinned docker_build."""
     original = collection_class.create
 
@@ -59,8 +61,28 @@ def install_container_guard(collection_class, image_ids=None):
             if expected_image is None or self.client.images.get(tag).id != expected_image:
                 raise RuntimeError("paired grader image identity changed or was not selected")
             kwargs["image"] = expected_image
+        if custody is not None:
+            try:
+                prior = custody["module"].cleanup(custody["ledger"], custody["owner"], custody["run_id"])
+                if prior["status"] != "completed":
+                    raise RuntimeError("previous grader container cleanup is unresolved")
+                image_id = expected_image or self.client.images.get(str(kwargs.get("image", ""))).id
+                record_path, record = custody["module"].begin(
+                    custody["ledger"], custody["owner"], custody["run_id"], image_id,
+                    custody["binary"], "grader",
+                )
+            except Exception as exc:
+                raise RuntimeError("grader container custody intent could not be recorded") from exc
+            kwargs["name"] = record["name"]
+            kwargs["labels"] = custody["module"].labels(record)
         container = original(self, **kwargs)
         try:
+            if custody is not None:
+                container_id = getattr(container, "id", None)
+                try:
+                    record = custody["module"].mark_created(record_path, record, container_id)
+                except Exception as exc:
+                    raise RuntimeError("grader container immutable identity was not recorded") from exc
             container.reload()
             config = container.attrs["HostConfig"]
             required = {
@@ -74,8 +96,19 @@ def install_container_guard(collection_class, image_ids=None):
                 raise RuntimeError("Docker grader container has unexpected host access")
             if expected_image is not None and container.attrs.get("Image") != expected_image:
                 raise RuntimeError("Docker grader container image differs from paired identity")
+            if custody is not None:
+                observed = container.attrs
+                if (observed.get("Id") != record["container_id"]
+                        or observed.get("Name") != "/" + record["name"]
+                        or observed.get("Image") != record["image_id"]
+                        or any((observed.get("Config", {}).get("Labels") or {}).get(key) != value
+                               for key, value in custody["module"].labels(record).items())):
+                    raise RuntimeError("Docker grader container custody identity changed")
         except Exception:
-            container.remove(force=True)
+            if custody is None:
+                container.remove(force=True)
+            else:
+                custody["module"].cleanup(custody["ledger"], custody["owner"], custody["run_id"])
             raise
         return container
 
@@ -139,7 +172,7 @@ def load_image_identities(path, expected_sha256):
     return value
 
 
-def run_grader(root, argv, *, adapter_sha256, receipt, image_ids=None,
+def run_grader(root, argv, *, adapter_sha256, receipt, image_ids=None, container_custody=None,
                runner=subprocess.run, run_module=runpy.run_module):
     own_hash = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     if own_hash != adapter_sha256:
@@ -147,6 +180,15 @@ def run_grader(root, argv, *, adapter_sha256, receipt, image_ids=None,
     if image_ids is not None:
         image_ids = validate_image_identities(image_ids)
     root = verify_source(root, runner=runner)
+    if container_custody is not None:
+        if not isinstance(container_custody, dict) or set(container_custody) != {"ledger", "owner", "run_id", "binary", "adapter_sha256"}:
+            raise RuntimeError("grader container custody configuration is invalid")
+        try:
+            from . import swe_container_custody
+        except ImportError:  # The pinned environment executes this file directly.
+            import swe_container_custody
+        swe_container_custody.verify_source_hash(container_custody["adapter_sha256"])
+        container_custody = {**container_custody, "module": swe_container_custody}
     original_path = sys.path[:]
     # File launch otherwise shadows third-party requests with our requests.py.
     adapter_directory = Path(__file__).resolve().parent
@@ -160,7 +202,7 @@ def run_grader(root, argv, *, adapter_sha256, receipt, image_ids=None,
         if image_ids is not None:
             from docker.models.images import ImageCollection
 
-        original = install_container_guard(ContainerCollection, image_ids)
+        original = install_container_guard(ContainerCollection, image_ids, container_custody)
         original_build = BuildApiMixin.build
         BuildApiMixin.build = reject_image_build
         original_pull = None
@@ -196,6 +238,11 @@ def main():
     parser.add_argument("--receipt", required=True)
     parser.add_argument("--image-identities")
     parser.add_argument("--image-identities-sha256")
+    parser.add_argument("--container-custody-ledger")
+    parser.add_argument("--container-custody-owner")
+    parser.add_argument("--container-custody-run-id")
+    parser.add_argument("--container-custody-binary")
+    parser.add_argument("--container-custody-adapter-sha256")
     parser.add_argument("grader_args", nargs=argparse.REMAINDER)
     args = parser.parse_args()
     tail = args.grader_args
@@ -206,8 +253,19 @@ def main():
         parser.error("paired image identity path and digest must be supplied together")
     if args.image_identities:
         image_ids = load_image_identities(args.image_identities, args.image_identities_sha256)
+    custody_values = (args.container_custody_ledger, args.container_custody_owner,
+                      args.container_custody_run_id, args.container_custody_binary)
+    custody_values += (args.container_custody_adapter_sha256,)
+    if any(value is not None for value in custody_values) and not all(custody_values):
+        parser.error("grader container custody arguments must be supplied together")
     run_grader(args.grader_root, tail[1:], adapter_sha256=args.adapter_sha256,
-               receipt=args.receipt, image_ids=image_ids)
+               receipt=args.receipt, image_ids=image_ids,
+               container_custody=({"ledger": args.container_custody_ledger,
+                                   "owner": args.container_custody_owner,
+                                   "run_id": args.container_custody_run_id,
+                                   "binary": args.container_custody_binary,
+                                   "adapter_sha256": args.container_custody_adapter_sha256}
+                                  if all(custody_values) else None))
 
 
 if __name__ == "__main__":

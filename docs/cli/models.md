@@ -435,7 +435,9 @@ inventory: container name and immutable ID, model/revision, available recipe
 and registry digests, image digest, served identity, bound port, GPU selection,
 state, and health. It does not return environment values, raw launch commands,
 credentials, or endpoint addresses. Exited retained candidates are included.
-Missing or malformed identities and non-Anvil containers are excluded.
+Missing or malformed identities and non-Anvil containers are excluded. Use `running --strict` when an empty inventory must establish
+that all discovered managed identities were inspectable: malformed or
+uninspectable managed rows then fail the command instead of being omitted.
 
 When one discovered container matches, `status`, `logs`, and `unload` no longer
 require its name to be recovered out of band or its recipe to remain in the
@@ -443,6 +445,16 @@ currently selected registry. Two matching containers fail closed and require
 an exact `--container`. An unload without a current recipe treats a missing
 native-offload label conservatively and invokes the existing twice-verified,
 exact-path shared-memory cleanup guard after removal.
+
+For an unload bound to a previously observed incarnation, supply both
+`--expected-container-id` (the full 64-character ID) and
+`--expected-started-at` (the exact UTC start timestamp from discovery). The
+command checks the selected recipe pins and rechecks the full identity before
+withdrawing its matching monitoring receipt and removing that immutable ID.
+A missing or changed incarnation is an error, not proof of absence. These
+options apply to recipe containers, not native service-bound recipes. Omit both
+for the existing unload behavior. `--dry-run` still previews without removal;
+`--confirm` is still required to apply.
 
 `--contains` is a case-insensitive literal filter and may be repeated; a line
 is emitted when it contains any selected literal. Filtering happens after the

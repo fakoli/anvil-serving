@@ -267,6 +267,7 @@ def test_result_line_is_one_closed_json_record() -> None:
 
 
 def test_serial_result_is_one_canonical_frame_and_retries_short_writes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guest, "os", SimpleNamespace(**vars(guest.os)))
     result = {
         "schema": guest.RESULT_SCHEMA,
         "cases": [{"name": name, "status": "passed"} for name in guest.CASES],
@@ -300,6 +301,7 @@ def test_serial_result_is_one_canonical_frame_and_retries_short_writes(monkeypat
 
 
 def test_serial_result_rejects_invalid_device_and_failed_write(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(guest, "os", SimpleNamespace(**vars(guest.os)))
     result = {
         "schema": guest.RESULT_SCHEMA,
         "cases": [{"name": name, "status": "passed"} for name in guest.CASES],

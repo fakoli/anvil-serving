@@ -8,6 +8,7 @@ import math
 import os
 from pathlib import Path
 import shutil
+import stat
 import subprocess
 import time
 from typing import Mapping
@@ -15,7 +16,7 @@ from urllib.parse import urlsplit
 
 from .aider_prepare import AIDER_PLAN_SCHEMA as AIDER_PLAN_SCHEMA, _adapter_command
 from .aider_containment import AIDER_REVISION, POLYGLOT_REVISION, SOURCE_HASHES, task_snapshot, validate_task_id
-from .artifacts import atomic_write_json, evidence_file_reference, path_is_within, real_path
+from .artifacts import BenchmarkArtifactError, atomic_write_json, evidence_file_reference, path_is_within, real_path
 from .harnesses import HARNESS_ASSETS_SCHEMA, resolve_container_binary
 from .jobs import BenchmarkJobError, canonical_json_bytes, resolve_owned_run_path, utc_now
 from .profiles import suite_budgets, validate_profile
@@ -266,6 +267,8 @@ def run_aider_benchmark(plan, *, command_runner=partial(_budget_runner, max_outp
         Path(paths[key]).mkdir(parents=True, exist_ok=True)
     if Path(paths["results"]).exists():
         raise BenchmarkJobError("aider_run_exists", "Aider native results already exist; create a new run")
+    from .aider_containment import _registry
+    _registry(plan["run_path"], plan["ownership_id"], plan["run_id"], create=True)
     atomic_write_json(paths["plan"], dict(plan))
     atomic_write_json(paths["selection"], plan["selection"])
     for task_id in plan["selection"]["instance_ids"]:
@@ -396,3 +399,60 @@ def retain_aider_artifacts(*, run_path):
     except (OSError, ValueError, KeyError, TypeError):
         result["state"] = "failed"
     return result
+
+
+def verify_retained_aider_artifacts(*, run_path, retention):
+    """Verify the existing retention manifest and each retained byte without writing."""
+    root = Path(run_path).resolve()
+    manifest = root / "aider" / "retention.json"
+    try:
+        if (manifest.is_symlink() or manifest.parent.is_symlink() or not manifest.is_file()
+                or manifest.stat().st_size > 1024 * 1024):
+            return False
+        with open(manifest, "rb", opener=lambda p, f: os.open(p, f | os.O_NOFOLLOW | os.O_NONBLOCK)) as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                return False
+            raw = stream.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            return False
+        reference = {"path": "aider/retention.json", "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+        if retention.get("manifest_reference") != reference:
+            return False
+        value = json.loads(raw)
+        if (set(value) != {"schema", "state", "artifacts", "missing"}
+                or value.get("schema") != "anvil-serving.aider-retention/v1"
+                or value.get("state") not in {"retained", "incomplete"}
+                or value != {k: retention[k] for k in ("schema", "state", "artifacts", "missing")}
+                or not isinstance(value["artifacts"], list) or not isinstance(value["missing"], list)
+                or len(value["artifacts"]) > 18 or len(value["missing"]) > 18
+                or (value["state"] == "retained") != (not value["missing"])):
+            return False
+        missing = set()
+        for relative in value["missing"]:
+            if not isinstance(relative, str) or not relative or relative in missing:
+                return False
+            path = root / "aider" / relative
+            if (Path(relative).is_absolute() or ".." in Path(relative).parts
+                    or not path.resolve().is_relative_to(root / "aider")
+                    or any(parent.is_symlink() for parent in (path, *path.parents) if parent != root)
+                    or os.path.lexists(path)):
+                return False
+            missing.add(relative)
+        seen, total = set(), 0
+        for entry in value["artifacts"]:
+            relative = entry["path"]
+            path = root / relative
+            if (not isinstance(relative, str) or not relative.startswith("aider/")
+                    or relative in seen or relative.removeprefix("aider/") in missing
+                    or not path.resolve().is_relative_to(root / "aider")
+                    or any(parent.is_symlink() for parent in (path, *path.parents) if parent != root)
+                    or type(entry.get("bytes")) is not int or entry["bytes"] < 0):
+                return False
+            total += entry["bytes"]
+            if (total > 64 * 1024 * 1024 or path.stat().st_size != entry["bytes"]
+                    or evidence_file_reference(str(path), root=str(root)) != entry):
+                return False
+            seen.add(relative)
+        return True
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, BenchmarkArtifactError):
+        return False

@@ -57,7 +57,7 @@ def test_aider_command_manifest_advertises_plan_and_prepare_options():
     def flags(path):
         return {flag for option in records[path]["options"] for flag in option["flags"]}
     assert {"--dry-run", "--profile"} <= flags("eval benchmark aider")
-    assert {"--confirm", "--profile"} <= flags("eval benchmark aider prepare")
+    assert {"--confirm", "--profile", "--spec"} <= flags("eval benchmark aider prepare")
 
 
 @pytest.mark.parametrize("suite", ["aider", "performance"])
@@ -68,7 +68,10 @@ def test_focused_prepare_help_lists_required_profile(capsys, suite):
     help_text = capsys.readouterr().out
     usage = " ".join(help_text.split("options:", 1)[0].split())
     assert "--profile {" in usage
-    assert "[--profile" not in usage
+    if suite == "aider":
+        assert "[--profile" in usage and "--spec" in usage
+    else:
+        assert "[--profile" not in usage
     assert "pilot-v2" in help_text
 
 
@@ -79,3 +82,46 @@ def test_spec_sources_are_required_and_exclusive_before_store(monkeypatch, actio
     with pytest.raises(SystemExit) as exc:
         jobs_cli.run(["aider", action, *options])
     assert exc.value.code == 2
+
+
+def test_aider_prepare_spec_dispatches_validated_selection(tmp_path, monkeypatch):
+    ids = [f"{language}/exercises/practice/example" for language in ("cpp", "python", "rust", "java", "javascript", "go")]
+    spec = {"schema": JOB_SPEC_SCHEMA, "run_id": "run", "ownership_id": "owner", "suite": "aider", "profile": "pilot-v2",
+            "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "fixture"}, "worker": {"id": "worker"},
+            "submitted_at": "2026-10-24T12:00:00Z", "timeout_s": 300, "parameters": {"instance_ids": ids}}
+    path = tmp_path / "spec.json"; path.write_text(json.dumps(spec))
+    monkeypatch.setattr(jobs_cli, "_store", lambda: SimpleNamespace(run_root=str(tmp_path)))
+    calls = []
+    monkeypatch.setattr(jobs_cli, "prepare_harness_assets", lambda *args, **kwargs: calls.append(kwargs) or {"ok": True})
+    from anvil_serving import cli
+    assert cli.main(["eval", "benchmark", "aider", "prepare", "--spec", str(path), "--offline", "--confirm"]) == 0
+    assert calls[0]["aider_instance_ids"] == ids and calls[0]["run_id"] == "run" and calls[0]["offline"]
+    for bad_ids in ([], ids[:-1] + ids[:1], [ids[0], "cpp/exercises/practice/other"], ids[:-1] + ["go/../escape"], ids[:-1] + ["swift/exercises/practice/example"]):
+        spec["parameters"]["instance_ids"] = bad_ids; path.write_text(json.dumps(spec))
+        with pytest.raises(BenchmarkJobError): jobs_cli.run(["aider", "prepare", "--spec", str(path), "--confirm"])
+    with pytest.raises(BenchmarkJobError): jobs_cli.run(["aider", "prepare", "--spec", str(path), "--profile", "pilot-v2", "--confirm"])
+    assert len(calls) == 1
+
+
+def test_aider_prepare_spec_cli_reaches_environment_selection(tmp_path, monkeypatch):
+    from anvil_serving import cli
+    from anvil_serving.benchmarking import aider_prepare, harnesses
+    ids = [f"{language}/exercises/practice/example" for language in ("cpp", "python", "rust", "java", "javascript", "go")]
+    spec = {"schema": JOB_SPEC_SCHEMA, "run_id": "selected", "ownership_id": "owner", "suite": "aider", "profile": "pilot-v2",
+            "endpoint": {"base_url": "http://127.0.0.1:8000/v1", "model": "fixture"}, "worker": {"id": "worker"},
+            "submitted_at": "2026-10-24T12:00:00Z", "timeout_s": 300, "parameters": {"instance_ids": ids}}
+    path = tmp_path / "spec.json"; path.write_text(json.dumps(spec))
+    monkeypatch.setattr(jobs_cli, "_store", lambda: SimpleNamespace(run_root=str(tmp_path / "runs")))
+    monkeypatch.setenv("ANVIL_BENCHMARK_CACHE_ROOT", str(tmp_path / "cache"))
+    monkeypatch.setattr(harnesses, "_prepare_repository", lambda **kwargs: ({"kind": "git", "cache_key": kwargs["name"]}, []))
+    calls = []
+    def prepare_environment(**kwargs):
+        calls.append(kwargs)
+        return {"fixture": "python"}, {"fixture": "environment", "selection": kwargs.get("instance_ids")}, []
+    monkeypatch.setattr(aider_prepare, "prepare_aider_environment", prepare_environment)
+    assert cli.main(["eval", "benchmark", "aider", "prepare", "--spec", str(path), "--offline", "--confirm"]) == 0
+    assert calls[0]["instance_ids"] == ids and calls[0]["offline"] is True
+    manifest = json.loads((tmp_path / "runs/owner/selected/assets.json").read_text())
+    assert manifest["aider_environment"]["selection"] == ids
+    assert cli.main(["eval", "benchmark", "aider", "prepare", "--profile", "pilot-v2", "--run-id", "legacy", "--ownership-id", "owner", "--offline", "--confirm"]) == 0
+    assert "instance_ids" not in calls[1]

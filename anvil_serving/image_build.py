@@ -8,6 +8,9 @@ import json
 import math
 import os
 import re
+import selectors
+import signal
+import sys
 import subprocess
 import tempfile
 import threading
@@ -41,7 +44,7 @@ def build_plan(name: str, config: Path) -> dict:
     row = rows[name]
     required = {"context", "dockerfile", "image", "cpus", "memory_mib"}
     if not isinstance(row, dict) or not required <= row.keys() or row.keys() - required - {
-        "platform", "timeout_seconds"
+        "platform", "timeout_seconds", "min_host_available_mib", "min_context_free_mib"
     }:
         raise ImageBuildError("invalid image build fields")
     for field in ("context", "dockerfile", "image"):
@@ -75,6 +78,11 @@ def build_plan(name: str, config: Path) -> dict:
         raise ImageBuildError("build memory_mib must be between 256 and 16384")
     if type(timeout) is not int or not 30 <= timeout <= 14400:
         raise ImageBuildError("build timeout_seconds must be between 30 and 14400")
+    guard_fields = {"min_host_available_mib", "min_context_free_mib"}
+    present = guard_fields & row.keys()
+    if present and (present != guard_fields or sys.platform != "linux" or any(
+            type(row[key]) is not int or not 1 <= row[key] <= 10**9 for key in guard_fields)):
+        raise ImageBuildError("host guard requires both positive Linux memory and disk floors")
     platform = row.get("platform", "linux/amd64")
     if not isinstance(platform, str) or platform not in ("linux/amd64", "linux/arm64"):
         raise ImageBuildError("bounded image builds require a Linux platform")
@@ -85,7 +93,8 @@ def build_plan(name: str, config: Path) -> dict:
     return {"schema": "anvil-serving.image-build/v1", "name": name, "image": image,
             "dockerfile_sha256": hashlib.sha256(source_bytes).hexdigest(),
             "cpus": cpus, "memory_mib": memory, "platform": platform,
-            "timeout_seconds": timeout, "argv": argv}
+            "timeout_seconds": timeout, "argv": argv,
+            **({key: row[key] for key in sorted(guard_fields)} if present else {})}
 
 
 def _private_run_directory(log_dir: Path, runner) -> Path:
@@ -111,9 +120,12 @@ def _private_run_directory(log_dir: Path, runner) -> Path:
     return directory
 
 
-def _stream_build(argv, *, source_bytes, log, timeout, max_log_bytes=MAX_LOG_BYTES):
+def _stream_build(argv, *, source_bytes, log, timeout, max_log_bytes=MAX_LOG_BYTES, guard=None):
     """Feed immutable Dockerfile bytes and drain output with bounded retention."""
     state = {"log_truncated": False}
+    if guard is not None:
+        return _guarded_stream_build(argv, source_bytes=source_bytes, log=log,
+                                     timeout=timeout, max_log_bytes=max_log_bytes, guard=guard)
     with tempfile.TemporaryFile() as source:
         source.write(source_bytes)
         source.seek(0)
@@ -153,6 +165,202 @@ def _stream_build(argv, *, source_bytes, log, timeout, max_log_bytes=MAX_LOG_BYT
     return state
 
 
+
+def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, guard):
+    """Latch termination signals while child registration and cleanup complete."""
+    interrupted = [None]
+    previous = {}
+    def handle_termination(signum, frame):
+        if interrupted[0] is None:
+            interrupted[0] = signal.Signals(signum).name
+    try:
+        # signal.signal rejects non-main threads before any child is launched.
+        for kind in (signal.SIGTERM, signal.SIGINT):
+            previous[kind] = signal.getsignal(kind)
+            signal.signal(kind, handle_termination)
+        return _guarded_stream_build_inner(argv, source_bytes=source_bytes, log=log,
+                                           timeout=timeout, max_log_bytes=max_log_bytes,
+                                           guard=guard, interrupted=interrupted)
+    finally:
+        for kind, handler in previous.items():
+            signal.signal(kind, handler)
+
+
+def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_bytes, guard, interrupted):
+    """Own the observer and build client; daemon cancellation remains unverified."""
+    from .reasoning_probe import _read_bytes
+    observer_path = Path(__file__).with_name("image_build_observer.py")
+    observer_source = _read_bytes(observer_path)
+    observer_sha256 = hashlib.sha256(observer_source).hexdigest()
+    selector = selectors.DefaultSelector()
+    try:
+        observer = subprocess.Popen([sys.executable, "-I", "-S", "-B", "-c",
+                                     observer_source.decode("utf-8"), guard["context"]],
+                                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                    stderr=subprocess.DEVNULL, env={"LANG": "C.UTF-8"},
+                                    **_process_group_options())
+    except BaseException:
+        try:
+            selector.close()
+        except BaseException:
+            pass
+        raise
+    process = None
+    reader = None
+    reader_started = False
+    reader_start_attempted = False
+    state = {"log_truncated": False, "observer_sha256": observer_sha256,
+             "min_available_bytes": None, "min_free_bytes": None}
+    pending = b""
+    last_sample = None
+    last_observed = time.monotonic()
+    started = last_observed
+
+    def cleanup_failure(stage, exc):
+        state.setdefault("cleanup_errors", []).append({"stage": stage, "type": type(exc).__name__})
+        state["cleanup"] = "unknown"
+        state.setdefault("error", "owned process cleanup unknown")
+        state["returncode"] = -1
+        if process is not None:
+            state.setdefault("cancellation", "daemon_state_unverified")
+
+    def cleanup_step(stage, action):
+        try:
+            action()
+        except BaseException as exc:
+            cleanup_failure(stage, exc)
+
+    def stop_owned(child, stage):
+        try:
+            _terminate_process_tree(child)
+            if child.poll() is None:
+                raise OSError("owned process still running")
+        except BaseException as exc:
+            cleanup_failure(stage, exc)
+
+    def heartbeat(wait):
+        nonlocal pending, last_sample, last_observed
+        if interrupted[0]:
+            raise InterruptedError("build interrupted by " + interrupted[0])
+        if observer.poll() is not None:
+            raise ValueError("host observer exited")
+        if selector.select(wait):
+            chunk = os.read(observer.stdout.fileno(), 4096)
+            if not chunk:
+                raise ValueError("host observer output closed")
+            pending += chunk
+            if len(pending) > 4096:
+                raise ValueError("host observer output overflow")
+            while b"\n" in pending:
+                line, pending = pending.split(b"\n", 1)
+                sample = json.loads(line)
+                if (not isinstance(sample, dict) or set(sample) != {"available_bytes", "free_bytes", "monotonic"}
+                        or any(type(sample[k]) is not int or sample[k] < 0 for k in ("available_bytes", "free_bytes"))
+                        or type(sample["monotonic"]) not in (int, float) or not math.isfinite(sample["monotonic"])):
+                    raise ValueError("invalid host observer sample")
+                now = time.monotonic()
+                stamp = sample["monotonic"]
+                if stamp > now or now - stamp > 5 or last_sample is not None and (stamp <= last_sample or stamp - last_sample > 5):
+                    raise ValueError("host observer heartbeat gap")
+                last_sample, last_observed = stamp, now
+                for name, key in (("min_available_bytes", "available_bytes"), ("min_free_bytes", "free_bytes")):
+                    state[name] = sample[key] if state[name] is None else min(state[name], sample[key])
+                if sample["available_bytes"] < guard["min_host_available_mib"] * 1024 * 1024:
+                    raise ValueError("host available memory below floor")
+                if sample["free_bytes"] < guard["min_context_free_mib"] * 1024 * 1024:
+                    raise ValueError("context filesystem free space below floor")
+        if time.monotonic() - last_observed > 5:
+            raise ValueError("host observer heartbeat gap")
+
+    try:
+        if interrupted[0]:
+            raise InterruptedError("build interrupted by " + interrupted[0])
+        selector.register(observer.stdout, selectors.EVENT_READ)
+        os.set_blocking(observer.stdout.fileno(), False)
+        while last_sample is None:
+            heartbeat(0.2)
+        heartbeat(0)
+        with tempfile.TemporaryFile() as source:
+            source.write(source_bytes)
+            source.seek(0)
+            if interrupted[0]:
+                raise InterruptedError("build interrupted by " + interrupted[0])
+            process = subprocess.Popen(argv, stdin=source, stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT, bufsize=0, **_process_group_options())
+            if interrupted[0]:
+                raise InterruptedError("build interrupted by " + interrupted[0])
+            def drain():
+                retained = 0
+                try:
+                    while chunk := process.stdout.read(65536):
+                        keep = min(len(chunk), max(0, max_log_bytes - retained))
+                        if keep:
+                            log.write(chunk[:keep])
+                            log.flush()
+                            retained += keep
+                        if keep < len(chunk):
+                            state["log_truncated"] = True
+                except (OSError, ValueError):
+                    state["output_error"] = True
+            reader = threading.Thread(target=drain, daemon=True)
+            reader_start_attempted = True
+            reader.start()
+            reader_started = True
+            while process.poll() is None:
+                if time.monotonic() - started >= timeout:
+                    raise TimeoutError("build client timed out")
+                heartbeat(0.2)
+            heartbeat(0)
+            state["returncode"] = process.returncode
+            if process.returncode != 0:
+                state["cancellation"] = "daemon_state_unverified"
+            reader.join(timeout=5)
+            if reader.is_alive() or state.get("output_error"):
+                raise ValueError("build output drain incomplete")
+            if interrupted[0]:
+                raise InterruptedError("build interrupted by " + interrupted[0])
+            if _read_bytes(observer_path) != observer_source:
+                raise ValueError("host observer source changed")
+    except (OSError, ValueError, TimeoutError, json.JSONDecodeError) as exc:
+        state.update({"returncode": -1, "error": str(exc)})
+        if process is not None:
+            stop_owned(process, "build_client")
+            state["cancellation"] = "client_tree_termination_requested; daemon_state_unverified"
+    except BaseException as exc:
+        state.update({"returncode": -1, "error": "build interrupted: " + type(exc).__name__,
+                      "failure_type": type(exc).__name__})
+        if process is not None:
+            stop_owned(process, "build_client")
+            state["cancellation"] = "client_tree_termination_requested; daemon_state_unverified"
+    finally:
+        if reader_start_attempted and not reader_started:
+            cleanup_failure("reader_start", RuntimeError("reader start outcome unknown"))
+            try:
+                reader_started = reader.ident is not None
+            except BaseException as exc:
+                cleanup_failure("reader_status", exc)
+        if reader_started:
+            cleanup_step("reader_join", lambda: reader.join(timeout=2))
+            reader_alive = True
+            try:
+                reader_alive = reader.is_alive()
+            except BaseException as exc:
+                cleanup_failure("reader_status", exc)
+            if reader_alive:
+                cleanup_failure("reader_join", RuntimeError("reader still running"))
+                if process is not None:
+                    stop_owned(process, "build_client")
+        if process is not None and process.stdout is not None:
+            cleanup_step("build_output_close", process.stdout.close)
+        cleanup_step("selector_close", selector.close)
+        stop_owned(observer, "observer")
+        cleanup_step("observer_output_close", observer.stdout.close)
+    if interrupted[0] and "error" not in state:
+        state.update({"returncode": -1, "error": "build interrupted by " + interrupted[0]})
+        if process is not None:
+            state.setdefault("cancellation", "daemon_state_unverified")
+    return state
+
 def execute_build(plan: dict, *, confirm=False, dry_run=False, log_dir: Path,
                   runner=subprocess.run, build_runner=_stream_build,
                   directory_factory=_private_run_directory) -> dict:
@@ -169,6 +377,16 @@ def execute_build(plan: dict, *, confirm=False, dry_run=False, log_dir: Path,
                       capture_output=True, text=True, timeout=30)
         if host.returncode or host.stdout.strip() != "linux":
             raise ImageBuildError("Docker must run Linux containers; no build started")
+        existing = runner(["docker", "image", "ls", "--quiet", "--no-trunc",
+                           "--filter", "reference=" + plan["image"]],
+                          capture_output=True, text=True, timeout=30)
+        if existing.returncode or not isinstance(existing.stdout, str) or len(existing.stdout) > 300000:
+            raise ImageBuildError("image tag availability unknown; no build started")
+        identities = existing.stdout.splitlines()
+        if any(not re.fullmatch(r"sha256:[0-9a-f]{64}", item) for item in identities):
+            raise ImageBuildError("image tag availability unknown; no build started")
+        if identities:
+            raise ImageBuildError("image tag already exists; no build started")
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ImageBuildError("Docker build prerequisites unavailable; no build started") from exc
     with Path(plan["argv"][plan["argv"].index("--file") + 1]).open("rb") as source_file:
@@ -185,8 +403,14 @@ def execute_build(plan: dict, *, confirm=False, dry_run=False, log_dir: Path,
     descriptor = os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(descriptor, "wb") as log:
         try:
-            built = build_runner(argv, source_bytes=source_bytes, log=log,
-                                 timeout=plan["timeout_seconds"])
+            guard = ({"context": plan["argv"][-1],
+                      "min_host_available_mib": plan["min_host_available_mib"],
+                      "min_context_free_mib": plan["min_context_free_mib"]}
+                     if "min_host_available_mib" in plan else None)
+            options = {"source_bytes": source_bytes, "log": log, "timeout": plan["timeout_seconds"]}
+            if guard is not None:
+                options["guard"] = guard
+            built = build_runner(argv, **options)
             result.update(built)
             result["ok"] = built["returncode"] == 0 and not built.get("output_error") and not built.get("error")
         except subprocess.TimeoutExpired:

@@ -2,8 +2,10 @@
 
 Before qualifying a new runtime, inspect its immutable local image through
 `anvil-serving host docker-image inspect`. It returns the resolved image ID,
-repository digests, OS, architecture, and the OCI source, revision, and version
-labels. Use `--label` to request additional build labels explicitly.
+repository digests, OS, architecture, Docker-reported image size in bytes, and
+the OCI source, revision, and version labels. Use `--label` to request
+additional build labels explicitly. Image size is not incremental physical
+disk usage: image layers may be shared.
 
 ```bash
 anvil-serving host docker-image inspect \

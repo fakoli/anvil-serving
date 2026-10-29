@@ -185,7 +185,7 @@ def test_model_id_discovery_binds_monitoring_publication(tmp_path, monkeypatch, 
     assert fetch_calls == ['/ready', '/v1/models']
 
 
-@pytest.mark.parametrize('engine', ['vllm', 'sglang', 'flare', 'ignis'])
+@pytest.mark.parametrize('engine', ['vllm', 'sglang', 'flare', 'ignis', 'llamacpp'])
 def test_exact_binding_single_port_receipt(tmp_path, monkeypatch, engine):
     recipe, row = monitoring_slot(tmp_path, monkeypatch, engine)
     calls = []
@@ -392,3 +392,23 @@ def test_monitor_sync_help_declares_required_model_without_monitoring(monkeypatc
         m.main(['--container', 'candidate', '--registry', 'recipes.toml'])
     assert error.value.code == 2
     assert 'required: model' in capsys.readouterr().err
+
+@pytest.mark.parametrize('mode', ['match', 'replacement', 'missing_identity', 'other_container'])
+def test_bound_withdraw_preserves_newer_or_unknown_monitoring_generation(tmp_path, monkeypatch, mode):
+    monkeypatch.setenv('ANVIL_SERVING_HOME', str(tmp_path))
+    start='2026-01-01T00:00:00Z'
+    receipt={'schema':m.SCHEMA,'state':'active','generation':'c'*64,'container':'candidate',
+             'container_id':'a'*64,'started_at':start}
+    if mode=='replacement':receipt['container_id']='b'*64
+    if mode=='missing_identity':del receipt['started_at']
+    if mode=='other_container':receipt['container']='another'
+    m._write(receipt)
+    if mode in {'replacement','missing_identity'}:
+        with pytest.raises(ValueError,match='incarnation'):m.withdraw(container='candidate',expected_container_id='a'*64,expected_started_at=start)
+        assert m.read_json(m.receipt_path())==receipt
+    elif mode=='other_container':
+        assert m.withdraw(container='candidate',expected_container_id='a'*64,expected_started_at=start) is None
+        assert m.read_json(m.receipt_path())==receipt
+    else:
+        m.withdraw(container='candidate',expected_container_id='a'*64,expected_started_at=start)
+        assert m.read_json(m.receipt_path())['state']=='withdrawn'

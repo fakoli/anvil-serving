@@ -22,7 +22,7 @@ BENCHMARK_PROFILE_SCHEMA = "anvil-serving.benchmark-profile/v1"
 BENCHMARK_PROFILE_SCHEMA_V2 = "anvil-serving.benchmark-profile/v2"
 V1_PROFILE_NAMES = frozenset({"smoke", "scout", "deep"})
 V1_SUITE_NAMES = frozenset({"context", "agentic", "swe"})
-PROFILE_NAMES = V1_PROFILE_NAMES | {"pilot-v2", "aider-diagnostic-16k-v1", "aider-diagnostic-32k-v1"}
+PROFILE_NAMES = V1_PROFILE_NAMES | {"pilot-v2", "aider-diagnostic-16k-v1", "aider-diagnostic-32k-v1", "qualification-64k-v1"}
 SUITE_NAMES = frozenset({"context", "agentic", "swe", "aider", "performance"})
 # Reuse the existing bounded evaluation attempt and completion ceilings.
 _BUDGET_BOUNDS = {

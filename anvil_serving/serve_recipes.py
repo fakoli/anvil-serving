@@ -1070,7 +1070,7 @@ def _recipe_served_identity(row: dict, fallback: str) -> str:
     if not isinstance(tokens, list):
         return fallback
     # Preserve the existing served-name override before the model-id alias.
-    for flag in ("--served-model-name", "--model-id"):
+    for flag in ("--served-model-name", "--model-id", "--alias", "-a"):
         for index, token in enumerate(tokens):
             if not isinstance(token, str):
                 continue

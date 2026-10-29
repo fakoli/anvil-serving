@@ -42,7 +42,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=confirm_options + (
+                options=confirm_options + ((_option("--spec", summary="Client-side Aider selection job spec.", value_name="PATH"),) if name == "aider" else ()) + (
                     _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
                     _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
                     _option("--offline", summary="Require exact assets to exist in cache."),
@@ -276,6 +276,18 @@ def commands() -> CommandNode:
         "eval",
         "Run quality evaluation workflows.",
         children=(
+            _resource_node(
+                "runtime-source-inspect",
+                "Read fixed accounting source hashes from a bound managed runtime.",
+                "anvil_serving.runtime_source_inspection",
+                role="model-serve", argv_prefix=(), execution_host_os=("linux",),
+                options=(
+                    _option("--registry", summary="Managed recipe registry.", value_name="PATH"),
+                    _option("--container", summary="Managed recipe container name.", value_name="NAME"),
+                    _option("--plan", summary="Fixed profile and expected generation pins.", value_name="PATH"),
+                ),
+                docs_anchor="docs/cli/runtime-source-inspection.md",
+            ),
             _resource_node(
                 "reasoning-limit-probe",
                 "Preview or execute an isolated, bounded reasoning-boundary diagnostic.",

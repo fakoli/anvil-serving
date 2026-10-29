@@ -146,8 +146,10 @@ def plan_campaign(value):
             raise BenchmarkJobError("bad_campaign", "child run IDs must be unique and distinct from the campaign")
         runs.add(spec["run_id"])
         parameters = spec["parameters"]
-        if spec["suite"] not in {"agentic", "aider", "performance"}:
-            raise BenchmarkJobError("campaign_suite_unsupported", "campaigns currently support agentic, Aider and finite performance cells")
+        if spec["suite"] not in {"agentic", "aider", "performance", "swe"}:
+            raise BenchmarkJobError("campaign_suite_unsupported", "campaign suite is unsupported")
+        if spec["suite"] == "swe" and (parameters.get("operation") == "regrade" or not parameters.get("paired_image_ids") or not parameters.get("paired_image_repo_digests")):
+            raise BenchmarkJobError("bad_campaign", "SWE quality cells require image IDs and registry digests and cannot regrade")
         selection = parameters.get("case_ids") if spec["suite"] == "agentic" else parameters.get("instance_ids")
         if spec["suite"] != "performance" and selection != [cell["task_id"]]:
             raise BenchmarkJobError("bad_campaign", "each child must explicitly select exactly its one task")
@@ -160,6 +162,8 @@ def plan_campaign(value):
             raise BenchmarkJobError("bad_campaign", "performance children require finite basic requests, no warmup and serial execution")
         cell["spec"], cell["spec_sha256"] = spec, job_spec_sha256(spec)
         admission = validate_submission_spec(spec)
+        if spec["suite"] == "swe" and "budgets" not in admission:
+            raise BenchmarkJobError("bad_campaign", "SWE quality cells require a budgeted profile")
         cell["matching"] = {
             "controls_sha256": _digest(admission.get("request_controls", {})),
             "workload_sha256": _digest({"suite": spec["suite"], "task_id": cell["task_id"],

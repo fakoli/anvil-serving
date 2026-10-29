@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import signal
 import stat
@@ -15,6 +17,7 @@ import tempfile
 import threading
 import time
 from typing import Any, Mapping
+import uuid
 
 from .artifacts import (
     BenchmarkArtifactError,
@@ -32,7 +35,9 @@ from .suite_runner import run_agentic_suite, run_context_suite
 from .swe import build_swe_run_plan, run_swe_benchmark
 from .submission import validate_submission_spec
 from .swe_logs import server_log_collector
-from .retention import read_retained_swe_artifacts, retain_swe_artifacts
+from .retention import (
+    _aider_retention_complete, _swe_retention_complete, read_retained_swe_artifacts, retain_swe_artifacts,
+)
 from ..control_plane.controller.store import BenchmarkJobStore
 
 
@@ -159,6 +164,8 @@ def _retain_stopped_aider(record: Mapping[str, Any], *, run_path: str) -> dict[s
     )
     if cleanup["status"] != "completed":
         return {"state": "failed", "reason": "aider_container_cleanup_unverified", "containers": cleanup}
+    if "campaign" in spec and not os.path.lexists(os.path.join(run_path, "aider")):
+        return {"state": "absent", "reason": "not_started", "containers": cleanup}
     return {**retain_aider_artifacts(run_path=run_path), "containers": cleanup}
 
 
@@ -167,6 +174,157 @@ def _retain_external_artifacts(record: Mapping[str, Any], *, run_path: str) -> d
         return _retain_stopped_aider(record, run_path=run_path)
     from .performance import retain_performance_artifacts
     return retain_performance_artifacts(run_path=run_path)
+
+
+def _aider_campaign_requires_stop(store, spec):
+    from .campaign_execution import _read, _path, _manifest_digest, _requires_aider_stop, bind_campaign_child
+    try:
+        binding = spec['campaign']
+        manifest = _read(_path({'ownership_id': spec['ownership_id'], 'run_id': binding['campaign_id']},
+                               store.run_root, 'campaign/manifest.json'))
+        if _manifest_digest(manifest) != binding['manifest_sha256']:
+            return True
+        cells = [cell for cell in manifest['cells'] if cell['cell_id'] == binding['cell_id']]
+        if len(cells) != 1:
+            return True
+        cell = cells[0]
+        expected = bind_campaign_child(cell['spec'], manifest_sha256=binding['manifest_sha256'],
+            campaign_id=binding['campaign_id'], cell_id=cell['cell_id'], arm_id=cell['arm_id'], batch_id=cell['batch_id'])
+        return True if expected != spec else _requires_aider_stop(cell)
+    except (OSError, ValueError, TypeError, KeyError, AttributeError, BenchmarkJobError):
+        return True  # Unknown history cannot authorize deletion or closure.
+
+
+def _aider_campaign_stop_reference(store, record, retention, run_path, *, cancelling=False):
+    from .aider_containment import aider_custody_snapshot
+    spec = record["spec"]
+    proof = {"schema": "anvil-serving.aider-campaign-stop/v1", "ownership_id": spec["ownership_id"],
+             "run_id": spec["run_id"], "spec_sha256": record["spec_sha256"], "retention": retention,
+             "records": aider_custody_snapshot(run_path=run_path, ownership_id=spec["ownership_id"], run_id=spec["run_id"])}
+    if cancelling or retention.get("state") == "absent":
+        proof["worker_stop"] = evidence_file_reference(os.path.join(run_path, "evidence", "worker-stop-receipt.json"), root=run_path)
+    return _write_stage(store, record, "aider-campaign-stop", proof)
+
+
+def _read_swe_custody_plan(path: str, *, expected_sha256: str | None = None,
+                           required_schema: str | None = None, owner: str | None = None,
+                           run_id: str | None = None) -> str | None:
+    """Read one stable, bounded plan and return its pinned custody-helper hash."""
+    expected_hash: str | None = None
+    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+    with os.fdopen(descriptor, "rb") as stream:
+        before = os.fstat(stream.fileno())
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("SWE plan is not regular")
+        raw = stream.read(262_145)
+        after = os.fstat(stream.fileno())
+    current = os.stat(path, follow_symlinks=False)
+    def identity(item):
+        return (item.st_dev, item.st_ino, item.st_mode, item.st_size, item.st_mtime_ns, item.st_ctime_ns)
+    if len(raw) > 262_144 or identity(before) != identity(after) or identity(after) != identity(current):
+        raise ValueError("SWE plan changed or exceeds its bound")
+    if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("retained SWE plan digest differs from its manifest")
+    planned = json.loads(raw)
+    if required_schema is not None:
+        source = planned.get("source") if isinstance(planned, dict) else None
+        if (not isinstance(planned, dict) or planned.get("schema") != required_schema
+                or planned.get("ownership_id") != owner
+                or planned.get("run_id") != run_id or not isinstance(source, dict)
+                or not all(isinstance(source.get(name), str) and re.fullmatch(r"[0-9a-f]{64}", source[name])
+                           for name in ("plan_sha256", "predictions_sha256"))):
+            raise ValueError("SWE custody binding is invalid")
+    harnesses = planned.get("harnesses") if isinstance(planned, dict) else None
+    custody = harnesses.get("container_custody") if isinstance(harnesses, dict) else None
+    if custody is not None:
+        expected_hash = custody.get("adapter_sha256") if isinstance(custody, dict) else None
+        if not isinstance(expected_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+            raise ValueError("SWE custody source hash is invalid")
+    return expected_hash
+
+
+def _retained_swe_custody_hash(run_path: str, *, owner: str, run_id: str) -> tuple[str | None, str | None]:
+    """Prefer work, then only a manifest-verified canonical plan after retention."""
+    work_plan = os.path.join(run_path, "work", "swe-plan.json")
+    try:
+        return _read_swe_custody_plan(work_plan), None
+    except FileNotFoundError:
+        pass
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None, "plan_unreadable"
+    canonical = os.path.join(run_path, "evidence", "swe-canonical")
+    if os.path.lexists(canonical):
+        try:
+            manifest = read_retained_swe_artifacts(run_path=run_path)
+            plan_entry = next((entry for entry in manifest["files"] if entry.get("path") == "swe-plan.json"), None)
+            if not isinstance(plan_entry, dict) or not isinstance(plan_entry.get("sha256"), str):
+                raise ValueError("canonical SWE plan is unavailable")
+            retained_plan = os.path.join(canonical, "swe-plan.json")
+            return _read_swe_custody_plan(retained_plan, expected_sha256=plan_entry["sha256"]), None
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            return None, "plan_unreadable"
+    try:
+        binding = os.path.join(run_path, "evidence", "swe-regrade-custody-binding.json")
+        return _read_swe_custody_plan(
+            binding, required_schema="anvil-serving.swe-regrade-custody-binding/v1",
+            owner=owner, run_id=run_id,
+        ), None
+    except FileNotFoundError:
+        return None, "plan_missing"
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        return None, "plan_unreadable"
+
+
+def _swe_container_cleanup(record: Mapping[str, Any], *, run_path: str, phase: str) -> dict[str, Any]:
+    """Daemon-owned SWE containers require an owner-scoped absence receipt."""
+    spec = record["spec"]
+    ledger = os.path.join(run_path, "swe-containers")
+    expected_hash, plan_error = _retained_swe_custody_hash(
+        run_path, owner=spec["ownership_id"], run_id=spec["run_id"],
+    )
+
+    if not os.path.isdir(ledger):
+        # Retained plans that predate custody do not acquire it retroactively.
+        # Every current custody plan instead requires an on-disk ledger.
+        required = expected_hash is not None or plan_error not in {None, "plan_missing"}
+        return {"status": "incomplete" if required else "completed",
+                "reason": "ledger_missing" if required else "not_started",
+                "containers": [], "errors": []}
+    if plan_error is not None or expected_hash is None:
+        return {"status": "incomplete", "reason": plan_error or "custody_hash_missing",
+                "containers": [], "errors": []}
+
+    from . import swe_container_custody
+    try:
+        swe_container_custody.verify_source_hash(expected_hash)
+    except (OSError, ValueError, TypeError):
+        return {"status": "incomplete", "reason": "custody_source_hash_mismatch",
+                "containers": [], "errors": []}
+    receipt = os.path.join(run_path, "evidence", f"swe-container-cleanup-{phase}-{uuid.uuid4().hex}.json")
+    Path(receipt).parent.mkdir(parents=True, exist_ok=True)
+    cleanup = swe_container_custody.cleanup(
+        ledger, spec["ownership_id"], spec["run_id"], receipt_path=receipt,
+    )
+    return {**cleanup, "receipt": evidence_file_reference(receipt, root=run_path)}
+
+
+def _retain_stopped_swe(record: Mapping[str, Any], *, run_path: str, work_path: str, phase: str) -> dict[str, Any]:
+    cleanup = _swe_container_cleanup(record, run_path=run_path, phase=phase)
+    if cleanup["status"] != "completed":
+        return {"state": "failed", "reason": "swe_container_cleanup_unverified", "containers": cleanup}
+    if ("campaign" in record["spec"] and cleanup.get("reason") == "not_started"
+            and not os.path.lexists(os.path.join(run_path, "work"))
+            and not os.path.lexists(os.path.join(run_path, "swe-containers"))):
+        return {"state": "absent", "reason": "not_started", "containers": cleanup}
+    return {**retain_swe_artifacts(run_path=run_path, work_path=work_path), "containers": cleanup}
+
+
+def _swe_campaign_stop_reference(store, record, retention, run_path, *, cancelling=False):
+    proof = {"schema": "anvil-serving.swe-campaign-stop/v1", "ownership_id": record["spec"]["ownership_id"],
+             "run_id": record["spec"]["run_id"], "spec_sha256": record["spec_sha256"], "retention": retention}
+    if cancelling or retention.get("state") == "absent":
+        proof["worker_stop"] = evidence_file_reference(os.path.join(run_path, "evidence", "worker-stop-receipt.json"), root=run_path)
+    return _write_stage(store, record, "swe-campaign-stop", proof)
 
 
 def _run_suite(
@@ -241,9 +399,19 @@ def _run_suite(
 
 def _finish_job(store, spec, target, *, results, failure=None):
     if 'campaign' not in spec:
-        return store.transition(spec['run_id'], target, results=results, failure=failure)
+        finished = store.transition(spec['run_id'], target, results=results, failure=failure)
+        if spec["suite"] == "swe":
+            finished = {**finished, "container_custody": results.get("container_custody", {"status": "incomplete"})}
+        return finished
     # Waiting must never hold the write lock: cancellation must stop all siblings.
-    reference = campaign_result_reference(store, spec)
+    try:
+        reference = campaign_result_reference(store, spec)
+    except Exception as secondary:
+        if target != "failed" or spec["suite"] not in {"swe", "aider"}:
+            raise
+        results = dict(results)
+        results.setdefault("secondary_failures", []).append({"stage": "campaign_result_reference", "type": type(secondary).__name__})
+        reference = {}  # An unanchored failed child cannot release its reservation.
     with child_lock(store, spec):
         current = store.status(spec['run_id'])
         if current['state'] != 'running':
@@ -264,12 +432,14 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
     stages: list[dict[str, Any]] = []
     assets = None
     preflight = None
+    swe_container_custody = None
+    retention = None
     campaign_context = None
     campaign_closure = None
     try:
         profile = load_profile(spec["profile"])
         admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
-        if "campaign" in spec and spec["suite"] not in {"context", "agentic", "aider", "performance"}:
+        if "campaign" in spec and spec["suite"] not in {"context", "agentic", "aider", "performance", "swe"}:
             raise BenchmarkJobError("unsupported_campaign_suite", "campaign cannot execute this suite")
         if "budgets" in admission:
             stages.append(_stage(len(stages), "admission", "completed", _write_stage(store, record, "admission", admission)))
@@ -279,6 +449,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             store.append_log(run_id, level="info", message="preparing retained SWE regrade")
             plan = prepare_swe_regrade(store, record)
             suite_result = regrade_swe_predictions(plan)
+            swe_container_custody = suite_result.get("container_custody")
             suite_ref = _write_stage(store, record, "regrade", suite_result)
             completed = suite_result.get("state") == "completed"
             stages.append(_stage(len(stages), "regrade", "completed" if completed else "failed", suite_ref))
@@ -291,7 +462,10 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 completeness="completed", summary=dict(suite_result.get("summary") or {"completed": True}),
                 created_at=utc_now(), artifact_root=resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]),
             )
-            return _finish_job(store, spec, "completed", results={"evidence": evidence})
+            return _finish_job(
+                store, spec, "completed",
+                results={"evidence": evidence, "container_custody": swe_container_custody or {"status": "incomplete"}},
+            )
         store.append_log(run_id, level="info", message="benchmark worker claimed job")
         if "budgets" in admission:
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=run_id)
@@ -314,6 +488,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                     os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
                 ),
                 offline=bool(spec.get("parameters", {}).get("offline", False)),
+                **({"aider_instance_ids": admission["selection"]["instance_ids"]}
+                   if spec["suite"] == "aider" and admission["selection"]["instance_ids"] is not None else {}),
             )
         stages.append(_stage(len(stages), "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
         if store.status(run_id)["state"] != "running":
@@ -337,14 +513,18 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             return store.status(run_id)
 
         store.append_log(run_id, level="info", message=f"executing {spec['suite']} suite")
-        if campaign_context and spec["suite"] in {"aider", "performance"}:
+        if campaign_context and spec["suite"] in {"aider", "performance", "swe"}:
             from .campaign_execution import verify_child
             _, prepared = verify_child(spec, run_root=store.run_root)
         if campaign_context:
             from .campaign_execution import require_campaign_suite_window
             require_campaign_suite_window(campaign_context)
-        if campaign_context and spec["suite"] in {"aider", "performance"}:
-            if spec["suite"] == "aider":
+        if campaign_context and spec["suite"] in {"aider", "performance", "swe"}:
+            if spec["suite"] == "swe":
+                selector = prepared["plan"].get("server_log")
+                collector = server_log_collector(selector) if selector is not None else None
+                suite_result = run_swe_benchmark(prepared["plan"], **({"log_collector": collector} if collector else {}))
+            elif spec["suite"] == "aider":
                 from .aider import run_aider_benchmark
                 suite_result = run_aider_benchmark(prepared["plan"])
             else:
@@ -352,7 +532,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 suite_result = run_performance_benchmark(prepared["plan"])
         else:
             suite_result = _run_suite(store, record, profile, assets)
-        if campaign_context:
+        if campaign_context and spec["suite"] not in {"swe", "aider"}:
             from .campaign_execution import close_campaign
             campaign_closure = close_campaign(campaign_context)
         if store.status(run_id)["state"] != "running":
@@ -364,20 +544,39 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             retention_ref = _write_stage(store, record, f"{suite}-retention", retention)
             stages.append(_stage(len(stages), f"{suite}_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
             if retention["state"] == "failed":
-                raise BenchmarkJobError(f"{suite}_artifact_retention_failed", f"{suite} canonical artifacts could not be verified")
+                code = ("aider_container_cleanup_unverified" if suite == "aider" and retention.get("reason") == "aider_container_cleanup_unverified"
+                        else f"{suite}_artifact_retention_failed")
+                raise BenchmarkJobError(code, f"{suite} container cleanup or canonical artifacts could not be verified")
             if retention["state"] != "retained" and suite_result.get("state") == "completed":
                 raise BenchmarkJobError(f"{suite}_artifact_retention_incomplete", f"{suite} canonical artifacts are incomplete")
+        if campaign_context and spec["suite"] == "aider":
+            if not _aider_retention_complete(retention, run_path, spec):
+                raise BenchmarkJobError("aider_artifact_retention_incomplete", "Aider campaign custody or retention is incomplete")
+            from .campaign_execution import close_campaign
+            stop_reference = _aider_campaign_stop_reference(store, record, retention, run_path)
+            campaign_closure = close_campaign(campaign_context, aider_stop=stop_reference)
         if spec["suite"] == "swe":
             run_path = resolve_owned_run_path(
                 store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"]
             )
             work_path = os.path.join(run_path, "work")
             if os.path.isdir(work_path):
-                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+                retention = _retain_stopped_swe(record, run_path=run_path, work_path=work_path, phase="terminal")
+                swe_container_custody = retention.get("containers")
                 if retention["state"] == "failed":
-                    raise BenchmarkJobError("swe_artifact_retention_failed", "SWE canonical artifacts could not be retained")
+                    code = ("swe_container_cleanup_unverified" if retention.get("reason") == "swe_container_cleanup_unverified"
+                            else "swe_artifact_retention_failed")
+                    raise BenchmarkJobError(code, "SWE container cleanup or canonical artifact retention could not be verified")
                 retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
                 stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+        if campaign_context and spec["suite"] == "swe":
+            if not _swe_retention_complete(retention, run_path):
+                raise BenchmarkJobError("swe_artifact_retention_incomplete", "SWE campaign retention is incomplete")
+            from .campaign_execution import close_campaign
+            stop_reference = _swe_campaign_stop_reference(store, record, retention, run_path)
+            campaign_closure = close_campaign(campaign_context, swe_stop=stop_reference)
+            if retention["state"] != "retained" and suite_result.get("state", "completed") == "completed":
+                raise BenchmarkJobError("swe_artifact_retention_incomplete", "SWE canonical artifacts are incomplete")
         suite_ref = _write_stage(store, record, spec["suite"], suite_result)
         suite_complete = suite_result.get("state", "completed") == "completed"
         stages.append(_stage(len(stages), spec["suite"], "completed" if suite_complete else "failed", suite_ref))
@@ -411,11 +610,18 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             ),
         )
         store.append_log(run_id, level="info", message="benchmark completed; evidence retained")
-        return _finish_job(store, spec, "completed", results={"evidence": evidence})
+        results = {"evidence": evidence}
+        if spec["suite"] == "swe":
+            results["container_custody"] = swe_container_custody or {"status": "incomplete"}
+        return _finish_job(store, spec, "completed", results=results)
     except Exception as exc:
-        if campaign_context and campaign_context["receipt"]["status"] == "active":
+        secondary_failures = []
+        if campaign_context and spec["suite"] not in {"swe", "aider"} and campaign_context["receipt"]["status"] == "active":
             from .campaign_execution import close_campaign
-            close_campaign(campaign_context)
+            try:
+                close_campaign(campaign_context)
+            except Exception as secondary:
+                secondary_failures.append({"stage": "campaign_close", "type": type(secondary).__name__})
         current = store.status(run_id)
         if current is not None and current["state"] in {"cancelled", "cancelling"}:
             return current
@@ -427,17 +633,38 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                 retention = _retain_external_artifacts(record, run_path=run_path)
                 retention_ref = _write_stage(store, record, f"{spec['suite']}-retention", retention)
                 stages.append(_stage(len(stages), f"{spec['suite']}_retention", "incomplete", retention_ref))
-            except (BenchmarkJobError, OSError, ValueError):
-                # Preserve the original error and all run files if retention itself failed.
-                pass
+            except Exception as secondary:
+                retention = None
+                secondary_failures.append({"stage": "retention", "type": type(secondary).__name__})
         if spec["suite"] == "swe":
             run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
             work_path = os.path.join(run_path, "work")
             if os.path.isdir(work_path) and not any(stage["name"] == "swe_canonical_retention" for stage in stages):
-                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
-                if retention["state"] != "failed":
-                    retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
-                    stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+                try:
+                    retention = _retain_stopped_swe(record, run_path=run_path, work_path=work_path, phase="failed")
+                    swe_container_custody = retention.get("containers")
+                    if retention["state"] != "failed":
+                        retention_ref = _write_stage(store, record, "swe-canonical-retention", retention)
+                        stages.append(_stage(len(stages), "swe_canonical_retention", "completed" if retention["state"] == "retained" else "incomplete", retention_ref))
+                except Exception as secondary:
+                    retention = None
+                    secondary_failures.append({"stage": "retention", "type": type(secondary).__name__})
+        if campaign_context and spec["suite"] == "aider" and campaign_context["receipt"]["status"] == "active":
+            from .campaign_execution import close_campaign
+            try:
+                custody_verified = _aider_retention_complete(retention, run_path, spec)
+                stop_reference = _aider_campaign_stop_reference(store, record, retention, run_path) if custody_verified else None
+                close_campaign(campaign_context, **({"aider_stop": stop_reference} if custody_verified else {"clients_stopped": False, "wait": False}))
+            except Exception as secondary:
+                secondary_failures.append({"stage": "campaign_stop_proof_or_close", "type": type(secondary).__name__})
+        if campaign_context and spec["suite"] == "swe" and campaign_context["receipt"]["status"] == "active":
+            from .campaign_execution import close_campaign
+            try:
+                custody_verified = _swe_retention_complete(retention, run_path)
+                stop_reference = _swe_campaign_stop_reference(store, record, retention, run_path) if custody_verified else None
+                close_campaign(campaign_context, **({"swe_stop": stop_reference} if custody_verified else {"clients_stopped": False, "wait": False}))
+            except Exception as secondary:
+                secondary_failures.append({"stage": "campaign_stop_proof_or_close", "type": type(secondary).__name__})
         try:
             failure_class = normalize_evidence_failure_class(code)
         except BenchmarkArtifactError:
@@ -470,7 +697,8 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
             store, spec,
             "failed",
             failure={"class": failure_class, "code": code, "message": message[:1024]},
-            results={"evidence": evidence},
+            results={"evidence": evidence, **({"secondary_failures": secondary_failures} if secondary_failures else {}),
+                     **({"container_custody": swe_container_custody or {"status": "incomplete"}} if spec["suite"] == "swe" else {})},
         )
 
 
@@ -771,13 +999,14 @@ def _cancellation_evidence(
         manifest_path = os.path.join(run_path, "evidence", f"cancellation-{suite}.json")
         Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
         atomic_write_json(manifest_path, {"schema": f"anvil-serving.{suite}-cancellation/v1", "retention": retention, "termination": termination})
-        retained = retention["state"] in {"retained", "incomplete"}
+        retained = retention["state"] in {"retained", "incomplete"} or (suite == "aider" and "campaign" in spec and retention["state"] == "absent")
         return build_measured_evidence(
             run={"run_id": spec["run_id"], "ownership_id": spec["ownership_id"], "suite": suite, "profile": spec["profile"], "spec_sha256": record["spec_sha256"]},
             identities=_identities(spec, {}, None, None),
             stages=[_stage(0, f"{suite}_retention", "incomplete" if retained else "failed", evidence_file_reference(manifest_path, root=run_path))],
             completeness="cancelled", summary={"completed": False, f"{suite}_retention": dict(retention)},
-            failure={"class": "cancellation", "code": "cancelled" if retained else "partial_artifact_retention_failed", "message": f"{suite} cancellation preserves canonical files outside disposable work"},
+            failure={"class": "cancellation", "code": ("aider_container_cleanup_unverified" if suite == "aider" and retention.get("reason") == "aider_container_cleanup_unverified"
+                else "cancelled" if retained else "partial_artifact_retention_failed"), "message": f"{suite} cancellation preserves canonical files outside disposable work"},
             created_at=utc_now(), artifact_root=run_path,
         )
     if spec["suite"] != "swe":
@@ -790,9 +1019,14 @@ def _cancellation_evidence(
     manifest_path = os.path.join(run_path, "evidence", "cancellation-swe-canonical.json")
     Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
     atomic_write_json(manifest_path, {"schema": "anvil-serving.swe-canonical-cancellation/v1", "retention": retention, "termination": termination})
-    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] == "incomplete" else "failed"
-    failure_code = "cancelled" if retention["state"] in {"retained", "incomplete"} else "partial_artifact_retention_failed"
-    failure_message = "benchmark cancellation retained canonical SWE output" if failure_code == "cancelled" else "benchmark cancellation retained the work directory because canonical SWE retention failed"
+    status = "completed" if retention["state"] == "retained" else "incomplete" if retention["state"] in {"incomplete", "absent"} else "failed"
+    cleanup_failed = retention.get("reason") == "swe_container_cleanup_unverified"
+    failure_code = ("swe_container_cleanup_unverified" if cleanup_failed else "cancelled"
+                    if retention["state"] in {"retained", "incomplete", "absent"} else "partial_artifact_retention_failed")
+    failure_message = ("benchmark cancellation requires owned SWE container cleanup attention" if cleanup_failed else
+                       "benchmark cancellation stopped before SWE work began" if retention["state"] == "absent" else
+                       "benchmark cancellation retained canonical SWE output" if failure_code == "cancelled" else
+                       "benchmark cancellation retained the work directory because canonical SWE retention failed")
     identities = {
         "model": {"alias": spec["endpoint"]["model"]},
         "served_model": {"id": spec["endpoint"]["model"], "status": "unavailable"},
@@ -843,21 +1077,33 @@ def _prepare_cancellation(store, run_id):
         store.run_root, ownership_id=record["spec"]["ownership_id"], run_id=run_id, relative="work"
     )
     try:
+        aider_proof = (record["spec"]["suite"] == "aider" and "campaign" in record["spec"]
+                       and _aider_campaign_requires_stop(store, record["spec"]))
         if termination["stopped"]:
             if record["spec"]["suite"] in {"aider", "performance"}:
+                if aider_proof:
+                    receipt_path = os.path.join(run_path, "evidence", "worker-stop-receipt.json")
+                    Path(receipt_path).parent.mkdir(parents=True, exist_ok=True)
+                    atomic_write_json(receipt_path, {"schema": "anvil-serving.worker-stop-receipt/v1", "run_id": run_id, "termination": termination})
                 retention = _retain_external_artifacts(record, run_path=run_path)
             elif record["spec"]["suite"] == "swe":
                 receipt_path = os.path.join(run_path, "evidence", "worker-stop-receipt.json")
                 Path(receipt_path).parent.mkdir(parents=True, exist_ok=True)
                 atomic_write_json(receipt_path, {"schema": "anvil-serving.worker-stop-receipt/v1", "run_id": run_id, "termination": termination})
-                retention = retain_swe_artifacts(run_path=run_path, work_path=work_path)
+                retention = _retain_stopped_swe(record, run_path=run_path, work_path=work_path, phase="cancel")
             else:
                 retention = _retain_native_partial_outputs(run_path=run_path, work_path=work_path)
         else:
             retention = {"state": "failed", "reason": "worker_termination_unverified"}
         if "campaign" in record["spec"]:
             from .campaign_execution import close_cancelled_campaign
-            close_cancelled_campaign(store, record["spec"], clients_stopped=termination["stopped"] and retention["state"] != "failed")
+            suite = record["spec"]["suite"]
+            custody_verified = termination["stopped"] and (_swe_retention_complete(retention, run_path) if suite == "swe" else
+                _aider_retention_complete(retention, run_path, record["spec"]) if aider_proof else retention["state"] != "failed")
+            stop_reference = (_swe_campaign_stop_reference(store, record, retention, run_path, cancelling=True) if suite == "swe" else
+                              _aider_campaign_stop_reference(store, record, retention, run_path, cancelling=True) if aider_proof else None) if custody_verified else None
+            close_cancelled_campaign(store, record["spec"], clients_stopped=custody_verified,
+                                     **({"swe_stop": stop_reference} if suite == "swe" else {"aider_stop": stop_reference} if aider_proof else {}))
     except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
         retention = {'state': 'failed', 'reason': 'cancellation_retention_unavailable'}
     return {'record': record, 'termination': termination, 'retention': retention,
@@ -873,6 +1119,8 @@ def _finish_cancellation(store, prepared):
         )
         failure = evidence["failure"]
         results = {'evidence': evidence}
+        if record['spec']['suite'] == 'swe':
+            results['container_custody'] = retention.get('containers', {'status': 'incomplete'})
         if 'campaign' in record['spec']:
             path = Path(run_path) / 'campaign-execution.json'
             if path.exists():
@@ -888,18 +1136,37 @@ def _finish_cancellation(store, prepared):
 
     def cleanup(work_path: str) -> None:
         allowed = {"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"}
-        if termination["stopped"] and retention["state"] in allowed and os.path.isdir(work_path):
+        if (termination["stopped"] and retention["state"] in allowed and os.path.isdir(work_path)
+                and (record["spec"]["suite"] != "swe" or "campaign" not in record["spec"]
+                     or _swe_retention_complete(retention, run_path))
+                and (record["spec"]["suite"] != "aider" or "campaign" not in record["spec"]
+                     or not _aider_campaign_requires_stop(store, record["spec"])
+                     or _aider_retention_complete(retention, run_path, record["spec"]))):
             shutil.rmtree(work_path)
 
     cancelled = store.cancel(run_id, cleanup=cleanup, results=results, failure=failure)
     cancelled = dict(cancelled)
+    if record["spec"]["suite"] == "swe":
+        cancelled["container_custody"] = retention.get("containers", {"status": "incomplete"})
     artifact_retention_failed = (
         cancelled.get("failure", {}).get("code") == "cancellation_artifact_unavailable"
     )
     cancelled["worker_terminated"] = termination["stopped"]
-    cancelled["cleanup_deferred"] = artifact_retention_failed or not (
-        termination["stopped"] and retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"})
+    cancelled["cleanup_required"] = record["spec"]["suite"] == "swe" and (
+        retention.get("containers", {}).get("status") != "completed"
     )
+    cancelled["cleanup_deferred"] = artifact_retention_failed or not (
+        termination["stopped"] and (retention["state"] in ({"retained", "incomplete"} if record["spec"]["suite"] in {"swe", "aider", "performance"} else {"retained", "absent"}) or
+                                    (record["spec"]["suite"] == "swe" and retention["state"] == "absent"))
+    )
+    if record["spec"]["suite"] == "swe" and "campaign" in record["spec"]:
+        cancelled["cleanup_deferred"] = (artifact_retention_failed or not termination["stopped"]
+                                           or not _swe_retention_complete(retention, run_path))
+    if (record["spec"]["suite"] == "aider" and "campaign" in record["spec"]
+            and _aider_campaign_requires_stop(store, record["spec"])):
+        verified = _aider_retention_complete(retention, run_path, record["spec"])
+        cancelled["cleanup_required"] = not verified
+        cancelled["cleanup_deferred"] = artifact_retention_failed or not termination["stopped"] or not verified
     return cancelled
 
 
@@ -967,12 +1234,61 @@ def cancel_campaign_jobs(manifest, store):
                 'phase': 'in_progress', 'children': []}
 
 
+def _terminal_swe_container_cleanup(store, record):
+    spec = record["spec"]
+    run_path = resolve_owned_run_path(store.run_root, ownership_id=spec["ownership_id"], run_id=spec["run_id"])
+    worker_path = os.path.join(run_path, "worker.json")
+    stopped = _worker_group_stopped(
+        worker_path, run_id=spec["run_id"], database=os.path.realpath(store.path), run_root=store.run_root,
+    )
+    if not stopped:
+        return {"status": "incomplete", "reason": "worker_stop_unverified", "containers": [], "errors": []}
+    return _swe_container_cleanup(
+        record, run_path=run_path, phase=f"repeat-cancel-r{record['revision']}",
+    )
+
+
+def _persist_terminal_swe_custody(store, record, custody: Mapping[str, Any]) -> dict[str, Any]:
+    """Make the latest terminal custody receipt authoritative without losing prior receipts."""
+    artifact = store.artifact(record["spec"]["run_id"])
+    if not isinstance(artifact, Mapping) or not isinstance(artifact.get("results"), Mapping):
+        raise BenchmarkJobError("artifact_unavailable", "terminal SWE custody result is unavailable")
+    results = dict(artifact["results"])
+    prior = results.get("container_custody")
+    history = results.get("container_custody_history", [])
+    if not isinstance(history, list) or not all(isinstance(entry, Mapping) for entry in history):
+        raise BenchmarkJobError("bad_job_artifact", "terminal SWE custody history is invalid")
+    if isinstance(prior, Mapping):
+        history = [*history[-15:], {
+            "status": prior.get("status", "incomplete"),
+            "receipt": prior.get("receipt"),
+        }]
+    return store.replace_terminal_results(
+        record["spec"]["run_id"],
+        results={**results, "container_custody": dict(custody), "container_custody_history": history},
+    )
+
+
 def cancel_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, Any]:
     record = store.status(run_id)
     if record is None:
         raise BenchmarkJobError('job_not_found', 'benchmark job does not exist')
     if record['state'] in {'completed', 'failed', 'cancelled'}:
-        return record
+        if record['spec']['suite'] != 'swe':
+            return record
+        result = dict(record)
+        custody = _terminal_swe_container_cleanup(store, record)
+        try:
+            result = dict(_persist_terminal_swe_custody(store, record, custody))
+        except (BenchmarkArtifactError, BenchmarkJobError, OSError, ValueError):
+            custody = {
+                "status": "incomplete", "reason": "custody_result_persistence_unverified",
+                "containers": [], "errors": [],
+            }
+        result['container_custody'] = custody
+        result['cleanup_required'] = custody.get('status') != 'completed'
+        result['cleanup_deferred'] = result['cleanup_required']
+        return result
     if 'campaign' in record['spec']:
         from .campaign_execution import _path, _read
         spec = record['spec']
@@ -1032,6 +1348,9 @@ def cleanup_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
         if retention["state"] == "failed":
             raise BenchmarkJobError(f"{spec['suite']}_artifact_retention_failed", f"{spec['suite']} canonical artifacts could not be verified")
     elif spec["suite"] == "swe":
+        cleanup = _swe_container_cleanup(record, run_path=run_path, phase="cleanup")
+        if cleanup["status"] != "completed":
+            raise BenchmarkJobError("swe_container_cleanup_unverified", "SWE container cleanup could not be verified")
         from .swe_regrade import _terminal_manifest_reference
         anchored = _terminal_manifest_reference(store, record)
         try:

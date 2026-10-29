@@ -221,6 +221,7 @@ required operands, choices, and defaults.
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
+| `eval runtime-source-inspect` | Read fixed accounting source hashes from a bound managed runtime. | `read` / `bounded` | `--registry`<br>`--container`<br>`--plan` |
 | `eval reasoning-limit-probe` | Preview or execute an isolated, bounded reasoning-boundary diagnostic. | `mutate` / `bounded` | `--router-config`<br>`--plan`<br>`--boundary-config`<br>`--output`<br>`--confirm` |
 | `eval reasoning-limit-inspect` | Read pinned GLM runtime hashes and tokenizer markers without inference. | `read` / `bounded` | `--registry`<br>`--container`<br>`--plan` |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -267,7 +268,7 @@ required operands, choices, and defaults.
 | `eval benchmark swe cancel` | Cancel a swe benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
 | `eval benchmark swe artifact` | Read the terminal or partial swe benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
 | `eval benchmark aider` | Run pinned Aider Polyglot edits with contained tests. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
-| `eval benchmark aider prepare` | Prepare digest-pinned aider harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark aider prepare` | Prepare digest-pinned aider harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
 | `eval benchmark aider assets` | Inspect prepared aider harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
 | `eval benchmark aider cleanup` | Clean only the owned work directory for a aider benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
 | `eval benchmark aider preflight` | Validate the endpoint and worker for a aider benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec`<br>`--spec-json`<br>`--requirements-json` |
@@ -416,6 +417,7 @@ required operands, choices, and defaults.
 | `host shared-memory status` | Inspect ownership of vLLM offload mmap files. | `read` / `bounded` | - |
 | `host shared-memory reclaim` | Remove only twice-verified orphan vLLM offload mmap files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host docker-image` | Build, inspect, or remove a declared local Docker image. | `read` / `bounded` | - |
+| `host docker-image build-history` | Read bounded Buildx record metadata for one bound builder. | `read` / `bounded` | `--plan` |
 | `host docker-image build` | Build a declared local image with CPU and memory limits. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `host docker-image inspect` | Read the platform and selected build labels of one cached image. | `read` / `bounded` | `--label` |
 | `host docker-image remove` | Remove one unreferenced full image ID or digest. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config-home` |

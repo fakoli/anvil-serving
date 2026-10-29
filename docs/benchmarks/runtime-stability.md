@@ -24,8 +24,14 @@ container ID, running state, image content ID, bound port and served name, plus
 recipe/registry/revision labels. Labels establish managed provenance, not proof
 that every engine setting took effect; retain startup logs separately. Remote
 endpoints are unsupported by this initial adapter.
-The initial adapter requires vLLM's `/tokenize` chat API at the parent of the
-declared `/v1` base. Tokenization mismatch fails workload coverage.
+The default `tokenizer_api` is `vllm-chat`, using the chat-aware `/tokenize` API
+at the parent of the declared `/v1` base. Set `"tokenizer_api": "llamacpp-chat"`
+explicitly for a compatible llama.cpp server: it calls
+`/v1/chat/completions/input_tokens` with the same chat request body and controls.
+This adapter follows the [pinned server token-count handler](https://github.com/ggml-org/llama.cpp/blob/7aca0d2ea8d92b56911233b822db01f9fbb1ae50/tools/server/server-context.cpp#L6394-L6440).
+It does not guess a backend or fall back on failure. Tokenization mismatch with
+completion usage fails workload coverage. Context-suite calibration separately
+uses a one-token completion usage ratio and is an estimate, not this endpoint.
 
 ```json
 {

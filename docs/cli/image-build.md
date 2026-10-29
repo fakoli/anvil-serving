@@ -49,3 +49,25 @@ retrying. The command does not claim to prove remote BuildKit cancellation.
 
 This is a local CLI operation; there is currently no controller/MCP build
 wrapper. Model availability and promotion gates still apply after a build.
+
+A Linux build may declare both optional observational floors:
+
+```toml
+min_host_available_mib = 20480
+min_context_free_mib = 122880
+```
+
+Before launching the build client, its owner starts a separate fixed observer
+and requires a valid sample of host available RAM and free space on the build
+context filesystem. The observer samples every second; missing, stale or
+invalid samples, observer exit, either floor, or the build deadline stop the
+owned build client group. Results retain observed minima, the observer source
+hash and failure reason. These sampled floors do not prove available resources
+will remain above the limits. An aborted build leaves daemon cancellation
+unverified: reconcile the builder before retrying or using the result. SIGTERM or SIGINT
+requests owned-client and observer cleanup; SIGKILL, process crashes, and
+uninterruptible I/O cannot guarantee cleanup.
+
+Before a confirmed build, the command also checks that the exact target tag is
+absent. A failed or malformed check refuses the build. This is a bounded
+preflight, not an atomic reservation against another concurrent image writer.

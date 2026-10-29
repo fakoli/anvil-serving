@@ -21,7 +21,7 @@ Monitoring is opt-in through `recipe-monitoring.json` in the operator home:
 ```
 
 Engine keys must match the recipe's declared engine. Supported metrics
-contracts are `vllm`, `sglang`, `flare` and `ignis`. An optional
+contracts are `vllm`, `sglang`, `flare`, `ignis` and `llamacpp`. An optional
 `model_api_key_files` object maps port strings to protected absolute key-file
 paths; credentials are never written into the monitoring receipt.
 
@@ -40,3 +40,9 @@ The observer is a separate infrastructure deployment. An active registration
 alone does not prove fresh metrics, complete interval coverage or successful
 benchmark execution. Ignis requires its API UI and metrics options enabled so
 the observer can read `/ui/metrics` on the same API port.
+
+For llama.cpp, enable its native metrics endpoint and use a single served alias.
+The separately deployed observer requires an active matching registration, exact
+sole model catalog, and validated native scheduler gauges before publishing
+identity-bound gauge copies. Native counters remain native; no unsupported
+request completion or latency metric is synthesized.

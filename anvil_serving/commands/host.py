@@ -269,6 +269,17 @@ def commands() -> tuple[CommandNode, ...]:
                     "Build, inspect, or remove a declared local Docker image.",
                     children=(
                         _resource_node(
+                            "build-history",
+                            "Read bounded Buildx record metadata for one bound builder.",
+                            "anvil_serving.docker_build_history",
+                            role="host", argv_prefix=(),
+                            options=(
+                                _option("--plan", value_name="PATH", summary="Bound builder, engine, time window and optional exact record."),
+                            ),
+                            execution_runtime_roles=("native",),
+                            docs_anchor="docs/cli/build-history.md",
+                        ),
+                        _resource_node(
                             "build",
                             "Build a declared local image with CPU and memory limits.",
                             "anvil_serving.image_build",

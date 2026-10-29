@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
 import math
 import re
 import os
+from pathlib import Path
 import signal
 import subprocess
 import sys
@@ -111,7 +113,9 @@ def test_campaign_requires_full_timeout_after_preflight_and_prepared_verificatio
     monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0],
         perf_counter=time.perf_counter, sleep=time.sleep))
     context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'},
-               'release': {'boot_id': execution._boot_id(), 'traffic_deadline_monotonic': 90}}
+               'manifest': {'telemetry_collection': {}},
+               'release': {'boot_id': execution._boot_id(), 'traffic_deadline_monotonic': 90,
+                           'observer_readiness': {'status': 'ready', 'source_timestamp_seconds': 1}}}
     monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
     def preflight(*args, **kwargs):
         calls.append('preflight')
@@ -617,6 +621,181 @@ def test_cancellation_retains_native_output_and_stops_owned_child(monkeypatch, t
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGKILL)
             process.wait(timeout=5)
+
+
+def test_swe_cancel_and_repeat_expose_unresolved_container_custody(monkeypatch, tmp_path):
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {"instance_ids": ["astropy__astropy-12907"]}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    work = tmp_path / "runs" / "campaign" / "worker-run" / "work"
+    work.mkdir(parents=True)
+    monkeypatch.setattr(benchmark_worker, "_stop_owned_worker", lambda *_a, **_k: {"stopped": True})
+    monkeypatch.setattr(benchmark_worker, "_worker_group_stopped", lambda *_a, **_k: True)
+    phases = []
+    def unresolved(*_args, phase, **_kwargs):
+        phases.append(phase)
+        return {"status": "incomplete", "containers": [], "errors": [{"reason": "inflight_create"}]}
+    monkeypatch.setattr(benchmark_worker, "_swe_container_cleanup", unresolved)
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+    repeated = cancel_benchmark_job(store, "worker-run")
+
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["cleanup_required"] is True and cancelled["cleanup_deferred"] is True
+    assert repeated["cleanup_required"] is True and repeated["cleanup_deferred"] is True
+    assert phases[0] == "cancel"
+    assert phases[1].startswith("repeat-cancel-r")
+    assert work.exists()
+
+
+def test_swe_cleanup_verifies_frozen_helper_before_daemon_cleanup(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking import swe_container_custody
+
+    value = spec()
+    value["suite"] = "swe"
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work"
+    work.mkdir(parents=True)
+    (run_path / "swe-containers").mkdir()
+    expected_hash = hashlib.sha256(Path(swe_container_custody.__file__).read_bytes()).hexdigest()
+    (work / "swe-plan.json").write_text(json.dumps({
+        "harnesses": {"container_custody": {"adapter_sha256": expected_hash}},
+    }), encoding="utf-8")
+    order = []
+    original_verify = swe_container_custody.verify_source_hash
+
+    def verified(expected):
+        order.append(("verify", expected))
+        return original_verify(expected)
+
+    def cleaned(*_args, **kwargs):
+        order.append(("cleanup", None))
+        Path(kwargs["receipt_path"]).write_text("{}", encoding="utf-8")
+        return {"status": "completed", "containers": [], "errors": []}
+
+    monkeypatch.setattr(swe_container_custody, "verify_source_hash", verified)
+    monkeypatch.setattr(swe_container_custody, "cleanup", cleaned)
+    receipt = benchmark_worker._swe_container_cleanup(
+        {"spec": value}, run_path=str(run_path), phase="cancel",
+    )
+
+    assert receipt["status"] == "completed"
+    assert order == [("verify", expected_hash), ("cleanup", None)]
+
+
+def test_swe_cancellation_refuses_drifted_helper_before_daemon_cleanup(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking import swe_container_custody
+
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {"instance_ids": ["astropy__astropy-12907"]}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work"
+    work.mkdir(parents=True)
+    (run_path / "swe-containers").mkdir()
+    (work / "swe-plan.json").write_text(json.dumps({
+        "harnesses": {"container_custody": {"adapter_sha256": "0" * 64}},
+    }), encoding="utf-8")
+    monkeypatch.setattr(benchmark_worker, "_stop_owned_worker", lambda *_a, **_k: {"stopped": True})
+    monkeypatch.setattr(
+        swe_container_custody, "cleanup",
+        lambda *_args, **_kwargs: pytest.fail("drifted helper must not receive cleanup"),
+    )
+
+    cancelled = cancel_benchmark_job(store, "worker-run")
+
+    assert cancelled["state"] == "cancelled"
+    assert cancelled["cleanup_required"] is True
+    assert cancelled["container_custody"]["reason"] == "custody_source_hash_mismatch"
+    assert work.exists()
+
+
+def test_swe_cleanup_fails_closed_for_malformed_durable_regrade_binding(tmp_path):
+    value = spec()
+    value["suite"] = "swe"
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    (run_path / "swe-containers").mkdir(parents=True)
+    evidence = run_path / "evidence"
+    evidence.mkdir()
+    (evidence / "swe-regrade-custody-binding.json").write_text("[]", encoding="utf-8")
+
+    cleanup = benchmark_worker._swe_container_cleanup(
+        {"spec": value}, run_path=str(run_path), phase="cancel",
+    )
+
+    assert cleanup["status"] == "incomplete"
+    assert cleanup["reason"] == "plan_unreadable"
+
+
+def test_swe_repeat_cancel_uses_manifest_verified_retained_plan(monkeypatch, tmp_path):
+    from anvil_serving.benchmarking import swe_container_custody
+
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {"instance_ids": ["astropy__astropy-12907"]}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    run_path = tmp_path / "runs" / "campaign" / "worker-run"
+    work = run_path / "work"
+    work.mkdir(parents=True)
+    helper_hash = hashlib.sha256(Path(swe_container_custody.__file__).read_bytes()).hexdigest()
+    (work / "swe-plan.json").write_text(json.dumps({
+        "harnesses": {"container_custody": {"adapter_sha256": helper_hash}},
+    }), encoding="utf-8")
+    swe_container_custody.initialize(str(run_path), "campaign", "worker-run", sys.executable)
+    monkeypatch.setattr(benchmark_worker, "_stop_owned_worker", lambda *_a, **_k: {"stopped": True})
+    monkeypatch.setattr(benchmark_worker, "_worker_group_stopped", lambda *_a, **_k: True)
+    monkeypatch.setattr(swe_container_custody, "_inspect", lambda *_a, **_k: pytest.fail("empty ledger must not inspect Docker"))
+
+    first = cancel_benchmark_job(store, "worker-run")
+    repeated = cancel_benchmark_job(store, "worker-run")
+
+    assert first["container_custody"]["status"] == "completed"
+    assert not work.exists()
+    assert repeated["container_custody"]["status"] == "completed"
+    retained = store.artifact("worker-run")["results"]
+    assert retained["container_custody"]["status"] == "completed"
+    prior_receipt = retained["container_custody_history"][-1]["receipt"]
+    latest_receipt = retained["container_custody"]["receipt"]
+    assert prior_receipt["path"] != latest_receipt["path"]
+    for receipt in (prior_receipt, latest_receipt):
+        payload = (run_path / receipt["path"]).read_bytes()
+        assert hashlib.sha256(payload).hexdigest() == receipt["sha256"]
+        assert len(payload) == receipt["bytes"]
+
+
+@pytest.mark.parametrize("first_status, repeat_status", [("incomplete", "completed"), ("completed", "incomplete")])
+def test_swe_repeat_cancel_persists_latest_custody_receipt(monkeypatch, tmp_path, first_status, repeat_status):
+    value = spec()
+    value["suite"] = "swe"
+    value["parameters"] = {"instance_ids": ["astropy__astropy-12907"]}
+    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
+    store.submit(value)
+    store.claim("worker-run")
+    work = tmp_path / "runs" / "campaign" / "worker-run" / "work"
+    work.mkdir(parents=True)
+    outcomes = iter((
+        {"status": first_status, "containers": [], "errors": []},
+        {"status": repeat_status, "containers": [], "errors": []},
+    ))
+    monkeypatch.setattr(benchmark_worker, "_stop_owned_worker", lambda *_a, **_k: {"stopped": True})
+    monkeypatch.setattr(benchmark_worker, "_worker_group_stopped", lambda *_a, **_k: True)
+    monkeypatch.setattr(benchmark_worker, "_swe_container_cleanup", lambda *_a, **_k: next(outcomes))
+
+    cancel_benchmark_job(store, "worker-run")
+    repeated = cancel_benchmark_job(store, "worker-run")
+    retained = store.artifact("worker-run")["results"]
+
+    assert repeated["container_custody"]["status"] == repeat_status
+    assert retained["container_custody"]["status"] == repeat_status
+    assert retained["container_custody_history"][-1]["status"] == first_status
 
 
 def test_cancellation_does_not_signal_same_run_from_another_store(monkeypatch, tmp_path):
@@ -1229,3 +1408,114 @@ def test_competing_deadline_watchdog_stop_is_idempotent_for_campaign_owner(monke
     assert benchmark_worker.cancel_campaign_jobs(manifest, store)["phase"] == "completed"
     assert all(p.read_bytes() == raw for p, raw in saved.items())
     assert len(signals) == 4 and len(drains) == 1
+
+
+@pytest.mark.parametrize('cleanup_state,run_failure', [('retained', False), ('failed', False), ('retained', True), ('failed', True)])
+def test_swe_campaign_executes_prepared_plan_and_closes_after_custody(monkeypatch, tmp_path, cleanup_state, run_failure):
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': ['example__project-1'], 'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64}})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    events = []
+    prepared_plan = {'fixture': 'frozen'}
+    context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'}}
+    monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
+    monkeypatch.setattr(execution, 'verify_child', lambda *a, **k: ({}, {'plan': prepared_plan}))
+    monkeypatch.setattr(execution, 'require_campaign_suite_window', lambda *a, **k: None)
+    monkeypatch.setattr(benchmark_worker, 'run_benchmark_preflight', lambda *a, **k:
+        {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []})
+    def run(plan, **kwargs):
+        assert plan is prepared_plan
+        events.append('run')
+        (tmp_path / 'runs' / 'campaign' / 'worker-run' / 'work').mkdir(parents=True, exist_ok=True)
+        if run_failure:
+            raise TimeoutError('fixture timeout')
+        return {'state': 'completed', 'summary': {'completed': True}}
+    monkeypatch.setattr(benchmark_worker, 'run_swe_benchmark', run)
+    monkeypatch.setattr(benchmark_worker, 'build_swe_run_plan', lambda *a, **k: pytest.fail('rebuilt plan'))
+    def retain(*args, **kwargs):
+        events.append('retain')
+        return {'state': cleanup_state, 'reason': 'swe_container_cleanup_unverified',
+                'containers': {'status': 'completed' if cleanup_state == 'retained' else 'unknown'}, 'manifest_reference': {'path': 'fixture'}}
+    monkeypatch.setattr(benchmark_worker, '_retain_stopped_swe', retain)
+    monkeypatch.setattr(benchmark_worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained' and value.get('containers', {}).get('status') == 'completed')
+    def close(context, **kwargs):
+        events.append(('close', kwargs.get('clients_stopped')))
+        context['receipt']['status'] = 'blocked' if kwargs.get('clients_stopped') is False else 'closed'
+        return context['receipt']
+    monkeypatch.setattr(execution, 'close_campaign', close)
+    monkeypatch.setattr(benchmark_worker, 'campaign_result_reference', lambda *a, **k: {})
+    result = execute_benchmark_job(store, value['run_id'])
+    assert events[:2] == ['run', 'retain']
+    assert events[-1] == ('close', None if cleanup_state == 'retained' else False)
+    assert result['state'] == ('completed' if cleanup_state == 'retained' and not run_failure else 'failed')
+
+
+@pytest.mark.parametrize('retention_state,stopped,expected', [('retained', True, True), ('incomplete', True, False), ('failed', True, False), ('retained', False, False)])
+def test_swe_campaign_cancellation_blocks_without_stopped_custody(monkeypatch, tmp_path, retention_state, stopped, expected):
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': ['example__project-1'], 'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64}})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    events = []
+    monkeypatch.setattr(benchmark_worker, '_stop_owned_worker', lambda *a, **k: {'stopped': stopped})
+    def retain(*args, **kwargs):
+        events.append('retain')
+        return {'state': retention_state, 'containers': {'status': 'completed'}, **({'manifest_reference': {'path': 'fixture'}} if retention_state == 'retained' else {})}
+    monkeypatch.setattr(benchmark_worker, '_retain_stopped_swe', retain)
+    monkeypatch.setattr(benchmark_worker, '_swe_retention_complete', lambda value, path: value.get('state') == 'retained' and value.get('containers', {}).get('status') == 'completed')
+    monkeypatch.setattr(execution, 'close_cancelled_campaign', lambda *a, **k: events.append(('close', k['clients_stopped'])))
+    benchmark_worker._prepare_cancellation(store, value['run_id'])
+    assert events == (['retain'] if stopped else []) + [('close', expected)]
+
+
+def test_swe_partial_retention_requires_verified_bytes_and_completed_custody(tmp_path):
+    from anvil_serving.benchmarking.retention import retain_swe_artifacts
+    run_path = tmp_path / 'run'
+    work = run_path / 'work'
+    work.mkdir(parents=True)
+    (work / 'swe-plan.json').write_text('{"prompt_contract":"legacy/v1"}')
+    retained = retain_swe_artifacts(run_path=str(run_path), work_path=str(work))
+    retained['containers'] = {'status': 'completed'}
+    assert retained['state'] == 'incomplete'
+    assert benchmark_worker._swe_retention_complete(retained, str(run_path))
+    assert not benchmark_worker._swe_retention_complete({**retained, 'containers': {'status': 'unknown'}}, str(run_path))
+    assert not benchmark_worker._swe_retention_complete({**retained, 'manifest_reference': None}, str(run_path))
+    (run_path / 'evidence/swe-canonical/swe-plan.json').write_text('changed')
+    assert not benchmark_worker._swe_retention_complete(retained, str(run_path))
+
+
+@pytest.mark.parametrize('reference_unavailable', [False, True])
+def test_swe_campaign_closure_error_does_not_mask_original_suite_failure(monkeypatch, tmp_path, reference_unavailable):
+    from anvil_serving.benchmarking import campaign_execution as execution
+    from anvil_serving.benchmarking.submission import bind_submission_spec
+    value = spec()
+    value.update(profile='pilot-v2', suite='swe', timeout_s=30,
+                 parameters={'instance_ids': ['example__project-1'], 'paired_image_ids': {'example__project-1': 'sha256:' + 'a' * 64}})
+    value = execution.bind_campaign_child(bind_submission_spec(value), manifest_sha256='a' * 64,
+        campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
+    store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
+    store.submit(value)
+    context = {'spec': value, 'payload': {'assets': {}}, 'receipt': {'status': 'active'}}
+    monkeypatch.setattr(execution, 'enter_campaign', lambda *a, **k: context)
+    monkeypatch.setattr(execution, 'verify_child', lambda *a, **k: ({}, {'plan': {}}))
+    monkeypatch.setattr(execution, 'require_campaign_suite_window', lambda *a, **k: None)
+    monkeypatch.setattr(execution, 'close_campaign', lambda *a, **k: (_ for _ in ()).throw(OSError('receipt storage unavailable')))
+    monkeypatch.setattr(benchmark_worker, 'campaign_result_reference', lambda *a, **k: (_ for _ in ()).throw(OSError('unavailable')) if reference_unavailable else {})
+    monkeypatch.setattr(benchmark_worker, 'run_benchmark_preflight', lambda *a, **k:
+        {'schema': 'anvil-serving.benchmark-preflight/v1', 'passed': True, 'observed': {}, 'checks': []})
+    monkeypatch.setattr(benchmark_worker, 'run_swe_benchmark', lambda *a, **k: (_ for _ in ()).throw(TimeoutError('original suite timeout')))
+    result = execute_benchmark_job(store, value['run_id'])
+    assert result['state'] == 'failed'
+    assert result['failure']['code'] == 'TimeoutError'
+    assert result['failure']['message'] == 'original suite timeout'

@@ -17,7 +17,7 @@ def test_checked_in_profiles_are_content_addressed_and_valid(name):
     profile = load_profile(name)
     assert profile["content_sha256"] == profile_content_sha256(profile)
     expected = ({"aider"} if name.startswith("aider-diagnostic-") else
-                {"context", "agentic", "swe", "aider", "performance"} if name == "pilot-v2" else
+                {"context", "agentic", "swe", "aider", "performance"} if name in {"pilot-v2", "qualification-64k-v1"} else
                 {"context", "agentic", "swe"})
     assert set(profile["suites"]) == expected
 
@@ -253,3 +253,30 @@ def test_aider_diagnostic_profiles_pair_only_completion_caps_and_keep_pilot_unch
         suite["max_completion_tokens"] = suite["budgets"]["max_completion_tokens"] = 0
         suites.append(suite)
     assert suites[0] == suites[1]
+
+
+def test_qualification_64k_preserves_pilot_pins_and_bounds_each_coding_job():
+    from anvil_serving.benchmarking.aider import validate_aider_parameters
+    from anvil_serving.benchmarking.swe import validate_swe_selection
+    from anvil_serving.benchmarking.profiles import suite_budgets
+
+    pilot = load_profile("pilot-v2")
+    profile = load_profile("qualification-64k-v1")
+    assert profile["adapters"] == pilot["adapters"]
+    assert pilot["content_sha256"] == "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf"
+    for name in ("context", "agentic", "performance"):
+        assert profile["suites"][name] == pilot["suites"][name]
+    for name, seconds in (("aider", 600), ("swe", 1200)):
+        suite = profile["suites"][name]
+        assert (suite["instance_limit"], suite["timeout_s"], suite["max_completion_tokens"]) == (1, seconds, 65536)
+        budget = suite_budgets(profile, name)
+        assert budget["deadline_s"] == seconds and budget["max_completion_tokens"] == 65536
+        assert budget["max_model_calls"] == pilot["suites"][name]["budgets"]["max_model_calls"]
+        assert budget["max_retries"] == 0
+    task = "python/exercises/practice/example"
+    assert validate_aider_parameters(profile, {"instance_ids": [task]})["selection"]["instance_ids"] == [task]
+    with pytest.raises(BenchmarkJobError):
+        validate_aider_parameters(profile, {"instance_ids": [task, "rust/exercises/practice/example"]})
+    assert validate_swe_selection(profile, ["example__repo-1"]) == ["example__repo-1"]
+    with pytest.raises(BenchmarkJobError):
+        validate_swe_selection(profile, ["example__repo-1", "example__repo-2"])
