@@ -13,7 +13,8 @@ DIGEST = 'registry.example/runtime@sha256:' + 'b' * 64
 
 def fixture_row(**changes):
     row = {'image_id': IMAGE_ID, 'repo_digests': [DIGEST], 'os': 'linux',
-           'architecture': 'amd64', 'labels': dict.fromkeys(DEFAULT_LABELS, None)}
+           'architecture': 'amd64', 'size_bytes': 12345,
+           'labels': dict.fromkeys(DEFAULT_LABELS, None)}
     row.update(changes)
     return row
 
@@ -30,13 +31,39 @@ def test_selected_labels_only_and_one_read_only_inspection():
     result = inspect_image_identity(DIGEST, labels=['ai.release.cache-schema'], runner=run)
     assert result['labels']['ai.release.cache-schema'] == 'v81'
     assert result['requested_identity'] == DIGEST
+    assert result['size_bytes'] == 12345
     assert len(calls) == 1
     argv, kwargs = calls[0]
     assert argv[:4] == ['docker', 'image', 'inspect', '--format']
     assert argv[-1] == DIGEST
     assert '.Env' not in argv[4]
+    assert '"size_bytes":{{json .Size}}' in argv[4]
     assert '{{json .Config.Labels}}' not in argv[4]
     assert kwargs['timeout'] == 30
+
+
+@pytest.mark.parametrize('size', [0, 12345])
+def test_valid_image_size(size):
+    def run(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, json.dumps(fixture_row(size_bytes=size)), '')
+    assert inspect_image_identity(IMAGE_ID, runner=run)['size_bytes'] == size
+
+
+@pytest.mark.parametrize('size', [True, False, -1, 1.5, '123', None])
+def test_invalid_image_size_is_rejected(size):
+    def run(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, json.dumps(fixture_row(size_bytes=size)), '')
+    with pytest.raises(DockerImageCleanupError, match='invalid image size'):
+        inspect_image_identity(IMAGE_ID, runner=run)
+
+
+def test_missing_image_size_is_rejected():
+    row = fixture_row()
+    del row['size_bytes']
+    def run(argv, **kwargs):
+        return subprocess.CompletedProcess(argv, 0, json.dumps(row), '')
+    with pytest.raises(DockerImageCleanupError):
+        inspect_image_identity(IMAGE_ID, runner=run)
 
 
 @pytest.mark.parametrize('image,labels', [

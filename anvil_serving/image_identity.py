@@ -27,7 +27,8 @@ def inspect_image_identity(image, *, labels=(), runner=subprocess.run):
     # Filter in Docker itself: unrelated labels, environment, and history never
     # enter the command output retained by this tool.
     fields = ['"image_id":{{json .Id}}', '"repo_digests":{{json .RepoDigests}}',
-              '"os":{{json .Os}}', '"architecture":{{json .Architecture}}']
+              '"os":{{json .Os}}', '"architecture":{{json .Architecture}}',
+              '"size_bytes":{{json .Size}}']
     label_fields = [json.dumps(key) + ':{{json (index .Config.Labels ' + json.dumps(key) + ')}}'
                     for key in selected]
     template = '{' + ','.join(fields) + ',"labels":{' + ','.join(label_fields) + '}}'
@@ -45,9 +46,11 @@ def inspect_image_identity(image, *, labels=(), runner=subprocess.run):
     except (ValueError, TypeError) as exc:
         raise DockerImageCleanupError("Docker returned invalid image identity JSON") from exc
     if not isinstance(row, dict) or set(row) != {
-        "image_id", "repo_digests", "os", "architecture", "labels"
+        "image_id", "repo_digests", "os", "architecture", "size_bytes", "labels"
     } or not re.fullmatch(r"sha256:[0-9a-f]{64}", str(row.get("image_id"))):
         raise DockerImageCleanupError("Docker did not resolve one immutable image ID")
+    if type(row["size_bytes"]) is not int or row["size_bytes"] < 0:
+        raise DockerImageCleanupError("Docker returned invalid image size")
     digests = row.get("repo_digests") or []
     if not isinstance(digests, list) or len(digests) > 256 or any(
         not isinstance(item, str) or len(item) > 4096 for item in digests
