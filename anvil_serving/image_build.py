@@ -167,19 +167,23 @@ def _stream_build(argv, *, source_bytes, log, timeout, max_log_bytes=MAX_LOG_BYT
 
 
 def _guarded_stream_build(argv, *, source_bytes, log, timeout, max_log_bytes, guard):
-    """Route SIGTERM through owned cleanup without interrupting child registration."""
-    interrupted = [False]
-    previous = signal.getsignal(signal.SIGTERM)
+    """Latch termination signals while child registration and cleanup complete."""
+    interrupted = [None]
+    previous = {}
     def handle_termination(signum, frame):
-        interrupted[0] = True
-    # signal.signal rejects non-main threads before any child is launched.
-    signal.signal(signal.SIGTERM, handle_termination)
+        if interrupted[0] is None:
+            interrupted[0] = signal.Signals(signum).name
     try:
+        # signal.signal rejects non-main threads before any child is launched.
+        for kind in (signal.SIGTERM, signal.SIGINT):
+            previous[kind] = signal.getsignal(kind)
+            signal.signal(kind, handle_termination)
         return _guarded_stream_build_inner(argv, source_bytes=source_bytes, log=log,
                                            timeout=timeout, max_log_bytes=max_log_bytes,
                                            guard=guard, interrupted=interrupted)
     finally:
-        signal.signal(signal.SIGTERM, previous)
+        for kind, handler in previous.items():
+            signal.signal(kind, handler)
 
 
 def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_bytes, guard, interrupted):
@@ -237,7 +241,7 @@ def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_byt
     def heartbeat(wait):
         nonlocal pending, last_sample, last_observed
         if interrupted[0]:
-            raise InterruptedError("build interrupted by SIGTERM")
+            raise InterruptedError("build interrupted by " + interrupted[0])
         if observer.poll() is not None:
             raise ValueError("host observer exited")
         if selector.select(wait):
@@ -270,7 +274,7 @@ def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_byt
 
     try:
         if interrupted[0]:
-            raise InterruptedError("build interrupted by SIGTERM")
+            raise InterruptedError("build interrupted by " + interrupted[0])
         selector.register(observer.stdout, selectors.EVENT_READ)
         os.set_blocking(observer.stdout.fileno(), False)
         while last_sample is None:
@@ -280,11 +284,11 @@ def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_byt
             source.write(source_bytes)
             source.seek(0)
             if interrupted[0]:
-                raise InterruptedError("build interrupted by SIGTERM")
+                raise InterruptedError("build interrupted by " + interrupted[0])
             process = subprocess.Popen(argv, stdin=source, stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT, bufsize=0, **_process_group_options())
             if interrupted[0]:
-                raise InterruptedError("build interrupted by SIGTERM")
+                raise InterruptedError("build interrupted by " + interrupted[0])
             def drain():
                 retained = 0
                 try:
@@ -314,7 +318,7 @@ def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_byt
             if reader.is_alive() or state.get("output_error"):
                 raise ValueError("build output drain incomplete")
             if interrupted[0]:
-                raise InterruptedError("build interrupted by SIGTERM")
+                raise InterruptedError("build interrupted by " + interrupted[0])
             if _read_bytes(observer_path) != observer_source:
                 raise ValueError("host observer source changed")
     except (OSError, ValueError, TimeoutError, json.JSONDecodeError) as exc:
@@ -352,7 +356,7 @@ def _guarded_stream_build_inner(argv, *, source_bytes, log, timeout, max_log_byt
         stop_owned(observer, "observer")
         cleanup_step("observer_output_close", observer.stdout.close)
     if interrupted[0] and "error" not in state:
-        state.update({"returncode": -1, "error": "build interrupted by SIGTERM"})
+        state.update({"returncode": -1, "error": "build interrupted by " + interrupted[0]})
         if process is not None:
             state.setdefault("cancellation", "daemon_state_unverified")
     return state

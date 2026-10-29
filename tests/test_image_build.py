@@ -401,7 +401,8 @@ Path(%r).write_text(json.dumps(result))
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Linux-only guard')
 @pytest.mark.parametrize('signal_on_child', [1, 2])
-def test_sigterm_during_spawn_keeps_child_custody(tmp_path, monkeypatch, signal_on_child):
+@pytest.mark.parametrize('signal_name', ['SIGTERM', 'SIGINT'])
+def test_signal_during_spawn_keeps_child_custody(tmp_path, monkeypatch, signal_on_child, signal_name):
     import os
     import signal
     from anvil_serving import reasoning_probe
@@ -409,21 +410,22 @@ def test_sigterm_during_spawn_keeps_child_custody(tmp_path, monkeypatch, signal_
     monkeypatch.setattr(reasoning_probe, '_read_bytes', lambda _: code)
     original_popen = subprocess.Popen
     children = []
-    previous = signal.getsignal(signal.SIGTERM)
+    sent_signal = getattr(signal, signal_name)
+    previous = {kind: signal.getsignal(kind) for kind in (signal.SIGTERM, signal.SIGINT)}
     def popen(*args, **kwargs):
         child = original_popen(*args, **kwargs)
         children.append(child)
         if len(children) == signal_on_child:
-            os.kill(os.getpid(), signal.SIGTERM)
+            os.kill(os.getpid(), sent_signal)
         return child
     monkeypatch.setattr(image_build.subprocess, 'Popen', popen)
     with (tmp_path / 'output').open('wb') as log:
         result = image_build._stream_build([sys.executable, '-c', 'import time; time.sleep(30)'],
             source_bytes=b'', log=log, timeout=5,
             guard={'context': str(tmp_path), 'min_host_available_mib': 1, 'min_context_free_mib': 1})
-    assert result['returncode'] == -1 and 'SIGTERM' in result['error']
+    assert result['returncode'] == -1 and signal_name in result['error']
     assert len(children) == signal_on_child and all(child.poll() is not None for child in children)
-    assert signal.getsignal(signal.SIGTERM) is previous
+    assert all(signal.getsignal(kind) is handler for kind, handler in previous.items())
     if signal_on_child == 2:
         assert 'daemon_state_unverified' in result['cancellation']
 
