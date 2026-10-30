@@ -111,6 +111,8 @@ def environment(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     # binding test supplies real declared service identities and file handoff.
     monkeypatch.setattr("anvil_serving.connect.manage._target_identity", lambda *a, **k: None)
     monkeypatch.setattr("anvil_serving.connect.manage._role_service_identity", lambda *a, **k: None)
+    monkeypatch.setattr("anvil_serving.connect.manage._oidc_ready", lambda *a, **k: None)
+    monkeypatch.setattr("anvil_serving.connect.manage._restored_gateway_ready", lambda *a, **k: None)
     return {
         "manifest_path": manifest_path, "target": Target("connector", "dashboard"),
         "root": root, "tmp": tmp_path,
