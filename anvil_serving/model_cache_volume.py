@@ -24,6 +24,7 @@ _REPO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION = re.compile(r"^[0-9a-f]{40}$")
 _VOLUME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _MAX_ENTRIES = 20_000
+_MAX_NATIVE_DESCRIPTORS = 1_000_000
 _MAX_NATIVE_MAPPINGS = 1_000_000
 _MAX_SECONDS = 20
 _CONFIG_SUFFIXES = {".toml", ".json", ".yaml", ".yml"}
@@ -654,6 +655,7 @@ def _native_fd_refs(mountpoint):
         raise ModelCacheVolumeError("native writer audit requires root access to POSIX /proc")
     refs = []
     budget = {"entries": 0, "deadline": time.monotonic() + _MAX_SECONDS}
+    descriptor_entries = 0
     mapping_entries = 0
     for process in _children(Path("/proc"), budget):
         if not process.name.isdigit() or int(process.name) == os.getpid():
@@ -662,8 +664,9 @@ def _native_fd_refs(mountpoint):
             # A process may exit between enumeration and opening its fd directory.
             with os.scandir(Path(process.path) / "fd") as descriptors:
                 for descriptor in descriptors:
-                    budget["entries"] += 1
-                    if budget["entries"] > _MAX_ENTRIES or time.monotonic() > budget["deadline"]:
+                    # Descriptor counts are independent of process/tree counts.
+                    descriptor_entries += 1
+                    if descriptor_entries > _MAX_NATIVE_DESCRIPTORS or time.monotonic() > budget["deadline"]:
                         raise ModelCacheVolumeError("native writer audit exceeds its bound")
                     try:
                         target = os.readlink(descriptor.path)
