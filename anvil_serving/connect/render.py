@@ -314,7 +314,7 @@ def _authelia(manifest: dict[str, Any]) -> str:
             "        require_pkce: true", "        pkce_challenge_method: S256",
             "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:",
             "          - openid", "          - email", "          - profile", "        id_token_signed_response_alg: RS256",
-            "        token_endpoint_auth_method: none" if public else "        token_endpoint_auth_method: client_secret_post",
+            "        token_endpoint_auth_method: none" if public else "        token_endpoint_auth_method: " + client.get("token_endpoint_auth_method", "client_secret_post"),
             "        redirect_uris:",
         ])
         if client["groups_scope"]:

@@ -1127,17 +1127,20 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         for index, raw_client in enumerate(raw_clients):
             path = f"$.authelia.additional_oidc_clients[{index}]"
             client_fields = {"client_id", "client_name", "client_secret_file", "redirect_uris"}
-            if not isinstance(raw_client, dict) or set(raw_client) - client_fields - {"groups_scope", "public"}:
+            if not isinstance(raw_client, dict) or set(raw_client) - client_fields - {"groups_scope", "public", "token_endpoint_auth_method"}:
                 raise _error(path, "has unknown keys")
             public = raw_client.get("public", False)
             if type(public) is not bool:
                 raise _error(path + ".public", "must be a boolean")
+            auth_method = raw_client.get("token_endpoint_auth_method")
+            if "token_endpoint_auth_method" in raw_client and (public or not isinstance(auth_method, str) or auth_method not in {"client_secret_basic", "client_secret_post"}):
+                raise _error(path + ".token_endpoint_auth_method", "requires a confidential client and client_secret_basic or client_secret_post")
             if public:
                 if "client_secret_file" in raw_client:
                     raise _error(path, "public clients must omit client_secret_file")
                 client_fields.remove("client_secret_file")
             groups_scope = raw_client.get("groups_scope", False)
-            client = _mapping({key: value for key, value in raw_client.items() if key not in {"groups_scope", "public"}}, path, client_fields)
+            client = _mapping({key: value for key, value in raw_client.items() if key not in {"groups_scope", "public", "token_endpoint_auth_method"}}, path, client_fields)
             client_id = _client_id(client["client_id"], path + ".client_id")
             if client_id in client_ids:
                 raise _error(path + ".client_id", "must be unique including the Connect client")
@@ -1156,6 +1159,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
                 }),
                 "redirect_uris": sorted(redirects),
                 "groups_scope": groups_scope,
+                **({"token_endpoint_auth_method": auth_method} if auth_method is not None else {}),
             })
         authelia["additional_oidc_clients"] = sorted(additional_clients, key=lambda client: client["client_id"])
     secret_files = _authelia_secret_files(authelia)
