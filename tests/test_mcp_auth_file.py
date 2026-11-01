@@ -14,6 +14,13 @@ import pytest
 from anvil_serving.control_plane.mcp import auth_file
 
 
+@pytest.fixture(autouse=True)
+def isolate_auth_file_platform_mocks(monkeypatch):
+    # Descriptor/platform fakes must not alter pytest capture or other modules.
+    monkeypatch.setattr(auth_file, "os", SimpleNamespace(**vars(os)))
+    monkeypatch.setattr(auth_file, "sys", SimpleNamespace(**vars(sys)))
+
+
 def _acl(*entries: tuple[int, int, int, bytes]) -> bytes:
     body = b"".join(
         struct.pack("<BBHI", kind, flags, 8 + len(sid), mask) + sid

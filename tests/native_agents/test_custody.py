@@ -40,3 +40,37 @@ def test_distinct_owner_credentials_required(tmp_path,monkeypatch,same_path):
         root["workspaces"].append({"id":str(i),"principal":"human:"+"a"*64,"label":"w","isolation":"personal","owner_url":f"http://127.0.0.1:{9901+i}","owner_token_file":str(p),"directories":[{"id":"source","label":"Source","path":str(tmp_path.resolve()),"display_path":"/workspace/source"}]})
     config=tmp_path/"config"; config.write_text(json.dumps(root))
     with pytest.raises(ValueError,match="credential"):load_config(config)
+def test_only_declared_personal_principal_can_use_host_workspaces(tmp_path, monkeypatch):
+    import json
+    from anvil_serving.native_agents.server import load_config
+    monkeypatch.setattr("anvil_serving.native_agents.server.protected_read", lambda p, n: Path(p).read_bytes())
+    operator = "human:" + "a" * 64
+    guest = "human:" + "b" * 64
+    config = {"version": 1, "deployment_id": "test", "listen_port": 9900,
+              "store_file": str(tmp_path / "db"), "auth": {}, "workspaces": []}
+    for index, principal in enumerate((operator, guest)):
+        token = tmp_path / f"token-{index}"
+        token.write_text(f"distinct-owner-token-{index}")
+        config["workspaces"].append({"id": f"workspace-{index}", "principal": principal,
+            "label": "Agent", "isolation": "personal" if index == 0 else "sandboxed",
+            "owner_url": f"http://127.0.0.1:{9901+index}", "owner_token_file": str(token),
+            "directories": [{"id": "project", "label": "Project", "path": str(tmp_path.resolve()),
+                             "display_path": "/workspace/project"}]})
+    path = tmp_path / "config.json"
+    def check():
+        path.write_text(json.dumps(config))
+        return load_config(path)
+    with pytest.raises(ValueError, match="explicit personal principal"):
+        check()
+    config["personal_principal"] = operator
+    assert len(check()[1]) == 2
+    config["workspaces"][1]["isolation"] = "personal"
+    with pytest.raises(ValueError, match="reserved for the personal principal"):
+        check()
+    for invalid in (None, "", "operator", 1):
+        config["personal_principal"] = invalid
+        with pytest.raises(ValueError, match="invalid personal principal"):
+            check()
+    del config["personal_principal"]
+    config["workspaces"].pop()
+    assert len(check()[1]) == 1  # Existing single-owner installations stay valid.

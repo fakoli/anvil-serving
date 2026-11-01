@@ -453,6 +453,7 @@ required operands, choices, and defaults.
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
+| `connect native-agents-check` | Run finite local Agents checks without browser or email sign-in. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
 | `connect native-agents` | Run the native Agents broker behind a managed TLS edge. | `process` / `bounded` | `--config` |
 | `connect resources` | List declared browser services and copyable grant values. | `read` / `bounded` | `--manifest` |
 | `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | - |
