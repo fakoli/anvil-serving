@@ -137,94 +137,6 @@ def _inspect(commands=None, **kwargs):
     return result, commands
 
 
-def test_supported_runtime_and_static_mps_are_reported_with_stable_roles():
-    result, _commands = _inspect()
-
-    assert result["schema_version"] == 1
-    assert result["operation"] == "gpu_sharing_inspect"
-    assert result["mutated_state"] is False
-    assert [(row["role"], row["uuid"], row["sm_count"]) for row in result["gpus"]] == [
-        ("fast", ROLES[0]["uuid"], 170),
-        ("heavy", ROLES[1]["uuid"], 188),
-    ]
-    assert {row["green_context"]["status"] for row in result["gpus"]} == {"supported"}
-    assert {row["mps_static_partitioning"]["status"] for row in result["gpus"]} == {
-        "supported"
-    }
-    assert result["frameworks"]["pytorch_green_context"]["status"] == "supported"
-    assert result["frameworks"]["flashinfer_green_context"]["status"] == "unavailable"
-
-
-def test_gpu_roles_follow_uuid_when_runtime_indexes_reorder():
-    reordered_inventory = (
-        "0, GPU-11111111-1111-1111-1111-111111111111, NVIDIA RTX PRO 6000 Blackwell\n"
-        "1, GPU-33333333-3333-3333-3333-333333333333, NVIDIA GeForce RTX 5090\n"
-    )
-
-    def reordered_gpu_run(*_args, **_kwargs):
-        return reordered_inventory
-
-    result = gpu_sharing.inspect_gpu_sharing(
-        roles=ROLES,
-        system="Linux",
-        wsl=False,
-        inside_container=False,
-        _run=FakeCommands(),
-        _gpu_run=reordered_gpu_run,
-        _which=_which,
-        _symbol_probe=_symbols(),
-    )
-    assert {row["uuid"]: row["role"] for row in result["gpus"]} == {
-        ROLES[0]["uuid"]: "fast",
-        ROLES[1]["uuid"]: "heavy",
-    }
-
-
-@pytest.mark.parametrize("toolkit", ["12.8", "13.0"])
-def test_old_cuda_runtime_is_blocked(toolkit):
-    result, _commands = _inspect(FakeCommands(toolkit=toolkit))
-    assert {row["green_context"]["status"] for row in result["gpus"]} == {
-        "blocked_by_runtime_version"
-    }
-
-
-def test_missing_green_context_symbol_is_unavailable():
-    commands = FakeCommands()
-    result = gpu_sharing.inspect_gpu_sharing(
-        system="Linux",
-        wsl=False,
-        inside_container=False,
-        _run=commands,
-        _gpu_run=_gpu_run,
-        _which=_which,
-        _symbol_probe=_symbols(runtime=False),
-    )
-    assert {row["green_context"]["status"] for row in result["gpus"]} == {"unavailable"}
-
-
-def test_missing_cuda_runtime_evidence_stays_unknown():
-    commands = FakeCommands(toolkit="not-a-version")
-    result = gpu_sharing.inspect_gpu_sharing(
-        system="Linux",
-        wsl=False,
-        inside_container=False,
-        _run=commands,
-        _gpu_run=_gpu_run,
-        _which=lambda name: None if name == "nvcc" else _which(name),
-        _symbol_probe=_symbols(runtime=None),
-    )
-    assert result["environment"]["host_cuda_runtime"]["status"] == "unknown"
-    assert {row["green_context"]["status"] for row in result["gpus"]} == {"unknown"}
-
-
-def test_driver_runtime_mismatch_blocks_green_context():
-    result, _commands = _inspect(FakeCommands(toolkit="13.2", driver_cuda="13.1"))
-    assert {row["green_context"]["status"] for row in result["gpus"]} == {
-        "blocked_by_runtime_version"
-    }
-    assert any("exceeds" in warning for warning in result["warnings"])
-
-
 def test_mps_absent_stopped_and_unreadable_are_structured():
     absent = FakeCommands()
     result = gpu_sharing.inspect_gpu_sharing(
@@ -258,36 +170,6 @@ def test_mps_absent_stopped_and_unreadable_are_structured():
     assert "MPS daemon query permission_denied" in unreadable["warnings"]
 
 
-def test_wsl_is_unknown_and_native_windows_is_environment_blocked():
-    commands = FakeCommands()
-    wsl = gpu_sharing.inspect_gpu_sharing(
-        system="Linux",
-        wsl=True,
-        inside_container=False,
-        _run=commands,
-        _gpu_run=_gpu_run,
-        _which=_which,
-        _symbol_probe=_symbols(),
-    )
-    assert {row["green_context"]["status"] for row in wsl["gpus"]} == {"unknown"}
-    assert {row["mps_static_partitioning"]["status"] for row in wsl["gpus"]} == {
-        "unknown"
-    }
-
-    windows = gpu_sharing.inspect_gpu_sharing(
-        system="Windows",
-        wsl=False,
-        inside_container=False,
-        _run=FakeCommands(),
-        _gpu_run=_gpu_run,
-        _which=_which,
-        _symbol_probe=_symbols(),
-    )
-    assert {row["mps_static_partitioning"]["status"] for row in windows["gpus"]} == {
-        "blocked_by_environment"
-    }
-
-
 def test_malformed_and_timed_out_gpu_details_degrade_without_traceback():
     malformed, _ = _inspect(FakeCommands(details="bad,row"))
     assert malformed["gpus"][0]["compute_capability"] is None
@@ -296,20 +178,6 @@ def test_malformed_and_timed_out_gpu_details_degrade_without_traceback():
     timed_out, _ = _inspect(FakeCommands(extended_failure="timeout"))
     assert len(timed_out["gpus"]) == 2
     assert "extended NVIDIA GPU query timeout" in timed_out["warnings"]
-
-
-def test_only_bounded_non_mutating_commands_are_invoked_and_json_is_stable():
-    result, commands = _inspect()
-    for argv, input_text, timeout in commands.calls:
-        assert 0 < timeout <= gpu_sharing.MAX_TIMEOUT_SECONDS
-        joined = " ".join(argv).lower()
-        assert not any(token in joined for token in (" -d", " start", " quit", " add", " rm"))
-        if "nvidia-cuda-mps-control" in argv[0] and input_text is not None:
-            assert input_text in {"get_server_list\n", "lspart\n"}
-
-    first = json.dumps(result, indent=2, sort_keys=True, ensure_ascii=True)
-    second, _ = _inspect()
-    assert first == json.dumps(second, indent=2, sort_keys=True, ensure_ascii=True)
 
 
 def test_timeout_bounds_and_cli_help_contract(capsys):
@@ -326,19 +194,6 @@ def test_timeout_bounds_and_cli_help_contract(capsys):
     assert "--gpu-uuid" in output
     assert "--compose-file" in output
     assert "--confirm" in output
-
-
-def test_default_probe_assets_are_packaged_and_not_checkout_examples():
-    compose = gpu_sharing.DEFAULT_PROBE_COMPOSE_FILE
-    source = compose.parent / "gpu-sharing" / "inspect.cu"
-
-    assert compose.is_file()
-    assert source.is_file()
-    assert "_gpu_sharing_probe" in compose.parts
-    assert "examples" not in compose.parts
-    assert source.read_text(encoding="utf-8").replace("\r\n", "\n") == (
-        ROOT / "examples" / "primary-node" / "gpu-sharing" / "inspect.cu"
-    ).read_text(encoding="utf-8").replace("\r\n", "\n")
 
 
 def _rendered_probe_service(gpu_uuid=ROLES[0]["uuid"]):
@@ -429,64 +284,3 @@ def test_product_probe_previews_then_runs_reviewed_compose_contract():
     assert live["result"]["created_context"] is False
     run_argv = commands.calls[-1][0]
     assert run_argv[-4:] == ["run", "--rm", "--no-deps", "gpu-sharing-inspect"]
-
-
-def test_product_probe_refuses_uuid_drift_or_weakened_container_safety():
-    compose_file = ROOT / "examples/primary-node/docker-compose.experiment.yml"
-    rendered = _rendered_probe_service("GPU-11111111-1111-1111-1111-111111111111")
-    rendered["services"]["gpu-sharing-inspect"]["read_only"] = False
-
-    with pytest.raises(ValueError, match="unsafe GPU-sharing probe configuration"):
-        gpu_sharing.probe_gpu_sharing(
-            compose_file=compose_file,
-            gpu_uuid=ROLES[0]["uuid"],
-            _run=FakeProbeCommands(rendered),
-            _which=lambda name: "docker" if name == "docker" else None,
-        )
-
-
-def test_product_probe_refuses_unreviewed_image_or_command():
-    compose_file = ROOT / "examples/primary-node/docker-compose.experiment.yml"
-    rendered = _rendered_probe_service()
-    service = rendered["services"]["gpu-sharing-inspect"]
-    service["image"] = "nvidia/cuda:latest"
-    service["command"] = [service["command"][0] + " && echo unsafe"]
-
-    with pytest.raises(ValueError, match="exact reviewed digest"):
-        gpu_sharing.probe_gpu_sharing(
-            compose_file=compose_file,
-            gpu_uuid=ROLES[0]["uuid"],
-            _run=FakeProbeCommands(rendered),
-            _which=lambda name: "docker" if name == "docker" else None,
-        )
-
-
-def test_compose_probe_is_profile_gated_uuid_pinned_and_non_mutating():
-    compose = (ROOT / "examples/primary-node/docker-compose.experiment.yml").read_text(
-        encoding="utf-8"
-    )
-    source = (ROOT / "examples/primary-node/gpu-sharing/inspect.cu").read_text(
-        encoding="utf-8"
-    )
-
-    service = compose.split("  gpu-sharing-inspect:\n", 1)[1].split(
-        "\n  # Managed voice-latency candidates", 1
-    )[0]
-    assert 'profiles: ["gpu-sharing-probe"]' in service
-    assert "platform: linux/amd64" in service
-    assert "COMPUTE_B_GPU_UUID:-GPU-22222222-2222-2222-2222-222222222222" in service
-    assert "read_only: true" in service
-    assert "cap_drop:" in service and '["ALL"]' in service
-    assert "ports:" not in service
-    assert "inspect.cu" in service
-
-    assert "cuInit(0)" in source
-    assert "created_context\\\": false" in source
-    assert "launched_workload\\\": false" in source
-    for forbidden_call in (
-        "cudaGreenCtxCreate(",
-        "cuGreenCtxCreate(",
-        "cudaExecutionCtxStreamCreate(",
-        "cuGreenCtxStreamCreate(",
-    ):
-        assert forbidden_call not in source

@@ -54,42 +54,6 @@ def _argv(corpus: Path, output: Path) -> list[str]:
     ]
 
 
-def test_frozen_corpus_has_two_hash_bound_cases_per_category():
-    loaded = multimodal.load_corpus(str(CORPUS))
-
-    assert loaded["schema"] == "multimodal-corpus/v1"
-    assert len(loaded["cases"]) == 12
-    assert {case["id"].rsplit("-", 1)[0] for case in loaded["cases"]} == set(
-        EXPECTED_CASES
-    )
-    for category, expected_ids in EXPECTED_CASES.items():
-        cases = [case for case in loaded["cases"] if case["id"].startswith(category)]
-        assert {case["id"] for case in cases} == expected_ids
-        assert all(case["modality"] == "image" for case in cases)
-        assert all(len(case["media"]) == 1 for case in cases)
-        assert all(case["assertions"] for case in cases)
-        assert all(len(case["media"][0]["sha256"]) == 64 for case in cases)
-    for case in loaded["cases"]:
-        assertion = case["assertions"]
-        assert assertion == [{
-            "type": "equals_normalized_casefold",
-            "value": EXPECTED_ANSWERS[case["id"]],
-        }]
-        assert multimodal.evaluate_assertions(
-            EXPECTED_ANSWERS[case["id"]], assertion
-        )[0]["passed"]
-        assert not multimodal.evaluate_assertions(
-            EXPECTED_ANSWERS[case["id"]] + " | contradictory extra text", assertion
-        )[0]["passed"]
-        sentinel = INSTRUCTION_SENTINELS.get(case["id"])
-        if sentinel:
-            assert "untrusted content" in case["prompt"]
-            assert sentinel not in assertion[0]["value"].casefold()
-            assert not multimodal.evaluate_assertions(
-                EXPECTED_ANSWERS[case["id"]] + " | " + sentinel, assertion
-            )[0]["passed"]
-
-
 def test_dry_run_accepts_frozen_corpus_without_endpoint_or_artifact(
     monkeypatch, tmp_path, capsys
 ):

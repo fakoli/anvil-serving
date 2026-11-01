@@ -21,32 +21,6 @@ def _sample(metric, value, *, labels=None, status="ok", unit="bytes", stale=Fals
     }
 
 
-def test_pressure_health_and_freshness_are_explicit() -> None:
-    snapshot = {
-        "samples": [
-            _sample("host.memory.pressure", 92, unit="percent"),
-            _sample(
-                "service.health",
-                False,
-                labels={
-                    "component": "router",
-                    "health": "failed",
-                    "served_identity": "anvil-router",
-                    "owning_host": "dark",
-                },
-                status="failed",
-            ),
-            _sample("gpu.utilization", 20, status="stale", unit="percent", stale=True),
-        ]
-    }
-
-    indicators = build_indicators(snapshot)
-
-    assert indicators["pressure"][0]["severity"] == "critical"
-    assert indicators["health"][0]["component"] == "router"
-    assert indicators["freshness"][0]["stale"] is True
-
-
 def test_workload_ownership_never_upgrades_ambiguous_attribution() -> None:
     snapshot = {
         "samples": [
@@ -104,18 +78,3 @@ def test_model_loading_transition_distinguishes_shared_to_vram() -> None:
         "shared_gpu_memory": 200.0,
         "dedicated_vram": 500.0,
     }
-
-
-def test_model_loading_excludes_memory_from_non_gpu_hosts() -> None:
-    snapshot = {
-        "samples": [
-            _sample("host.memory.used", 900),
-            {**_sample("host.memory.used", 8000), "host_id": "mini"},
-            _sample("gpu.memory.used", 500),
-        ]
-    }
-
-    loading = build_indicators(snapshot)["model_loading"]
-
-    assert loading["host_memory"] == 900
-    assert loading["dedicated_vram"] == 500

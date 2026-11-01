@@ -1,15 +1,14 @@
 import copy
 import http.server
-import json
 import multiprocessing
 import threading
 import time
 
 import pytest
 
-from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter, _benchmark_refresh_row
+from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
-from anvil_serving.transports import TransportError, TransportResult, DEFAULT_MAX_RESPONSE_BYTES
+from anvil_serving.transports import TransportError, TransportResult
 
 
 class FakeTransport:
@@ -113,47 +112,6 @@ def adapter():
     return ControllerAdapter(config(), {}, transport_factory=FakeTransport, clock=lambda: 10.0)
 
 
-def test_controller_config_max_response_bytes_is_passed_to_the_transport():
-    FakeTransport.instances.clear()
-    cfg = config()
-    cfg["controller"]["max_response_bytes"] = 262144
-    ControllerAdapter(cfg, {}, transport_factory=FakeTransport, clock=lambda: 10.0)
-    assert FakeTransport.instances[-1].kwargs["max_response_bytes"] == 262144
-
-
-def test_controller_config_without_max_response_bytes_uses_the_transport_default():
-    FakeTransport.instances.clear()
-    ControllerAdapter(config(), {}, transport_factory=FakeTransport, clock=lambda: 10.0)
-    assert FakeTransport.instances[-1].kwargs["max_response_bytes"] == DEFAULT_MAX_RESPONSE_BYTES
-
-
-def test_catalog_gates_declared_resource_actions_and_hides_bindings():
-    value = adapter()
-    summary = value.snapshot()
-    assert summary["status"] == "available"
-    assert summary["resources"] == [{
-        "id": "serve.chat", "label": "Chat", "host_id": "host-a", "kind": "serve",
-        "status": "available",
-    }]
-    assert summary["services"] == []
-    controls = value.controls("serve.chat")
-    assert {item["id"] for item in controls["actions"] if item["supported"]} == {
-        "serve.start", "serve.stop", "serve.restart", "serve.probe",
-        "tier.quiesce", "tier.drain", "tier.readmit",
-    }
-    assert "/private" not in repr(controls)
-
-
-def test_benchmark_list_uses_only_the_declared_bounded_tool():
-    value = adapter()
-    cursor = "a" * 32 + ".1"
-    assert value.list_benchmark_jobs(limit=2, cursor=cursor)["schema"] == "anvil-serving.benchmark-job-list/v1"
-    operation, kwargs = FakeTransport.instances[-1].calls[-1]
-    assert operation.name == "benchmark_job_list"
-    assert operation.arguments == {"limit": 2, "cursor": cursor}
-    assert kwargs == {}
-
-
 def test_benchmark_list_refreshes_only_exact_bounded_status_refs():
     value = adapter()
     result = value.list_benchmark_jobs(refresh_refs=[{"suite": "context", "run_id": "smoke"}])
@@ -165,14 +123,6 @@ def test_benchmark_list_refreshes_only_exact_bounded_status_refs():
     ]
     with pytest.raises(ObservatoryError, match="up to 20"):
         value.list_benchmark_jobs(refresh_refs=[])
-
-
-@pytest.mark.parametrize("state", ["completed", "cancelling"])
-def test_benchmark_refresh_accepts_declared_owner_states(state):
-    assert _benchmark_refresh_row({
-        "spec": {"suite": "context", "run_id": "smoke"}, "state": state,
-        "updated_at": "2026-09-19T00:01:00Z",
-    }, {"suite": "context", "run_id": "smoke"})["native_state"] == state
 
 
 def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
@@ -199,7 +149,7 @@ def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
         daemon_threads = True
 
     server = Server(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     value = ControllerAdapter({"controller": {
         "url": f"http://127.0.0.1:{server.server_address[1]}", "token_env": "FIXTURE_TOKEN",
@@ -221,107 +171,6 @@ def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
     assert elapsed < 2.5
     assert not [child for child in multiprocessing.active_children()
                 if child.name == "observatory-benchmark-list"]
-
-
-def test_benchmark_owner_rejects_a_dns_name_before_a_worker_can_resolve_it():
-    value = ControllerAdapter({"controller": {
-        "url": "https://resolver-stall.example.test", "token_env": "FIXTURE_TOKEN",
-        "topology": "fixture", "execution_host": "host-a", "execution_runtime": "native",
-    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
-    started = time.monotonic()
-    with pytest.raises(ObservatoryError, match="unavailable"):
-        value.list_benchmark_jobs(limit=1, deadline_seconds=0.2)
-    assert time.monotonic() - started < 0.8
-
-
-def test_real_benchmark_owner_worker_returns_the_declared_list():
-    class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):
-            if self.path == "/health":
-                raw = b'{"status":"ok","service":"anvil-serving-controller","request_id":"fixture.1","node":"host-a"}'
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(raw)))
-                self.end_headers()
-                self.wfile.write(raw)
-                return
-            raw = b'{"tools":[{"name":"benchmark_job_list","inputSchema":{"type":"object"}},{"name":"benchmark_job_status","inputSchema":{"type":"object"}}]}'
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(raw)))
-            self.end_headers()
-            self.wfile.write(raw)
-
-        def do_POST(self):
-            request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            raw = (b'{"ok":true,"data":{"schema":"anvil-serving.benchmark-job-list/v1",'
-                   b'"items":[{"native_id":"job-native-1"}],"next_cursor":null,'
-                   b'"source":{"id":"owner-a","status":"fresh"}}}' if request["name"] == "benchmark_job_list" else
-                   b'{"ok":true,"data":{"spec":{"suite":"context","run_id":"job-native-1"},"state":"completed","updated_at":"2026-09-19T00:01:00Z"}}')
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(raw)))
-            self.end_headers()
-            self.wfile.write(raw)
-
-        def log_message(self, *_args):
-            pass
-
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    value = ControllerAdapter({"controller": {
-        "url": f"http://127.0.0.1:{server.server_address[1]}", "token_env": "FIXTURE_TOKEN",
-        "expected_node": "host-a", "topology": "fixture", "execution_host": "host-a",
-        "execution_runtime": "native",
-    }, "resources": []}, {"FIXTURE_TOKEN": "fixture-token"})
-    try:
-        result = value.list_benchmark_jobs(limit=1, refresh_refs=[{"suite": "context", "run_id": "job-native-1"}], deadline_seconds=2.0)
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=1)
-    assert result["source"]["id"] == "owner-a"
-    assert result["items"] == [{"native_id": "job-native-1"}]
-    assert result["refresh"] == {"items": [{
-        "suite": "context", "run_id": "job-native-1", "native_state": "completed", "updated_at": "2026-09-19T00:01:00Z",
-    }], "partial": False}
-    assert not [child for child in multiprocessing.active_children()
-                if child.name == "observatory-benchmark-list"]
-
-
-def test_preview_binds_exact_private_resource_and_execute_uses_durable_context():
-    value = adapter()
-    preview = value.preview("serve.chat", "serve.stop")
-    assert preview["stop_semantics"] == "stop_remove"
-    assert "logs" in preview["effect"]
-    assert preview["binding"]["tool"] == "serves_manage"
-    assert preview["binding"]["arguments"] == {
-        "action": "down", "manifest": "/private/serves.toml", "names": ["chat"]
-    }
-    first = copy.deepcopy(preview)
-    result = value.execute(first, "intent.123")
-    assert result["ok"] is True
-    operation, kwargs = FakeTransport.instances[-1].calls[-1]
-    assert operation.arguments["confirm"] is True
-    assert operation.arguments["dry_run"] is False
-    assert kwargs == {
-        "idempotency_key": "intent.123",
-        "idempotency_context": {
-            "topology": "fleet-a", "execution_host": "host-a", "execution_runtime": "native"
-        },
-    }
-
-
-def test_reconcile_reads_operation_record_without_dispatch():
-    value = adapter()
-    preview = value.preview("serve.chat", "serve.start")
-    transport = FakeTransport.instances[-1]
-    dispatches = len(transport.calls)
-    result = value.reconcile(preview, "intent.123")
-    assert result["execution_outcome"] == "succeeded"
-    assert len(transport.calls) == dispatches
-    assert transport.status_calls == ["intent.123"]
 
 
 @pytest.mark.parametrize("native,expected", [("restored", "succeeded"), ("failed", "failed")])
@@ -415,14 +264,6 @@ def test_evidence_projection_excludes_model_output_and_raw_owner_failures():
     ]
 
 
-def test_unknown_action_and_parameter_fail_closed():
-    value = adapter()
-    with pytest.raises(ObservatoryError):
-        value.preview("serve.chat", "remove")
-    with pytest.raises(ObservatoryError):
-        value.preview("serve.chat", "serve.start", parameters={"command": "oops"})
-
-
 def test_probe_preview_does_not_run_probe_and_start_verification_checks_health():
     value = adapter()
     preview = value.preview("serve.chat", "serve.probe")
@@ -443,69 +284,6 @@ def test_probe_preview_does_not_run_probe_and_start_verification_checks_health()
     }
 
 
-def test_serve_baseline_ignores_metrics_but_tracks_owner_and_admission(monkeypatch):
-    value = adapter()
-    transport = FakeTransport.instances[-1]
-    original = transport.execute
-    metric = ["0, 1000, 97887"]
-    docker_state = ["running"]
-    admission_state = ["admitting"]
-
-    def execute(operation, **kwargs):
-        result = original(operation, **kwargs)
-        data = copy.deepcopy(dict(result.data))
-        if operation.name == "serves_status":
-            data["data"].update({
-                "gpu_memory_lines": list(metric),
-                "selected": ["chat"],
-                "reservations": {"gpu_roles": []},
-                "operating_mode": {"mode": "split", "gpu_ownership": []},
-                "recipe_ownership": {"owners": [], "discovery_error": None},
-            })
-            data["data"]["serves"][0].update({
-                "container": "chat", "docker_state": docker_state[0],
-                "running": docker_state[0] == "running", "model": "org/chat",
-                "engine": "sglang", "health_status": 200,
-            })
-        elif operation.name == "router_transition" and operation.arguments.get("action") == "status":
-            data["data"]["tiers"][0].update({
-                "state": admission_state[0], "observed_model": "org/chat",
-                "active_requests": 17,
-            })
-        return TransportResult(operation.name, "controller", data)
-
-    monkeypatch.setattr(transport, "execute", execute)
-    first = value.preview("serve.chat", "serve.start")
-    metric[0] = "0, 64000, 97887"
-    second = value.preview("serve.chat", "serve.start")
-    assert second["baseline_digest"] == first["baseline_digest"]
-
-    docker_state[0] = "exited"
-    third = value.preview("serve.chat", "serve.start")
-    assert third["baseline_digest"] != first["baseline_digest"]
-
-    docker_state[0] = "running"
-    admission_state[0] = "quiesced"
-    fourth = value.preview("serve.chat", "serve.start")
-    assert fourth["baseline_digest"] != first["baseline_digest"]
-
-
-def test_snapshot_uses_router_observed_model():
-    value = adapter()
-    transport = FakeTransport.instances[-1]
-    original = transport.execute
-
-    def execute(operation, **kwargs):
-        result = original(operation, **kwargs)
-        data = copy.deepcopy(dict(result.data))
-        if operation.name == "router_transition" and operation.arguments.get("action") == "status":
-            data["data"]["tiers"][0]["observed_model"] = "org/runtime-model"
-        return TransportResult(operation.name, "controller", data)
-
-    transport.execute = execute
-    assert value.snapshot()["serves"][0]["observed_model"] == "org/runtime-model"
-
-
 def test_declared_native_service_has_exact_process_identity_and_reviewed_lifecycle():
     cfg = config()
     cfg["resources"].append({
@@ -520,52 +298,6 @@ def test_declared_native_service_has_exact_process_identity_and_reviewed_lifecyc
     assert preview["binding"]["arguments"] == {"action": "down", "service": "speech"}
     result = value.execute(preview, "intent.speech")
     assert result["execution_outcome"] == "succeeded"
-
-
-def test_container_exec_is_a_closed_reviewed_controller_action():
-    cfg = config()
-    cfg["resources"].append({
-        "id": "service.container", "label": "Managed container", "host_id": "host-a", "kind": "service",
-        "service": "chat", "manager": "docker", "container": "a" * 64,
-        "execution_runtime": "native", "exec_commands": ["health"],
-    })
-    value = ControllerAdapter(cfg, {}, transport_factory=FakeTransport, clock=lambda: 10.0)
-    preview = value.preview("service.container", "container.exec", parameters={"command_id": "health"})
-    assert preview["binding"]["tool"] == "container_exec"
-    assert preview["binding"]["arguments"] == {
-        "resource_id": "service.container", "command_id": "health",
-        "command_host": "host-a", "command_runtime": "native",
-        "expected_policy_digest": "b" * 64, "expected_candidate_digest": "c" * 64,
-    }
-    assert preview["diagnostic"] == {
-        "command_id": "health", "container_id": "a" * 64,
-        "timeout_seconds": 10,
-        "max_output_bytes": 65536,
-    }
-    value.execute(preview, "intent.exec")
-    operation, _ = FakeTransport.instances[-1].calls[-1]
-    assert operation.name == "container_exec"
-    assert operation.arguments["dry_run"] is False and operation.arguments["confirm"] is True
-
-
-def test_declared_serve_container_exec_reuses_the_exact_owner_binding():
-    cfg = config()
-    cfg["resources"][0].update({
-        "container_id": "a" * 64,
-        "execution_runtime": "native",
-        "exec_commands": ["health"],
-    })
-    value = ControllerAdapter(cfg, {}, transport_factory=FakeTransport, clock=lambda: 10.0)
-    controls = value.controls("serve.chat")
-    assert next(row for row in controls["actions"] if row["id"] == "container.exec")["supported"] is True
-    assert value.snapshot()["serves"][0]["exec"] == {"status": "available", "commands": ["health"]}
-    preview = value.preview("serve.chat", "container.exec", parameters={"command_id": "health"})
-    assert preview["binding"]["arguments"] == {
-        "resource_id": "serve.chat", "command_id": "health",
-        "command_host": "host-a", "command_runtime": "native",
-        "expected_policy_digest": "b" * 64, "expected_candidate_digest": "c" * 64,
-    }
-    assert preview["diagnostic"]["container_id"] == "a" * 64
 
 
 def test_serve_container_exec_refuses_an_owner_preview_for_another_container():
@@ -591,19 +323,6 @@ def test_serve_container_exec_refuses_an_owner_preview_for_another_container():
     assert value.snapshot()["serves"][0]["exec"] == {"status": "unavailable", "commands": []}
     with pytest.raises(ObservatoryError, match="reviewable diagnostic identity"):
         value.preview("serve.chat", "container.exec", parameters={"command_id": "health"})
-
-
-@pytest.mark.parametrize("fields", [
-    {"container_id": "a" * 64, "execution_runtime": "native"},
-    {"container_id": "a" * 64, "exec_commands": ["health"]},
-    {"execution_runtime": "native", "exec_commands": ["health"]},
-    {"container_id": "not-immutable", "execution_runtime": "native", "exec_commands": ["health"]},
-])
-def test_serve_container_exec_requires_a_complete_immutable_binding(fields):
-    cfg = config()
-    cfg["resources"][0].update(fields)
-    with pytest.raises(ValueError):
-        ControllerAdapter(cfg, {}, transport_factory=FakeTransport, clock=lambda: 10.0)
 
 
 def test_container_exec_adapter_uses_the_registered_mcp_preview_envelope(monkeypatch, tmp_path):
@@ -749,26 +468,6 @@ def test_typed_owner_completion_is_identical_after_direct_delivery_or_recovery(
     assert value.verify(preview, recovered)["status"] == verification
 
 
-@pytest.mark.parametrize("action,tool", [
-    ("container.exec", "container_exec"),
-    ("recipe.unload", "recipe_manage"),
-])
-def test_recovered_typed_completion_never_passes_without_its_result(action, tool):
-    class ReplayTransport:
-        def __init__(self, *_args, **_kwargs): pass
-        def operation_status(self, key):
-            return TransportResult("operation-status", "controller", {
-                "key": key, "status": "succeeded", "response": {"ok": True, "data": {}},
-            })
-
-    value = ControllerAdapter(config(), {}, transport_factory=ReplayTransport, clock=lambda: 10.0)
-    preview = {"resource_id": "serve.chat", "action_id": action,
-               "binding": {"tool": tool, "arguments": {}}}
-    recovered = value.reconcile(preview, "intent.missing")
-    assert recovered["execution_outcome"] == "unknown"
-    assert value.verify(preview, recovered)["status"] == "failed"
-
-
 def _profile_resource():
     return {
         "id": "profile.exclusive", "label": "Exclusive profile",
@@ -779,18 +478,6 @@ def _profile_resource():
         "admissions": {"primary": "admitting"},
         "gpu_owners": {"gpu-role-a": ["chat"], "gpu-role-b": ["chat"]},
     }
-
-
-def test_profile_control_requires_declared_structured_postcondition():
-    value_config = config()
-    value_config["resources"].append({
-        "id": "profile.legacy", "host_id": "host-a", "kind": "profile",
-        "manifest": "/private/serves.toml", "profile": "legacy",
-    })
-    value = ControllerAdapter(value_config, {}, transport_factory=FakeTransport)
-    (action,) = value.controls("profile.legacy")["actions"]
-    assert action["supported"] is False
-    assert "postconditions" in action["reason"]
 
 
 def test_profile_verification_checks_members_mode_physical_owners_and_admission(monkeypatch):

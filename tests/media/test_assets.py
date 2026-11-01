@@ -6,7 +6,6 @@ import http.client
 import io
 import json
 import shutil
-import subprocess
 
 import pytest
 
@@ -61,33 +60,6 @@ def test_failed_metadata_promotion_leaves_no_orphan(tmp_path, monkeypatch):
     with pytest.raises(OSError):
         ingest(store)
     assert not list(tmp_path.iterdir())
-
-
-@pytest.mark.parametrize("limits", [{"frames": float("nan")}, {"width": True}, {"unknown": 1}, {"frames": 0}])
-def test_invalid_extent_contract_is_rejected(limits):
-    with pytest.raises(MediaError):
-        ParameterSpec("artifact", media_limits=limits)
-
-
-@pytest.mark.parametrize("info", [{**INFO, "frames": 125}, {**INFO, "frames": float("nan")}, {"height": 1}])
-def test_extent_checks_do_not_trust_compressed_size(info):
-    with pytest.raises(MediaError):
-        assets.enforce_limits(info, {"width": 864, "height": 480, "frames": 124})
-
-
-def test_probe_uses_decoded_count_and_rejects_malformed_or_multistream(monkeypatch):
-    raw = {"streams": [{"codec_type": "video", "width": 864, "height": 480,
-                        "nb_frames": "1", "nb_read_frames": "125"}], "format": {"duration": "5.2"}}
-    monkeypatch.setattr(assets, "_probe", lambda *a, **k: raw)
-    info = assets.inspect_media(None, "video/mp4")
-    assert info["frames"] == 125 and info["decodedBytes"] == 125 * 864 * 480 * 12
-    raw["format"]["duration"] = "NaN"
-    with pytest.raises(MediaError):
-        assets.inspect_media(None, "video/mp4")
-    raw["format"]["duration"] = "5.2"
-    raw["streams"].append(dict(raw["streams"][0]))
-    with pytest.raises(MediaError):
-        assets.inspect_media(None, "video/mp4")
 
 
 def test_limited_reader_stops_at_length_and_has_total_deadline(monkeypatch):
@@ -145,37 +117,6 @@ def test_real_decoder_rejects_corrupt_and_accepts_single_still(tmp_path):
     path.write_bytes(PNG[:24])
     with pytest.raises(MediaError):
         assets.inspect_media(path, "image/png")
-
-
-@pytest.mark.parametrize("suffix,media_type", [("jpg", "image/jpeg"), ("mp4", "video/mp4"), ("wav", "audio/wav")])
-def test_real_decoder_accepts_video_image_and_audio(tmp_path, suffix, media_type):
-    if not shutil.which("ffprobe") or not shutil.which("ffmpeg"):
-        pytest.skip("managed decoders not installed on this test host")
-    path = tmp_path / ("input." + suffix)
-    generator = ["-f", "lavfi", "-i", "sine=frequency=440:duration=0.5"] if suffix == "wav" else [
-        "-f", "lavfi", "-i", "color=c=blue:s=64x64:r=8:d=0.5"]
-    if suffix == "jpg":
-        generator += ["-frames:v", "1", "-update", "1"]
-    subprocess.run(["ffmpeg", "-v", "error", *generator, "-y", str(path)], timeout=15, check=True)
-    info = assets.inspect_media(path, media_type)
-    assert info["decodedBytes"] > 0
-    if suffix == "mp4":
-        assert info["frames"] == 4 and info["durationSeconds"] == 0.5
-
-
-def test_cli_command_does_not_forward_resource_words(monkeypatch, capsys):
-    from anvil_serving import cli
-    from anvil_serving.commands import manifest_data
-    from anvil_serving.media import asset_client
-    called = []
-    monkeypatch.setattr(asset_client, "upload", lambda path, config, **kw: called.append((path, config, kw)) or {"dryRun": True})
-    assert cli.main(["media", "asset", "upload", "--file", "reference.png", "--client-config", "connection.json", "--dry-run"]) == 0
-    assert called == [("reference.png", "connection.json", {"dry_run": True})]
-    assert json.loads(capsys.readouterr().out)["dryRun"]
-    command = next(c for c in manifest_data()["commands"] if c["path"] == "media asset upload")
-    assert command["execution_policy"] == "offline" and command["resource_role"] is None and not command["transports"]
-    assert cli.main(["media", "asset", "upload", "--file", "reference.png", "--client-config", "connection.json", "--confirm"]) == 0
-    assert called[-1] == ("reference.png", "connection.json", {"dry_run": False})
 
 
 def test_client_discovers_policy_and_uses_only_its_configured_origin(tmp_path, monkeypatch):

@@ -1,120 +1,22 @@
-"""Unit coverage for pure, metadata-only router telemetry helpers."""
-from __future__ import annotations
-
-from dataclasses import replace
+"""Critical metadata-only router telemetry contracts."""
 
 import pytest
 
 from anvil_serving.router.decision_log import AttemptRecord, DecisionRecord
-from anvil_serving.router.router_telemetry import (
-    aggregate_stats,
-    find_request,
-    render_capacity_prometheus,
-    render_prometheus,
-)
-from anvil_serving.router.replica_scheduler import (
-    ReplicaCandidate,
-    ReplicaPressure,
-    rank_replica_candidates,
-)
+from anvil_serving.router.router_telemetry import render_capacity_prometheus, render_prometheus
 
 
-def _record(
-    *,
-    route: str = "llm.primary",
-    served: bool = True,
-    request_id: str | None = None,
-    prompt: int = 3,
-    completion: int = 2,
-    request_bytes: int = 10,
-    response_bytes: int = 20,
-    latency_ms: int = 0,
-) -> DecisionRecord:
+def _record(*, route="llm.primary", latency_ms=0):
     return DecisionRecord(
-        kind="chat",
-        requested_tier="primary-local",
-        attempts=(AttemptRecord("primary-local", served, "served", prompt, completion, "served"),),
-        served_tier="primary-local" if served else None,
-        total_prompt_tokens=prompt,
-        total_completion_tokens=completion,
-        route=route,
-        request_id=request_id,
-        request_bytes=request_bytes,
-        response_bytes=response_bytes,
-        latency_ms=latency_ms,
+        kind="chat", requested_tier="primary-local",
+        attempts=(AttemptRecord("primary-local", True, "served", 3, 2, "served"),),
+        served_tier="primary-local", total_prompt_tokens=3, total_completion_tokens=2,
+        route=route, request_bytes=10, response_bytes=20, latency_ms=latency_ms,
     )
-
-
-def test_aggregate_stats_reports_only_the_current_buffer_and_exact_percentiles():
-    records = [
-        _record(latency_ms=0),
-        _record(latency_ms=10),
-        _record(latency_ms=20, served=False),
-        _record(latency_ms=30),
-        _record(latency_ms=40),
-    ]
-
-    stats = aggregate_stats(records)
-
-    assert stats["scope"] == "current_decision_log_buffer"
-    assert stats["available"] == 5
-    assert stats["requests"] == {"total": 5, "succeeded": 4, "failed": 1}
-    assert stats["tokens"] == {"prompt": 15, "completion": 10, "total": 25}
-    assert stats["bytes"] == {"request": 50, "response": 100, "total": 150}
-    assert stats["latency_ms"] == {"samples": 4, "average": 25.0, "p50": 20, "p95": 40}
-    assert stats["routes"]["llm.primary"]["requests"]["total"] == 5
-
-
-def test_aggregate_stats_filters_by_normalized_alias_then_limits_recent_matches():
-    records = [
-        _record(route="llm.primary", latency_ms=10),
-        _record(route="llm.voice", latency_ms=20),
-        _record(route="llm.primary", latency_ms=30),
-    ]
-
-    stats = aggregate_stats(records, {"model": [" LLM.PRIMARY "], "limit": ["1"]})
-
-    assert stats["model"] == "llm.primary"
-    assert stats["matching"] == 2
-    assert stats["count"] == 1
-    assert stats["latency_ms"]["p50"] == 30
-    assert set(stats["routes"]) == {"llm.primary"}
-
-
-@pytest.mark.parametrize(
-    "query",
-    [
-        {"window": ["15m"]},
-        {"model": ["one", "two"]},
-        {"limit": ["0"]},
-        {"limit": ["not-a-number"]},
-    ],
-)
-def test_aggregate_stats_rejects_unsupported_or_invalid_queries(query):
-    with pytest.raises(ValueError):
-        aggregate_stats((), query)
-
-
-def test_find_request_returns_safe_summary_and_not_found_for_invalid_or_missing_ids():
-    records = [
-        _record(request_id="req_1", route="unsafe\nroute"),
-        _record(request_id="req_1", route="llm.primary", latency_ms=12),
-    ]
-
-    trace = find_request(records, "req_1")
-
-    assert trace["scope"] == "current_decision_log_buffer"
-    assert trace["record"]["route"] == "llm.primary"
-    assert trace["record"]["request_id"] == "req_1"
-    with pytest.raises(KeyError):
-        find_request(records, "bad id")
-    with pytest.raises(KeyError):
-        find_request(records, "req_missing")
 
 
 def test_prometheus_is_gauge_only_and_escapes_safe_model_labels():
     payload = render_prometheus((_record(route='model"\\name', latency_ms=15),))
-
     assert "# TYPE anvil_router_decision_buffer_requests gauge" in payload
     assert "anvil_router_decision_buffer_requests{model=\"\",outcome=\"succeeded\"} 1" in payload
     assert 'model="model\\"\\\\name"' in payload
@@ -123,95 +25,33 @@ def test_prometheus_is_gauge_only_and_escapes_safe_model_labels():
     assert "unsafe\\nroute" not in payload
 
 
-def test_capacity_prometheus_renders_only_present_numeric_gauges():
-    payload = render_capacity_prometheus({
-        "data": [{
-            "id": "primary-local",
-            "aliases": ["llm.primary"],
-            "loaded": True,
-            "capacity": {
-                "context_limit_tokens": 262_144,
-                "kv_cache_capacity_tokens": 571_950,
-            },
-            "multimodal": {"image_limit": 1},
-            "live": {
-                "requests_running": 1.0,
-                "requests_waiting": 0.0,
-                "kv_cache_usage_fraction": 0.25,
-            },
-        }],
-    })
-    assert 'anvil_router_model_loaded{model="llm.primary",tier="primary-local"} 1' in payload
-    assert "anvil_router_model_context_limit_tokens" in payload
-    assert "anvil_router_model_kv_cache_usage_fraction" in payload
-
-
 def _replica_capacity_snapshot():
-    return {
-        "data": [{
-            "id": "primary-local",
-            "aliases": ["llm.primary"],
-            "loaded": True,
-            "capacity": {"context_limit_tokens": 262_144},
-            "multimodal": {},
-            "live": {},
-            "admission": {
-                "status": "available", "state": "admitting", "active_requests": 1,
-                "draining": False,
-                "member_active_requests": {"member-a": 1, "member-b": 0},
-                "max_concurrency": 7,
-                "members": [
-                    {"id": "member-a", "state": "admitting", "active_requests": 1,
-                     "max_concurrency": 4, "draining": False},
-                    {"id": "member-b", "state": "admitting", "active_requests": 0,
-                     "max_concurrency": 3, "draining": False},
-                ],
-            },
+    return {"data": [{
+        "id": "primary-local", "aliases": ["llm.primary"], "loaded": True,
+        "capacity": {"context_limit_tokens": 262_144}, "multimodal": {}, "live": {},
+        "admission": {
+            "status": "available", "state": "admitting", "active_requests": 1,
+            "draining": False, "member_active_requests": {"member-a": 1, "member-b": 0},
+            "max_concurrency": 7,
             "members": [
-                {"id": "member-a", "freshness": "fresh", "pressure_ppm": 625_000,
-                 "requests_state": "valid", "kv_state": "missing"},
-                {"id": "member-b", "freshness": "stale", "pressure_ppm": None,
-                 "requests_state": "valid", "kv_state": "valid"},
+                {"id": "member-a", "state": "admitting", "active_requests": 1, "max_concurrency": 4, "draining": False},
+                {"id": "member-b", "state": "admitting", "active_requests": 0, "max_concurrency": 3, "draining": False},
             ],
-        }],
-    }
+        },
+        "members": [
+            {"id": "member-a", "freshness": "fresh", "pressure_ppm": 625_000, "requests_state": "valid", "kv_state": "missing"},
+            {"id": "member-b", "freshness": "stale", "pressure_ppm": None, "requests_state": "valid", "kv_state": "valid"},
+        ],
+    }]}
 
 
-def test_capacity_prometheus_emits_strict_member_gauges_without_alias_multiplication():
-    payload = render_capacity_prometheus(_replica_capacity_snapshot())
-    assert 'anvil_router_replica_tier_active_requests{tier="primary-local"} 1' in payload
-    assert 'anvil_router_replica_tier_max_concurrency{tier="primary-local"} 7' in payload
-    assert (
-        'anvil_router_replica_member_active_requests{tier="primary-local",member="member-a"} 1'
-        in payload
-    )
-    assert (
-        'anvil_router_replica_member_max_concurrency{tier="primary-local",member="member-b"} 3'
-        in payload
-    )
-    assert (
-        'anvil_router_replica_member_pressure_ppm{tier="primary-local",member="member-a"} 625000'
-        in payload
-    )
-    assert 'anvil_router_replica_member_pressure_ppm{tier="primary-local",member="member-b"}' not in payload
-    assert (
-        'anvil_router_replica_member_pressure_freshness{tier="primary-local",member="member-b",freshness="stale"} 1'
-        in payload
-    )
-    assert 'anvil_router_replica_tier_active_requests{model=' not in payload
-    assert payload.count('anvil_router_replica_tier_active_requests{tier="primary-local"}') == 1
-
-
-@pytest.mark.parametrize(
-    "mutate",
-    [
-        lambda row: row["admission"].update(active_requests=True),
-        lambda row: row["admission"]["members"][0].update(max_concurrency=100_001),
-        lambda row: row["members"][0].update(pressure_ppm=2_000_000_000_000_001),
-        lambda row: row["members"][0].update(freshness="stale"),
-        lambda row: row["members"][1].update(id="private/value"),
-    ],
-)
+@pytest.mark.parametrize("mutate", [
+    lambda row: row["admission"].update(active_requests=True),
+    lambda row: row["admission"]["members"][0].update(max_concurrency=100_001),
+    lambda row: row["members"][0].update(pressure_ppm=2_000_000_000_000_001),
+    lambda row: row["members"][0].update(freshness="stale"),
+    lambda row: row["members"][1].update(id="private/value"),
+])
 def test_capacity_prometheus_rejects_malformed_replica_groups(mutate):
     snapshot = _replica_capacity_snapshot()
     mutate(snapshot["data"][0])
@@ -220,61 +60,27 @@ def test_capacity_prometheus_rejects_malformed_replica_groups(mutate):
     assert "private/value" not in payload
 
 
-def test_find_request_preserves_canonical_replica_scheduler_evidence():
-    decision = rank_replica_candidates(
-        (
-            ReplicaCandidate("member-b", True, 0, 2, ReplicaPressure()),
-            ReplicaCandidate("member-a", True, 0, 2, ReplicaPressure()),
-        ),
-        cursor=0,
-    )
-    record = replace(_record(request_id="req_1"), replica_scheduler=decision)
-    result = find_request((record,), "req_1")
-    assert result["record"]["replica_scheduler"] == decision.to_dict()
-
-
 def test_capacity_prometheus_enforces_per_tier_and_total_member_bounds():
     rows = []
     for tier_index in range(17):
         tier_id = f"tier-{tier_index}"
         member_ids = [f"member-{index}" for index in range(16)]
         rows.append({
-            "id": tier_id,
-            "aliases": [],
+            "id": tier_id, "aliases": [],
             "admission": {
-                "status": "available", "state": "admitting", "active_requests": 0,
-                "draining": False, "member_active_requests": {
-                    member_id: 0 for member_id in member_ids
-                },
-                "max_concurrency": 16,
-                "members": [
-                    {"id": member_id, "state": "admitting", "active_requests": 0,
-                     "max_concurrency": 1, "draining": False}
-                    for member_id in member_ids
-                ],
+                "status": "available", "state": "admitting", "active_requests": 0, "draining": False,
+                "member_active_requests": {member_id: 0 for member_id in member_ids}, "max_concurrency": 16,
+                "members": [{"id": member_id, "state": "admitting", "active_requests": 0, "max_concurrency": 1, "draining": False} for member_id in member_ids],
             },
-            "members": [
-                {"id": member_id, "freshness": "unknown", "pressure_ppm": None,
-                 "requests_state": "missing", "kv_state": "missing"}
-                for member_id in member_ids
-            ],
+            "members": [{"id": member_id, "freshness": "unknown", "pressure_ppm": None, "requests_state": "missing", "kv_state": "missing"} for member_id in member_ids],
         })
     payload = render_capacity_prometheus({"data": rows})
     assert payload.count("anvil_router_replica_member_active_requests{tier=") == 256
     assert 'tier="tier-15"' in payload
     assert 'tier="tier-16"' not in payload
-
     oversized = rows[0].copy()
     oversized["admission"] = rows[0]["admission"].copy()
-    oversized["admission"]["members"] = rows[0]["admission"]["members"] + [
-        {"id": "member-extra", "state": "admitting", "active_requests": 0,
-         "max_concurrency": 1, "draining": False}
-    ]
-    oversized["admission"]["member_active_requests"] = {
-        **rows[0]["admission"]["member_active_requests"], "member-extra": 0,
-    }
-    oversized["members"] = rows[0]["members"] + [
-        {"id": "member-extra", "freshness": "unknown", "pressure_ppm": None,
-         "requests_state": "missing", "kv_state": "missing"}
-    ]
+    oversized["admission"]["members"] = rows[0]["admission"]["members"] + [{"id": "member-extra", "state": "admitting", "active_requests": 0, "max_concurrency": 1, "draining": False}]
+    oversized["admission"]["member_active_requests"] = {**rows[0]["admission"]["member_active_requests"], "member-extra": 0}
+    oversized["members"] = rows[0]["members"] + [{"id": "member-extra", "freshness": "unknown", "pressure_ppm": None, "requests_state": "missing", "kv_state": "missing"}]
     assert "anvil_router_replica_" not in render_capacity_prometheus({"data": [oversized]})

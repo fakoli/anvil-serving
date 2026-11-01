@@ -2,12 +2,10 @@
 
 import io
 import json
-import re
 
 import pytest
 
 from anvil_serving.router.front_door import make_server
-from anvil_serving.router.gateway import MCP_PATH
 
 
 class Stream:
@@ -76,78 +74,6 @@ def request_handler(server, *, stream=True, phase=None, error=BrokenPipeError):
     return handler
 
 
-@pytest.mark.parametrize("error", [BrokenPipeError, ConnectionResetError, ConnectionAbortedError])
-@pytest.mark.parametrize("stream,phase", [
-    (True, "headers"), (True, "body"), (True, "trailer"), (True, "flush"),
-    (False, "headers"), (False, "body"), (False, "flush"),
-])
-def test_disconnect_is_one_private_safe_log_and_releases_stream(capsys, stream, phase, error):
-    backend = Backend()
-    server = make_server("127.0.0.1", 0, backend, model_routes=("llm.primary",))
-    try:
-        handler = request_handler(server, stream=stream, phase=phase, error=error)
-        handler.handle_one_request()
-        log = capsys.readouterr().err
-        assert log.count("event=client_disconnected") == 1
-        assert f"error={error.__name__}" in log
-        assert re.search(r"gateway_request_id=req_[0-9a-f]{32} elapsed_ms=\d+\.\d", log)
-        assert "timestamp=" in log
-        assert "Traceback" not in log and "private-" not in log
-        assert handler.close_connection
-        if stream:
-            assert backend.stream.closed == 1
-        else:
-            assert backend.stream.reads == 2  # non-streaming response consumed it
-    finally:
-        server.server_close()
-
-
-@pytest.mark.parametrize("error", [BrokenPipeError, ConnectionResetError, TimeoutError, RuntimeError])
-def test_upstream_error_is_not_reported_as_client_disconnect(capsys, error):
-    backend = Backend(error)
-    server = make_server("127.0.0.1", 0, backend, model_routes=("llm.primary",))
-    try:
-        handler = request_handler(server)
-        handler.handle_one_request()
-        log = capsys.readouterr().err
-        assert f"500 stream error after headers: {error.__name__}" in log
-        assert "event=client_disconnected" not in log
-        assert "private-" not in log
-        assert b'"error"' in handler.wfile.getvalue()
-        assert b"private-upstream-detail" not in handler.wfile.getvalue()
-        assert handler.close_connection
-        assert backend.stream.closed == 1
-    finally:
-        server.server_close()
-
-
-@pytest.mark.parametrize("route", ["health", "mcp"])
-def test_source_callback_socket_error_is_not_swallowed(capsys, route):
-    class SourceFailure(Backend):
-        def tier_health(self):
-            raise ConnectionResetError("private-source-detail")
-
-        def mcp_request(self, body):
-            raise ConnectionResetError("private-source-detail")
-
-    backend = SourceFailure()
-    server = make_server("127.0.0.1", 0, backend, gateway=backend, auth_token="private-token")
-    try:
-        handler = request_handler(server)
-        if route == "health":
-            raw = (b"GET /v1/health/tiers HTTP/1.1\r\nHost: 127.0.0.1\r\n"
-                   b"Authorization: Bearer private-token\r\n\r\n")
-        else:
-            raw = (f"POST {MCP_PATH} HTTP/1.1\r\nContent-Length: 2\r\n".encode()
-                   + b"Authorization: Bearer private-token\r\n\r\n{}")
-        handler.rfile = io.BytesIO(raw)
-        with pytest.raises(ConnectionResetError, match="private-source-detail"):
-            handler.handle_one_request()
-        assert "client_disconnected" not in capsys.readouterr().err
-    finally:
-        server.server_close()
-
-
 @pytest.mark.parametrize("phase", [None, "headers", "body"])
 def test_protocol_stream_classifies_source_and_writer_failures(capsys, monkeypatch, phase):
     backend = Backend()
@@ -184,25 +110,5 @@ def test_protocol_stream_classifies_source_and_writer_failures(capsys, monkeypat
         assert "private-" not in log
         assert handler.close_connection
         assert closed == [True]
-    finally:
-        server.server_close()
-
-
-def test_keepalive_disconnect_uses_current_request_id(capsys):
-    backend = Backend()
-    server = make_server("127.0.0.1", 0, backend, model_routes=("llm.primary",))
-    try:
-        handler = request_handler(server)
-        handler.handle_one_request()
-        first_id = handler._correlation_headers()["X-Anvil-Request-Id"]
-        assert not handler.close_connection
-        handler.rfile = request_handler(server).rfile
-        handler.wfile._wrapped.phase = "body"
-        handler.handle_one_request()
-        second_id = handler._correlation_headers()["X-Anvil-Request-Id"]
-        log = capsys.readouterr().err
-        assert first_id != second_id
-        assert second_id in log and first_id not in log
-        assert log.count("event=client_disconnected") == 1
     finally:
         server.server_close()

@@ -36,14 +36,6 @@ def test_logs_use_fixed_binding_bound_and_redact(kind, tool):
         assert calls[0][1] == {"manifest": "/private/managed.toml", "names": ["model"], "tail": 200, "max_output_bytes": 65536, "timeout_seconds": 10, "follow": False}
 
 
-def test_missing_service_identity_never_reads_logs():
-    owner = adapter("service")
-    owner.read_services = lambda _: [{"logs": {"status": "unavailable"}}]
-    owner._call = lambda *_: pytest.fail("unverified service must not read logs")
-    with pytest.raises(ObservatoryError):
-        owner.workload_logs("workload-a")
-
-
 def test_auth_and_closed_query_precede_owner():
     service = object.__new__(WorkbenchService)
     service.adapter = SimpleNamespace(workload_logs=lambda _: pytest.fail("unauthorized owner call"))

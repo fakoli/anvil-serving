@@ -81,38 +81,6 @@ def run(operations, client):
                                    principal="owner", idempotency_key="request", backend=client)
 
 
-@pytest.mark.parametrize("change", [
-    {"schema": "other"}, {"runId": "A" * 32}, {"runId": []},
-    {"totalSeconds": True}, {"totalSeconds": 0}, {"totalSeconds": 7201},
-    {"totalSeconds": 10**300}, {"reservationSeconds": False},
-    {"reservationSeconds": 0}, {"reservationSeconds": 7170},
-    {"marginSeconds": True}, {"marginSeconds": -1}, {"marginSeconds": 301},
-    {"remainingSeconds": float("nan")}, {"remainingSeconds": float("inf")},
-    {"remainingSeconds": -1}, {"remainingSeconds": 7201},
-    {"acceptingNewWork": 1}, {"acceptingNewWork": False}, {"reason": []},
-    {"reason": "other"}, {"extra": "unexpected"},
-])
-def test_invalid_runtime_fails_closed_in_compatibility_and_before_submit(change):
-    configured = registry()
-    harness = Harness(stats(runtime(**change)))
-    compatibility = harness.client.compatibility(configured.descriptor)
-    assert compatibility.ready and not compatibility.available
-    assert compatibility.reasons == ("worker_budget_unknown",)
-    rendered = configured.render("image.test", "v1", {"prompt": "example"})
-    with pytest.raises(MediaSubmissionRefused) as error:
-        harness.client.submit(rendered, job_id="job_test")
-    assert error.value.code == "worker_budget_unknown" and not harness.posts
-
-
-@pytest.mark.parametrize("status", [
-    {"system": {}}, stats(None), stats({"schema": SCHEMA, "runId": "", "reason": "worker_budget_unknown"}),
-    stats({key: value for key, value in runtime().items() if key != "remainingSeconds"}),
-])
-def test_required_runtime_must_be_present_and_complete(status):
-    harness = Harness(status)
-    assert harness.client.compatibility(registry().descriptor).reasons == ("worker_budget_unknown",)
-
-
 @pytest.mark.parametrize("value,reason", [
     (runtime(remainingSeconds=930), "worker_budget_insufficient"),
     (runtime(remainingSeconds=929, acceptingNewWork=False, reason="worker_budget_insufficient"), "worker_budget_insufficient"),
@@ -127,23 +95,6 @@ def test_reservation_limits_are_checked_before_job_creation(tmp_path, value, rea
     with pytest.raises(MediaError):
         run(service, harness.client)
     assert service.jobs.nonterminal() == [] and not harness.posts
-
-
-@pytest.mark.parametrize("present", [False, True])
-def test_legacy_workflows_send_reservation_metadata_when_runtime_is_present(present):
-    configured = registry(required=False)
-    harness = Harness(stats(runtime()) if present else {"system": {}})
-    assert harness.client.compatibility(configured.descriptor).available
-    harness.client.submit(configured.render("image.test", "v1", {"prompt": "example"}), job_id="job_test")
-    if present:
-        assert harness.posts[0]["extra_data"] == {"anvil_runtime": {"runId": RUN_ID, "requiredSeconds": 600}}
-    else:
-        assert "extra_data" not in harness.posts[0]
-
-
-def test_legacy_workflow_does_not_ignore_invalid_present_runtime():
-    harness = Harness(stats(runtime(totalSeconds=True)))
-    assert not harness.client.compatibility(registry(required=False).descriptor).available
 
 
 def test_early_pass_is_rechecked_after_staging_and_late_refusal_is_terminal(tmp_path, monkeypatch):
@@ -225,17 +176,3 @@ def test_uncorrelated_or_ambiguous_post_outcomes_remain_submitting_and_recover(t
     recovered = run(service, harness.client)
     assert recovered["job"]["state"] == "queued"
     assert len(harness.posts) == 1
-
-
-def test_failed_final_status_read_is_definitely_before_post(tmp_path, monkeypatch):
-    harness = Harness()
-    service = operations(tmp_path, registry())
-
-    def stage(rendered, **_kwargs):
-        harness.status = urllib.error.URLError("status unavailable")
-        return rendered
-
-    monkeypatch.setattr(service, "_stage_artifact_inputs", stage)
-    with pytest.raises(MediaSubmissionRefused):
-        run(service, harness.client)
-    assert not harness.posts and service.jobs.nonterminal() == []

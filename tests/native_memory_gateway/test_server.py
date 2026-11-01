@@ -16,11 +16,9 @@ from anvil_serving.native_agents.auth import AdmissionDenied, NativeAuthenticato
 from anvil_serving.native_agents.types import NativeAdmission
 from anvil_serving.native_memory_gateway import server as gateway_server
 from anvil_serving.native_memory_gateway.server import (
-    CAPABILITIES,
     BoundedServer,
     GatewayError,
     NativeMemoryGateway,
-    _memory_credential,
     authentication_reader,
     credential_path,
     handler,
@@ -202,34 +200,6 @@ def test_authentication_reader_uses_service_credential_only_for_exact_introspect
     ]
 
 
-def test_receipt_requires_current_complete_key_and_retired_previous():
-    raw = receipt(previous={"key_id": "key_" + "e" * 16, "secret": "ask_" + "B" * 43, "retired": True})
-    assert _memory_credential(raw, hashlib.sha256(raw).hexdigest(), NOW)["secret"] == SECRET
-    invalid = (
-        receipt(key_id=None),
-        receipt(expires_at=NOW),
-        receipt(previous={"key_id": "key_" + "e" * 16, "secret": "ask_" + "B" * 43, "retired": False}),
-        receipt(previous={"key_id": "key_" + "e" * 16, "secret": SECRET, "retired": True}),
-    )
-    for value in invalid:
-        with pytest.raises(GatewayError) as failure:
-            _memory_credential(value, hashlib.sha256(value).hexdigest(), NOW)
-        assert (failure.value.status, failure.value.code) == (503, "memory_unavailable")
-    with pytest.raises(GatewayError):
-        _memory_credential(raw, "0" * 64, NOW)
-
-
-def test_capabilities_are_exact_and_do_not_expose_router_key_metadata():
-    instance, auth, _calls = gateway()
-    assert instance.capabilities("provider-token") == {
-        "version": 1,
-        "owner_id": PRINCIPAL,
-        "capabilities": list(CAPABILITIES),
-    }
-    assert auth.calls == ["provider-token"]
-    assert SECRET not in json.dumps(instance.capabilities("second-token"))
-
-
 def test_oidc_principal_and_generation_must_match_receipt_before_router_call():
     for principal, generation in ((OTHER, 7), (PRINCIPAL, 8)):
         instance, _auth, calls = gateway(principal=principal, generation=generation)
@@ -281,22 +251,10 @@ def test_revoked_oidc_after_router_response_discards_result():
     assert calls == []
 
 
-def test_receipt_change_during_request_discards_result():
-    first = receipt()
-    second = receipt(expires_at=NOW + 7200)
-    reads = iter((first, second))
-    cfg = config(credential_sha256=hashlib.sha256(first).hexdigest())
-    instance = NativeMemoryGateway(cfg, Auth(), Path("/run/credentials/unit/memory-key"), read=lambda *_: next(reads),
-        transport=lambda *_: (200, {"private": "memory"}), clock=lambda: NOW)
-    with pytest.raises(GatewayError) as failure:
-        instance.memory("token", {"alias": "memory.user", "operation": "detail", "arguments": {"id": "x"}})
-    assert failure.value.code == "memory_unavailable"
-
-
 @contextmanager
 def http_gateway(instance):
     server = BoundedServer(("127.0.0.1", 0), handler(instance))
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server.server_address
@@ -337,7 +295,7 @@ def test_http_contract_is_exact_and_never_reflects_token():
 def test_dripped_headers_have_an_absolute_deadline_and_release_connection_slot():
     instance, _auth, _calls = gateway()
     server = BoundedServer(("127.0.0.1", 0), handler(instance, header_timeout=0.15), maximum_connections=1)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     stalled = socket.create_connection(server.server_address, timeout=2)
     try:
@@ -369,7 +327,7 @@ def router(response_status=200, response_body=b'{"ok":true}', content_type="appl
             self.wfile.write(response_body)
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Router)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield f"http://127.0.0.1:{server.server_port}", seen

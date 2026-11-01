@@ -1,7 +1,6 @@
 """The public signature gate must scan committed bytes, never test output."""
 import importlib.util
 import io
-import json
 import subprocess
 import tarfile
 from contextlib import contextmanager
@@ -94,18 +93,3 @@ def test_signature_snapshot_rejects_unsafe_archive_members(tmp_path, monkeypatch
     monkeypatch.setattr(scanner, "run_git", git)
     with pytest.raises(ValueError, match="unsupported snapshot archive member"):
         scanner.scan_signature_snapshot(tmp_path)
-
-
-@pytest.mark.parametrize("depth", [0, 1, 2])
-@pytest.mark.parametrize("field", ["container_id", "containerId"])
-def test_semantic_scanner_detects_container_identity_without_disclosing_it(depth, field):
-    identity = "abc123ef" * 8
-    payload = json.dumps({field: identity})
-    for _ in range(depth):
-        payload = json.dumps({"content": payload})
-    findings = scanner.scan_text(payload, "docs/findings/result.json", "test")
-    assert [item["kind"] for item in findings] == ["operator-container-id"]
-    assert identity not in json.dumps(findings)
-    digest = json.dumps({"sha256": identity, "image": "sha256:" + identity,
-                         "container_id": "<redacted>"})
-    assert scanner.scan_text(digest, "docs/findings/result.json", "test") == []

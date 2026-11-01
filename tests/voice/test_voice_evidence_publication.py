@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import concurrent.futures
 import json
 import threading
@@ -34,8 +32,7 @@ def test_concurrent_evidence_publication_keeps_one_complete_attempt(tmp_path, mo
             return None
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(writer, attempt) for attempt in (1, 2)]
-        outcomes = [future.result() for future in futures]
+        outcomes = [future.result() for future in [pool.submit(writer, attempt) for attempt in (1, 2)]]
     successful = [attempt for attempt in outcomes if attempt is not None]
     assert len(successful) == 1
     retained = json.loads(target.read_text())

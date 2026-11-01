@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.benchmarking.jobs import BenchmarkJobError, canonical_json_bytes
+from anvil_serving.benchmarking.jobs import canonical_json_bytes
 from anvil_serving.benchmarking import swe_regrade
 from anvil_serving.benchmarking.swe_grader_adapter import GRADER_REVISION, SOURCE_HASHES
 from anvil_serving import transports
@@ -84,92 +84,6 @@ def _prepared_regrade(tmp_path, monkeypatch, *, v2=False, timeout_s=None):
     return swe_regrade.prepare_swe_regrade(store, target), retained
 
 
-def test_prepare_regrade_rejects_other_owner_without_model_calls(tmp_path, monkeypatch):
-    source = {**_record("source", "other"), "state": "completed"}
-    _retained(tmp_path, source)
-    monkeypatch.setattr(swe_regrade, "_verify_dataset_snapshot", lambda _: pytest.fail("dataset checked"))
-    with pytest.raises(BenchmarkJobError) as exc:
-        swe_regrade.prepare_swe_regrade(Store(tmp_path, source), _record("target", source_run_id="source"))
-    assert exc.value.code == "source_run_owner_mismatch"
-
-
-def test_regrade_only_runs_regenerated_grader_and_preserves_source(tmp_path, monkeypatch):
-    plan, retained = _prepared_regrade(tmp_path, monkeypatch)
-    original = (retained / "predictions.jsonl").read_bytes()
-    calls = []
-
-    def grader(argv, cwd, timeout, env):
-        calls.append((argv, env))
-        assert "OPENAI_API_KEY" not in env
-        assert not any("swe_agent_adapter.py" in value for value in argv)
-        (Path(cwd) / "fake.target.json").write_text(json.dumps({"completed_ids": [INSTANCE], "resolved_ids": [INSTANCE], "error_ids": []}))
-        return SimpleNamespace(returncode=0, stdout=b"graded", stderr=b"")
-
-    result = swe_regrade.regrade_swe_predictions(plan, runner=grader)
-    assert result["state"] == "completed"
-    assert result["summary"] == {"attempted": 1, "graded": 1, "resolved": 1, "resolve_rate": 1.0}
-    assert len(calls) == 1
-    assert (retained / "predictions.jsonl").read_bytes() == original
-
-
-def test_regrade_excludes_official_error_ids_from_completion(tmp_path, monkeypatch):
-    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
-
-    def grader(_argv, cwd, _timeout, _env):
-        (Path(cwd) / "fake.target.json").write_text(json.dumps({"completed_ids": [INSTANCE], "resolved_ids": [INSTANCE], "error_ids": [INSTANCE]}))
-        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
-
-    result = swe_regrade.regrade_swe_predictions(plan, runner=grader)
-    assert result["state"] == "incomplete"
-    assert result["summary"] == {"attempted": 1, "graded": 0, "resolved": 0, "resolve_rate": None}
-
-
-@pytest.mark.parametrize("report", [
-    {"completed_ids": INSTANCE, "resolved_ids": [], "error_ids": []},
-    {"completed_ids": [], "resolved_ids": [INSTANCE], "error_ids": []},
-])
-def test_regrade_rejects_malformed_or_contradictory_report(tmp_path, monkeypatch, report):
-    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
-
-    def grader(_argv, cwd, _timeout, _env):
-        (Path(cwd) / "fake.target.json").write_text(json.dumps(report))
-        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
-
-    with pytest.raises(BenchmarkJobError, match="(report|resolved IDs)"):
-        swe_regrade.regrade_swe_predictions(plan, runner=grader)
-
-
-def test_regrade_nonzero_grader_cannot_claim_success(tmp_path, monkeypatch):
-    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
-    result = swe_regrade.regrade_swe_predictions(
-        plan, runner=lambda *_args: SimpleNamespace(returncode=1, stdout=b"failed", stderr=b"")
-    )
-    assert result["state"] == "incomplete"
-    assert result["official_grader_complete"] is False
-    assert result["summary"] == {"attempted": 1, "graded": 0, "resolved": 0, "resolve_rate": None}
-
-
-def test_regrade_retains_typed_bounded_runner_failure(tmp_path, monkeypatch):
-    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
-
-    def overflow(*_args):
-        raise swe_regrade._ProcessOutputOverflow()
-
-    result = swe_regrade.regrade_swe_predictions(plan, runner=overflow)
-    assert result["failure"] == {"class": "infrastructure_failure", "stage": "official_grader", "code": "grader_output_overflow"}
-    assert Path(plan["paths"]["result"]).is_file()
-
-
-def test_regrade_default_runner_requires_owned_process_group(monkeypatch):
-    calls = []
-    monkeypatch.setattr(swe_regrade, "_run_bounded_process", lambda *a, **k: calls.append((a, k)))
-    swe_regrade._regrade_runner(["grader"], "/work", 12, {"PATH": "/bin"})
-    assert calls == [((["grader"],), {
-        "timeout": 12, "max_output_bytes": swe_regrade.MAX_REPLAY_OUTPUT_BYTES,
-        "cwd": "/work", "env": {"PATH": "/bin"}, "owned_process_group": True,
-    })]
-
-
 def test_regrade_retains_group_ownership_failure_without_launch(tmp_path, monkeypatch):
     plan, _ = _prepared_regrade(tmp_path, monkeypatch)
     monkeypatch.setattr(transports.os, "getpgrp", lambda: -1, raising=False)
@@ -177,40 +91,6 @@ def test_regrade_retains_group_ownership_failure_without_launch(tmp_path, monkey
     result = swe_regrade.regrade_swe_predictions(plan)
     assert result["state"] == "incomplete"
     assert result["failure"]["code"] == "_ProcessGroupError"
-
-
-def test_regrade_rejects_oversized_grader_report(tmp_path, monkeypatch):
-    plan, _ = _prepared_regrade(tmp_path, monkeypatch)
-
-    def grader(_argv, cwd, _timeout, _env):
-        with (Path(cwd) / "fake.target.json").open("wb") as handle:
-            handle.truncate(swe_regrade.MAX_SWE_RETAINED_BYTES + 1)
-        return SimpleNamespace(returncode=0, stdout=b"", stderr=b"")
-
-    with pytest.raises(BenchmarkJobError, match="report"):
-        swe_regrade.regrade_swe_predictions(plan, runner=grader)
-
-
-def test_prepare_regrade_rejects_tampered_retained_hash(tmp_path, monkeypatch):
-    source = {**_record("source"), "state": "completed"}
-    retained, store = _retained(tmp_path, source)
-    (retained / "predictions.jsonl").write_text("changed")
-    monkeypatch.setattr(swe_regrade, "_verify_dataset_snapshot", lambda _: None)
-    with pytest.raises(BenchmarkJobError) as exc:
-        swe_regrade.prepare_swe_regrade(store, _record("target", source_run_id="source"))
-    assert exc.value.code == "bad_swe_canonical_manifest"
-
-
-def test_prepare_regrade_requires_terminal_manifest_anchor(tmp_path):
-    source = {**_record("source"), "state": "completed"}
-    retained, store = _retained(tmp_path, source)
-    stage = retained.parent / "retention-stage.json"
-    value = json.loads(stage.read_text())
-    value["manifest_reference"]["sha256"] = "0" * 64
-    stage.write_text(json.dumps(value))
-    with pytest.raises(BenchmarkJobError) as exc:
-        swe_regrade.prepare_swe_regrade(store, _record("target", source_run_id="source"))
-    assert exc.value.code == "swe_canonical_evidence_mismatch"
 
 
 @pytest.mark.parametrize("v2", [False, True])

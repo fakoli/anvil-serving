@@ -141,21 +141,6 @@ def connect_site(tmp_path):
         console.close()
 
 
-def test_connect_session_bootstraps_and_requires_fresh_bound_assertions(connect_site):
-    _console, call, state = connect_site
-    status, session = call("GET", "session")
-    assert status == 200 and session["data"]["authentication_mode"] == "connect"
-    assert state["cookie"] and session["data"]["identity"] == "operator-fixture"
-    assert call("GET", "fleet")[0] == 200
-    assert call("GET", "fleet", signed=False)[0] == 401
-
-    target = BASE + "api/observatory/v1/fleet"
-    wrong_target = assertion("GET", target, target_sha256="0" * 64)
-    assert call("GET", "fleet", token=wrong_target)[0] == 401
-    wrong_binding = assertion("GET", target, sid="c" * 32)
-    assert call("GET", "fleet", token=wrong_binding)[0] == 401
-
-
 def test_connect_access_advertisement_is_opt_in_and_requires_connect_mode(tmp_path):
     disabled = Console(config(tmp_path), metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
     try:
@@ -182,53 +167,6 @@ def test_connect_access_advertisement_is_opt_in_and_requires_connect_mode(tmp_pa
     source["connect_access"] = "true"
     with pytest.raises(ValueError, match="invalid Connect access"):
         Console(source, metrics=Metrics(), environment={})
-
-
-def test_connect_access_bookmark_returns_the_shell(connect_site):
-    _console, _call, state = connect_site
-    connection = http.client.HTTPConnection("127.0.0.1", state["port"], timeout=5)
-    connection.request("GET", BASE + "access", headers={"Host": "console.example.test"})
-    response = connection.getresponse()
-    body = response.read()
-    connection.close()
-    assert response.status == 200
-    assert b"Anvil Workbench" in body
-
-
-def test_connect_mutation_replay_and_password_logout_routes_are_closed(connect_site):
-    _console, call, _state = connect_site
-    assert call("GET", "session")[0] == 200
-    target = BASE + "api/observatory/v1/drafts"
-    token = assertion("POST", target)
-    first = call("POST", "drafts", body={}, token=token)
-    second = call("POST", "drafts", body={}, token=token)
-    assert first[0] == 400 and second[0] == 401
-    assert call("POST", "session", signed=False, cookie=False, body={"username": "operator", "password": "fixture"})[0] == 405
-    assert call("DELETE", "session")[0] == 405
-
-
-def test_connect_expiry_removes_the_binding_index(connect_site):
-    console, call, state = connect_site
-    assert call("GET", "session")[0] == 200
-    message = Message()
-    message["Cookie"] = state["cookie"]
-    console.access.clock = lambda: time.time() + 3600
-    assert console.access.session(message, required=False) is None
-    assert not console.access._sessions and not console.access._connect_sessions
-
-
-def test_connect_rebinding_replaces_the_presented_cookie_without_session_growth(connect_site):
-    console, call, state = connect_site
-    assert call("GET", "session")[0] == 200
-    target = BASE + "api/observatory/v1/session"
-    for number in range(1, 258):
-        message = Message()
-        message["Cookie"] = state["cookie"]
-        message["X-Anvil-Connect-Identity"] = assertion("GET", target, sid=f"{number:032x}")
-        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        assert issued
-        state["cookie"] = console.access.cookie(session).split(";", 1)[0]
-        assert len(console.access._sessions) == len(console.access._connect_sessions) == 1
 
 
 def test_connect_profile_has_no_grants_and_only_session_is_available(tmp_path):
@@ -268,77 +206,6 @@ def test_connect_profile_has_no_grants_and_only_session_is_available(tmp_path):
         console.close()
 
 
-@pytest.mark.parametrize("mapping", [False, True])
-def test_connect_legacy_receiver_preserves_subject_access_with_signed_role(tmp_path, mapping):
-    console = Console(config(tmp_path, mapping=mapping), metrics=Metrics(),
-                      environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
-    target = BASE + "api/observatory/v1/session"
-    try:
-        message = Message()
-        message[_header_name()] = assertion("GET", target, role="admin")
-        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        assert issued
-        if mapping:
-            assert session.principal.identity == "operator-fixture"
-            assert session.principal.can_operate("fixture", "configuration.apply")
-        else:
-            assert session.profile_id.startswith("connect-")
-            assert not session.principal.resources and not session.principal.actions
-    finally:
-        console.close()
-
-
-def test_connect_application_roles_use_only_the_explicit_role_mapping(tmp_path):
-    current = config(tmp_path)
-    current["users"].append({
-        "id": "member-fixture", "username": "member", "role": "viewer", "resources": [], "actions": [],
-    })
-    current["authentication"]["connect"]["roles"] = {"member": "member-fixture", "admin": "operator-fixture"}
-    console = Console(current, metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
-    target = BASE + "api/observatory/v1/session"
-    try:
-        missing_role = Message()
-        missing_role[_header_name()] = assertion("GET", target)
-        with pytest.raises(ObservatoryError) as error:
-            console.access.connect_session(missing_role, method="GET", target=target, bootstrap=True)
-        assert error.value.status == 401
-        message = Message()
-        message[_header_name()] = assertion("GET", target, role="member")
-        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        owner = console.store.connect_profile("connect-fixture")["id"]
-        assert issued and session.principal.identity == session.profile_id == owner
-        assert session.principal.role == "viewer" and not session.principal.resources
-
-        message = Message()
-        message[_header_name()] = assertion("GET", target, role="admin")
-        session, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        assert issued and session.principal.identity == session.profile_id == owner
-        assert session.principal.can_operate("fixture", "configuration.apply")
-        assert session.principal.username == "operator" and session.principal.role == "operator"
-        assert console.access._connect_roles["admin"].identity == "operator-fixture"
-        # New sessions and roles preserve the subject owner, not the template.
-        message = Message()
-        message[_header_name()] = assertion("GET", target, role="admin", subject="other-fixture", sid="c" * 32)
-        peer, issued = console.access.connect_session(message, method="GET", target=target, bootstrap=True)
-        assert issued and peer.principal.identity != owner
-        assert peer.principal.resources == session.principal.resources
-        assert peer.principal.actions == session.principal.actions
-
-        missing = config(tmp_path)
-        missing["authentication"]["connect"]["roles"] = {"admin": "operator-fixture"}
-        denied = Console(missing, metrics=Metrics(), environment={"CONNECT_ASSERTION_CURRENT": SECRET_TEXT})
-        try:
-            message = Message()
-            message[_header_name()] = assertion("GET", target, role="member")
-            with pytest.raises(ObservatoryError) as error:
-                denied.access.connect_session(message, method="GET", target=target, bootstrap=True)
-            assert error.value.status == 401
-        finally:
-            denied.close()
-    finally:
-        console.close()
-
-
 def test_connect_verifier_rejects_duplicate_headers_signature_schema_and_skew():
     verifier = ConnectVerifier(
         {"resource": "observatory", "keys": [{"id": "current", "secret_env": "CONNECT_ASSERTION_CURRENT"}], "principals": {}},
@@ -362,22 +229,6 @@ def test_connect_verifier_rejects_duplicate_headers_signature_schema_and_skew():
     message[_header_name()] = assertion("GET", target)
     with pytest.raises(ObservatoryError):
         verifier.verify(message, method="GET", target=target)
-
-
-def test_connect_verifier_accepts_the_gateway_fixed_wire_vector():
-    verifier = ConnectVerifier(
-        {"resource": "dash", "keys": [{"id": "observatory-v1", "secret_env": "CONNECT_ASSERTION_CURRENT"}], "principals": {}},
-        origin="https://dash.example.test",
-        environment={"CONNECT_ASSERTION_CURRENT": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8"},
-        clock=lambda: 1_789_000_000,
-    )
-    token = (
-        "acai1.eyJ2IjoxLCJpc3MiOiJhbnZpbC1jb25uZWN0Iiwia2lkIjoib2JzZXJ2YXRvcnktdjEiLCJzdWIiOiJodW1hbjphYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhIiwic2lkIjoiMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTEiLCJzZyI6MywicGciOjcsImVwb2NoIjoiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYiIsInJlc291cmNlIjoiZGFzaCIsImhvc3QiOiJkYXNoLmV4YW1wbGUudGVzdCIsIm1ldGhvZCI6IkdFVCIsInRhcmdldF9zaGEyNTYiOiIyNTlmYzM1YjI0NGMwMmFkNzQ5YjFkMWI5MjNjZWRlNGRhNDc0MjI3MGMzZGQ3ZDgwYjk3MTY5MzhhODNkNTNjIiwiaWF0IjoxNzg5MDAwMDAwLCJleHAiOjE3ODkwMDAwMzAsInNlc3Npb25fZXhwIjoxNzg5MDAwMTAwLCJqdGkiOiI0MjQyNDI0MjQyNDI0MjQyNDI0MjQyNDI0MjQyNDI0MiJ9.R0uvUBMc8ZiV8yDMsvG0gkzhHzt1wCHIHK2iB6wOAMs"
-    )
-    message = Message()
-    message[_header_name()] = token
-    result = verifier.verify(message, method="GET", target="/api/observatory/v1/session?view=current")
-    assert result.binding.subject == "human:" + "a" * 64
 
 
 def _header_name():

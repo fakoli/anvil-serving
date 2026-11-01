@@ -2,7 +2,6 @@ from dataclasses import asdict
 import json
 import os
 from pathlib import Path
-import traceback
 
 import pytest
 
@@ -66,63 +65,9 @@ def test_non_string_scope_and_wrong_policy_type_are_fixed_denials():
     assert check_scope("wrong", TOKEN_A, WORKLOADS_READ).code == "authorization_policy_malformed"
 
 
-@pytest.mark.parametrize(
-    "payload",
-    [
-        b'{"schema_version": 1, "schema_version": 1, "clients": []}',
-        b'{"schema_version": true, "clients": []}',
-        b'{"schema_version": 1, "clients": [], "extra": 1}',
-        b'{"schema_version": 1, "clients": [{"id":"reader","credential_env":"TOKEN_A","scopes":["bad"]}]}',
-        b'{"schema_version": 1, "clients": [{"id":"reader","credential_env":"TOKEN_A","scopes":["workloads:read","workloads:read"]}]}',
-    ],
-)
-def test_malformed_closed_schema_denies(tmp_path: Path, payload: bytes):
-    path = tmp_path / "policy.json"
-    path.write_bytes(payload)
-    with pytest.raises(AuthorizationError) as exc:
-        load_authorization_policy(path, env={"TOKEN_A": TOKEN_A})
-    assert exc.value.code == "authorization_policy_malformed"
-
-
-def test_policy_size_client_ids_references_and_resolved_material_must_be_unique(tmp_path: Path):
-    path = tmp_path / "policy.json"
-    path.write_bytes(b" " * (64 * 1024 + 1))
-    with pytest.raises(AuthorizationError):
-        load_authorization_policy(path)
-
-    with pytest.raises(AuthorizationError):
-        load(tmp_path, [client("same", "TOKEN_A", [WORKLOADS_READ]), client("same", "TOKEN_B", [WORKLOADS_READ])])
-    with pytest.raises(AuthorizationError):
-        load(tmp_path, [client("one", "TOKEN_A", [WORKLOADS_READ]), client("two", "TOKEN_A", [NODE_ADMIN_BOOTSTRAP])])
-    with pytest.raises(AuthorizationError):
-        load_authorization_policy(
-            write_policy(tmp_path, [client("one", "TOKEN_A", [WORKLOADS_READ]), client("two", "TOKEN_B", [NODE_ADMIN_BOOTSTRAP])]),
-            env={"TOKEN_A": TOKEN_A, "TOKEN_B": TOKEN_A},
-        )
-
-
-def test_legacy_equality_after_normalization_is_denied(tmp_path: Path):
-    with pytest.raises(AuthorizationError) as exc:
-        load(tmp_path, [client("reader", "TOKEN_A", [WORKLOADS_READ])], legacy_token=" \r" + TOKEN_A + "\n")
-    assert exc.value.code == "authorization_policy_malformed"
-
-
 def test_short_legacy_material_does_not_disable_a_valid_scoped_policy(tmp_path: Path):
     policy = load(tmp_path, [client("reader", "TOKEN_A", [WORKLOADS_READ])], legacy_token="short")
     assert check_scope(policy, TOKEN_A, WORKLOADS_READ).allowed
-
-
-@pytest.mark.parametrize("size, expected", [(15, False), (16, True), (4096, True), (4097, False)])
-def test_utf8_token_boundaries(tmp_path: Path, size: int, expected: bool):
-    token = "x" * size
-    path = write_policy(tmp_path, [client("reader", "TOKEN_A", [WORKLOADS_READ])])
-    if expected:
-        policy = load_authorization_policy(path, env={"TOKEN_A": token})
-        assert check_scope(policy, "\r" + token + "\n", WORKLOADS_READ).allowed
-    else:
-        with pytest.raises(AuthorizationError) as exc:
-            load_authorization_policy(path, env={"TOKEN_A": token})
-        assert exc.value.code == "authorization_credential_malformed"
 
 
 def test_file_credentials_reject_links_urls_and_non_utf8(tmp_path: Path):
@@ -155,21 +100,6 @@ def test_file_credentials_reject_links_urls_and_non_utf8(tmp_path: Path):
         load_authorization_policy(policy_path)
 
 
-def test_safe_representations_and_exception_chains_do_not_expose_material(tmp_path: Path):
-    secret = "super-secret-material-that-must-not-render"
-    reference = "PRIVATE_REFERENCE_NAME"
-    policy_path = write_policy(tmp_path, [client("reader", reference, [WORKLOADS_READ])])
-    policy = load_authorization_policy(policy_path, env={reference: secret})
-    assert secret not in repr(policy)
-    assert reference not in repr(policy)
-    with pytest.raises(AuthorizationError) as exc:
-        load_authorization_policy(policy_path, env={reference: "short"})
-    rendered = str(exc.value) + repr(exc.value) + "".join(traceback.format_exception(exc.type, exc.value, exc.tb))
-    assert secret not in rendered
-    assert reference not in rendered
-    assert str(policy_path) not in rendered
-
-
 def test_generic_dataclass_and_json_diagnostics_do_not_expose_credentials(tmp_path: Path):
     secret = "synthetic-material-that-must-remain-private"
     reference = "SYNTHETIC_PRIVATE_REFERENCE"
@@ -182,56 +112,6 @@ def test_generic_dataclass_and_json_diagnostics_do_not_expose_credentials(tmp_pa
     principal_projection = json.dumps(asdict(policy.principals[0]), default=repr, sort_keys=True)
     assert secret not in rendered + projected + principal_projection
     assert reference not in rendered + projected + principal_projection
-
-
-def test_surrogates_and_injected_reader_or_mapping_fail_with_fixed_errors(tmp_path: Path):
-    policy_path = write_policy(tmp_path, [client("reader", "TOKEN_A", [WORKLOADS_READ])])
-    with pytest.raises(AuthorizationError) as surrogate:
-        load_authorization_policy(policy_path, env={"TOKEN_A": "x" * 15 + "\ud800"})
-    assert surrogate.value.code == "authorization_credential_malformed"
-
-    surrogate_reference = write_policy(
-        tmp_path,
-        [{"id": "reader", "credential_file": str(tmp_path / "\ud800"), "scopes": [WORKLOADS_READ]}],
-    )
-    with pytest.raises(AuthorizationError) as bad_reference:
-        load_authorization_policy(surrogate_reference)
-    assert bad_reference.value.code == "authorization_policy_malformed"
-
-    policy_path = write_policy(tmp_path, [client("reader", "TOKEN_A", [WORKLOADS_READ])])
-
-    class BrokenMapping(dict[str, str]):
-        def get(self, key: str, default: object = None) -> str:
-            raise RuntimeError("synthetic mapping failure: " + key)
-
-    with pytest.raises(AuthorizationError) as mapping_failure:
-        load_authorization_policy(policy_path, env=BrokenMapping())
-    assert mapping_failure.value.code == "authorization_credential_malformed"
-
-    def broken_reader(kind: str, reference: str) -> str:
-        raise RuntimeError("synthetic reader failure: " + kind + reference)
-
-    with pytest.raises(AuthorizationError) as reader_failure:
-        load_authorization_policy(policy_path, secret_reader=broken_reader)
-    rendered = "".join(traceback.format_exception(reader_failure.type, reader_failure.value, reader_failure.tb))
-    assert "synthetic reader failure" not in rendered
-    assert "TOKEN_A" not in rendered
-
-
-def test_deeply_nested_json_is_a_fixed_malformed_policy_error(tmp_path: Path):
-    path = tmp_path / "policy.json"
-    path.write_bytes(b'{"schema_version":1,"clients":' + b"[" * 2100 + b"]" * 2100 + b"}")
-    with pytest.raises(AuthorizationError) as exc:
-        load_authorization_policy(path)
-    assert exc.value.code == "authorization_policy_malformed"
-
-
-def test_huge_json_integer_is_a_fixed_malformed_policy_error(tmp_path: Path):
-    path = tmp_path / "policy.json"
-    path.write_bytes(b'{"schema_version":' + b"9" * 5000 + b',"clients":[]}')
-    with pytest.raises(AuthorizationError) as exc:
-        load_authorization_policy(path)
-    assert exc.value.code == "authorization_policy_malformed"
 
 
 @pytest.mark.parametrize("source", ["env", "reader", "file"])

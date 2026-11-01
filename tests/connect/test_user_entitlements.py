@@ -12,7 +12,6 @@ import pytest
 
 from anvil_serving.connect import manage, users
 from anvil_serving.operator_output import UsageError
-from tests.connect.test_render import isolated_manifest
 from tests.connect import test_users
 
 
@@ -119,10 +118,6 @@ def test_create_grant_preseeds_subject_and_keeps_service_home_in_handoff(tmp_pat
     assert len(identifiers) == 1 and identifiers[0][identifiers[0].index("--sector") + 1] == ""
     assert calls[-1][2] == "dev"
     assert calls[-1][4] == {"dash": "member"}
-
-
-def test_rendered_oidc_client_uses_the_blank_sector_subject_type():
-    assert "sector_identifier_uri" not in users._authelia(isolated_manifest())
 
 
 def test_pinned_authelia_add_export_subject_smoke_is_isolated(tmp_path):

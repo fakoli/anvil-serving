@@ -35,14 +35,6 @@ def _arguments(**overrides):
     return arguments
 
 
-def test_eval_routed_declares_typed_controller_operation():
-    node = _command(("eval", "routed"))
-
-    assert node.transports == ("local", "controller")
-    assert node.remote_operation.tool == "routed_eval"
-    assert node.remote_operation.max_response_bytes == 1024 * 1024
-
-
 def test_routed_eval_schema_is_secret_reference_only():
     properties = mcp.TOOLS["routed_eval"]["inputSchema"]["properties"]
 
@@ -116,12 +108,3 @@ def test_routed_eval_live_run_resolves_only_named_credential(monkeypatch, tmp_pa
     assert output.parent.is_dir()
     assert seen["environment"] == {"ANVIL_ROUTER_TOKEN": "private-test-token"}
     assert "private-test-token" not in repr(result)
-
-
-def test_routed_eval_remote_output_cannot_escape_private_evidence_root(tmp_path):
-    with pytest.raises(mcp.ToolError) as refused:
-        openclaw_tools.tool_routed_eval(
-            _arguments(output=str(tmp_path / "outside.json"))
-        )
-
-    assert refused.value.code == "unsafe_output_path"

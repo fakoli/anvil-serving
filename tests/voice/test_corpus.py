@@ -95,32 +95,6 @@ def test_prepare_120_human_holdouts_excludes_canonical_sources_and_audio(tmp_pat
     assert not list(tmp_path.glob(".supplement.*"))
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"human_cases_per_split": 0}, {"human_cases_per_split": 4},
-    {"human_cases_per_split": True}, {"human_cases_per_split": 301},
-    {"synthetic_cases": -1}, {"synthetic_cases": 7}, {"synthetic_cases": True},
-])
-def test_invalid_preparation_counts_fail_before_network_or_output(tmp_path, monkeypatch, kwargs):
-    monkeypatch.setattr(corpus, "_expected_md5s", lambda: pytest.fail("network consulted"))
-    with pytest.raises(corpus.CorpusError):
-        corpus.prepare_corpus(
-            tmp_path / "out", synthesize=lambda text: b"", transcode_flac=_transcode, **kwargs,
-        )
-    assert not (tmp_path / "out").exists()
-
-
-def test_holdout_rejects_duplicate_audio_and_leaves_no_partial_corpus(tmp_path, monkeypatch):
-    downloads = _offline_archives(tmp_path, monkeypatch)
-    with pytest.raises(corpus.CorpusError, match="duplicate audio"):
-        corpus.prepare_corpus(
-            tmp_path / "out", synthesize=lambda text: b"", download_dir=downloads,
-            transcode_flac=lambda source, destination: _wav(destination, 1),
-            human_cases_per_split=3, synthetic_cases=0,
-        )
-    assert not (tmp_path / "out").exists()
-    assert not list(tmp_path.glob(".out.*"))
-
-
 def test_holdout_cli_forwards_counts_and_exclusion(tmp_path, monkeypatch):
     manifest = tmp_path / "voice.toml"
     manifest.write_text('''[voice]

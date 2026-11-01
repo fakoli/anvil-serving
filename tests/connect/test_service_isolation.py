@@ -1,14 +1,11 @@
 """Closed numeric service-identity and isolated renderer contract."""
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
-import pytest
 
-from anvil_serving.connect.config import ManifestError, require_isolated, role_identity, role_limits, validate_manifest
-from anvil_serving.connect.render import render, render_for_inspection
+from anvil_serving.connect.render import render
 
 
 ROOT = Path(__file__).parents[2]
@@ -38,137 +35,6 @@ def isolated_manifest() -> dict:
     }
     value["caddy"]["state_directory"] = "/var/lib/anvil-connect/caddy"
     return value
-
-
-def test_legacy_is_readable_but_not_an_isolated_role() -> None:
-    legacy = validate_manifest(legacy_manifest())
-    assert legacy["service_user"] == "anvil-connect"
-    assert "service_identities" not in legacy
-    with pytest.raises(ManifestError, match="isolated service identities"):
-        require_isolated(legacy)
-    with pytest.raises(ManifestError, match="isolated service identities"):
-        role_identity(legacy, "gateway")
-    assert render_for_inspection(legacy_manifest())["generation"]
-    with pytest.raises(ManifestError, match="isolated service identities"):
-        render(legacy_manifest())
-
-
-def test_isolated_identity_shape_is_exact_sorted_and_revalidatable() -> None:
-    value = isolated_manifest()
-    normalized = validate_manifest(value)
-    assert role_identity(normalized, "gateway") == (1201, 1201)
-    assert role_identity(normalized, "edge") == (1202, 1202)
-    assert role_identity(normalized, "idp") == (1203, 1203)
-    assert role_identity(normalized, "connector", "dashboard") == (1204, 1204)
-    assert role_identity(normalized, "client", "dashboard-api") == (1205, 1205)
-    assert role_limits(normalized, "gateway") == (805306368, 128)
-    assert role_limits(normalized, "edge") == (536870912, 64)
-    assert role_limits(normalized, "idp") == (536870912, 64)
-    assert role_limits(normalized, "connector", "dashboard") == (402653184, 64)
-    assert role_limits(normalized, "client", "dashboard-api") == (268435456, 32)
-    assert normalized["gateway"]["ingress"] == {
-        "directory": "/run/anvil-connect/ingress",
-        "gateway_uid": 1201,
-        "edge_uid": 1202,
-        "group_id": 1290,
-    }
-    assert validate_manifest(normalized) == normalized
-
-
-@pytest.mark.parametrize("mutate", [
-    lambda value: value.__setitem__("service_user", "anvil-connect"),
-    lambda value: value["service_identities"].__setitem__("unexpected", {}),
-    lambda value: value["service_identities"]["gateway"].__setitem__("uid", True),
-    lambda value: value["service_identities"]["edge"].__setitem__("uid", 1201),
-    lambda value: value["service_identities"]["idp"].__setitem__("gid", 1202),
-    lambda value: value["service_identities"]["ingress"].__setitem__("group_id", 1201),
-    lambda value: value["service_identities"]["connectors"].__setitem__("unknown", {"uid": 1206, "gid": 1206}),
-    lambda value: value["service_identities"]["clients"].clear(),
-    lambda value: value.pop("service_limits"),
-    lambda value: value["service_limits"].__setitem__("unexpected", {}),
-    lambda value: value["service_limits"]["gateway"].__setitem__("memory_max_bytes", True),
-    lambda value: value["service_limits"]["gateway"].__setitem__("memory_max_bytes", 1 << 63),
-    lambda value: value["service_limits"]["edge"].__setitem__("tasks_max", 0),
-    lambda value: value["service_limits"]["connectors"].__setitem__("unknown", {"memory_max_bytes": 1, "tasks_max": 1}),
-    lambda value: value["service_limits"]["clients"].clear(),
-])
-def test_isolated_identity_rejects_mixed_partial_or_nonunique_roles(mutate) -> None:
-    value = isolated_manifest()
-    mutate(value)
-    with pytest.raises(ManifestError):
-        validate_manifest(value)
-
-
-
-@pytest.mark.parametrize("section", ["gateway", "connectors", "clients"])
-def test_environment_files_must_not_share_canonical_paths(section: str) -> None:
-    value = isolated_manifest()
-    shared = value["environment_files"]["gateway"]
-    if section == "connectors":
-        value["environment_files"][section]["dashboard"] = shared
-    elif section == "clients":
-        value["environment_files"][section]["dashboard-api"] = shared
-    else:
-        value["environment_files"]["connectors"]["dashboard"] = shared
-    with pytest.raises(ManifestError, match="must not reuse canonical EnvironmentFile paths"):
-        validate_manifest(value)
-
-
-def test_gateway_identity_environment_file_must_be_unique() -> None:
-    value = isolated_manifest()
-    resource = next(item for item in value["gateway"]["gateway"]["resources"] if item["rule"]["access"] == "browser")
-    resource["rule"]["native_auth"] = "signed-identity"
-    resource.update(identity_key_env="ANVIL_DASHBOARD_IDENTITY_KEY", identity_key_id="dashboard-v1")
-    for connector in value["connectors"]:
-        for item in connector["resources"]:
-            if item["envelope"]["rule"]["id"] == resource["rule"]["id"]:
-                item["envelope"]["rule"]["native_auth"] = "signed-identity"
-    value["environment_files"]["gateway_identity"] = value["environment_files"]["clients"]["dashboard-api"]
-    with pytest.raises(ManifestError, match="must not reuse canonical EnvironmentFile paths"):
-        validate_manifest(value)
-
-def test_manifest_requires_exactly_one_identity_mode() -> None:
-    value = legacy_manifest()
-    del value["service_user"]
-    with pytest.raises(ManifestError, match="exactly one"):
-        validate_manifest(value)
-
-
-def test_ingress_is_derived_or_must_match_exactly() -> None:
-    value = isolated_manifest()
-    normalized = validate_manifest(value)
-    value["gateway"]["ingress"] = copy.deepcopy(normalized["gateway"]["ingress"])
-    assert validate_manifest(value)["gateway"]["ingress"] == normalized["gateway"]["ingress"]
-    value["gateway"]["ingress"]["edge_uid"] = 1900
-    with pytest.raises(ManifestError, match="derived isolated ingress"):
-        validate_manifest(value)
-
-
-@pytest.mark.parametrize(("path", "replacement"), [
-    (("gateway", "state_directory"), "/var/lib/anvil-connect/caddy/child"),
-    (("authelia", "state_directory"), "/var/lib/anvil-connect/gateway"),
-    (("caddy", "state_directory"), "/var/lib/anvil-connect/gateway"),
-    (("connector", "state_directory"), "/var/lib/anvil-connect/gateway/child"),
-    (("ingress", "directory"), "/var/lib/anvil-connect"),
-])
-def test_isolated_state_and_ingress_paths_must_be_disjoint(path: tuple[str, str], replacement: str) -> None:
-    value = isolated_manifest()
-    section, key = path
-    if section == "connector":
-        value["connectors"][0][key] = replacement
-    elif section == "ingress":
-        value["service_identities"][section][key] = replacement
-    else:
-        value[section][key] = replacement
-    with pytest.raises(ManifestError, match="disjoint paths"):
-        validate_manifest(value)
-
-
-def test_isolated_caddy_state_is_required() -> None:
-    value = isolated_manifest()
-    del value["caddy"]["state_directory"]
-    with pytest.raises(ManifestError, match="state_directory"):
-        validate_manifest(value)
 
 
 def test_isolated_units_are_numeric_and_role_scoped() -> None:

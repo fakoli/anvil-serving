@@ -16,4 +16,3 @@ def test_fast_tier_promotion_profile_denies_high_risk_fast_pins():
     assert decisions[("fast-local", "planning")] == "deny"
     assert decisions[("fast-local", "review")] == "deny"
     assert decisions[("fast-local", "chat")] == "allow"
-

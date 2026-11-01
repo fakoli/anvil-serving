@@ -7,11 +7,12 @@ import math
 import platform
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from ..schema import CapabilityStatus, TelemetrySample
 from ..status import prepare_sample
+from . import normalize_collection_time as _timestamp
 
 
 SharedMemoryProvider = Callable[[], Sequence[Mapping[str, Any]]]
@@ -166,13 +167,3 @@ def _sample(
             detail=detail[:4096] if detail is not None else None,
         )
     )
-
-
-def _timestamp(value: datetime | None) -> datetime:
-    if value is None:
-        return datetime.now(timezone.utc)
-    if not isinstance(value, datetime):
-        raise TypeError("collected_at must be a datetime or None")
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("collected_at must be timezone-aware")
-    return value.astimezone(timezone.utc)

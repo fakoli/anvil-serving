@@ -4,7 +4,6 @@ import sys
 
 import pytest
 
-from anvil_serving.control_plane.controller import propagation_approval as approval_module
 from anvil_serving.control_plane.controller.propagation_approval import PinnedApprovedContract
 from anvil_serving.control_plane.controller.propagation_job_store import PropagationJobError
 from anvil_serving.control_plane.propagation import ActiveIdentity, admit_contract, parse_contract
@@ -62,9 +61,3 @@ def test_approval_refuses_replaceable_ancestry_and_unpinned_digest(tmp_path):
     alias.symlink_to(loose, target_is_directory=True)
     with pytest.raises(PropagationJobError, match="approval_unavailable"):
         PinnedApprovedContract(alias / "approval.json", parsed.digest).contract_lookup("approval-1")
-
-
-def test_unsupported_platform_fails_closed(tmp_path, monkeypatch):
-    monkeypatch.setattr(approval_module.sys, "platform", "win32")
-    with pytest.raises(PropagationJobError, match="approval_unavailable"):
-        PinnedApprovedContract(tmp_path / "approval.json", "a" * 64)

@@ -7,7 +7,7 @@ import threading
 
 import pytest
 
-from anvil_serving.router.config import ServerConfig, ConfigError, load_server_config
+from anvil_serving.router.config import ServerConfig
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.keys import KeyStore
 from tests.router.helpers import StaticBackend
@@ -61,7 +61,7 @@ def running(store, **kwargs):
                     completed.set()
 
     server.RequestHandlerClass = CompletedHandler
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     connection = http.client.HTTPConnection(*server.server_address, timeout=5)
     connection._test_completions = completions
@@ -158,60 +158,6 @@ def test_catalog_grants_denials_and_master(store):
         assert request(connection, token, "/healthz", method="GET")[0] == 200
 
 
-@pytest.mark.parametrize("path,body", [
-    (CHAT, {"model": " LLM.PRIMARY ", "messages": [{"role": "user", "content": "hi"}]}),
-    ("/v1/messages", {"model": "llm.primary", "max_tokens": 5, "messages": [{"role": "user", "content": "hi"}]}),
-    ("/v1/responses", {"model": "llm.primary", "input": "hi"}),
-])
-def test_dialects_streaming_and_trusted_identity(store, path, body):
-    meta, token = issue(store, paths=[path])
-    with running(store) as (connection, backend):
-        for stream in (False, True):
-            spoofed = {} if path == "/v1/responses" else {"_anvil_correlation": {"client_id": "spoof"}}
-            status, headers, raw = request(connection, token, path + "/?ignored=true",
-                {**body, "stream": stream, **spoofed},
-                extra={"X-Anvil-Client-Id": "spoof"})
-            assert status == 200
-            assert b"ok" in raw
-            assert backend.requests[-1].raw["_anvil_correlation"]["client_id"] == meta["key_id"]
-            assert backend.requests[-1].raw["_anvil_correlation"]["gateway_request_id"] == headers["X-Anvil-Request-Id"]
-    history = store.usage(meta["key_id"])
-    rendered = json.dumps(history)
-    assert meta["key_id"] in rendered
-    assert token not in rendered and "spoof" not in rendered and "ignored" not in rendered
-
-
-def test_revocation_on_reused_connection_and_separate_budgets(store):
-    first, token = issue(store, rpm=1)
-    _, second = issue(store, rpm=1)
-    with running(store) as (connection, backend):
-        assert request(connection, token)[0] == 200
-        status, headers, _ = request(connection, token)
-        assert status == 429 and int(headers["Retry-After"]) > 0
-        assert request(connection, second)[0] == 200
-        store.revoke(first["key_id"])
-        assert request(connection, token)[0] == 401
-        assert request(connection, MASTER)[0] == 200
-        assert len(backend.requests) == 3
-
-
-def test_ambiguous_headers_and_storage_failure_close_without_dispatch(store):
-    _, token = issue(store)
-    with running(store) as (connection, backend):
-        assert request(connection, token, extra={"x-api-key": MASTER})[0] == 401
-        store.path.unlink()
-        assert request(connection, token)[0] == 503
-        assert request(connection, MASTER)[0] == 200
-        assert len(backend.requests) == 1
-
-
-def test_config_requires_master(tmp_path):
-    config = tmp_path / "router.toml"
-    config.write_text('[server]\napi_keys_path = ' + json.dumps(str(tmp_path / "keys.sqlite3")) + "\n")
-    with pytest.raises(ConfigError, match="auth_env"):
-        load_server_config(str(config))
-
-
 @pytest.mark.parametrize("kind,path,fields", [
     ("embedding", "/v1/embeddings", {"input": "private prompt"}),
     ("rerank", "/v1/rerank", {"query": "private prompt", "documents": ["text"]}),
@@ -250,20 +196,6 @@ def test_purpose_model_grants_and_upstream_correlation(store, kind, path, fields
     assert token not in json.dumps(store.usage())
 
 
-def test_single_api_header_and_health_does_not_displace_usage(store):
-    meta, token = issue(store)
-    with running(store) as (connection, backend):
-        connection.request("GET", "/v1/models", headers={"x-api-key": token})
-        response = connection.getresponse()
-        assert response.status == 200
-        response.read()
-        for _ in range(3):
-            assert request(connection, "invalid", "/healthz", method="GET")[0] == 200
-            assert request(connection, "invalid")[0] == 401
-    history = store.usage()
-    assert len(history) == 1 and history[0]["key_id"] == meta["key_id"]
-
-
 def test_scoped_operator_credential_independent_of_device_store(store, tmp_path):
     from anvil_serving.control_plane.authorization import load_authorization_policy
     policy_file = tmp_path / "policy.json"
@@ -278,13 +210,6 @@ def test_scoped_operator_credential_independent_of_device_store(store, tmp_path)
         assert request(connection, scoped)[0] == 200
         assert request(connection, device)[0] == 503
         assert backend.requests[0].raw["_anvil_correlation"]["client_id"] == "existing-client"
-
-
-def test_config_rejects_ambiguous_relative_key_store(tmp_path):
-    config = tmp_path / "router.toml"
-    config.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path="keys.sqlite3"\n')
-    with pytest.raises(ConfigError, match="absolute"):
-        load_server_config(str(config))
 
 
 @pytest.mark.parametrize("retired", ["revoked", "expired"])

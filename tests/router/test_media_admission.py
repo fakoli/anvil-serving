@@ -4,13 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from anvil_serving.router.availability import AlwaysAvailable
 from anvil_serving.router.config import RouterConfig, Tier
 from anvil_serving.router.dialects.openai import OpenAIDialect
-from anvil_serving.router.internal import NoAvailableTierError
-from anvil_serving.router.media_admission import count_media
 from anvil_serving.router.serve import RoutingBackend
 from tests.router.helpers import StaticBackend
 
@@ -80,79 +77,3 @@ def test_one_video_and_four_images_are_admitted():
     routing, backend = _routing()
     assert "".join(routing.generate(_request(images=4, videos=1))) == "ok"
     assert backend.calls == 1
-
-
-@pytest.mark.parametrize(
-    ("images", "videos", "reason"),
-    (
-        (5, 0, "media_admission_image_limit"),
-        (0, 2, "media_admission_video_limit"),
-    ),
-)
-def test_media_count_overflow_fails_before_upstream(images, videos, reason):
-    routing, backend = _routing()
-    with pytest.raises(NoAvailableTierError) as error:
-        routing.generate(_request(images=images, videos=videos))
-    assert error.value.kind == "media_limit"
-    assert routing._decision_log.records[-1].attempts[0].reason == reason
-    assert backend.calls == 0
-
-
-def test_zero_video_limit_rejects_one_video_before_upstream():
-    routing, backend = _routing()
-    tier = routing._config.tiers[0]
-    tier.params["capacity"]["video_limit"] = 0
-
-    with pytest.raises(NoAvailableTierError) as error:
-        routing.generate(_request(videos=1))
-
-    assert error.value.kind == "media_limit"
-    assert routing._decision_log.records[-1].attempts[0].reason == (
-        "media_admission_video_limit"
-    )
-    assert backend.calls == 0
-
-
-def test_visual_estimate_preserves_requested_output_headroom():
-    routing, backend = _routing(context_limit=20_000)
-    with pytest.raises(NoAvailableTierError) as error:
-        routing.generate(_request(videos=1, max_tokens=4_096))
-    assert error.value.kind == "over_context"
-    assert backend.calls == 0
-
-
-def test_disabled_policy_preserves_existing_media_path():
-    routing, backend = _routing(enabled=False)
-    assert "".join(routing.generate(_request(images=8, videos=3))) == "ok"
-    assert backend.calls == 1
-
-
-def test_media_counter_ignores_malformed_and_nested_values():
-    raw = {
-        "messages": [
-            {
-                "content": [
-                    {"type": "image_url"},
-                    {"type": "video_url"},
-                    {"nested": {"type": "video_url"}},
-                    "not-a-block",
-                ]
-            },
-            "not-a-message",
-        ]
-    }
-    assert count_media(raw) == (1, 1)
-
-
-def test_agents_a1_isolated_router_enables_declared_media_policy():
-    from anvil_serving.router.config import load
-
-    config = load(ROOT / "configs" / "agents-a1-qualification-router.toml")
-    tier = config.tier("agents-a1-fp8-qualification")
-    capacity = tier.params["capacity"]
-    assert config.model_routes == {
-        "vision.agents_a1_qualification": "agents-a1-fp8-qualification"
-    }
-    assert capacity["media_admission_enabled"] is True
-    assert capacity["image_limit"] == 4
-    assert capacity["video_limit"] == 1

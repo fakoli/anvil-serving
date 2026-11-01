@@ -1,6 +1,4 @@
 """Regression probes that still apply to the thin gateway."""
-from __future__ import annotations
-
 from anvil_serving.router.decision_log import DecisionLog
 
 

@@ -49,9 +49,8 @@ sets its ``_stop_event`` SYNCHRONOUSLY, and ``ThreadManager.stop_all()`` calls
 ``in_queue`` (including a not-yet-reached ``PIPELINE_END``), that stage can
 exit having silently DROPPED the remaining queued items instead of forwarding
 them -- ``shutdown_gracefully()`` is only reliably a full drain if the caller
-already knows every stage has finished its work (which is exactly how
-``tests/voice/test_pipeline_spine.py`` uses it: a blocking
-``drain_audio_out()`` BEFORE ever calling ``shutdown_gracefully()``). This
+already knows every stage has finished its work (by calling a blocking
+``drain_audio_out()`` BEFORE ``shutdown_gracefully()``). This
 pool's :meth:`SessionPool.release` calls ``shutdown_gracefully()`` right
 after freeing the unit -- to avoid inheriting that race, :meth:`release`
 gives the pipeline a short real-time grace window first (see

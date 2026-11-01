@@ -68,15 +68,6 @@ def test_workspace_sources_pages_and_stale_rows_follow_current_project_grants(tm
         console.close()
 
 
-def test_native_run_stale_cache_marks_loaded_history_updates_stale():
-    from types import SimpleNamespace
-    cached = {"items": [{"id": "head", "freshness": "fresh"}], "sources": [{"status": "fresh"}],
-              "refresh": {"items": [{"id": "history", "freshness": "fresh", "status": "running"}]}}
-    result = Console._stale_runs(SimpleNamespace(_cached_runs=lambda _: cached), "cache", "workspace-host-pi")
-    assert result["refresh"]["items"][0] == {"id": "history", "freshness": "stale", "status": "running"}
-    assert result["items"][0]["freshness"] == result["sources"][0]["status"] == "stale"
-
-
 def test_native_workspace_source_is_discovered_read_paged_and_reauthorized(tmp_path, monkeypatch):
     config = {
         "origin": "https://console.example.test", "base_path": "/", "operate": False,

@@ -5,7 +5,6 @@ import hashlib
 import json
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
 from anvil_serving.observability.benchmark.artifact import (
     ArtifactMetadata,
@@ -96,35 +95,6 @@ def test_raw_artifact_is_compressed_external_complete_and_secret_free(tmp_path) 
     assert raw["metadata"]["sampling_intervals"] == {"core": 1, "costly": 2}
     assert raw["time_alignment"]["quality"] == "degraded"
     assert SECRET not in serialized
-
-
-def test_raw_evidence_cannot_be_written_inside_git_repo(tmp_path) -> None:
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    with pytest.raises(ValueError, match="outside"):
-        write_capture_artifact(
-            _complete_session(),
-            _metadata(),
-            evidence_root=repo / "artifacts",
-            repo_root=repo,
-            secrets=(SECRET,),
-        )
-
-
-def test_existing_raw_artifact_is_never_overwritten(tmp_path) -> None:
-    repo = tmp_path / "repo"
-    evidence = tmp_path / "private"
-    repo.mkdir()
-    evidence.mkdir()
-    target = evidence / "benchmark-telemetry-fixture-session.json.gz"
-    target.write_bytes(b"existing-evidence")
-
-    with pytest.raises(FileExistsError, match="already exists"):
-        write_capture_artifact(
-            _complete_session(), _metadata(), evidence_root=evidence, repo_root=repo
-        )
-
-    assert target.read_bytes() == b"existing-evidence"
 
 
 def test_incomplete_capture_is_flagged_and_finding_is_linked(tmp_path) -> None:

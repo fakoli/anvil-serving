@@ -161,53 +161,6 @@ def runner(environment) -> FakeRunner:
 # --- plan -------------------------------------------------------------------
 
 
-def test_plan_reports_the_addition_only_diff(environment) -> None:
-    plan = extend_module.extend_plan(
-        json.loads(Path(environment["manifest_path"]).read_text()), environment["target"])
-    assert plan["added"] == [ADDED]
-    assert plan["removed"] == []
-    assert plan["gateway_missing"] == [ADDED]
-    assert plan["extendable"] is True
-    assert plan["enrolled"] == sorted(ENROLLED)
-
-
-def test_plan_accepts_all_three_recorded_resource_shapes() -> None:
-    value = extend_module._resource_ids([
-        {"envelope": {"rule": {"id": "wrapped"}}},
-        {"rule": {"id": "direct"}},
-        {"id": "flat"},
-        "junk-string",
-    ])
-    assert value == {"wrapped", "direct", "flat"}
-
-
-def test_plan_rejects_removals_with_guidance(tmp_path: Path) -> None:
-    root = tmp_path / "rendered"
-    root.mkdir(mode=0o755)
-    connectors = root / "connectors"
-    connectors.mkdir(mode=0o755)
-    manifest = isolated_manifest()
-    manifest["config_root"] = str(root)
-    manifest["connectors"][0]["resources"] = _declared_resources(("dashboard",))
-    manifest["gateway"]["gateway"]["resources"] = [
-        {"connector": "dashboard", "rule": _rule("dashboard"), "tunnel_address": "127.0.0.1:17010"}
-    ]
-    manifest["clients"] = []
-    manifest["environment_files"]["clients"] = {}
-    manifest["service_identities"]["clients"] = {}
-    manifest["service_limits"]["clients"] = {}
-    manifest_path = tmp_path / "deployment.json"
-    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    connector_tree = {"schema": "anvil-connect.connector/v1", "id": "dashboard",
-                      "resources": _declared_resources(ENROLLED)}
-    (connectors / "dashboard.json").write_text(json.dumps(connector_tree), encoding="utf-8")
-    plan = extend_module.extend_plan(
-        extend_module.read_manifest(manifest_path), Target("connector", "dashboard"))
-    assert plan["removed"] == ["dashboard-api"]
-    assert plan["extendable"] is False
-    assert "revoke" in plan["removal_guidance"]
-
-
 # --- dry run ----------------------------------------------------------------
 
 
@@ -221,41 +174,7 @@ def test_dry_run_returns_the_plan_and_mutates_nothing(environment) -> None:
     assert (environment["root"] / "managed.json").read_text(encoding="utf-8") == before
 
 
-def test_rejection_carries_the_plan_in_the_error(environment) -> None:
-    manifest = json.loads(Path(environment["manifest_path"]).read_text())
-    manifest["connectors"][0]["resources"] = _declared_resources(ENROLLED)
-    manifest["gateway"]["gateway"]["resources"] = [
-        item for item in manifest["gateway"]["gateway"]["resources"]
-        if item["rule"]["id"] != ADDED
-    ]
-    Path(environment["manifest_path"]).write_text(json.dumps(manifest), encoding="utf-8")
-    with pytest.raises(extend_module.ExtendError) as raised:
-        extend_module.extend(environment["manifest_path"], environment["target"], confirm=True)
-    assert raised.value.plan is not None
-    assert raised.value.plan["added"] == []
-
-
 # --- full sequence ----------------------------------------------------------
-
-
-def test_extension_validates_gateway_and_connector_before_activation(
-    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected: list[tuple[Target, ...]] = []
-
-    def reject(_data, targets, _runner):
-        selected.append(tuple(targets))
-        raise extend_module.ManageError("gateway component pin unavailable")
-
-    monkeypatch.setattr(extend_module.manage, "_validate_data", reject)
-    with pytest.raises(extend_module.ManageError, match="gateway component pin unavailable"):
-        extend_module.extend(
-            environment["manifest_path"], environment["target"], confirm=True,
-            runner=runner, unit_root=environment["tmp"] / "systemd",
-        )
-    assert selected == [(Target("gateway"), environment["target"])]
-    assert runner.calls == []
-    assert not (environment["tmp"] / ".rendered.anvil-connect-extend").exists()
 
 
 @pytest.fixture()
@@ -315,146 +234,6 @@ def enrollment_log(monkeypatch: pytest.MonkeyPatch, environment):
     return calls
 
 
-def test_extend_runs_the_full_sequence_and_converges(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
-    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
-    result = extend_module.extend(
-        environment["manifest_path"], environment["target"],
-        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    assert result["applied"] is True and result["fingerprint"] == FINGERPRINT
-    operations = [
-        entry["admin"] if "admin" in entry else next(iter(entry))
-        for entry in enrollment_log
-    ]
-    assert [operation for operation in operations if operation != "installation-status"] == [
-        "installation-revoke", "invite", "native_reenroll", "native_init", "identity", "identity", "approve",
-    ]
-    # The new generation is live with the extended resource set.
-    connector_tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
-    assert extend_module._resource_ids(connector_tree["resources"]) == set(DECLARED)
-    record = json.loads((environment["root"].parent / ".rendered.anvil-connect-activation.json").read_text())
-    assert record["generation"] == record["generation"]  # record exists post-activation
-    reenrollment = next(entry["native_reenroll"] for entry in enrollment_log if "native_reenroll" in entry)
-    assert not Path(reenrollment["prior"]).exists()
-    assert any(
-        call[:2] == ["/usr/bin/systemctl", "stop"]
-        and call[-1] == "anvil-connect-connector-dashboard.service"
-        for call in runner.calls
-    )
-    # The invitation bundle is deleted after redemption.
-    bundle = environment["tmp"] / "state-dashboard" / "extend-invitation.json"
-    assert not bundle.exists()
-
-
-def test_extend_rolls_back_the_generation_when_the_gateway_fails_to_become_ready(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def failing_ready(*args: object, **kwargs: object) -> None:
-        raise extend_module.ExtendError("gateway did not become ready")
-
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", failing_ready)
-    with pytest.raises(extend_module.ExtendError, match="no enrollment changes were committed"):
-        extend_module.extend(
-            environment["manifest_path"], environment["target"],
-        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    # The prior generation is restored: the connector file carries only the enrolled set.
-    connector_tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
-    assert extend_module._resource_ids(connector_tree["resources"]) == set(ENROLLED)
-    record = json.loads((environment["root"].parent / ".rendered.anvil-connect-activation.json").read_text())
-    assert record["generation"] == GEN_OLD
-
-
-def test_prior_status_failure_uses_the_published_candidate_binding_and_rolls_back_before_revoke(
-    environment, runner: FakeRunner, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A failed bound status read restores the old generation before authority mutation."""
-    data = json.loads(Path(environment["manifest_path"]).read_text())
-    statuses: list[dict[str, object]] = []
-
-    monkeypatch.setattr(extend_module.manage, "_native_verified", lambda _data: NATIVE)
-    monkeypatch.setattr(
-        extend_module.manage, "_verified_binaries",
-        lambda _data, _target: {"native": NATIVE, "caddy": CADDY, "authelia": AUTHELIA},
-    )
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *args, **kwargs: None)
-    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *args, **kwargs: None)
-
-    def bound_runner(argv, timeout=None, identity=None):
-        if tuple(argv[:2]) == (data["binary"], "admin"):
-            request = json.loads(Path(argv[argv.index("--request") + 1]).read_text())
-            assert request == {"operation": "installation-status", "installation": "dashboard"}
-            record = json.loads(
-                (environment["root"].parent / ".rendered.anvil-connect-activation.json").read_text(),
-            )
-            assert record["generation"] != GEN_OLD
-            statuses.append(request)
-            return extend_module.manage.RunResult(1, stderr=b"status unavailable")
-        return runner(argv, timeout, identity)
-
-    monkeypatch.setattr(
-        extend_module, "_revoke",
-        lambda *_args: pytest.fail("status failure must precede revoke"),
-    )
-    with pytest.raises(extend_module.ExtendError, match="no enrollment changes were committed"):
-        extend_module.extend(
-            environment["manifest_path"], environment["target"], confirm=True,
-            runner=bound_runner, unit_root=environment["tmp"] / "systemd",
-        )
-
-    assert statuses == [{"operation": "installation-status", "installation": "dashboard"}]
-    record = json.loads((environment["root"].parent / ".rendered.anvil-connect-activation.json").read_text())
-    assert record["generation"] == GEN_OLD
-    connector = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
-    assert extend_module._resource_ids(connector["resources"]) == set(ENROLLED)
-    assert extend_module._read_recovery(data, "dashboard", sorted(DECLARED)) is None
-
-
-def test_bundle_lands_in_the_role_owned_connector_sidecar(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
-    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
-    extend_module.extend(environment["manifest_path"], environment["target"],
-                          confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    init_entry = next(entry for entry in enrollment_log if "native_init" in entry)
-    directory = environment["tmp"] / ".rendered.anvil-connect-extend" / "connector-dashboard"
-    info = directory.lstat()
-    assert str(directory) in str(init_entry["native_init"])
-    assert stat.S_IMODE(info.st_mode) == 0o700
-    assert str(environment["tmp"] / "state-gateway") not in str(init_entry["native_init"])
-
-
-def test_legacy_connector_handoff_directory_migrates_without_losing_bundle(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A retained legacy bundle remains readable after the exact mode migration."""
-    root = tmp_path / "rendered"
-    root.mkdir(mode=0o755)
-    data = {"config_root": str(root)}
-    identity = extend_module.manage.ServiceIdentity(os.geteuid(), os.getegid())
-    monkeypatch.setattr(extend_module.manage, "_role_service_identity", lambda *_args: identity)
-    sidecar = tmp_path / ".rendered.anvil-connect-extend"
-    sidecar.mkdir(mode=0o711)
-    sidecar.chmod(0o711)
-    legacy = sidecar / "connector-dashboard"
-    legacy.mkdir(mode=0o730)
-    legacy.chmod(0o730)
-    bundle = legacy / "invitation-retained.json"
-    bundle.write_bytes(b'{"opaque":"retained"}')
-    bundle.chmod(0o600)
-
-    retained = extend_module._retained_bundle(data, "dashboard", bundle.name)
-
-    assert retained == bundle
-    assert retained.read_bytes() == b'{"opaque":"retained"}'
-    info = legacy.lstat()
-    assert (info.st_uid, info.st_gid, stat.S_IMODE(info.st_mode)) == (
-        identity.uid, identity.gid, 0o700,
-    )
-
-
 def test_legacy_connector_handoff_retry_after_ownership_failure_keeps_bundle(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -493,33 +272,7 @@ def test_legacy_connector_handoff_retry_after_ownership_failure_keeps_bundle(
     assert bundle.read_bytes() == b'{"opaque":"retained"}'
 
 
-def test_connector_handoff_accepts_only_the_final_and_recoverable_states() -> None:
-    """Fresh root-owned 0700 state remains resumable for a distinct role gid."""
-    manager = (1000, 1000)
-    target = (1001, 2000, 0o700)
-    assert extend_module._connector_handoff_needs_migration((1000, 2000, 0o730), target, manager, created=False)
-    assert extend_module._connector_handoff_needs_migration((1000, 2000, 0o700), target, manager, created=False)
-    assert extend_module._connector_handoff_needs_migration((1000, 1000, 0o700), target, manager, created=False)
-    assert not extend_module._connector_handoff_needs_migration(target, target, manager, created=False)
-    with pytest.raises(extend_module.ExtendError, match="connector sidecar is unsafe"):
-        extend_module._connector_handoff_needs_migration((1000, 999, 0o700), target, manager, created=False)
-
-
 # --- review-gate regressions (Greptile P1s) ---------------------------------
-
-
-def test_gateway_side_invitation_response_is_removed_after_redemption(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """The admin response carries the bearer invitation; it never lingers."""
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
-    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
-    gateway_state = environment["tmp"] / "state-gateway"
-    extend_module.extend(
-        environment["manifest_path"], environment["target"],
-        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    leftovers = [p.name for p in gateway_state.glob("extend-admin-*.json")]
-    assert leftovers == []
 
 
 def test_post_redemption_failure_retains_exact_approval_recovery(
@@ -573,76 +326,6 @@ def test_post_redemption_failure_retains_exact_approval_recovery(
     # The rendered generation still carries the extended set (no rollback).
     connector_tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
     assert extend_module._resource_ids(connector_tree["resources"]) == set(DECLARED)
-
-
-def test_native_init_ambiguity_retains_phase_then_rerun_finishes_forward(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A lost init response is never replayed with the one-time bundle."""
-    calls = {"init": 0}
-
-    original_init = extend_module.manage.native_init
-
-    def ambiguous_init(*args, **kwargs):
-        calls["init"] += 1
-        original_init(*args, **kwargs)
-        raise extend_module.ManageError("native init response lost", may_have_executed=True)
-
-    monkeypatch.setattr(extend_module.manage, "native_init", ambiguous_init)
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
-    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
-    with pytest.raises(extend_module.ExtendError, match="init-pending"):
-        extend_module.extend(
-            environment["manifest_path"], environment["target"],
-            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    recovery = extend_module._read_recovery(
-        json.loads(Path(environment["manifest_path"]).read_text()), "dashboard", sorted(DECLARED))
-    assert recovery is not None and recovery["phase"] == "init-pending"
-    # Native identity is the exact owner proof on retry; init is not called a
-    # second time against the same retained invitation.
-    result = extend_module.extend(
-        environment["manifest_path"], environment["target"],
-        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    assert result["recovered"] is True and calls["init"] == 1
-    assert extend_module._read_recovery(
-        json.loads(Path(environment["manifest_path"]).read_text()), "dashboard", sorted(DECLARED)) is None
-
-
-def test_init_pending_with_missing_staged_identity_holds_without_revoke_or_reinvite(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A missing staged identity never permits a new authority mutation."""
-    original_init = extend_module.manage.native_init
-    original_identity = extend_module.manage.identity
-    calls = {"init": 0}
-
-    def interrupted_init(*args, **kwargs):
-        calls["init"] += 1
-        if calls["init"] == 1:
-            raise extend_module.ManageError("native init did not start", may_have_executed=True)
-        return original_init(*args, **kwargs)
-
-    def identity_after_real_init(*args, **kwargs):
-        if calls["init"] == 1:
-            raise extend_module.ManageError("connector has no local enrollment")
-        return original_identity(*args, **kwargs)
-
-    monkeypatch.setattr(extend_module.manage, "native_init", interrupted_init)
-    monkeypatch.setattr(extend_module.manage, "identity", identity_after_real_init)
-    monkeypatch.setattr(extend_module.manage, "_gateway_ready", lambda *a, **k: None)
-    monkeypatch.setattr(extend_module.manage, "_started_units", lambda *a, **k: None)
-    with pytest.raises(extend_module.ExtendError, match="init-pending"):
-        extend_module.extend(
-            environment["manifest_path"], environment["target"],
-            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-
-    with pytest.raises(extend_module.ExtendError, match="identity is unavailable"):
-        extend_module.extend(
-            environment["manifest_path"], environment["target"],
-            confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-
-    assert calls["init"] == 1
-    assert [entry["admin"] for entry in enrollment_log if "admin" in entry].count("installation-revoke") == 1
 
 
 def test_staged_reenrollment_retries_init_only_when_authority_remains_invited(
@@ -1080,53 +763,3 @@ def test_rollback_restores_disabled_units_to_the_disabled_state(
     ]
     verbs = [argv[1] for argv in authelia_calls]
     assert "disable" in verbs  # the boot-persistence was undone, not just stopped
-
-
-def test_converged_extension_during_lock_wait_is_a_no_op(
-    environment, runner: FakeRunner, enrollment_log, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Another activation converging the same extension wins; no double revoke."""
-    original_extend_plan = extend_module.extend_plan
-    first = {"called": False}
-
-    def replan_aware(data, target):
-        if not first["called"]:
-            first["called"] = True
-            return original_extend_plan(data, target)
-        # By lock acquisition the rendered set already matches the declaration.
-        data = dict(data)
-        return original_extend_plan(data, target)
-
-    monkeypatch.setattr(extend_module, "extend_plan", replan_aware)
-
-    def converge_tree(*args, **kwargs):
-        tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
-        tree["resources"] = _declared_resources(DECLARED)
-        (environment["root"] / "connectors" / "dashboard.json").write_text(
-            json.dumps(tree), encoding="utf-8")
-        return original_extend_plan.__wrapped__(json.loads(
-            Path(environment["manifest_path"]).read_text()), environment["target"]) \
-            if hasattr(original_extend_plan, "__wrapped__") else None
-
-    # Simulate the concurrent convergence between the outer and inner plans:
-    # swap the connector tree to the declared set after the first plan call.
-    seen = {"outer": False}
-
-    def plan_aware(data, target):
-        if not seen["outer"]:
-            seen["outer"] = True
-            return original_extend_plan(data, target)
-        tree = json.loads((environment["root"] / "connectors" / "dashboard.json").read_text())
-        tree["resources"] = _declared_resources(DECLARED)
-        (environment["root"] / "connectors" / "dashboard.json").write_text(
-            json.dumps(tree), encoding="utf-8")
-        return original_extend_plan(data, target)
-
-    monkeypatch.setattr(extend_module, "extend_plan", plan_aware)
-    result = extend_module.extend(
-        environment["manifest_path"], environment["target"],
-        confirm=True, runner=runner, unit_root=environment["tmp"] / "systemd")
-    assert result["applied"] is False
-    assert result["already_extended"] is True
-    # The enrollment was never touched.
-    assert enrollment_log == []

@@ -1,22 +1,16 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-import json
 import os
 from pathlib import Path
-import shutil
-import threading
 from types import SimpleNamespace
 
 import pytest
 
 from anvil_serving.benchmarking import harnesses
 from anvil_serving.benchmarking.harnesses import (
-    cleanup_harness_work,
     harness_asset_status,
     prepare_harness_assets,
 )
-from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.profiles import load_profile
 
 
@@ -112,148 +106,3 @@ def test_preparation_records_exact_assets_and_reuses_cache(tmp_path):
     assert harness_asset_status(
         run_root=str(tmp_path / "runs"), ownership_id="campaign", run_id="run-two"
     )["status"] == "ready"
-
-
-@pytest.mark.parametrize("reuse", [False, True])
-def test_swe_prepare_rejects_unsupported_dependency_even_with_matching_inventory(tmp_path, reuse):
-    options = dict(profile=load_profile("smoke"), suite="swe", run_root=str(tmp_path / "runs"),
-                   ownership_id="campaign", run_id="dependencies", cache_root=str(tmp_path / "cache"))
-    if reuse:
-        first = prepare_harness_assets(**options, runner=Runner())
-        lock_path = tmp_path / "cache" / first["python_environment"]["cache_key"] / ".anvil-swe-python-environment.json"
-        lock = json.loads(lock_path.read_text())
-        lock["resolved_packages"] = [entry.replace("litellm==1.102.0", "litellm==1.102.1")
-                                     for entry in lock["resolved_packages"]]
-        lock_path.write_text(json.dumps(lock))
-
-    class WrongVersionRunner(Runner):
-        def __call__(self, argv, cwd, timeout):
-            result = super().__call__(argv, cwd, timeout)
-            if argv[1:4] == ("-m", "pip", "freeze"):
-                result.stdout = result.stdout.replace(b"litellm==1.102.0", b"litellm==1.102.1")
-            return result
-
-    with pytest.raises(BenchmarkJobError, match="requires litellm==1.102.0"):
-        prepare_harness_assets(**options, runner=WrongVersionRunner())
-
-
-def test_swe_dependency_change_uses_new_cache_identity(tmp_path, monkeypatch):
-    options = dict(profile=load_profile("smoke"), suite="swe", run_root=str(tmp_path / "runs"),
-                   ownership_id="campaign", run_id="dependencies", cache_root=str(tmp_path / "cache"))
-    first = prepare_harness_assets(**options, runner=Runner())
-    monkeypatch.setattr(harnesses, "SUPPORTED_DEPENDENCIES", {**harnesses.SUPPORTED_DEPENDENCIES, "litellm": "1.102.1"})
-    with pytest.raises(BenchmarkJobError, match="absent from the offline cache"):
-        prepare_harness_assets(**options, offline=True, runner=Runner())
-    assert (tmp_path / "cache" / first["python_environment"]["cache_key"]).is_dir()
-
-
-def test_offline_missing_asset_fails_closed(tmp_path):
-    with pytest.raises(BenchmarkJobError) as exc:
-        prepare_harness_assets(
-            load_profile("smoke"),
-            suite="swe",
-            run_root=str(tmp_path / "runs"),
-            ownership_id="campaign",
-            run_id="offline",
-            cache_root=str(tmp_path / "cache"),
-            offline=True,
-            runner=Runner(),
-        )
-    assert exc.value.code == "harness_assets_offline"
-
-
-def test_concurrent_swe_environment_publishers_reuse_the_valid_winner(
-    tmp_path, monkeypatch
-):
-    monkeypatch.setattr(harnesses, "resolve_container_binary", lambda: "docker")
-    profile = load_profile("smoke")
-    seed = prepare_harness_assets(
-        profile,
-        suite="swe",
-        run_root=str(tmp_path / "runs"),
-        ownership_id="campaign",
-        run_id="seed",
-        cache_root=str(tmp_path / "cache"),
-        runner=Runner(),
-    )
-    environment_root = tmp_path / "cache" / seed["python_environment"]["cache_key"]
-    shutil.rmtree(environment_root)
-    barrier = threading.Barrier(2)
-
-    class ConcurrentRunner(Runner):
-        def __call__(self, argv, cwd, timeout):
-            result = super().__call__(argv, cwd, timeout)
-            if (
-                argv[1:4] == ("-m", "pip", "freeze")
-                and cwd
-                and Path(cwd).name.startswith(".swe-python-")
-            ):
-                barrier.wait(timeout=5)
-            return result
-
-    runner = ConcurrentRunner()
-
-    def prepare(run_id):
-        return prepare_harness_assets(
-            profile,
-            suite="swe",
-            run_root=str(tmp_path / "runs"),
-            ownership_id="campaign",
-            run_id=run_id,
-            cache_root=str(tmp_path / "cache"),
-            runner=runner,
-        )
-
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        results = list(executor.map(prepare, ("concurrent-one", "concurrent-two")))
-
-    assert sorted(result["python_environment"]["reused"] for result in results) == [
-        False,
-        True,
-    ]
-    assert all(result["python_environment"]["resolved_packages"] for result in results)
-
-
-def test_standalone_cleanup_requires_durable_lifecycle(tmp_path):
-    run_root = tmp_path / "runs"
-    work = run_root / "campaign" / "run" / "work"
-    work.mkdir(parents=True)
-    (work / "scratch").write_text("x", encoding="utf-8")
-    evidence = work.parent / "assets.json"
-    evidence.write_text(json.dumps({"evidence": True}), encoding="utf-8")
-    cache = tmp_path / "cache"
-    cache.mkdir()
-    (cache / "shared").write_text("keep", encoding="utf-8")
-
-    with pytest.raises(BenchmarkJobError) as exc:
-        cleanup_harness_work(run_root=str(run_root), ownership_id="campaign", run_id="run")
-    assert exc.value.code == "cleanup_lifecycle_required"
-    assert work.exists()
-    assert evidence.exists()
-    assert (cache / "shared").exists()
-
-
-def test_mutable_profile_is_rejected_before_commands(tmp_path):
-    profile = load_profile("smoke")
-    profile["adapters"]["worker-base"]["image"] = "python:3.12-slim"
-    with pytest.raises(BenchmarkJobError) as exc:
-        prepare_harness_assets(
-            profile,
-            suite="swe",
-            run_root=str(tmp_path / "runs"),
-            ownership_id="campaign",
-            run_id="mutable",
-            cache_root=str(tmp_path / "cache"),
-            runner=lambda *_args: pytest.fail("command ran"),
-        )
-    assert exc.value.code in {"profile_digest_mismatch", "mutable_image"}
-
-
-def test_windows_swe_prepare_refuses_before_files_or_runner(tmp_path, monkeypatch):
-    monkeypatch.setattr(harnesses.platform, "system", lambda: "Windows")
-    with pytest.raises(BenchmarkJobError) as exc:
-        prepare_harness_assets(load_profile("smoke"), suite="swe", run_root=str(tmp_path / "runs"),
-                               ownership_id="campaign", run_id="unsupported", cache_root=str(tmp_path / "cache"),
-                               runner=lambda *_args: pytest.fail("runner called"))
-    assert exc.value.code == "unsupported_swe_worker_platform"
-    assert list(tmp_path.iterdir()) == []

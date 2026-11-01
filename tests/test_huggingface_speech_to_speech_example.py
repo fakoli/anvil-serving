@@ -13,52 +13,6 @@ def _example_text() -> str:
     )
 
 
-def test_example_files_exist():
-    assert README.is_file()
-    assert GATEWAY_EXAMPLE.is_file()
-
-
-def test_example_uses_chat_completions_backend_and_anvil_router():
-    text = _example_text()
-    assert "--llm_backend chat-completions" in text
-    assert '--responses_api_base_url "http://127.0.0.1:8000/v1"' in text
-    assert "--model_name llm.voice" in text
-    assert 'base_url = "http://127.0.0.1:8000/v1"' in text
-    assert "anvil-serving voice sidecar command" in text
-    assert "anvil-serving voice sidecar validate" in text
-    assert "anvil-serving voice sidecar compose" in text
-
-
-def test_example_keeps_realtime_sidecar_outside_router():
-    text = _example_text()
-    assert "ws://127.0.0.1:8765/v1/realtime" in text
-    assert "Anvil does not implement `/v1/realtime`" in text
-    assert "Connect your Realtime client to `speech-to-speech`, not anvil" in text
-
-
-def test_example_documents_openclaw_gateway_boundary():
-    text = _example_text()
-    assert "The Gateway remains the\nphone-facing WebSocket contract" in text
-    assert 'phone_facing_owner = "openclaw-gateway"' in text
-    assert "ios_protocol_change_required = false" in text
-    assert "voice-sidecar.tailnet.example" in text
-
-
-def test_example_documents_16gb_validation_checklist():
-    text = _example_text()
-    assert "16 GB shared memory" in text
-    assert "LLM: `--model_name llm.voice` through anvil-serving" in text
-    assert "Fully local STT plus TTS plus a small GGUF LLM" in text
-    for phrase in (
-        "Idle memory",
-        "Memory after STT/TTS model load",
-        "Startup time",
-        "First audio response latency",
-        "Failure mode",
-    ):
-        assert phrase in text
-
-
 def test_example_avoids_loopback_alias_and_literal_secrets():
     text = _example_text()
     forbidden_host = "local" + "host"

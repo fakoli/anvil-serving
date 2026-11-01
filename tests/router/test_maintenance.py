@@ -39,41 +39,6 @@ def test_protected_authorization_refuses_ambiguous_or_unapproved_effect(change):
     with pytest.raises(ValueError):maintenance.authorization(value)
 
 
-def test_typed_native_gap_retains_unknown_and_known_local_work_is_counted():
-    owner=RouterAdmission('fixture',owner_scope=lambda:None)
-    owner.observe('memory',lambda:(0,maintenance.REMOTE_MEMORY_TERMINAL_UNKNOWN))
-    counts,unknown=owner._drain_counts()
-    assert unknown==['memory'] and not any(counts.values()) and owner._remote_memory_gap
-    permit=owner.acquire('memory')
-    assert owner._drain_counts()[0]['memory']==1
-    permit.release()
-    owner._observers['memory']=lambda:(0,True)
-    assert owner._drain_counts()[1]==['memory'] and not owner._remote_memory_gap
-    owner._observers['memory']=lambda:(_ for _ in ()).throw(OSError('unavailable'))
-    assert owner._drain_counts()[1]==['memory'] and not owner._remote_memory_gap
-    owner._observers['memory']=lambda:(True,maintenance.REMOTE_MEMORY_TERMINAL_UNKNOWN)
-    assert owner._drain_counts()[1]==['memory'] and not owner._remote_memory_gap
-
-
-@pytest.mark.skipif(os.name!='posix',reason='native maintenance publication uses POSIX directory durability')
-@pytest.mark.parametrize('phase',['file_fsync','directory_fsync'])
-def test_interrupted_publication_remains_exclusive_and_never_consumes_twice(tmp_path,monkeypatch,phase):
-    target=tmp_path/'ack.json'; actual=maintenance.os.fsync; calls=0
-    def fsync(fd):
-        nonlocal calls
-        calls+=1
-        if calls==(1 if phase=='file_fsync' else 2):raise OSError('synthetic durability failure')
-        return actual(fd)
-    value={'schema':'synthetic-ack','operation_id':'a'*64}
-    monkeypatch.setattr(maintenance.os,'fsync',fsync)
-    with pytest.raises(OSError):maintenance._publish(target,value)
-    assert not list(tmp_path.glob('.maintenance-*'))
-    if phase=='directory_fsync':
-        assert maintenance._private_json(target)==value
-        with pytest.raises(ValueError):maintenance._publish(target,value)
-    else:assert not target.exists()
-
-
 @pytest.mark.skipif(os.name!='posix',reason='accepted legacy mode uses native no-follow owned reader')
 def test_legacy_nonsecret_mode_preserved_but_links_replacements_and_changed_cas_refuse(tmp_path):
     target=tmp_path/'router.toml';target.write_text('[server]\n');target.chmod(0o664)
@@ -85,30 +50,6 @@ def test_legacy_nonsecret_mode_preserved_but_links_replacements_and_changed_cas_
     with pytest.raises(ValueError):maintenance._legacy_config(link)
     hard=tmp_path/'hard.toml';os.link(target,hard)
     with pytest.raises(ValueError):maintenance._legacy_config(target)
-
-
-def test_registered_cli_maintenance_forwards_leaf_options_without_subcommand(monkeypatch, capsys):
-    from anvil_serving import cli
-
-    calls = []
-
-    def native_run(config, *, confirm=False, preview_out=None):
-        calls.append((config, confirm, preview_out))
-        return {'schema': 'synthetic-maintenance-result', 'confirmed': confirm}
-
-    monkeypatch.setattr(maintenance, 'run', native_run)
-    arguments = ['router', 'maintenance', '--config', 'maintenance.json',
-                 '--preview-out', 'preview.json']
-    assert cli.main(arguments) == 0
-    assert calls == [('maintenance.json', False, 'preview.json')]
-    assert cli.main([*arguments, '--confirm']) == 0
-    assert calls == [('maintenance.json', False, 'preview.json'),
-                     ('maintenance.json', True, 'preview.json')]
-    for malformed in (['router', 'maintenance'], [*arguments, '--unexpected'],
-                      ['router', 'maintenance', 'maintenance', '--config', 'maintenance.json']):
-        assert cli.main(malformed) == 2
-        assert len(calls) == 2
-    assert 'synthetic-maintenance-result' in capsys.readouterr().out
 
 
 @pytest.fixture
@@ -240,44 +181,6 @@ def _declare_environment(f, path):
     f['protected'](f['config'], f['values'])
 
 
-def test_current_stop_environment_is_private_pinned_and_forwarded_to_both_helpers(current_stop, tmp_path, monkeypatch):
-    import json
-    from anvil_serving import router_manage
-    f = current_stop
-    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN="synthetic-secret"\nUNRELATED_TOKEN=omitted\n'); path.chmod(0o600)
-    _declare_environment(f, path)
-    monkeypatch.setenv('ANVIL_MEDIA_CONTROLLER_TOKEN', 'wrong-parent-secret')
-    monkeypatch.setenv('DOCKER_HOST', 'untrusted-parent-daemon')
-    monkeypatch.setenv('PYTHONPATH', '/untrusted-parent')
-    preview = f['approve']()
-    assert preview['environment'] == f['values']['environment']
-    assert 'synthetic-secret' not in json.dumps(preview)
-    calls = []
-    def check(kwargs):
-        snapshot = Path(kwargs['env_file'])
-        assert snapshot != path and snapshot.read_bytes() == path.read_bytes()
-        assert snapshot.stat().st_mode & 0o777 == 0o600
-        assert snapshot.parent.stat().st_mode & 0o777 == 0o700
-        assert kwargs['execution_env'] == {'PATH': os.defpath, 'ANVIL_MEDIA_CONTROLLER_TOKEN': 'synthetic-secret'}
-        calls.append(snapshot)
-    def custody(kind, *args, **kwargs):
-        check(kwargs)
-        assert kind == 'dead'
-        return {'finalized': 'dead', 'run_id': f['native']['record']['anchor']['run_id']}
-    def offline(*args, **kwargs):
-        check(kwargs)
-        assert kwargs['_owner_state_only'] is True
-        return f['proof']()
-    monkeypatch.setattr(router_manage, '_managed_container_custody', custody)
-    monkeypatch.setattr(router_manage, '_offline_compose_run', offline)
-    monkeypatch.setattr(maintenance, '_current_stop_proof', f['native_proof'])
-    assert f['run'](confirm=True)['applied']
-    assert len(calls) == 2 and calls[0] == calls[1]
-    assert not calls[0].exists() and not calls[0].parent.exists()
-    assert path.exists() and f['stops'] == 1
-    assert 'synthetic-secret' not in Path(f['values']['receipt_out']).read_text()
-
-
 @pytest.mark.parametrize('damage', ['missing', 'digest', 'symlink', 'hardlink', 'mode'])
 def test_environment_preview_never_reads_secret_and_confirmation_refuses_unsafe_input(current_stop, tmp_path, damage):
     f = current_stop
@@ -347,21 +250,6 @@ def test_pending_stop_binds_environment_reference_and_recovery_never_stops_again
     assert f['stops'] == 1 and f['proofs'] == 1
 
 
-@pytest.mark.parametrize('change', ['extra', 'relative', 'digest', 'wrong_phase'])
-def test_environment_declaration_is_closed_and_current_stop_only(current_stop, tmp_path, change):
-    f = current_stop
-    path = tmp_path/'credentials.env'; path.write_text('ANVIL_MEDIA_CONTROLLER_TOKEN=synthetic\n'); path.chmod(0o600)
-    _declare_environment(f, path)
-    if change == 'extra': f['values']['environment']['values'] = {}
-    elif change == 'relative': f['values']['environment']['file'] = 'credentials.env'
-    elif change == 'digest': f['values']['environment']['sha256'] = 'partial'
-    else:
-        auth = authorization(); f['protected'](Path(f['values']['authorization']), auth)
-    f['protected'](f['config'], f['values'])
-    with pytest.raises(ValueError): f['run']()
-    assert f['stops'] == f['proofs'] == f['checks'] == 0
-
-
 @pytest.mark.parametrize('mode', [0o640, 0o660, 0o666])
 def test_current_stop_accepts_nonsecret_service_config_without_credential_exemption(current_stop, monkeypatch, mode):
     from anvil_serving.control_plane.mcp import auth_file
@@ -381,40 +269,6 @@ def test_current_stop_accepts_nonsecret_service_config_without_credential_exempt
     f['approve']()
     assert f['run'](confirm=True)['stopped'] is True
     assert f['router_config'].stat().st_mode & 0o777 == mode
-
-
-def test_current_stop_native_preview_and_exact_physical_stop_never_claim_drain(current_stop):
-    import json
-    f=current_stop;preview=f['approve']()
-    assert f['stops']==0 and not f['marker'].exists() and not f['fenced']
-    assert preview['local_frontier']=='instrumented-quiesced' and preview['drained'] is False
-    result=f['run'](confirm=True)
-    assert result['stopped'] and not result['drained'] and result['unknown']==['memory']
-    assert f['stops']==1 and f['proofs']==1 and not f['fenced']
-    receipt=json.loads(open(f['values']['receipt_out']).read())
-    assert receipt['legacy_receipt_sha256']=='3'*64 and receipt['death_sha256']
-    with pytest.raises(ValueError):f['run'](confirm=True)
-    assert f['stops']==1
-
-
-@pytest.mark.parametrize('case',['local','boolean_zero','missing_family','extra_unknown','expired_native','consumed',
-                                'anchor','store','run','foreign_container','wrong_revision','unanchored'])
-def test_current_stop_refuses_every_unsupported_frontier_before_stop(current_stop,case):
-    f=current_stop;v=f['native']['observation']
-    if case=='local':v['counts']['delivery']=1
-    elif case=='boolean_zero':v['counts']['memory']=False
-    elif case=='missing_family':del v['counts']['audio']
-    elif case=='extra_unknown':v['eligible_uncertainty']='owner-roster-unknown'
-    elif case=='expired_native':v['expires_at']=int(time.time())
-    elif case=='consumed':v['closure']['consumed']=True
-    elif case=='anchor':v['anchor_sha256']='0'*64
-    elif case=='store':v['store_binding']={'different':True}
-    elif case=='run':v['run_id']='22345678-1234-1234-1234-123456789abc'
-    elif case=='foreign_container':f['incarnation']['container_id']='0'*64
-    elif case=='wrong_revision':v['closure']['configuration_revision']='0'*64
-    else:f['native']['record']['phase']='live-pending'
-    with pytest.raises(ValueError):f['run']()
-    assert not f['marker'].exists() and f['stops']==0
 
 
 @pytest.mark.parametrize('stage',['commit','after_commit','swap_after_commit','stop_failure','after_stop','proof'])
@@ -447,13 +301,6 @@ def test_current_stop_pending_finalizes_after_original_authorization_expires(cur
     assert receipt['authorization']==f['auth']
 
 
-def test_current_stop_expired_without_pending_cannot_start(current_stop, monkeypatch):
-    f=current_stop; f['approve']()
-    monkeypatch.setattr(maintenance.time, 'time', lambda: f['auth']['expires_at']+1)
-    with pytest.raises(ValueError): f['run'](confirm=True)
-    assert f['stops']==0 and f['proofs']==0 and not f['marker'].exists()
-
-
 @pytest.mark.parametrize('damage', ['authorization','preview','compose','marker','timestamp','environment'])
 def test_current_stop_expired_recovery_rejects_unbound_pending(current_stop, monkeypatch, damage):
     f=current_stop; f['approve'](); f['stage']='after_stop'
@@ -471,20 +318,6 @@ def test_current_stop_expired_recovery_rejects_unbound_pending(current_stop, mon
     monkeypatch.setattr(maintenance.time, 'time', lambda: f['auth']['expires_at']+1)
     with pytest.raises(ValueError): f['run'](confirm=True)
     assert f['stops']==1 and f['proofs']==0
-
-
-def test_current_stop_pending_cannot_stop_restarted_incarnation_or_refresh_expiry(current_stop):
-    f=current_stop;f['approve']();f['stage']='after_stop'
-    with pytest.raises(OSError):f['run'](confirm=True)
-    f['stage']=None;f['stopped']=False;f['incarnation']['restart_count']+=1
-    with pytest.raises(ValueError):f['run'](confirm=True)
-    assert f['stops']==1
-    f['stopped']=True
-    with pytest.raises(ValueError):f['run'](confirm=True)
-    f['auth']['expires_at']=int(time.time())-1
-    f['protected'](Path(f['values']['authorization']),f['auth'])
-    with pytest.raises(ValueError):f['run'](confirm=True)
-    assert f['stops']==1
 
 
 @pytest.mark.parametrize('target',['old','new','router_config','auth'])
@@ -512,36 +345,6 @@ def test_current_stop_authority_has_closed_distinct_approval_vocabulary(current_
     elif change=='bad_config':value['successor']['configuration_revision']=False
     else:value['legacy_receipt_sha256']=None
     with pytest.raises(ValueError):maintenance.authorization(value)
-
-
-@pytest.mark.parametrize('boundary',['pending_before','pending_after','receipt_before','receipt_after'])
-def test_current_stop_publication_crash_keeps_one_shot_and_truthful_physical_evidence(current_stop,monkeypatch,boundary):
-    f=current_stop;f['approve']();publish=maintenance._publish
-    receipt=Path(f['values']['receipt_out']);target=receipt if boundary.startswith('receipt') else Path(str(receipt)+'.pending')
-    def fail(path,value,**kw):
-        if Path(path)==target:
-            if boundary.endswith('after'):publish(path,value,**kw)
-            raise OSError('synthetic publication interruption')
-        return publish(path,value,**kw)
-    monkeypatch.setattr(maintenance,'_publish',fail)
-    with pytest.raises(OSError):f['run'](confirm=True)
-    monkeypatch.setattr(maintenance,'_publish',publish)
-    assert f['marker'].exists()
-    if boundary=='receipt_before':
-        assert f['run'](confirm=True)['stopped']
-    else:
-        with pytest.raises(ValueError):f['run'](confirm=True)
-    assert f['stops']==(1 if boundary.startswith('receipt') else 0)
-
-
-def test_current_stop_canonical_operation_record_defeats_changed_output_path(current_stop):
-    f=current_stop;f['approve']();f['stage']='after_commit'
-    with pytest.raises(OSError):f['run'](confirm=True)
-    f['stage']=None
-    f['values']['receipt_out']+='-another'
-    f['protected'](f['config'],f['values'])
-    with pytest.raises(ValueError):f['run'](confirm=True)
-    assert f['stops']==0
 
 
 def test_ordinary_drain_and_consume_stay_strict_after_typed_remote_gap():

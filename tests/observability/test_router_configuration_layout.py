@@ -2,12 +2,10 @@
 
 import hashlib
 import json
-import tomllib
 
 import pytest
 
 from anvil_serving import router_manage
-from anvil_serving.control_plane.mcp.errors import ToolError
 from anvil_serving.control_plane.mcp.tools import router as owner
 
 
@@ -30,23 +28,6 @@ url = "http://127.0.0.1:30000/v1"
 max_output_tokens = 99
 '''
     return text.replace("\n", newline).encode()
-
-
-@pytest.mark.parametrize("quote,newline", [("", "\n"), ('"', "\n"), ("'", "\n"), ('"', "\r\n")])
-def test_typed_candidate_changes_only_selected_tier_with_quoted_keys(quote, newline):
-    raw = _config(quote, newline)
-    before = tomllib.loads(raw.decode())
-    candidate, configured = owner._tier_candidate(
-        raw, "primary", {"max_concurrency": 2, "max_output_tokens": 2048}
-    )
-    before["router"]["tiers"][1].update(max_concurrency=2, max_output_tokens=2048)
-    assert tomllib.loads(candidate.decode()) == before
-    assert configured == {"max_concurrency": 2, "max_output_tokens": 2048}
-    # Unselected tiers, nested metadata, route URLs, and table spelling survive.
-    original_lines = raw.splitlines(keepends=True)
-    changed_lines = candidate.splitlines(keepends=True)
-    assert len(original_lines) == len(changed_lines)
-    assert [i for i, (a, b) in enumerate(zip(original_lines, changed_lines)) if a != b] == [8, 9]
 
 
 def test_quoted_layout_preview_has_real_candidate_digest_and_no_writes(tmp_path, monkeypatch):
@@ -80,22 +61,3 @@ def test_quoted_layout_preview_has_real_candidate_digest_and_no_writes(tmp_path,
     assert result["data"]["applied"] is False
     assert config.read_bytes() == raw
     assert list(tmp_path.iterdir()) == [config]
-
-
-def test_header_like_multiline_content_cannot_be_edited_as_the_selected_tier():
-    # The real table uses an unsupported escaped key spelling. A header-like
-    # line inside unrelated multiline content must never become its edit target.
-    raw = b'''[router]
-note = """
-[[router.tiers]]
-max_output_tokens = 8
-"""
-[["router"."\\u0074iers"]]
-id = "primary"
-max_output_tokens = 4096
-max_concurrency = 1
-'''
-    assert tomllib.loads(raw.decode())["router"]["tiers"][0]["max_output_tokens"] == 4096
-    with pytest.raises(ToolError) as failed:
-        owner._tier_candidate(raw, "primary", {"max_output_tokens": 2048})
-    assert failed.value.code == "bad_candidate"

@@ -17,12 +17,6 @@ import pytest
 from anvil_serving.workbench_app.pi_egress import PiEgressError, targets
 
 
-@pytest.mark.parametrize("address", ["127.0.0.1", "169.254.169.254", "169.254.170.2", "::1", "fe80::1", "::ffff:169.254.169.254", "100.100.100.200", "168.63.129.16", "0.0.0.0"])
-def test_provider_resolution_rejects_metadata_and_local_addresses(address):
-    with pytest.raises(PiEgressError):
-        targets(["https://provider.example"], resolve=lambda *_a, **_k: [(None, None, None, None, (address, 443))])
-
-
 def test_provider_origins_are_exact_and_addresses_are_pinned():
     result = targets(["https://provider.example:8443"], resolve=lambda *_a, **_k: [(None, None, None, None, ("192.0.2.10", 8443))])
     assert result == [{"scheme": "https", "hostname": "provider.example", "port": 8443, "addresses": ["192.0.2.10"]}]

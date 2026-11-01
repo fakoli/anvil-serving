@@ -282,15 +282,6 @@ def _mode_manifest(tmp_path, *, lint_error=False):
     return _write(tmp_path, "serves.toml", body)
 
 
-def _mode_manifest_with_unrelated_defect(tmp_path):
-    """Same topology, clean, plus a bystander serve tied to neither the
-    target nor the restore group -- mode-enter direction of the
-    fresh-scaffold regression: the error must not block the transition."""
-    body = _MODE_BASE_TEMPLATE % ""
-    body += _LINT_ERROR_BLOCK
-    return _write(tmp_path, "serves.toml", body)
-
-
 # ---- promote ----------------------------------------------------------------
 
 def test_promote_gate_aborts_before_transition_on_error(tmp_path, monkeypatch, capsys):
@@ -530,98 +521,6 @@ def test_promote_abort_under_json_carries_stderr_report(tmp_path, monkeypatch, c
 
 # ---- mode enter ---------------------------------------------------------------
 
-def test_mode_enter_gate_aborts_before_cmd_mode_on_error(tmp_path, monkeypatch, capsys):
-    path = _mode_manifest(tmp_path, lint_error=True)
-    calls = []
-    monkeypatch.setattr(serves, "cmd_mode", lambda *a, **k: calls.append(1) or 0)
-
-    rc = serves.main([
-        "mode", "enter", "tp2", "--restore-group", "split-stack", "--manifest", path,
-    ])
-
-    assert rc == 3
-    assert calls == []
-    out = capsys.readouterr()
-    assert "missing-registry" in out.err
-    assert "ADVISORY" not in out.err
-    assert "mode enter refused before any mutation" in out.err
-
-
-def test_mode_enter_advisory_on_uninvolved_serve_does_not_abort(tmp_path, monkeypatch, capsys):
-    """Mode-enter direction of the fresh-scaffold rule: an error on a serve
-    that is neither the target nor in the restore group must not block the
-    transition."""
-    path = _mode_manifest_with_unrelated_defect(tmp_path)
-    calls = []
-    monkeypatch.setattr(serves, "cmd_mode", lambda *a, **k: calls.append(1) or 0)
-
-    rc = serves.main([
-        "mode", "enter", "tp2", "--restore-group", "split-stack", "--manifest", path,
-    ])
-
-    assert rc == 0
-    assert calls == [1]
-    err = capsys.readouterr().err
-    assert "ADVISORY (outside this transaction)" in err
-    assert "missing-registry" in err
-    assert "gate-lint-probe" in err
-
-
-def test_mode_leave_and_preview_are_not_gated(tmp_path, monkeypatch):
-    # Only `enter` runs the preflight gate; the same bad manifest must not
-    # block `preview`/`leave`.
-    path = _mode_manifest(tmp_path, lint_error=True)
-    seen = []
-    monkeypatch.setattr(serves, "cmd_mode", lambda *a, **k: seen.append(a[1]) or 0)
-
-    for mode_action in ("preview", "leave"):
-        rc = serves.main([
-            "mode", mode_action, "tp2", "--restore-group", "split-stack",
-            "--manifest", path,
-        ])
-        assert rc == 0
-
-    assert seen == ["preview", "leave"]
-
-
-def test_mode_skip_preflight_checks_rejected_for_non_enter(tmp_path, monkeypatch, capsys):
-    path = _mode_manifest(tmp_path, lint_error=False)
-    calls = []
-    monkeypatch.setattr(serves, "cmd_mode", lambda *a, **k: calls.append(1) or 0)
-
-    rc = serves.main([
-        "mode", "leave", "tp2", "--restore-group", "split-stack",
-        "--manifest", path, "--skip-preflight-checks",
-    ])
-
-    assert rc == 2
-    assert calls == []
-    assert (
-        "--skip-preflight-checks is only valid with mode enter"
-        in capsys.readouterr().err
-    )
-
-
-def test_mode_enter_skip_preflight_checks_bypasses_gate_with_loud_stderr(
-    tmp_path, monkeypatch, capsys,
-):
-    path = _mode_manifest(tmp_path, lint_error=True)
-    calls = []
-    monkeypatch.setattr(serves, "cmd_mode", lambda *a, **k: calls.append(1) or 0)
-
-    rc = serves.main([
-        "mode", "enter", "tp2", "--restore-group", "split-stack",
-        "--manifest", path, "--skip-preflight-checks",
-    ])
-
-    assert rc == 0
-    assert calls == [1]
-    err = capsys.readouterr().err
-    assert (
-        "preflight checks SKIPPED (--skip-preflight-checks): lint and "
-        "rollback-check were NOT run for this mode enter" in err
-    )
-
 
 def test_mode_enter_first_promotion_load_reports_bad_plan(tmp_path, monkeypatch, capsys):
     # `mode enter` has never loaded promotions before this feature; a bad
@@ -669,32 +568,3 @@ def test_mode_enter_restore_group_reaches_rollback_check(tmp_path, monkeypatch):
 
     assert rc == 0
     assert captured["restore_group"] == "split-stack"
-
-
-def test_gate_prints_warning_findings_to_stderr_without_blocking(monkeypatch, capsys):
-    """A warning-only report is advisory: printed (to stderr, where a --json
-    caller's error envelope would find it) but the transaction proceeds."""
-    warning_report = {
-        "findings": [{
-            "check": "worktree-anchored-registry", "severity": "warning",
-            "serve": "primary", "detail": "registry resolves inside a linked "
-            "git worktree", "files": ["serves.toml"],
-        }],
-        "errors": 0, "warnings": 1, "serves_checked": 1,
-    }
-    clean_rollback = {
-        "findings": [], "errors": 0, "warnings": 0, "infos": 0,
-        "serves_checked": 1, "promotions_checked": 0,
-    }
-    monkeypatch.setattr(
-        serves, "lint_manifest_set", lambda *a, **k: warning_report)
-    monkeypatch.setattr(
-        serves, "rollback_check_manifest_set", lambda *a, **k: clean_rollback)
-
-    rc = serves._preflight_gate([], [], label="promote")
-
-    assert rc is None
-    err = capsys.readouterr().err
-    assert "worktree-anchored-registry" in err
-    assert "preflight checks for promote: 0 error(s), 1 warning(s), 0 info" in err
-    assert "refused" not in err

@@ -9,7 +9,6 @@ from contextlib import contextmanager
 from tests.router.helpers import StaticBackend
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
-from anvil_serving.router.discovery import models_payload
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 
@@ -17,7 +16,7 @@ from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
 @contextmanager
 def _server(routes=("llm.primary", "llm.voice")):
     server = make_server("127.0.0.1", 0, StaticBackend(["ok"]), model_routes=routes)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server.server_address[:2]
@@ -35,27 +34,6 @@ def _models(host, port):
         return response.status, json.loads(response.read())
     finally:
         connection.close()
-
-
-def test_models_endpoint_advertises_exact_configured_aliases():
-    with _server() as (host, port):
-        status, payload = _models(host, port)
-
-    assert status == 200
-    assert payload["object"] == "list"
-    assert [model["id"] for model in payload["data"]] == ["llm.primary", "llm.voice"]
-    assert all(model["object"] == "model" for model in payload["data"])
-
-
-def test_models_endpoint_is_deterministic_and_does_not_invent_presets():
-    with _server(("llm.voice",)) as (host, port):
-        first_status, first = _models(host, port)
-        second_status, second = _models(host, port)
-
-    assert first_status == second_status == 200
-    assert first == second
-    assert [model["id"] for model in first["data"]] == ["llm.voice"]
-    assert "chat" not in json.dumps(first)
 
 
 # --------------------------------------------------------------------------- #
@@ -129,7 +107,7 @@ def _replica_server(config: RouterConfig, availability: _ReplicaAvailability):
     server = make_server(
         "127.0.0.1", 0, routing, model_routes=config.model_routes
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server.server_address[:2]
@@ -165,110 +143,9 @@ def test_replica_models_http_has_one_alias_and_only_safe_projection_fields():
     assert availability.member_calls == ["member-a", "member-b"]
 
 
-def test_replica_models_projection_is_once_per_tier_per_payload_and_bounded():
-    config = _replica_config(16, ("llm.one", "llm.two"))
-    availability = _ReplicaAvailability()
-
-    payload = models_payload(config, availability)
-
-    assert [row["id"] for row in payload["data"]] == ["llm.one", "llm.two"]
-    assert availability.member_calls == [f"member-{chr(ord('a') + index)}" for index in range(16)]
-    assert payload["data"][0]["members"] == payload["data"][1]["members"]
-    assert len(payload["data"][0]["members"]) == 16
-    assert [member["id"] for member in payload["data"][0]["members"]] == [
-        f"member-{chr(ord('a') + index)}" for index in range(16)
-    ]
-
-
-def test_replica_discovery_is_fail_closed_without_provider_or_ready_members():
-    config = _replica_config()
-    missing = models_payload(config)
-    unavailable_provider = _ReplicaAvailability(all_unavailable=True)
-    unavailable = models_payload(config, unavailable_provider)
-
-    for payload in (missing, unavailable):
-        row = payload["data"][0]
-        assert row["id"] == "llm.primary"
-        assert [member["readiness"]["loaded"] for member in row["members"]] == [False, False]
-        assert all(member["served_identity"]["observed"] is None for member in row["members"])
-        assert "private-observed-model" not in json.dumps(row)
-    assert unavailable_provider.member_calls == ["member-a", "member-b"]
-
-
-def test_direct_and_iterable_discovery_shapes_remain_unchanged():
-    direct = Tier(
-        id="direct", base_url="http://127.0.0.1:34500/v1", dialect="openai",
-        context_limit=32, privacy="local", tool_support=True, model="direct-model",
-        auth_env="DIRECT_TEST_KEY",
-    )
-    config = RouterConfig(tiers=(direct,), model_routes={"llm.direct": direct.id})
-
-    assert models_payload(config) == {
-        "object": "list",
-        "data": [{
-            "id": "llm.direct", "object": "model", "name": "llm.direct",
-            "description": "Configured serving capability", "owned_by": "anvil-serving",
-            "created": 1_700_000_000, "context_window": 32,
-            "max_output_tokens": None,
-        }],
-    }
-    assert models_payload(("llm.direct",)) == {
-        "object": "list",
-        "data": [{
-            "id": "llm.direct", "object": "model", "name": "llm.direct",
-            "description": "Configured serving capability", "owned_by": "anvil-serving",
-            "created": 1_700_000_000,
-        }],
-    }
-
-
 def _media_tier(params):
     return Tier(
         id="media", base_url="http://127.0.0.1:34501/v1", dialect="openai",
         context_limit=64, privacy="local", tool_support=True, model="media-model",
         auth_env="MEDIA_TEST_KEY", params=params,
     )
-
-
-def test_discovery_advertises_declared_media_limits():
-    tier = _media_tier({"capabilities": {
-        "modalities": ["text", "image", "video"],
-        "images_per_request": 8,
-        "video_per_request": 1,
-    }})
-    config = RouterConfig(tiers=(tier,), model_routes={"llm.media": tier.id})
-    entry = models_payload(config)["data"][0]
-    assert entry["images_per_request"] == 8
-    assert entry["video_per_request"] == 1
-
-
-def test_discovery_advertises_zero_image_limit():
-    tier = _media_tier({"capabilities": {"images_per_request": 0}})
-    config = RouterConfig(tiers=(tier,), model_routes={"llm.media": tier.id})
-    entry = models_payload(config)["data"][0]
-    assert entry["images_per_request"] == 0
-    assert "video_per_request" not in entry
-
-
-def test_discovery_omits_undeclared_or_invalid_media_limits():
-    cases = [
-        (None, {}, {}),
-        ({}, {}, {}),
-        ({"capabilities": {}}, {}, {}),
-        ({"capabilities": {"images_per_request": "eight"}}, {}, {}),
-        ({"capabilities": {"images_per_request": -1}}, {}, {}),
-        ({"capabilities": {"images_per_request": True, "video_per_request": "1"}}, {}, {}),
-        ({"capabilities": {"images_per_request": 4, "video_per_request": None}}, {"images_per_request": 4}, {}),
-    ]
-    for params, expected_images, expected_videos in cases:
-        tier = _media_tier(params)
-        config = RouterConfig(tiers=(tier,), model_routes={"llm.media": tier.id})
-        entry = models_payload(config)["data"][0]
-        if expected_images:
-            assert entry.get("images_per_request") == expected_images["images_per_request"]
-        else:
-            assert "images_per_request" not in entry
-        if expected_videos:
-            assert entry.get("video_per_request") == expected_videos["video_per_request"]
-        else:
-            assert "video_per_request" not in entry

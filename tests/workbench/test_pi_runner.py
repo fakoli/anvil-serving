@@ -7,7 +7,7 @@ import subprocess
 
 import pytest
 
-from anvil_serving.workbench_app.pi_runner import PiContextMount, PiRunnerPolicy, PiWritableMount
+from anvil_serving.workbench_app.pi_runner import PiContextMount, PiRunnerPolicy
 
 
 def test_container_launch_keeps_secret_values_out_of_argv(tmp_path: Path) -> None:
@@ -30,16 +30,6 @@ def test_container_launch_keeps_secret_values_out_of_argv(tmp_path: Path) -> Non
     assert launch.argv[launch.argv.index("--log-driver") + 1] == "none"
 
 
-def test_linked_git_worktree_is_not_a_runner_checkout(tmp_path: Path) -> None:
-    (tmp_path / ".git").write_text("gitdir: /outside", encoding="utf-8")
-    with pytest.raises(ValueError, match="isolated full clone"):
-        PiRunnerPolicy(
-            engine_argv=("/usr/bin/docker",), image="image", worktree=tmp_path,
-            agent_dir=tmp_path / "agent", uid=12345, gid=12345,
-            container_name="pi-1", session_id="s1",
-        )
-
-
 def _inspect_fixture(policy, directory):
     mounts = [("/sessions", directory, True), ("/workspace", policy.worktree, True),
               ("/home/pi/.pi/agent", policy.agent_dir, True)]
@@ -49,45 +39,6 @@ def _inspect_fixture(policy, directory):
 
 def _policy(tmp_path):
     return PiRunnerPolicy(engine_argv=("/usr/bin/docker",), image="runner@sha256:" + "a" * 64, worktree=tmp_path / "work", agent_dir=tmp_path / "agent", uid=10001, gid=10001, container_name="anvil-pi-test", session_id="test", native_args=("--mode", "rpc", "--session-id", "test"))
-
-
-def test_inspection_distinguishes_absence_from_daemon_failure(tmp_path):
-    from subprocess import CompletedProcess
-    from anvil_serving.workbench_app.pi_runner import PiContainerInspector
-    policy = _policy(tmp_path)
-    for error, expected in (("Cannot connect to the Docker daemon", "unavailable"), ("permission denied", "unavailable"), ("Error: No such container: anvil-pi-test", "absent"), ("Error: No such container: some-other-container", "unavailable")):
-        inspector = PiContainerInspector("docker", run=lambda *a, **k: CompletedProcess(a, 1, "", error))
-        assert inspector.state(policy, tmp_path / "sessions") == expected
-
-
-@pytest.mark.parametrize("section,key,value", [
-    ("Config", "Image", "other@sha256:" + "b" * 64),
-    ("Config", "Cmd", ["sh"]),
-    ("Config", "User", "0:0"),
-    ("Config", "Entrypoint", ["sh"]),
-    ("Config", "Env", ["PI_CODING_AGENT_DIR=/home/pi/.pi/agent", "HTTPS_PROXY=http://uncontrolled:8080"]),
-    ("HostConfig", "ReadonlyRootfs", False),
-    ("HostConfig", "CapDrop", []),
-    ("HostConfig", "SecurityOpt", []),
-    ("HostConfig", "Privileged", True),
-    ("HostConfig", "Memory", 0),
-    ("HostConfig", "NanoCpus", 0),
-    ("HostConfig", "PidsLimit", -1),
-    ("HostConfig", "NetworkMode", "bridge"),
-    ("HostConfig", "DeviceRequests", [{"Capabilities": [["gpu"]]}]),
-])
-def test_inspection_requires_full_effective_runtime_policy(tmp_path, section, key, value):
-    import json
-    from subprocess import CompletedProcess
-    from anvil_serving.workbench_app.pi_runner import PiContainerInspector
-    policy, directory = _policy(tmp_path), tmp_path / "sessions"
-    item = _inspect_fixture(policy, directory)
-    def run(argv, **kwargs):
-        return CompletedProcess(argv, 0, json.dumps([{"Id": "sha256:fixture"}] if argv[1] == "image" else [item]), "")
-    inspector = PiContainerInspector("docker", run=run)
-    assert inspector.state(policy, directory) == "running"
-    item[section][key] = value
-    assert inspector.state(policy, directory) == "unsafe"
 
 
 def test_branch_native_arguments_and_policy_digest_are_bound(tmp_path):
@@ -111,23 +62,6 @@ def test_legacy_policy_digest_omits_empty_context_mounts(tmp_path):
     assert policy.policy_digest(directory) == hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
-def test_context_mounts_cannot_overlap_each_other_or_the_session(tmp_path):
-    from dataclasses import replace
-
-    first = tmp_path / "first"
-    first.mkdir()
-    with pytest.raises(ValueError, match="distinct directories"):
-        replace(_policy(tmp_path), context_mounts=(PiContextMount("one", first), PiContextMount("two", first)))
-    policy = replace(_policy(tmp_path), context_mounts=(PiContextMount("one", first),))
-    with pytest.raises(ValueError, match="session mount"):
-        policy.argv(first / "session", credential_names=())
-    invalid = tmp_path / "bad,mount"
-    invalid.mkdir()
-    policy = replace(_policy(tmp_path), context_mounts=(PiContextMount("invalid", invalid),))
-    with pytest.raises(ValueError, match="mount path"):
-        policy.argv(tmp_path / "sessions", credential_names=())
-
-
 def test_context_snapshot_mount_is_read_only_and_inspector_enforces_it(tmp_path):
     import json
     from subprocess import CompletedProcess
@@ -145,19 +79,6 @@ def test_context_snapshot_mount_is_read_only_and_inspector_enforces_it(tmp_path)
     assert inspector.state(policy, tmp_path / "sessions") == "running"
     next(mount for mount in item["Mounts"] if mount["Destination"] == "/context/docs")["RW"] = True
     assert inspector.state(policy, tmp_path / "sessions") == "unsafe"
-
-
-def test_selected_secondary_clone_is_writable_and_bound_into_policy(tmp_path):
-    from dataclasses import replace
-
-    secondary = tmp_path / "secondary"
-    secondary.mkdir()
-    policy = replace(_policy(tmp_path), writable_mounts=(PiWritableMount("lib", secondary),))
-    argv = policy.argv(tmp_path / "sessions", credential_names=())
-    assert f"type=bind,source={secondary},target=/roots/lib" in argv
-    assert policy.policy_digest(tmp_path / "sessions") != _policy(tmp_path).policy_digest(tmp_path / "sessions")
-    with pytest.raises(ValueError, match="unique declared roots"):
-        replace(policy, context_mounts=(PiContextMount("lib", tmp_path / "context"),))
 
 
 def test_disposable_cpu_runner_reads_only_the_snapshot_context(tmp_path):

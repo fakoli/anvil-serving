@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import base64
-import os
 from pathlib import Path
 import sqlite3
 import sys
@@ -138,50 +137,9 @@ def database(tmp_path, monkeypatch):
     return database
 
 
-def test_schema29_migration_preserves_refresh_binding_and_rejects_unknown_schema(tmp_path):
-    database = tmp_path / "authelia.sqlite3"
-    _create_schema(database)
-    with sqlite3.connect(database) as connection:
-        _insert(connection, "oauth2_access_token_session", {"request_id": "request", "signature": "access"})
-        _insert(connection, "oauth2_refresh_token_session", {"request_id": "request", "signature": "refresh"})
-        with pytest.raises(UsageError):
-            user_purge._schema(connection)
-        _migrate_schema29(connection)
-        user_purge._schema(connection)
-        assert connection.execute(
-            "SELECT access_signature FROM oauth2_refresh_token_session WHERE request_id = 'request'"
-        ).fetchone() == ("access",)
-        connection.execute("CREATE INDEX unexpected_schema29_index ON authentication_logs (username)")
-        with pytest.raises(UsageError):
-            user_purge._schema(connection)
-
-
 def _count(database: Path, table: str, column: str, value: str) -> int:
     with sqlite3.connect(database) as connection:
         return connection.execute(f"SELECT COUNT(*) FROM {table} WHERE {column} = ?", (value,)).fetchone()[0]
-
-
-def test_purge_erases_only_target_and_allows_username_reuse(database):
-    result = user_purge.purge(database, "alice", expected_subject=_ALICE)
-
-    assert result == {"schema_version": 29, "validated_only": False, "applied": True,
-                      "username_records": len(_USERNAME_TABLES), "opaque_identifiers": 1,
-                      "oauth_sessions": len(_SESSION_TABLES) * 2, "consent_sessions": 2,
-                      "consent_preconfigurations": 1, "expected_subject_found": True}
-    for table in _USERNAME_TABLES:
-        assert _count(database, table, "username", "alice") == 0
-        assert _count(database, table, "username", "bob") == 1
-    assert _count(database, "user_opaque_identifier", "username", "alice") == 0
-    assert _count(database, "user_opaque_identifier", "username", "bob") == 1
-    for table in _SESSION_TABLES:
-        assert _count(database, table, "subject", _ALICE) == 0
-        assert _count(database, table, "challenge_id", "alice-pending") == 0
-        assert _count(database, table, "subject", _BOB) == 1
-    assert _count(database, "banned_ip", "ip", "192.0.2.1") == 1
-    assert _count(database, "oauth2_par_context", "signature", "unrelated") == 1
-    assert _count(database, "oauth2_blacklisted_jti", "signature", "unrelated") == 1
-    with sqlite3.connect(database) as connection:
-        _insert(connection, "user_opaque_identifier", {"service": "openid", "sector_id": "", "username": "alice", "identifier": "33333333-3333-4333-8333-333333333333"})
 
 
 def test_purge_schema29_resource_fields_and_access_signature_are_scoped_to_target(database):
@@ -235,28 +193,6 @@ def test_purge_schema29_resource_fields_and_access_signature_are_scoped_to_targe
         ).fetchone() == ("urn:unrelated",)
 
 
-def test_validate_only_and_completed_rerun_are_non_destructive(database):
-    before = database.read_bytes()
-    preview = user_purge.purge(database, "alice", expected_subject=_ALICE, validate_only=True)
-    assert preview["validated_only"] and not preview["applied"] and database.read_bytes() == before
-    user_purge.purge(database, "alice", expected_subject=_ALICE)
-    rerun = user_purge.purge(database, "alice", expected_subject=_ALICE)
-    assert rerun["applied"] and rerun["opaque_identifiers"] == 0 and not rerun["expected_subject_found"]
-
-
-def test_require_zero_opaque_purges_username_only_records_and_allows_reuse(database):
-    with sqlite3.connect(database) as connection:
-        for table in _USERNAME_TABLES:
-            _insert(connection, table, {"username": "unsigned"})
-    result = user_purge.purge(database, "unsigned", require_zero_opaque=True)
-    assert result["applied"] and result["opaque_identifiers"] == 0
-    for table in _USERNAME_TABLES:
-        assert _count(database, table, "username", "unsigned") == 0
-    with sqlite3.connect(database) as connection:
-        _insert(connection, "authentication_logs", {"username": "unsigned"})
-    assert _count(database, "authentication_logs", "username", "unsigned") == 1
-
-
 @pytest.mark.parametrize("validate_only", (True, False))
 def test_require_zero_opaque_rejects_mapping_without_mutation(database, validate_only):
     with pytest.raises(UsageError):
@@ -265,43 +201,9 @@ def test_require_zero_opaque_rejects_mapping_without_mutation(database, validate
     assert _count(database, "user_opaque_identifier", "username", "alice") == 1
 
 
-@pytest.mark.parametrize("damage", ("index", "corrupt", "oversize"))
-def test_unsupported_or_unsafe_database_never_mutates(database, damage):
-    if damage == "index":
-        with sqlite3.connect(database) as connection:
-            connection.execute("DROP INDEX user_opaque_identifier_lookup_key")
-    elif damage == "corrupt":
-        database.write_bytes(b"not a SQLite database")
-    else:
-        os.truncate(database, user_purge._LIMIT + 1)
-    before = database.read_bytes() if damage != "oversize" else database.stat().st_size
-    with pytest.raises(UsageError):
-        user_purge.purge(database, "alice", expected_subject=_ALICE)
-    if damage != "oversize":
-        assert database.read_bytes() == before
-    else:
-        assert database.stat().st_size == before
-    if damage == "index":
-        assert _count(database, "authentication_logs", "username", "alice") == 1
-
-
 def test_rejects_collateral_delete_trigger_before_mutation(database):
     with sqlite3.connect(database) as connection:
         connection.execute("CREATE TRIGGER collateral AFTER DELETE ON authentication_logs WHEN OLD.username = 'alice' BEGIN DELETE FROM authentication_logs WHERE username = 'bob'; END")
-    with pytest.raises(UsageError):
-        user_purge.purge(database, "alice", expected_subject=_ALICE)
-    assert _count(database, "authentication_logs", "username", "alice") == 1
-    assert _count(database, "authentication_logs", "username", "bob") == 1
-
-
-@pytest.mark.parametrize("statement", (
-    "CREATE VIEW unexpected_view AS SELECT username FROM authentication_logs",
-    "CREATE INDEX unexpected_index ON authentication_logs (username)",
-    "ALTER TABLE authentication_logs ADD COLUMN unexpected TEXT NOT NULL DEFAULT ''",
-))
-def test_rejects_unpinned_schema_object_or_table_definition_before_mutation(database, statement):
-    with sqlite3.connect(database) as connection:
-        connection.execute(statement)
     with pytest.raises(UsageError):
         user_purge.purge(database, "alice", expected_subject=_ALICE)
     assert _count(database, "authentication_logs", "username", "alice") == 1

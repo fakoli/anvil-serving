@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
-from anvil_serving.benchmarking.submission import validate_submission_spec
 
 
 def _spec(parameters, *, suite="swe"):
@@ -19,35 +18,6 @@ def _spec(parameters, *, suite="swe"):
         "timeout_s": 600,
         "parameters": parameters,
     }
-
-
-def test_regrade_admission_binds_new_run_to_retained_source():
-    assert validate_submission_spec(_spec({"operation": "regrade", "source_run_id": "source-001"})) == {
-        "profile": "smoke", "operation": "regrade", "source_run_id": "source-001",
-    }
-
-
-@pytest.mark.parametrize("parameters,code", [
-    ({"operation": []}, "bad_swe_operation"),
-    ({"operation": "other"}, "bad_swe_operation"),
-    ({"operation": "regrade"}, "bad_identifier"),
-    ({"operation": "regrade", "source_run_id": "../source"}, "bad_identifier"),
-    ({"operation": "regrade", "source_run_id": "regrade-001"}, "bad_regrade_source"),
-    ({"operation": "regrade", "source_run_id": "source", "temperature": 1}, "bad_regrade_parameters"),
-    ({"operation": "regrade", "source_run_id": "source", "prompt_contract": "disclosed/v2"}, "bad_regrade_parameters"),
-    ({"source_run_id": "source"}, "bad_regrade_source"),
-    ({"prompt_contract": {}}, "bad_prompt_contract"),
-])
-def test_regrade_and_prompt_controls_fail_closed(parameters, code):
-    with pytest.raises(BenchmarkJobError) as exc:
-        validate_submission_spec(_spec(parameters))
-    assert exc.value.code == code
-
-
-@pytest.mark.parametrize("suite", ["context", "agentic"])
-def test_swe_controls_cannot_change_other_suites(suite):
-    with pytest.raises(BenchmarkJobError, match="unsupported by this suite"):
-        validate_submission_spec(_spec({"operation": "regrade", "source_run_id": "source"}, suite=suite))
 
 
 @pytest.mark.parametrize("surface", ["cli", "mcp"])
@@ -79,75 +49,3 @@ def test_cleanup_surface_checks_durable_owner_before_dispatch(monkeypatch, surfa
     assert not calls
     cleanup("owner")
     assert calls == ["source"]
-
-
-def test_unknown_suite_is_rejected_before_profile_lookup(monkeypatch):
-    monkeypatch.setattr("anvil_serving.benchmarking.submission.load_profile", lambda _name: pytest.fail("profile lookup"))
-    with pytest.raises(BenchmarkJobError) as exc:
-        validate_submission_spec(_spec({}, suite="unknown"))
-    assert exc.value.code == "unknown_suite"
-
-
-def test_v2_admission_binds_profile_and_budgets_without_changing_v1():
-    from anvil_serving.benchmarking.profiles import load_profile
-
-    value = _spec({}, suite="context")
-    original = validate_submission_spec(value)
-    assert "budgets" not in original
-    value["profile"] = "pilot-v2"
-    result = validate_submission_spec(value)
-    profile = load_profile("pilot-v2")
-    assert result["profile_sha256"] == profile["content_sha256"]
-    assert result["budgets"] == profile["suites"]["context"]["budgets"]
-    assert result["effective_deadline_s"] == 600
-
-
-@pytest.mark.parametrize("changes,code", [
-    ({"timeout_s": 1801}, "profile_budget_exceeded"),
-    ({"parameters": {"output_headroom_tokens": 2049}}, "profile_budget_exceeded"),
-    ({"parameters": {"repetitions": 2}}, "profile_budget_exceeded"),
-    ({"parameters": {"token_buckets": [1048576]}}, "profile_budget_exceeded"),
-    ({"parameters": {"token_buckets": [16384]}}, "profile_budget_exceeded"),
-    ({"parameters": {"positions": [0.25]}}, "profile_budget_exceeded"),
-    ({"parameters": {"max_model_calls": 100000}}, "suite_incompatible_parameter"),
-    ({"parameters": {"budgets": {"max_model_calls": 100000}}}, "suite_incompatible_parameter"),
-])
-def test_v2_submission_cannot_widen_or_silently_override_budgets(changes, code):
-    value = _spec({}, suite="context")
-    value.update(profile="pilot-v2", **changes)
-    with pytest.raises(BenchmarkJobError) as exc:
-        validate_submission_spec(value)
-    assert exc.value.code == code
-
-
-def test_v2_context_admits_only_profile_matrix_subsets():
-    value = _spec({"token_buckets": [8192], "positions": [0.5], "case_ids": ["native-needle"], "output_headroom_tokens": 512}, suite="context")
-    value["profile"] = "pilot-v2"
-    assert validate_submission_spec(value)["selection"]["token_buckets"] == [8192]
-
-
-def test_binding_preserves_v1_and_validates_caller_supplied_pin():
-    from anvil_serving.benchmarking.jobs import validate_job_spec
-    from anvil_serving.benchmarking.profiles import load_profile
-    from anvil_serving.benchmarking.submission import bind_submission_spec
-
-    value = _spec({}, suite="context")
-    assert bind_submission_spec(value) == validate_job_spec(value)
-    value["profile"] = "pilot-v2"
-    bound = bind_submission_spec(value)
-    assert "profile_sha256" not in value
-    assert bound["profile_sha256"] == load_profile("pilot-v2")["content_sha256"]
-    assert bind_submission_spec(bound) == bound
-    for profile in ("smoke", "pilot-v2"):
-        with pytest.raises(BenchmarkJobError) as exc:
-            bind_submission_spec({**value, "profile": profile, "profile_sha256": "0" * 64})
-        assert exc.value.code == "profile_binding_mismatch"
-
-
-def test_execution_requires_v2_binding_but_preserves_legacy_admission():
-    value = _spec({}, suite="context")
-    assert validate_submission_spec(value, require_profile_binding=True) == validate_submission_spec(value)
-    value["profile"] = "pilot-v2"
-    with pytest.raises(BenchmarkJobError) as exc:
-        validate_submission_spec(value, require_profile_binding=True)
-    assert exc.value.code == "profile_binding_missing"

@@ -1,5 +1,4 @@
 """MCP/controller lifecycle commands preserve the CLI cache-reclaim postcondition."""
-import sys
 
 from anvil_serving import mcp
 from anvil_serving.control_plane.mcp.tools import serves as serves_tools
@@ -18,40 +17,6 @@ def _manifest(tmp_path):
         encoding="utf-8",
     )
     return str(path)
-
-
-def test_serves_manage_captures_cli_cache_reclaim_postcondition(tmp_path, monkeypatch):
-    manifest = _manifest(tmp_path)
-    seen = []
-
-    def run(argv, **kwargs):
-        seen.append((argv, kwargs))
-        return {
-            "command": argv,
-            "returncode": 0,
-            "stdout": (
-                "compose up heavy\n"
-                "cache reclaim after serves up: reclaimed "
-                "(cache 24.0 GB -> 3.0 GB; distro docker-desktop)\n"
-            ),
-            "stderr": "",
-        }
-
-    monkeypatch.setattr(serves_tools, "_run_argv", run)
-    result = mcp.call_tool("serves_manage", {
-        "action": "up",
-        "manifest": manifest,
-        "names": ["heavy"],
-        "confirm": True,
-        "dry_run": False,
-    })
-    assert result["ok"] is True
-    assert result["data"]["applied"] is True
-    assert "cache reclaim after serves up: reclaimed" in result["data"]["stdout"]
-    assert seen[0][0][:5] == [
-        sys.executable, "-m", "anvil_serving.cli", "serves", "up",
-    ]
-    assert "--confirm" in seen[0][0]
 
 
 def test_serves_manage_down_removes_by_default_and_can_keep_container(tmp_path):

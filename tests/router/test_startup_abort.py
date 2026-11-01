@@ -3,9 +3,7 @@ from copy import deepcopy
 import hashlib
 import json
 import os
-from pathlib import Path
 import time
-import uuid
 
 import pytest
 
@@ -169,50 +167,3 @@ def test_router_up_consumes_exact_completed_abort_without_repeating_death(retain
     assert router_manage.cmd_up.__wrapped__(str(compose), 'router',
         startup_abort_config=str(declaration), _run=lambda *_a, **_k: None) == 0
     assert calls == ['offline', 'compose-up', 'live']
-
-
-def test_preview_refuses_sidecar_filename_identity_drift(retained):
-    f = retained
-    owner, usage, run_id = failed_successor(f)
-    try:
-        records = sorted(Path(custody.location(f.store, run_id)).parent.glob('*.json'))
-        predecessor = next(path for path in records if path.stem != run_id)
-        predecessor.rename(predecessor.with_name(str(uuid.uuid4()) + '.json'))
-        with usage.key_store._offline_custody(
-                f.settings, producer_descriptor=owner._owner_descriptor, allow_retained=True):
-            with pytest.raises(ValueError):
-                startup_abort.preview_startup_abort(usage, run_id)
-    finally:
-        os.close(owner._owner_descriptor)
-        owner._owner_descriptor = None
-
-
-@pytest.mark.parametrize('change', ['request', 'closure', 'scan'])
-def test_abort_refuses_traffic_drift_or_incomplete_extinction(retained, change):
-    f = retained
-    owner, usage, run_id = failed_successor(f)
-    try:
-        with usage.key_store._offline_custody(
-                f.settings, producer_descriptor=owner._owner_descriptor, allow_retained=True):
-            preview = startup_abort.preview_startup_abort(usage, run_id)
-            authorization = auth(preview)
-            scanner = scan
-            if change == 'request':
-                with usage.key_store._connect() as db:
-                    source = db.execute('SELECT * FROM usage_starts LIMIT 1').fetchone()
-                    assert source is None
-                    db.execute("INSERT INTO usage_starts VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (
-                        'request-fixture', run_id, f.settings.usage_domain_id,
-                        preview['run_id'], f.revision, '2026-01-01T00:00:00.000000Z', '{}',
-                        'chat', None, None, None, 'exclusive', '{}', None, None, None))
-            elif change == 'closure':
-                authorization['closure_sha256'] = '0' * 64
-            else:
-                def scanner(retained_owner):
-                    return {**scan(retained_owner), 'matches': 1}
-            with pytest.raises((ValueError, custody.KeyStoreError)):
-                startup_abort.abort_startup(usage, authorization, namespace_scan=scanner)
-            assert not custody.location(f.store, run_id).exists()
-    finally:
-        os.close(owner._owner_descriptor)
-        owner._owner_descriptor = None

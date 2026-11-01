@@ -10,8 +10,8 @@ plus the two directions of translation:
 * **client event -> pipeline input.** Audio (``input_audio_buffer.*``) is
   buffered locally and, on ``commit``, pushed onto ``pipeline.audio_in`` as
   raw PCM frames -- the SAME entry point ``VoicePipeline``'s own VAD stage
-  already consumes (see ``tests/voice/test_pipeline_spine.py``), so audio-
-  driven turns get real VAD-based turn-taking for free. Text-only turns
+  already consumes, so audio-driven turns get real VAD-based turn-taking for
+  free. Text-only turns
   (``conversation.item.create`` + ``response.create``) skip VAD/STT entirely
   and are bridged STRAIGHT into a :class:`~anvil_serving.voice.messages.GenerateRequest`
   pushed onto ``pipeline.llm.in_queue`` -- this is the "bridge a completed

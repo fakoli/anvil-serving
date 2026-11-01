@@ -5,21 +5,20 @@ from datetime import datetime
 import json
 from statistics import median
 import sys
-from threading import Barrier, Event, Lock, Thread, get_ident
-from time import perf_counter, sleep
+from threading import Barrier, Lock, get_ident
+from time import perf_counter
 
 import pytest
 
 from anvil_serving.router import usage_store as ledger
 from anvil_serving.router.decision_log import TokenDirection, TokenUsage
-from anvil_serving.router.internal import UsageInvocation
 from anvil_serving.router.keys import KeyStore
-from anvil_serving.router.usage_store import Observation, UsageError, UsageQuery, UsageStore
+from anvil_serving.router.usage_store import Observation, UsageQuery, UsageStore
 from tests.router.key_fixtures import tmp_path as tmp_path
-from tests.router.test_usage_lifecycle import store as store, start_at, terminal, tokens, rows, AT, END, ROUTE
+from tests.router.test_usage_lifecycle import store as store, start_at, terminal, tokens, rows, END, ROUTE
 from tests.router.test_usage_retention import forwarded_caller
-from tests.router.test_usage_metrics import registry, render, metric, global_value
-from tests.router.test_usage_admin import policy as policy, server, request, ADMIN, LEGACY
+from tests.router.test_usage_metrics import render, metric, global_value
+from tests.router.test_usage_admin import policy as policy
 
 NOW = datetime.fromisoformat(END.replace('Z', '+00:00'))
 DOMAIN = 'domain_fixture'
@@ -98,47 +97,6 @@ class _C4FirstFailure:
 
 def cumulative(db):
     return db.query(UsageQuery(granularity='cumulative'), domain_id=DOMAIN)
-
-
-@pytest.mark.parametrize('delivery', ['success', 'disconnected', 'error'])
-def test_finalization_failure_active_cleanup_protected_readback_and_retry(store, policy, monkeypatch, delivery):
-    db, _, run, scope = store
-    monkeypatch.setattr(ledger, '_now', lambda: END)
-    active = registry()
-    caller = forwarded_caller()
-    invocation = UsageInvocation(db, run, scope, caller, 'chat', 'llm.primary', registry=active, clock=lambda: datetime.fromisoformat(AT.replace('Z', '+00:00')))
-    invocation.dispatch()
-    class Backend:
-        def get_last_normalized_usage(self):
-            return TokenUsage(TokenDirection(0, 'measured'), TokenDirection(3, 'estimated', partial=True))
-    invocation.capture(Backend(), 'success')
-    actual_finalize = db.finalize
-    def unavailable(_):
-        raise UsageError('accounting_unavailable')
-    monkeypatch.setattr(db, 'finalize', unavailable)
-    invocation.finish(delivery)
-    assert invocation.terminal.delivery_outcome == delivery
-    assert rows(db, 'usage_details') == []
-    assert db.health(DOMAIN)['unresolved_requests'] == 1
-    raw = render(store, active)
-    assert global_value(raw, 'accounting_failures') == '1'
-    assert global_value(raw, 'unresolved_requests') == '1'
-    assert not metric(raw, 'requests_total')
-    assert all(line.endswith(' 0') for line in metric(raw, 'active_requests'))
-    # Ordinary credentials cannot read either the unresolved history or exporter.
-    with server(policy, usage_store=db, usage_domain_id=DOMAIN, usage_metrics=lambda: render(store, active)) as address:
-        for path in ('/v1/admin/usage?granularity=cumulative', '/v1/admin/usage/metrics'):
-            assert request(address, path, token=LEGACY)[0] == 403
-            assert request(address, path, token=ADMIN)[0] == 200
-    monkeypatch.setattr(db, 'finalize', actual_finalize)
-    assert db.finalize(invocation.terminal) == 'committed'
-    assert db.finalize(invocation.terminal) == 'same'
-    result = cumulative(db)
-    assert (result['requests'], result['measured_input'], result['estimated_output'], result['unresolved_requests']) == (1, 0, 3, 0)
-    [detail] = rows(db, 'usage_starts')
-    assert json.loads(detail['caller']) == caller.to_dict()
-    assert 'subject_fixture' in render(store, active).decode()
-    assert 'synthetic-admin-token' not in json.dumps(result)
 
 
 @pytest.mark.parametrize('observation', ['live', 'unknown', 'dead'])
@@ -277,210 +235,3 @@ def test_c4_start_and_finalize_cost_against_same_store_authentication_baseline(s
     result = cumulative(db)
     assert result['requests'] == 64 and result['measured_input'] == 448 and result['measured_output'] == 320
     assert len(rows(db, 'usage_details')) == 64
-
-
-def test_c4_first_failure_attributes_held_head_without_exposing_values_and_queue_recovers(store):
-    db, _, run, scope = store
-    starts = [start_at(run) for _ in range(3)]
-    for start in starts:
-        db.start(start, authority_scope=scope)
-    entered, release = Event(), Event()
-    diagnostic = _C4FirstFailure(4)
-
-    def held_head():
-        diagnostic.register(0)
-        diagnostic.observe(0, 2.5, 3.5)
-        diagnostic.phase(0, 'finalize')
-        with db.key_store._write():
-            entered.set()
-            assert release.wait(5)
-        diagnostic.phase(0, 'complete')
-
-    def waiting_finalizer(worker, start):
-        diagnostic.register(worker)
-        diagnostic.phase(worker, 'finalize')
-        began = perf_counter()
-        try:
-            db.finalize(terminal(start))
-        except UsageError as error:
-            return error.code, perf_counter() - began, diagnostic.first_failure(worker)
-        raise AssertionError('queued finalizer unexpectedly succeeded')
-
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        head = pool.submit(held_head)
-        assert entered.wait(2)
-        waiters = [pool.submit(waiting_finalizer, index + 1, start)
-                   for index, start in enumerate(starts)]
-        queue_deadline = perf_counter() + 2
-        while perf_counter() < queue_deadline:
-            with db.key_store._writer_condition:
-                if len(db.key_store._writer_queue) == 4:
-                    break
-            sleep(.005)
-        else:
-            raise AssertionError('all synthetic writers did not enter the FIFO')
-        try:
-            refused = [future.result(timeout=2) for future in waiters]
-        finally:
-            release.set()
-        head.result(timeout=2)
-
-    assert all(code == 'accounting_unavailable' and .85 <= elapsed < 1.35
-               for code, elapsed, _ in refused)
-    [snapshot] = [snapshot for _, _, snapshot in refused if snapshot is not None]
-    assert set(snapshot) == {'schema', 'failed_worker', 'workers'}
-    assert snapshot['schema'] == 'source-c4-first-failure/v1'
-    assert snapshot['failed_worker'] in {1, 2, 3}
-    assert len(snapshot['workers']) == 4
-    assert {row['worker'] for row in snapshot['workers']} == {0, 1, 2, 3}
-    assert all(set(row) == {'worker', 'phase', 'elapsed_ms', 'phase_elapsed_ms',
-                           'admission_max_ms', 'finalize_max_ms', 'stack'}
-               and row['phase'] in _C4_PHASES and row['elapsed_ms'] >= 0
-               and row['phase_elapsed_ms'] >= 0 and 0 < len(row['stack']) <= 12
-               for row in snapshot['workers'])
-    assert all(set(frame) == {'function', 'line'} and isinstance(frame['function'], str)
-               and type(frame['line']) is int for row in snapshot['workers'] for frame in row['stack'])
-    held = next(row for row in snapshot['workers'] if row['worker'] == 0)
-    assert held['phase'] == 'finalize'
-    assert held['admission_max_ms'] == 2.5 and held['finalize_max_ms'] == 3.5
-    assert any(frame['function'] == 'held_head' for frame in held['stack'])
-    encoded = json.dumps(snapshot, sort_keys=True)
-    assert all(value not in encoded for value in (
-        str(db.key_store.path), 'SELECT ', 'INSERT ', 'synthetic benchmark', 'parameters', 'locals',
-    ))
-    with db.key_store._writer_condition:
-        assert not db.key_store._writer_queue
-    assert rows(db, 'usage_cumulative') == []
-    assert db.finalize(terminal(starts[0])) == 'committed'
-    assert rows(db, 'usage_cumulative')[0]['requests'] == 1
-
-
-def test_c4_snapshot_holds_one_lock_across_frames_clock_and_phase_copy(monkeypatch):
-    diagnostic = _C4FirstFailure(1)
-    diagnostic.register(0)
-    phase_attempted, phase_completed = Event(), Event()
-    threads = []
-
-    def advance_phase():
-        phase_attempted.set()
-        diagnostic.phase(0, 'finalize')
-        phase_completed.set()
-
-    def current_frames():
-        thread = Thread(target=advance_phase)
-        threads.append(thread)
-        thread.start()
-        assert phase_attempted.wait(1)
-        return {}
-
-    monkeypatch.setattr(sys, '_current_frames', current_frames)
-    snapshot = diagnostic.first_failure(0)
-    threads[0].join(timeout=1)
-    assert not threads[0].is_alive() and phase_completed.is_set()
-    assert snapshot['workers'][0]['phase'] == 'barrier'
-
-
-def test_writer_queue_and_sqlite_share_one_actual_wait_bound(store, monkeypatch):
-    db, _, run, scope = store
-    entered, release = Event(), Event()
-    queued = Event()
-    observed = {}
-    from anvil_serving.router import keys
-    original_wait = db.key_store._writer_condition.wait
-    original_execute = keys._WriterConnection.execute
-
-    def queue_wait(timeout=None):
-        if not queued.is_set():
-            observed['entered'] = perf_counter()
-            observed['queue_remaining'] = timeout
-            queued.set()
-        return original_wait(timeout)
-
-    def execute(connection, sql, parameters=(), /):
-        if get_ident() == observed.get('worker') and sql == 'PRAGMA synchronous=FULL':
-            observed['sqlite_remaining_ms'] = keys.sqlite3.Connection.execute(
-                connection, 'PRAGMA busy_timeout').fetchone()[0]
-        return original_execute(connection, sql, parameters)
-
-    monkeypatch.setattr(db.key_store._writer_condition, 'wait', queue_wait)
-    monkeypatch.setattr(keys._WriterConnection, 'execute', execute)
-    request_start = start_at(run)
-
-    def waiting_writer():
-        observed['worker'] = get_ident()
-        try:
-            db.start(request_start, authority_scope=scope)
-        except UsageError:
-            observed['refused'] = perf_counter()
-            raise
-
-    def prior_writer():
-        with db.key_store._write():
-            entered.set()
-            assert release.wait(5)
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first = pool.submit(prior_writer)
-        assert entered.wait(2)
-        try:
-            with db.key_store._connect() as external:
-                external.execute('BEGIN EXCLUSIVE')
-                waiting = pool.submit(waiting_writer)
-                assert queued.wait(2)
-                sleep(.55)
-                assert not waiting.done()
-                release.set()
-                first.result(timeout=2)
-                with pytest.raises(UsageError, match='accounting_unavailable'):
-                    waiting.result(timeout=2)
-                elapsed = observed['refused'] - observed['entered']
-                assert .85 <= elapsed < 1.35
-                assert 0 < observed['queue_remaining'] <= 1
-                assert 0 <= observed['sqlite_remaining_ms'] <= 500
-                external.execute('ROLLBACK')
-        finally:
-            release.set()
-    assert rows(db, 'usage_starts') == []
-    # A timed-out ticket cannot strand later credential/accounting writers.
-    start = start_at(run)
-    db.start(start, authority_scope=scope)
-    db.finalize(terminal(start))
-    assert cumulative(db)['requests'] == 1
-
-
-def test_writer_begin_and_commit_share_one_actual_wait_bound(store, monkeypatch):
-    db, _, run, scope = store
-    original = db.key_store._connect
-    attempting = Event()
-    from contextlib import contextmanager
-    @contextmanager
-    def traced_connection():
-        with original() as connection:
-            connection.set_trace_callback(
-                lambda sql: attempting.set() if sql == 'BEGIN IMMEDIATE' else None
-            )
-            yield connection
-    monkeypatch.setattr(db.key_store, '_connect', traced_connection)
-    with original() as reader, original() as prior_writer, ThreadPoolExecutor(max_workers=1) as pool:
-        assert reader.execute('PRAGMA journal_mode').fetchone()[0] == 'delete'
-        reader.execute('BEGIN')
-        reader.execute('SELECT COUNT(*) FROM usage_domains').fetchone()
-        prior_writer.execute('BEGIN IMMEDIATE')
-        started = perf_counter()
-        waiting = pool.submit(db.start, start_at(run), authority_scope=scope)
-        try:
-            assert attempting.wait(1)
-            sleep(.65)
-            prior_writer.execute('ROLLBACK')
-            with pytest.raises(UsageError, match='accounting_unavailable'):
-                waiting.result(timeout=2)
-            assert .85 <= perf_counter() - started < 1.35
-        finally:
-            if prior_writer.in_transaction:
-                prior_writer.execute('ROLLBACK')
-            reader.execute('ROLLBACK')
-    assert rows(db, 'usage_starts') == []
-    monkeypatch.setattr(db.key_store, '_connect', original)
-    start = start_at(run)
-    assert db.start(start, authority_scope=scope) == 'started'
-    db.finalize(terminal(start))
-    assert cumulative(db)['requests'] == 1

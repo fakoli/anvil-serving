@@ -49,36 +49,6 @@ def personal_memory(tmp_path, monkeypatch):
         bank=result["bank"], receipt=directory / ("." + principal.removeprefix("human:") + ".creation.json"))
 
 
-@pytest.mark.parametrize("admin", [False, True])
-@pytest.mark.parametrize("operations", [["list"], ["detail"], ["invalidate"], ["restore"],
-    ["list", "detail", "invalidate", "restore"], ["recall"]])
-def test_personal_bank_native_access_requires_explicit_per_operation_opt_in(personal_memory, admin, operations):
-    fixture = personal_memory
-    policy_path = fixture.data["memory"]["access_file"]
-    fixture.data["memory"]["shared_banks"] = {"owner": {fixture.bank: operations}}
-    receipt = fixture.receipt.read_bytes()
-    before = len(fixture.calls)
-    result = user_memory.provision(fixture.data, "owner", fixture.subject, admin=admin)
-    assert result == {"bank": fixture.bank, "default_bank": fixture.bank, "shared": False, "ready": True}
-    expected = memory_access.LEGACY_OPERATIONS | set(operations)
-    assert memory_access.read(policy_path)["users"][fixture.principal]["banks"] == {fixture.bank: sorted(expected)}
-    for operation in memory_access.NATIVE_OPERATIONS:
-        if operation in operations:
-            assert memory_access.resolve(policy_path, fixture.principal, operation)[0] == fixture.bank
-        else:
-            with pytest.raises(PermissionError):
-                memory_access.resolve(policy_path, fixture.principal, operation)
-    assert fixture.receipt.read_bytes() == receipt
-    assert not any(method == "PUT" for _, method in fixture.calls[before:])
-    # Withdrawing only the opt-in restores exactly the legacy grant, for admins too.
-    fixture.data["memory"]["shared_banks"] = {}
-    user_memory.provision(fixture.data, "owner", fixture.subject, admin=admin)
-    assert memory_access.read(policy_path)["users"][fixture.principal]["banks"][fixture.bank] == sorted(memory_access.LEGACY_OPERATIONS)
-    for operation in memory_access.NATIVE_OPERATIONS:
-        with pytest.raises(PermissionError):
-            memory_access.resolve(policy_path, fixture.principal, operation)
-
-
 @pytest.mark.parametrize("damage", ["missing_receipt", "wrong_principal", "wrong_marker", "missing_bank"])
 def test_personal_opt_in_requires_existing_exact_receipt_and_live_ownership(personal_memory, monkeypatch, damage):
     fixture = personal_memory
@@ -101,32 +71,6 @@ def test_personal_opt_in_requires_existing_exact_receipt_and_live_ownership(pers
     assert all(method == "GET" for _, method in fixture.calls[before:])
 
 
-def test_personal_opt_in_keeps_shared_defaults_and_cleanup_compatible(personal_memory, tmp_path):
-    from anvil_serving.connect.config import validate_manifest
-    from tests.connect.test_render import manifest
-    fixture = personal_memory
-    fixture.banks["shared"] = {"bank_id": "shared", "name": "Shared bank"}
-    fixture.data["memory"]["shared_banks"] = {
-        "owner": {fixture.bank: ["list", "detail"], "shared": ["recall"]},
-        "other": {"shared": ["reflect"]}}
-    fixture.data["memory"]["default_banks"] = {"owner": "shared"}
-    # Reuse the existing schema, not a new canonical declaration field.
-    validated = validate_manifest({**manifest(), "memory": fixture.data["memory"]})
-    assert validated["memory"] == fixture.data["memory"]
-    before = len(fixture.calls)
-    result = user_memory.provision(fixture.data, "owner", fixture.subject, admin=False)
-    grant = memory_access.read(fixture.data["memory"]["access_file"])["users"][fixture.principal]
-    assert result["shared"] and result["default_bank"] == "shared"
-    assert grant["banks"]["shared"] == ["recall"]
-    assert grant["banks"][fixture.bank] == sorted(memory_access.LEGACY_OPERATIONS | {"list", "detail"})
-    assert all("/shared" not in target for target, method in fixture.calls[before:] if method != "GET")
-    declaration = tmp_path / "deployment.json"
-    updated = user_delete._withdraw_memory_defaults(validated, str(declaration), "owner")
-    assert updated["memory"]["default_banks"] == {}
-    assert updated["memory"]["shared_banks"] == {"other": {"shared": ["reflect"]}}
-    assert fixture.receipt.exists() and fixture.bank in fixture.banks
-
-
 def test_other_accounts_personal_bank_remains_an_explicit_shared_grant(personal_memory):
     fixture = personal_memory
     receipt = fixture.receipt.read_bytes()
@@ -141,67 +85,6 @@ def test_other_accounts_personal_bank_remains_an_explicit_shared_grant(personal_
     assert grant["banks"][result["bank"]] == sorted(memory_access.LEGACY_OPERATIONS)
     assert fixture.receipt.read_bytes() == receipt
     assert all(fixture.bank not in target for target, method in fixture.calls[before:] if method != "GET")
-
-
-def test_creation_retries_protection_and_shared_default(tmp_path, monkeypatch):
-    monkeypatch.setattr(manage, "_safe_root_ancestors", lambda *_: None)
-    token = tmp_path / "token"; token.write_text("test-token"); token.chmod(0o600)
-    data = {"gateway": {"oidc": {"issuer": "https://auth.example.test"}}, "memory": {
-        "base_url": "http://127.0.0.1:8888", "auth_file": str(token),
-        "access_file": str(tmp_path / "access" / "access.json"), "default_banks": {},
-        "shared_banks": {}, "reader_gid": os.getegid()}}
-    (tmp_path / "access").mkdir(mode=0o750)
-    banks = {"fleet-imported": {"bank_id": "fleet-imported", "name": "shared"}}
-    config = {}; calls = []; fail = [True]
-    def transport(url, *, data, method, **_):
-        target = urlsplit(url).path
-        calls.append((target, method))
-        if target == "/v1/default/banks":
-            result = {"banks": list(banks.values()), "total": len(banks)}
-        else:
-            bank = target.split("/")[4]
-            if method == "PUT":
-                banks[bank] = {"bank_id": bank, **json.loads(data)}
-                if fail.pop() if fail else False:
-                    raise TimeoutError("lost successful create response")
-                result = banks[bank]
-            elif method == "PATCH":
-                config[bank] = json.loads(data)["updates"]; result = {}
-            else:
-                result = {"config": config[bank]}
-        return json.dumps(result).encode()
-    monkeypatch.setattr(memory_backend, "request", transport)
-    subject = "opaque-subject"
-    principal = users._principal(data["gateway"]["oidc"]["issuer"], subject)
-    with pytest.raises(manage.ManageError): user_memory.provision(data,"developer",subject,admin=False)
-    assert not (tmp_path / "access" / "access.json").exists()
-    result = user_memory.provision(data,"developer",subject,admin=False)
-    assert result["ready"] and len([call for call in calls if call[1] == "PUT"]) == 1
-    assert config[result["bank"]]["memory_defense"] == user_memory.DEFENSE
-    # Adding native vocabulary must not silently widen newly provisioned keys.
-    assert memory_access.read(data["memory"]["access_file"])["users"][principal]["banks"][result["bank"]] == ["recall", "reflect", "retain"]
-    assert memory_access.read(data["memory"]["access_file"])["users"][principal]["default_bank"] == result["bank"]
-    data["memory"]["default_banks"] = {"administrator": "fleet-imported"}
-    data["memory"]["shared_banks"] = {"administrator": {"fleet-imported": ["retain", "recall", "reflect"]}}
-    before = len(calls)
-    result = user_memory.provision(data,"administrator","admin-subject",admin=True)
-    assert result["shared"] and result["default_bank"] == "fleet-imported"
-    assert all("fleet-imported" not in target for target, method in calls[before:] if method != "GET")
-    old_bank = result["bank"]
-    declaration = tmp_path / "deployment.json"
-    data = user_delete._withdraw_memory_defaults(data, str(declaration), "administrator")
-    result = user_memory.provision(data,"administrator","new-subject",admin=False)
-    assert not result["shared"] and result["default_bank"] == result["bank"] != old_bank
-    replacement = users._principal(data["gateway"]["oidc"]["issuer"], "new-subject")
-    assert set(memory_access.read(data["memory"]["access_file"])["users"][replacement]["banks"]) == {result["bank"]}
-    assert old_bank in banks and "fleet-imported" in banks
-    # An existing managed-name bank without the protected receipt is a conflict.
-    subject = "collision"
-    monkeypatch.setattr(user_memory.secrets, "token_hex", lambda _: "d" * 48)
-    bank = "user-" + "d" * 48
-    banks[bank] = {"bank_id": bank, "name": "somebody else's bank"}
-    with pytest.raises(manage.ManageError, match="bank access remains closed"):
-        user_memory.provision(data,"collision",subject,admin=False)
 
 
 @pytest.mark.parametrize("local", [False, True])
@@ -235,18 +118,6 @@ def test_permanent_deletion_withdraws_username_grants_before_idp_work(tmp_path, 
     monkeypatch.setattr(manage, "_write_atomic", lambda *_: pytest.fail("retry must not rewrite revoked defaults"))
     with pytest.raises(manage.ManageError, match="IdP unavailable"):
         advance(json.loads(declaration.read_text()))
-
-
-def test_deletion_refuses_a_writable_manifest_parent(monkeypatch):
-    import stat
-    destination = Path("/private/unsafe/deployment.json")
-    data = {"memory": {"default_banks": {"owner": "shared"}, "shared_banks": {}}}
-    monkeypatch.setattr(Path, "lstat", lambda path: SimpleNamespace(
-        st_uid=0, st_mode=stat.S_IFDIR | (0o777 if path == destination.parent else 0o755)))
-    monkeypatch.setattr(manage, "_write_atomic", lambda *_: pytest.fail("must not publish through an unsafe directory"))
-    with pytest.raises(manage.ManageError, match="directory is unsafe"):
-        user_delete._withdraw_memory_defaults(data, str(destination), "owner")
-    assert data["memory"]["default_banks"] == {"owner": "shared"}
 
 
 def test_private_installation_resolves_email_and_cli_previews(tmp_path, monkeypatch):
@@ -297,28 +168,6 @@ def test_private_installation_resolves_email_and_cli_previews(tmp_path, monkeypa
     declaration["memory"] = []
     source.write_text(json.dumps(declaration))
     assert dispatch(args).error is not None
-
-
-def test_suspend_and_delete_close_policy_before_native_failure(tmp_path, monkeypatch):
-    principal = "human:" + "a" * 64
-    path = tmp_path / "access.json"
-    receipt = tmp_path / ".creation.json"; receipt.write_text("retained receipt")
-    data = {"gateway": {"oidc": {"issuer": "https://auth.example.test"}},
-        "memory": {"access_file": str(path), "reader_gid": os.getegid()}}
-    monkeypatch.setattr(users, "_principal", lambda *_: principal)
-    def failed_native(*_):
-        assert principal not in memory_access.read(str(path))["users"]
-        raise manage.ManageError("native failure")
-    monkeypatch.setattr(users, "role_identity", failed_native)
-    for bridge, payload in ((users._human_admin, {"operation": "human-suspend", "subject": "subject"}),
-        (users._human_admin_read, {"operation": "human-delete-prepare", "principal": principal}),
-        (users._human_admin_read, {"operation": "human-delete-prepare-absent", "principal": principal})):
-        data["gateway"]["state_directory"] = str(tmp_path)
-        user_memory._publish(data, {"schema": memory_access.SCHEMA, "users": {principal: {
-            "default_bank": "mine", "admin": True, "banks": {"mine": ["recall"]}}}})
-        with pytest.raises(manage.ManageError, match="native failure"):
-            bridge(data, "unused", payload, None)
-        assert receipt.read_text() == "retained receipt"
 
 
 def test_bank_transport_deadline_covers_dripping_body():

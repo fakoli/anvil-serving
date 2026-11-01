@@ -43,10 +43,10 @@
         "voice-sidecar": 7
       },
       "files_by_category": {
-        "docs": 241,
+        "docs": 245,
         "tooling": 6
       },
-      "files_scanned": 247,
+      "files_scanned": 251,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -72,8 +72,8 @@
       "allowed_legacy_counts": {
         "benchmark": 2,
         "cache-prune": 0,
-        "deploy": 1,
-        "eval-benchmark-action-flag": 1,
+        "deploy": 0,
+        "eval-benchmark-action-flag": 0,
         "external-bench": 1,
         "gpus": 0,
         "mcp-bare": 1,
@@ -82,42 +82,42 @@
         "multiplexer": 0,
         "onboard": 2,
         "preflight": 0,
-        "score": 1,
+        "score": 0,
         "serve": 1,
-        "voice-run-bridge": 7,
+        "voice-run-bridge": 5,
         "voice-sidecar": 1,
-        "voice-start-stop": 4
+        "voice-start-stop": 3
       },
       "canonical_counts": {
-        "eval-benchmark-external": 23,
+        "eval-benchmark-external": 21,
         "eval-benchmark-run": 3,
         "eval-calibrate": 0,
-        "eval-preflight": 37,
+        "eval-preflight": 36,
         "eval-usage": 8,
-        "host-gpus": 7,
-        "init": 44,
+        "host-gpus": 6,
+        "init": 42,
         "mcp-serve": 19,
         "mcp-tools": 5,
-        "models-cache-prune": 9,
-        "models-recipes": 80,
-        "models-score": 5,
-        "router-run": 36,
+        "models-cache-prune": 8,
+        "models-recipes": 78,
+        "models-score": 4,
+        "router-run": 32,
         "serves-multiplex": 4,
-        "serves-render": 8,
+        "serves-render": 7,
         "voice-audio": 45,
         "voice-lifecycle": 8,
         "voice-proxy": 61,
-        "voice-sidecar": 29
+        "voice-sidecar": 24
       },
       "files_by_category": {
-        "docs": 241,
+        "docs": 245,
         "examples": 253,
         "implementation": 507,
         "skills": 22,
-        "tests": 589,
+        "tests": 559,
         "tooling": 38
       },
-      "files_scanned": 1650,
+      "files_scanned": 1624,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

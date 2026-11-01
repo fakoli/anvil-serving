@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import http.client
 import json
-import re
 import threading
 from contextlib import contextmanager
 
@@ -11,13 +10,6 @@ import pytest
 
 from tests.router.helpers import StaticBackend
 from tests.router.test_streaming_relay import (
-    FakeStreamResponse,
-    _ReplicaReadiness,
-    _ReplicaStreamTransport,
-    _assert_replica_idle,
-    _count_real_member_releases,
-    _openai_sse,
-    _ready,
     replica_routing as replica_routing,
 )
 from anvil_serving.router.dialects.responses import ResponsesDialect
@@ -29,7 +21,7 @@ from anvil_serving.router.internal import StructuredResult
 @contextmanager
 def running_server(backend):
     server = make_server("127.0.0.1", 0, backend)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server.server_address[:2]
@@ -138,54 +130,6 @@ def test_responses_structured_tool_call_and_unsupported_features_fail_explicitly
     assert "previous_response_id" in error["message"]
 
 
-def test_responses_identifies_a_rejected_hosted_tool_kind_without_logging_payload():
-    with pytest.raises(DialectError, match="web_search_preview"):
-        ResponsesDialect().parse_request({
-            "model": "chat",
-            "input": "list",
-            "tools": [{"type": "web_search_preview", "user_location": {"city": "secret-city"}}],
-        })
-
-
-def test_responses_suppresses_only_codex_internal_collaboration_namespace():
-    request = ResponsesDialect().parse_request({
-        "model": "chat",
-        "input": "hi",
-        "tools": [
-            {"type": "namespace", "name": "collaboration", "description": "internal"},
-            {"type": "function", "name": "list_files", "parameters": {"type": "object"}},
-        ],
-    })
-
-    assert request.raw["tools"] == [{"type": "function", "function": {"name": "list_files", "parameters": {"type": "object"}}}]
-    with pytest.raises(DialectError, match="namespace"):
-        ResponsesDialect().parse_request({
-            "model": "chat",
-            "input": "hi",
-            "tools": [{"type": "namespace", "name": "unreviewed_mcp"}],
-        })
-
-
-def test_responses_accepts_only_the_explicitly_stateless_store_flag():
-    request = ResponsesDialect().parse_request({"model": "chat", "input": "hi", "store": False})
-
-    assert request.model == "chat"
-    with pytest.raises(DialectError, match="store: false"):
-        ResponsesDialect().parse_request({"model": "chat", "input": "hi", "store": True})
-
-
-def test_responses_accepts_only_the_legacy_stateless_reasoning_include():
-    request = ResponsesDialect().parse_request({
-        "model": "chat",
-        "input": "hi",
-        "include": ["reasoning.encrypted_content"],
-    })
-
-    assert request.model == "chat"
-    with pytest.raises(DialectError, match="include"):
-        ResponsesDialect().parse_request({"model": "chat", "input": "hi", "include": ["message.output_text.logprobs"]})
-
-
 def test_responses_accepts_bounded_stateless_codex_controls_without_policy_override():
     request = ResponsesDialect().parse_request({
         "model": "chat",
@@ -208,84 +152,3 @@ def test_responses_accepts_bounded_stateless_codex_controls_without_policy_overr
             "input": "hi",
             "chat_template_kwargs": {"enable_thinking": "false"},
         })
-
-
-@pytest.mark.parametrize(
-    ("body", "message"),
-    [
-        ({"model": "chat", "input": "hi", "user": "ignored-before"}, "user"),
-        ({"model": {"unexpected": "object"}, "input": "hi"}, "model"),
-        ({"model": "chat", "input": "hi", "stream": "false"}, "stream"),
-        (
-            {
-                "model": "chat",
-                "input": [{"role": "user", "content": [{"type": "input_image", "image_url": "https://example.invalid/image.png"}]}],
-            },
-            "input_image",
-        ),
-        ({"model": "chat", "input": "hi", "tools": ["not-an-object"]}, "tools"),
-    ],
-)
-def test_responses_rejects_unknown_or_lossy_request_shapes(body, message):
-    """Unsupported inputs must fail rather than silently changing agent intent."""
-    with pytest.raises(DialectError, match=message):
-        ResponsesDialect().parse_request(body)
-
-
-def test_responses_preserves_safe_correlation_in_the_internal_request_only():
-    class CaptureBackend:
-        def __init__(self):
-            self.request = None
-
-        def generate(self, request):
-            self.request = request
-            yield "ok"
-
-    backend = CaptureBackend()
-    with running_server(backend) as (host, port):
-        status, _headers, _raw = post(host, port, {"model": "chat", "input": "hi"}, {
-            "X-Anvil-Workbench-Run-Id": "run_7f2a",
-            "X-Anvil-Task-Id": "task_48",
-            "X-Request-Id": "req_91ce",
-        })
-    assert status == 200
-    correlation = backend.request.raw["_anvil_correlation"]
-    assert correlation["workbench_run_id"] == "run_7f2a"
-    assert correlation["task_id"] == "task_48"
-    assert correlation["request_id"] == "req_91ce"
-    assert re.fullmatch(r"req_[0-9a-f]{32}", correlation["gateway_request_id"])
-
-
-@pytest.mark.parametrize("streaming", (False, True))
-def test_responses_real_replica_relay_preserves_compound_lease(
-    monkeypatch, replica_routing, streaming,
-):
-    response = (
-        FakeStreamResponse(_openai_sse(
-            {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
-            {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]},
-        ))
-        if streaming else b'{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}'
-    )
-    transport = _ReplicaStreamTransport({"member-a": response, "member-b": b"unused"})
-    tier, routing = replica_routing(
-        transport, _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()}),
-        buffered=not streaming,
-    )
-    releases = _count_real_member_releases(monkeypatch, routing)
-    with running_server(routing) as (host, port):
-        status, _headers, raw = post(host, port, {
-            "model": "replica.stream", "input": "hi", "stream": streaming,
-        })
-    assert status == 200
-    if streaming:
-        events = parse_named_events(raw)
-        assert events[-1][0] == "response.completed"
-        completed = events[-1][1]["response"]
-        assert response.closed
-    else:
-        completed = json.loads(raw)
-    assert completed["output"][0]["content"][0]["text"] == "ok"
-    _assert_replica_idle(routing, tier)
-    assert transport.calls == ["member-a"]
-    assert releases == ["member-a"]

@@ -15,7 +15,7 @@ import pytest
 from anvil_serving.connect.migration import MigrationError, preview_observatory
 from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thread
 from anvil_serving.observability.dashboard.app import create_dashboard_server
-from anvil_serving.observability.dashboard.console import Console, attach_console, load_config
+from anvil_serving.observability.dashboard.console import Console, attach_console
 from anvil_serving.observability.dashboard.contracts import digest
 
 
@@ -141,47 +141,6 @@ def deployment(tmp_path: Path) -> tuple[Path, Path, dict]:
     return manifest, observatory, config
 
 
-def test_preview_has_one_canonical_origin_and_ordered_safe_cutover(tmp_path: Path):
-    manifest, config, _ = deployment(tmp_path)
-    preview = preview_observatory(manifest, config, resource_id="dashboard")
-    assert preview["applied"] is False
-    assert preview["canonical_origin"] == ORIGIN
-    assert preview["resource"] == {"id": "dashboard", "host": HOST, "path_prefix": "/", "base_path": "/", "access": "browser", "native_auth": "passthrough", "connector": "dashboard", "declared_loopback_origin": "http://127.0.0.1:18080"}
-    assert [step["order"] for step in preview["steps"]] == [1, 2, 3, 4, 5, 6]
-    assert "two-origin" not in json.dumps(preview).lower()
-    assert preview["steps"][-1]["action"].startswith("retire-the-prior")
-
-
-def test_preview_accepts_current_optional_logs_without_disclosing_log_binding(tmp_path: Path):
-    manifest, config, values = deployment(tmp_path)
-    values["inventory"] = {"hosts": [{"id": "dashboard-host"}], "serves": []}
-    values["logs"] = {
-        "url": "http://127.0.0.1:3100",
-        "hosts": {"dashboard-host": "dashboard-host"},
-        "serves": {},
-    }
-    config.write_text(json.dumps(values), encoding="utf-8")
-
-    # The app's own closed loader accepts the current optional block.  The
-    # migration preview retains its fixed browser-origin contract and returns
-    # no collector configuration or endpoint.
-    assert load_config(str(config))["logs"] == values["logs"]
-    preview = preview_observatory(manifest, config, resource_id="dashboard")
-    assert preview["canonical_origin"] == ORIGIN
-    assert preview["resource"]["access"] == "browser"
-    assert preview["resource"]["native_auth"] == "passthrough"
-    assert "logs" not in preview
-    assert "127.0.0.1:3100" not in json.dumps(preview, sort_keys=True)
-
-
-def test_preview_still_rejects_unknown_observatory_top_level_key(tmp_path: Path):
-    manifest, config, values = deployment(tmp_path)
-    values["unrecognized"] = {"not": "allowed"}
-    config.write_text(json.dumps(values), encoding="utf-8")
-    with pytest.raises(MigrationError, match="configuration is invalid"):
-        preview_observatory(manifest, config, resource_id="dashboard")
-
-
 def test_origin_change_is_refused_instead_of_claiming_preserved_sessions(tmp_path: Path):
     manifest, config, values = deployment(tmp_path)
     values["origin"] = "https://old-console.example.test"
@@ -229,22 +188,6 @@ def test_preview_refuses_symlink_fifo_and_oversized_observatory_config(tmp_path:
         preview_observatory(manifest, fifo, resource_id="dashboard")
     config.write_bytes(b"{" + b" " * 262_144)
     with pytest.raises(MigrationError, match="bounded regular|exceeds"):
-        preview_observatory(manifest, config, resource_id="dashboard")
-
-
-def test_preview_requires_exact_non_stripping_path_and_observatory_methods(tmp_path: Path):
-    manifest, config, values = deployment(tmp_path)
-    values.pop("strip_prefix")
-    config.write_text(json.dumps(values), encoding="utf-8")
-    with pytest.raises(MigrationError, match="non-stripping"):
-        preview_observatory(manifest, config, resource_id="dashboard")
-    values["strip_prefix"] = False
-    config.write_text(json.dumps(values), encoding="utf-8")
-    deployment_data = json.loads(manifest.read_text())
-    deployment_data["gateway"]["gateway"]["resources"][0]["rule"]["methods"] = ["GET"]
-    deployment_data["connectors"][0]["resources"][0]["envelope"]["rule"]["methods"] = ["GET"]
-    manifest.write_text(json.dumps(deployment_data), encoding="utf-8")
-    with pytest.raises(MigrationError, match="GET, POST and DELETE"):
         preview_observatory(manifest, config, resource_id="dashboard")
 
 

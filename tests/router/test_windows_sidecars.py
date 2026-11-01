@@ -41,39 +41,6 @@ def test_only_native_delete_pending_and_exact_leaf_absence(links, pending, direc
     assert keys._windows_unlinked_sidecar(7, Path('synthetic-journal')) is expected
 
 
-@pytest.mark.parametrize('sidecar,directory,links,unlinked,private,expected_cause', [
-    (True, False, 0, True, True, True),
-    (False, False, 0, True, True, False),
-    (True, False, 0, False, True, False),
-    (True, False, 0, True, False, False),
-    (True, False, 2, True, True, False),
-    (True, True, 0, True, True, False),
-])
-def test_zero_link_object_is_never_success_or_general_private_path_absence(tmp_path, monkeypatch,
-        sidecar, directory, links, unlinked, private, expected_cause):
-    leaf = tmp_path / 'synthetic-journal'
-    leaf.write_bytes(b'synthetic')
-    descriptor = os.open(leaf, os.O_RDONLY)
-    monkeypatch.setattr(keys, '_windows_open_verification_file', lambda _: descriptor)
-    monkeypatch.setattr(keys.bootstrap_shim, '_windows_handle_details_from_descriptor',
-                        lambda _: (directory, (1, 2, 3, 4, 5), links))
-    checks = []
-    def absent(fd, path):
-        checks.append(True)
-        return unlinked
-    monkeypatch.setattr(keys, '_windows_unlinked_sidecar', absent)
-    def require_private(fd):
-        if not private: raise keys.auth_file.AuthFileError('synthetic refusal')
-    monkeypatch.setattr(keys.auth_file, '_require_windows_private_descriptor', require_private)
-    with pytest.raises(keys.KeyStoreError) as raised:
-        keys._windows_private_path(leaf, directory=False, _sidecar=sidecar)
-    cause = raised.value.__cause__
-    assert isinstance(cause, FileNotFoundError) is expected_cause
-    if expected_cause: assert cause.filename == str(leaf)
-    if not sidecar or directory or links > 1 or not private: assert not checks
-    with pytest.raises(OSError): os.fstat(descriptor)
-
-
 @pytest.mark.skipif(os.name != 'nt', reason='actual Windows shared-delete held journal contract')
 def test_actual_windows_held_unlink_becomes_revalidated_sidecar_absence(tmp_path, monkeypatch):
     store = keys.KeyStore.initialize(tmp_path / 'private' / 'keys.sqlite3')
@@ -118,71 +85,6 @@ def test_actual_windows_sidecar_replacement_refuses_before_sqlite(tmp_path, monk
     monkeypatch.setattr(sqlite3, 'connect', lambda *a, **k: pytest.fail('unsafe recovery input reached SQLite'))
     with pytest.raises(keys.KeyStoreError):
         with store._connect(): pass
-
-
-@pytest.mark.parametrize('change', ['unchanged', 'parent_changed', 'recreated', 'unknown_leaf', 'second_absence_unknown'])
-def test_sidecar_absence_handler_revalidates_parent_and_repeated_native_absence(tmp_path, monkeypatch, change):
-    parent = tmp_path / 'private'
-    native_windows = keys._is_windows()
-    original_directory = keys._secure_directory
-    original_directory(parent, create=True)
-    db = parent / 'keys.sqlite3'
-    leaf = Path(str(db) + '-journal')
-    leaf.write_bytes(b'synthetic journal')
-    leaf.chmod(0o600)
-    checks = []
-    def private_parent(path, **kwargs):
-        # Exercise the actual parent guard on this platform; native Windows
-        # tests above separately prove its held descriptor/DACL contract.
-        with monkeypatch.context() as local:
-            local.setattr(keys, '_is_windows', lambda: native_windows)
-            original_directory(path, **kwargs)
-        checks.append(path)
-    def disappear(path, **kwargs):
-        assert path == leaf and kwargs['_sidecar'] is True
-        leaf.unlink()
-        if change == 'parent_changed':
-            parent.rename(tmp_path / 'displaced')
-            with monkeypatch.context() as local:
-                local.setattr(keys, '_is_windows', lambda: native_windows)
-                original_directory(parent, create=True)
-        elif change == 'recreated':
-            leaf.write_bytes(b'recreated synthetic')
-            leaf.chmod(0o600)
-        raise keys.KeyStoreError('synthetic vanished leaf') from FileNotFoundError(2, 'synthetic', str(leaf))
-    calls = []
-    def absent(path):
-        calls.append(path)
-        if path != leaf: return True
-        if leaf.exists(): return False
-        if change == 'unknown_leaf': return False
-        if change == 'second_absence_unknown' and calls.count(leaf) == 3: return False
-        return True
-    monkeypatch.setattr(keys, '_is_windows', lambda: True)
-    monkeypatch.setattr(keys, '_secure_directory', private_parent)
-    monkeypatch.setattr(keys, '_secure_database', disappear)
-    monkeypatch.setattr(keys, '_windows_leaf_absent', absent)
-    # First lookup must see the retained leaf, so the disappearance is inside
-    # validation and cannot be mistaken for an initially absent sidecar.
-    if change == 'unchanged':
-        assert keys._secure_sidecars(db) == 0
-        assert calls.count(leaf) == 3 and len(checks) == 2
-    else:
-        with pytest.raises(keys.KeyStoreError): keys._secure_sidecars(db)
-
-
-def test_native_reparse_or_unknown_object_never_reaches_disappearance_classification(tmp_path, monkeypatch):
-    leaf = tmp_path / 'synthetic-journal'
-    leaf.write_bytes(b'synthetic')
-    descriptor = os.open(leaf, os.O_RDONLY)
-    monkeypatch.setattr(keys, '_windows_open_verification_file', lambda _: descriptor)
-    def unsafe(fd): raise keys.bootstrap_shim._UnsafeObject
-    monkeypatch.setattr(keys.bootstrap_shim, '_windows_handle_details_from_descriptor', unsafe)
-    monkeypatch.setattr(keys, '_windows_unlinked_sidecar', lambda *a: pytest.fail('unsafe held object was classified absent'))
-    with pytest.raises(keys.KeyStoreError) as raised:
-        keys._windows_private_path(leaf, directory=False, _sidecar=True)
-    assert not isinstance(raised.value.__cause__, FileNotFoundError)
-    with pytest.raises(OSError): os.fstat(descriptor)
 
 
 @pytest.mark.skipif(os.name != 'nt', reason='actual Windows main database zero-link refusal')

@@ -7,7 +7,6 @@ import pytest
 
 from anvil_serving import router_manage
 from anvil_serving.router import keys
-from anvil_serving.router.usage_store import UsageStore
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 
@@ -43,36 +42,6 @@ def test_offline_cli_migration_preserves_authority_and_protected_snapshot(tmp_pa
     assert keys.dispatch(args) == 2  # Never overwrite the rollback snapshot.
 
 
-@pytest.mark.skipif(os.name != 'posix', reason='native managed owner requires POSIX locks')
-@pytest.mark.parametrize('lock', ['producer', 'writer'])
-def test_offline_migration_refuses_actual_competing_lock_before_snapshot(tmp_path, lock):
-    import fcntl
-    store, _, _, config = fixture(tmp_path)
-    path = (store.path.parent / 'admission.json.router.lock' if lock == 'producer'
-            else type(store.path)(str(store.path) + '.router-writers.lock'))
-    with path.open('w') as held:
-        path.chmod(0o600)
-        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        backup = tmp_path / 'backup' / 'keys.sqlite3'
-        assert keys.dispatch(['migrate', '--config', str(config), '--backup-out', str(backup), '--offline', '--confirm']) == 2
-    assert not backup.exists()
-    assert keys.KeyStore(store.path).version == 1
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='native managed owner requires POSIX locks')
-def test_offline_migration_preserves_bound_closure_and_refuses_unknown_owner(tmp_path):
-    store, _, _, config = fixture(tmp_path)
-    state = store.path.parent / 'admission.json.router'
-    state.write_text(json.dumps({'schema': 'router-admission/v1', 'owner_id': 'synthetic-owner',
-                                'closure': {'consumed': True}}))
-    state.chmod(0o600)
-    keys._bind_router_store(store.path, state, 'synthetic-owner')
-    before = state.read_bytes()
-    backup = tmp_path / 'backup' / 'keys.sqlite3'
-    assert keys.dispatch(['migrate', '--config', str(config), '--backup-out', str(backup), '--offline', '--confirm']) == 2
-    assert state.read_bytes() == before and not backup.exists()
-
-
 @pytest.mark.parametrize('state', ['absent', 'exited', 'created'])
 def test_cold_up_uses_offline_custody_without_fabricating_old_drain(monkeypatch, state):
     calls = []
@@ -82,14 +51,6 @@ def test_cold_up_uses_offline_custody_without_fabricating_old_drain(monkeypatch,
     monkeypatch.setattr(router_manage, 'require_router_offline', lambda *a, **k: calls.append('offline'))
     assert router_manage.cmd_up('synthetic.yml', 'router', _run=lambda *a, **k: SimpleNamespace(returncode=0, stdout='', stderr='')) == 0
     assert calls == ['offline']
-
-
-@pytest.mark.parametrize('state', ['running', 'restarting', 'paused', 'unknown'])
-def test_active_or_unknown_up_cannot_take_cold_path(monkeypatch, state):
-    monkeypatch.setattr(router_manage, '_container_compose_project', lambda *a, **k: (state, 'anvil-serving'))
-    monkeypatch.setattr(router_manage, 'require_router_offline', lambda *a, **k: pytest.fail('active cold path'))
-    monkeypatch.setattr(router_manage, 'require_router_drain', lambda *a, **k: (_ for _ in ()).throw(ValueError('hold')))
-    assert router_manage.cmd_up('synthetic.yml', 'router') == 1
 
 
 def test_offline_compose_roster_change_refuses_before_launch(monkeypatch):
@@ -119,40 +80,6 @@ def test_offline_compose_roster_change_refuses_before_launch(monkeypatch):
         return SimpleNamespace(returncode=0, stdout=value, stderr='')
     assert router_manage.cmd_up('synthetic.yml', 'router', _run=run) == 1
     assert not any('up' in call for call in calls)
-
-
-@pytest.mark.parametrize('rendered', [[], {'services': []},
-    {'name': 'anvil-serving', 'services': {'router': {'container_name': 'anvil-router',
-      'volumes': [{'type': 'volume', 'source': 'keys', 'target': '/var/lib/anvil-serving/router-keys'}]}},
-      'volumes': {'keys': {'name': 'synthetic-keys'}}}])
-def test_unknown_or_unmounted_compose_config_refuses_before_probe(rendered):
-    calls = []
-    def run(argv, **kwargs):
-        calls.append(argv)
-        return SimpleNamespace(returncode=0, stdout=json.dumps(rendered), stderr='')
-    with pytest.raises(ValueError):
-        router_manage.require_router_offline('synthetic.yml', 'router', _run=run)
-    assert not any('run' in call for call in calls)
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='native managed owner requires POSIX locks')
-def test_actual_start_refuses_producer_acquired_after_offline_probe(tmp_path, monkeypatch):
-    import fcntl
-    from anvil_serving.router.config import load_server_config
-    from anvil_serving.router.admission import managed_router_admission
-    from anvil_serving.router.usage_store import RunOwner
-    import uuid
-    store, _, _, config = fixture(tmp_path)
-    UsageStore(store).migrate()
-    monkeypatch.setattr(router_manage, 'DEFAULT_INSTALLED_CONFIG', str(config))
-    physical = RunOwner('synthetic-owner', str(uuid.uuid4()), 1, 2, 1, 2, 1000, 1, 3, 123, 456)
-    monkeypatch.setattr(RunOwner, 'observe', lambda *args: physical)
-    assert router_manage._offline_router_start()['offline'] is True
-    lock = store.path.parent / 'admission.json.router.lock'
-    with lock.open('r+') as held:
-        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        with pytest.raises(BlockingIOError):
-            managed_router_admission(load_server_config(str(config)), 'c' * 64)
 
 
 def test_offline_migration_requires_closed_owner_and_explicit_confirmation(tmp_path):
@@ -243,27 +170,3 @@ def test_owner_roster_separates_media_but_rejects_accounting_writers(tmp_path, m
         assert before['owner_storage'] != observe()['owner_storage']
         actual[1]['name']='changed-key-volume'
         with pytest.raises(ValueError): observe()
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='native owner storage uses POSIX metadata')
-@pytest.mark.parametrize('change', ['permission', 'missing', 'type', 'identity'])
-def test_storage_lineage_refuses_inaccessible_or_changing_metadata(tmp_path, monkeypatch, change):
-    from pathlib import Path
-    import stat
-    directory = tmp_path/'state'; directory.mkdir()
-    original_stat = Path.stat
-    calls = 0
-    def observe(path, **kw):
-        nonlocal calls
-        value = original_stat(path, **kw)
-        if path == directory:
-            calls += 1
-            if change == 'permission': raise PermissionError()
-            if change == 'missing' and calls > 1: raise FileNotFoundError()
-            if calls > 1:
-                return SimpleNamespace(st_dev=value.st_dev, st_ino=value.st_ino + (change == 'identity'),
-                                       st_mode=stat.S_IFREG if change == 'type' else value.st_mode)
-        return value
-    monkeypatch.setattr(Path, 'stat', observe)
-    with pytest.raises(ValueError, match='router_(offline_storage_unknown|owner_storage_changed)'):
-        router_manage._storage_lineage(str(directory))

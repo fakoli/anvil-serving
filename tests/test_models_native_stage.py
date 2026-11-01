@@ -46,27 +46,6 @@ def test_native_stage_metadata_requires_exact_safe_lfs_artifact():
         models._native_stage_metadata(REPO, REVISION, FILENAME, _open=oid_only_open)
 
 
-def test_native_stage_hash_mismatch_never_imports(tmp_path):
-    stage = tmp_path / "stage"
-    target = stage / FILENAME
-    target.parent.mkdir(parents=True)
-    target.write_bytes(b"wrong")
-    calls = []
-
-    def run(argv, **_kwargs):
-        calls.append(argv)
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
-
-    with pytest.raises(ValueError, match="SHA256"):
-        models.run_native_stage_pull(
-            REPO, REVISION, FILENAME, hashlib.sha256(b"expected").hexdigest(), str(stage), _run=run,
-        )
-    assert calls and calls[0][0] == "curl.exe"
-    assert calls[0][1:6] == ["--disable", "--http1.1", "--tlsv1.2", "--tls-max", "1.2"]
-    assert calls[0][calls[0].index("--proto-redir") + 1] == "=https"
-    assert not any(call[0] == "docker" for call in calls)
-
-
 def test_native_stage_rejects_parent_link_escape(tmp_path):
     stage = tmp_path / "stage"
     stage.mkdir()
@@ -78,19 +57,6 @@ def test_native_stage_rejects_parent_link_escape(tmp_path):
         pytest.skip("Windows does not permit this test's directory symlink")
     with pytest.raises(ValueError, match="escapes"):
         models.preflight_native_stage(str(stage), "nested/artifact.ninfer", 1)
-
-
-@pytest.mark.parametrize("filename", ["CON.ninfer", "weights/part:stream", "weights/part. "])
-def test_native_stage_rejects_windows_unsafe_names(tmp_path, filename):
-    with pytest.raises(ValueError, match="unsafe"):
-        models.preflight_native_stage(str(tmp_path / "stage"), filename, 1)
-
-
-def test_native_stage_rejects_docker_volume_mount_injection(tmp_path):
-    with pytest.raises(ValueError, match="named Docker volume"):
-        models.run_native_stage_pull(
-            REPO, REVISION, FILENAME, "0" * 64, str(tmp_path / "stage"), volume="cache,readonly",
-        )
 
 
 def test_native_stage_import_uses_read_only_bind_and_offline_docker(tmp_path):
@@ -121,19 +87,6 @@ def test_native_stage_import_uses_read_only_bind_and_offline_docker(tmp_path):
     assert "type=volume,source=vllm-hfcache,target=/root/.cache/huggingface" in mounts
     assert any("target=/anvil-stage,readonly" in mount for mount in mounts)
     assert FILENAME in argv and sha256 in argv
-
-
-@pytest.mark.parametrize("extra", [
-    ["--cache-dir", "other-cache"],
-    ["--memory-mib", "256", "--memory-swap-mib", "256"],
-])
-def test_native_stage_rejects_conflicting_pull_modes_before_io(monkeypatch, extra):
-    def unexpected(*_args, **_kwargs):
-        pytest.fail("conflicting modes must fail before policy or download I/O")
-
-    monkeypatch.setattr(models.host_ops, "load_cache_reclaim_policy", unexpected)
-    monkeypatch.setattr(models, "_native_pull_main", unexpected)
-    assert models.pull_main([REPO, "--native-stage", "stage", "--no-token", *extra]) == 2
 
 
 @pytest.mark.parametrize("public_cli", [False, True])

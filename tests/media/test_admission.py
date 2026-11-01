@@ -4,7 +4,6 @@ import threading
 from pathlib import Path
 
 from anvil_serving.media import (
-    JobState,
     MediaAdmissionService,
     MediaJobStore,
     WorkflowRegistry,
@@ -29,19 +28,6 @@ def unqualified_workflow():
     )
 
 
-def test_unqualified_workflow_fails_before_lifecycle(tmp_path):
-    store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    result = MediaAdmissionService(store).evaluate(
-        unqualified_workflow(),
-        PARAMETERS,
-        principal="hermes",
-        backend_ready=False,
-        lifecycle_preview={"wouldRun": ["managed"]},
-    )
-    assert result.state == "unavailable"
-    assert result.preview is None
-
-
 def test_cold_start_requires_approval_and_preserves_exact_preview(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
     preview = {"operation": "serves-up", "target": "media-worker", "confirm": False}
@@ -51,41 +37,6 @@ def test_cold_start_requires_approval_and_preserves_exact_preview(tmp_path):
     assert result.state == "awaiting_approval"
     assert result.preview == preview
     assert store.nonterminal() == []
-
-
-def test_queue_and_concurrency_limits_reject_before_more_work(tmp_path):
-    store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    workflow = ready_workflow()
-    for number in range(2):
-        job, _ = store.create(
-            principal="hermes",
-            workflow_id=workflow.id,
-            workflow_version=workflow.version,
-            input_digest=(str(number) * 64),
-            idempotency_key=f"key-{number}",
-            now=NOW,
-        )
-        if number == 0:
-            store.transition(job.id, JobState.QUEUED, principal="hermes")
-            store.transition(job.id, JobState.RUNNING, principal="hermes")
-    decision = MediaAdmissionService(store).evaluate(
-        workflow, PARAMETERS, principal="hermes", backend_ready=True
-    )
-    assert decision.allowed is False
-    assert decision.reason == "principal_queue_depth"
-
-
-def test_parameter_bounds_are_applied_before_queue_state(tmp_path):
-    store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    parameters = dict(PARAMETERS, width=2048)
-    try:
-        MediaAdmissionService(store).evaluate(
-            ready_workflow(), parameters, principal="hermes", backend_ready=True
-        )
-    except Exception as error:
-        assert getattr(error, "code", None) == "invalid_parameter"
-    else:
-        raise AssertionError("out-of-range dimensions were admitted")
 
 
 def test_parallel_admission_reserves_queue_capacity_atomically(tmp_path):

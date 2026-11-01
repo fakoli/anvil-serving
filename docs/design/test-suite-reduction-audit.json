@@ -1,0 +1,493 @@
+{
+  "schema_version": "anvil-test-reduction-deleted-module-audit/v1",
+  "base_revision": "7b5158b724ca715c85a3302091d2a2b40f253da0",
+  "reviewer_role": "independent-adversarial-reviewer",
+  "implementer_model_family": "GPT-6",
+  "reviewer_model_family": "Sol",
+  "reviewed_wholly_deleted_module_count": 62,
+  "unreviewed_wholly_deleted_modules": [],
+  "reviewed_modules": [
+    "tests/connect/test_isolation_declaration.py",
+    "tests/connect/test_isolation_probe_regressions.py",
+    "tests/connect/test_isolation_serial_pty.py",
+    "tests/connect/test_qualification_config.py",
+    "tests/connect/test_qualification_container_install.py",
+    "tests/connect/test_session_lifetime.py",
+    "tests/connect/test_user_backup_history.py",
+    "tests/control_plane/test_controller_workload_cli.py",
+    "tests/fixtures/operator_workflows/test_voice_latency_model_ab_matrix.py",
+    "tests/media/test_comfyui_packaging.py",
+    "tests/media/test_wan22_v2_workflow.py",
+    "tests/media/test_workflow_compatibility.py",
+    "tests/native_agents/test_adapter.py",
+    "tests/observability/test_benchmark_session.py",
+    "tests/observability/test_dashboard_workloads_ui.py",
+    "tests/observability/test_history_compare.py",
+    "tests/observability/test_milestone3_dashboard.py",
+    "tests/observability/test_observatory_connect_access_ui.py",
+    "tests/observability/test_workload_content_security_policy.py",
+    "tests/observability/test_workload_review_regressions.py",
+    "tests/router/test_bug_bash.py",
+    "tests/router/test_dialect_parity.py",
+    "tests/router/test_harness_contracts.py",
+    "tests/router/test_image_fidelity.py",
+    "tests/router/test_internal.py",
+    "tests/router/test_reasoning_limit_probe.py",
+    "tests/router/test_router_telemetry.py",
+    "tests/router/test_video_fidelity.py",
+    "tests/test_aider_surface.py",
+    "tests/test_benchmark_context_evidence.py",
+    "tests/test_benchmark_model_inventory.py",
+    "tests/test_benchmark_request_controls.py",
+    "tests/test_benchmark_terminal_punctuation.py",
+    "tests/test_candidate_operations_skill.py",
+    "tests/test_capacity_canary_prompt.py",
+    "tests/test_capacity_concurrency.py",
+    "tests/test_cli_json_error_contract.py",
+    "tests/test_cli_reference_audit.py",
+    "tests/test_docs_command_invocations.py",
+    "tests/test_glm53_fp4_documentation.py",
+    "tests/test_harness_runtime.py",
+    "tests/test_hermes_catalog_snapshot.py",
+    "tests/test_kernel_tuning_skill.py",
+    "tests/test_markdown_links.py",
+    "tests/test_model_pull_native_review.py",
+    "tests/test_modularization_architecture.py",
+    "tests/test_product_families.py",
+    "tests/test_q36_manifest.py",
+    "tests/test_release_sweep_evidence.py",
+    "tests/test_stt_benchmark_skill.py",
+    "tests/voice/test_llm_stage_incremental_emission.py",
+    "tests/voice/test_mini_validation_defaults.py",
+    "tests/voice/test_pipeline_spine.py",
+    "tests/voice/test_tts_stage_incremental_emission.py",
+    "tests/voice/test_tts_stream_config.py",
+    "tests/voice/test_voice_evidence_publication.py",
+    "tests/voice/test_voice_manifest_set.py",
+    "tests/workbench/test_javascript_modules.py",
+    "tests/workbench/test_packaging.py",
+    "tests/workbench/test_pi_chat_behavior.py",
+    "tests/workbench/test_pi_official_smoke.py",
+    "tests/workbench/test_pi_web_mobile.py"
+  ],
+  "critical_restores": [
+    {
+      "module": "tests/connect/test_isolation_declaration.py",
+      "required_selectors": [
+        "tests/connect/test_isolation_declaration.py::test_static_declaration_matches_only_the_guest_declarative_functions"
+      ],
+      "reason": "Binds the static isolation deployment declaration to the closed declarative guest subset."
+    },
+    {
+      "module": "tests/connect/test_isolation_probe_regressions.py",
+      "required_selectors": [
+        "tests/connect/test_isolation_probe_regressions.py::test_probe_against_real_unix_socket[reset-True-0]",
+        "tests/connect/test_isolation_probe_regressions.py::test_probe_against_real_unix_socket[redirect-True-1]",
+        "tests/connect/test_isolation_probe_regressions.py::test_probe_against_real_unix_socket[redirect-False-0]",
+        "tests/connect/test_isolation_probe_regressions.py::test_missing_ingress_socket_is_not_a_passing_rejection",
+        "tests/connect/test_isolation_probe_regressions.py::test_failure_injection_targets_the_declared_tunnel_listener"
+      ],
+      "reason": "Preserves fail-closed rejection semantics, real CRLF wire framing, missing-socket refusal, and exact failure-injection ownership."
+    },
+    {
+      "module": "tests/connect/test_isolation_serial_pty.py",
+      "required_selectors": [
+        "tests/connect/test_isolation_serial_pty.py::test_guest_result_crosses_real_tty_as_one_canonical_frame"
+      ],
+      "reason": "Preserves the canonical serial result frame used by isolation qualification evidence."
+    },
+    {
+      "module": "tests/connect/test_qualification_config.py",
+      "required_selectors": [
+        "tests/connect/test_qualification_config.py::test_unsafe_config_refuses_without_reading"
+      ],
+      "representative_rows": [
+        "symlink",
+        "fifo",
+        "oversized"
+      ],
+      "reason": "Configuration reads must not follow indirection, block on a FIFO, or accept unbounded input."
+    },
+    {
+      "module": "tests/connect/test_qualification_container_install.py",
+      "required_selectors": [
+        "tests/connect/test_qualification_container_install.py::test_redirect_refuses_tls_downgrade_before_request",
+        "tests/connect/test_qualification_container_install.py::test_only_verified_regular_binary_is_accepted"
+      ],
+      "representative_rows": [
+        "regular-valid",
+        "symlink",
+        "bad-hash"
+      ],
+      "reason": "Preserves TLS and archive-integrity boundaries before a qualification binary becomes executable."
+    },
+    {
+      "module": "tests/connect/test_session_lifetime.py",
+      "required_selectors": [
+        "tests/connect/test_session_lifetime.py::test_browser_session_lifetime_is_optional_and_renders_exactly_when_declared",
+        "tests/connect/test_session_lifetime.py::test_browser_session_lifetime_rejects_non_integer_or_out_of_range_values"
+      ],
+      "representative_rows": [
+        "0",
+        "86401",
+        "True"
+      ],
+      "reason": "Preserves browser-session expiry propagation and lower, upper, and bool-as-int rejection boundaries."
+    },
+    {
+      "module": "tests/control_plane/test_controller_workload_cli.py",
+      "required_selectors": [
+        "tests/control_plane/test_controller_workload_cli.py::test_fleet_topology_does_not_enable_node_router_source"
+      ],
+      "reason": "A fleet topology must not infer or activate an undeclared router workload source."
+    },
+    {
+      "module": "tests/media/test_comfyui_packaging.py",
+      "required_selectors": [
+        "tests/media/test_comfyui_packaging.py::test_public_runtime_scaffold_is_byte_identical_and_identity_free",
+        "tests/media/test_comfyui_packaging.py::test_runtime_and_custom_node_inputs_are_exactly_pinned",
+        "tests/media/test_comfyui_packaging.py::test_workflow_bundle_and_required_model_identities_are_pinned"
+      ],
+      "reason": "Preserves public scaffold synchronization, identity hygiene, and exact runtime, node, workflow, and model pins."
+    },
+    {
+      "module": "tests/media/test_workflow_compatibility.py",
+      "required_selectors": [
+        "tests/media/test_workflow_compatibility.py::test_missing_node_is_normalized_without_private_metadata",
+        "tests/media/test_workflow_compatibility.py::test_oversized_metadata_fails_closed"
+      ],
+      "reason": "Compatibility failures must be bounded and must not expose private backend metadata."
+    },
+    {
+      "module": "tests/native_agents/test_adapter.py",
+      "required_selectors": [
+        "tests/native_agents/test_adapter.py::test_packaged_owner_adapter_behavior"
+      ],
+      "reason": "Executes the packaged owner adapter across bearer separation, one-shot interactions, drift, cancellation, generation fencing, and unsafe saved-path refusal."
+    },
+    {
+      "module": "tests/observability/test_observatory_connect_access_ui.py",
+      "required_selectors": [
+        "tests/observability/test_observatory_connect_access_ui.py::test_connect_access_api_rejects_oversized_streams_and_malformed_tokens",
+        "tests/observability/test_observatory_connect_access_ui.py::test_connect_access_view_disables_malformed_records_without_mutation",
+        "tests/observability/test_observatory_connect_access_ui.py::test_connect_access_browser_boundary_is_same_origin_memory_only_and_fail_closed",
+        "tests/observability/test_observatory_connect_access_ui.py::test_connect_access_view_uses_text_only_metadata_manual_refresh_and_no_account_creation"
+      ],
+      "reason": "Preserves browser-side auth, CSRF, same-origin, storage, malformed-data, bounds, and text-only privacy boundaries."
+    },
+    {
+      "module": "tests/observability/test_workload_content_security_policy.py",
+      "required_selectors": [
+        "tests/observability/test_workload_content_security_policy.py::test_dashboard_document_and_packaged_workload_script_have_exact_safe_csp"
+      ],
+      "reason": "Preserves no-store, nosniff, same-origin and framing policy headers on the dashboard and packaged script."
+    },
+    {
+      "module": "tests/observability/test_workload_review_regressions.py",
+      "required_selectors": [
+        "tests/observability/test_workload_review_regressions.py::test_updated_after_source_is_not_a_canonical_record[0:00:00.000001]",
+        "tests/observability/test_workload_review_regressions.py::test_node_decoder_rejects_descendant_skew_against_node_collection",
+        "tests/observability/test_workload_review_regressions.py::test_fleet_decoder_checks_every_descendant_against_fleet_collection[record]",
+        "tests/observability/test_workload_review_regressions.py::test_fleet_source_time_failure_is_isolated_before_final_decode"
+      ],
+      "representative_rows": [
+        "updated-after-source:microsecond",
+        "fleet-descendant:record"
+      ],
+      "reason": "Samples fail-closed temporal drift validation at record, node, fleet, and source-isolation seams."
+    },
+    {
+      "module": "tests/router/test_bug_bash.py",
+      "required_selectors": [
+        "tests/router/test_bug_bash.py::test_decision_log_default_is_bounded",
+        "tests/router/test_bug_bash.py::test_decision_log_rejects_nonpositive_cap"
+      ],
+      "reason": "Preserves the in-memory decision-log resource bound and invalid-cap refusal."
+    },
+    {
+      "module": "tests/router/test_harness_contracts.py",
+      "required_selectors": [
+        "tests/router/test_harness_contracts.py::test_harness_protocols_retain_session_history_and_tool_continuations"
+      ],
+      "representative_rows": [
+        "pi-responses-X-Session-Affinity"
+      ],
+      "reason": "Preserves Pi affinity correlation into request history; no other retained test names this header."
+    },
+    {
+      "module": "tests/router/test_image_fidelity.py",
+      "required_selectors": [
+        "tests/router/test_image_fidelity.py::test_same_dialect_openai_image_passthrough",
+        "tests/router/test_image_fidelity.py::test_same_dialect_anthropic_image_passthrough"
+      ],
+      "reason": "Prevents silent image stripping while reconstructing relay request bodies for either supported dialect."
+    },
+    {
+      "module": "tests/router/test_router_telemetry.py",
+      "required_selectors": [
+        "tests/router/test_router_telemetry.py::test_prometheus_is_gauge_only_and_escapes_safe_model_labels",
+        "tests/router/test_router_telemetry.py::test_capacity_prometheus_rejects_malformed_replica_groups",
+        "tests/router/test_router_telemetry.py::test_capacity_prometheus_enforces_per_tier_and_total_member_bounds"
+      ],
+      "reason": "Preserves label escaping, malformed-private-value suppression, and metrics-cardinality bounds."
+    },
+    {
+      "module": "tests/router/test_video_fidelity.py",
+      "required_selectors": [
+        "tests/router/test_video_fidelity.py::test_same_dialect_openai_video_is_forwarded_verbatim",
+        "tests/router/test_video_fidelity.py::test_cross_dialect_video_fails_closed_instead_of_flattening"
+      ],
+      "reason": "Prevents silent video stripping and unsupported cross-dialect flattening."
+    },
+    {
+      "module": "tests/test_aider_surface.py",
+      "required_selectors": [
+        "tests/test_aider_surface.py::test_submit_preview_returns_frozen_profile_spec_without_store"
+      ],
+      "reason": "Dry-run preview must remain store-free while binding the frozen profile digest."
+    },
+    {
+      "module": "tests/test_harness_runtime.py",
+      "required_selectors": [
+        "tests/test_harness_runtime.py::test_planner_and_adapter_reject_changed_plan_before_launch"
+      ],
+      "representative_rows": [
+        "aider",
+        "performance"
+      ],
+      "reason": "Both harness adapters must reject plan drift before launching external work."
+    },
+    {
+      "module": "tests/test_hermes_catalog_snapshot.py",
+      "required_selectors": [
+        "tests/test_hermes_catalog_snapshot.py::HermesCatalogSnapshotTests::test_failed_or_malformed_snapshot_never_falls_back_to_single_key_queries"
+      ],
+      "reason": "Malformed or failed native snapshots must not trigger hidden fallback queries."
+    },
+    {
+      "module": "tests/test_model_pull_native_review.py",
+      "required_selectors": [
+        "tests/test_model_pull_native_review.py::test_different_repositories_share_disk_admission_lock",
+        "tests/test_model_pull_native_review.py::test_receipt_creation_is_exclusive_and_never_replaces_another_file",
+        "tests/test_model_pull_native_review.py::test_filtered_snapshot_refuses_prior_excluded_files_without_deletion",
+        "tests/test_model_pull_native_review.py::test_receipt_repeated_writes_remain_complete_json",
+        "tests/test_model_pull_native_review.py::test_downloader_version_rejects_python_interpreter",
+        "tests/test_model_pull_native_review.py::test_real_process_records_bounded_hf_version"
+      ],
+      "reason": "Preserves acquisition admission, receipt custody, nondeletion, atomic completeness, and executable identity."
+    },
+    {
+      "module": "tests/test_q36_manifest.py",
+      "required_selectors": [
+        "tests/test_q36_manifest.py::test_q36_launcher_validates_mtp_without_shell_evaluation",
+        "tests/test_q36_manifest.py::test_q36_container_recipe_pins_source_images_model_and_gpu_boundary"
+      ],
+      "reason": "Preserves metacharacter-safe argument construction plus exact image, model, loopback, and GPU recipe boundaries."
+    },
+    {
+      "module": "tests/voice/test_llm_stage_incremental_emission.py",
+      "required_selectors": [
+        "tests/voice/test_llm_stage_incremental_emission.py::test_first_sentence_reaches_output_queue_before_second_sentence_is_sent",
+        "tests/voice/test_llm_stage_incremental_emission.py::test_barge_in_mid_stream_drops_subsequent_chunks_through_the_real_stage_thread"
+      ],
+      "reason": "Preserves real-thread incremental LLM delivery and cancellation of stale output."
+    },
+    {
+      "module": "tests/voice/test_tts_stage_incremental_emission.py",
+      "required_selectors": [
+        "tests/voice/test_tts_stage_incremental_emission.py::test_first_audio_chunk_reaches_output_queue_before_second_chunk_is_sent"
+      ],
+      "reason": "Preserves real-thread incremental audio delivery rather than collect-then-return behavior."
+    },
+    {
+      "module": "tests/voice/test_tts_stream_config.py",
+      "required_selectors": [
+        "tests/voice/test_tts_stream_config.py::test_manifest_stream_setting_reaches_real_pipeline_request",
+        "tests/voice/test_tts_stream_config.py::test_stream_defaults_true_and_manifest_rejects_nonboolean",
+        "tests/voice/test_tts_stream_config.py::test_declared_openai_voice_and_language_survive_live_pipeline_configuration",
+        "tests/voice/test_tts_stream_config.py::test_explicit_generation_cap_has_live_benchmark_and_evidence_parity",
+        "tests/voice/test_tts_stream_config.py::test_generation_cap_rejects_invalid_manifest_overlay_and_direct_config"
+      ],
+      "representative_rows": [
+        "stream:false",
+        "max_tokens:none",
+        "max_tokens:750",
+        "invalid:true",
+        "invalid:0",
+        "invalid:8193"
+      ],
+      "reason": "Preserves stream, voice, language and bounded generation controls through manifest, live request, and evidence."
+    },
+    {
+      "module": "tests/voice/test_voice_evidence_publication.py",
+      "required_selectors": [
+        "tests/voice/test_voice_evidence_publication.py::test_existing_evidence_is_preserved",
+        "tests/voice/test_voice_evidence_publication.py::test_concurrent_evidence_publication_keeps_one_complete_attempt"
+      ],
+      "reason": "Evidence publication must be exclusive and atomic under existing-file and concurrent-writer races."
+    },
+    {
+      "module": "tests/voice/test_voice_manifest_set.py",
+      "required_selectors": [
+        "tests/voice/test_voice_manifest_set.py::test_managed_voice_admission_loads_colocated_manifest_set"
+      ],
+      "reason": "Voice lifecycle admission must account for colocated manifest workloads sharing the GPU role."
+    },
+    {
+      "module": "tests/workbench/test_packaging.py",
+      "required_selectors": [
+        "tests/workbench/test_packaging.py::test_pi_build_uses_packaged_pinned_sources_and_never_the_companion_checkout",
+        "tests/workbench/test_packaging.py::test_runner_assets_are_byte_identical_to_reviewed_sources"
+      ],
+      "reason": "Preserves packaged-source authority and byte identity instead of using an ambient Companion checkout."
+    },
+    {
+      "module": "tests/workbench/test_pi_chat_behavior.py",
+      "required_selectors": [
+        "tests/workbench/test_pi_chat_behavior.py::test_pi_chat_keeps_drafts_isolated_and_transcript_ordered"
+      ],
+      "reason": "Preserves per-session draft isolation, transcript order, and one-shot interaction control state."
+    },
+    {
+      "module": "tests/workbench/test_pi_web_mobile.py",
+      "required_selectors": [
+        "tests/workbench/test_pi_web_mobile.py::test_packaged_mobile_api_behavior"
+      ],
+      "reason": "Executes packaged mobile auth, path and body bounds, idempotency, error privacy, native-session restoration, and event filtering."
+    }
+  ],
+  "ordinary_modules": [
+    {
+      "module": "tests/connect/test_user_backup_history.py",
+      "classification": "retention sampling detail; critical digest refusal and restore nonactivation remain elsewhere"
+    },
+    {
+      "module": "tests/fixtures/operator_workflows/test_voice_latency_model_ab_matrix.py",
+      "classification": "historical fixture field and prose assertions"
+    },
+    {
+      "module": "tests/media/test_wan22_v2_workflow.py",
+      "classification": "exact graph literal and model sampling values"
+    },
+    {
+      "module": "tests/observability/test_benchmark_session.py",
+      "classification": "capture history, stability, and hard-limit behavior retained in milestone and artifact tests"
+    },
+    {
+      "module": "tests/observability/test_dashboard_workloads_ui.py",
+      "classification": "static UI structure and bounded-VM rendering"
+    },
+    {
+      "module": "tests/observability/test_history_compare.py",
+      "classification": "dashboard history and comparison reporting detail"
+    },
+    {
+      "module": "tests/observability/test_milestone3_dashboard.py",
+      "classification": "broad milestone integration and sampling cadence"
+    },
+    {
+      "module": "tests/router/test_dialect_parity.py",
+      "classification": "structural reflection matrix duplicated by direct dialect behavior tests"
+    },
+    {
+      "module": "tests/router/test_internal.py",
+      "classification": "direct-dispatch error prose and metadata shape"
+    },
+    {
+      "module": "tests/router/test_reasoning_limit_probe.py",
+      "classification": "isolated research-probe fixture configuration"
+    },
+    {
+      "module": "tests/test_benchmark_context_evidence.py",
+      "classification": "single benchmark narrative row"
+    },
+    {
+      "module": "tests/test_benchmark_model_inventory.py",
+      "classification": "documentation inventory table schema"
+    },
+    {
+      "module": "tests/test_benchmark_request_controls.py",
+      "classification": "request-control literals duplicated by retained preflight and remote CLI checks"
+    },
+    {
+      "module": "tests/test_benchmark_terminal_punctuation.py",
+      "classification": "grader punctuation policy literals"
+    },
+    {
+      "module": "tests/test_candidate_operations_skill.py",
+      "classification": "skill prose and discovery contract"
+    },
+    {
+      "module": "tests/test_capacity_canary_prompt.py",
+      "classification": "benchmark prompt formatting and deterministic literal detail"
+    },
+    {
+      "module": "tests/test_capacity_concurrency.py",
+      "classification": "benchmark reporting specificity for observed overlap"
+    },
+    {
+      "module": "tests/test_cli_json_error_contract.py",
+      "classification": "duplicate CLI warning presentation detail"
+    },
+    {
+      "module": "tests/test_cli_reference_audit.py",
+      "classification": "developer audit-script unit matrix; active audit still runs in CI"
+    },
+    {
+      "module": "tests/test_docs_command_invocations.py",
+      "classification": "documentation command-shape audit"
+    },
+    {
+      "module": "tests/test_glm53_fp4_documentation.py",
+      "classification": "documentation arithmetic"
+    },
+    {
+      "module": "tests/test_kernel_tuning_skill.py",
+      "classification": "skill documentation and artifact naming checks"
+    },
+    {
+      "module": "tests/test_markdown_links.py",
+      "classification": "developer link-checker parser matrix; link checker still runs in CI"
+    },
+    {
+      "module": "tests/test_modularization_architecture.py",
+      "classification": "historical architecture audit; current documentation must not claim it remains a standing pytest gate"
+    },
+    {
+      "module": "tests/test_product_families.py",
+      "classification": "product catalog and journey documentation shape"
+    },
+    {
+      "module": "tests/test_release_sweep_evidence.py",
+      "classification": "historical release record consistency"
+    },
+    {
+      "module": "tests/test_stt_benchmark_skill.py",
+      "classification": "skill and example artifact pin checks"
+    },
+    {
+      "module": "tests/voice/test_mini_validation_defaults.py",
+      "classification": "default hostname pattern literals"
+    },
+    {
+      "module": "tests/voice/test_pipeline_spine.py",
+      "classification": "echo-stage pipeline behavior duplicated by retained real-stage seam tests"
+    },
+    {
+      "module": "tests/workbench/test_javascript_modules.py",
+      "classification": "broad syntax and run-coalescing UI matrix"
+    },
+    {
+      "module": "tests/workbench/test_pi_official_smoke.py",
+      "classification": "optional external Pi smoke with environment-dependent skip"
+    }
+  ],
+  "ordinary_coverage_within_critical_modules": "Any test or parameter row in a critical_restore module that is not listed above is classified as ordinary literal, duplicate, UI, format, or report specificity under the authorized noncritical-coverage tradeoff.",
+  "limitations": [
+    "Every module wholly deleted in the reviewed snapshot was inspected; no wholly deleted module remains unreviewed.",
+    "Partially reduced modules were reviewed through retained registries, safety selectors, high-risk removed-function searches, exact parameter-row comparison, and focused source inspection, but this does not prove semantic equivalence for every removed function or row across the full suite.",
+    "Coverage percentage and test names were used only as discovery aids, not as proof that a behavior is preserved.",
+    "Final acceptance still requires a fresh ordinary collection, all required selectors present, a clean full ordinary suite, combined statement-and-branch coverage at or above 70 percent, and an uninstrumented timed run for the runtime claim."
+  ],
+  "scope_note": "Sanitized independent whole-module deletion review. Final measured acceptance is recorded in test-suite-reduction-results.json; partial-file equivalence is not claimed."
+}

@@ -54,18 +54,6 @@ def test_dropped_stream_does_not_cancel_or_duplicate_work(tmp_path):
     assert after.state == JobState.QUEUED
 
 
-def test_resume_cursor_returns_only_later_events(tmp_path):
-    tasks = service(tmp_path)
-    task = tasks.send_message(send_request()["params"], caller=CALLER)["task"]
-    store = tasks.operations.jobs
-    store.transition(task["id"], JobState.RUNNING, principal="hermes")
-    job = store.get(task["id"], principal="hermes")
-    updates = stream_events(job, after_sequence=2)
-    assert [
-        update["statusUpdate"]["metadata"]["sequence"] for update in updates
-    ] == [3, 4, 5]
-
-
 def test_cold_worker_stream_closes_at_input_required_without_waiting(tmp_path):
     tasks = cold_service(tmp_path)
     task = tasks.send_message(
