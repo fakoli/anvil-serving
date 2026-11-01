@@ -555,16 +555,6 @@ def _publish_database(staged: Path, target: Path, created: os.stat_result) -> No
         raise
 
 
-def _json_list(value: object, label: str) -> tuple[str, ...]:
-    if not isinstance(value, list) or not value or len(value) > 64:
-        raise KeyStoreError("credential store contains invalid grants")
-    if any(not isinstance(item, str) or not item or len(item) > 128 for item in value):
-        raise KeyStoreError("credential store contains invalid grants")
-    if len(set(value)) != len(value):
-        raise KeyStoreError("credential store contains invalid grants")
-    return tuple(value)
-
-
 def _stored_grants(models: object, paths: object) -> tuple[tuple[str, ...], tuple[str, ...]]:
     try:
         parsed_models = json.loads(models) if isinstance(models, str) else None
