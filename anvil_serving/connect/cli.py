@@ -87,6 +87,11 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     native_agents = actions.add_parser("native-agents", allow_abbrev=False,
         help="Run the native Agents broker behind a managed TLS edge.")
     native_agents.add_argument("--config", required=True, action=_Once)
+    native_check = actions.add_parser("native-agents-check", allow_abbrev=False,
+        help="Run local synthetic checks, or preview empty-session checks against declared guest owners.")
+    native_check.add_argument("--config", action=_Once)
+    native_check.add_argument("--confirm", action="store_true")
+    native_check.add_argument("--dry-run", action="store_true")
     native_authority = actions.add_parser("native-authority", allow_abbrev=False,
         help="Project current Pi resource grants into short-lived native authority.")
     for name in ("manifest", "resource", "output"):
@@ -269,7 +274,14 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         target = manage.Target.parse(args.service) if getattr(args, "service", None) else None
         apply = bool(getattr(args, "confirm", False) and not getattr(args, "dry_run", False))
         action = args.action
-        if action == "native-agents":
+        if action == "native-agents-check":
+            from ..native_agents.local_check import check
+            result = check(args.config, apply=apply)
+            if result.get("ok") is False:
+                return CommandResult(data=result, error=OperatorError(
+                    "Local Agents check failed; retained request and session IDs identify any empty test sessions.",
+                    code="native_agents_local_check_failed"))
+        elif action == "native-agents":
             from ..native_agents.server import serve
             serve(args.config)
             result = {"stopped": True}

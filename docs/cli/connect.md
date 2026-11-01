@@ -924,6 +924,35 @@ current Connect grant; a browser cookie, email address or WebUI token is not an
 admission credential. Deploy with the managed infrastructure role and retain its
 artifact digests and rollback record before exposing the HTTPS endpoint.
 
+## Native agents check
+
+```bash
+anvil-serving connect native-agents-check
+```
+
+This finite local check needs no email activation or OAuth sign-in. It runs the
+real broker HTTP handler and receipt store with two synthetic users and synthetic
+owners, checking session creation, state, Stop, cross-user denial and local
+admission revocation. A temporary loopback listener uses random credentials held
+only in memory; it closes and its private state is removed when the check ends.
+There is no production authentication setting or persistent development token.
+
+For actual guest owners, supply `--config /absolute/private/guest-check.json` to
+preview, then add `--confirm` to run. This uses the protected broker config format
+but requires exactly two guest principals, two to four sandboxed workspaces, and
+no personal-user workspace. Each owner endpoint and credential must be distinct.
+The command ignores the configured production listen port and broker store. It
+creates empty native sessions, reads their state, checks access boundaries, and
+Stops them. Session IDs are returned for audit; the empty native sessions remain.
+It sends no model prompts and changes no accounts or grants. `--dry-run` overrides
+`--confirm`; without a config only disposable synthetic state is used.
+
+These checks exercise broker behavior and, in configured mode, owner control
+paths. They do not establish OAuth, browser, model, filesystem/network isolation,
+private Hindsight or whole-process revocation acceptance. Those remain separate
+deployment checks. Reading protected owner credentials requires the existing
+local operator permissions; this command does not grant them.
+
 ## Keygen
 
 `connect keygen --service client:ID --output /absolute/private/local-key` previews

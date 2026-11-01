@@ -19,7 +19,7 @@ from anvil_serving.connect.cli import dispatch
 
 
 ROOT = Path(__file__).parents[2]
-LEAVES = {"resources", "validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend", "qualify", "users", "native-agents", "native-authority", "native-memory-service"}
+LEAVES = {"resources", "validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend", "qualify", "users", "native-agents", "native-agents-check", "native-authority", "native-memory-service"}
 
 
 def test_connect_registry_help_has_no_runtime_discovery(capsys, monkeypatch):
@@ -37,7 +37,7 @@ def test_connect_registry_help_has_no_runtime_discovery(capsys, monkeypatch):
             assert "--manifest" not in text
         elif leaf == "users":
             assert "create" in text and "show" in text
-        elif leaf == "native-agents":
+        elif leaf in {"native-agents", "native-agents-check"}:
             assert "--config" in text
             assert "--manifest" not in text
         elif leaf == "native-memory-service":
