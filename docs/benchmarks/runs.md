@@ -1,5 +1,12 @@
 # Benchmark run catalog
 
+## 2026-11-01 cache-layout and DFlash scouts
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Private target; original MTP3 versus internal 1M cache layout, then exact original restoration | Two RTX PRO 6000 Blackwell Max-Q, TP2/DCP2; direct online ~6K/~25K, requested C1/C4 | 144/144 timed requests; no 10% E2E win against both controls; +38.60% reported cache slots, ~25K/C4 7.92–9.25% slower. Natural output, absent canaries; no full-context or quality qualification. Original restored, `no-promotion`. | [Dossier](models/private-runtime-scouts.md) · [Finding](../findings/2026-11-01-runtime-scouts.md#cache-layout-results) |
+| Same private target; original MTP3 versus DFlash2 K3, then exact original restoration | Two RTX PRO 6000 Blackwell Max-Q, TP2/DCP2; direct online ~6K/~25K, requested C1/C4 | 144/144 timed requests; locally compatible in this screen, no 10% E2E win against both controls; −40.63% reported cache slots. No controlled output, canaries or matched no-speculation arm. Original restored, `no-promotion`. | [Dossier](models/private-runtime-scouts.md) · [Finding](../findings/2026-11-01-runtime-scouts.md#dflash-results) |
+
 ## 2026-10-26 [operator-private] H3 MCP functional smoke
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

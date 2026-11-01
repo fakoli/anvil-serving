@@ -1,0 +1,18 @@
+{
+  "max_gap_seconds": 2.10626482963562,
+  "reconciliation": {
+    "expected": {
+      "vllm:generation_tokens_total": 844,
+      "vllm:prompt_tokens_total": 24268,
+      "vllm:request_success_total": 4
+    },
+    "matched": true,
+    "observed": {
+      "vllm:generation_tokens_total": 844.0,
+      "vllm:prompt_tokens_total": 24268.0,
+      "vllm:request_success_total": 4.0
+    }
+  },
+  "samples": 8,
+  "status": "passed"
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "id": "cache-layout",
+      "url": "cache-layout/summary.json",
+      "published_or_observed": "2026-11-01",
+      "observed_at": "2026-11-01",
+      "age_class": "current-local-measurement",
+      "evidence_type": "local bounded scout",
+      "hardware_runtime_relevance": "dual RTX PRO 6000 Blackwell Max-Q; pinned private-target vLLM recipe",
+      "decision_impact": "No material E2E win against both controls; retain original. Public identity deliberately withheld."
+    },
+    {
+      "id": "dflash",
+      "url": "dflash/summary.json",
+      "published_or_observed": "2026-11-01",
+      "observed_at": "2026-11-01",
+      "age_class": "current-local-measurement",
+      "evidence_type": "local bounded scout",
+      "hardware_runtime_relevance": "dual RTX PRO 6000 Blackwell Max-Q; pinned private-target vLLM recipe",
+      "decision_impact": "No material E2E win against both controls; retain original. Public identity deliberately withheld."
+    }
+  ]
+}

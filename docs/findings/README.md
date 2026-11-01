@@ -1,5 +1,13 @@
 # Findings index
 
+**2026-11-01 cache-layout and DFlash scouts:**
+[bounded local results](2026-11-01-runtime-scouts.md) retain 144/144 timed
+requests per experiment on the dual RTX PRO 6000 pair, no 10% E2E improvement
+against both controls, and +38.60% / −40.63% reported cache-slot changes.
+The original private-target configuration was restored after both trials;
+retain it, `no-promotion`. Natural output, absent canaries and withheld identity
+limit qualification and public reproduction. [Evidence index](2026-11-01-runtime-scouts-evidence/README.md).
+
 **2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion:** [finding](2026-10-26-flash-next-engine-qualification.md) records bounded agentic (6/6 each) and context (9/9 each; max observed prompt 114,588) outcomes for distinct Ignis, vLLM, and Flare recipes, plus mixed Aider and official SWE grades. A shared-router whitespace defect makes historical coding attribution uncertain; original HTTP bodies were not retained. vLLM and Flare C1 each ended 0/8 eligible. Exact prior route/output-cap config and GLM incumbent readmission passed local direct/routed checks and one Pi real read-tool turn; router runtime uses reviewed PR #704 overlay, not the original image. No speed ranking or promotion. [Evidence index](2026-10-26-flash-next-engine-qualification-evidence/README.md).
 
 **2026-10-26 Ignis 0.8 mandatory-tool qualification:** the [one-card functional finding](2026-10-26-ignis-080-preflight.md) preserves the original `tool_choice: "auto"` miss at 3/4, then records a separately frozen same-runtime follow-up. `tool_choice: "required"` with normal thinking passed 3/3 mechanism cells, the selected 5/5-check and 9/9-observation preflight, and a 4/4 seed-18 repeat. All 16 phase-two requests have terminal engine events; literal HTTP 200 was retained for 12 captured tool requests. Exact operational restoration passed after both phases. This qualifies the request-level mandatory-tool path only—not automatic-choice reliability, a global agent default, coding/SWE, capacity, performance, or promotion. [Summary](2026-10-26-ignis-080-preflight-evidence/summary.json) · [Evidence index](2026-10-26-ignis-080-preflight-evidence/README.md).

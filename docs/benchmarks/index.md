@@ -1,6 +1,16 @@
 # Benchmarks
 
-**Current primary recommendation, 2026-10-17:** the operator selected
+**Latest local decision, 2026-11-01: retain the current configuration.**
+The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
+each completed 144 timed requests on the dual RTX PRO 6000 pair. Neither
+candidate improved median response latency by 10% against both controls.
+Cache slots increased 38.60% with the layout change and decreased 40.63% with
+DFlash2 K3. Both candidates were removed and the original configuration was
+restored. The current target identity is private; the named October reference
+below is historical evidence, not a statement of today's selected checkpoint.
+[Private-target dossier](models/private-runtime-scouts.md).
+
+**Historical primary recommendation, 2026-10-17:** the operator selected
 `nvidia/GLM-5.3-Flash-FP4-Local` as the best current fit for this deployment.
 The pinned TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is promoted;
 EXL3 r11 is retained as rollback. The matched two-recipe comparison measured
@@ -27,7 +37,7 @@ an exhaustive quality ranking.
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-10-17 FP4 promotion and client acceptance.**
+configuration and retained evidence. **Evidence reviewed: 2026-11-01 runtime scouts; earlier named selections remain dated reference evidence.**
 
 ## Engine testing
 

@@ -1,0 +1,55 @@
+{
+  "schema": "runtime-scout-restoration/v1",
+  "scope": "dated operator-reviewed restoration receipts; private identities withheld",
+  "trials": {
+    "cache-layout": {
+      "restored": true,
+      "promoted": false,
+      "identity_matches": {
+        "model": true,
+        "revision": true,
+        "recipe_digest": true,
+        "registry_digest": true,
+        "image_digest": true,
+        "served_identity": true,
+        "bound_port": true,
+        "bound_endpoints": true,
+        "gpu_selection": true
+      },
+      "preflights": {
+        "baseline-before": true,
+        "candidate": true,
+        "restored": true,
+        "baseline-after": true,
+        "routed-restored": true
+      },
+      "private_identity_withheld": true,
+      "scope": "Recorded exact restoration and routed postcheck; dated operator evidence, not a live status assertion."
+    },
+    "dflash": {
+      "restored": true,
+      "promoted": false,
+      "identity_matches": {
+        "model": true,
+        "revision": true,
+        "recipe_digest": true,
+        "registry_digest": true,
+        "image_digest": true,
+        "served_identity": true,
+        "bound_port": true,
+        "bound_endpoints": true,
+        "gpu_selection": true
+      },
+      "preflights": {
+        "baseline-before": true,
+        "candidate": true,
+        "restored": true,
+        "baseline-after": true,
+        "routed-restored": true
+      },
+      "private_identity_withheld": true,
+      "scope": "Recorded exact restoration and routed postcheck; dated operator evidence, not a live status assertion."
+    }
+  },
+  "publication_changes_serving": false
+}

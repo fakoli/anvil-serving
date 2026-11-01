@@ -1,0 +1,510 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "cache-layout: private target, before / candidate / restored",
+  "subtitle": "Matched synthetic summaries; 4 requests per point. Native per-run p50; short output, not controlled decode.",
+  "data_output": "graph-data.json",
+  "charts": [
+    {
+      "title": "Visible first-token latency",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Actual input approximately 6K / 25K; concurrency C1 / C4; repetitions R1-R3",
+      "y_label": "ms; lower is better",
+      "series": [
+        {
+          "label": "Original before",
+          "points": [
+            {
+              "artifact": "baseline-before-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-before-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Internal 1M trial",
+          "points": [
+            {
+              "artifact": "candidate-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "candidate-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "candidate-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "candidate-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "candidate-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "candidate-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "candidate-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "candidate-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "candidate-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "candidate-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "candidate-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "candidate-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Original restored",
+          "points": [
+            {
+              "artifact": "baseline-after-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-after-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End-to-end latency",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Actual input approximately 6K / 25K; concurrency C1 / C4; repetitions R1-R3",
+      "y_label": "ms; lower is better",
+      "series": [
+        {
+          "label": "Original before",
+          "points": [
+            {
+              "artifact": "baseline-before-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-before-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Internal 1M trial",
+          "points": [
+            {
+              "artifact": "candidate-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "candidate-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "candidate-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "candidate-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "candidate-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "candidate-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "candidate-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "candidate-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "candidate-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "candidate-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "candidate-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "candidate-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Original restored",
+          "points": [
+            {
+              "artifact": "baseline-after-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-after-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Aggregate output throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Actual input approximately 6K / 25K; concurrency C1 / C4; repetitions R1-R3",
+      "y_label": "tokens/s; higher is better",
+      "series": [
+        {
+          "label": "Original before",
+          "points": [
+            {
+              "artifact": "baseline-before-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-before-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Internal 1M trial",
+          "points": [
+            {
+              "artifact": "candidate-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "candidate-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "candidate-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "candidate-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "candidate-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "candidate-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "candidate-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "candidate-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "candidate-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "candidate-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "candidate-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "candidate-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Original restored",
+          "points": [
+            {
+              "artifact": "baseline-after-00.json",
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-01.json",
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-02.json",
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-03.json",
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-04.json",
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-05.json",
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-06.json",
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-07.json",
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-08.json",
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-09.json",
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-after-10.json",
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-11.json",
+              "x": "25K C4 R3"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "output": "comparison.svg"
+}
