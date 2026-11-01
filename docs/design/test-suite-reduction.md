@@ -1,40 +1,44 @@
 # Test-suite reduction
 
 Observed: 2026-10-31. Status: Python source validated; 80% case target unmet; browser expiry validation pending.
-Baseline: `7b5158b724ca715c85a3302091d2a2b40f253da0`.
+Merge base: `4ba1b56ee794d6666d1db2ab4c3d756c839d51aa`.
+Locally tested source: `7c47af121759bac9f6214c0fbcae942f20d3876d`.
 
-The source change removes **69.50% of collected Python cases** and **50.82% of
+The source change removes **69.46% of collected Python cases** and **50.78% of
 physical Python test/helper lines**. The requested **80% case reduction remains
-unmet**: it would require at most 2,819 cases, another 1,480 below this candidate.
+unmet**: it would require at most 2,820 cases, another 1,487 below this candidate.
 The accepted tradeoff permits fewer dedicated checks for noncritical behavior
 while preserving identified critical contracts and the existing 70% combined
 line-and-branch coverage floor.
 
-## Measured baseline and candidate
+## Current merge candidate
 
 | Measurement | Baseline | Candidate |
 | --- | ---: | ---: |
-| Collected Python cases, including platform skips | 14,095 | 4,299 |
-| Distinct collected Python test functions | 8,104 | 2,580 |
-| Python test/helper files | 572 | 542 |
-| Physical Python test/helper lines | 197,587 | 97,175 |
-| Physical production Python lines | 208,537 | 208,486 |
-| Complete local run with coverage | 752.59 seconds | 142.69 seconds |
-| Complete normal offline run | Not measured | 115.87 seconds |
-| Combined coverage | 79.64% | 72.42% |
+| Collected Python cases, including platform skips | 14,104 | 4,307 |
+| Distinct collected Python test functions | 8,112 | 2,588 |
+| Python test/helper files | 573 | 543 |
+| Physical Python test/helper lines | 197,734 | 97,318 |
+| Physical production Python lines | 208,744 | 208,693 |
+| Complete local run with coverage | Not reprofiled | 132.18 seconds |
+| Complete normal offline run | Not measured | 108.75 seconds |
+| Combined coverage | Not reprofiled | 72.51% |
 
-Both final runs passed **4,183 cases**, with **116 existing skips** and **20 passed
-subtests**. The normal run meets the 120-second local target. Coverage-on runtime
-fell **81.04%** using the same measurement method; this is a runtime reduction,
-not an 80% case reduction. Statement coverage is 76.05%; branch coverage is
-63.06%; the unchanged 70% gate applies to their combined score. One existing
+Both final runs passed **4,191 cases**, with **116 existing skips** and **20 passed
+subtests**. The normal run meets the 120-second local target. Statement coverage
+is 76.14%; branch coverage is 63.16%; the unchanged 70% gate applies to their
+combined score. The current merge base was collected and inventoried, without
+repeating its full runtime profile. One existing
 multiprocessing fork deprecation warning remains.
 
 The [results artifact](test-suite-reduction-results.json) records the source
 fingerprint, environment, counts, coverage, and sanitized per-group timings.
+Its `merge_delivery` record describes this combined tree; the root records
+preserve the earlier campaign measurements. Eight new upstream behavior cases
+remain, together with the upstream ownership, cache, and native-owner fixes.
 Python source hashes remained unchanged across the accepted runs. The local
 checks used Python 3.12; Python 3.11/3.13 CI and native platform execution remain
-separate acceptance surfaces. No source merge or live deployment was performed.
+separate acceptance surfaces. These are source checks; they do not certify live deployment.
 
 Physical lines include comments and blanks. The reduction includes removal of
 8,457 vacant lines left between deleted definitions; executable assertions and
@@ -42,7 +46,17 @@ helpers were also removed. Cases are counted from ordinary pytest collection.
 Existing platform/environment skips remain in the denominator. Counts do not
 claim a reduction of Go, Node, Playwright, or live qualification cases.
 
-The complete local baseline reported 13,977 passed, 116 skipped, and two
+## Earlier profiling
+
+The initial campaign used baseline `7b5158b724ca715c85a3302091d2a2b40f253da0`.
+Its reduced Python bytes match commit
+`1c5229ef4cbc31ea3cb7aa1afef738425a189ac8`: 14,095 to 4,299 cases, 72.42%
+coverage, 115.87 seconds without coverage, and 142.69 seconds with coverage.
+Compared with its 752.59-second coverage baseline, that was an **81.04% runtime
+reduction**, not an 80% case reduction. These historical timings are separate
+from the current merge-base collection and candidate runs above.
+
+The historical complete local baseline reported 13,977 passed, 116 skipped, and two
 fixture failures caused by an unrelated free-space check in a timeout test.
 The fixture now injects sufficient disk space so that it actually reaches the
 timeout contract. The longest measured baseline case was 35.94 seconds; no
@@ -138,7 +152,7 @@ part of the burden. Test authorship and causal contribution remain unmeasured.
 
 ## Remaining target and maintenance policy
 
-Reaching 80% requires reviewing another 1,480 currently retained cases. Next
+Reaching 80% requires reviewing another 1,487 currently retained cases. Next
 candidates are duplicated caller checks of shared validators and equivalent
 parameter classes. Each further deletion needs a concrete retained mechanism or
 an explicit noncritical coverage loss, followed by the coverage gate and focused
@@ -161,7 +175,7 @@ python scripts/run_tests.py tests/ -q --durations=40
 ```
 
 Use focused paths while editing. Coverage-on timing and the normal offline run
-are separate measurements; the latter measured 115.87 seconds against the
+are separate measurements; the latter measured 108.75 seconds against the
 120-second target.
 
 The Connect expiry fixture now uses the supported 60-second session minimum,

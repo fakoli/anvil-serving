@@ -157,7 +157,7 @@ silently change direction and never delete an ADR — supersede it.
   copies Anvil state files directly. Review dispositions must name the exact HEAD; each observed
   proof must name its full Git commit, which the gate verifies is an ancestor of that HEAD.
 
-### Keep code economical
+## Keep code economical
 
 - Start from the needed observable outcome. Search callers and shared seams before adding code.
   Reuse existing coverage; add the smallest check only for a distinct risk. Trivial reversible
