@@ -112,12 +112,12 @@
       "files_by_category": {
         "docs": 241,
         "examples": 253,
-        "implementation": 508,
+        "implementation": 509,
         "skills": 22,
-        "tests": 589,
+        "tests": 590,
         "tooling": 38
       },
-      "files_scanned": 1651,
+      "files_scanned": 1653,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
