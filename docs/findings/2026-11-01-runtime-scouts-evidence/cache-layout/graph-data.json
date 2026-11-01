@@ -1,0 +1,725 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Original before",
+          "points": [
+            {
+              "artifact": "baseline-before-00.json",
+              "artifact_sha256": "3b8da30d6280f0a7729aa872ba03e66e753355e033440d37f71e83d5734e43d8",
+              "value": 1477.356144983787,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-01.json",
+              "artifact_sha256": "5e67f75f4d3875529b31be34018f6664dbf2c390b5346a2bc09210928c1b9251",
+              "value": 4373.472438950557,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-02.json",
+              "artifact_sha256": "a1aee7effccae055845158b861eec26d8a572a13c75ceb7886d2c25b9f246431",
+              "value": 3839.373380993493,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-03.json",
+              "artifact_sha256": "fa9053dbc21bcfa7a51f23508675e7fc370e267b0e2f6e02dd3d8cd45ecfa803",
+              "value": 8666.643421980552,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-04.json",
+              "artifact_sha256": "38a4c69e875e6bb544823989f097ae180e178bbca201679169d95b47c27b3016",
+              "value": 1374.0000040270388,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-05.json",
+              "artifact_sha256": "e3dc63b5f611159880d3bfdbfc330836a1f838c15d7cf5f0be20843306052bb9",
+              "value": 3645.2609510160983,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-06.json",
+              "artifact_sha256": "ca38d95f9e4d9ec01e43727a6428ec0f3292621ca94fa79deedfe8cf471e61a8",
+              "value": 3630.679810012225,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-07.json",
+              "artifact_sha256": "04e4a1ebf731ef8d9b60c37630c1eab1e06175162ca7599546f76604ae261d4c",
+              "value": 9383.555999025702,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-08.json",
+              "artifact_sha256": "e598a3c936a51994ffb827128472ade2463c1c3f407cc79e8310e9fe902ea05a",
+              "value": 1525.1872520311736,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-09.json",
+              "artifact_sha256": "33085a7afcd07ebf459c53e7ccc34f374354adf3e0051aa617fd627f043b1d2c",
+              "value": 2968.3291270048358,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-before-10.json",
+              "artifact_sha256": "86f663cc3609833925383559f6a5c68b1626761a0a4a449e7a2061ceb04ffc8b",
+              "value": 3994.366498023737,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-11.json",
+              "artifact_sha256": "531953e1cc7a9ab5ef774b31d8df6e4a75b4b597f35d94935e70f2512d8cd0dc",
+              "value": 10076.998197007924,
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Internal 1M trial",
+          "points": [
+            {
+              "artifact": "candidate-00.json",
+              "artifact_sha256": "828474340163d0025e28c46729b6938c8412c5ae3a8006da5724e4457840fbc8",
+              "value": 1756.4407520112582,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "candidate-01.json",
+              "artifact_sha256": "249cbb64572f05b1bea369d11190ee4b1e029c21d09222bf3d178e5d9cc61d7f",
+              "value": 3587.9444460151717,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "candidate-02.json",
+              "artifact_sha256": "5b4f95868a1cdb56263e90be09e03c59f0cf80085fb7674cf923be89959566ea",
+              "value": 3647.5295329582877,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "candidate-03.json",
+              "artifact_sha256": "9af9c5839fb06db59f71f51933e9dc2d63d4c0e078f38f4fb8550b45a51db6fd",
+              "value": 9292.770249012392,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "candidate-04.json",
+              "artifact_sha256": "276050c4f169eff99524b0b82d6f74bc51708493193fe036068bc01c0b530c0e",
+              "value": 1561.7681510047987,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "candidate-05.json",
+              "artifact_sha256": "9c14b9ffcb74edd7dc4008106f512a9313978d4051b8ac66ab7b148999cb8796",
+              "value": 3891.4533640490845,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "candidate-06.json",
+              "artifact_sha256": "a14be9182b6bcaa4b270b1eadf478bc4035189965683e7320395166a3f85a67d",
+              "value": 3806.5515059861355,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "candidate-07.json",
+              "artifact_sha256": "0c81aa506cde15b698efb6359982922c266789fcd0ec453f85cdb250db6381d8",
+              "value": 11084.715028002393,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "candidate-08.json",
+              "artifact_sha256": "acb2548337a57d97a387cf066d8c46a89469f384e1cbd5b1edc81c891632d366",
+              "value": 1535.6583899701945,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "candidate-09.json",
+              "artifact_sha256": "7e63354d3f47a45d3305273102866c1f475d6c0927110268ea7182d2c3c900ba",
+              "value": 3628.2465019612573,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "candidate-10.json",
+              "artifact_sha256": "ed662bba802b48d68ddc0e82bd17cd40459c47d0a6de8e4b8599412ee7d43222",
+              "value": 4047.5715799839236,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "candidate-11.json",
+              "artifact_sha256": "f11010229c2d35ef77c4422fd8a547129aad2a32b32d099ce5e2c19d16d684e0",
+              "value": 9498.682487988845,
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Original restored",
+          "points": [
+            {
+              "artifact": "baseline-after-00.json",
+              "artifact_sha256": "d22cb881e0cf1410fab447dd22db1b2bf8c55d0f5c595652f7bfd590f3761545",
+              "value": 1456.387187994551,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-01.json",
+              "artifact_sha256": "f583fe1e50c23483b089d103e337b6cce9e8933f64cde4d405b57d4c3127c49f",
+              "value": 3818.95311496919,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-02.json",
+              "artifact_sha256": "9e0ae5e65d0846a17b2f40388467e633d21a97105e865230e9036d73ece8b666",
+              "value": 3742.6820649998263,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-03.json",
+              "artifact_sha256": "eb1867c03e241649d98533269abc8f846e6ec5ec3290a68a0f2bf742b68f5e61",
+              "value": 9431.713331956416,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-04.json",
+              "artifact_sha256": "d046b0001f7924cc7a623d9b755bd4794323751b250298151f0561ff9978cc2e",
+              "value": 1473.0181410559453,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-05.json",
+              "artifact_sha256": "a276ca698672118b2d38fa9efa5c9b2a611460a54ba5577540bd9b4a1fac6e20",
+              "value": 2996.592376031913,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-06.json",
+              "artifact_sha256": "572ef12c85f7e5a6d59969aaf6f00eda81cc7d1ca5c07d271a02c5471a07a541",
+              "value": 3872.305483033415,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-07.json",
+              "artifact_sha256": "603b94b71b55fba2771614bea7efdd14a00d4d3d8d93398cd87ecc33fe128080",
+              "value": 9109.208943962585,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-08.json",
+              "artifact_sha256": "834125258c5dc95d9b6d909c6409baa6401d7f015fa63dbd08c7b7c928d111dc",
+              "value": 1528.3684780006297,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-09.json",
+              "artifact_sha256": "163be1ba3fc4141d8bfda856848a1cfdef530e2cb473caf0086bbdd27290a6dc",
+              "value": 4403.888188011479,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-after-10.json",
+              "artifact_sha256": "584359d03f76b6d5916c51732712a6071acb27c1e963343ed428b021e2abec5b",
+              "value": 3786.4253929583356,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-11.json",
+              "artifact_sha256": "791d08e3820a3747243b2ef07255e6e38a587305e14f3c76cfc0f04b138915d1",
+              "value": 8746.689460997004,
+              "x": "25K C4 R3"
+            }
+          ]
+        }
+      ],
+      "title": "Visible first-token latency",
+      "x_label": "Actual input approximately 6K / 25K; concurrency C1 / C4; repetitions R1-R3",
+      "y_label": "ms; lower is better"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Original before",
+          "points": [
+            {
+              "artifact": "baseline-before-00.json",
+              "artifact_sha256": "3b8da30d6280f0a7729aa872ba03e66e753355e033440d37f71e83d5734e43d8",
+              "value": 1671.792134991847,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-01.json",
+              "artifact_sha256": "5e67f75f4d3875529b31be34018f6664dbf2c390b5346a2bc09210928c1b9251",
+              "value": 4673.068408970721,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-02.json",
+              "artifact_sha256": "a1aee7effccae055845158b861eec26d8a572a13c75ceb7886d2c25b9f246431",
+              "value": 4108.381856989581,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-03.json",
+              "artifact_sha256": "fa9053dbc21bcfa7a51f23508675e7fc370e267b0e2f6e02dd3d8cd45ecfa803",
+              "value": 8846.590793982614,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-04.json",
+              "artifact_sha256": "38a4c69e875e6bb544823989f097ae180e178bbca201679169d95b47c27b3016",
+              "value": 1615.5359609983861,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-05.json",
+              "artifact_sha256": "e3dc63b5f611159880d3bfdbfc330836a1f838c15d7cf5f0be20843306052bb9",
+              "value": 5178.499174013268,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-06.json",
+              "artifact_sha256": "ca38d95f9e4d9ec01e43727a6428ec0f3292621ca94fa79deedfe8cf471e61a8",
+              "value": 3824.8097260366194,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-07.json",
+              "artifact_sha256": "04e4a1ebf731ef8d9b60c37630c1eab1e06175162ca7599546f76604ae261d4c",
+              "value": 10213.995905010961,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-08.json",
+              "artifact_sha256": "e598a3c936a51994ffb827128472ade2463c1c3f407cc79e8310e9fe902ea05a",
+              "value": 1751.3670550542884,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-09.json",
+              "artifact_sha256": "33085a7afcd07ebf459c53e7ccc34f374354adf3e0051aa617fd627f043b1d2c",
+              "value": 3736.230637994595,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-before-10.json",
+              "artifact_sha256": "86f663cc3609833925383559f6a5c68b1626761a0a4a449e7a2061ceb04ffc8b",
+              "value": 4208.134740008973,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-11.json",
+              "artifact_sha256": "531953e1cc7a9ab5ef774b31d8df6e4a75b4b597f35d94935e70f2512d8cd0dc",
+              "value": 10291.098306013737,
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Internal 1M trial",
+          "points": [
+            {
+              "artifact": "candidate-00.json",
+              "artifact_sha256": "828474340163d0025e28c46729b6938c8412c5ae3a8006da5724e4457840fbc8",
+              "value": 2053.8914350327104,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "candidate-01.json",
+              "artifact_sha256": "249cbb64572f05b1bea369d11190ee4b1e029c21d09222bf3d178e5d9cc61d7f",
+              "value": 4323.319096001796,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "candidate-02.json",
+              "artifact_sha256": "5b4f95868a1cdb56263e90be09e03c59f0cf80085fb7674cf923be89959566ea",
+              "value": 3919.613647973165,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "candidate-03.json",
+              "artifact_sha256": "9af9c5839fb06db59f71f51933e9dc2d63d4c0e078f38f4fb8550b45a51db6fd",
+              "value": 9536.524111987092,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "candidate-04.json",
+              "artifact_sha256": "276050c4f169eff99524b0b82d6f74bc51708493193fe036068bc01c0b530c0e",
+              "value": 1790.6131260097027,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "candidate-05.json",
+              "artifact_sha256": "9c14b9ffcb74edd7dc4008106f512a9313978d4051b8ac66ab7b148999cb8796",
+              "value": 4626.389574026689,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "candidate-06.json",
+              "artifact_sha256": "a14be9182b6bcaa4b270b1eadf478bc4035189965683e7320395166a3f85a67d",
+              "value": 4035.084377974272,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "candidate-07.json",
+              "artifact_sha256": "0c81aa506cde15b698efb6359982922c266789fcd0ec453f85cdb250db6381d8",
+              "value": 11501.142929017078,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "candidate-08.json",
+              "artifact_sha256": "acb2548337a57d97a387cf066d8c46a89469f384e1cbd5b1edc81c891632d366",
+              "value": 1749.763591971714,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "candidate-09.json",
+              "artifact_sha256": "7e63354d3f47a45d3305273102866c1f475d6c0927110268ea7182d2c3c900ba",
+              "value": 3962.876012956258,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "candidate-10.json",
+              "artifact_sha256": "ed662bba802b48d68ddc0e82bd17cd40459c47d0a6de8e4b8599412ee7d43222",
+              "value": 4297.572930983733,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "candidate-11.json",
+              "artifact_sha256": "f11010229c2d35ef77c4422fd8a547129aad2a32b32d099ce5e2c19d16d684e0",
+              "value": 9699.233889987227,
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Original restored",
+          "points": [
+            {
+              "artifact": "baseline-after-00.json",
+              "artifact_sha256": "d22cb881e0cf1410fab447dd22db1b2bf8c55d0f5c595652f7bfd590f3761545",
+              "value": 1710.6125180143863,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-01.json",
+              "artifact_sha256": "f583fe1e50c23483b089d103e337b6cce9e8933f64cde4d405b57d4c3127c49f",
+              "value": 4508.855065971147,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-02.json",
+              "artifact_sha256": "9e0ae5e65d0846a17b2f40388467e633d21a97105e865230e9036d73ece8b666",
+              "value": 3994.672367000021,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-03.json",
+              "artifact_sha256": "eb1867c03e241649d98533269abc8f846e6ec5ec3290a68a0f2bf742b68f5e61",
+              "value": 9673.685050976928,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-04.json",
+              "artifact_sha256": "d046b0001f7924cc7a623d9b755bd4794323751b250298151f0561ff9978cc2e",
+              "value": 1684.3001750530675,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-05.json",
+              "artifact_sha256": "a276ca698672118b2d38fa9efa5c9b2a611460a54ba5577540bd9b4a1fac6e20",
+              "value": 3730.4435879923403,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-06.json",
+              "artifact_sha256": "572ef12c85f7e5a6d59969aaf6f00eda81cc7d1ca5c07d271a02c5471a07a541",
+              "value": 4096.306513005402,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-07.json",
+              "artifact_sha256": "603b94b71b55fba2771614bea7efdd14a00d4d3d8d93398cd87ecc33fe128080",
+              "value": 9461.00289595779,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-08.json",
+              "artifact_sha256": "834125258c5dc95d9b6d909c6409baa6401d7f015fa63dbd08c7b7c928d111dc",
+              "value": 1763.5241100215353,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-09.json",
+              "artifact_sha256": "163be1ba3fc4141d8bfda856848a1cfdef530e2cb473caf0086bbdd27290a6dc",
+              "value": 4699.486498022452,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-after-10.json",
+              "artifact_sha256": "584359d03f76b6d5916c51732712a6071acb27c1e963343ed428b021e2abec5b",
+              "value": 4047.7866049623117,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-11.json",
+              "artifact_sha256": "791d08e3820a3747243b2ef07255e6e38a587305e14f3c76cfc0f04b138915d1",
+              "value": 8978.453025978524,
+              "x": "25K C4 R3"
+            }
+          ]
+        }
+      ],
+      "title": "End-to-end latency",
+      "x_label": "Actual input approximately 6K / 25K; concurrency C1 / C4; repetitions R1-R3",
+      "y_label": "ms; lower is better"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "Original before",
+          "points": [
+            {
+              "artifact": "baseline-before-00.json",
+              "artifact_sha256": "3b8da30d6280f0a7729aa872ba03e66e753355e033440d37f71e83d5734e43d8",
+              "value": 119.54533042011641,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-01.json",
+              "artifact_sha256": "5e67f75f4d3875529b31be34018f6664dbf2c390b5346a2bc09210928c1b9251",
+              "value": 150.9702488762529,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-02.json",
+              "artifact_sha256": "a1aee7effccae055845158b861eec26d8a572a13c75ceb7886d2c25b9f246431",
+              "value": 60.24230020961876,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-before-03.json",
+              "artifact_sha256": "fa9053dbc21bcfa7a51f23508675e7fc370e267b0e2f6e02dd3d8cd45ecfa803",
+              "value": 55.948512372058474,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-before-04.json",
+              "artifact_sha256": "38a4c69e875e6bb544823989f097ae180e178bbca201679169d95b47c27b3016",
+              "value": 119.9101769188427,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-05.json",
+              "artifact_sha256": "e3dc63b5f611159880d3bfdbfc330836a1f838c15d7cf5f0be20843306052bb9",
+              "value": 142.59176428395372,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-06.json",
+              "artifact_sha256": "ca38d95f9e4d9ec01e43727a6428ec0f3292621ca94fa79deedfe8cf471e61a8",
+              "value": 58.70763836677817,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-before-07.json",
+              "artifact_sha256": "04e4a1ebf731ef8d9b60c37630c1eab1e06175162ca7599546f76604ae261d4c",
+              "value": 60.25074488438398,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-before-08.json",
+              "artifact_sha256": "e598a3c936a51994ffb827128472ade2463c1c3f407cc79e8310e9fe902ea05a",
+              "value": 118.29845968701905,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-09.json",
+              "artifact_sha256": "33085a7afcd07ebf459c53e7ccc34f374354adf3e0051aa617fd627f043b1d2c",
+              "value": 142.32003198482195,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-before-10.json",
+              "artifact_sha256": "86f663cc3609833925383559f6a5c68b1626761a0a4a449e7a2061ceb04ffc8b",
+              "value": 60.2055856352293,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-before-11.json",
+              "artifact_sha256": "531953e1cc7a9ab5ef774b31d8df6e4a75b4b597f35d94935e70f2512d8cd0dc",
+              "value": 59.825061245594924,
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Internal 1M trial",
+          "points": [
+            {
+              "artifact": "candidate-00.json",
+              "artifact_sha256": "828474340163d0025e28c46729b6938c8412c5ae3a8006da5724e4457840fbc8",
+              "value": 125.61543118439592,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "candidate-01.json",
+              "artifact_sha256": "249cbb64572f05b1bea369d11190ee4b1e029c21d09222bf3d178e5d9cc61d7f",
+              "value": 128.67161140724232,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "candidate-02.json",
+              "artifact_sha256": "5b4f95868a1cdb56263e90be09e03c59f0cf80085fb7674cf923be89959566ea",
+              "value": 53.46446703354505,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "candidate-03.json",
+              "artifact_sha256": "9af9c5839fb06db59f71f51933e9dc2d63d4c0e078f38f4fb8550b45a51db6fd",
+              "value": 54.48857901960647,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "candidate-04.json",
+              "artifact_sha256": "276050c4f169eff99524b0b82d6f74bc51708493193fe036068bc01c0b530c0e",
+              "value": 119.08597623713193,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "candidate-05.json",
+              "artifact_sha256": "9c14b9ffcb74edd7dc4008106f512a9313978d4051b8ac66ab7b148999cb8796",
+              "value": 137.49237677584307,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "candidate-06.json",
+              "artifact_sha256": "a14be9182b6bcaa4b270b1eadf478bc4035189965683e7320395166a3f85a67d",
+              "value": 51.88921704108509,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "candidate-07.json",
+              "artifact_sha256": "0c81aa506cde15b698efb6359982922c266789fcd0ec453f85cdb250db6381d8",
+              "value": 68.92062560958308,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "candidate-08.json",
+              "artifact_sha256": "acb2548337a57d97a387cf066d8c46a89469f384e1cbd5b1edc81c891632d366",
+              "value": 112.25814511552966,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "candidate-09.json",
+              "artifact_sha256": "7e63354d3f47a45d3305273102866c1f475d6c0927110268ea7182d2c3c900ba",
+              "value": 144.55718262300564,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "candidate-10.json",
+              "artifact_sha256": "ed662bba802b48d68ddc0e82bd17cd40459c47d0a6de8e4b8599412ee7d43222",
+              "value": 75.84456181699247,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "candidate-11.json",
+              "artifact_sha256": "f11010229c2d35ef77c4422fd8a547129aad2a32b32d099ce5e2c19d16d684e0",
+              "value": 62.76909379258937,
+              "x": "25K C4 R3"
+            }
+          ]
+        },
+        {
+          "label": "Original restored",
+          "points": [
+            {
+              "artifact": "baseline-after-00.json",
+              "artifact_sha256": "d22cb881e0cf1410fab447dd22db1b2bf8c55d0f5c595652f7bfd590f3761545",
+              "value": 117.41822735198514,
+              "x": "6K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-01.json",
+              "artifact_sha256": "f583fe1e50c23483b089d103e337b6cce9e8933f64cde4d405b57d4c3127c49f",
+              "value": 132.23266033746,
+              "x": "6K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-02.json",
+              "artifact_sha256": "9e0ae5e65d0846a17b2f40388467e633d21a97105e865230e9036d73ece8b666",
+              "value": 60.7058941307416,
+              "x": "25K C1 R1"
+            },
+            {
+              "artifact": "baseline-after-03.json",
+              "artifact_sha256": "eb1867c03e241649d98533269abc8f846e6ec5ec3290a68a0f2bf742b68f5e61",
+              "value": 55.38952861207792,
+              "x": "25K C4 R1"
+            },
+            {
+              "artifact": "baseline-after-04.json",
+              "artifact_sha256": "d046b0001f7924cc7a623d9b755bd4794323751b250298151f0561ff9978cc2e",
+              "value": 121.29827739245749,
+              "x": "6K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-05.json",
+              "artifact_sha256": "a276ca698672118b2d38fa9efa5c9b2a611460a54ba5577540bd9b4a1fac6e20",
+              "value": 131.45301265561937,
+              "x": "6K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-06.json",
+              "artifact_sha256": "572ef12c85f7e5a6d59969aaf6f00eda81cc7d1ca5c07d271a02c5471a07a541",
+              "value": 64.28036030485355,
+              "x": "25K C1 R2"
+            },
+            {
+              "artifact": "baseline-after-07.json",
+              "artifact_sha256": "603b94b71b55fba2771614bea7efdd14a00d4d3d8d93398cd87ecc33fe128080",
+              "value": 58.17472634030144,
+              "x": "25K C4 R2"
+            },
+            {
+              "artifact": "baseline-after-08.json",
+              "artifact_sha256": "834125258c5dc95d9b6d909c6409baa6401d7f015fa63dbd08c7b7c928d111dc",
+              "value": 114.30223888591054,
+              "x": "6K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-09.json",
+              "artifact_sha256": "163be1ba3fc4141d8bfda856848a1cfdef530e2cb473caf0086bbdd27290a6dc",
+              "value": 128.59623029514444,
+              "x": "6K C4 R3"
+            },
+            {
+              "artifact": "baseline-after-10.json",
+              "artifact_sha256": "584359d03f76b6d5916c51732712a6071acb27c1e963343ed428b021e2abec5b",
+              "value": 56.1816866032191,
+              "x": "25K C1 R3"
+            },
+            {
+              "artifact": "baseline-after-11.json",
+              "artifact_sha256": "791d08e3820a3747243b2ef07255e6e38a587305e14f3c76cfc0f04b138915d1",
+              "value": 55.76563321225831,
+              "x": "25K C4 R3"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output throughput",
+      "x_label": "Actual input approximately 6K / 25K; concurrency C1 / C4; repetitions R1-R3",
+      "y_label": "tokens/s; higher is better"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Matched synthetic summaries; 4 requests per point. Native per-run p50; short output, not controlled decode.",
+  "title": "cache-layout: private target, before / candidate / restored"
+}

@@ -1,5 +1,19 @@
 # Benchmark results
 
+## 2026-11-01 — cache-layout and DFlash scouts retain the original configuration
+
+The [dated finding](findings/2026-11-01-runtime-scouts.md) adds two separate
+before/candidate/restored experiments on dual RTX PRO 6000 Blackwell Max-Q.
+Each completed 144 timed requests at approximately 6K/25K input and requested
+C1/C4. Neither candidate met the 10% E2E gate against both controls. The layout
+change added 38.60% reported cache slots; DFlash2 K3 reduced them 40.63%.
+The original private-target MTP3 configuration was restored after each trial
+and remains the recommendation. Natural output, no canaries, no matched
+no-speculation control and withheld immutable identity limit the result to a
+bounded scout. No promotion, full-context or broad quality claim follows.
+[Dossier](benchmarks/models/private-runtime-scouts.md) ·
+[Evidence](findings/2026-11-01-runtime-scouts-evidence/README.md).
+
 **Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and

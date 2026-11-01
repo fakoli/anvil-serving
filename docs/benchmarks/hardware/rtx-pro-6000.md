@@ -1,5 +1,16 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-01 — keep the current configuration:** the dual-card
+[cache-layout and DFlash scouts](../../findings/2026-11-01-runtime-scouts.md)
+each completed 144 timed requests at ~6K/~25K actual input and requested C1/C4.
+Neither met the 10% E2E improvement gate against both baseline controls.
+The layout candidate added 38.60% reported KV slots; DFlash2 K3 reduced them
+40.63%. Both original configurations were restored; `no-promotion`.
+Target identity is private. These are bounded natural-output scouts, not
+controlled speculative-speedup, full-context or broad quality evidence.
+[Dossier](../models/private-runtime-scouts.md) ·
+[Raw evidence](../../findings/2026-11-01-runtime-scouts-evidence/README.md).
+
 **2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion:** Ignis 0.8.0, vLLM r2, and Flare r2 each used one RTX PRO 6000 Blackwell Max-Q in serialized single-request functional/context scouts. Agentic passed 6/6 and context 9/9 per recipe, up to 114,588 observed prompt tokens. Coding results were mixed and historical output attribution is uncertain because the shared router's buffered-text path collapses repeated spaces; original HTTP bodies were not retained. The second card was not used for performance evidence. vLLM and Flare C1 each ended 0/8 performance-eligible. Exact prior route/output-cap configuration and GLM incumbent readmission passed local checks; router uses reviewed PR #704 overlay, not original image. No speed result, capacity qualification, engine ranking, or promotion claim. [Finding](../../findings/2026-10-26-flash-next-engine-qualification.md) · [evidence](../../findings/2026-10-26-flash-next-engine-qualification-evidence/README.md).
 
 **2026-10-26 Ignis 0.8 mandatory-tool qualification:** [one-card functional evidence](../../findings/2026-10-26-ignis-080-preflight.md) retains the original unseeded `auto` tools result at 3/4. On the same immutable Ignis/model/recipe, the documented request-level `required` path with normal thinking passed 3/3 mechanism cells, a 5/5-check and 9/9-observation preflight, and a 4/4 different-seed repeat. The candidate point snapshot recorded 96,027 MiB on the measured card and 0 MiB on the protected equal card; phase-two managed cgroup peak was 41.86 GiB with zero OOM events. Exact operational restoration passed. These are functional/resource observations, not capacity or performance evidence. No promotion.
@@ -27,7 +38,7 @@ bounded diagnostic evidence, not a hardware ranking or a promotion. The
 [engine-testing index](../engine-testing.md) links every retained finding and
 its restoration boundary.
 
-**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+**Historical primary decision, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
 promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
