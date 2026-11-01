@@ -1,10 +1,15 @@
-"""Shared test helpers.
+"""Shared test builders and per-test operator-state isolation.
 
-Not pytest fixtures — plain importable builders duplicated byte-identically
-across several test modules (see history for the 2026-08 dedup pass). Import
-directly: ``from tests.conftest import proc``.
+Import builders directly: ``from tests.conftest import proc``.
 """
 import types
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def isolated_operator_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "operator-home"))
 
 
 def proc(rc=0, out="", err=""):

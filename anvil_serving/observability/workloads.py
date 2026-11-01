@@ -451,6 +451,18 @@ class WorkloadQuery:
         _strict_int(self.limit, minimum=1, maximum=AGGREGATE_LIMIT, field="query.limit")
 
 
+def canonical_workload_query(query: WorkloadQuery) -> WorkloadQuery:
+    return WorkloadQuery(
+        query.owner,
+        query.kind,
+        query.state,
+        query.host,
+        query.active_only,
+        query.recent_seconds,
+        query.limit,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class SourceResult:
     owner: WorkloadOwner

@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Callable
 
 from .workload_collection import build_node_workloads
-from .workloads import NodeResult, WorkloadOwner, WorkloadQuery
+from .workloads import NodeResult, WorkloadOwner, WorkloadQuery, canonical_workload_query
 
 
 _COLLECTION_SECONDS = 1.5
@@ -53,18 +53,6 @@ def _valid_host(host: object) -> str:
     except Exception:
         raise ValueError("invalid node workload collector") from None
     return host
-
-
-def _copy_query(query: WorkloadQuery) -> WorkloadQuery:
-    return WorkloadQuery(
-        owner=query.owner,
-        kind=query.kind,
-        state=query.state,
-        host=query.host,
-        active_only=query.active_only,
-        recent_seconds=query.recent_seconds,
-        limit=query.limit,
-    )
 
 
 class NodeWorkloadCollector:
@@ -201,7 +189,7 @@ class NodeWorkloadCollector:
     def collect(self, query: WorkloadQuery, now: datetime) -> NodeResult:
         """Return one canonical node result without waiting beyond 1.5 seconds."""
         fallback = build_node_workloads(self._host, query, now, {})
-        copied_query = _copy_query(query)
+        copied_query = canonical_workload_query(query)
         copied_now = fallback.collection_timestamp
         collection_id: int | None = None
         with self._condition:
