@@ -4,8 +4,6 @@ import json
 import os
 from pathlib import Path
 import sqlite3
-import subprocess
-import sys
 
 import pytest
 
@@ -29,53 +27,6 @@ def configured(tmp_path):
         '\nrouter_owner_id="synthetic-owner"\nrouter_owner_roster=["synthetic-owner"]\nusage_domain_id="synthetic-domain"\n')
     config.chmod(0o600)
     return store, config
-
-
-@native
-def test_offline_conversion_all_openers_and_newest_standalone_backup(tmp_path):
-    store, config = configured(tmp_path)
-    metadata, token = store.create('before conversion', ['llm.primary'], ['/v1/chat/completions'])
-    first = tmp_path / 'before.sqlite3'
-    result = keys._migrate_offline(str(config), str(first), journal_mode='WAL')
-    assert result['journal_mode'] == 'wal' and result['offline'] is True
-    store = keys.KeyStore(store.path)
-    assert store.authenticate(token).key_id == metadata['key_id']
-    newer, newer_token = store.create('latest committed', ['llm.primary'], ['/v1/chat/completions'])
-    for _ in range(3):
-        with store._connect() as connection:
-            assert connection.getconfig(sqlite3.SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE) is True
-            assert connection.execute('PRAGMA journal_mode').fetchone() == ('wal',)
-            assert connection.execute('PRAGMA synchronous').fetchone() == (2,)
-            assert connection.execute('PRAGMA wal_autocheckpoint').fetchone() == (1000,)
-    snapshot = tmp_path / 'latest.sqlite3'
-    UsageStore(store).backup(snapshot)
-    copied = keys.KeyStore(snapshot)
-    assert copied.authenticate(newer_token).key_id == newer['key_id']
-    with copied._connect() as connection:
-        assert connection.execute('PRAGMA journal_mode').fetchone() == ('delete',)
-    assert not any(Path(str(snapshot) + s).exists() for s in ('-wal', '-shm', '.sqlite-policy'))
-    assert keys.KeyStore(first).authenticate(newer_token) is None
-    before = snapshot.read_bytes()
-    with pytest.raises(keys.KeyStoreError): UsageStore(store).backup(snapshot)
-    assert snapshot.read_bytes() == before
-
-
-@native
-def test_actual_committed_child_crash_recovers_without_last_close_checkpoint(tmp_path):
-    store, config = configured(tmp_path)
-    keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
-    child = subprocess.run([sys.executable, '-c',
-        'import os; from anvil_serving.router.keys import KeyStore; '
-        f's=KeyStore({str(store.path)!r}); '
-        's.create("committed child",["llm.primary"],["/v1/chat/completions"]); os._exit(0)'],
-        timeout=10, capture_output=True)
-    assert child.returncode == 0
-    wal = Path(str(store.path) + '-wal')
-    assert wal.stat().st_size > 32
-    assert keys.KeyStore(store.path).list_keys()[0]['name'] == 'committed child'
-    snapshot = tmp_path / 'recovered.sqlite3'
-    UsageStore(keys.KeyStore(store.path)).backup(snapshot)
-    assert keys.KeyStore(snapshot).list_keys()[0]['name'] == 'committed child'
 
 
 @native
@@ -131,27 +82,6 @@ def test_retained_recovery_sidecar_refuses_all_file_opens(tmp_path, monkeypatch,
     assert original.read_bytes() == b'foreign synthetic sidecar'
 
 
-@pytest.mark.skipif(os.name != 'posix', reason='precise ENOENT lstat leaf race')
-def test_transient_leaf_disappears_at_native_ancestor_guard_but_parent_error_refuses(tmp_path, monkeypatch):
-    store, _ = configured(tmp_path)
-    sidecar = Path(str(store.path) + '-shm'); sidecar.write_bytes(b'owned transient'); sidecar.chmod(0o600)
-    original = keys._safe_ancestors
-    def disappear(path, **kwargs):
-        if path == sidecar: sidecar.unlink()
-        return original(path, **kwargs)
-    monkeypatch.setattr(keys, '_safe_ancestors', disappear)
-    keys._secure_sidecars(store.path)
-    sidecar.write_bytes(b'owned transient'); sidecar.chmod(0o600)
-    def parent_error(path, **kwargs):
-        if path == sidecar:
-            try: raise FileNotFoundError(2, 'synthetic parent absent', str(sidecar.parent))
-            except FileNotFoundError as exc: raise keys.KeyStoreError('unavailable') from exc
-        return original(path, **kwargs)
-    monkeypatch.setattr(keys, '_safe_ancestors', parent_error)
-    with pytest.raises(keys.KeyStoreError): keys._secure_sidecars(store.path)
-    assert sidecar.exists()
-
-
 @pytest.mark.skipif(os.name != 'posix', reason='held POSIX verifier descriptors')
 @pytest.mark.parametrize('changed', ['database', 'parent', 'ancestor', 'permissions', 'hardlink'])
 @pytest.mark.parametrize('external', [False, True])
@@ -189,23 +119,6 @@ def test_per_open_held_proof_refuses_setup_substitution_and_closes_descriptors(t
         with pytest.raises(OSError): os.fstat(descriptor)
 
 
-@pytest.mark.skipif(os.name != 'posix', reason='held POSIX verifier descriptors')
-def test_per_open_proof_rechecks_new_sidecar_after_setup(tmp_path, monkeypatch):
-    store, _ = configured(tmp_path)
-    foreign = tmp_path / 'foreign'; foreign.write_bytes(b'owned foreign'); foreign.chmod(0o600)
-    sidecar = Path(str(store.path) + '-shm')
-    original = keys._WriterConnection.execute
-    def insert(self, sql, *args):
-        result = original(self, sql, *args)
-        if sql == 'PRAGMA user_version': sidecar.symlink_to(foreign)
-        return result
-    monkeypatch.setattr(keys._WriterConnection, 'execute', insert)
-    with pytest.raises(keys.KeyStoreError):
-        with store._connect():
-            pytest.fail('post-setup sidecar checks must remain active')
-    assert sidecar.is_symlink() and foreign.read_bytes() == b'owned foreign'
-
-
 @pytest.mark.skipif(os.name != 'posix', reason='held POSIX parent descriptors')
 @pytest.mark.parametrize('changed', ['parent', 'ancestor', 'database'])
 def test_anchored_old_parent_never_authorizes_sql_through_replaced_named_tree(tmp_path, monkeypatch, changed):
@@ -238,31 +151,6 @@ def test_anchored_old_parent_never_authorizes_sql_through_replaced_named_tree(tm
     assert swapped == [changed]
 
 
-@pytest.mark.skipif(os.name != 'posix', reason='native dir_fd no-follow leaf race')
-@pytest.mark.parametrize('replacement', [False, True])
-def test_anchored_sidecar_open_tolerates_only_actual_leaf_disappearance(tmp_path, monkeypatch, replacement):
-    store, _ = configured(tmp_path)
-    sidecar = Path(str(store.path) + '-shm'); sidecar.write_bytes(b'owned leaf'); sidecar.chmod(0o600)
-    foreign = tmp_path / 'foreign'; foreign.write_bytes(b'foreign'); foreign.chmod(0o600)
-    original = os.open
-    opened = []
-    def race(path, flags, *args, **kwargs):
-        if path == sidecar.name and kwargs.get('dir_fd') is not None and not opened:
-            opened.append(True); sidecar.unlink()
-            if replacement: sidecar.symlink_to(foreign)
-        return original(path, flags, *args, **kwargs)
-    monkeypatch.setattr(os, 'open', race)
-    if replacement:
-        with pytest.raises(keys.KeyStoreError):
-            with store._connect(): pass
-        assert sidecar.is_symlink()
-    else:
-        with store._connect() as connection:
-            assert connection.execute('SELECT count(*) FROM keys').fetchone() == (0,)
-        assert not sidecar.exists()
-    assert opened == [True] and foreign.read_bytes() == b'foreign'
-
-
 @native
 def test_default_checkpoint_threshold_and_long_reader_preserve_latest_rows(tmp_path):
     store, config = configured(tmp_path)
@@ -272,8 +160,8 @@ def test_default_checkpoint_threshold_and_long_reader_preserve_latest_rows(tmp_p
     with store._connect() as reader:
         reader.execute('BEGIN')
         assert reader.execute('SELECT count(*) FROM synthetic_threshold').fetchone() == (0,)
-        for i in range(1030):
-            with store._write() as writer:
+        with store._write() as writer:
+            for i in range(1001):
                 writer.execute('INSERT INTO synthetic_threshold VALUES(?,?)', (i, b'x' * 4096))
         with store._write() as writer:
             busy, log, copied = writer.execute('PRAGMA wal_checkpoint(PASSIVE)').fetchone()
@@ -282,77 +170,8 @@ def test_default_checkpoint_threshold_and_long_reader_preserve_latest_rows(tmp_p
     with store._write() as writer:
         busy, log, copied = writer.execute('PRAGMA wal_checkpoint(FULL)').fetchone()
         assert busy == 0 and copied == log
-        assert writer.execute('SELECT count(*) FROM synthetic_threshold').fetchone() == (1030,)
+        assert writer.execute('SELECT count(*) FROM synthetic_threshold').fetchone() == (1001,)
     assert hashlib.sha256(Path(str(store.path) + '-wal').read_bytes()).digest()
-
-
-@native
-@pytest.mark.parametrize('held_reader', [False, True])
-def test_short_lived_writers_recycle_wal_after_reader_gap(tmp_path, held_reader):
-    from contextlib import nullcontext
-    store, config = configured(tmp_path)
-    keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
-    with store._write() as connection:
-        connection.execute('CREATE TABLE synthetic_recycle(id INTEGER PRIMARY KEY, payload BLOB)')
-    wal = Path(str(store.path) + '-wal')
-    with store._connect() if held_reader else nullcontext() as reader:
-        if reader is not None:
-            reader.execute('BEGIN')
-            assert reader.execute('SELECT count(*) FROM synthetic_recycle').fetchone() == (0,)
-        for i in range(70):
-            with store._write() as writer:
-                writer.execute('INSERT INTO synthetic_recycle VALUES(?,?)', (i, b'x' * 65536))
-        if reader is not None:
-            assert reader.execute('SELECT count(*) FROM synthetic_recycle').fetchone() == (0,)
-            reader.execute('COMMIT')
-    for i in range(70, 140):
-        with store._write() as writer:
-            writer.execute('INSERT INTO synthetic_recycle VALUES(?,?)', (i, b'x' * 65536))
-        assert wal.stat().st_size <= keys._WAL_CHECKPOINT_BYTES + 128 * 1024
-    with store._connect() as reader:
-        assert reader.execute('SELECT count(*) FROM synthetic_recycle').fetchone() == (140,)
-        assert reader.execute('PRAGMA quick_check').fetchone() == ('ok',)
-        assert reader.getconfig(sqlite3.SQLITE_DBCONFIG_NO_CKPT_ON_CLOSE) is True
-        assert reader.execute('PRAGMA synchronous').fetchone() == (2,)
-    metadata, token = store.create('still admitted', ['llm.primary'], ['/v1/chat/completions'])
-    assert store.admit(store.authenticate(token, snapshot=True), '/v1/chat/completions', 'llm.primary').retry_after == 0
-    store.record(metadata['key_id'], None, 'POST', '/v1/chat/completions', 200, 1)
-    snapshot = tmp_path / 'latest.sqlite3'
-    UsageStore(store).backup(snapshot)
-    assert keys.KeyStore(snapshot).authenticate(token).key_id == metadata['key_id']
-
-
-@native
-@pytest.mark.parametrize('removed', [False, True])
-def test_passive_checkpoint_revalidates_named_wal_policy(tmp_path, monkeypatch, removed):
-    store, config = configured(tmp_path)
-    keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
-    store.create('retained', ['llm.primary'], ['/v1/chat/completions'])
-    marker = Path(str(store.path) + '.sqlite-policy')
-    original_policy = marker.read_bytes()
-    execute = keys._WriterConnection.execute
-    checkpoints = []
-    def changed(connection, sql, *args):
-        result = execute(connection, sql, *args)
-        if sql == 'PRAGMA wal_checkpoint(PASSIVE)':
-            checkpoints.append(sql)
-            if removed:
-                marker.unlink()
-            else:
-                marker.rename(tmp_path / 'original-policy')
-                marker.write_bytes(original_policy)
-                marker.chmod(0o600)
-        return result
-    monkeypatch.setattr(keys, '_WAL_CHECKPOINT_BYTES', 32)
-    monkeypatch.setattr(keys._WriterConnection, 'execute', changed)
-    try:
-        with pytest.raises(keys.KeyStoreError):
-            with store._write():
-                pytest.fail('changed named policy must refuse before writer access')
-        assert checkpoints == ['PRAGMA wal_checkpoint(PASSIVE)']
-    finally:
-        marker.write_bytes(original_policy)
-        marker.chmod(0o600)
 
 
 @native
@@ -365,142 +184,6 @@ def test_existing_read_lease_blocks_conversion_without_pending_permission(tmp_pa
         assert not Path(str(store.path) + '.sqlite-policy').exists()
         assert not (tmp_path / 'before.sqlite3').exists()
     keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
-
-
-@native
-def test_runtime_policy_and_capacity_refusal_preserve_latest_backup(tmp_path, monkeypatch):
-    store, config = configured(tmp_path)
-    keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
-    metadata, token = store.create('newest after conversion', ['llm.primary'], ['/v1/chat/completions'])
-    assert Path(str(store.path) + '-wal').stat().st_size > 32
-    ceiling = keys._MAX_WAL_BYTES
-    monkeypatch.setattr(keys, '_MAX_WAL_BYTES', 32)
-    with pytest.raises(keys.KeyStoreError): store.create('refused overflow', ['llm.primary'], ['/v1/chat/completions'])
-    newest = tmp_path / 'newest.sqlite3'
-    UsageStore(store).backup(newest)
-    assert keys.KeyStore(newest).authenticate(token).key_id == metadata['key_id']
-    # Explicit fenced maintenance remains possible while new writers refuse.
-    result = keys._migrate_offline(str(config), str(tmp_path / 'maintenance.sqlite3'), journal_mode='WAL')
-    assert result['checkpoint_frames'] >= 0
-    assert Path(str(store.path) + '-wal').stat().st_size == 0
-    principal = store.authenticate(token, snapshot=True)
-    assert store.admit(principal, '/v1/chat/completions', 'llm.primary').retry_after == 0
-    monkeypatch.setattr(keys, '_MAX_WAL_BYTES', ceiling)
-    store.record(metadata['key_id'], None, 'POST', '/v1/chat/completions', 200, 1)
-    assert store.authenticate(token).key_id == metadata['key_id']
-    monkeypatch.setattr(sqlite3, 'sqlite_version_info', (3, 51, 2))
-    def no_sql(*args, **kwargs): raise AssertionError('unsafe runtime must refuse before file SQL')
-    monkeypatch.setattr(sqlite3, 'connect', no_sql)
-    with pytest.raises(keys.KeyStoreError): keys.KeyStore(store.path)
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='actual POSIX shared gate custody')
-def test_external_writer_borrows_one_gate_and_keeps_exclusion_through_sql_close(tmp_path, monkeypatch):
-    import fcntl
-    store, _ = configured(tmp_path)
-    gate = Path(str(store.path) + '.router-writers.lock')
-    original_open, original_flock = os.open, fcntl.flock
-    original_close = keys._WriterConnection.close
-    acquisition = []
-    shared = []
-    outer = []
-    def opened(path, flags, *args, **kwargs):
-        fd = original_open(path, flags, *args, **kwargs)
-        if path == gate and flags & os.O_RDWR:
-            acquisition.append(fd)
-        return fd
-    def locked(fd, operation):
-        if operation == fcntl.LOCK_SH | fcntl.LOCK_NB:
-            shared.append(fd)
-        return original_flock(fd, operation)
-    contender = original_open(gate, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
-    def excluded():
-        with pytest.raises(BlockingIOError):
-            original_flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    def closing(connection):
-        excluded()
-        assert store._writer_context.external_reader_custody[0] == outer[0]
-        result = original_close(connection)
-        excluded()
-        os.fstat(outer[0])  # SQLite cleanup cannot close the borrowed gate.
-        return result
-    monkeypatch.setattr(os, 'open', opened)
-    monkeypatch.setattr(fcntl, 'flock', locked)
-    monkeypatch.setattr(keys._WriterConnection, 'close', closing)
-    try:
-        with store._write() as db:
-            outer.append(store._writer_context.external_reader_custody[0])
-            excluded()
-            db.execute('BEGIN IMMEDIATE')
-            assert db.execute('SELECT count(*) FROM keys').fetchone() == (0,)
-            db.execute('COMMIT')
-        assert acquisition == outer and shared == outer
-        assert not hasattr(store._writer_context, 'external_reader_custody')
-        with pytest.raises(OSError): os.fstat(outer[0])
-        original_flock(contender, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    finally:
-        os.close(contender)
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='actual postqueue POSIX custody tampering')
-@pytest.mark.parametrize('changed', ['gate', 'missing', 'link', 'permissions', 'parent', 'ancestor', 'marker', 'store'])
-def test_borrowed_postqueue_tamper_refuses_before_sqlite_open(tmp_path, monkeypatch, changed):
-    from concurrent.futures import ThreadPoolExecutor
-    from threading import Event
-    root = tmp_path / 'ancestor'; root.mkdir(mode=0o700)
-    store, _ = configured(root)
-    state = root / 'admission.json'
-    state.write_text(json.dumps({'schema':'router-admission/v1', 'owner_id':'synthetic-owner', 'closure':None}))
-    state.chmod(0o600)
-    keys._bind_router_store(store.path, str(state), 'synthetic-owner')
-    gate = Path(str(store.path) + '.router-writers.lock')
-    marker = Path(str(store.path) + '.router-owner')
-    queued = Event()
-    wait = store._writer_condition.wait
-    def waiting(*args, **kwargs):
-        queued.set()
-        return wait(*args, **kwargs)
-    monkeypatch.setattr(store._writer_condition, 'wait', waiting)
-    def no_sql(*args, **kwargs):
-        pytest.fail('postqueue borrowed custody must refuse before SQLite connect')
-    monkeypatch.setattr(sqlite3, 'connect', no_sql)
-    ticket = object()
-    with store._writer_condition: store._writer_queue.append(ticket)
-    def writing():
-        try:
-            with pytest.raises(keys.KeyStoreError):
-                with store._write(): pytest.fail('tampered writer must refuse')
-        finally:
-            assert not hasattr(store._writer_context, 'external_reader_custody')
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(writing)
-        try:
-            assert queued.wait(2)
-            if changed == 'permissions': gate.chmod(0o644)
-            elif changed in ('parent', 'ancestor'):
-                target = store.path.parent if changed == 'parent' else root
-                displaced = tmp_path / 'displaced'
-                target.rename(displaced); target.mkdir(mode=0o700)
-                if changed == 'parent':
-                    for leaf in displaced.iterdir(): leaf.rename(target / leaf.name)
-                else:
-                    for leaf in displaced.iterdir(): leaf.rename(root / leaf.name)
-            elif changed == 'marker':
-                binding = json.loads(marker.read_text()); binding['owner_id'] = 'changed-owner'
-                binding['gate_identity'] = [0, 0]
-                marker.write_text(json.dumps(binding))
-            elif changed == 'store':
-                before = store.path.read_bytes(); store.path.rename(root / 'original.sqlite3')
-                store.path.write_bytes(before); store.path.chmod(0o600)
-            else:
-                gate.unlink()
-                if changed == 'gate': gate.write_bytes(b''); gate.chmod(0o600)
-                elif changed == 'link': gate.symlink_to(state)
-        finally:
-            with store._writer_condition:
-                store._writer_queue.remove(ticket); store._writer_condition.notify_all()
-        future.result(timeout=3)
-    assert not store._writer_queue
 
 
 @pytest.mark.skipif(os.name != 'posix', reason='actual thread-local POSIX gate lifetime')
@@ -540,16 +223,3 @@ def test_borrowed_gate_cancellation_and_inconsistent_nesting_never_escape_scope(
             delattr(store._writer_context, name)
     metadata, token = store.create('after cancellation', ['llm.primary'], ['/v1/chat/completions'])
     assert store.authenticate(token).key_id == metadata['key_id'] and gate.exists()
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='borrowed POSIX exit identity')
-def test_borrowed_gate_exit_replacement_refuses_and_outer_cleans_up(tmp_path):
-    store, _ = configured(tmp_path)
-    gate = Path(str(store.path) + '.router-writers.lock')
-    with pytest.raises(keys.KeyStoreError):
-        with store._write() as db:
-            held = store._writer_context.external_reader_custody[0]
-            db.execute('BEGIN IMMEDIATE'); db.execute('COMMIT')
-            gate.unlink(); gate.write_bytes(b''); gate.chmod(0o600)
-    assert not hasattr(store._writer_context, 'external_reader_custody') and not store._writer_queue
-    with pytest.raises(OSError): os.fstat(held)

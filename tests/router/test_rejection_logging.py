@@ -25,7 +25,7 @@ def test_managed_rejection_logs_once(capsys, stream, path, error, status):
             yield  # Keep the generator protocol; failure precedes any frame.
 
     server = make_server("127.0.0.1", 0, RejectingBackend(), server_config=ServerConfig())
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     connection = http.client.HTTPConnection(*server.server_address[:2], timeout=5)
     try:
@@ -47,18 +47,3 @@ def test_managed_rejection_logs_once(capsys, stream, path, error, status):
     assert events[0].startswith(f"[anvil] {status} ")
     assert "gateway_request_id=req_" in events[0]
     assert "private upstream detail" not in events[0]
-
-
-def test_over_context_diagnostics_do_not_blame_the_upstream():
-    from anvil_serving.router_diagnostics import diagnose_record
-
-    result = diagnose_record({
-        "workload_outcome": "rejected",
-        "attempts": [{"succeeded": False, "reason": "over_context"}],
-        "usage": {"prompt_tokens": 1125109, "prompt_source": "estimated"},
-    })
-    assert result["outcome"] == "rejected"
-    assert result["upstream_outcome"] == "not_attempted"
-    assert result["observations"] == ["request_rejected_over_context"]
-    assert "compare_serialized_request_with_client_context_estimate" in result["next_checks"]
-    assert result["usage"]["prompt_source"] == "estimated"

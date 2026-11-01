@@ -2,15 +2,13 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
 from pathlib import Path
 import unittest
-from unittest.mock import patch
 
-from anvil_serving.connect import config, manage
-from anvil_serving.connect.config import ManifestError, canonical_manifest, validate_manifest
-from anvil_serving.connect.render import render, render_for_inspection
+from anvil_serving.connect import config
+from anvil_serving.connect.config import ManifestError, validate_manifest
+from anvil_serving.connect.render import render
 
 
 ROOT = Path(__file__).parents[2]
@@ -114,86 +112,6 @@ class PublicOIDCContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(ManifestError, "must omit client_secret_file"):
                     validate_manifest(_with_clients(native))
 
-    def test_public_flag_requires_an_actual_boolean(self) -> None:
-        for flag in ("true", "false", 1, 0, None, [], {}):
-            with self.subTest(flag=flag):
-                native = _native()
-                native["public"] = flag
-                with self.assertRaisesRegex(ManifestError, "public.*must be a boolean"):
-                    validate_manifest(_with_clients(native))
-
-    def test_public_rejects_ambiguous_or_non_native_callbacks(self) -> None:
-        callbacks = (
-            "native:/oauth/callback", "APP.example.connect.ios:/oauth/callback",
-            "1app.example.connect.ios:/oauth/callback", "app_.example.connect.ios:/oauth/callback",
-            "app.example.connect.ios.://oauth/callback", "app.example.connect.ios:oauth/callback",
-            "app.example.connect.ios://oauth/callback", "app.example.connect.ios:///oauth/callback",
-            "app.example.connect.ios:/", "app.example.connect.ios:/oauth/callback/",
-            "app.example.connect.ios:/oauth/./callback", "app.example.connect.ios:/oauth/../callback",
-            "app.example.connect.ios:/oauth//callback", "app.example.connect.ios:/oauth/*",
-            "app.example.connect.ios:/oauth/%63allback", "app.example.connect.ios:/oauth\\callback",
-            "app.example.connect.ios:/oauth/callback?next=/", "app.example.connect.ios:/oauth/callback?",
-            "app.example.connect.ios:/oauth/callback#fragment", "app.example.connect.ios:/oauth/callback#",
-            "app.example.connect.ios:/oauth/ callback", "app.example.connect.ios:/oauth/\x7fcallback",
-            "app.example.connect.ios:/oauth/café", "app.example.connect.ios://user@host/callback",
-            "app.example.connect.ios:/oauth/[callback]", "app.example.connect.ios:/oauth/{callback}",
-            'app.example.connect.ios:/oauth/"callback"', "app.example.connect.ios:/oauth/<callback>",
-            "app.example.connect.ios:/oauth/callback|next", "app.example.connect.ios:/oauth/`callback`",
-            "app.example.connect.ios@other:/oauth/callback", "app.example.connect.ios:443/oauth/callback",
-            "http://app.example.test/oauth/callback", "https://app.example.test/oauth/callback",
-            "http://127.0.0.1:8765/oauth/callback", "file:/oauth/callback", "javascript:/oauth/callback",
-        )
-        for callback in callbacks:
-            with self.subTest(callback=callback):
-                native = _native()
-                native["redirect_uris"] = [callback]
-                with self.assertRaisesRegex(ManifestError, "canonical native redirect URI"):
-                    validate_manifest(_with_clients(native))
-
-    def test_duplicate_client_ids_include_public_confidential_and_connect_clients(self) -> None:
-        native, confidential = _native(), _confidential()
-        confidential["client_id"] = native["client_id"]
-        for clients in ((native, copy.deepcopy(native)), (native, confidential)):
-            with self.subTest(clients=clients):
-                with self.assertRaisesRegex(ManifestError, "unique including the Connect client"):
-                    validate_manifest(_with_clients(*clients))
-        native["client_id"] = _manifest()["gateway"]["oidc"]["client_id"]
-        with self.assertRaisesRegex(ManifestError, "unique including the Connect client"):
-            validate_manifest(_with_clients(native))
-
-    def test_duplicate_native_callbacks_are_rejected(self) -> None:
-        native = _native()
-        native["redirect_uris"] *= 2
-        with self.assertRaisesRegex(ManifestError, "duplicate redirect URIs"):
-            validate_manifest(_with_clients(native))
-
-    def test_client_security_profile_cannot_be_overridden(self) -> None:
-        for key, supplied in (
-            ("require_pkce", False), ("pkce_challenge_method", "plain"),
-            ("grant_types", ["implicit"]), ("response_types", ["token"]),
-            ("token_endpoint_auth_method", "client_secret_post"), ("authorization_policy", "one_factor"),
-            ("consent_mode", "implicit"), ("scopes", ["offline_access"]),
-        ):
-            with self.subTest(key=key):
-                native = _native()
-                native[key] = supplied
-                with self.assertRaises(ManifestError):
-                    validate_manifest(_with_clients(native))
-
-    def test_confidential_bytes_are_preserved_when_public_is_omitted(self) -> None:
-        value = _with_clients(_confidential())
-        self.assertEqual(hashlib.sha256(canonical_manifest(value)).hexdigest(),
-                         "b87e29a5a8c82fddfba8eeddb3da37241b7c591967c51446c8ea5cb54ea95e3e")
-        text = render_for_inspection(value)["files"]["authelia/configuration.yml"]
-        self.assertEqual(hashlib.sha256(text.encode()).hexdigest(),
-                         "e9a4900ce5b5f168c60b0be30edff91cb78411ae479a7b2fcd782d46a97a99ce")
-
-    def test_explicit_false_keeps_the_confidential_profile(self) -> None:
-        baseline = _with_clients(_confidential())
-        explicit = copy.deepcopy(baseline)
-        explicit["authelia"]["additional_oidc_clients"][0]["public"] = False
-        self.assertEqual(canonical_manifest(explicit), canonical_manifest(baseline))
-        self.assertEqual(render_for_inspection(explicit), render_for_inspection(baseline))
 
     def test_confidential_clients_still_require_secrets_and_https_callbacks(self) -> None:
         for flag in (None, False):
@@ -223,28 +141,6 @@ class PublicOIDCContractTests(unittest.TestCase):
                 invalid["authelia"]["additional_oidc_clients"][1]["client_secret_file"] = secret
                 with self.assertRaises(ManifestError):
                     validate_manifest(invalid)
-
-    def test_managed_preflight_checks_confidential_files_with_public_clients_present(self) -> None:
-        value = _isolated(_with_clients(_native(), _confidential()))
-        expected = {
-            Path(value["caddy"]["tls"]["certificate_file"]): (1202, 1202, True),
-            Path(value["caddy"]["tls"]["key_file"]): (1202, 1202, False),
-            **{Path(value["authelia"][name]): (1203, 1203, False) for name in (
-                "client_secret_file", "session_secret_file", "storage_encryption_key_file",
-                "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file",
-            )},
-            Path("/etc/anvil-connect/secrets/web-oidc-client-secret"): (1203, 1203, False),
-        }
-
-        def checked_file(path: Path, uid: int, gid: int, *, public: bool = False) -> None:
-            self.assertEqual(expected.pop(path), (uid, gid, public))
-
-        # Only host filesystem access is replaced; role selection and the
-        # declaration's full protected-reference preflight execute normally.
-        with patch.object(manage, "_safe_consumed_file", checked_file), \
-                patch.object(manage, "_safe_authelia_users_file", return_value=None):
-            manage._validate_gateway_files(value)
-        self.assertEqual(expected, {})
 
 
 if __name__ == "__main__":

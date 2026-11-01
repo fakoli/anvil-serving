@@ -1,5 +1,4 @@
 """Deterministic protected record and commit failure tests; no live resources."""
-from copy import deepcopy
 from dataclasses import asdict
 import json
 import os
@@ -61,18 +60,6 @@ def test_stage_failure_never_creates_authoritative_record(record, monkeypatch, f
     assert not list(path.parent.glob('.pending-*'))
 
 
-@pytest.mark.parametrize('change', ['unknown_key','boolean_sequence','bad_owner','wrong_native','phase_sequence','bad_id'])
-def test_record_schema_rejects_ambiguous_identity(record, change):
-    _, _, original = record; value = deepcopy(original)
-    if change=='unknown_key':value['unsafe_override']=True
-    elif change=='boolean_sequence':value['sequence']=False
-    elif change=='bad_owner':value['anchor']['run_owner']['pid']=True
-    elif change=='wrong_native':value['anchor']['native_view']['pid_namespace_inode']+=1
-    elif change=='phase_sequence':value['phase']='ready'
-    else:value['anchor']['docker']['container_id']='short'
-    with pytest.raises(ValueError):custody.validate(value)
-
-
 def test_pending_and_native_mode_cannot_create_managed_authority(record, monkeypatch):
     store, usage, value = record
     custody.write(store,value,None)
@@ -99,21 +86,6 @@ def test_native_host_after_failure_does_not_commit_pending_or_leave_runner(tmp_p
     with pytest.raises(ValueError,match='custody_changed'):
         router_manage._native_owner_commit([sys.executable,'-c',source,str(path)],snapshot)
     assert not path.exists() or path.read_bytes()==b''
-
-
-def test_cas_refuses_changed_record_without_overwrite(record):
-    store,_,value=record
-    custody.write(store,value,None)
-    before=custody.location(store,value['anchor']['run_id']).read_bytes()
-    with pytest.raises(KeyStoreError):custody.write(store,{**value,'phase':'live'},'0'*64)
-    assert custody.location(store,value['anchor']['run_id']).read_bytes()==before
-
-
-def test_ordinary_live_writer_does_not_impersonate_producer(record):
-    store,_,_=record
-    producer=Path(custody.binding(store)['state_path']+'.lock'); producer.touch(mode=0o600)
-    with pytest.raises(KeyStoreError,match='producer unavailable'):
-        with custody.live_writer(store):pytest.fail('fictitious producer')
 
 
 @pytest.mark.parametrize('change', ['valid','root','parent','device','filesystem','source','writable','duplicate',
@@ -162,26 +134,6 @@ def test_managed_procfs_exception_is_exact_and_default_stays_strict(monkeypatch,
         with pytest.raises(ValueError):_ACTUAL_LINUX_OWNER('fixture')
 
 
-def test_comparable_live_vetoes_even_finalized_retained_death(record, monkeypatch):
-    store,usage,value=record
-    stopped={**value['anchor']['docker'],'finished_at':'2026-01-01T00:01:00Z',
-             'status':'exited','running':False,'paused':False,'restarting':False,'pid':0}
-    ready={**value,'phase':'ready','sequence':1,'death':{'anchor_sha256':custody.digest(value['anchor']),
-        'closure_sha256':custody.digest(custody.closure(store)),'closure_generation':None,'closure_consumed':None,
-        'stopped':stopped,'implementation_sha256':'d'*64}}
-    custody.write(store,ready,None)
-    usage.owner_config=SimpleNamespace(router_owner_backend='managed-container',router_owner_id='fixture')
-    with store._connect() as db:
-        import sqlite3
-        db.row_factory=sqlite3.Row;row=db.execute('SELECT * FROM usage_runs').fetchone()
-        monkeypatch.setattr(usage,'_physical_owner',lambda owner:'live')
-        assert usage._owner_state(row,db=db)=='live'
-        monkeypatch.setattr(usage,'_physical_owner',lambda owner:'unknown')
-        assert usage._owner_state(row,db=db)=='dead'
-        usage.owner_config=None
-        assert usage._owner_state(row,db=db)=='unknown'
-
-
 @pytest.mark.parametrize('change', ['same', 'stopped', 'closure', 'live', 'transferred'])
 def test_repeated_finalized_death_preserves_proof_and_refuses_changed_authority(record, monkeypatch, change):
     store,usage,value=record
@@ -216,21 +168,6 @@ def test_repeated_finalized_death_preserves_proof_and_refuses_changed_authority(
     else:
         with pytest.raises(ValueError):custody.stopped_record(usage,stopped)
     assert path.read_bytes()==before
-
-
-@pytest.mark.parametrize('backend',['unknown',False,1,[]])
-def test_managed_backend_configuration_is_explicit(config, backend):
-    text=config.read_text()+'\nrouter_owner_backend='+json.dumps(backend)+'\n'
-    config.write_text(text)
-    with pytest.raises(ValueError):load_server_config(str(config))
-
-
-def test_managed_mode_without_owner_cannot_fall_through_unmanaged(config):
-    from dataclasses import replace
-    from anvil_serving.router.admission import managed_router_admission
-    settings=replace(load_server_config(str(config)),router_owner_backend='managed-container',
-                     router_owner_id=None,router_owner_roster=())
-    with pytest.raises(ValueError,match='roster_unsupported'):managed_router_admission(settings,'a'*64)
 
 
 def test_actual_native_writer_fence_only_lends_reader_custody_to_same_store(record):

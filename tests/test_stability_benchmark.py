@@ -153,7 +153,7 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             self.wfile.write(b"data: [DONE]\n\n")
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         base = f"http://127.0.0.1:{server.server_port}/v1"
@@ -207,62 +207,6 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
         thread.join()
 
 
-def test_stability_omits_top_p_when_not_requested(tmp_path):
-    calls = []
-
-    def stream(base, model, prompt, key, max_tokens, **kwargs):
-        calls.append(kwargs)
-        kwargs["observer"]("response", {})
-        kwargs["observer"]("delta", {"content": "expected"})
-        return result()
-
-    observed = stability.run(
-        scenario(mode="serial"), tmp_path / "omitted-top-p.json", stream=stream,
-        calibrate=calibration, metadata=metadata, identity=identity,
-    )
-
-    assert observed["status"] == "completed"
-    assert len(calls) == 2
-    assert all("top_p" not in call for call in calls)
-
-
-@pytest.mark.parametrize("changes", [{"rounds": True}, {"rounds": 100}, {"temperature": float("nan")},
-                                     {"top_p": 0}, {"top_p": 1.1}, {"top_p": float("nan")}, {"top_p": True},
-                                     {"anchor_tokens": 4000}, {"base_url": "http://key@127.0.0.1/v1"},
-                                     {"mode": "anything"}, {"base_url": "http://127.0.0.1:8001/v1\r\n"},
-                                     {"model": "bad\nmodel"}, {"api_key_env": "KEY\x00"}])
-def test_invalid_scenario_is_rejected_before_network(changes):
-    with pytest.raises(ValueError):
-        stability.validate_scenario(scenario(**changes))
-
-
-@pytest.mark.parametrize("content", ['{', '{"schema":"a","schema":"b"}', '[]'])
-def test_malformed_scenario_cli_fails_without_creating_artifact(tmp_path, content):
-    path = tmp_path / "invalid.json"
-    path.write_text(content)
-    output = tmp_path / "result.json"
-    with pytest.raises(SystemExit) as error:
-        stability.main(["--scenario", str(path), "--output", str(output)])
-    assert error.value.code == 2
-    assert not output.exists()
-
-
-@pytest.mark.parametrize("replacement", ["b" * 64, "redacted:sha256:" + "b" * 64])
-def test_identity_change_stops_before_requests(tmp_path, replacement):
-    count = [0]
-    def changing(config):
-        row = identity(config)
-        count[0] += 1
-        if count[0] == 2:
-            row["container_id"] = replacement
-        return row
-    observed = stability.run(scenario(), tmp_path / "changed.json", identity=changing,
-                             metadata=metadata, stream=lambda *a, **k: pytest.fail("wrong identity requested"))
-    assert observed["status"] == "failed"
-    assert observed["failure_class"] == "identity_mismatch"
-    assert not observed["rounds"]
-
-
 def test_faulty_tokenizer_cannot_expand_prompt_without_bound(monkeypatch):
     calls = []
     def tokenizer(*args):
@@ -272,41 +216,6 @@ def test_faulty_tokenizer_cannot_expand_prompt_without_bound(monkeypatch):
     with pytest.raises(ValueError, match="prompt bound"):
         stability.calibrated_prompt(scenario(anchor_tokens=1000000, context_limit=2000000), "anchor", "salt", None)
     assert len(calls) == 1
-
-
-@pytest.mark.skipif(os.name == "nt", reason="Unix device and FIFO inputs")
-def test_device_fifo_and_oversized_scenario_are_rejected(tmp_path):
-    fifo = tmp_path / "fifo"
-    os.mkfifo(fifo)
-    for path in (fifo, "/dev/zero"):
-        with pytest.raises(ValueError, match="regular file"):
-            stability.read_scenario(path)
-    large = tmp_path / "large.json"
-    large.write_bytes(b" " * 65537)
-    with pytest.raises(ValueError, match="64 KiB"):
-        stability.read_scenario(large)
-
-
-def test_pre_network_delay_cannot_claim_overlap(tmp_path):
-    entered = threading.Event()
-    def stream(base, model, prompt, key, max_tokens, **kwargs):
-        observe = kwargs["observer"]
-        if prompt == "anchor":
-            observe("response", {})
-            observe("delta", {"content": "expected"})
-            assert entered.wait(2)
-            observe("delta", {"content": "expected"})
-        else:
-            entered.set()
-            time.sleep(.05)  # Anchor progresses before any contender response headers.
-            observe("response", {})
-            observe("delta", {"content": "expected"})
-        return result()
-    observed = stability.run(scenario(), tmp_path / "delay.json", stream=stream,
-                             calibrate=calibration, metadata=metadata, identity=identity)
-    assert observed["runtime_passed"] is True
-    assert observed["coverage_passed"] is False
-    assert observed["status"] == "incomplete"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Synthetic executable replaces local managed inventory")
@@ -378,7 +287,7 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
             except (BrokenPipeError, ConnectionResetError):
                 pass
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     config = scenario(f"http://127.0.0.1:{server.server_port}/v1", run_timeout_seconds=2 if fault == "drip" else 10)
     row = {"Id": "a" * 64, "Name": "/synthetic-model", "Image": config["configuration"]["image_digest"],

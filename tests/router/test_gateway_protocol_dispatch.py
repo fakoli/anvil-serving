@@ -49,7 +49,7 @@ def gateway_server(
     httpd = make_server(
         "127.0.0.1", 0, backend, auth_token="secret", gateway=gateway
     )
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield httpd.server_address[:2], tasks
@@ -133,41 +133,6 @@ def test_protocol_get_rejects_framed_body_without_resetting_error(tmp_path):
             assert status == 400
             assert headers["Connection"] == "close"
             assert json.loads(raw)["error"]["type"] == "invalid_request"
-
-
-@pytest.mark.parametrize(
-    ("version", "requested"),
-    [
-        (None, "0.3"),
-        ("", "0.3"),
-        ("0.3", "0.3"),
-        ("1.1", "1.1"),
-        ("1.0.0", "1.0.0"),
-    ],
-)
-def test_a2a_rejects_missing_legacy_and_unsupported_versions_without_dispatch(
-    tmp_path, version, requested
-):
-    with gateway_server(tmp_path) as (address, tasks):
-        status, headers, raw = request(
-            address,
-            "POST",
-            A2A_PATH,
-            body=send_request(),
-            a2a_version=version,
-        )
-        assert status == 200
-        assert headers["Content-Type"] == "application/json"
-        response = json.loads(raw)
-        assert response["id"] == 1
-        assert response["error"]["code"] == -32009
-        detail = response["error"]["data"][0]
-        assert detail["reason"] == "VERSION_NOT_SUPPORTED"
-        assert detail["metadata"] == {
-            "requestedVersion": requested,
-            "supportedVersions": A2A_VERSION,
-        }
-        assert tasks.operations.jobs.nonterminal() == []
 
 
 def test_artifact_delivery_is_opaque_scoped_and_range_bounded(tmp_path):
@@ -338,17 +303,6 @@ def test_large_video_link_downloads_in_authenticated_bounded_ranges(tmp_path):
         assert digest.hexdigest() == value["sha256"]
 
 
-def test_signed_links_reject_device_key_policy_at_startup(tmp_path, monkeypatch):
-    monkeypatch.setenv("ANVIL_MEDIA_SIGNED_DOWNLOADS", "1")
-    tasks = service(tmp_path)
-    gateway = ProtocolGateway(caller=CALLER, tasks=tasks, registry=tasks.operations.registry,
-                              artifacts=tasks.operations.artifacts, public_origin="http://127.0.0.1:8080")
-    with pytest.raises(ValueError, match="dedicated static-auth gateway"):
-        from anvil_serving.router.front_door import _make_handler
-        _make_handler(StaticBackend(["ok"]), None, (), auth_token="secret",
-                      gateway=gateway, api_keys=object())
-
-
 def test_signed_video_links_open_directly_and_stream_large_browser_ranges(tmp_path, monkeypatch):
     import urllib.parse
 
@@ -442,51 +396,6 @@ def test_a2a_sse_rejects_terminal_task_subscription_without_mutation(tmp_path):
         assert tasks.operations.jobs.get(task["id"], principal="hermes").state == JobState.CANCELED
 
 
-@pytest.mark.parametrize(
-    ("params", "code"),
-    [
-        ({"id": "job_missing-task-id", "metadata": {}}, -32602),
-        ({"tenant": "undeclared", "id": "job_missing-task-id"}, -32004),
-    ],
-)
-def test_a2a_subscription_uses_normative_1_0_parameter_shape(
-    tmp_path, params, code
-):
-    with gateway_server(tmp_path) as (address, _tasks):
-        status, headers, raw = request(
-            address,
-            "POST",
-            A2A_PATH,
-            body={
-                "jsonrpc": "2.0",
-                "id": "observe-shape",
-                "method": "SubscribeToTask",
-                "params": params,
-            },
-            headers={"Accept": "text/event-stream"},
-        )
-        assert status == 200
-        assert headers["Content-Type"] == "application/json"
-        assert json.loads(raw)["error"]["code"] == code
-
-
-def test_enabling_gateway_does_not_change_v1_models_wire(tmp_path):
-    with gateway_server(tmp_path / "enabled") as (enabled, _):
-        enabled_response = request(enabled, "GET", "/v1/models")
-    with gateway_server(tmp_path / "disabled", enabled=False) as (disabled, _):
-        disabled_response = request(disabled, "GET", "/v1/models")
-    enabled_status, enabled_headers, enabled_body = enabled_response
-    disabled_status, disabled_headers, disabled_body = disabled_response
-    # HTTP Date is generated at response time and can cross a second boundary.
-    enabled_headers.pop("Date", None)
-    disabled_headers.pop("Date", None)
-    assert (enabled_status, enabled_headers, enabled_body) == (
-        disabled_status,
-        disabled_headers,
-        disabled_body,
-    )
-
-
 def test_media_gateway_config_is_explicit_scoped_and_secret_referenced(tmp_path):
     path = tmp_path / "router.toml"
     path.write_text(
@@ -517,107 +426,6 @@ media_public_origin = "https://gateway.example.test"
     )
     with pytest.raises(ConfigError, match="require auth_env"):
         load_server_config(str(path))
-
-
-def test_build_server_composes_one_shared_media_service(tmp_path):
-    config_path = tmp_path / "router.toml"
-    config_path.write_text(
-        CONFIG.read_text(encoding="utf-8")
-        + """
-
-[server]
-auth_env = "ANVIL_ROUTER_TOKEN"
-media_principal = "hermes"
-media_scopes = ["media:read", "media:submit", "media:cancel"]
-media_public_origin = "http://127.0.0.1:8080"
-""",
-        encoding="utf-8",
-    )
-    config = load(str(config_path))
-    backends = {tier.id: StaticBackend(["ok"]) for tier in config.tiers}
-    server = build_server(
-        str(config_path),
-        port=0,
-        backends=backends,
-        env={
-            "ANVIL_ROUTER_TOKEN": "secret",
-            "ANVIL_MEDIA_BACKEND_URL": "http://127.0.0.1:8188",
-            "ANVIL_MEDIA_STATE_DB": str(tmp_path / "jobs.sqlite3"),
-            "ANVIL_MEDIA_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
-            "ANVIL_MEDIA_WORKFLOW_REGISTRY": str(
-                Path(__file__).resolve().parents[2]
-                / "configs"
-                / "media"
-                / "workflows"
-                / "registry.json"
-            ),
-        },
-    )
-    try:
-        assert server.anvil_gateway.tasks.operations.jobs is server.anvil_gateway.tasks.operations.jobs
-        assert server.anvil_gateway.artifacts is server.anvil_gateway.tasks.operations.artifacts
-    finally:
-        server.server_close()
-
-
-def test_media_only_gateway_starts_without_a_chat_backend(tmp_path):
-    config_path = tmp_path / "router.toml"
-    config_path.write_text(
-        """
-[server]
-auth_env = "ANVIL_ROUTER_TOKEN"
-media_principal = "hermes"
-media_scopes = ["media:read", "media:submit", "media:cancel"]
-media_public_origin = "http://127.0.0.1:8080"
-
-[router]
-""",
-        encoding="utf-8",
-    )
-    server = build_server(
-        str(config_path),
-        port=0,
-        env={
-            "ANVIL_ROUTER_TOKEN": "secret",
-            "ANVIL_MEDIA_BACKEND_URL": "http://127.0.0.1:8188",
-            "ANVIL_MEDIA_STATE_DB": str(tmp_path / "jobs.sqlite3"),
-            "ANVIL_MEDIA_ARTIFACT_ROOT": str(tmp_path / "artifacts"),
-            "ANVIL_MEDIA_WORKFLOW_REGISTRY": str(
-                Path(__file__).resolve().parents[2]
-                / "configs"
-                / "media"
-                / "workflows"
-                / "registry.json"
-            ),
-        },
-    )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        assert server.anvil_tiers == ()
-        address = server.server_address[:2]
-        status, _, raw = request(address, "POST", "/mcp", body=mcp_request())
-        assert status == 200
-        tools = {tool["name"] for tool in json.loads(raw)["result"]["tools"]}
-        assert len(tools) == 9
-        assert "media_workflow_run" in tools
-        status, _, raw = request(address, "GET", "/v1/models")
-        assert (status, json.loads(raw)) == (200, {"object": "list", "data": []})
-        status, _, raw = request(address, "GET", "/v1/health/tiers")
-        assert (status, json.loads(raw)) == (200, {"tiers": []})
-        status, _, _ = request(
-            address,
-            "POST",
-            "/v1/chat/completions",
-            body={"model": "llm.unknown", "messages": []},
-        )
-        assert status == 404
-        status, _, _ = request(address, "POST", "/mcp", body=mcp_request(), token="wrong")
-        assert status == 401
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
 
 
 def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):

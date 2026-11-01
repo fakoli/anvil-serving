@@ -2,7 +2,6 @@
 import signal
 import textwrap
 
-import pytest
 
 from anvil_serving import serves
 
@@ -82,28 +81,6 @@ def _profiles(tmp_path):
     """)
 
 
-def test_load_serve_profiles_requires_complete_unique_rows(tmp_path):
-    profiles = serves.load_serve_profiles(_profiles(tmp_path))
-    assert [profile["id"] for profile in profiles] == [
-        "deepseek-tp2", "qwen-thinkingcap-split",
-    ]
-    assert profiles[0]["startup_timeout"] == 1200
-    assert profiles[1]["startup_timeout"] == serves.LIFECYCLE_READINESS_TIMEOUT_SECONDS
-    assert all(
-        profile["poll_interval"] == serves.LIFECYCLE_READINESS_POLL_SECONDS
-        for profile in profiles
-    )
-    bad = _write(tmp_path / "bad.toml", """
-        schema = "anvil-serving/serve-profiles/v1"
-        [[profile]]
-        id = "missing-target"
-        mode = "split"
-        restore_group = "split"
-    """)
-    with pytest.raises(serves.ServeProfileError, match="exclusive_target"):
-        serves.load_serve_profiles(bad)
-
-
 def test_profile_list_is_read_only_and_uses_operator_file(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "home"))
     assert serves.main([
@@ -113,53 +90,6 @@ def test_profile_list_is_read_only_and_uses_operator_file(tmp_path, monkeypatch,
     output = capsys.readouterr().out
     assert "deepseek-tp2" in output
     assert "qwen-thinkingcap-split" in output
-
-
-def test_profile_apply_delegates_to_the_existing_mode_transaction(tmp_path, monkeypatch, capsys):
-    profiles = serves.load_serve_profiles(_profiles(tmp_path))
-    loaded = serves.load_manifest(_manifest(tmp_path))
-    monkeypatch.setattr(
-        serves,
-        "docker_states",
-        lambda *_args, **_kwargs: {"qwen": "running", "thinkingcap": "running", "deepseek": "absent"},
-    )
-    seen = []
-    monkeypatch.setattr(
-        serves,
-        "cmd_mode",
-        lambda _serves, action, target, group, **kwargs: seen.append((
-            action,
-            target,
-            group,
-            kwargs["confirm"],
-            kwargs["readiness_timeout"],
-            kwargs["readiness_poll"],
-        )) or 0,
-    )
-    assert serves.cmd_profile(
-        loaded, profiles, "apply", "deepseek-tp2", confirm=True,
-    ) == 0
-    assert seen == [(
-        "enter",
-        "deepseek",
-        "qwen-thinkingcap",
-        True,
-        1200,
-        serves.LIFECYCLE_READINESS_POLL_SECONDS,
-    )]
-    assert "serving profile deepseek-tp2: enter" in capsys.readouterr().out
-
-
-def test_split_profile_refuses_to_claim_an_unknown_existing_split(tmp_path, monkeypatch):
-    profiles = serves.load_serve_profiles(_profiles(tmp_path))
-    loaded = serves.load_manifest(_manifest(tmp_path))
-    monkeypatch.setattr(
-        serves,
-        "docker_states",
-        lambda *_args, **_kwargs: {"qwen": "absent", "thinkingcap": "absent", "deepseek": "absent"},
-    )
-    with pytest.raises(serves.ServeProfileError, match="already in split mode"):
-        serves.cmd_profile(loaded, profiles, "apply", "qwen-thinkingcap-split")
 
 
 def test_profile_apply_defers_first_sigint_until_transaction_finishes(

@@ -8,11 +8,12 @@ import platform
 import re
 import subprocess
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from ..schema import CapabilityStatus, TelemetrySample
 from ..status import prepare_sample
+from . import normalize_collection_time as _timestamp
 
 
 DockerProvider = Callable[
@@ -413,13 +414,3 @@ def _json_object(payload: str, source: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise TypeError(f"{source} did not return an object")
     return value
-
-
-def _timestamp(value: datetime | None) -> datetime:
-    if value is None:
-        return datetime.now(timezone.utc)
-    if not isinstance(value, datetime):
-        raise TypeError("collected_at must be a datetime or None")
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("collected_at must be timezone-aware")
-    return value.astimezone(timezone.utc)

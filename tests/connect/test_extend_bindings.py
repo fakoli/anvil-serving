@@ -8,7 +8,6 @@ right on a real managed host.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -54,56 +53,6 @@ def _admin_seams(monkeypatch: pytest.MonkeyPatch, data: dict[str, object], curre
     return identity
 
 
-def test_extension_publishes_new_activation_before_real_admin_handoff(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The first native admin call sees the new generation and gateway identity."""
-    data = _data(tmp_path)
-    root = Path(data["config_root"])
-    record = {
-        "schema": "anvil-connect.activation/v1",
-        "generation": "b" * 64,
-        "native_sha256": _DIGEST,
-        "components": {"caddy": _DIGEST, "authelia": _DIGEST},
-    }
-    observed: list[Path] = []
-
-    def current(_data: dict[str, object]) -> None:
-        active = json.loads(manage._activation_record(root).read_text(encoding="utf-8"))
-        assert active == record
-
-    identity = _admin_seams(monkeypatch, data, current)
-    monkeypatch.setattr(extend.secrets, "token_hex", lambda _: "binding")
-    manage._write_activation_record(root, record)
-
-    def runner(argv: tuple[str, ...], _timeout: float, handed: manage.ServiceIdentity | None) -> manage.RunResult:
-        assert argv[:2] == ("/usr/bin/managed-connect", "admin")
-        assert handed == identity
-        request = Path(argv[argv.index("--request") + 1])
-        info = request.lstat()
-        assert stat.S_ISREG(info.st_mode) and not stat.S_ISLNK(info.st_mode)
-        assert stat.S_IMODE(info.st_mode) == 0o600
-        parent = request.parent.lstat()
-        # The request remains manager-owned; the exact gateway group gets
-        # traversal/read access only for the published handoff file.
-        assert (parent.st_uid == os.geteuid() and parent.st_gid == identity.gid
-                and stat.S_IMODE(parent.st_mode) == 0o730)
-        assert json.loads(request.read_text(encoding="utf-8")) == {
-            "installation": "reports", "operation": "installation-revoke",
-        }
-        observed.append(request)
-        return manage.RunResult(0)
-
-    result = extend._admin_exchange(
-        data, tmp_path / "manifest.json",
-        {"operation": "installation-revoke", "installation": "reports"},
-        output_name=None, runner=runner,
-    )
-
-    assert result["action"] == "admin"
-    assert observed and not observed[0].exists()
-
-
 def test_admin_exchange_never_follows_precreated_request_or_response_symlinks(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -138,38 +87,6 @@ def test_admin_exchange_never_follows_precreated_request_or_response_symlinks(
     assert request.is_symlink() and not called
 
 
-def test_admin_exchange_rejects_and_cleans_an_unsafe_native_response(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A native response cannot redirect a manager read through a symlink."""
-    data = _data(tmp_path)
-    identity = _admin_seams(monkeypatch, data, lambda _data: None)
-    monkeypatch.setattr(extend.secrets, "token_hex", lambda _: "response")
-    gateway_state = Path(data["gateway"]["state_directory"])
-    gateway_state.mkdir(mode=0o700)
-    gateway_state.chmod(0o700)
-    response_target = tmp_path / "response-target"
-    response_target.write_bytes(b"unchanged-response-target")
-
-    def runner(argv: tuple[str, ...], _timeout: float, handed: manage.ServiceIdentity | None) -> manage.RunResult:
-        assert handed == identity
-        output = Path(argv[argv.index("--output") + 1])
-        output.symlink_to(response_target)
-        return manage.RunResult(0)
-
-    with pytest.raises(extend.ExtendError, match="response is unsafe"):
-        extend._admin_exchange(
-            data, tmp_path / "manifest.json",
-            {"operation": "invite", "installation": "reports", "role": "connector", "resources": ["reports"], "lifetime_seconds": 60},
-            output_name="invitation", runner=runner,
-        )
-
-    state, _ = extend._role_directory(data, "gateway")
-    assert response_target.read_bytes() == b"unchanged-response-target"
-    assert not (state / "request-response.json").exists()
-    assert not (gateway_state / "extend-response-response.json").exists()
-
-
 def test_invitation_handoff_replaces_a_symlink_without_touching_its_target(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -199,48 +116,3 @@ def test_invitation_handoff_replaces_a_symlink_without_touching_its_target(
     assert stat.S_IMODE(info.st_mode) == 0o600
     assert json.loads(result.read_text(encoding="utf-8")) == {"invitation": "opaque"}
     assert target.read_bytes() == b"unchanged-bundle-target"
-
-
-def test_extension_requires_the_actual_nested_manage_identity_shape(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A flattened compatibility fake cannot advance retained native init."""
-    target = manage.Target("connector", "reports")
-    nested = {"identity": {"fingerprint": _FINGERPRINT}}
-    monkeypatch.setattr(manage, "identity", lambda *_args, **_kwargs: nested)
-    assert extend._identity_fingerprint("manifest.json", target, runner=lambda *_: None) == _FINGERPRINT
-    monkeypatch.setattr(manage, "identity", lambda *_args, **_kwargs: {"fingerprint": _FINGERPRINT})
-    with pytest.raises(extend.ExtendError, match="did not report a fingerprint"):
-        extend._identity_fingerprint("manifest.json", target, runner=lambda *_: None)
-
-
-def test_manage_identity_emits_the_nested_shape_consumed_by_extension(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The extension consumes the public manager result, never a native flat fake."""
-    data = _data(tmp_path)
-    data["clients"] = []
-    target = manage.Target("connector", "reports")
-    identity = manage.ServiceIdentity(os.geteuid(), os.getegid())
-    monkeypatch.setattr(manage, "read_manifest", lambda _: data)
-    monkeypatch.setattr(manage, "_native_verified", lambda _: _DIGEST)
-    monkeypatch.setattr(manage, "_target_identity", lambda *_args: identity)
-
-    @contextmanager
-    def declaration(*_args):
-        yield tmp_path / "connector.json"
-
-    monkeypatch.setattr(manage, "_temporary_declaration", declaration)
-    native_identity = {
-        "id": "reports", "status": "enrolled", "fingerprint": _FINGERPRINT,
-        "epoch": _DIGEST, "generation": 1, "resources": ["reports"],
-    }
-
-    def runner(argv: tuple[str, ...], _timeout: float, handed: manage.ServiceIdentity | None) -> manage.RunResult:
-        assert argv == ("/usr/bin/managed-connect", "identity", "--config", str(tmp_path / "connector.json"))
-        assert handed == identity
-        return manage.RunResult(0, json.dumps(native_identity).encode("utf-8"))
-
-    observed = manage.identity(tmp_path / "manifest.json", target, runner=runner)
-    assert observed == {
-        "schema": "anvil-connect.manage/v1", "action": "identity", "target": "connector:reports",
-        "applied": False, "native_sha256": _DIGEST, "identity": native_identity,
-    }

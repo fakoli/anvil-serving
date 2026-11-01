@@ -163,27 +163,3 @@ def test_stt_scope_rejects_llm_candidate_options(tmp_path, capsys):
     ])
     assert rc == 2
     assert "not LLM candidate options" in capsys.readouterr().err
-
-
-def test_stt_overlay_rejects_non_stt_tables(tmp_path, capsys):
-    config = _voice_manifest(tmp_path)
-    corpus_manifest = _corpus_manifest(tmp_path)
-    overlay = tmp_path / "bad.toml"
-    overlay.write_text("[voice.llm]\nmodel='bad'\n", encoding="utf-8")
-    rc = cli.main([
-        "benchmark", "--scope", "stt", "--config", str(config),
-        "--corpus", str(corpus_manifest),
-        "--evidence-out", str(tmp_path / "out.json"),
-        "--stt-candidate-overlay", str(overlay),
-    ])
-    assert rc == 2
-    assert "only [voice.stt]" in capsys.readouterr().err
-
-
-def test_corpus_validate_cli(tmp_path, capsys):
-    manifest = _corpus_manifest(tmp_path)
-    assert cli.main([
-        "corpus", "validate", "--manifest", str(manifest), "--expected-cases", "1",
-    ]) == 0
-    output = json.loads(capsys.readouterr().out)
-    assert output["case_count"] == 1

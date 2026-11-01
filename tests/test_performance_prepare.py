@@ -1,7 +1,6 @@
 """Fake-command preparation tests: no package downloads or model calls."""
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import os
@@ -104,69 +103,6 @@ class FakePreparation:
             run_path=str(self.run), offline=offline, runner=self.runner)
 
 
-def test_preparation_and_offline_reuse_are_bound_and_isolated(tmp_path, monkeypatch):
-    fake = FakePreparation(tmp_path, monkeypatch)
-    result = fake.prepare()
-    assert set(result) == {'lil', 'aiperf'}
-    for name, receipt in result.items():
-        python = prep.verify_performance_environment(receipt, cache_root=str(fake.cache), runner_name=name)
-        assert python == str(fake.cache / receipt['cache_key'] / 'bin/python')
-        assert receipt['source']['revision'] == prep.SOURCES[name]['revision']
-        assert not (fake.cache / receipt['cache_key'] / 'source').stat().st_mode & 0o222
-    assert result['aiperf']['tokenizer']['target_model_tokenizer'] is False
-    assert result['aiperf']['tokenizer']['offline_verified'] is True
-    install = next(argv for argv, _ in fake.calls if 'sync' in argv)
-    assert '--frozen' in install and '--no-editable' in install and '--no-dev' in install
-    assert all('venv' not in argv or '--without-pip' in argv for argv, _ in fake.calls)
-    fake.calls.clear()
-    reused = fake.prepare(offline=True)
-    assert all(receipt['reused'] for receipt in reused.values())
-    assert not any('sync' in argv or 'install' in argv for argv, _ in fake.calls)
-    assert json.loads((fake.run / 'performance-preparation.json').read_text())['status'] == 'ready'
-
-
-def test_offline_missing_environment_and_source_drift_fail_closed(tmp_path, monkeypatch):
-    fake = FakePreparation(tmp_path, monkeypatch)
-    with pytest.raises(BenchmarkJobError, match='absent offline'):
-        fake.prepare(offline=True)
-    assert not any('venv' in argv for argv, _ in fake.calls)
-    source = fake.cache / fake.assets['lil']['cache_key'] / 'llm_decode_bench.py'
-    source.write_text('drift')
-    with pytest.raises(BenchmarkJobError, match='source guard'):
-        fake.prepare()
-    assert json.loads((fake.run / 'performance-preparation.json').read_text())['status'] == 'failed'
-
-
-@pytest.mark.parametrize('mutation', ['package', 'mode', 'directory-mode', 'link', 'receipt', 'cache-key', 'source', 'tokenizer', 'installed-source'])
-def test_reuse_rejects_drift_before_cached_execution(tmp_path, monkeypatch, mutation):
-    fake = FakePreparation(tmp_path, monkeypatch)
-    receipts = fake.prepare()
-    receipt = copy.deepcopy(receipts['aiperf'])
-    root = fake.cache / receipt['cache_key']
-    if mutation == 'package':
-        receipt['resolved_packages'].append('unknown==1.0')
-    elif mutation == 'mode':
-        (root / 'bin/python').chmod(0o644)
-    elif mutation == 'directory-mode':
-        (root / 'bin').chmod(0o700)
-    elif mutation == 'link':
-        (root / 'outside').symlink_to(tmp_path)
-    elif mutation == 'receipt':
-        (root / 'environment.json').write_text('{}')
-    elif mutation == 'cache-key':
-        receipt['cache_key'] = '../outside'
-    elif mutation == 'source':
-        source = root / 'source/pyproject.toml'
-        source.chmod(0o644)
-        source.write_text('changed')
-    elif mutation == 'tokenizer':
-        (root / 'tokenizer/tokenizer-data').unlink()
-    else:
-        (root / 'lib/python3.12/site-packages/aiperf/transports/aiohttp_client.py').write_text('changed')
-    with pytest.raises(BenchmarkJobError):
-        prep.verify_performance_environment(receipt, cache_root=str(fake.cache), runner_name='aiperf')
-
-
 def test_offline_reuse_checks_package_inventory_and_tokenizer_in_child(tmp_path, monkeypatch):
     fake = FakePreparation(tmp_path, monkeypatch)
     fake.prepare()
@@ -177,43 +113,3 @@ def test_offline_reuse_checks_package_inventory_and_tokenizer_in_child(tmp_path,
     fake.fail_offline = True
     with pytest.raises(BenchmarkJobError, match='command failed'):
         fake.prepare(offline=True)
-
-
-def test_failed_tokenizer_closure_does_not_leave_ready_environment(tmp_path, monkeypatch):
-    fake = FakePreparation(tmp_path, monkeypatch)
-    fake.fail_offline = True
-    with pytest.raises(BenchmarkJobError, match='command failed'):
-        fake.prepare()
-    ready = list((fake.cache / 'performance-python-environments').glob('*/environment.json'))
-    assert len(ready) == 1 and json.loads(ready[0].read_text())['runner'] == 'lil'
-    assert json.loads((fake.run / 'performance-preparation.json').read_text())['status'] == 'failed'
-
-
-def test_package_inventory_rejects_unlocked_aiperf_and_wrong_lil(tmp_path, monkeypatch):
-    fake = FakePreparation(tmp_path, monkeypatch)
-    source = fake.cache / fake.assets['aiperf']['cache_key']
-    assert not prep._packages_valid('aiperf', ['aiperf==0.13.0', 'tiktoken==0.13.0'], source)
-    assert not prep._packages_valid('lil', ['httpx==0.28.0', 'rich==14.1.0'], source)
-    assert not prep._packages_valid('lil', ['httpx==0.28.1', 'rich==14.1.0', 'rich==14.1.0'], source)
-
-
-def test_package_names_use_python_distribution_normalization(tmp_path, monkeypatch):
-    fake = FakePreparation(tmp_path, monkeypatch)
-    source = fake.cache / fake.assets['aiperf']['cache_key']
-    assert prep._packages_valid('aiperf', ['aiperf==0.13.0', 'ruamel-yaml==0.18.17'], source)
-
-
-def test_git_inventory_above_log_bound_is_checked_without_truncating(tmp_path):
-    output = 'tracked-source-inventory\0' * 4000
-    logs = []
-    def runner(command, cwd, timeout):
-        return subprocess.CompletedProcess(command, 0, stdout=output, stderr='')
-    assert prep._checked(runner, ('git', 'ls-files', '-z'), logs, cwd=tmp_path) == output
-    assert logs[0]['output_truncated'] is True
-    assert len(logs[0]['stdout'].encode()) <= 65536
-
-
-def test_missing_and_malformed_receipts_are_rejected(tmp_path):
-    for receipt in (None, {}, {'source_hashes': {'example.py': '0' * 64}, 'python': []}):
-        with pytest.raises(BenchmarkJobError):
-            prep.verify_performance_environment(receipt, cache_root=str(tmp_path), runner_name='aiperf')

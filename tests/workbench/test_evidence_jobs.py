@@ -2,7 +2,6 @@ import threading
 import time
 from types import SimpleNamespace
 
-import pytest
 
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 from anvil_serving.workbench_app.evidence_jobs import EvidenceJobs
@@ -26,48 +25,6 @@ class Projects:
         assert self.finish.wait(5)
 
     verify_evidence = submit_evidence = release = review_evidence
-
-
-def test_bounded_background_work_does_not_block_http_or_allow_conflicting_pi(tmp_path):
-    projects = Projects()
-    store = PrivateStore(tmp_path / "private.sqlite")
-    jobs = EvidenceJobs(projects, store, threading.RLock())
-    alice = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
-    try:
-        response = jobs.start(alice, "binding-a", "review")
-        assert response["accepted"] and projects.entered.wait(1)
-        assert jobs.latest(alice, "binding-a")["status"] == "running"
-        with pytest.raises(ObservatoryError, match="Wait for"):
-            jobs.ensure_idle("binding-a")
-        with pytest.raises(ObservatoryError, match="Wait for"):
-            jobs.start(alice, "binding-a", "release")
-        jobs.start(alice, "binding-b", "review")
-        with pytest.raises(ObservatoryError, match="Both evidence workers"):
-            jobs.start(alice, "binding-c", "review")
-        with pytest.raises(ObservatoryError, match="Unavailable"):
-            jobs.latest(SimpleNamespace(principal=SimpleNamespace(identity="bob")), "binding-a")
-    finally:
-        projects.finish.set()
-        jobs.close()
-    assert jobs.latest(alice, "binding-a")["status"] == "complete"
-    assert sorted(projects.calls) == ["binding-a", "binding-b"]
-    store.close()
-
-
-def test_restart_preserves_uncertain_submit_without_replaying(tmp_path):
-    store = PrivateStore(tmp_path / "private.sqlite")
-    store.put("artifact-job", "alice", "old", {"id": "old", "binding_id": "binding-a", "action": "submit", "status": "running"})
-    projects = Projects()
-    jobs = EvidenceJobs(projects, store, threading.RLock())
-    alice = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
-    try:
-        assert jobs.latest(alice, "binding-a")["status"] == "interrupted"
-        with pytest.raises(ObservatoryError, match="Reconcile"):
-            jobs.start(alice, "binding-a", "submit", "a" * 64)
-        assert not projects.calls
-    finally:
-        jobs.close()
-        store.close()
 
 
 def test_terminal_persistence_failure_releases_capacity_and_retains_uncertainty(tmp_path, monkeypatch):

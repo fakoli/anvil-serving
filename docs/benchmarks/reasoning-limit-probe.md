@@ -20,12 +20,13 @@ predeclared harder puzzle is permitted only if the first naturally finishes
 reasoning below 64 tokens and produces a coherent answer. Natural completion
 below the boundary leaves enforcement **untested**.
 
-`tests/router/test_reasoning_limit_probe.py` loads this packet and captures the
-real router/relay body's bytes using an in-process transport. It verifies
-that an isolated tier's configured budget reaches the selected endpoint, that
-the shared tier would still impose 49,152, and that neither configuration is
-mutated by the request. This test opens no sockets. It does not prove engine
-enforcement or authorize running the packet.
+`tests/test_reasoning_probe.py` is the current hermetic regression check for
+the diagnostic runner. It writes a synthetic router configuration and captures
+the request body at an in-process endpoint, while checking the bounded
+deadline, immutable artifacts, operator-attested execution flags, and
+sanitized failure behavior. Run it with
+`python scripts/run_tests.py tests/test_reasoning_probe.py -q`. It does not
+prove engine enforcement or authorize running the packet.
 
 ## Repeatable commands
 

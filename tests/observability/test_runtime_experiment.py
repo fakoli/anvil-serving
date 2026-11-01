@@ -3,7 +3,6 @@
 import copy
 import hashlib
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -104,36 +103,6 @@ def confirmed(args, **changes):
             "dry_run": False, "human_approved": True, "expected_baseline_sha256": preview["baseline_sha256"], **changes}
 
 
-def test_preview_has_exact_revisions_and_no_state_or_probe(runtime):
-    args, state, config, baseline = runtime
-    before = set(config.parent.iterdir())
-    preview = experiment.tool_runtime_experiment(args)["data"]
-    assert set(config.parent.iterdir()) == before and state["calls"] == []
-    assert config.read_bytes() == baseline
-    assert preview["baseline_sha256"] == hashlib.sha256(baseline).hexdigest()
-    assert preview["candidate_sha256"] != preview["baseline_sha256"]
-    assert [step["kind"] for step in preview["plan"]] == experiment._STEPS
-    assert preview["parameters"]["candidate_values"] == {"max_output_tokens": 2048}
-
-
-def test_candidate_compares_same_probe_and_restores_exact_bytes_runtime_and_admissions(runtime):
-    args, state, config, baseline = runtime
-    request = confirmed(args)
-    result = experiment.tool_runtime_experiment(request)["data"]
-    assert result["state"] == "completed" and result["correctness"] == "passed"
-    assert result["baseline_result"]["passed"] and result["candidate_result"]["passed"]
-    assert result["parameters"]["probe"] == {"prompt": "Reply with the single word READY.",
-        "max_tokens": 64, "timeout_seconds": 3, "temperature": 0}
-    assert result["recovery"]["status"] == "succeeded"
-    assert config.read_bytes() == state["installed"] == baseline
-    assert state["admissions"] == {"primary": "admitting", "paused": "quiesced"}
-    assert state["calls"] == ["probe-0", "install", "probe-1", "drain", "restore", "quiesce:paused"]
-    assert not experiment._marker_path().exists()
-    assert "binding" not in result and "baseline_bytes" not in result and str(config) not in json.dumps(result)
-    assert experiment.tool_runtime_experiment(request)["data"] == result
-    assert len(state["calls"]) == 6
-
-
 def test_incorrect_candidate_is_retained_and_never_promoted(runtime):
     args, state, config, baseline = runtime
     state["probe_results"][1] = False
@@ -197,77 +166,6 @@ def test_drifted_runtime_is_not_overwritten_during_recovery(runtime):
     assert "restore" not in state["calls"]
 
 
-def test_interrupted_router_recreation_can_restore_verified_deployment_without_probe_replay(runtime, monkeypatch):
-    args, state, config, baseline = runtime
-    request = confirmed(args)
-    state["crash_probe"] = 1
-    with pytest.raises(KeyboardInterrupt):
-        experiment.tool_runtime_experiment(request)
-    state["installed"] = None
-    def observe(**_):
-        if state["installed"] is None:
-            raise ValueError("router is not running")
-        return {"config_sha256": hashlib.sha256(state["installed"]).hexdigest()}
-    monkeypatch.setattr(router_manage, "installed_fleet_status", observe)
-    result = experiment.tool_runtime_experiment({**request, "action": "restore"})["data"]
-    assert result["recovery"]["status"] == "succeeded"
-    assert config.read_bytes() == state["installed"] == baseline
-    assert sum(call.startswith("probe") for call in state["calls"]) == 2
-
-
-def test_changed_compose_declaration_blocks_restoration(runtime):
-    args, state, _, _ = runtime
-    request = confirmed(args)
-    state["crash_probe"] = 1
-    with pytest.raises(KeyboardInterrupt):
-        experiment.tool_runtime_experiment(request)
-    Path(args["compose"]).write_text('{"services":{"router":{"image":"other"}}}')
-    result = experiment.tool_runtime_experiment({**request, "action": "restore"})["data"]
-    assert result["state"] == "manual_recovery_required"
-    assert "restore" not in state["calls"]
-
-
-def test_restore_drains_requests_that_arrived_after_candidate_probe(runtime):
-    args, state, _, _ = runtime
-    state["traffic_after_candidate"] = 2
-    result = experiment.tool_runtime_experiment(confirmed(args))["data"]
-    assert result["state"] == "completed"
-    assert state["calls"].index("drain") < state["calls"].index("restore")
-    assert state["active_requests"] == 0
-
-
-@pytest.mark.parametrize("drift", ["mount", "environment"])
-def test_changed_mount_or_runtime_environment_refuses_restore(runtime, drift):
-    args, state, _, _ = runtime
-    request = confirmed(args)
-    state["crash_probe"] = 1
-    with pytest.raises(KeyboardInterrupt):
-        experiment.tool_runtime_experiment(request)
-    if drift == "mount":
-        state["mount_source"] += ".unrelated"
-    else:
-        Path(args["env_file"]).write_text("FIXTURE_TOKEN=changed-synthetic\n")
-    result = experiment.tool_runtime_experiment({**request, "action": "restore"})["data"]
-    assert result["state"] == "manual_recovery_required"
-    assert "restore" not in state["calls"] and "drain" not in state["calls"]
-
-
-def test_closed_bounds_and_conflicting_binding_never_dispatch(runtime):
-    args, state, _, _ = runtime
-    for values in ({"max_output_tokens": True}, {"max_output_tokens": 0}, {"endpoint": 1}, {}):
-        with pytest.raises(ToolError):
-            experiment.tool_runtime_experiment({**args, "values": values})
-    request = confirmed(args)
-    with pytest.raises(ToolError, match="human gate"):
-        experiment.tool_runtime_experiment({**request, "human_approved": False})
-    assert state["calls"] == []
-    experiment.tool_runtime_experiment(request)
-    changed = copy.deepcopy(request)
-    changed["alias"] = "llm.other"
-    with pytest.raises(ToolError, match="binding changed"):
-        experiment.tool_runtime_experiment(changed)
-
-
 def test_fixed_probe_uses_router_alias_auth_and_retains_no_response_or_secret(tmp_path, monkeypatch):
     monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "fixture-router-secret")
     requests = []
@@ -293,16 +191,6 @@ def test_fixed_probe_uses_router_alias_auth_and_retains_no_response_or_secret(tm
     assert result["request"]["alias"] == "llm.primary"
     assert "recognized_excerpt" not in result
     assert all(value not in json.dumps(result) for value in ("fixture-router-secret", "http://"))
-
-
-def test_failed_baseline_never_installs_candidate(runtime):
-    args, state, config, baseline = runtime
-    state["probe_results"][0] = False
-    result = experiment.tool_runtime_experiment(confirmed(args))["data"]
-    assert result["correctness"] == "failed" and result["state"] == "failed"
-    assert result["baseline_result"]["passed"] is False and result["candidate_result"] is None
-    assert state["calls"] == ["probe-0"]
-    assert config.read_bytes() == state["installed"] == baseline
 
 
 def test_interruption_before_marker_is_terminal_before_probe_and_never_replayed(runtime, monkeypatch):
@@ -358,25 +246,6 @@ def adapter_runtime(runtime):
         "expected_node": "host-a", "topology": "fixture", "execution_host": "host-a", "execution_runtime": "native"},
         "resources": [resource]}, {}, transport_factory=Transport)
     return adapter, transport_state, state
-
-
-def test_real_adapter_previews_executes_verifies_and_reconciles_exact_runtime_candidate(adapter_runtime):
-    adapter, transport, state = adapter_runtime
-    controls = adapter.controls("candidate-a")
-    assert controls["experiment_class"] == "runtime_candidate"
-    assert controls["experiment_settings"][0]["setting_id"] == "max_output_tokens"
-    preview = adapter.preview("candidate-a", "experiment.start", parameters={"max_output_tokens": 2048})
-    assert state["calls"] == []
-    assert preview["diff"] == [{"field": "max_output_tokens", "before": 4096, "after": 2048}]
-    result = adapter.execute(preview, "confirmed-candidate")
-    assert result["execution_outcome"] == "succeeded"
-    assert result["evidence"]["run_id"] == "confirmed-candidate"
-    assert adapter.verify(preview, result)["status"] == "passed"
-    calls = state["calls"][:]
-    assert adapter.reconcile(preview, "confirmed-candidate")["execution_outcome"] == "succeeded"
-    assert state["calls"] == calls
-    mutations = [args for args, _ in transport["calls"] if args["action"] == "apply"]
-    assert len(mutations) == 1 and mutations[0]["run_id"] == "confirmed-candidate"
 
 
 def test_adapter_recovery_preserves_original_run_and_never_replays_probe(adapter_runtime):

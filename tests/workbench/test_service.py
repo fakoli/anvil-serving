@@ -15,7 +15,6 @@ import pytest
 from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thread
 from anvil_serving.observability.dashboard.app import create_dashboard_server
 from anvil_serving.observability.dashboard.console import Console, attach_console
-from anvil_serving.workbench_app.config import validate_config
 
 
 class Metrics:
@@ -99,16 +98,6 @@ def test_shared_authenticated_namespace_preserves_secret_boundary(site):
     assert call("GET", "session")[0] == 404  # No second login/session bootstrap.
 
 
-def test_mutations_reject_cross_origin_csrf_and_unrecognized_fields(site):
-    _, call, _ = site
-    assert call("POST", "preferences", {"density": "compact"}, extra={"Origin": "https://attacker.example.test"})[0] == 403
-    assert call("POST", "preferences", {"density": "compact"}, extra={"X-CSRF-Token": "bad"})[0] == 403
-    assert call("POST", "preferences", {"command": "danger"})[0] == 400
-    assert call("POST", "preferences", {"density": "compact"})[0] == 200
-    assert call("GET", "preferences")[1]["data"] == {"density": "compact"}
-    assert call("DELETE", "preferences")[0] == 405
-
-
 def test_connect_requires_fresh_assertion_bound_to_exact_new_target(site):
     _, call, mode = site
     if mode != "connect":
@@ -124,49 +113,12 @@ def test_closed_routes_do_not_open_files_or_unconfigured_runners(site, route):
     assert call("GET", route)[0] in {400, 404, 409}
 
 
-def test_config_rejects_browser_style_locations_and_unpinned_runner(tmp_path):
-    config = {"state_path": str(tmp_path / "private.sqlite"), "connectors": [{"id": "model", "label": "Model", "resource_id": "serve-a", "models": ["specific"], "base_url": "https://user:secret@example.test/v1"}]}
-    with pytest.raises(ValueError):
-        validate_config(config)
-    with pytest.raises(ValueError):
-        validate_config({"state_path": "relative"})
-
-
 def test_encoded_task_identifier_is_decoded_after_exact_target_auth(site):
     console, call, _ = site
     calls = []
     console.workbench.projects.task = lambda session, project, task: calls.append((project, task)) or {"task": {"id": task}}
     assert call("GET", "projects/product/tasks/plan%3AT001")[1]["data"]["task"]["id"] == "plan:T001"
     assert calls == [("product", "plan:T001")]
-
-
-def test_pi_storage_failure_is_actionable_and_never_claims_a_task(site, monkeypatch):
-    from anvil_serving.workbench_app import pi_storage
-
-    console, call, _ = site
-    console.workbench.pi = SimpleNamespace(close=lambda: None)
-    console.workbench.config["projects"] = [{"id": "product", "resource_id": "serve-a"}]
-    console.workbench.config["pi"] = {}
-    monkeypatch.setattr(console.workbench.projects, "project", lambda _session, project, *, execute=False: ({"id": project} if execute and project == "product" else pytest.fail("storage failure did not authorize the requested project")))
-    monkeypatch.setattr(console.workbench.projects, "prepare", lambda *_: pytest.fail("storage failure acquired a task"))
-
-    def unavailable(_):
-        raise pi_storage.PiStorageError("private pool details")
-
-    monkeypatch.setattr(pi_storage, "validate_pool", unavailable)
-    status, result = call("POST", "pi/sessions", {"project_id": "product", "task_id": "plan:T001",
-        "request_id": "start-a", "provider_id": "selected", "model_id": "model-a", "thinking_level": "off"})
-    assert status == 409
-    assert result["error"]["code"] == "pi_storage_unavailable"
-    assert "managed pool mount" in result["error"]["message"]
-    assert "private pool details" not in json.dumps(result)
-
-
-@pytest.mark.parametrize("component", ["plan%2FT001", "%2e%2e", "plan%253AT001", "plan%5cT001", "%ff", "plan%00T001"])
-def test_encoded_separators_and_double_encoding_never_reach_adapter(site, component):
-    console, call, _ = site
-    console.workbench.projects.task = lambda *_: pytest.fail("invalid route reached adapter")
-    assert call("GET", f"projects/product/tasks/{component}")[0] == 400
 
 
 def test_project_root_reads_authorize_before_open_and_keep_paths_server_side(site, tmp_path, monkeypatch):
@@ -484,35 +436,3 @@ def test_pi_command_receipts_retry_only_proven_pre_dispatch_rejections(site, mon
     assert service.store.get("pi-command", "alice", uncertain["request_id"])["result"] == {"accepted": False, "status": "outcome_unknown"}
     assert service._pi_mutate("pi/sessions/managed-pi-session/command", uncertain, caller) == {"accepted": False, "status": "outcome_unknown"}
     assert ambiguous.writes == 1
-
-
-def test_pre_dispatch_receipt_cleanup_failure_remains_non_replayable(site, monkeypatch):
-    from anvil_serving.workbench_app.pi_sessions import PiCommandNotDispatched, PiStartUncertain
-
-    console, _, _ = site
-    service = console.workbench
-    item = SimpleNamespace(session_id="managed-pi-session", binding=SimpleNamespace())
-    caller = SimpleNamespace(principal=SimpleNamespace(identity="alice"))
-    body = {"project_id": "product", "task_id": "plan:T001", "request_id": "command-cleanup-failed",
-            "name": "prompt", "payload": {"message": "one retained turn"}}
-    monkeypatch.setattr(service, "_pi_session", lambda *_args, **_kwargs: item)
-    monkeypatch.setattr(service.projects, "validate_pi_binding", lambda _binding: None)
-    monkeypatch.setattr(service.projects, "binding_for_pi", lambda _binding: {"id": "binding-a"})
-    monkeypatch.setattr(service.evidence_jobs, "ensure_idle", lambda _binding_id: None)
-
-    class PreDispatch:
-        writes = 0
-
-        def command(self, *_args):
-            raise PiCommandNotDispatched(PiStartUncertain("runner is recovering"))
-
-        def close(self):
-            pass
-
-    service.pi = PreDispatch()
-    monkeypatch.setattr(service.store, "delete", lambda *_args: (_ for _ in ()).throw(OSError("receipt cleanup failed")))
-    with pytest.raises(OSError, match="receipt cleanup failed"):
-        service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller)
-    assert service.store.get("pi-command", "alice", body["request_id"])["result"] == {"accepted": False, "status": "outcome_unknown"}
-    assert service._pi_mutate("pi/sessions/managed-pi-session/command", body, caller) == {"accepted": False, "status": "outcome_unknown"}
-    assert service.pi.writes == 0

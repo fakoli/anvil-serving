@@ -7,7 +7,6 @@ proven without network access or real tokens.
 
 from __future__ import annotations
 
-import dataclasses
 import json
 from pathlib import Path
 import sys
@@ -138,82 +137,7 @@ def _api_token(monkeypatch: pytest.MonkeyPatch) -> None:
 # --- configuration parsing --------------------------------------------------
 
 
-def test_config_defaults_and_strict_fields(tmp_path: Path) -> None:
-    parsed = edge_config({
-        "account_id": ACCOUNT, "zone_name": "example.test",
-        "tunnel_id": TUNNEL_ID, "ca_pool": str(tmp_path / "ca.pem"),
-    })
-    assert parsed.api_token_env == "ANVIL_CLOUDFLARE_API_TOKEN"
-    assert parsed.origin_service == "https://127.0.0.1:19443"
-    assert parsed.origin_server_name is None
-
-
-@pytest.mark.parametrize("mutation", [
-    {"account_id": "short"},
-    {"zone_name": "example.test:8080"},
-    {"zone_name": "*.example.test"},
-    {"tunnel_id": "not-a-uuid"},
-    {"ca_pool": "relative/ca.pem"},
-    {"api_token_env": "lower-not-env"},
-    {"origin_service": "https://0.0.0.0:443"},
-    {"origin_server_name": "*.example.test"},
-    {"unknown_field": True},
-])
-def test_config_rejects_unsafe_fields(tmp_path: Path, mutation: dict[str, object]) -> None:
-    base: dict[str, object] = {
-        "account_id": ACCOUNT, "zone_name": "example.test",
-        "tunnel_id": TUNNEL_ID, "ca_pool": str(tmp_path / "ca.pem"),
-    }
-    base.update(mutation)
-    with pytest.raises(EdgeError):
-        edge_config(base)
-
-
-def test_load_config_requires_the_private_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty"))
-    with pytest.raises(EdgeError, match="edge-cloudflare.json"):
-        edge.load_config()
-
-
-def test_published_hosts_are_sorted_and_deduplicated(tmp_path: Path) -> None:
-    manifest = _manifest(tmp_path, ("b.example.test", "a.example.test", "b.example.test"))
-    assert edge.published_hosts(json.loads(Path(manifest).read_text())) == ("a.example.test", "b.example.test")
-
-
-def test_plan_rejects_hosts_outside_the_zone(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("elsewhere.example.org",))
-    with pytest.raises(EdgeError, match="outside the configured zone"):
-        edge.plan(config, manifest, fetch=ScriptedCloudflare(ingress=[]))
-
-
 # --- plan and apply behavior ------------------------------------------------
-
-
-def test_plan_reports_missing_dns_and_changed_ingress(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test", "b.example.test"))
-    api = ScriptedCloudflare(ingress=[{"service": "http_status:404"}])
-    report = edge.plan(config, manifest, fetch=api)
-    assert report["dns"] == {"a.example.test": "create", "b.example.test": "create"}
-    assert report["ingress"]["managed_hosts"] == ["a.example.test", "b.example.test"]
-    assert report["ingress"]["changed"] is True
-    assert report["tunnel"]["status"] == "healthy"
-
-
-def test_plan_preserves_foreign_rules_and_catch_all_last(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    legacy = {"hostname": "old.example.test", "service": "http://localhost:8446"}
-    api = ScriptedCloudflare(ingress=[legacy, {"service": "http_status:503"}])
-    result = edge.apply(config, manifest, confirm=True, fetch=api)
-    merged = api.ingress
-    assert merged[0]["hostname"] == "a.example.test"  # managed rules first
-    assert merged[1] == legacy  # foreign rule preserved
-    assert merged[-1] == {"service": "http_status:503"}  # existing catch-all stays last
-    assert merged[0]["service"] == "https://127.0.0.1:19443"
-    assert result["applied"] == ["tunnel_ingress", "dns:a.example.test"]
-    assert api.settings == {"warp-routing": {"enabled": False}, "originRequest": {"connectTimeout": 15}}
 
 
 def test_apply_is_idempotent_on_repetition(tmp_path: Path) -> None:
@@ -244,38 +168,7 @@ def test_apply_fails_closed_when_the_tunnel_has_no_connector(tmp_path: Path) -> 
         edge.apply(config, manifest, confirm=True, fetch=api)
 
 
-def test_dns_updates_existing_record_with_wrong_target(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    api = ScriptedCloudflare(ingress=[], dns={
-        "a.example.test": {"id": "rec1", "name": "a.example.test", "content": "old.example.test", "proxied": False},
-    })
-    result = edge.apply(config, manifest, confirm=True, fetch=api)
-    assert "dns:a.example.test" in result["applied"]
-    assert api.dns["a.example.test"]["content"] == f"{TUNNEL_ID}.cfargotunnel.com"
-    assert api.dns["a.example.test"]["proxied"] is True
-
-
-def test_ingress_rule_carries_the_operator_pki(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    api = ScriptedCloudflare(ingress=[])
-    edge.apply(config, manifest, confirm=True, fetch=api)
-    rule = api.ingress[0]
-    assert rule["originRequest"]["caPool"].endswith("ca.pem")
-    assert rule["originRequest"]["originServerName"] == "connect.example.test"
-    assert rule["originRequest"]["noTLSVerify"] is False
-
-
 # --- credential hygiene -----------------------------------------------------
-
-
-def test_missing_token_is_an_actionable_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.delenv("ANVIL_CLOUDFLARE_API_TOKEN", raising=False)
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    with pytest.raises(EdgeError, match="ANVIL_CLOUDFLARE_API_TOKEN"):
-        edge.plan(config, manifest, fetch=ScriptedCloudflare(ingress=[]))
 
 
 def test_cloudflare_rejection_surfaces_error_codes_without_the_token(tmp_path: Path) -> None:
@@ -290,25 +183,7 @@ def test_cloudflare_rejection_surfaces_error_codes_without_the_token(tmp_path: P
         edge.plan(config, manifest, fetch=rejecting)
 
 
-def test_config_carries_only_the_token_env_reference(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    names = {item.name for item in dataclasses.fields(config)}
-    assert not names & {"token", "api_token", "secret", "key"}
-    assert config.api_token_env == "ANVIL_CLOUDFLARE_API_TOKEN"
-
 # --- Greptile finding 1: withdrawn hosts must be reported and retired --------
-
-
-def test_plan_reports_withdrawn_hosts_as_orphans(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    old_manifest = _manifest(tmp_path, ("a.example.test", "old.example.test"))
-    api = ScriptedCloudflare(ingress=[])
-    edge.apply(config, old_manifest, confirm=True, fetch=api)
-    renamed_manifest = _manifest(tmp_path, ("a.example.test", "b.example.test"))
-    report = edge.plan(config, renamed_manifest, fetch=api)
-    assert report["orphans"]["ingress_hosts"] == ["old.example.test"]
-    assert report["orphans"]["dns_hosts"] == ["old.example.test"]
-    assert report["orphans"]["retire_with"].endswith("--retire-orphans --confirm")
 
 
 def test_withdrawn_host_keeps_routing_until_deliberate_retirement(tmp_path: Path) -> None:
@@ -371,86 +246,3 @@ def test_dns_failure_reports_completed_tunnel_write(tmp_path: Path) -> None:
     assert raised.value.applied == ("tunnel_ingress",)
     assert raised.value.failed_step == "edge apply"
     assert "tunnel_ingress" in str(raised.value)
-
-
-def test_connector_failure_reports_all_completed_mutations(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    api = ScriptedCloudflare(ingress=[], tunnel_status="down")
-    with pytest.raises(EdgeError) as raised:
-        edge.apply(config, manifest, confirm=True, fetch=api)
-    assert raised.value.failed_step == "connector_verification"
-    assert set(raised.value.applied) == {"tunnel_ingress", "dns:a.example.test"}
-
-
-@pytest.mark.parametrize("invalid", [None, {}, {"ingress": []}, {"config": None},
-                                        {"config": {"ingress": [None]}}])
-def test_invalid_tunnel_response_never_becomes_an_empty_configuration(tmp_path: Path, invalid: object) -> None:
-    api = ScriptedCloudflare(ingress=[])
-
-    def fetch(url: str, method: str, body: bytes | None, token: str) -> object:
-        if url.endswith("/configurations") and method == "GET":
-            return {"success": True, "result": invalid}
-        return api(url, method, body, token)
-
-    with pytest.raises(EdgeError, match="invalid"):
-        edge.apply(_config(tmp_path), _manifest(tmp_path, ("a.example.test",)), confirm=True, fetch=fetch)
-    assert all(method == "GET" for method, _ in api.calls)
-
-
-def test_default_origin_sni_matches_each_declared_hostname(tmp_path: Path) -> None:
-    api = ScriptedCloudflare(ingress=[])
-    edge.apply(_config(tmp_path, origin_server_name=None),
-               _manifest(tmp_path, ("a.example.test", "b.example.test")), confirm=True, fetch=api)
-    assert [(rule["hostname"], rule["originRequest"]["originServerName"])
-            for rule in api.ingress[:-1]] == [("a.example.test", "a.example.test"), ("b.example.test", "b.example.test")]
-
-
-def test_successful_api_write_requires_matching_readback(tmp_path: Path) -> None:
-    api = ScriptedCloudflare(ingress=[{"service": "http_status:404"}])
-
-    def fetch(url: str, method: str, body: bytes | None, token: str) -> object:
-        if url.endswith("/configurations") and method == "PUT":
-            return {"success": True, "result": {}}
-        return api(url, method, body, token)
-
-    with pytest.raises(EdgeError) as raised:
-        edge.apply(_config(tmp_path), _manifest(tmp_path, ("a.example.test",)), confirm=True, fetch=fetch)
-    assert raised.value.failed_step == "edge_verification"
-    assert raised.value.applied == ("tunnel_ingress", "dns:a.example.test")
-
-
-@pytest.mark.parametrize("status,connections", [("down", []), ("degraded", [1]), ("unknown", [1]), ("healthy", [])])
-def test_apply_requires_healthy_connected_tunnel(tmp_path, status, connections):
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    api = ScriptedCloudflare(ingress=[])
-    def fetch(url, method, body, token):
-        response = api(url, method, body, token)
-        if url.endswith(f"/cfd_tunnel/{TUNNEL_ID}"):
-            response["result"].update(status=status, connections=connections)
-        return response
-    with pytest.raises(EdgeError) as caught:
-        edge.apply(config, manifest, confirm=True, fetch=fetch)
-    assert caught.value.failed_step == "connector_verification"
-
-
-def test_apply_preserves_sibling_added_after_plan(tmp_path):
-    config = _config(tmp_path)
-    manifest = _manifest(tmp_path, ("a.example.test",))
-    api = ScriptedCloudflare(ingress=[])
-    reads = 0
-    def fetch(url, method, body, token):
-        nonlocal reads
-        if url.endswith("/configurations") and method == "GET":
-            reads += 1
-            if reads == 2:
-                api.settings["new-setting"] = {"future": True}
-        return api(url, method, body, token)
-    edge.apply(config, manifest, confirm=True, fetch=fetch)
-    assert api.settings["new-setting"] == {"future": True}
-
-
-def test_http_origin_omits_tls_only_options(tmp_path):
-    config = _config(tmp_path, origin_service="http://127.0.0.1:19443")
-    assert edge._ingress_rule(config, "a.example.test")["originRequest"] == {}

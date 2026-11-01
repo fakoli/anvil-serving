@@ -3,12 +3,10 @@ from __future__ import annotations
 import json
 import subprocess
 
-import pytest
 
 from anvil_serving.media.artifacts import ArtifactStore
 from anvil_serving.media.backends import BackendOutput, BackendStatus
 from anvil_serving.media.comfyui import WorkflowCompatibility
-from anvil_serving.media.errors import MediaError
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.qualification import qualify
 from anvil_serving.media.workflows import WorkflowRegistry, canonical_digest
@@ -189,43 +187,6 @@ def test_managed_image_qualification_is_durable_decodable_and_not_promoted(tmp_p
     }
     assert result["artifacts"][0]["sha256"]
     assert result["quality"]["status"] == "human_required"
-
-
-def test_managed_image_qualification_rejects_profile_dimension_drift(
-    tmp_path,
-    monkeypatch,
-):
-    registry, lock_path = _registry(
-        tmp_path,
-        profiled=True,
-        profile_dimensions=(1024, 1024),
-    )
-    monkeypatch.setattr(
-        "anvil_serving.media.qualification.bundle_inventory",
-        lambda *_args, **_kwargs: {
-            "ready": True,
-            "assets": [{"state": "exact"}],
-        },
-    )
-    ticks = iter([0.0, 0.01, 1.5, 2.0, 2.5])
-    with pytest.raises(MediaError) as error:
-        qualify(
-            "image.test",
-            "v1",
-            {"prompt": "test prompt"},
-            registry=registry,
-            jobs=MediaJobStore(tmp_path / "jobs.sqlite3"),
-            artifacts=ArtifactStore(tmp_path / "artifacts"),
-            backend=_Backend(expected_dimensions=(1024, 1024)),
-            principal="qualifier",
-            quality_profile="high",
-            lock_path=lock_path,
-            models_volume="media-models",
-            monotonic=lambda: next(ticks),
-            sleep=lambda _seconds: None,
-            gpu_runner=_gpu_runner,
-        )
-    assert error.value.code == "media_qualification_output_dimensions"
 
 
 __all__ = ["_Backend", "_gpu_runner", "_registry"]

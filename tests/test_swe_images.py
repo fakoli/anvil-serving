@@ -7,11 +7,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving import guard, model_pull_native
+from anvil_serving import guard
 from anvil_serving.benchmarking import jobs_cli
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.swe_images import prepare_paired_images
-from anvil_serving.commands import manifest_data
 
 
 INSTANCE = "django__django-13512"
@@ -104,30 +103,6 @@ def _prepare(tmp_path, calls, **options):
     return arguments
 
 
-def test_preview_is_read_only_and_defers_runtime_discovery(tmp_path):
-    calls = []
-    arguments = _prepare(tmp_path, calls)
-
-    result = prepare_paired_images(
-        {INSTANCE: IMAGE_ID},
-        {INSTANCE: REGISTRY_DIGEST},
-        **arguments,
-    )
-
-    assert result["status"] == "preview"
-    assert result["images"] == [
-        {
-            "instance_id": INSTANCE,
-            "tag": "swebench/sweb.eval.x86_64.django_1776_django-13512:latest",
-            "image_id": IMAGE_ID,
-            "registry_digest": REGISTRY_DIGEST,
-        }
-    ]
-    assert calls == []
-    assert not (tmp_path / "receipt.json").exists()
-    assert not (tmp_path / "run-root" / ".locks").exists()
-
-
 def test_confirmed_prepare_uses_docker_root_and_verifies_both_identities(tmp_path):
     calls = []
     arguments = _prepare_args(tmp_path, calls)
@@ -155,24 +130,6 @@ def test_confirmed_prepare_uses_docker_root_and_verifies_both_identities(tmp_pat
     assert json.loads((tmp_path / "receipt.json").read_text())["status"] == "verified"
 
 
-def test_wrong_local_id_never_updates_official_tag_and_retains_receipt(tmp_path):
-    calls = []
-    arguments = _prepare(tmp_path, calls, wrong_id=True)
-
-    with pytest.raises(BenchmarkJobError) as raised:
-        prepare_paired_images(
-            {INSTANCE: IMAGE_ID},
-            {INSTANCE: REGISTRY_DIGEST},
-            confirm=True,
-            **arguments,
-        )
-
-    assert raised.value.code == "swe_image_identity_mismatch"
-    receipt = json.loads((tmp_path / "receipt.json").read_text())
-    assert receipt["images"][0]["error"] == "swe_image_identity_mismatch"
-    assert not any("tag" in call for call in calls)
-
-
 def test_timeout_retains_bounded_command_diagnostics(tmp_path):
     calls = []
     arguments = _prepare(tmp_path, calls, timeout_pull=True)
@@ -192,100 +149,6 @@ def test_timeout_retains_bounded_command_diagnostics(tmp_path):
     assert command["timed_out"] is True
     assert command["stdout"] == "pull began"
     assert command["stderr"] == "registry stopped responding"
-
-
-def test_reserve_is_measured_on_docker_root_and_stops_before_pull(tmp_path):
-    calls = []
-    arguments = _prepare_args(tmp_path, calls)
-    docker_root = arguments.pop("_docker_root")
-    observed_paths = arguments.pop("_observed_paths")
-    arguments["disk_usage"] = _disk_usage(MIN_FREE_BYTES - 1, observed_paths)
-
-    with pytest.raises(BenchmarkJobError) as raised:
-        prepare_paired_images(
-            {INSTANCE: IMAGE_ID},
-            {INSTANCE: REGISTRY_DIGEST},
-            confirm=True,
-            **arguments,
-        )
-
-    assert raised.value.code == "insufficient_disk"
-    assert observed_paths == [str(docker_root)]
-    assert not any("pull" in call for call in calls)
-
-
-def test_remote_docker_override_is_rejected_before_receipt_or_command(tmp_path):
-    calls = []
-    arguments = _prepare(tmp_path, calls)
-    arguments["env"] = {"DOCKER_HOST": "tcp://example.test:2376"}
-
-    with pytest.raises(BenchmarkJobError) as raised:
-        prepare_paired_images(
-            {INSTANCE: IMAGE_ID},
-            {INSTANCE: REGISTRY_DIGEST},
-            confirm=True,
-            **arguments,
-        )
-
-    assert raised.value.code == "nonlocal_container_endpoint"
-    assert calls == []
-    assert not (tmp_path / "receipt.json").exists()
-
-
-def test_docker_context_overrides_host_and_pins_resolved_endpoint(tmp_path):
-    calls = []
-    arguments = _prepare_args(tmp_path, calls)
-    arguments.pop("_docker_root")
-    arguments.pop("_observed_paths")
-    arguments["env"] = {
-        "DOCKER_CONTEXT": "selected-local",
-        "DOCKER_HOST": "ssh://remote.example",
-    }
-
-    result = prepare_paired_images(
-        {INSTANCE: IMAGE_ID},
-        {INSTANCE: REGISTRY_DIGEST},
-        confirm=True,
-        **arguments,
-    )
-
-    assert result["status"] == "verified"
-    assert calls[0] == [
-        "/usr/bin/docker",
-        "context",
-        "inspect",
-        "--format",
-        "{{json .Endpoints.docker.Host}}",
-        "selected-local",
-    ]
-    assert all(
-        call[:3] == ["/usr/bin/docker", "--host", DOCKER_ENDPOINT]
-        for call in calls[1:]
-    )
-    assert all("ssh://remote.example" not in call for call in calls)
-
-
-def test_global_run_root_lock_serializes_different_receipt_directories(tmp_path):
-    calls = []
-    arguments = _prepare_args(tmp_path, calls)
-    arguments.pop("_docker_root")
-    arguments.pop("_observed_paths")
-    lock_root = Path(arguments["lock_root"])
-    other_receipt = tmp_path / "other-spec" / "receipt.json"
-    arguments["receipt_path"] = str(other_receipt)
-
-    with model_pull_native._writer(lock_root, "other-spec"):
-        with pytest.raises(BenchmarkJobError) as raised:
-            prepare_paired_images(
-                {INSTANCE: IMAGE_ID},
-                {INSTANCE: REGISTRY_DIGEST},
-                confirm=True,
-                **arguments,
-            )
-
-    assert raised.value.code == "swe_image_receipt_conflict"
-    assert not other_receipt.exists()
-    assert not any("pull" in call for call in calls)
 
 
 def _job_spec(worker_id="worker-a"):
@@ -308,120 +171,6 @@ def _job_spec(worker_id="worker-a"):
             "paired_image_repo_digests": {INSTANCE: REGISTRY_DIGEST},
         },
     }
-
-
-@pytest.mark.parametrize(
-    ("profile", "instance_ids", "expected_code"),
-    [
-        ("smoke", [], "explicit_swe_selection_required"),
-        ("smoke", ["not-an-instance"], "bad_swe_selection"),
-        ("smoke", [INSTANCE, "astropy__astropy-12907"], "explicit_swe_selection_required"),
-        (
-            "scout",
-            [
-                INSTANCE,
-                "astropy__astropy-12907",
-                "pytest-dev__pytest-11143",
-                "sympy__sympy-20590",
-                INSTANCE,
-            ],
-            "bad_swe_selection",
-        ),
-    ],
-)
-def test_jobs_cli_rejects_invalid_swe_selection_before_docker_resolution(
-    tmp_path, monkeypatch, profile, instance_ids, expected_code
-):
-    spec = _job_spec()
-    spec["profile"] = profile
-    spec["parameters"]["instance_ids"] = instance_ids
-    spec_path = tmp_path / "spec.json"
-    spec_path.write_text(json.dumps(spec), encoding="utf-8")
-    monkeypatch.setattr(
-        jobs_cli,
-        "resolve_container_binary",
-        lambda: pytest.fail("Docker resolved before SWE selection validation"),
-    )
-
-    with pytest.raises(BenchmarkJobError) as raised:
-        jobs_cli.run(
-            [
-                "swe",
-                "images",
-                "--spec",
-                str(spec_path),
-                "--worker",
-                "worker-a",
-                "--dry-run",
-            ]
-        )
-
-    assert raised.value.code == expected_code
-
-
-@pytest.mark.parametrize(
-    "parameters",
-    [[], {"instance_ids": [INSTANCE], "paired_image_ids": {}, "paired_image_repo_digests": {}}],
-)
-def test_jobs_cli_rejects_invalid_swe_image_parameters_before_docker_resolution(
-    tmp_path, monkeypatch, parameters
-):
-    spec = _job_spec()
-    spec["parameters"] = parameters
-    spec_path = tmp_path / "spec.json"
-    spec_path.write_text(json.dumps(spec), encoding="utf-8")
-    monkeypatch.setattr(
-        jobs_cli,
-        "resolve_container_binary",
-        lambda: pytest.fail("Docker resolved before SWE image policy validation"),
-    )
-
-    with pytest.raises(BenchmarkJobError) as raised:
-        jobs_cli.run(
-            [
-                "swe",
-                "images",
-                "--spec",
-                str(spec_path),
-                "--worker",
-                "worker-a",
-                "--dry-run",
-            ]
-        )
-
-    assert raised.value.code == "bad_swe_image_policy"
-
-
-def test_jobs_cli_binds_requested_worker_to_actual_local_hostname(
-    tmp_path, monkeypatch
-):
-    run_root = tmp_path / "runs"
-    run_root.mkdir()
-    spec_path = tmp_path / "spec.json"
-    spec_path.write_text(json.dumps(_job_spec()), encoding="utf-8")
-    monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(run_root))
-    monkeypatch.setattr(jobs_cli.socket, "gethostname", lambda: "other-worker")
-    monkeypatch.setattr(
-        jobs_cli,
-        "resolve_container_binary",
-        lambda: pytest.fail("Docker resolved before worker identity"),
-    )
-
-    with pytest.raises(BenchmarkJobError) as raised:
-        jobs_cli.run(
-            [
-                "swe",
-                "images",
-                "--spec",
-                str(spec_path),
-                "--worker",
-                "worker-a",
-                "--dry-run",
-            ]
-        )
-
-    assert raised.value.code == "swe_image_worker_mismatch"
-    assert list(run_root.iterdir()) == []
 
 
 def test_jobs_cli_accepts_dispatcher_confirmation_scope(tmp_path, monkeypatch):
@@ -456,18 +205,6 @@ def test_jobs_cli_accepts_dispatcher_confirmation_scope(tmp_path, monkeypatch):
     assert Path(seen["receipt_path"]).parent.name == jobs_cli.job_spec_sha256(
         jobs_cli._swe_image_spec(str(spec_path))
     )
-
-
-def test_image_preparation_is_declared_local_linux_only():
-    command = next(
-        item
-        for item in manifest_data()["commands"]
-        if item["path"] == "eval benchmark swe images"
-    )
-
-    assert command["transports"] == ["local"]
-    assert command["execution_host_os"] == ["linux"]
-    assert command["mutation_class"] == "mutate"
 
 
 def test_image_runner_retains_bounded_head_and_tail(monkeypatch, tmp_path):

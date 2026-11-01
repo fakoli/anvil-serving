@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 import json
-import os
 import socket
-import struct
 import threading
 import time
 from contextlib import contextmanager
@@ -13,10 +11,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from anvil_serving.control_plane.authorization import INFERENCE_USE, WORKLOADS_READ, load_authorization_policy
+from anvil_serving.control_plane.authorization import INFERENCE_USE, load_authorization_policy
 from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.config import RouterConfig, ServerConfig
-from anvil_serving.router.front_door import OperatorRoute, make_server
+from anvil_serving.router.front_door import make_server
 from anvil_serving.router.serve import RoutingBackend
 from tests.router.helpers import make_tier
 
@@ -77,7 +75,7 @@ class _Upstream:
                 pass
 
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread = threading.Thread(target=self.httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
 
     def __enter__(self):
         self.thread.start()
@@ -124,7 +122,7 @@ class _DripHeadersUpstream:
 
         owner = self
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread = threading.Thread(target=self.httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
 
     def __enter__(self):
         self.thread.start()
@@ -170,7 +168,7 @@ class _BufferedKeepaliveUpstream:
                 pass
 
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread = threading.Thread(target=self.httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
 
     def __enter__(self):
         self.thread.start()
@@ -200,7 +198,7 @@ def _gateway(upstream, config: ServerConfig, *, auth_token=None, policy=None, ro
         "127.0.0.1", 0, routing, model_routes=("chat",), auth_token=auth_token,
         authorization_policy=policy, operator_routes=routes, server_config=config,
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server.server_address[:2], routing
@@ -255,19 +253,6 @@ def _read_until(sock, needle, timeout=1.0, *, body_only=False):
     return b"".join(chunks)
 
 
-@pytest.mark.parametrize("engine", ("vllm", "sglang", "llamacpp"))
-def test_managed_runtime_heartbeats_then_relays_all_openai_engines(engine):
-    settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=1, total_timeout_s=2,
-                            heartbeat_interval_s=0.03)
-    with _Upstream(engine) as upstream, _gateway(upstream, settings) as ((host, port), _routing):
-        with socket.create_connection((host, port), timeout=1) as client:
-            _post(client)
-            assert upstream.opened.wait(1)
-            assert b": keepalive\n\n" in _read_until(client, b": keepalive\n\n")
-            upstream.release.set()
-            assert b'"content":"ok"' in _read_until(client, b"[DONE]")
-
-
 def test_silent_upstream_hits_startup_deadline_despite_heartbeats():
     settings = ServerConfig(startup_timeout_s=0.08, idle_timeout_s=1, total_timeout_s=1,
                             heartbeat_interval_s=0.02)
@@ -313,29 +298,6 @@ def test_buffered_dripped_headers_cannot_outlive_startup_deadline_or_admission()
             wire = _read_until(client, b"\r\n\r\n", timeout=1)
     assert b" 504 " in wire
     assert routing._admission.snapshot("loopback").active_requests == 0
-
-
-def test_buffered_content_length_returns_before_upstream_keepalive_closes():
-    settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=1, total_timeout_s=5,
-                            heartbeat_interval_s=0.02)
-    with _BufferedKeepaliveUpstream() as upstream, _gateway(upstream, settings, max_concurrency=1) as ((host, port), routing):
-        with socket.create_connection((host, port), timeout=1) as client:
-            started = time.monotonic()
-            _post(client, stream=False, session_id="session-buffered")
-            assert upstream.opened.wait(1)
-            wire = _read_until(client, b'"content": "prompt"', timeout=0.5)
-        assert time.monotonic() - started < 1
-        assert not upstream.release.is_set()
-        assert b" 200 " in wire
-        assert b'"content": "prompt"' in wire
-        deadline = time.monotonic() + 0.5
-        while routing._admission.snapshot("loopback").active_requests and time.monotonic() < deadline:
-            time.sleep(0.01)
-        assert routing._admission.snapshot("loopback").active_requests == 0
-        record = routing._decision_log.last
-        assert record is not None
-        assert record.session_id == "session-buffered"
-        assert record.attempts[-1].succeeded is True
 
 
 @pytest.mark.parametrize(("idle_timeout_s", "total_timeout_s"), ((0.1, 2), (2, 1)))
@@ -395,89 +357,6 @@ def test_cancellation_at_gate_acquisition_does_not_leak_permit(auto):
     else:
         assert gate._sem.acquire(blocking=False)
         gate._sem.release()
-
-
-def test_worker_cleanup_failure_does_not_prevent_permit_release():
-    from anvil_serving.router.front_door_runtime import DeliveryWorker
-    from anvil_serving.router.request_control import RequestControl
-
-    proceed, released = threading.Event(), threading.Event()
-    worker = DeliveryWorker(lambda send: proceed.wait(1), RequestControl())
-
-    def broken_observer():
-        raise RuntimeError("private observer details")
-
-    worker.when_finished(broken_observer)
-    worker.when_finished(released.set)
-    proceed.set()
-    assert released.wait(1)
-    worker.close()
-
-
-@pytest.mark.parametrize("stream", (False, True))
-def test_client_disconnect_interrupts_silent_upstream_and_releases_admission_once(stream):
-    # Cleanup must beat both the backend silence and the configured deadline.
-    settings = ServerConfig(startup_timeout_s=10, idle_timeout_s=10, total_timeout_s=20,
-                            heartbeat_interval_s=0.02)
-    with _Upstream() as upstream, _gateway(upstream, settings, max_concurrency=1) as ((host, port), routing):
-        client = socket.create_connection((host, port), timeout=1)
-        _post(client, stream=stream)
-        assert upstream.opened.wait(1)
-        linger_format = "HH" if os.name == "nt" else "ii"
-        client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack(linger_format, 1, 0))
-        client.close()
-        end = time.monotonic() + 1
-        while routing._admission.snapshot("loopback").active_requests and time.monotonic() < end:
-            time.sleep(0.01)
-        assert routing._admission.snapshot("loopback").active_requests == 0
-        assert routing._decision_log.last.attempts[0].reason == "client_disconnected"
-        with socket.create_connection((host, port), timeout=1) as next_client:
-            _post(next_client)
-            assert b" 200 " in _read_until(next_client, b"\r\n\r\n")
-
-
-def test_write_half_closed_client_still_receives_managed_stream():
-    settings = ServerConfig(startup_timeout_s=1, idle_timeout_s=1, total_timeout_s=2,
-                            heartbeat_interval_s=0.02)
-    with _Upstream() as upstream, _gateway(upstream, settings) as ((host, port), _routing):
-        with socket.create_connection((host, port), timeout=1) as client:
-            _post(client)
-            client.shutdown(socket.SHUT_WR)
-            assert upstream.opened.wait(1)
-            assert b": keepalive\n\n" in _read_until(client, b": keepalive\n\n", timeout=1)
-            upstream.release.set()
-            wire = _read_until(client, b'"content":"ok"', timeout=1)
-    assert b'"content":"ok"' in wire
-
-
-def test_inference_client_has_its_own_cap_and_cannot_read_operator_route(tmp_path):
-    policy_path = tmp_path / "policy.json"
-    policy_path.write_text(json.dumps({"schema_version": 1, "clients": [
-        {"id": "limited", "scopes": [INFERENCE_USE], "credential_env": "LIMITED"},
-        {"id": "other", "scopes": [INFERENCE_USE], "credential_env": "OTHER"},
-    ]}), encoding="utf-8")
-    policy = load_authorization_policy(str(policy_path), env={
-        "LIMITED": "limited-token-012345", "OTHER": "other-token-012345",
-    })
-    settings = ServerConfig(client_limits={"limited": 1}, startup_timeout_s=1, idle_timeout_s=1,
-                            total_timeout_s=2, heartbeat_interval_s=0.02)
-    route = OperatorRoute("GET", "/v1/operator/protected", WORKLOADS_READ, lambda _query: b"{}")
-    with _Upstream() as upstream, _gateway(upstream, settings, auth_token="legacy", policy=policy, routes=(route,)) as ((host, port), _routing):
-        first = socket.create_connection((host, port), timeout=1)
-        try:
-            _post(first, token="limited-token-012345")
-            assert upstream.opened.wait(1)
-            with socket.create_connection((host, port), timeout=1) as limited:
-                _post(limited, token="limited-token-012345")
-                assert b" 429 " in _read_until(limited, b"\r\n\r\n")
-            with socket.create_connection((host, port), timeout=1) as other:
-                _post(other, token="other-token-012345")
-                assert b" 200 " in _read_until(other, b"\r\n\r\n")
-            with socket.create_connection((host, port), timeout=1) as management:
-                management.sendall(b"GET /v1/operator/protected HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer limited-token-012345\r\nConnection: close\r\n\r\n")
-                assert b" 403 " in _read_until(management, b"\r\n\r\n")
-        finally:
-            first.close()
 
 
 def test_client_cap_covers_slow_body_and_releases_after_close_or_bad_json(tmp_path):

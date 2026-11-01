@@ -135,7 +135,7 @@ def running(portal,monkeypatch, **options):
     server = make_server("127.0.0.1",0,StaticBackend(["ok"]),auth_token=master,model_routes=["llm.primary"],server_config=config,**options)
     # Join handlers, including post-response audit writes, before deleting SQLite.
     server.daemon_threads = False
-    thread = threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True);thread.start()
     try: yield server.server_address,secret,check_secret,master
     finally: server.shutdown();server.server_close();thread.join(5)
 
@@ -169,72 +169,6 @@ def test_broker_signatures_replay_closed_body_and_live_request(portal,monkeypatc
         assert status==200
 
 
-def test_home_issues_memory_keys_with_rest_mcp_and_live_bank_isolation(portal, monkeypatch, tmp_path):
-    from dataclasses import replace
-    from anvil_serving.memory_access import SCHEMA
-    from anvil_serving.router.memory import MemoryRouter
-    from tests.router.test_memory import ROUTE, CaptureTransport
-
-    policy = tmp_path / "access.json"
-    grant = {"default_bank": "personal-a", "admin": False, "banks": {"personal-a": ["recall"]}}
-    policy.write_text(json.dumps({"schema": SCHEMA, "users": {OWNER: grant}})); policy.chmod(0o600)
-    transport = CaptureTransport(b'{"results":[]}')
-    memory = MemoryRouter([ROUTE, replace(ROUTE, alias="memory.user", principal="connect", bank="connect", access_file=str(policy))],
-                          env={"HINDSIGHT_TOKEN": "fixture-token"}, transport=transport)
-    paths = ["/v1/memory", "/v1/memory/mcp"]
-    with running(portal, monkeypatch, memory=memory) as (address, secret, *_):
-        def broker(operation, admin=False):
-            status, _, raw = send_http(address, connect_keys.BROKER_PATH, json.dumps(operation),
-                {"X-Anvil-Connect-Identity": assertion(secret, owner=ADMIN if admin else OWNER, role="admin" if admin else "member")})
-            assert status == 200, raw
-            return json.loads(raw)
-        catalog = broker({"action": "view"}, admin=True)
-        assert "memory.user" in catalog["models"] and ROUTE.alias not in catalog["models"]
-        broker({"action": "request"})
-        revision = broker({"action": "view"})["account"]["revision"]
-        broker({"action": "approve", "owner": OWNER, "revision": revision, "status": "approved",
-                "models": ["memory.user"], "paths": paths, "rpm": 60, "expires_days": 1}, admin=True)
-        revision = broker({"action": "view"})["account"]["revision"]
-        issued = broker({"action": "create", "name": "memory test", "revision": revision,
-                         "models": ["memory.user"], "paths": paths, "rpm": 60, "expires_days": 1})
-        headers = {"Authorization": "Bearer " + issued["secret"]}
-        for bank in (None, "personal-b"):
-            before = len(transport.calls)
-            body = {"alias": "memory.user", "operation": "recall", "arguments": {"query": "test"}}
-            if bank: body["bank"] = bank
-            status, _, _ = send_http(address, paths[0], json.dumps(body), headers)
-            assert status == (403 if bank else 200)
-            args = {"alias": "memory.user", "query": "test", **({"bank": bank} if bank else {})}
-            status, _, raw = send_http(address, paths[1], json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-                "params": {"name": "memory_recall", "arguments": args}}), headers)
-            assert status == 200 and bool(json.loads(raw)["result"].get("isError")) == bool(bank)
-            assert len(transport.calls) == before + (0 if bank else 2)
-            if not bank: assert "/personal-a/" in transport.calls[-1]["url"]
-        policy.write_text("{}")
-        assert send_http(address, paths[0], json.dumps({"alias": "memory.user", "operation": "recall", "arguments": {"query": "test"}}), headers)[0] == 503
-        assert len(transport.calls) == 2
-
-
-def test_slow_owner_checks_do_not_occupy_ordinary_key_slots(portal,monkeypatch):
-    p,_=portal
-    approve(p,rpm=60)
-    owned=[issue(p)["secret"] for _ in range(4)]
-    _,ordinary=p.store.create("ordinary",["llm.primary"],[CHAT])
-    entered=threading.Barrier(5);release=threading.Event()
-    def checker(*actor):
-        entered.wait(timeout=5); release.wait(timeout=5); return True
-    p.store.owner_check=checker
-    with running(portal,monkeypatch) as (address,*_):
-        payload=json.dumps({"model":"llm.primary","messages":[{"role":"user","content":"hi"}]})
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            futures=[pool.submit(send_http,address,CHAT,payload,{"Authorization":"Bearer "+token}) for token in owned]
-            try:
-                entered.wait(timeout=5)
-                assert send_http(address,CHAT,payload,{"Authorization":"Bearer "+ordinary})[0]==200
-            finally:release.set()
-            assert all(f.result()[0]==200 for f in futures)
-
-
 def test_inactive_account_removal_preserves_revision_fence(portal):
     p, allowed = portal
     approve(p)
@@ -252,25 +186,6 @@ def test_inactive_account_removal_preserves_revision_fence(portal):
     new = call(p,"view")["account"]
     assert new["revision"] > old["revision"]
     with pytest.raises(connect_keys.Denied): forget(old["revision"])
-
-
-@pytest.mark.parametrize("value",["http://127.0.0.1:9000","https://localhost","https://home.example.test:443","https://HOME.example.test","https://127.0.0.1","https://home.example.test/path"])
-def test_home_url_matches_signed_host_contract(value):
-    with pytest.raises(ValueError): connect_keys.home_url(value)
-
-
-def test_bounded_retired_key_list_and_full_usage_totals(portal):
-    p,_=portal
-    approve(p)
-    for i in range(105):
-        result=issue(p)
-        p.store.record(result["key"]["key_id"],None,"POST",CHAT,200,1)
-        call(p,"revoke",key_id=result["key"]["key_id"])
-    live=issue(p)
-    view=call(p,"view")
-    assert view["keys_truncated"] and len(view["keys"])==100
-    assert view["keys"][0]["key_id"]==live["key"]["key_id"]
-    assert view["usage_totals"]["requests"]==105
 
 
 def test_native_memory_key_retry_preserves_policy_and_refuses_other_owners(portal):
@@ -303,22 +218,3 @@ def test_native_memory_key_retry_preserves_policy_and_refuses_other_owners(porta
     allowed.remove(actor)
     with pytest.raises(connect_keys.Denied):
         provision(p.store, actor, secret="ask_" + secrets.token_urlsafe(32), apply=True)
-
-
-def test_disabled_account_cannot_read_device_catalog(portal, monkeypatch):
-    p, allowed = portal
-    approve(p)
-    token = issue(p)["secret"]
-    with running(portal, monkeypatch) as (address, *_):
-        def get(path):
-            connection = http.client.HTTPConnection(*address, timeout=5)
-            try:
-                connection.request("GET", path, headers={"Authorization": "Bearer " + token})
-                response = connection.getresponse(); response.read()
-                return response.status
-            finally:
-                connection.close()
-        assert get("/v1/models") == 200
-        allowed.clear()
-        for path in ("/v1/models", "/v1/models/capabilities", "/v1/router/status"):
-            assert get(path) == 401

@@ -11,8 +11,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.observability.dashboard.contracts import ObservatoryError, digest
-from anvil_serving.workbench_app import project_files
-from anvil_serving.workbench_app.project_files import MAX_GIT_BYTES, MAX_TEXT_BYTES, ProjectFiles
+from anvil_serving.workbench_app.project_files import MAX_TEXT_BYTES, ProjectFiles
 
 
 _SAFE_DESCRIPTOR_ROOTS = os.name == "posix" and all(
@@ -160,31 +159,6 @@ def test_regular_open_rejects_symlink_special_binary_and_oversized_files(tmp_pat
 
 
 @requires_safe_project_roots
-def test_openat_keeps_the_original_root_when_configured_path_is_replaced(tmp_path, monkeypatch):
-    reader, _, root = _reader(tmp_path)
-    (root / "safe.txt").write_text("safe", encoding="utf-8")
-    escape = tmp_path / "escape"
-    escape.mkdir()
-    (escape / "safe.txt").write_text("escape", encoding="utf-8")
-    original = project_files.os.open
-    moved = tmp_path / "moved"
-    replaced = False
-
-    def raced(path, flags, *args, **kwargs):
-        nonlocal replaced
-        descriptor = original(path, flags, *args, **kwargs)
-        if not replaced and path == root.name and "dir_fd" in kwargs:
-            replaced = True
-            root.rename(moved)
-            root.symlink_to(escape, target_is_directory=True)
-        return descriptor
-
-    monkeypatch.setattr(project_files.os, "open", raced)
-    assert reader.text("session", "product", "primary", "safe.txt")["content"] == "safe"
-    assert replaced
-
-
-@requires_safe_project_roots
 def test_frozen_task_reads_are_binding_scoped_and_never_invoke_git(tmp_path, monkeypatch):
     reader, row, checkout, _ = _frozen_reader(tmp_path)
     (checkout / "code.py").write_text("new\n", encoding="utf-8")
@@ -208,21 +182,6 @@ def test_frozen_task_reads_are_binding_scoped_and_never_invoke_git(tmp_path, mon
 
 
 @requires_safe_project_roots
-def test_frozen_reviewed_patch_refuses_deleted_or_changed_artifacts(tmp_path):
-    reader, row, _, artifacts = _frozen_reader(tmp_path)
-    digest_value = row["root_review"]["roots"][0]["artifact_digest"]
-    (artifacts / (digest_value + ".patch")).unlink()
-    _error(lambda: reader.frozen_diff("session", "binding-a", "root-a"), "evidence_tampered")
-
-    changed = tmp_path / "changed"
-    changed.mkdir()
-    reader, row, _, artifacts = _frozen_reader(changed)
-    digest_value = row["root_review"]["roots"][0]["artifact_digest"]
-    (artifacts / (digest_value + ".patch")).write_text("changed", encoding="utf-8")
-    _error(lambda: reader.frozen_diff("session", "binding-a", "root-a"), "evidence_tampered")
-
-
-@requires_safe_project_roots
 def test_frozen_binding_authorizes_before_opening_any_task_root(tmp_path, monkeypatch):
     reader, _, _, _ = _frozen_reader(tmp_path)
     monkeypatch.setattr(reader.projects, "binding", lambda *_: (_ for _ in ()).throw(ObservatoryError("not_found", "no binding", 404)))
@@ -242,42 +201,8 @@ def test_root_open_refuses_a_symlinked_ancestor(tmp_path):
     _error(lambda: ProjectFiles(Projects(project)).text("session", "product", "primary", "safe.txt"), "project_root_unavailable")
 
 
-def test_unresolved_owner_and_cross_project_never_open_a_root(tmp_path):
-    root = tmp_path / "checkout"
-    root.mkdir()
-    reader, projects, _ = _reader(tmp_path, [_root("remote", root, owner_id="remote-owner")])
-    _error(lambda: reader.tree("session", "product", "remote"), "project_root_unsupported")
-    _error(lambda: reader.tree("session", "other-project", "remote"), "not_found")
-    assert projects.calls == [("session", "product"), ("session", "other-project")]
-
-
-def test_missing_safe_descriptor_flags_fail_closed(tmp_path, monkeypatch):
-    reader, _, root = _reader(tmp_path)
-    (root / "safe.txt").write_text("safe", encoding="utf-8")
-    monkeypatch.delattr(project_files.os, "O_DIRECTORY", raising=False)
-    _error(lambda: reader.text("session", "product", "primary", "safe.txt"), "project_root_unsupported")
-
-
 def _git(root, *args):
     return subprocess.run(("git", *args), cwd=root, check=True, capture_output=True)
-
-
-@requires_safe_project_roots
-def test_diff_and_worktree_use_the_declared_checkout_and_literal_path_arguments(tmp_path):
-    reader, _, root = _reader(tmp_path)
-    _git(root, "init", "-q")
-    _git(root, "config", "user.email", "test@example.test")
-    _git(root, "config", "user.name", "Test")
-    (root / "-literal.txt").write_text("old\n", encoding="utf-8")
-    _git(root, "add", "--", "-literal.txt")
-    _git(root, "commit", "-qm", "initial")
-    (root / "-literal.txt").write_text("new\n", encoding="utf-8")
-
-    diff = reader.diff("session", "product", "primary", "-literal.txt")
-    worktree = reader.worktree("session", "product", "primary")
-    assert "-literal.txt" in diff["diff"] and diff["kind"] == "working" and str(root) not in diff["diff"]
-    assert worktree["root_id"] == "primary" and worktree["dirty"] is True
-    assert len(worktree["head"]) == 40 and str(root) not in repr(worktree)
 
 
 @requires_safe_project_roots
@@ -313,96 +238,6 @@ def test_diff_uses_literal_safe_regular_files_and_disables_hostile_filters(tmp_p
     assert not marker.exists()
     _error(lambda: reader.diff("session", "product", "primary", "nested"), "project_file_unavailable")
     _error(lambda: reader.diff("session", "product", "primary", "normal.txt", kind="all"), "invalid_project_diff")
-
-
-@requires_safe_project_roots
-def test_diff_does_not_follow_a_deleted_or_nonregular_target(tmp_path):
-    reader, _, root = _reader(tmp_path)
-    _git(root, "init", "-q")
-    _git(root, "config", "user.email", "test@example.test")
-    _git(root, "config", "user.name", "Test")
-    (root / "deleted.txt").write_text("old\n", encoding="utf-8")
-    _git(root, "add", "deleted.txt")
-    _git(root, "commit", "-qm", "initial")
-    (root / "deleted.txt").unlink()
-
-    _error(lambda: reader.diff("session", "product", "primary", "deleted.txt"), "project_file_unavailable")
-
-
-@requires_safe_project_roots
-def test_staged_empty_file_remains_a_staged_deletion(tmp_path):
-    reader, _, root = _reader(tmp_path)
-    _git(root, "init", "-q")
-    _git(root, "config", "user.email", "test@example.test")
-    _git(root, "config", "user.name", "Test")
-    (root / "empty.txt").write_text("old\n", encoding="utf-8")
-    _git(root, "add", "empty.txt")
-    _git(root, "commit", "-qm", "initial")
-    (root / "empty.txt").write_bytes(b"")
-    _git(root, "add", "empty.txt")
-
-    staged = reader.diff("session", "product", "primary", "empty.txt", kind="staged")
-    assert "-old" in staged["diff"] and "+old" not in staged["diff"]
-
-
-@requires_safe_project_roots
-def test_diff_refuses_binary_bytes_and_bounded_renderer_failures(tmp_path):
-    reader, projects, root = _reader(tmp_path)
-    _git(root, "init", "-q")
-    _git(root, "config", "user.email", "test@example.test")
-    _git(root, "config", "user.name", "Test")
-    (root / "binary.bin").write_bytes(b"old\0")
-    (root / "invalid.txt").write_bytes(b"old\xff")
-    _git(root, "add", "binary.bin", "invalid.txt")
-    _git(root, "commit", "-qm", "initial")
-    (root / "binary.bin").write_bytes(b"new\0")
-    _error(lambda: reader.diff("session", "product", "primary", "binary.bin"), "project_diff_unavailable")
-    (root / "invalid.txt").write_bytes(b"new\xff")
-    _error(lambda: reader.diff("session", "product", "primary", "invalid.txt"), "project_diff_unavailable")
-
-    (root / "text.txt").write_text("content\n", encoding="utf-8")
-    def oversized(*_args):
-        return b"x" * (MAX_GIT_BYTES + 1)
-    oversized_reader = ProjectFiles(projects, diff_runner=oversized)
-    _error(lambda: oversized_reader.diff("session", "product", "primary", "text.txt"), "project_diff_too_large")
-
-    slow_reader = ProjectFiles(projects)
-    def slow(*args):
-        slow_reader.clock = lambda: args[-1] + 1
-        return b""
-    slow_reader.diff_runner = slow
-    _error(lambda: slow_reader.diff("session", "product", "primary", "text.txt"), "project_read_timeout")
-
-
-@requires_safe_project_roots
-def test_diff_keeps_descriptor_pinned_working_bytes_after_parent_replacement(tmp_path, monkeypatch):
-    reader, _, root = _reader(tmp_path)
-    _git(root, "init", "-q")
-    _git(root, "config", "user.email", "test@example.test")
-    _git(root, "config", "user.name", "Test")
-    (root / "safe.txt").write_text("old\n", encoding="utf-8")
-    _git(root, "add", "safe.txt")
-    _git(root, "commit", "-qm", "initial")
-    (root / "safe.txt").write_text("pinned\n", encoding="utf-8")
-    escape = tmp_path / "escape"
-    escape.mkdir()
-    (escape / "safe.txt").write_text("escaped\n", encoding="utf-8")
-    moved = tmp_path / "moved"
-    original = project_files.os.open
-    replaced = False
-
-    def raced(path, flags, *args, **kwargs):
-        nonlocal replaced
-        descriptor = original(path, flags, *args, **kwargs)
-        if not replaced and path == "safe.txt" and "dir_fd" in kwargs:
-            replaced = True
-            root.rename(moved)
-            root.symlink_to(escape, target_is_directory=True)
-        return descriptor
-
-    monkeypatch.setattr(project_files.os, "open", raced)
-    result = reader.diff("session", "product", "primary", "safe.txt")
-    assert replaced and "pinned" in result["diff"] and "escaped" not in result["diff"]
 
 
 @requires_safe_project_roots

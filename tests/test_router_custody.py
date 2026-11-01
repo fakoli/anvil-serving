@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving import cli, router_manage
+from anvil_serving import router_manage
 
 
 def observed():
@@ -63,29 +63,6 @@ def test_custody_failure_does_not_expose_diagnostics(failure):
         raise failure
     assert router_manage._restart_custody("router", run) == {
         "available": False, "error": "router_custody_unavailable"}
-
-
-def test_missing_reference_is_unknown_not_mismatch():
-    run, calls = runner()
-    def missing(argv, **kwargs):
-        if argv[:3] == ["docker", "image", "inspect"]:
-            return SimpleNamespace(returncode=1, stdout="", stderr="PRIVATE")
-        return run(argv, **kwargs)
-    result = router_manage._restart_custody("router", missing)
-    assert result["available"] is True
-    assert result["local_reference_matches"] is None
-
-
-def test_human_status_unchanged_and_json_structured(monkeypatch, capsys):
-    summary = {"container": "anvil-router", "docker_state": "running", "running": True,
-               "health_status": 200, "health_url": "http://127.0.0.1:8000/", "ok": True,
-               "custody": {"available": False, "error": "router_custody_unavailable"}}
-    monkeypatch.setattr(router_manage, "status_summary", lambda *args, **kwargs: summary)
-    assert cli.main(["router", "status"]) == 0
-    assert capsys.readouterr().out == "router container: anvil-router\ndocker state:     running\n"
-    assert cli.main(["router", "status", "--json"]) == 0
-    result = json.loads(capsys.readouterr().out)
-    assert result["data"] == summary
 
 
 def test_existing_health_fields_survive_custody_failure(monkeypatch):

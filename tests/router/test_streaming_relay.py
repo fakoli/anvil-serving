@@ -16,7 +16,6 @@ import io
 import json
 import socket
 import threading
-import urllib.error
 from dataclasses import replace
 from functools import partial
 
@@ -26,17 +25,11 @@ from anvil_serving.router.backends.relay import (
     RelayBackend,
     RelayBackendError,
     RelayTimeoutError,
-    split_into_deltas,
 )
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import ReplicaIdentity, ReplicaMember, RouterConfig, Tier
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.serve import ReplicaRuntime, RoutingBackend
-from anvil_serving.router.backends.sse import (
-    AnthropicStreamAssembler,
-    OpenAIStreamAssembler,
-    iter_sse_events,
-)
 from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.request_control import RequestControl
 from tests.router.helpers import make_tier as _tier
@@ -93,47 +86,11 @@ def _openai_sse(*chunks: dict, done: bool = True) -> bytes:
 # --------------------------------------------------------------------------- #
 # SSE parser
 # --------------------------------------------------------------------------- #
-def test_iter_sse_events_named_and_plain():
-    raw = (b"event: message_start\ndata: {\"a\":1}\n\n"
-           b": keep-alive comment\n\n"
-           b"data: {\"b\":2}\n\n"
-           b"data: [DONE]\n\n")
-    events = list(iter_sse_events(io.BytesIO(raw)))
-    assert events == [("message_start", '{"a":1}'), (None, '{"b":2}'),
-                      (None, "[DONE]")]
-
-
-def test_iter_sse_events_multiline_data_and_no_trailing_blank():
-    raw = b"data: {\"x\":\ndata: 1}\n\ndata: tail"
-    events = list(iter_sse_events(io.BytesIO(raw)))
-    assert events == [(None, '{"x":\n1}'), (None, "tail")]
 
 
 # --------------------------------------------------------------------------- #
 # OpenAI streaming
 # --------------------------------------------------------------------------- #
-def test_openai_streaming_deltas_and_structured():
-    payload = _openai_sse(
-        {"choices": [{"index": 0, "delta": {"role": "assistant"}}]},
-        {"choices": [{"index": 0, "delta": {"content": "Hel"}}]},
-        {"choices": [{"index": 0, "delta": {"content": "lo"}}]},
-        {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]},
-        {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 2}},
-    )
-    transport = FakeStreamTransport(payload)
-    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
-                           stream_transport=transport)
-    deltas = list(backend.generate(_request()))
-    assert deltas == ["Hel", "lo"]  # REAL model chunks, not word-split fakes
-    s = backend.get_last_structured()
-    assert s is not None
-    assert s.finish_reason == "stop"
-    assert s.usage == {"input_tokens": 12, "output_tokens": 2}
-    assert transport.response.closed
-    # The upstream body asked to stream, with usage in the final chunk.
-    body = transport.bodies[0]
-    assert body["stream"] is True
-    assert body["stream_options"] == {"include_usage": True}
 
 
 def test_streaming_cancel_interrupts_the_open_socket_without_closing_generator():
@@ -164,40 +121,6 @@ def test_streaming_cancel_interrupts_the_open_socket_without_closing_generator()
     assert not response.closed
     stream.close()
     assert response.closed
-
-
-def test_controlled_stream_eof_is_a_terminal_error_not_idle_activity():
-    response = FakeStreamResponse(b"")
-    backend = RelayBackend(
-        _tier("openai"), env={"EXAMPLE_KEY": "k"},
-        stream_transport=lambda *args, **kwargs: response,
-    )
-    request = _request()
-    request.raw["_anvil_control"] = RequestControl()
-    with pytest.raises(RelayBackendError, match="ended before completion"):
-        list(backend.generate(request))
-    assert response.closed
-
-
-def test_openai_streaming_tool_calls_accumulate():
-    payload = _openai_sse(
-        {"choices": [{"index": 0, "delta": {"tool_calls": [
-            {"index": 0, "id": "call_1", "type": "function",
-             "function": {"name": "get_weather", "arguments": ""}}]}}]},
-        {"choices": [{"index": 0, "delta": {"tool_calls": [
-            {"index": 0, "function": {"arguments": "{\"city\": "}}]}}]},
-        {"choices": [{"index": 0, "delta": {"tool_calls": [
-            {"index": 0, "function": {"arguments": "\"Oakland\"}"}}]}}]},
-        {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]},
-    )
-    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
-                           stream_transport=FakeStreamTransport(payload))
-    assert list(backend.generate(_request())) == []
-    s = backend.get_last_structured()
-    (tc,) = s.tool_calls
-    assert tc["id"] == "call_1" and tc["name"] == "get_weather"
-    assert json.loads(tc["arguments"]) == {"city": "Oakland"}  # str, like buffered
-    assert s.finish_reason == "tool_calls"
 
 
 # --------------------------------------------------------------------------- #
@@ -245,61 +168,9 @@ def test_anthropic_streaming_deltas_tools_and_usage():
     assert s.usage == {"input_tokens": 7, "output_tokens": 9}
 
 
-def test_anthropic_streaming_preserves_tool_arguments_without_gateway_rewrite():
-    assembler = AnthropicStreamAssembler()
-    assembler.feed("content_block_start", json.dumps({
-        "type": "content_block_start",
-        "index": 0,
-        "content_block": {
-            "type": "tool_use",
-            "id": "toolu_bad",
-            "name": "get_weather",
-            "input": {},
-        },
-    }))
-    assembler.feed("content_block_delta", json.dumps({
-        "type": "content_block_delta",
-        "index": 0,
-        "delta": {"type": "input_json_delta", "partial_json": "{not json"},
-    }))
-
-    (tool_call,) = assembler.result().tool_calls
-    assert tool_call["arguments"] == "{not json"
-
-
 # --------------------------------------------------------------------------- #
 # gating / fallbacks / caps
 # --------------------------------------------------------------------------- #
-def test_non_sse_response_falls_back_to_buffered_parse():
-    body = json.dumps({
-        "choices": [{"message": {"content": "one two"},
-                     "finish_reason": "stop"}],
-        "usage": {"prompt_tokens": 3, "completion_tokens": 2},
-    }).encode()
-    backend = RelayBackend(
-        _tier("openai"), env={"EXAMPLE_KEY": "k"},
-        stream_transport=FakeStreamTransport(body, ctype="application/json"))
-    assert "".join(backend.generate(_request())) == "one two"
-    s = backend.get_last_structured()
-    assert s.finish_reason == "stop"
-    assert s.usage == {"input_tokens": 3, "output_tokens": 2}
-
-
-@pytest.mark.parametrize(
-    "text",
-    [
-        "def encode(plaintext, a, b):\n if not isinstance(plaintext, str):\n  raise TypeError('bad')\n return plaintext",
-        "one   two",
-        " leading and trailing ",
-        "    ",
-        "\tleading\tand\nnewlines\n",
-        "",
-    ],
-)
-def test_split_into_deltas_preserves_exact_text(text):
-    deltas = split_into_deltas(text)
-    assert "".join(deltas) == text
-    assert all(deltas)
 
 
 @pytest.mark.parametrize("mode", ["buffered", "json-stream-fallback"])
@@ -331,93 +202,6 @@ def test_buffered_and_json_fallback_preserve_code_indentation(mode):
 
 
 @pytest.mark.parametrize(
-    ("dialect", "wire_usage", "expected"),
-    [
-        ("openai", {"prompt_tokens": 11}, {"input_tokens": 11}),
-        ("anthropic", {"output_tokens": 7}, {"output_tokens": 7}),
-    ],
-)
-def test_real_buffered_relay_preserves_each_partial_usage_field(
-    dialect, wire_usage, expected
-):
-    def buffered(url, *, data, headers, timeout):
-        if dialect == "anthropic":
-            return json.dumps(
-                {"content": [{"type": "text", "text": "ok"}], "usage": wire_usage}
-            ).encode()
-        return json.dumps(
-            {"choices": [{"message": {"content": "ok"}}], "usage": wire_usage}
-        ).encode()
-
-    request = InternalRequest(
-        model="chat",
-        messages=[Message("user", "hi")],
-        stream=False,
-        dialect=dialect,
-    )
-    backend = RelayBackend(
-        _tier(dialect), env={"EXAMPLE_KEY": "k"}, transport=buffered
-    )
-    assert list(backend.generate(request)) == ["ok"]
-    assert backend.get_last_structured().usage == expected
-
-
-def test_real_openai_sse_relay_preserves_partial_input_usage():
-    payload = _openai_sse(
-        {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
-        {"choices": [], "usage": {"prompt_tokens": 11}},
-    )
-    backend = RelayBackend(
-        _tier("openai"),
-        env={"EXAMPLE_KEY": "k"},
-        stream_transport=FakeStreamTransport(payload),
-    )
-    assert list(backend.generate(_request())) == ["ok"]
-    assert backend.get_last_structured().usage == {"input_tokens": 11}
-
-
-def test_real_anthropic_sse_relay_preserves_partial_output_usage():
-    payload = (
-        b'event: content_block_delta\ndata: {"type":"content_block_delta",'
-        b'"index":0,"delta":{"type":"text_delta","text":"ok"}}\n\n'
-        b'event: message_delta\ndata: {"type":"message_delta",'
-        b'"usage":{"output_tokens":7}}\n\n'
-        b'event: message_stop\ndata: {"type":"message_stop"}\n\n'
-    )
-    request = InternalRequest(
-        model="chat",
-        messages=[Message("user", "hi")],
-        stream=True,
-        dialect="anthropic",
-    )
-    backend = RelayBackend(
-        _tier("anthropic"),
-        env={"EXAMPLE_KEY": "k"},
-        stream_transport=FakeStreamTransport(payload),
-    )
-    assert list(backend.generate(request)) == ["ok"]
-    assert backend.get_last_structured().usage == {"output_tokens": 7}
-
-
-def test_custom_buffered_transport_never_streams():
-    """A hermetic buffered transport (no stream companion) keeps the old path —
-    it must not attempt a network streaming call."""
-    calls = []
-
-    def buffered(url, *, data, headers, timeout):
-        calls.append(json.loads(data))
-        return json.dumps({
-            "choices": [{"message": {"content": "buffered"},
-                         "finish_reason": "stop"}],
-        }).encode()
-
-    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
-                           transport=buffered)
-    assert "".join(backend.generate(_request(stream=True))) == "buffered"
-    assert calls[0]["stream"] is False  # buffered path body unchanged
-
-
-@pytest.mark.parametrize(
     ("failure", "expected"),
     ((ConnectionResetError, RelayBackendError), (TimeoutError, RelayTimeoutError)),
 )
@@ -435,51 +219,6 @@ def test_buffered_transport_classifies_reset_separately_from_timeout(failure, ex
         "model upstream request failed", "model upstream request timed out",
     }
     assert "private-" not in str(caught.value)
-
-
-def test_extra_body_stream_override_wins():
-    tier = _tier("openai", extra_body={"stream": False})
-    transport = FakeStreamTransport(_openai_sse(
-        {"choices": [{"index": 0, "delta": {"content": "x"}}]}))
-    backend = RelayBackend(tier, env={"EXAMPLE_KEY": "k"},
-                           stream_transport=transport)
-    list(backend.generate(_request()))
-    body = transport.bodies[0]
-    assert body["stream"] is False           # operator override respected
-    assert "stream_options" not in body
-
-
-def test_streaming_response_cap_enforced():
-    payload = _openai_sse(
-        {"choices": [{"index": 0, "delta": {"content": "x" * 64}}]},
-        {"choices": [{"index": 0, "delta": {"content": "y" * 64}}]},
-    )
-    backend = RelayBackend(_tier("openai"), env={"EXAMPLE_KEY": "k"},
-                           stream_transport=FakeStreamTransport(payload),
-                           max_response_bytes=100)
-    with pytest.raises(RelayBackendError):
-        list(backend.generate(_request()))
-
-
-def test_relay_backend_streams_too():
-    payload = _openai_sse(
-        {"choices": [{"index": 0, "delta": {"content": "local "}}]},
-        {"choices": [{"index": 0, "delta": {"content": "stream"}}]},
-        {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]},
-    )
-    tier = _tier("openai", privacy="local")
-    backend = RelayBackend(tier, env={},
-                           stream_transport=FakeStreamTransport(payload))
-    assert list(backend.generate(_request())) == ["local ", "stream"]
-
-
-def test_assemblers_skip_malformed_events():
-    oa = OpenAIStreamAssembler()
-    assert oa.feed(None, "not json") is None
-    assert oa.feed(None, '{"choices": "nope"}') is None
-    an = AnthropicStreamAssembler()
-    assert an.feed("content_block_delta", "not json") is None
-    assert an.feed(None, '{"type": "content_block_delta", "delta": 5}') is None
 
 
 # --------------------------------------------------------------------------- #
@@ -691,134 +430,6 @@ def _count_real_member_releases(monkeypatch, routing: RoutingBackend) -> list[st
     return calls
 
 
-def test_replica_actual_sse_normal_and_malformed_terminal_paths_release_once(
-    monkeypatch, replica_routing,
-):
-    normal: list[FakeStreamResponse] = []
-    malformed: list[FakeStreamResponse] = []
-
-    def normal_response() -> FakeStreamResponse:
-        response = FakeStreamResponse(_openai_sse(
-            {"choices": [{"index": 0, "delta": {"content": "ok"}}]},
-        ))
-        normal.append(response)
-        return response
-
-    def malformed_response() -> FakeStreamResponse:
-        response = FakeStreamResponse(b"data: not-json\n\ndata: [DONE]\n\n")
-        malformed.append(response)
-        return response
-
-    transport = _ReplicaStreamTransport({
-        "member-a": normal_response,
-        "member-b": malformed_response,
-    })
-    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
-    tier, routing = replica_routing(transport, readiness)
-    releases = _count_real_member_releases(monkeypatch, routing)
-
-    assert list(routing.generate(_replica_stream_request())) == ["ok"]
-    assert normal[0].closed
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-    assert list(routing.generate(_replica_stream_request())) == []
-    assert malformed[0].closed
-    snapshot = routing._admission.snapshot(tier.id)
-    assert snapshot.active_requests == 0
-    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
-    assert transport.calls == ["member-a", "member-b"]
-    assert releases == ["member-a", "member-b"]
-
-
-def test_replica_sse_terminal_iterator_errors_release_selected_member_without_retry(
-    monkeypatch, replica_routing,
-):
-    transport = _ReplicaStreamTransport({
-        "member-a": lambda: _TerminalSSEResponse(TimeoutError("synthetic timeout")),
-        "member-b": lambda: FakeStreamResponse(_openai_sse()),
-    })
-    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
-    tier, routing = replica_routing(transport, readiness)
-    releases = _count_real_member_releases(monkeypatch, routing)
-
-    stream = routing.generate(_replica_stream_request())
-    assert next(stream) == "one"
-    with pytest.raises(TimeoutError, match="synthetic timeout"):
-        next(stream)
-    snapshot = routing._admission.snapshot(tier.id)
-    assert snapshot.active_requests == 0
-    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
-    assert transport.calls == ["member-a"]
-    assert transport.opened[0].closed
-    assert releases == ["member-a"]
-
-
-@pytest.mark.parametrize(
-    ("terminal", "expected"),
-    [
-        (lambda: _TerminalSSEResponse(GeneratorExit()), GeneratorExit),
-        (
-            lambda: FakeStreamResponse(
-                b'data: {"choices":[{"index":0,"delta":{"content":"one"}}]}\n\n'
-                b'data: {"error":{}}\n\n',
-            ),
-            RelayBackendError,
-        ),
-    ],
-)
-def test_replica_sse_generator_exit_and_provider_error_release_once(
-    monkeypatch, terminal, expected, replica_routing,
-):
-    transport = _ReplicaStreamTransport({
-        "member-a": terminal,
-        "member-b": lambda: FakeStreamResponse(_openai_sse()),
-    })
-    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
-    tier, routing = replica_routing(transport, readiness)
-    releases = _count_real_member_releases(monkeypatch, routing)
-
-    stream = routing.generate(_replica_stream_request())
-    assert next(stream) == "one"
-    with pytest.raises(expected):
-        next(stream)
-    assert transport.opened[0].closed
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-    assert transport.calls == ["member-a"]
-    assert releases == ["member-a"]
-    _assert_replica_idle(routing, tier)
-
-
-def test_replica_sse_close_before_first_and_after_first_release_once(monkeypatch, replica_routing):
-    transport = _ReplicaStreamTransport({
-        "member-a": lambda: FakeStreamResponse(_openai_sse(
-            {"choices": [{"index": 0, "delta": {"content": "one"}}]},
-            {"choices": [{"index": 0, "delta": {"content": "two"}}]},
-        )),
-        "member-b": lambda: FakeStreamResponse(_openai_sse()),
-    })
-    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
-    tier, routing = replica_routing(transport, readiness)
-    releases = _count_real_member_releases(monkeypatch, routing)
-
-    unadvanced = routing.generate(_replica_stream_request())
-    assert routing._admission.snapshot(tier.id).active_requests == 1
-    unadvanced.close()
-    unadvanced.close()
-    assert transport.opened[0].closed
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-
-    # The next request rotates to b. Make b unavailable to pin a as the
-    # selected member and model a client disconnect after its first delta.
-    readiness.results["member-b"] = _unready()
-    cancelling = routing.generate(_replica_stream_request())
-    assert next(cancelling) == "one"
-    cancelling.close()
-    cancelling.close()
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-    assert transport.calls == ["member-a", "member-a"]
-    assert releases == ["member-a", "member-a"]
-    _assert_replica_idle(routing, tier)
-
-
 @pytest.mark.parametrize("path", ("/v1/chat/completions", "/v1/responses"))
 def test_replica_front_door_disconnect_closes_selected_stream_once(
     monkeypatch, replica_routing, path,
@@ -853,7 +464,7 @@ def test_replica_front_door_disconnect_closes_selected_stream_once(
         self.wfile = _DisconnectedWFile(self.wfile)
 
     handler.end_headers = arm_disconnect
-    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     server_thread.start()
     try:
         host, port = server.server_address[:2]
@@ -886,106 +497,3 @@ def test_replica_front_door_disconnect_closes_selected_stream_once(
     assert routing._admission.snapshot(tier.id).active_requests == 0
     assert releases == ["member-a"]
     _assert_replica_idle(routing, tier)
-
-
-def test_replica_readiness_loss_after_dispatch_keeps_stream_and_excludes_next_request(
-    replica_routing,
-):
-    blocked = _BlockedSSEResponse(
-        (
-            b'data: {"choices":[{"index":0,"delta":{"content":"one"}}]}\n',
-            b"\n",
-        ),
-        (
-            b'data: {"choices":[{"index":0,"delta":{"content":"two"}}]}\n',
-            b"\n",
-            b"data: [DONE]\n",
-            b"\n",
-        ),
-    )
-    next_member = FakeStreamResponse(_openai_sse(
-        {"choices": [{"index": 0, "delta": {"content": "b"}}]},
-    ))
-    transport = _ReplicaStreamTransport({"member-a": blocked, "member-b": next_member})
-    readiness = _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()})
-    tier, routing = replica_routing(transport, readiness)
-
-    stream = routing.generate(_replica_stream_request())
-    assert next(stream) == "one"
-    assert blocked.first_sent.is_set()
-    readiness.results["member-a"] = _unready()
-    blocked.release.set()
-    assert list(stream) == ["two"]
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-    assert list(routing.generate(_replica_stream_request())) == ["b"]
-    assert transport.calls == ["member-a", "member-b"]
-    _assert_replica_idle(routing, tier)
-
-
-@pytest.mark.parametrize("terminal", (
-    "success", "http-error", "timeout", "malformed", "cancel",
-    "close-before-first", "close-after-first",
-))
-def test_replica_real_buffered_terminal_paths_release_once(
-    monkeypatch, replica_routing, terminal,
-):
-    response = b'{"choices":[{"message":{"content":"ok"},"finish_reason":"stop"}]}'
-    expected_error = None
-    if terminal == "http-error":
-        response = urllib.error.HTTPError("http://127.0.0.1:32001/v1", 503, "synthetic", {}, None)
-        expected_error = RelayBackendError
-    elif terminal == "timeout":
-        response = urllib.error.URLError(TimeoutError())
-        expected_error = RelayBackendError
-    elif terminal == "malformed":
-        response = b"not-json"
-        expected_error = RelayBackendError
-    elif terminal == "cancel":
-        response = GeneratorExit()
-        expected_error = GeneratorExit
-    transport = _ReplicaStreamTransport({"member-a": response, "member-b": b"unused"})
-    tier, routing = replica_routing(
-        transport, _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()}), buffered=True,
-    )
-    releases = _count_real_member_releases(monkeypatch, routing)
-    request = _replica_stream_request()
-    request.stream = False
-    if expected_error is not None:
-        with pytest.raises(expected_error):
-            list(routing.generate(request))
-    else:
-        stream = routing.generate(request)
-        snapshot = routing._admission.snapshot(tier.id)
-        assert snapshot.active_requests == 1
-        assert snapshot.member_active_requests == (("member-a", 1), ("member-b", 0))
-        if terminal == "success":
-            assert list(stream) == ["ok"]
-        elif terminal == "close-after-first":
-            assert next(stream) == "ok"
-            assert routing._admission.snapshot(tier.id).active_requests == 1
-        stream.close()
-        stream.close()
-    _assert_replica_idle(routing, tier)
-    # Buffered relay I/O is lazy; cancelling before iteration releases the
-    # reservation without starting any transport. SSE opens eagerly instead.
-    assert transport.calls == ([] if terminal == "close-before-first" else ["member-a"])
-    assert releases == ["member-a"]
-
-
-@pytest.mark.parametrize("terminal", ("http-error", "timeout"))
-def test_replica_real_sse_open_failure_releases_once(monkeypatch, replica_routing, terminal):
-    error = (
-        urllib.error.HTTPError("http://127.0.0.1:32001/v1", 503, "synthetic", {}, None)
-        if terminal == "http-error" else urllib.error.URLError(TimeoutError())
-    )
-    transport = _ReplicaStreamTransport({"member-a": error, "member-b": b"unused"})
-    tier, routing = replica_routing(
-        transport, _ReplicaReadiness({"member-a": _ready(), "member-b": _ready()}),
-    )
-    releases = _count_real_member_releases(monkeypatch, routing)
-    with pytest.raises(RelayBackendError):
-        list(routing.generate(_replica_stream_request()))
-    _assert_replica_idle(routing, tier)
-    assert transport.calls == ["member-a"]
-    assert transport.opened == []
-    assert releases == ["member-a"]

@@ -11,7 +11,6 @@ import pytest
 from anvil_serving.control_plane.controller.propagation_bootstrap import build_propagation_service, build_activation_observer
 from anvil_serving.control_plane.controller.propagation_job_store import ExecutionProfile
 from anvil_serving.control_plane.controller.errors import ControllerError
-from anvil_serving.control_plane.controller import cli as controller_cli
 from anvil_serving.control_plane.controller import server as controller_server
 from tests.test_propagation_contracts import _contract
 from anvil_serving.control_plane.propagation import parse_contract
@@ -70,39 +69,6 @@ def _profile(tmp_path, *, mode="effects"):
     return path, value, hashlib.sha256(raw).hexdigest()
 
 
-def test_bootstrap_builds_real_owner_only_from_protected_pins(tmp_path):
-    path, value, digest = _profile(tmp_path)
-    service = build_propagation_service(str(path), digest)
-    assert service.profile.profile_id == "profile-1"
-    assert service.profile.mode == "effects"
-    assert service.profile.owner_profile_digest == digest
-    assert service.jobs.profiles["profile-1"].digest == "a" * 64
-    assert service.profile.contract_lookup("approval-1") == parse_contract(_contract()).canonical
-    assert controller_cli._build_parser().parse_args([
-        "serve", "--propagation-profile", str(path),
-        "--propagation-profile-sha256", digest,
-    ]).propagation_profile == str(path)
-    assert value["executor_issuer"] == service.profile.executor_issuer
-
-
-def test_serve_constructs_owner_before_advertising_tools(tmp_path, monkeypatch):
-    path, _, digest = _profile(tmp_path)
-    seen = []
-    class FakeServer:
-        server_address = ("127.0.0.1", 0)
-    def factory(**kwargs):
-        seen.append(kwargs)
-        return FakeServer()
-    monkeypatch.setattr(controller_server, "serve_until_signal", lambda *_args, **_kwargs: None)
-    assert controller_server.serve(propagation_profile_path=str(path),
-        propagation_profile_sha256=digest, server_factory=factory) == 0
-    assert seen[0]["propagation_service"].profile.profile_id == "profile-1"
-    seen.clear()
-    with pytest.raises(ControllerError, match="protected propagation owner profile is unavailable"):
-        controller_server.serve(propagation_profile_path=str(path), server_factory=factory)
-    assert not seen
-
-
 def test_owner_tools_require_a_valid_scoped_policy(tmp_path):
     path, _, digest = _profile(tmp_path)
     service = build_propagation_service(str(path), digest)
@@ -124,39 +90,6 @@ def test_bootstrapped_owner_advertises_only_with_scoped_controller(tmp_path):
                                       headers={"Authorization": "Bearer synthetic-reader"})
         assert status == 200
         assert any(tool["name"] == "propagation.profile.v1" for tool in body["tools"])
-
-
-def test_preview_bootstrap_advertises_only_read_operations(tmp_path):
-    path, _, digest = _profile(tmp_path, mode="preview")
-    service = build_propagation_service(str(path), digest)
-    policy = _authorization_policy(tmp_path, [
-        {"id": "operator", "scopes": [
-            "propagation:status", "propagation:recovery", "propagation:admission",
-            "propagation:dispatch", "propagation:activity",
-        ], "credential_env": "OPERATOR"},
-    ])
-    with running_controller(propagation_service=service, authorization_policy=policy,
-                            env={"ANVIL_CONTROLLER_TOKEN": "synthetic-legacy",
-                                 "OPERATOR": "synthetic-operator"}) as (host, port):
-        status, _, body, _ = _request(host, port, "GET", "/tools/list",
-                                      headers={"Authorization": "Bearer synthetic-operator"})
-        assert status == 200
-        names = {tool["name"] for tool in body["tools"]}
-        assert {"propagation_capabilities", "propagation.profile.v1",
-                "propagation.preview.v1", "propagation.recovery.verify.v1"} <= names
-        assert "propagation.accept.v1" not in names
-        assert "fleet.propagation.submit.v1" not in names
-        status, _, body, _ = _request(host, port, "POST", "/tools/call",
-            {"name": "propagation_capabilities", "arguments": {}},
-            {"Authorization": "Bearer synthetic-operator"})
-        assert status == 200 and body["ok"]
-        available = {item["name"]: item["available"]
-                     for item in body["data"]["operations"]}
-        assert available["propagation.preview.v1"] is True
-        assert available["propagation.accept.v1"] is False
-        assert available["fleet.propagation.submit.v1"] is False
-        assert service.profile.preview_contract == parse_contract(
-            _contract(authority_mode="preview")).canonical
 
 
 def test_scoped_activation_observer_is_pinned_and_read_only(tmp_path):
@@ -207,20 +140,6 @@ def test_scoped_activation_observer_is_pinned_and_read_only(tmp_path):
             "controller_url": f"http://{host}:{port}",
             "token_file": str(token), "profile_sha256": digest})
         assert remote() == ActiveIdentity(observed.ref, observed.digest)
-
-
-def test_bootstrap_refuses_pinned_reader_without_required_modes(tmp_path):
-    path, value, _ = _profile(tmp_path)
-    script = Path(value["readback_profile"]["argv"][1])
-    script.write_text("print('{}')\n", encoding="utf-8")
-    script.chmod(0o644)
-    changed = hashlib.sha256(script.read_bytes()).hexdigest()
-    for name in ("execution_profile", "readback_profile"):
-        value[name]["artifact_pins"][0] = [str(script), changed]
-    raw = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    _write(path, raw)
-    with pytest.raises(ControllerError, match="protected propagation owner profile is unavailable"):
-        build_propagation_service(str(path), hashlib.sha256(raw).hexdigest())
 
 
 @pytest.mark.parametrize("damage", ["wrong-pin", "readable-profile", "wrong-contract", "missing-ledger", "changed-executable", "writable-artifact", "readable-ledger", "exposed-ledger-parent", "duplicate-key"])

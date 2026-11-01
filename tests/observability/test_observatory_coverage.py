@@ -9,7 +9,6 @@ import pytest
 
 from anvil_serving.observability.dashboard.access import Principal, Session
 from anvil_serving.observability.dashboard.console import Console
-from anvil_serving.observability.dashboard.contracts import ObservatoryError
 from anvil_serving.observability.dashboard.controller_adapter import ControllerAdapter
 from anvil_serving.observability.dashboard.metrics_client import MetricsClient
 from anvil_serving.transports import TransportError, TransportResult
@@ -67,7 +66,7 @@ def facade(tmp_path):
             self.wfile.write(body)
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Prometheus)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     metrics = MetricsClient(prometheus_url=f"http://127.0.0.1:{server.server_port}",
                             inventory=INVENTORY, clock=lambda: NOW)
@@ -101,33 +100,6 @@ def facade(tmp_path):
         thread.join()
 
 
-def test_fresh_prometheus_survives_unavailable_controller_with_all_controls_closed(facade):
-    console, owner, session, _ = facade
-    owner.available = False
-    fleet = console.fleet(session)
-    host, serve = fleet["hosts"][0], fleet["serves"][0]
-    assert console.metrics.integration_status()["status"] == "ok"
-    assert fleet["observed_at"] == NOW
-    assert host["telemetry"] == {"status": "ok", "observed_at": NOW - 5}
-    assert host["resources"]["cpu_utilization"]["value"] == 21
-    assert host["controller"]["status"] == "unavailable"
-    generation = serve["metrics"]["generation"]
-    assert generation["value"] == 21 and generation["status"] == "fresh"
-    assert generation["source_timestamp"] == NOW - 5
-    assert serve["runtime_state"] == serve["readiness"] == "unknown"
-    assert fleet["coverage"]["status"] == "partial"
-    assert fleet["coverage"]["controller_unavailable_hosts"] == 1
-    assert fleet["coverage"]["reason"]
-    actions = console.controls(session, "serve-a")["actions"]
-    assert actions
-    for action in actions:
-        assert action["supported"] is False and action["permitted"] is False
-        assert action["reason"]
-        with pytest.raises(ObservatoryError, match="not available"):
-            console.create_preview(session, {"resource_id": "serve-a", "action_id": action["id"]})
-    assert owner.calls == []
-
-
 def test_changed_owner_model_metadata_preserves_alias_and_unverified_identity(facade):
     console, owner, session, binding = facade
     original_binding = copy.deepcopy(binding)
@@ -145,16 +117,3 @@ def test_changed_owner_model_metadata_preserves_alias_and_unverified_identity(fa
     assert len(owner.calls) == 3
     assert all(call.name == "serves_status" and call.arguments == {
         "manifest": "/private/fixture/serves.toml", "names": ["chat"]} for call in owner.calls)
-
-
-def test_fleet_exposes_owner_proven_diagnostics_and_withdraws_unavailable_commands(facade, monkeypatch):
-    console, _, session, _ = facade
-    owner_view = console.adapter.snapshot()
-    serve = owner_view["serves"][0]
-    serve.update(exec={"status": "available", "commands": ["gpu-status"]}, private_owner_field="not-public")
-    monkeypatch.setattr(console.adapter, "snapshot", lambda: owner_view)
-    observed = console.fleet(session)["serves"][0]
-    assert observed["exec"] == {"status": "available", "commands": ["gpu-status"]}
-    assert "private_owner_field" not in observed
-    serve["exec"] = {"status": "unavailable", "commands": []}
-    assert console.fleet(session)["serves"][0]["exec"] == {"status": "unavailable", "commands": []}

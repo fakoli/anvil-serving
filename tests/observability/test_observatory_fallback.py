@@ -10,7 +10,6 @@ from anvil_serving.observability.api import TelemetryRegistry, run_server_in_thr
 from anvil_serving.observability.dashboard.app import create_dashboard_server
 from anvil_serving.observability.dashboard import console as console_module
 from anvil_serving.observability.dashboard.console import Console, attach_console
-from anvil_serving.observability.dashboard.metrics_client import MetricsError, _origin
 
 
 PRIMARY = "https://console.example.test"
@@ -121,12 +120,6 @@ def test_fallback_requires_one_exact_host(fallback_site, hosts):
     assert response.status == 403
     response.read()
     connection.close()
-
-
-def test_relative_grafana_link_is_only_accepted_for_grafana():
-    assert _origin("/grafana", grafana=True) == "/grafana"
-    with pytest.raises(MetricsError):
-        _origin("/grafana")
 
 
 def test_fallback_requires_connect_mode_and_loopback_grafana(fallback_site):

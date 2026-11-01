@@ -19,7 +19,7 @@ import pytest
 
 from anvil_serving.connect import qualification_vm_run as subject
 from anvil_serving.connect._qualification_vm_process import ProcessResult
-from anvil_serving.connect.qualification import QualificationConfig, QualificationError, _error
+from anvil_serving.connect.qualification import QualificationConfig, QualificationError
 
 
 _ARTIFACTS = {"SHA256SUMS", "evidence.json", "junit.xml", "result.json"}
@@ -198,108 +198,6 @@ def _install_boundaries(
     return trace
 
 
-def test_qualify_whole_lifecycle_publishes_exact_closed_artifacts(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-    trace = _install_boundaries(monkeypatch, config)
-
-    result = subject.qualify(tmp_path / "ignored.toml")
-
-    root = Path(result["artifact_dir"])
-    evidence, summary = _closed(root)
-    assert result == {
-        "schema": subject._SCHEMA,
-        "ok": True,
-        "artifact_dir": str(root),
-        "counts": {"passed": 8, "failed": 0, "skipped": 0, "not_run": 0, "unavailable": 0},
-    }
-    assert evidence["counts"] == result["counts"] == summary["counts"]
-    assert evidence["state"] == summary["state"] == "passed"
-    assert evidence["service_limits"]["client:dashboard-api"] == {
-        "memory_max_bytes": 268435456, "tasks_max": 128,
-        "enforcement": "rendered-only", "measurement": "not-measured", "phases": [],
-    }
-    assert trace["payload_source"] == root / "source"
-    assert trace["iso"] == ["CIDATA", "ANVILTEST"]
-    argv, _kwargs = trace["qemu"]
-    assert argv[argv.index("-nic") + 1] == "none"
-    assert argv.count("-drive") == 2
-    for line in (root / "SHA256SUMS").read_text(encoding="ascii").splitlines():
-        digest, name = line.split("  ", 1)
-        assert digest == hashlib.sha256((root / name).read_bytes()).hexdigest()
-
-
-def test_qualify_build_failure_is_closed_not_run_without_child_output(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-    _install_boundaries(
-        monkeypatch,
-        config,
-        payload_error=_error("staging-failed", _PRIVATE, execution_started=False, stage="staging"),
-    )
-
-    with pytest.raises(QualificationError) as caught:
-        subject.qualify()
-
-    assert caught.value.code == "staging-failed"
-    evidence, summary = _closed(_artifact_root(config))
-    assert evidence["state"] == "failed" and summary["ok"] is False
-    assert evidence["error_code"] == summary["error_code"] == "staging-failed"
-    assert evidence["counts"] == {"passed": 0, "failed": 0, "skipped": 0, "not_run": 8, "unavailable": 0}
-    assert {case["status"] for case in evidence["cases"]} == {"not-run"}
-    _assert_junit_nonpass_parity(_artifact_root(config), "not-run", "staging-failed")
-
-
-@pytest.mark.parametrize("kind", ["timeout", "interrupt"])
-def test_qualify_guest_without_final_report_is_closed_unavailable_and_cleans(tmp_path, monkeypatch, kind):
-    config = _config(tmp_path)
-
-    def guest(_argv: list[str], _kwargs: object) -> ProcessResult:
-        if kind == "interrupt":
-            raise KeyboardInterrupt
-        raise _error("runner-timeout", _PRIVATE, execution_started=True, stage="execution")
-
-    _install_boundaries(monkeypatch, config, guest=guest)
-
-    if kind == "interrupt":
-        with pytest.raises(KeyboardInterrupt):
-            subject.qualify()
-        expected_code = "runner-interrupted"
-    else:
-        with pytest.raises(QualificationError) as caught:
-            subject.qualify()
-        expected_code = caught.value.code
-
-    assert expected_code == ("runner-interrupted" if kind == "interrupt" else "runner-timeout")
-    evidence, summary = _closed(_artifact_root(config))
-    assert evidence["error_code"] == summary["error_code"] == expected_code
-    assert evidence["counts"] == {"passed": 0, "failed": 0, "skipped": 0, "not_run": 0, "unavailable": 8}
-    assert {case["status"] for case in evidence["cases"]} == {"unavailable"}
-    _assert_junit_nonpass_parity(_artifact_root(config), "unavailable", expected_code)
-
-
-def test_qualify_residual_private_file_becomes_closed_cleanup_failure(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-
-    def guest(_argv: list[str], kwargs: object) -> ProcessResult:
-        cwd = kwargs["cwd"]
-        assert isinstance(cwd, Path)
-        (cwd / "unexpected-private-residual").write_text(_PRIVATE, encoding="ascii")
-        return ProcessResult(0, _guest_result(), 3, 0, len(_guest_result()))
-
-    _install_boundaries(monkeypatch, config, guest=guest)
-
-    with pytest.raises(QualificationError) as caught:
-        subject.qualify()
-
-    assert caught.value.code == "staging-failed"
-    evidence, summary = _closed(_artifact_root(config))
-    assert evidence["error_code"] == summary["error_code"] == "staging-failed"
-    assert evidence["counts"]["unavailable"] == 0
-    suite = ET.parse(_artifact_root(config) / "junit.xml").getroot()
-    infrastructure = [case for case in suite.findall("testcase") if case.get("classname") == "connect.isolation.infrastructure"]
-    assert suite.get("tests") == "9" and suite.get("errors") == "1"
-    assert len(infrastructure) == 1 and next(iter(infrastructure[0])).get("type") == "staging-failed"
-
-
 def test_qualify_removes_residual_link_without_following_its_target(tmp_path, monkeypatch):
     config = _config(tmp_path)
     outside = tmp_path / "outside-private-target"
@@ -320,23 +218,6 @@ def test_qualify_removes_residual_link_without_following_its_target(tmp_path, mo
     evidence, summary = _closed(_artifact_root(config))
     assert evidence["error_code"] == summary["error_code"] == "staging-failed"
     assert outside.read_text(encoding="ascii") == _PRIVATE
-
-
-def test_qualify_rejects_locked_component_before_qemu(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-    trace = _install_boundaries(monkeypatch, config)
-    monkeypatch.setattr(
-        subject,
-        "_locks",
-        lambda _: {"files": {}, "binaries": {"caddy": "0" * 64, "authelia": "0" * 64, "wstunnel": "0" * 64}},
-    )
-
-    with pytest.raises(QualificationError) as caught:
-        subject.qualify()
-
-    assert caught.value.code == "tool-invalid"
-    assert trace["qemu"] is None
-    assert not list(config.artifact_root.glob("isolation-*"))
 
 
 def test_stage_source_accepts_regular_git_archive_directory_entries(tmp_path):
@@ -469,63 +350,6 @@ def test_retained_iso_and_qcow_descriptors_are_verified_without_booting(tmp_path
         os.close(image_fd)
 
 
-def test_open_pinned_fifo_returns_promptly_without_reading_it(tmp_path):
-    fifo = tmp_path / "input.fifo"
-    os.mkfifo(fifo, 0o600)
-    program = """
-from pathlib import Path
-from anvil_serving.connect.qualification import QualificationError
-from anvil_serving.connect.qualification_vm_run import _open_pinned
-try:
-    fd = _open_pinned(Path(__import__('sys').argv[1]))
-except QualificationError:
-    raise SystemExit(0)
-else:
-    __import__('os').close(fd)
-    raise SystemExit(1)
-"""
-
-    result = subprocess.run(
-        [sys.executable, "-c", program, str(fifo)],
-        cwd=Path(__file__).parents[2],
-        env={"PATH": "/usr/bin:/bin", "PYTHONPATH": str(Path(__file__).parents[2])},
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=2,
-        check=False,
-    )
-
-    assert result.returncode == 0
-
-
-def test_verify_retained_descriptor_hashes_original_after_path_rename_and_replacement(tmp_path):
-    original = tmp_path / "pinned"
-    retained = tmp_path / "retained"
-    replacement = tmp_path / "replacement"
-    original.write_bytes(b"original")
-    replacement.write_bytes(b"replacement")
-    original.chmod(0o400)
-    replacement.chmod(0o400)
-    descriptor = subject._open_pinned(original)
-    try:
-        os.rename(original, retained)
-        os.rename(replacement, original)
-        digest, size = subject._verify_fd(
-            descriptor,
-            owner=os.geteuid(),
-            mode=0o400,
-            maximum=1024,
-            deadline=time.monotonic() + 2,
-            expected=hashlib.sha256(b"original").hexdigest(),
-        )
-    finally:
-        os.close(descriptor)
-
-    assert (digest, size) == (hashlib.sha256(b"original").hexdigest(), len(b"original"))
-    assert original.read_bytes() == b"replacement"
-
-
 def test_verify_rejects_unlinked_retained_descriptor_after_atomic_replace(tmp_path):
     original = tmp_path / "pinned"
     replacement = tmp_path / "replacement"
@@ -549,106 +373,3 @@ def test_verify_rejects_unlinked_retained_descriptor_after_atomic_replace(tmp_pa
         os.close(descriptor)
 
     assert original.read_bytes() == b"replacement"
-
-
-@pytest.mark.parametrize("kind", ["iso", "overlay"])
-def test_failed_output_build_closes_its_retained_descriptor(tmp_path, monkeypatch, kind):
-    closed: list[int] = []
-    close = os.close
-
-    def record_close(descriptor: int) -> None:
-        closed.append(descriptor)
-        close(descriptor)
-
-    monkeypatch.setattr(subject.os, "close", record_close)
-    monkeypatch.setattr(
-        subject,
-        "execute",
-        lambda *args, **kwargs: ProcessResult(1, b"", 1, 0, 0),
-    )
-    output = tmp_path / ("fixture.iso" if kind == "iso" else "fixture.qcow2")
-    deadline = time.monotonic() + 2
-
-    if kind == "iso":
-        source = tmp_path / "source"
-        source.mkdir()
-        with pytest.raises(OSError):
-            subject._iso(source, output, "FIXTURE", cpus=(0,), deadline=deadline)
-    else:
-        base = tmp_path / "base.qcow2"
-        base.write_bytes(b"base")
-        base.chmod(0o400)
-        base_fd = subject._open_pinned(base)
-        try:
-            with pytest.raises(QualificationError):
-                subject._overlay(base_fd, output, cpus=(0,), deadline=deadline)
-        finally:
-            close(base_fd)
-
-    assert closed
-
-
-@pytest.mark.parametrize("reason", ["record-incomplete", _PRIVATE])
-def test_failed_execution_preserves_boot_provenance_and_closed_diagnostics(tmp_path, monkeypatch, reason):
-    config = _config(tmp_path)
-
-    def guest(_argv, _kwargs):
-        failure = _error("runner-failed", "VM child failed", execution_started=True, stage="execution")
-        failure.reason = reason
-        failure.measurements = {"elapsed_ms": 12, "peak_rss_bytes": 4096, "output_bytes": 100,
-                                "returncode": None, "console": _PRIVATE}
-        raise failure
-
-    _install_boundaries(monkeypatch, config, guest=guest)
-    with pytest.raises(QualificationError):
-        subject.qualify()
-    evidence, _ = _closed(_artifact_root(config))
-    assert evidence["image"]["sha256"] == "c" * 64
-    assert evidence["payload"]["files"] == {"payload.json": "e" * 64}
-    assert set(evidence["boot_inputs"]) == {"seed_iso", "payload_iso", "firmware"}
-    assert "tools" in evidence
-    assert evidence["measurements"] == {"elapsed_ms": 12, "peak_rss_bytes": 4096,
-                                         "output_bytes": 100, "returncode": None}
-    assert evidence.get("failure_reason") == (reason if reason == "record-incomplete" else None)
-
-
-def test_abnormal_qemu_exit_keeps_guest_report_but_fails_infrastructure(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-    _install_boundaries(monkeypatch, config, guest=lambda *args: ProcessResult(1, _guest_result(), 7, 1024, 99))
-    with pytest.raises(QualificationError):
-        subject.qualify()
-    evidence, summary = _closed(_artifact_root(config))
-    assert evidence["counts"]["passed"] == 8
-    assert summary["ok"] is False
-    assert evidence["failure_reason"] == "child-exit"
-    assert evidence["measurements"]["returncode"] == 1
-    suite = ET.parse(_artifact_root(config) / "junit.xml").getroot()
-    assert suite.get("errors") == "1"
-
-
-def test_invalid_guest_record_has_closed_failure_reason(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-    raw = json.dumps({"unexpected": _PRIVATE}).encode()
-    _install_boundaries(monkeypatch, config, guest=lambda *args: ProcessResult(0, raw, 7, 1024, len(raw)))
-    with pytest.raises(QualificationError):
-        subject.qualify()
-    evidence, _ = _closed(_artifact_root(config))
-    assert evidence["failure_reason"] == "record-invalid"
-    assert evidence["counts"]["unavailable"] == 8
-
-
-def test_process_cleanup_uncertainty_cannot_claim_complete_cleanup(tmp_path, monkeypatch):
-    config = _config(tmp_path)
-
-    def guest(*args):
-        failure = _error("runner-failed", "VM child cleanup failed", execution_started=True, stage="cleanup")
-        failure.reason = "cleanup-failure"
-        failure.measurements = {"elapsed_ms": 7, "peak_rss_bytes": 1024, "output_bytes": 0, "returncode": None}
-        raise failure
-
-    _install_boundaries(monkeypatch, config, guest=guest)
-    with pytest.raises(QualificationError):
-        subject.qualify()
-    evidence, _ = _closed(_artifact_root(config))
-    assert evidence["cleanup"] == {"complete": False, "filesystem_complete": True, "process_complete": False}
-    assert evidence["measurements"]["returncode"] is None

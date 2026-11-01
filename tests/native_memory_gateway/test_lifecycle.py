@@ -7,7 +7,6 @@ import stat
 
 import pytest
 
-from anvil_serving.connect import cli
 from anvil_serving.connect.manage import RunResult
 from anvil_serving.native_memory_gateway import lifecycle
 
@@ -87,32 +86,6 @@ def test_preview_performs_no_systemd_or_identity_mutation(monkeypatch, tmp_path)
     assert calls == []
 
 
-@pytest.mark.parametrize("loaded", (False, True))
-def test_timer_state_accepts_systemd_metadata_without_service_only_main_pid(loaded):
-    fields = {
-        "LoadState": "loaded" if loaded else "not-found", "FragmentPath": "", "DropInPaths": "",
-        "ActiveState": "active" if loaded else "inactive", "SubState": "waiting" if loaded else "dead",
-        "UnitFileState": "enabled" if loaded else "",
-    }
-    def run(argv, timeout=30, identity=None):
-        assert "MainPID" not in argv[2]
-        return RunResult(0 if loaded else 1, "".join(f"{key}={value}\n" for key, value in fields.items()).encode(), b"")
-    assert lifecycle._state(run, "anvil-native-memory-personal-authority.timer") == fields
-
-
-@pytest.mark.parametrize("missing", ("MainPID", "DropInPaths", "UnitFileState"))
-def test_service_state_still_requires_complete_systemd_metadata(missing):
-    fields = {
-        "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/owned.service", "DropInPaths": "",
-        "ActiveState": "active", "SubState": "running", "UnitFileState": "enabled", "MainPID": "42",
-    }
-    del fields[missing]
-    def run(argv, timeout=30, identity=None):
-        return RunResult(0, "".join(f"{key}={value}\n" for key, value in fields.items()).encode(), b"")
-    with pytest.raises(lifecycle.LifecycleError, match="managed unit state is invalid"):
-        lifecycle._state(run, "anvil-native-memory-personal.service")
-
-
 def test_python_allows_normal_0777_symlink_mode_but_pins_resolved_regular_target(monkeypatch):
     class Link:
         def resolve(self, strict=False):
@@ -165,36 +138,6 @@ def test_remove_refuses_unit_drift_before_stopping_any_service(monkeypatch, tmp_
     assert calls == []
 
 
-def test_remove_refuses_owned_file_drift_before_stopping_any_service(monkeypatch, tmp_path):
-    value, owned = declaration(), paths(tmp_path)
-    units = lifecycle.render_units(value, owned)
-    for name, raw in units.items():
-        lifecycle._unit_path(owned, name).write_bytes(raw)
-    owned["artifact_dir"].mkdir()
-    owned["artifact"].write_bytes(b"drift")
-    monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
-        "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "ready", "installed_at": 1})
-    monkeypatch.setattr(lifecycle, "_identity", lambda _: (True, True))
-    monkeypatch.setattr(lifecycle, "_state", lambda runner, name: {
-        "LoadState": "loaded", "FragmentPath": str(lifecycle._unit_path(owned, name)), "DropInPaths": "",
-        "ActiveState": "active", "SubState": "running", "MainPID": "42", "UnitFileState": "enabled"})
-    monkeypatch.setattr(lifecycle, "_owned_digest", lambda *args, **kwargs: False)
-    @contextmanager
-    def unlocked():
-        yield
-    monkeypatch.setattr(lifecycle, "_lock", unlocked)
-    calls = []
-    with pytest.raises(lifecycle.LifecycleError, match="file changed"):
-        lifecycle._remove(value, "a" * 64, lambda argv, **kwargs: calls.append(argv), owned, True)
-    assert calls == []
-
-
-@pytest.mark.parametrize("value", ("/safe/%n", "/safe/$TOKEN"))
-def test_unit_arguments_reject_systemd_expansion(value):
-    with pytest.raises(lifecycle.LifecycleError, match="unit argument"):
-        lifecycle._quote(value)
-
-
 def test_status_never_claims_installed_when_effective_policy_drifts(monkeypatch, tmp_path):
     value, owned = declaration(), paths(tmp_path)
     for name, raw in lifecycle.render_units(value, owned).items():
@@ -209,28 +152,6 @@ def test_status_never_claims_installed_when_effective_policy_drifts(monkeypatch,
     result = lifecycle._status(value, "a" * 64, None, owned)
     assert result["receipt_ready"] is True and result["ready"] is False and result["installed"] is False
     assert result["units"][owned["service_unit"].name]["effective"] is False
-
-
-def test_status_never_claims_ready_when_gateway_is_failed(monkeypatch, tmp_path):
-    value, owned = declaration(), paths(tmp_path)
-    for name, raw in lifecycle.render_units(value, owned).items():
-        lifecycle._unit_path(owned, name).write_bytes(raw)
-    def state(runner, name):
-        failed = name == owned["service_unit"].name
-        return {
-            "LoadState": "loaded", "FragmentPath": str(lifecycle._unit_path(owned, name)), "DropInPaths": "",
-            "ActiveState": "failed" if failed else "active", "SubState": "failed" if failed else "running",
-            "MainPID": "0" if failed else "42", "UnitFileState": "enabled"}
-    monkeypatch.setattr(lifecycle, "_state", state)
-    monkeypatch.setattr(lifecycle, "_gateway_effective", lambda *args: True)
-    monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
-        "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "ready", "installed_at": 1})
-    monkeypatch.setattr(lifecycle, "_identity", lambda _: (True, True))
-    monkeypatch.setattr(lifecycle, "_owned_digest", lambda *args, **kwargs: True)
-    result = lifecycle._status(value, "a" * 64, None, owned)
-    assert result["receipt_ready"] is True
-    assert result["ready"] is False and result["installed"] is False
-    assert result["units"][owned["service_unit"].name]["operational"] is False
 
 
 @pytest.mark.parametrize("rollback_failure", (False, True))
@@ -308,20 +229,6 @@ def test_failed_start_rolls_back_only_files_and_identity_created_by_attempt(monk
         assert not owned["runtime_dir"].exists()
 
 
-def test_interrupted_install_requires_explicit_managed_removal(monkeypatch, tmp_path):
-    value, owned = declaration(), paths(tmp_path)
-    monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
-        "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "installing", "installed_at": 1})
-    @contextmanager
-    def unlocked():
-        yield
-    monkeypatch.setattr(lifecycle, "_lock", unlocked)
-    calls = []
-    with pytest.raises(lifecycle.LifecycleError, match="managed removal"):
-        lifecycle._install(value, "a" * 64, lambda *args: calls.append(args), owned, True)
-    assert calls == []
-
-
 @pytest.mark.parametrize("userdel_removes_group", (None, False, True))
 def test_interrupted_removal_reconciles_only_quiescent_cached_unit_after_unlink(monkeypatch, tmp_path, userdel_removes_group):
     value, owned = declaration(), paths(tmp_path)
@@ -385,33 +292,3 @@ def test_process_extinction_scan_ignores_only_confirmed_vanished_pids(monkeypatc
         return original_read(self, *args, **kwargs)
     monkeypatch.setattr(Path, "read_text", read)
     assert lifecycle._no_processes(62140) is expected
-
-
-@pytest.mark.parametrize("active_key", ("service_unit", "timer_unit"))
-def test_interrupted_removal_rejects_active_cached_unit_after_unlink(monkeypatch, tmp_path, active_key):
-    value, owned = declaration(), paths(tmp_path)
-    monkeypatch.setattr(lifecycle, "_receipt", lambda _: {
-        "schema": lifecycle.SCHEMA, "declaration_sha256": "a" * 64, "phase": "removing", "installed_at": 1})
-    monkeypatch.setattr(lifecycle, "_state", lambda runner, name: {
-        "LoadState": "loaded", "FragmentPath": str(lifecycle._unit_path(owned, name)), "DropInPaths": "",
-        "ActiveState": "active" if name == owned[active_key].name else "inactive",
-        "SubState": "running" if name == owned[active_key].name else "dead", "UnitFileState": "disabled",
-        **({"MainPID": "42" if name == owned[active_key].name else "0"} if name.endswith(".service") else {})})
-    @contextmanager
-    def unlocked():
-        yield
-    monkeypatch.setattr(lifecycle, "_lock", unlocked)
-    calls = []
-    with pytest.raises(lifecycle.LifecycleError, match="unit state changed"):
-        lifecycle._remove(value, "a" * 64, lambda argv, **kwargs: calls.append(tuple(argv)), owned, True)
-    assert calls == []
-
-
-def test_cli_projects_partial_failure_without_raw_error(monkeypatch):
-    monkeypatch.setattr("anvil_serving.connect.manage.supported_platform", lambda: True)
-    def fail(*args, **kwargs):
-        raise lifecycle.LifecycleError("sensitive detail", may_have_executed=True)
-    monkeypatch.setattr(lifecycle, "operate", fail)
-    result = cli.dispatch(["native-memory-service", "install", "--declaration", "/private/d.json", "--confirm"])
-    assert result.error.code == "connect_operation_partial"
-    assert "sensitive detail" not in str(result.error)

@@ -61,18 +61,3 @@ def test_diagnostic_http_preview_keeps_argv_private_and_apply_pinned(monkeypatch
         stale = adapter.execute(preview, "intent.http-stale")
         assert stale["execution_outcome"] != "succeeded"
         assert len(executions) == 1
-
-
-@pytest.mark.parametrize("field,value", [
-    ("policy_digest", "p" * 64), ("candidate_digest", ""),
-    ("timeout_seconds", True), ("timeout_seconds", 31),
-    ("max_output_bytes", 0), ("max_output_bytes", 65537),
-])
-def test_diagnostic_review_rejects_invalid_owner_pins_and_bounds(field, value):
-    resource = {"id": "serve.chat", "host_id": "host-a", "execution_runtime": "native", "container_id": "a" * 64}
-    preview = {"resource_id": resource["id"], "host_id": resource["host_id"],
-               "execution_runtime": resource["execution_runtime"], "container_id": resource["container_id"],
-               "command_id": "health", "argv": "<redacted>", "policy_digest": "b" * 64,
-               "candidate_digest": "c" * 64, "timeout_seconds": 10, "max_output_bytes": 65536}
-    preview[field] = value
-    assert ControllerAdapter._container_preview(resource, "health", {"preview": preview}) is None

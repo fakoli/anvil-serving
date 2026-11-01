@@ -11,33 +11,22 @@ from __future__ import annotations
 
 import array
 import base64
-import http.client
 import json
-from types import SimpleNamespace
 
 import pytest
 
 from anvil_serving.voice.cancel_scope import CancelScope
 from anvil_serving.voice.messages import (
     AudioOut,
-    EndOfResponse,
     SpokenText,
     TTSInput,
-    TTSSynthesisFailed,
 )
-from anvil_serving.voice.serves._common import ServeNotConfigured
-from anvil_serving.voice.serves.tts import TTSServe, TTSServeConfig
 from anvil_serving.voice.realtime.ws import make_ws_server, serve_forever_in_background
 from anvil_serving.voice.stages.tts import (
-    TTSClientError,
     TTSStage,
     TTSStageConfig,
-    build_cartesia_speech_request_body,
-    build_speech_request_body,
-    resample_int16,
     stream_speech,
 )
-from tests.voice.conftest import FakeRun, fake_open_fails, fake_open_ok
 
 
 # --------------------------------------------------------------------------- #
@@ -96,223 +85,16 @@ def manifest_with_tts(tmp_path):
 # --------------------------------------------------------------------------- #
 # TTSServe: lifecycle (delegates to anvil_serving.serves, never raw docker)
 # --------------------------------------------------------------------------- #
-def test_speech_url_appends_path():
-    serve = TTSServe(TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m"))
-    assert serve.speech_url == "http://127.0.0.1:8091/v1/audio/speech"
-
-
-def test_speech_url_strips_trailing_slash():
-    serve = TTSServe(TTSServeConfig(base_url="http://127.0.0.1:8091/v1/", model="kokoro-82m"))
-    assert serve.speech_url == "http://127.0.0.1:8091/v1/audio/speech"
-
-
-def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
-    missing = str(tmp_path / "nope.toml")
-    serve = TTSServe(TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                                     manifest_path=missing))
-    with pytest.raises(ServeNotConfigured):
-        serve.bring_up()
-
-
-def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
-    p = tmp_path / "serves.toml"
-    p.write_text(
-        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
-        'model = "parakeet"\nengine = "vllm"\n',
-        encoding="utf-8",
-    )
-    serve = TTSServe(TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                                     manifest_path=str(p)))
-    with pytest.raises(ServeNotConfigured):
-        serve.bring_up()
-
-
-def test_bring_up_starts_via_up_command_when_absent(manifest_with_tts):
-    fake_run = FakeRun([
-        (["docker", "inspect"], 1, "", "Error: No such container: anvil-tts"),
-        (["echo", "bring-up-tts"], 0, "bring-up-tts\n", ""),
-    ])
-    serve = TTSServe(
-        TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                        manifest_path=manifest_with_tts),
-        _run=fake_run,
-    )
-    rc = serve.bring_up()
-    assert rc == 0
-    assert ["echo", "bring-up-tts"] in fake_run.calls
-    assert all(c[0] == "docker" or c == ["echo", "bring-up-tts"] for c in fake_run.calls)
-
-
-def test_tear_down_stops_a_running_container(manifest_with_tts):
-    # cmd_down now re-inspects after the stop to verify it STUCK, so the
-    # fake must flip to 'exited' once the stop has run (a fixed 'running'
-    # answer reads as a restart-policy revival and rightly fails the stop).
-    stopped = []
-
-    def fake_run(argv, **kwargs):
-        fake_run.calls.append(list(argv))
-        if argv[:2] == ["docker", "inspect"]:
-            state = "exited" if stopped else "running"
-            return SimpleNamespace(returncode=0, stdout=state + "\n", stderr="")
-        if argv[:2] == ["docker", "stop"]:
-            stopped.append(argv)
-            return SimpleNamespace(returncode=0, stdout="anvil-tts\n", stderr="")
-        if argv[:3] == ["docker", "rm", "-f"]:
-            return SimpleNamespace(returncode=0, stdout="anvil-tts\n", stderr="")
-        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher")
-    fake_run.calls = []
-    serve = TTSServe(
-        TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                        manifest_path=manifest_with_tts),
-        _run=fake_run,
-    )
-    rc = serve.tear_down()
-    assert rc == 0
-    assert ["docker", "rm", "-f", "anvil-tts"] in fake_run.calls
-    assert ["docker", "stop", "anvil-tts"] in fake_run.calls
-
-
-def test_wait_ready_true_when_models_endpoint_responds(manifest_with_tts):
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    serve = TTSServe(
-        TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                        manifest_path=manifest_with_tts),
-        _run=fake_run, _open=fake_open_ok,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is True
-    assert readiness.docker_state == "running"
-    assert readiness.name == "tts"
-
-
-def test_wait_ready_false_when_probe_fails(manifest_with_tts):
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    serve = TTSServe(
-        TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                        manifest_path=manifest_with_tts),
-        _run=fake_run, _open=fake_open_fails,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is False
-
-
-def test_wait_ready_reports_unconfigured_state_without_raising(tmp_path):
-    missing = str(tmp_path / "nope.toml")
-    serve = TTSServe(TTSServeConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m",
-                                     manifest_path=missing), _open=fake_open_fails)
-    readiness = serve.wait_ready()
-    assert readiness.docker_state == "unconfigured"
-    assert readiness.ready is False
 
 
 # --------------------------------------------------------------------------- #
 # build_speech_request_body / resample_int16
 # --------------------------------------------------------------------------- #
-def test_build_speech_request_body_shape():
-    body = build_speech_request_body("hello there", TTSStageConfig(model="kokoro-82m"))
-    assert body == {
-        "model": "kokoro-82m", "input": "hello there",
-        "response_format": "pcm", "stream": True,
-    }
-
-
-def test_build_cartesia_speech_request_body_shape():
-    body = build_cartesia_speech_request_body(
-        "hello there",
-        TTSStageConfig(model="gepard-1.0", source_sample_rate=22050, voice_id="voice-123", language="en"),
-        context_id="ctx-1",
-    )
-
-    assert body == {
-        "context_id": "ctx-1",
-        "model_id": "gepard-1.0",
-        "transcript": "hello there",
-        "continue": False,
-        "output_format": {
-            "container": "raw",
-            "encoding": "pcm_s16le",
-            "sample_rate": 22050,
-        },
-        "voice": {"mode": "id", "id": "voice-123"},
-        "language": "en",
-    }
-
-
-def test_resample_int16_is_noop_when_rates_match():
-    pcm = _int16_bytes([1, 2, 3, 4])
-    assert resample_int16(pcm, 16000, 16000) == pcm
-
-
-def test_resample_int16_is_noop_on_empty_input():
-    assert resample_int16(b"", 24000, 16000) == b""
-
-
-def test_resample_int16_downsamples_to_expected_length():
-    # 240 samples at 24kHz -> ~160 samples at 16kHz (ratio 2/3).
-    pcm = _int16_bytes(range(0, 240))
-    out = resample_int16(pcm, 24000, 16000)
-    n_out = len(out) // 2
-    assert n_out == round(240 * (16000 / 24000))
-
-
-def test_resample_int16_upsamples_to_expected_length():
-    pcm = _int16_bytes([0, 1000, 2000, 3000])
-    out = resample_int16(pcm, 8000, 16000)
-    n_out = len(out) // 2
-    assert n_out == round(4 * (16000 / 8000))
-
-
-def test_resample_int16_interpolates_between_samples():
-    # Two samples, upsampled 1->many: values should stay within [min, max].
-    pcm = _int16_bytes([0, 1000])
-    out = array.array("h")
-    out.frombytes(resample_int16(pcm, 8000, 16000))
-    assert all(0 <= v <= 1000 for v in out)
 
 
 # --------------------------------------------------------------------------- #
 # stream_speech: wire construction + incremental read (hermetic)
 # --------------------------------------------------------------------------- #
-def test_stream_speech_posts_to_speech_path_with_pcm_format():
-    audio = _int16_bytes([1, 2, 3, 4])
-    transport = FakeTransport(FakeReadResponse([audio[:4], audio[4:]]))
-    config = TTSStageConfig(base_url="http://127.0.0.1:8091/v1", model="kokoro-82m")
-    chunks = list(stream_speech("hi there", config, transport=transport))
-    assert b"".join(chunks) == audio
-    call = transport.calls[0]
-    assert call["url"] == "http://127.0.0.1:8091/v1/audio/speech"
-    assert call["body"]["response_format"] == "pcm"
-    assert call["body"]["stream"] is True
-
-
-def test_stream_speech_closes_response():
-    transport = FakeTransport(FakeReadResponse([b"\x00\x00"]))
-    list(stream_speech("hi", TTSStageConfig(), transport=transport))
-    assert transport.response.closed
-
-
-def test_stream_speech_sends_bearer_token_from_env_var(monkeypatch):
-    monkeypatch.setenv("ANVIL_TEST_TTS_TOKEN", "secret-tts-token")
-    transport = FakeTransport(FakeReadResponse([b"\x00\x00"]))
-    config = TTSStageConfig(api_key_env="ANVIL_TEST_TTS_TOKEN")
-    list(stream_speech("hi", config, transport=transport))
-    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-tts-token"
-
-
-def test_stream_speech_strips_bearer_token_whitespace(monkeypatch):
-    monkeypatch.setenv("ANVIL_TEST_TTS_TOKEN", " secret-tts-token\r\n")
-    transport = FakeTransport(FakeReadResponse([b"\x00\x00"]))
-    config = TTSStageConfig(api_key_env="ANVIL_TEST_TTS_TOKEN")
-    list(stream_speech("hi", config, transport=transport))
-    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-tts-token"
-
-
-def test_stream_speech_no_token_when_env_unset(monkeypatch):
-    monkeypatch.delenv("ANVIL_TEST_TTS_TOKEN_UNSET", raising=False)
-    transport = FakeTransport(FakeReadResponse([b"\x00\x00"]))
-    config = TTSStageConfig(api_key_env="ANVIL_TEST_TTS_TOKEN_UNSET")
-    list(stream_speech("hi", config, transport=transport))
-    assert "Authorization" not in transport.calls[0]["headers"]
 
 
 def test_stream_speech_cartesia_websocket_streams_base64_pcm(monkeypatch):
@@ -358,71 +140,9 @@ def test_stream_speech_cartesia_websocket_streams_base64_pcm(monkeypatch):
     assert payloads[0]["continue"] is False
 
 
-def test_stream_speech_cartesia_rejects_malformed_chunk():
-    def on_connect(conn, path):
-        conn.recv_text()
-        conn.send_json({"type": "chunk", "data": "*** not base64 ***"})
-
-    server = make_ws_server("127.0.0.1", 0, on_connect, ws_path="/tts/websocket")
-    thread = serve_forever_in_background(server)
-    try:
-        host, port = server.server_address[:2]
-        config = TTSStageConfig(
-            base_url="http://%s:%d" % (host, port),
-            model="gepard-1.0",
-            protocol="cartesia",
-        )
-        with pytest.raises(TTSClientError, match="base64"):
-            list(stream_speech("hi there", config))
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
-
-
 # --------------------------------------------------------------------------- #
 # F3 -- a non-2xx response must raise, never be streamed as if it were audio
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("status", [429, 500])
-def test_stream_speech_raises_on_non_2xx_status_without_yielding_bytes(status):
-    error_body = b'{"error": "rate limited"}'
-    transport = FakeTransport(FakeReadResponse([error_body], status=status))
-    with pytest.raises(TTSClientError):
-        list(stream_speech("hi there", TTSStageConfig(), transport=transport))
-
-
-def test_stream_speech_closes_response_even_on_non_2xx_status():
-    transport = FakeTransport(FakeReadResponse([b"error body"], status=500))
-    with pytest.raises(TTSClientError):
-        list(stream_speech("hi", TTSStageConfig(), transport=transport))
-    assert transport.response.closed
-
-
-def test_stream_speech_still_streams_normally_on_200():
-    audio = _int16_bytes([1, 2, 3, 4])
-    transport = FakeTransport(FakeReadResponse([audio[:4], audio[4:]], status=200))
-    chunks = list(stream_speech("hi there", TTSStageConfig(), transport=transport))
-    assert b"".join(chunks) == audio
-
-
-def test_tts_stage_process_fails_the_turn_on_non_2xx_without_emitting_audio():
-    """End-to-end through the stage: a 500 from the TTS serve must not
-    surface as an AudioOut item -- BaseStage's per-item exception isolation
-    catches the raised TTSClientError, so `process()` itself must propagate
-    it rather than swallow it into a (false) successful empty result."""
-    scope = CancelScope()
-
-    def fake_stream(text, config):
-        # Exercise stream_speech for real so the status check actually runs.
-        transport = FakeTransport(FakeReadResponse([b"server error"], status=500))
-        yield from stream_speech(text, config, transport=transport)
-
-    stage = TTSStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    with pytest.raises(TTSClientError):
-        # process() is a generator now (PUNCH-LIST #1): calling it just
-        # builds the generator object -- iterating it (list(...)) is what
-        # actually runs the body and must raise.
-        list(stage.process(_tts_input()))
 
 
 # --------------------------------------------------------------------------- #
@@ -452,175 +172,3 @@ def test_tts_stage_emits_resampled_audio_chunks():
     total_out_samples = sum(len(m.pcm) // 2 for m in audio_out)
     total_in_samples = len(audio) // 2
     assert total_out_samples == round(total_in_samples * (16000 / 24000))
-
-
-def test_tts_stage_handles_odd_byte_chunk_boundaries():
-    # First "chunk" ends mid-sample (odd byte count) -- must not corrupt output.
-    scope = CancelScope()
-    full = _int16_bytes([10, 20, 30, 40])
-
-    def fake_stream(text, config):
-        yield full[:3]   # 1.5 samples
-        yield full[3:]   # remaining 2.5 samples
-
-    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)  # no resampling noise
-    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-    out = list(stage.process(_tts_input()))
-    combined = b"".join(m.pcm for m in out if isinstance(m, AudioOut))
-    assert combined == full
-
-
-def test_tts_stage_retries_pre_audio_incomplete_read_once():
-    scope = CancelScope()
-    audio = _int16_bytes([1, 2, 3, 4])
-    calls = 0
-
-    def fake_stream(text, config):
-        nonlocal calls
-        calls += 1
-        if calls == 1:
-            raise http.client.IncompleteRead(b"")
-        yield audio
-
-    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
-    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-
-    out = list(stage.process(_tts_input()))
-
-    assert calls == 2
-    assert b"".join(m.pcm for m in out if isinstance(m, AudioOut)) == audio
-    assert [m.text for m in out if isinstance(m, SpokenText)] == ["hello"]
-
-
-def test_tts_stage_falls_back_to_separator_safe_text_after_pre_audio_failures():
-    scope = CancelScope()
-    audio = _int16_bytes([1, 2, 3, 4])
-    calls = []
-
-    def fake_stream(text, config):
-        calls.append(text)
-        if "-" in text:
-            raise http.client.IncompleteRead(b"")
-        yield audio
-
-    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
-    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-
-    out = list(stage.process(_tts_input(text="up-to-date forecast")))
-
-    assert calls == ["up-to-date forecast", "up-to-date forecast", "up to date forecast"]
-    assert b"".join(m.pcm for m in out if isinstance(m, AudioOut)) == audio
-    assert [m.text for m in out if isinstance(m, SpokenText)] == ["up to date forecast"]
-
-
-def test_tts_stage_does_not_retry_after_audio_emitted():
-    scope = CancelScope()
-    audio = _int16_bytes([1, 2, 3, 4])
-    calls = 0
-
-    def fake_stream(text, config):
-        nonlocal calls
-        calls += 1
-        yield audio
-        raise http.client.IncompleteRead(b"")
-
-    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
-    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-
-    yielded = []
-    with pytest.raises(http.client.IncompleteRead):
-        for item in stage.process(_tts_input()):
-            yielded.append(item)
-
-    assert calls == 1
-    assert any(isinstance(item, TTSSynthesisFailed) for item in yielded)
-    assert [item.text for item in yielded if isinstance(item, SpokenText)] == ["hello"]
-
-
-def test_tts_client_errors_preserve_the_existing_no_retry_contract():
-    calls = []
-
-    def rejected_stream(text, _config):
-        calls.append(text)
-        raise TTSClientError("upstream rejected request")
-        yield  # pragma: no cover - makes this a generator
-
-    stage = TTSStage(in_queue=None, stream_fn=rejected_stream)
-    yielded = []
-
-    with pytest.raises(TTSClientError, match="rejected request"):
-        for item in stage.process(_tts_input(text="up-to-date")):
-            yielded.append(item)
-
-    assert calls == ["up-to-date"]
-    assert len([item for item in yielded if isinstance(item, TTSSynthesisFailed)]) == 1
-
-
-def test_tts_stage_marks_an_empty_synthesis_as_failed_without_spoken_text():
-    stage = TTSStage(in_queue=None, stream_fn=lambda _text, _config: iter(()))
-    yielded = []
-
-    with pytest.raises(TTSClientError, match="without valid audio"):
-        for item in stage.process(_tts_input()):
-            yielded.append(item)
-
-    assert len([item for item in yielded if isinstance(item, TTSSynthesisFailed)]) == 1
-    assert not any(isinstance(item, SpokenText) for item in yielded)
-
-
-def test_tts_stage_marks_an_unexpected_synthesis_failure_without_retrying():
-    calls = 0
-
-    def broken_stream(_text, _config):
-        nonlocal calls
-        calls += 1
-        raise ValueError("decoder contract violation")
-        yield  # pragma: no cover - makes this a generator
-
-    stage = TTSStage(in_queue=None, stream_fn=broken_stream)
-    yielded = []
-
-    with pytest.raises(ValueError, match="decoder contract violation"):
-        for item in stage.process(_tts_input()):
-            yielded.append(item)
-
-    assert calls == 1
-    assert len([item for item in yielded if isinstance(item, TTSSynthesisFailed)]) == 1
-    assert not any(isinstance(item, SpokenText) for item in yielded)
-
-
-def test_tts_stage_aborts_on_mid_stream_barge_in():
-    scope = CancelScope()
-
-    def fake_stream(text, config):
-        yield _int16_bytes([1, 2])
-        scope.cancel()  # barge-in lands mid-synthesis
-        yield _int16_bytes([3, 4])  # must not be emitted
-
-    config = TTSStageConfig(source_sample_rate=16000, target_sample_rate=16000)
-    stage = TTSStage(in_queue=None, cancel_scope=scope, config=config, stream_fn=fake_stream)
-    out = list(stage.process(_tts_input()))
-    combined = b"".join(m.pcm for m in out if isinstance(m, AudioOut))
-    assert combined == _int16_bytes([1, 2])
-
-
-def test_tts_stage_skips_already_stale_input():
-    scope = CancelScope()
-    scope.cancel()
-
-    def fake_stream(text, config):
-        raise AssertionError("must not synthesize an already-stale TTSInput")
-
-    stage = TTSStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    assert list(stage.process(_tts_input(generation=0))) == []
-
-
-def test_tts_stage_forwards_end_of_response_unchanged():
-    stage = TTSStage(in_queue=None, stream_fn=lambda t, c: iter(()))
-    eor = EndOfResponse(turn_id="t1", turn_revision=0, generation=0)
-    assert list(stage.process(eor)) == [eor]
-
-
-def test_tts_stage_ignores_non_tts_input_items():
-    stage = TTSStage(in_queue=None, stream_fn=lambda t, c: iter(()))
-    assert list(stage.process("not tts input")) == []

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving import cli, reservations, serve_recipes, serves
+from anvil_serving import cli, serve_recipes, serves
 from tests.conftest import proc
 
 CID = 'a' * 64
@@ -142,16 +142,6 @@ def invoke(p, **changes):
     return serves.cmd_restore_retained(p.scope, 'exclusive', **{**p.kwargs, **changes})
 
 
-def test_exact_retained_restore_and_default_preview(prepared):
-    p = prepared
-    assert invoke(p) == 0
-    assert actions(p) == []
-    assert not (p.registry.parent / '.serve-recipes.lock').exists()
-    assert invoke(p, dry_run=False, confirm=True) == 0
-    assert actions(p) == [['docker', 'start', CID]]
-    assert all('.Config.Env' not in repr(a) for a in p.calls)
-
-
 @pytest.mark.parametrize('kind', ['id', 'image', 'name', 'model', 'recipe', 'revision', 'cmd', 'devices', 'gpu-count', 'gpu-options', 'port', 'never-started', 'created', 'paused', 'running', 'restarting', 'pid'])
 def test_identity_mismatches_never_start(prepared, kind):
     p = prepared
@@ -172,38 +162,6 @@ def test_identity_mismatches_never_start(prepared, kind):
     assert actions(p) == []
 
 
-@pytest.mark.parametrize('kind', ['manifest', 'registry', 'topology', 'replacement', 'missing', 'unknown-owner', 'competing', 'recipe-owner', 'discovery-error', 'compute', 'budget', 'unmanaged-container', 'container-discovery'])
-def test_last_moment_source_and_owner_guards(prepared, monkeypatch, kind):
-    p = prepared
-    if kind in {'manifest', 'registry'}:
-        p.kwargs[kind + '_sha256'] = 'c' * 64
-    elif kind == 'topology':
-        monkeypatch.setattr('anvil_serving.topology.load_topology', lambda _: SimpleNamespace(gpu_role=lambda _: SimpleNamespace(uuid='GPU-other')))
-    elif kind in {'unknown-owner', 'competing'}:
-        p.scope.append({'name': 'other', 'container': 'other'})
-        monkeypatch.setattr(serves, 'load_manifest_set', lambda _: p.scope)
-        monkeypatch.setattr(serves, 'docker_states', lambda *a, **k: {'retained-model': 'exited', 'other': 'unknown' if kind == 'unknown-owner' else 'running'})
-    elif kind in {'recipe-owner', 'discovery-error'}:
-        monkeypatch.setattr(serves, '_unmanaged_recipe_ownership', lambda *a, **k: {'owners': [1] if kind == 'recipe-owner' else [], 'discovery_error': kind == 'discovery-error'})
-    elif kind == 'budget': monkeypatch.setattr(reservations, 'deny_over_budget', lambda *a: ['no budget'])
-    else:
-        original = p.kwargs['_run']; count = [0]
-        def run(argv, **kwargs):
-            if kind == 'container-discovery' and argv[:3] == ['docker', 'ps', '-a']: return proc(1)
-            if kind == 'unmanaged-container' and argv[:3] == ['docker', 'ps', '-a']:
-                return proc(0, json.dumps({'Names': 'foreign', 'State': 'running'}))
-            if kind == 'unmanaged-container' and argv[:2] == ['docker', 'inspect']: return proc(0, '[{}]')
-            if kind == 'compute' and argv[0] == 'nvidia-smi': return proc(0, DEVICES[0] + ', 33')
-            if argv[:2] == ['docker', 'inspect']:
-                count[0] += 1
-                if kind == 'missing': return proc(1)
-                if kind == 'replacement' and count[0] == 2: p.row['Id'] = 'c' * 64
-            return original(argv, **kwargs)
-        p.kwargs['_run'] = run
-    assert invoke(p, dry_run=False, confirm=True) == 1
-    assert actions(p) == []
-
-
 @pytest.mark.parametrize('guard', ['health', 'protocol', 'storage'])
 def test_failure_stops_only_same_owner_and_retains(prepared, monkeypatch, guard):
     p = prepared
@@ -211,16 +169,6 @@ def test_failure_stops_only_same_owner_and_retains(prepared, monkeypatch, guard)
     assert invoke(p, dry_run=False, confirm=True) == 1
     assert actions(p) == [['docker', 'start', CID], ['docker', 'stop', CID]]
     assert p.row['State']['Status'] == 'exited'
-
-
-def test_running_replacement_after_start_is_hold_without_cleanup(prepared, monkeypatch):
-    p = prepared
-    def health(*a, **k):
-        p.row['Id'] = 'c' * 64
-        return False
-    monkeypatch.setattr(serves, '_await_healthy', health)
-    assert invoke(p, dry_run=False, confirm=True) == 1
-    assert actions(p) == [['docker', 'start', CID]]
 
 
 def test_real_promotion_lock_and_pending_experiment_refuse(prepared, monkeypatch):
@@ -293,11 +241,6 @@ def test_retained_owner_resolution_refuses_before_docker(prepared, monkeypatch, 
     if kind in {'controller', 'ssh'}: args += ['--transport', kind]
     assert (cli.main(['serves', *args]) if entry == 'cli' else serves.main(args)) != 0
     assert p.calls == []
-
-
-def test_ordinary_exclusive_up_remains_denied(prepared):
-    assert serves.cmd_up(prepared.scope, ['exclusive'], dry_run=True, _run=prepared.kwargs['_run']) == 1
-    assert actions(prepared) == []
 
 
 @pytest.mark.parametrize('utility', ['utility', 'compute', 'duplicate', 'privileged', 'manual-device', 'capability-override', 'unavailable'])

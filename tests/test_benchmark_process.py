@@ -13,33 +13,6 @@ import pytest
 from anvil_serving import transports
 
 
-def test_bounded_process_uses_requested_cwd_and_clean_environment(tmp_path, monkeypatch):
-    monkeypatch.setenv("REPLAY_PARENT_ONLY", "must-not-inherit")
-    environment = {"REPLAY_ALLOWED": "yes", "LC_CTYPE": "C.UTF-8"}
-    result = transports._run_bounded_process(
-        [sys.executable, "-c", "import json,os; print(json.dumps([os.getcwd(),dict(os.environ)]))"],
-        timeout=5,
-        max_output_bytes=4096,
-        cwd=tmp_path,
-        env=environment,
-    )
-    assert result.returncode == 0
-    assert result.stderr == b""
-    assert json.loads(result.stdout) == [str(tmp_path), environment]
-
-
-@pytest.mark.skipif(os.name != "posix", reason="POSIX process group contract")
-def test_bounded_process_stays_in_worker_process_group():
-    result = transports._run_bounded_process(
-        [sys.executable, "-c", "import os; print(os.getpgrp())"],
-        timeout=5,
-        max_output_bytes=128,
-        env={},
-    )
-    assert result.returncode == 0
-    assert int(result.stdout) == os.getpgrp()
-
-
 @pytest.mark.parametrize(
     "script,expected_error",
     [

@@ -118,32 +118,6 @@ def test_gateway_snapshot_stops_only_gateway_and_restores_readiness(tmp_path, mo
     assert Path(result["receipt"]).stat().st_mode & 0o777 == 0o600
 
 
-def test_gateway_snapshot_restarts_after_native_backup_failure(tmp_path, monkeypatch):
-    # Reuse the success fixture's narrow contracts, then make the native step fail.
-    # The finally block is the behavior under test: no pair is reported and the
-    # exact prior active gateway returns before the error escapes.
-    # Kept local to avoid a live service or recovery archive.
-    root, state, units = tmp_path / "rendered", tmp_path / "gateway", tmp_path / "units"
-    for path in (root / "systemd", state, units, tmp_path / "backups"): path.mkdir(parents=True, exist_ok=True)
-    native = tmp_path / "native"; native.write_bytes(b"native"); native.chmod(0o755)
-    source = f"[Service]\nExecStart={native} gateway\n".encode(); (root / "systemd" / gateway_backup._UNIT).write_bytes(source); (units / gateway_backup._UNIT).write_bytes(source)
-    data = {"config_root": str(root), "binary": str(native), "gateway": {"state_directory": str(state)}, "service_identities": {"gateway": {"uid": os.geteuid(), "gid": os.getegid()}}}
-    for name, value in (("_safe_private_runtime_directory", lambda *_: None), ("_safe_root_ancestors", lambda *_: None), ("_verify_owned_tree", lambda *_: None), ("_role_service_identity", lambda *_: manage.ServiceIdentity(os.geteuid(), os.getegid())), ("_verified_binaries", lambda *_: {"native": "a" * 64}), ("_bound_active", lambda *_: None), ("_verify_unit", lambda *_: None), ("_unit_metadata", lambda *_, **__: None), ("_gateway_ready", lambda *_: None)):
-        monkeypatch.setattr(manage, name, value)
-    monkeypatch.setattr(recovery, "_private_directory", lambda *_: None); monkeypatch.setattr(gateway_backup, "private_directory", lambda *_, **__: None)
-    active = [True]
-    def runner(argv, *_):
-        if argv[:2] == (manage._SYSTEMCTL, "stop"): active[0] = False
-        if argv[:2] == (manage._SYSTEMCTL, "start"): active[0] = True
-        if argv[:3] == (manage._SYSTEMCTL, "show", "--property=ActiveState,UnitFileState"):
-            return manage.RunResult(0, f"ActiveState={'active' if active[0] else 'inactive'}\nUnitFileState=enabled\n".encode())
-        return manage.RunResult(0)
-    monkeypatch.setattr(recovery, "_backup_locked", lambda *_, **__: (_ for _ in ()).throw(manage.ManageError("synthetic")))
-    with pytest.raises(manage.ManageError):
-        gateway_backup.snapshot(data, str(tmp_path / "deployment.json"), {"file": "/private/auth.zip", "sha256": "b" * 64}, runner=runner, unit_root=units)
-    assert active[0]
-
-
 def test_backup_waits_for_exact_oidc_issuer_without_redirects(monkeypatch):
     issuer = "https://auth.example.test"
     data = {"gateway": {"oidc": {"issuer": issuer}}}
@@ -167,10 +141,3 @@ def test_backup_waits_for_exact_oidc_issuer_without_redirects(monkeypatch):
     monkeypatch.setattr(gateway_backup.time, "sleep", lambda _: None)
     gateway_backup._wait_for_oidc(data)
     assert calls == [("GET", "/.well-known/openid-configuration")] * 4
-
-
-def test_backup_oidc_unavailability_is_bounded(monkeypatch):
-    ticks = iter([0, 11])
-    monkeypatch.setattr(gateway_backup.time, "monotonic", lambda: next(ticks))
-    with pytest.raises(gateway_backup.manage.ManageError, match="left running"):
-        gateway_backup._wait_for_oidc({"gateway": {"oidc": {"issuer": "https://auth.example.test"}}})

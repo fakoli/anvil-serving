@@ -6,7 +6,6 @@ them, so an operator answering "how do I start what `llm.primary` needs" read
 four files by hand. See docs/PRODUCT-DISCOVERY-PERSONAS.md §2 and
 docs/STRATEGY-MAKE-DIVERGENCE-LOUD.md (feature 11).
 """
-import json
 import textwrap
 
 from anvil_serving import serves
@@ -66,100 +65,6 @@ def _load(tmp_path, serves_body, router_filename="router.toml", **router_kwargs)
     config = router_config.load(router_path)
     serves_set = serves.load_manifest_set(serves_path)
     return config, serves_set, router_path
-
-
-def test_resolve_alias_backers_walks_alias_to_tier_to_serve(tmp_path):
-    config, serves_set, _ = _load(
-        tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
-
-    result = serves.resolve_alias_backers(config, serves_set, "llm.primary")
-
-    assert result["tier_id"] == "primary-local"
-    assert [c["name"] for c in result["candidates"]] == ["primary"]
-    assert result["candidates"][0]["container"] == "primary-c"
-    assert result["candidates"][0]["port"] == 30001
-    assert result["candidates"][0]["up"][:2] == ["docker", "compose"]
-
-
-def test_alias_normalization_uppercase_and_whitespace(tmp_path):
-    config, serves_set, _ = _load(
-        tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
-
-    result = serves.resolve_alias_backers(config, serves_set, "  LLM.Primary  ")
-
-    assert result["normalized_alias"] == "llm.primary"
-    assert result["tier_id"] == "primary-local"
-    assert len(result["candidates"]) == 1
-
-
-def test_cmd_up_for_happy_path_prints_full_chain(tmp_path, capsys):
-    config, serves_set, router_path = _load(
-        tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
-
-    rc = serves.cmd_up_for(config, serves_set, "llm.primary", router_path)
-
-    assert rc == 0
-    out = capsys.readouterr().out
-    assert "llm.primary" in out
-    assert "primary-local" in out
-    assert "primary" in out
-    assert "primary-c" in out
-    assert "docker compose" in out
-
-
-def test_cmd_up_for_json_happy_path_has_full_chain(tmp_path, capsys):
-    config, serves_set, router_path = _load(
-        tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
-
-    rc = serves.cmd_up_for(config, serves_set, "llm.primary", router_path, as_json=True)
-
-    assert rc == 0
-    report = json.loads(capsys.readouterr().out)
-    assert report["tier_id"] == "primary-local"
-    assert report["resolved"]["name"] == "primary"
-    assert report["resolved"]["container"] == "primary-c"
-
-
-def test_unknown_alias_exits_2_and_lists_configured_aliases(tmp_path, capsys):
-    config, serves_set, router_path = _load(
-        tmp_path, _entry("primary", "primary-c", router_tier="primary-local"))
-
-    rc = serves.cmd_up_for(config, serves_set, "llm.nope", router_path)
-
-    assert rc == 2
-    err = capsys.readouterr().err
-    assert "llm.nope" in err
-    assert "llm.primary" in err
-
-
-def test_tier_with_zero_backers_exits_1(tmp_path, capsys):
-    config, serves_set, router_path = _load(
-        tmp_path, _entry("other", "other-c"))  # no router_tier at all
-
-    rc = serves.cmd_up_for(config, serves_set, "llm.primary", router_path)
-
-    assert rc == 1
-    err = capsys.readouterr().err
-    assert "primary-local" in err
-    assert "no backing serve" in err
-
-
-def test_multi_candidate_refuses_and_lists_all(tmp_path, capsys):
-    body = (
-        _entry("primary", "primary-c", router_tier="primary-local")
-        + _entry("old-primary", "old-primary-c", router_tier="primary-local",
-                  groups=["restore"])
-    )
-    config, serves_set, router_path = _load(tmp_path, body)
-
-    rc = serves.cmd_up_for(config, serves_set, "llm.primary", router_path)
-
-    assert rc == 1
-    err = capsys.readouterr().err
-    assert "2 backing serves" in err
-    assert "primary" in err
-    assert "old-primary" in err
-    assert "restore" in err
 
 
 def test_single_candidate_dry_run_confirm_reaches_cmd_up_dry_run(tmp_path, capsys):

@@ -8,31 +8,6 @@ from anvil_serving import recipe_monitoring as m, recipe_secrets as s
 from tests.test_recipe_monitoring import monitoring_slot
 
 
-def test_protected_key_file(tmp_path):
-    key = tmp_path / 'key'
-    key.write_text('synthetic-key\n')
-    key.chmod(0o600)
-    assert s.read_key(str(key))[0] == 'synthetic-key'
-    key.chmod(0o644)
-    with pytest.raises(ValueError, match='protected'):
-        s.read_key(str(key))
-    key.unlink()
-    os.mkfifo(key)
-    with pytest.raises(ValueError, match='regular'):
-        s.read_key(str(key))
-    key.unlink()
-    key.symlink_to(tmp_path / 'missing')
-    with pytest.raises(ValueError, match='unavailable'):
-        s.read_key(str(key))
-
-
-@pytest.mark.parametrize('path', ['relative', '/tmp/a,b', '/tmp/../key', '/tmp//key',
-                                  '/tmp/key\n', '/tmp/$(key)', '/tmp/key:ro'])
-def test_unsafe_paths(path):
-    with pytest.raises(ValueError):
-        s.safe_path(path)
-
-
 def test_key_directory_and_hardlink_custody(tmp_path):
     key = tmp_path / 'key'
     key.write_text('synthetic-key')

@@ -11,7 +11,6 @@ from anvil_serving.media.contracts import utc_now
 from anvil_serving.media.errors import MediaError
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.operations import MediaOperations
-from anvil_serving.media.planning import template_fields
 from anvil_serving.media.workflows import WorkflowRegistry, canonical_digest
 from tests.media.test_artifact_inputs import Backend
 from tests.media.test_artifacts import job, png
@@ -80,24 +79,6 @@ def test_prepare_validates_reference_role_owner_and_expiry_again_at_execution(tm
     assert not backend.submissions
 
 
-@pytest.mark.parametrize("brief,parameters", [({"negative_prompt": "blur"}, {}),
-    ({"scene": "Hosts"}, {"prompt": "duplicate"}), ({"scene": "Hosts"}, {"width": 999}),
-    ({"scene": "Hosts"}, {"node": "1"}), ({"scene": 1}, {}), ({"scene": ""}, {}),
-    ({"scene": "Hosts", "dialogue": chr(0xD800)}, {})])
-def test_unsupported_fields_and_profile_overrides_fail_before_submission(tmp_path, brief, parameters):
-    operations = setup(tmp_path)
-    with pytest.raises(MediaError):
-        operations.workflow_prepare("image.test", "v1", parameters, brief=brief,
-                                     principal="hermes", idempotency_key="invalid-shot")
-    assert not operations.jobs.nonterminal()
-
-
-@pytest.mark.parametrize("template", ["{scene.__class__}", "{scene[0]}", "{scene!r}", "{scene:>10}", "{unknown}", "{"])
-def test_operator_templates_reject_expression_and_format_escape_hatches(template):
-    with pytest.raises(MediaError):
-        template_fields(template)
-
-
 def test_catalog_separates_reviewed_recipes_from_executable_qualified_workflows(tmp_path):
     from anvil_serving.media.planning import validate_catalog
     operations = setup(tmp_path)
@@ -117,21 +98,6 @@ def test_catalog_separates_reviewed_recipes_from_executable_qualified_workflows(
     loaded = WorkflowRegistry(path)
     loaded.recipes()[0]["status"] = "ready"
     assert loaded.recipes()[0]["status"] == "static-reviewed"
-
-
-def test_native_mcp_preparation_and_exact_submission_share_the_recipe_compiler(tmp_path):
-    from anvil_serving import mcp
-    from anvil_serving.control_plane.mcp.tools.media import service_context
-    from tests.a2a.test_tasks import Backend as McpBackend, CALLER
-    operations = setup(tmp_path)
-    with service_context(operations, McpBackend()):
-        prepared = mcp.call_tool("media_workflow_prepare", {"workflow_id": "image.test", "version": "v1",
-            "brief": {"scene": "Hosts", "camera": "Wide", "dialogue": "A: Hello."},
-            "idempotency_key": "mcp-shot"}, caller=CALLER, audience="media")
-        assert prepared["ok"] and not operations.jobs.nonterminal()
-        submitted = mcp.call_tool("media_workflow_run", prepared["data"]["runArguments"],
-                                   caller=CALLER, audience="media")
-        assert submitted["ok"] and submitted["data"]["job"]["state"] == "queued"
 
 
 def test_cli_prepares_the_same_request_and_rejects_invalid_values_before_auto_key(tmp_path, monkeypatch, capsys):

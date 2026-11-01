@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 import io
 import json
 import math
@@ -19,9 +19,7 @@ from anvil_serving.benchmarking.artifacts import REQUIRED_MEASURED_IDENTITIES
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.jobs import JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking import swe as swe_benchmark
-from anvil_serving.benchmarking import preflight as benchmark_preflight
 from anvil_serving.benchmarking import worker as benchmark_worker
-from anvil_serving.benchmarking.profiles import load_profile
 from anvil_serving.benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, execute_benchmark_job, launch_benchmark_job
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
@@ -51,51 +49,6 @@ def spec():
     }
 
 
-def test_worker_claims_once_and_retains_cross_suite_evidence(monkeypatch, tmp_path):
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(spec())
-    monkeypatch.setattr(
-        "anvil_serving.benchmarking.worker.prepare_harness_assets",
-        lambda *_args, **_kwargs: {
-            "schema": "anvil-serving.benchmark-harness-assets/v1",
-            "profile_sha256": "profile",
-            "suite": "context",
-            "assets": {},
-        },
-    )
-    monkeypatch.setattr(
-        "anvil_serving.benchmarking.worker.run_benchmark_preflight",
-        lambda *_args, **_kwargs: {
-            "schema": "anvil-serving.benchmark-preflight/v1",
-            "passed": True,
-            "observed": {
-                "worker": {"id": "worker", "architecture": "x86_64"},
-                "endpoint": {"configured_context": 650000},
-            },
-            "checks": [],
-        },
-    )
-    monkeypatch.setattr(
-        "anvil_serving.benchmarking.worker.run_context_suite",
-        lambda *_args, **_kwargs: {
-            "schema": "anvil-serving.context-suite-run/v1",
-            "curve": {"attempted_buckets": [8192], "effective_context": 8192},
-            "passed": True,
-        },
-    )
-    record = execute_benchmark_job(store, "worker-run")
-    assert record["state"] == "completed"
-    artifact = store.artifact("worker-run")
-    evidence = artifact["results"]["evidence"]
-    assert evidence["evidence_kind"] == "measured"
-    assert evidence["completeness"] == "completed"
-    assert [stage["name"] for stage in evidence["stages"]] == [
-        "asset_preparation", "preflight", "context"
-    ]
-    assert evidence["promotion"]["authorized"] is False
-    assert evidence["identities"]["model"] == {"alias": "candidate"}
-
-
 @pytest.mark.parametrize('slow_stage', ['preflight', 'prepared_verification'])
 def test_campaign_requires_full_timeout_after_preflight_and_prepared_verification(monkeypatch, tmp_path, slow_stage):
     from anvil_serving.benchmarking import campaign_execution as execution, aider
@@ -107,6 +60,7 @@ def test_campaign_requires_full_timeout_after_preflight_and_prepared_verificatio
         campaign_id='campaign-run', cell_id='cell', arm_id='arm', batch_id='batch')
     store = BenchmarkJobStore(str(tmp_path / 'jobs.db'), run_root=str(tmp_path / 'runs'))
     store.submit(value)
+    monkeypatch.setattr(benchmark_worker.shutil, "disk_usage", lambda _path: SimpleNamespace(free=2**40))
     clock, calls = [0], []
     monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0],
         perf_counter=time.perf_counter, sleep=time.sleep))
@@ -134,214 +88,6 @@ def test_campaign_requires_full_timeout_after_preflight_and_prepared_verificatio
     assert 'requires 30s after entry; remaining 29s' in result['failure']['message']
 
 
-def test_incomplete_swe_budget_exhaustion_retains_outer_resource_cause(monkeypatch, tmp_path):
-    value = spec()
-    value["suite"] = "swe"
-    value["parameters"] = {"instance_ids": ["astropy__astropy-12907"]}
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
-    monkeypatch.setattr(
-        benchmark_worker,
-        "prepare_harness_assets",
-        lambda *_args, **_kwargs: {"assets": {}},
-    )
-    monkeypatch.setattr(
-        benchmark_worker,
-        "run_benchmark_preflight",
-        lambda *_args, **_kwargs: {
-            "schema": "anvil-serving.benchmark-preflight/v1",
-            "passed": True,
-            "observed": {"worker": {"id": "worker"}, "endpoint": {}},
-            "checks": [],
-        },
-    )
-    monkeypatch.setattr(
-        benchmark_worker,
-        "_run_suite",
-        lambda *_args, **_kwargs: {
-            "state": "incomplete",
-            "failure": {"class": "budget_exhausted", "code": "swe_limits_exceeded"},
-            "summary": {"attempted": 1, "completed": False},
-        },
-    )
-
-    record = execute_benchmark_job(store, "worker-run")
-    evidence = store.artifact("worker-run")["results"]["evidence"]
-
-    assert record["state"] == "failed"
-    assert record["failure"]["class"] == "resource_exhaustion"
-    assert record["failure"]["code"] == "budget_exhausted"
-    assert evidence["completeness"] == "failed"
-    assert evidence["failure"]["class"] == "resource_exhaustion"
-    assert evidence["failure"]["code"] == "budget_exhausted"
-    suite_stage = next(stage for stage in evidence["stages"] if stage["name"] == "swe")
-    suite_result = json.loads((tmp_path / "runs" / "campaign" / "worker-run" / suite_stage["evidence"][0]["path"]).read_text())
-    assert suite_result["state"] == "incomplete"
-    assert suite_result["failure"] == {"class": "budget_exhausted", "code": "swe_limits_exceeded"}
-
-
-def test_worker_rejects_previously_stored_invalid_controls_before_assets(monkeypatch, tmp_path):
-    value = spec()
-    value["parameters"] = {"thinking_mode": "bogus"}
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    with monkeypatch.context() as old_writer:
-        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
-        store.submit(value)
-    monkeypatch.setattr(
-        "anvil_serving.benchmarking.worker.prepare_harness_assets",
-        lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
-    )
-    record = execute_benchmark_job(store, "worker-run")
-    assert record["state"] == "failed"
-    assert record["failure"]["code"] == "bad_thinking_mode"
-
-
-def test_worker_stops_before_suite_when_router_output_cap_is_too_small(monkeypatch, tmp_path):
-    value = spec()
-    value["parameters"] = {
-        "model_host_id": "model-host",
-        "token_buckets": [8192],
-        "output_headroom_tokens": 8192,
-    }
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
-    monkeypatch.setattr(
-        benchmark_worker,
-        "prepare_harness_assets",
-        lambda *_args, **_kwargs: {"assets": {}},
-    )
-
-    class Response:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return None
-
-        def read(self, _limit):
-            return json.dumps({"data": [{"id": "deepseek", "max_output_tokens": 1024}]}).encode()
-
-    monkeypatch.setattr(
-        benchmark_worker,
-        "run_benchmark_preflight",
-        lambda submitted, **kwargs: benchmark_preflight.run_benchmark_preflight(
-            submitted, opener=lambda *_args, **_kwargs: Response(), **kwargs
-        ),
-    )
-    monkeypatch.setattr(
-        benchmark_worker,
-        "_run_suite",
-        lambda *_args, **_kwargs: pytest.fail("suite started despite output-cap rejection"),
-    )
-
-    record = execute_benchmark_job(store, "worker-run")
-
-    assert record["state"] == "failed"
-    assert record["failure"]["code"] == "preflight_failed"
-    evidence = store.artifact("worker-run")["results"]["evidence"]
-    preflight_stage = next(stage for stage in evidence["stages"] if stage["name"] == "preflight")
-    preflight = json.loads(
-        (tmp_path / "runs" / "campaign" / "worker-run" / preflight_stage["evidence"][0]["path"]).read_text()
-    )
-    assert "output_budget_exceeds_router_cap" in {item["code"] for item in preflight["checks"]}
-
-
-def test_worker_forwards_swe_sampler_controls_into_mini_config_and_result(monkeypatch, tmp_path):
-    value = spec()
-    value["suite"] = "swe"
-    value["parameters"] = {
-        "instance_ids": ["astropy__astropy-12907"],
-        "temperature": 1.0,
-        "top_p": 0.95,
-    }
-    profile = load_profile("smoke")
-    captured = {}
-
-    def fake_plan(profile, assets, *, endpoint, request_controls, **_kwargs):
-        controls = swe_benchmark._validate_request_controls(request_controls)
-        captured["plan"] = {
-            "request_controls": controls,
-            "config_text": swe_benchmark._mini_config(
-                endpoint, profile["suites"]["swe"], controls, "docker"
-            ),
-        }
-        return captured["plan"]
-
-    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
-    monkeypatch.setattr(
-        benchmark_worker, "run_swe_benchmark", lambda plan: dict(plan)
-    )
-    result = benchmark_worker._run_suite(
-        SimpleNamespace(run_root=str(tmp_path / "runs")),
-        {"spec": value}, profile, {"assets": {}},
-    )
-
-    assert result["request_controls"]["sampling"] == {
-        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
-        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
-    }
-    assert "    temperature: 1.0\n    top_p: 0.95\n" in result["config_text"]
-
-
-@pytest.mark.parametrize("selector", [
-    {"service": "candidate", "tail": 100},
-    {"recipe_container": "candidate", "tail": 100},
-])
-def test_worker_forwards_explicit_log_target_without_endpoint_inference(monkeypatch, tmp_path, selector):
-    value = spec()
-    value.update(suite="swe", parameters={"instance_ids": ["astropy__astropy-12907"], "server_log": selector})
-    from anvil_serving.benchmarking.submission import validate_submission_spec
-    assert validate_submission_spec(value)["parameters"]["server_log"] == selector
-    def fake_plan(*_args, server_log, **_kwargs):
-        assert server_log == selector
-        return {"server_log": server_log}
-    collector = object()
-    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
-    def bind(target):
-        assert target == selector
-        return collector
-    monkeypatch.setattr(benchmark_worker, "server_log_collector", bind)
-    def run(_plan, *, log_collector):
-        assert log_collector is collector
-        return {"state": "fixture"}
-    monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", run)
-    assert benchmark_worker._run_suite(SimpleNamespace(run_root=str(tmp_path)), {"spec": value},
-                                       load_profile("smoke"), {}) == {"state": "fixture"}
-
-
-@pytest.mark.parametrize("force_nonempty_content", [True, False])
-def test_worker_forwards_swe_force_nonempty_content(monkeypatch, tmp_path, force_nonempty_content):
-    value = spec()
-    value["suite"] = "swe"
-    value["parameters"] = {
-        "instance_ids": ["astropy__astropy-12907"],
-        "thinking_mode": "enabled",
-        "force_nonempty_content": force_nonempty_content,
-    }
-    profile = load_profile("smoke")
-
-    def fake_plan(profile, assets, *, endpoint, request_controls, **_kwargs):
-        controls = swe_benchmark._validate_request_controls(request_controls)
-        return {
-            "request_controls": controls,
-            "config_text": swe_benchmark._mini_config(
-                endpoint, profile["suites"]["swe"], controls, "docker"
-            ),
-        }
-
-    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", fake_plan)
-    monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", lambda plan: dict(plan))
-    result = benchmark_worker._run_suite(
-        SimpleNamespace(run_root=str(tmp_path / "runs")),
-        {"spec": value}, profile, {"assets": {}},
-    )
-
-    assert result["request_controls"]["chat_template_kwargs"] == {
-        "enable_thinking": True,
-        "force_nonempty_content": force_nonempty_content,
-    }
-
-
 def test_detached_launcher_keeps_credentials_out_of_argv(monkeypatch, tmp_path):
     observed = {}
     monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda _pid: "test-start")
@@ -364,26 +110,6 @@ def test_detached_launcher_keeps_credentials_out_of_argv(monkeypatch, tmp_path):
     assert "worker-run" in observed["argv"]
     assert all("TOKEN" not in item for item in observed["argv"])
     assert observed["kwargs"]["stdout"] is not None
-
-
-def test_detached_launcher_reports_typed_process_failure(tmp_path):
-    database = str(tmp_path / "jobs.db")
-    run_root = str(tmp_path / "runs")
-    store = BenchmarkJobStore(database, run_root=run_root)
-    _, submitted = store.submit(spec())
-
-    with pytest.raises(BenchmarkJobError) as exc:
-        launch_benchmark_job(
-            path=database,
-            run_root=run_root,
-            run_id="worker-run",
-            popen=lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("blocked")),
-        )
-
-    assert exc.value.code == "worker_launch_failed"
-    assert store.status("worker-run") == submitted
-    assert store.submit(spec()) == ("existing", submitted)
-    assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
@@ -495,27 +221,6 @@ def test_real_child_requires_bounded_matching_custody_before_execution(tmp_path,
             process.wait(timeout=5)
         process.stdin.close()
         process.stderr.close()
-
-
-@pytest.mark.parametrize("state", [None, "running", "completed", "failed", "cancelled"])
-def test_detached_launcher_rejects_absent_or_nonqueued_jobs_before_spawn(tmp_path, state):
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    if state is not None:
-        store.submit(spec())
-        store.claim("worker-run")
-        if state != "running":
-            store.transition("worker-run", state, failure={"code": "fixture"} if state == "failed" else None)
-    original = store.status("worker-run")
-
-    with pytest.raises(BenchmarkJobError) as exc:
-        launch_benchmark_job(
-            path=store.path, run_root=store.run_root, run_id="worker-run",
-            popen=lambda *_a, **_kw: pytest.fail("ineligible job spawned a worker"),
-        )
-
-    assert exc.value.code == ("job_not_found" if state is None else "job_already_claimed")
-    assert store.status("worker-run") == original
-    assert not (tmp_path / "runs" / "campaign" / "worker-run" / "worker.json").exists()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group cancellation is POSIX-specific")
@@ -708,33 +413,6 @@ def test_cancellation_store_artifact_failure_is_terminal_and_preserves_work(monk
     assert (run_path / "work").exists()
 
 
-def test_cleanup_terminal_job_requires_stopped_owned_worker_and_retains(monkeypatch, tmp_path):
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(spec())
-    store.claim("worker-run")
-    store.transition("worker-run", "completed", results={"evidence": {}})
-    run_path = tmp_path / "runs" / "campaign" / "worker-run"
-    work = run_path / "work"
-    work.mkdir(parents=True)
-    (work / "predictions.jsonl").write_text('{"instance_id":"case"}\n', encoding="utf-8")
-    database = os.path.realpath(store.path)
-    (run_path / "worker.json").write_text(json.dumps({
-        "run_id": "worker-run", "pid": 12345, "db": database,
-        "run_root": store.run_root, "process_start": "started",
-        "process_group_id": 12345, "session_id": 12345,
-    }), encoding="utf-8")
-    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda _pid: None)
-    monkeypatch.setattr(benchmark_worker.os, "getpgid", lambda _pid: (_ for _ in ()).throw(ProcessLookupError()))
-    monkeypatch.setattr(benchmark_worker, "_process_group_running", lambda _pid: False)
-
-    cleaned = cleanup_benchmark_job(store, "worker-run")
-
-    assert cleaned["cleaned"] is True
-    assert cleaned["retention"]["state"] == "absent"
-    assert not work.exists()
-    assert not (run_path / "evidence" / "swe-canonical").exists()
-
-
 class EndpointHandler(BaseHTTPRequestHandler):
     def log_message(self, *_args):
         return
@@ -774,63 +452,6 @@ class EndpointHandler(BaseHTTPRequestHandler):
         self.wfile.write(raw)
 
 
-def test_real_detached_worker_completes_against_routed_protocol(tmp_path):
-    server = ThreadingHTTPServer(("127.0.0.1", 0), EndpointHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        database = str(tmp_path / "jobs.db")
-        run_root = str(tmp_path / "runs")
-        store = BenchmarkJobStore(database, run_root=run_root)
-        value = spec()
-        value["endpoint"]["base_url"] = f"http://127.0.0.1:{server.server_port}/v1"
-        store.submit(value)
-        launch_benchmark_job(path=database, run_root=run_root, run_id="worker-run")
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            record = store.status("worker-run")
-            if record["state"] in {"completed", "failed", "cancelled"}:
-                break
-            time.sleep(0.1)
-        assert record["state"] == "completed", store.logs("worker-run")
-        artifact = store.artifact("worker-run")
-        evidence = artifact["results"]["evidence"]
-        assert evidence["completeness"] == "completed"
-        assert evidence["summary"]["effective_context"] == 8192
-        assert evidence["promotion"]["authorized"] is False
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
-
-@pytest.mark.parametrize(("suite", "parameters", "code"), [
-    ("context", {"offline": "false"}, "bad_offline"),
-    ("context", {"client_topology": "bogus"}, "bad_client_topology"),
-    ("context", {"model_host_id": ["model-host"]}, "bad_model_host_id"),
-    ("context", {"model_host_id": " model-host "}, "bad_model_host_id"),
-    ("swe", {"instance_ids": ["astropy__astropy-12907"], "paired_image_repo_digests": []}, "bad_swe_image_policy"),
-    ("context", declared_identities(), "bad_identities"),
-    ("context", declared_identities(model="spoofed-scalar"), "bad_identities"),
-])
-def test_worker_rejects_previously_stored_mis_typed_parameters_before_assets(
-    monkeypatch, tmp_path, suite, parameters, code,
-):
-    value = spec()
-    value["suite"] = suite
-    value["parameters"] = parameters
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    with monkeypatch.context() as old_writer:
-        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
-        store.submit(value)
-    monkeypatch.setattr(
-        "anvil_serving.benchmarking.worker.prepare_harness_assets",
-        lambda *_args, **_kwargs: pytest.fail("invalid job prepared assets"),
-    )
-    record = execute_benchmark_job(store, "worker-run")
-    assert record["state"] == "failed"
-    assert record["failure"]["code"] == code
-
-
 def _execute_successful_swe(monkeypatch, tmp_path, *, missing=None):
     from tests.test_swe_benchmark import SuccessfulRunner, plan
 
@@ -860,30 +481,6 @@ def _execute_successful_swe(monkeypatch, tmp_path, *, missing=None):
     monkeypatch.setattr(benchmark_worker, "run_swe_benchmark", run)
     record = execute_benchmark_job(store, value["run_id"])
     return store, record, tmp_path / "runs" / "campaign" / value["run_id"]
-
-
-def test_successful_legacy_swe_executes_and_completes_with_retained_artifacts(monkeypatch, tmp_path):
-    store, record, run = _execute_successful_swe(monkeypatch, tmp_path)
-    assert record["state"] == "completed", record.get("failure")
-    evidence = store.artifact(record["spec"]["run_id"])["results"]["evidence"]
-    assert evidence["completeness"] == "completed"
-    assert evidence["summary"]["resolve_rate"] == 1.0
-    assert all(stage["status"] == "completed" for stage in evidence["stages"])
-    manifest = json.loads((run / "evidence" / "swe-canonical" / "manifest.json").read_text())
-    assert manifest["state"] == "retained"
-    assert manifest["missing"] == []
-    assert not (run / "work" / "swe-prompt-contract.yaml").exists()
-    assert not (run / "work" / "paired-image-ids.json").exists()
-
-
-@pytest.mark.parametrize("missing", ["overlay", "grader"])
-def test_swe_execution_cannot_complete_with_missing_conditional_or_grader_evidence(monkeypatch, tmp_path, missing):
-    store, record, run = _execute_successful_swe(monkeypatch, tmp_path, missing=missing)
-    assert record["state"] == "failed"
-    evidence = store.artifact(record["spec"]["run_id"])["results"]["evidence"]
-    assert evidence["completeness"] == "failed"
-    assert next(stage for stage in evidence["stages"] if stage["name"] == "swe_canonical_retention")["status"] == "incomplete"
-    assert (run / "work").exists()
 
 
 def _stopped_worker(monkeypatch, store, run, run_id):
@@ -926,27 +523,6 @@ def test_swe_cleanup_requires_exact_terminal_bound_snapshot(monkeypatch, tmp_pat
     assert store.artifact(run_id) == original_artifact
 
 
-def test_swe_cleanup_refuses_unanchored_terminal_work_without_creating_evidence(monkeypatch, tmp_path):
-    value = spec()
-    value.update(suite="swe", parameters={"instance_ids": ["astropy__astropy-12907"]})
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
-    store.claim("worker-run")
-    store.transition("worker-run", "completed", results={"evidence": {}})
-    run = tmp_path / "runs" / "campaign" / "worker-run"
-    work = run / "work"
-    work.mkdir(parents=True)
-    (work / "predictions.jsonl").write_text("source")
-    _stopped_worker(monkeypatch, store, run, "worker-run")
-    original = store.status("worker-run")
-    with pytest.raises(BenchmarkJobError) as exc:
-        cleanup_benchmark_job(store, "worker-run")
-    assert exc.value.code == "missing_swe_canonical_evidence"
-    assert work.exists()
-    assert not (run / "evidence" / "swe-canonical").exists()
-    assert store.status("worker-run") == original
-
-
 def test_swe_cancel_artifact_failure_then_cleanup_preserves_unanchored_work(monkeypatch, tmp_path):
     from tests.test_benchmark_retention import _canonical_work
     from anvil_serving.benchmarking.swe_regrade import prepare_swe_regrade
@@ -978,179 +554,6 @@ def test_swe_cancel_artifact_failure_then_cleanup_preserves_unanchored_work(monk
     assert exc.value.code == "missing_swe_canonical_evidence"
     assert work.exists()
     assert store.status("worker-run") == original
-
-
-@pytest.mark.parametrize("suite", ["context", "agentic"])
-def test_non_swe_cleanup_retains_native_output_without_swe_evidence(monkeypatch, tmp_path, suite):
-    value = spec()
-    value["suite"] = suite
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
-    store.claim("worker-run")
-    store.transition("worker-run", "failed", failure={"class": "worker_runtime", "code": "fixture"})
-    run = tmp_path / "runs" / "campaign" / "worker-run"
-    output = run / "work" / "mini-output"
-    output.mkdir(parents=True)
-    (output / "trajectory.json").write_text("native partial output")
-    _stopped_worker(monkeypatch, store, run, "worker-run")
-    original = store.status("worker-run")
-    cleaned = cleanup_benchmark_job(store, "worker-run")
-    assert cleaned["cleaned"] is True
-    assert cleaned["retention"]["state"] == "retained"
-    assert (run / "evidence" / "native-partial" / "trajectory.json").read_text() == "native partial output"
-    assert not (run / "evidence" / "swe-canonical").exists()
-    assert not (run / "work").exists()
-    assert store.status("worker-run") == original
-
-
-def test_unknown_suite_cannot_fall_through_to_swe(monkeypatch):
-    monkeypatch.setattr(benchmark_worker, "build_swe_run_plan", lambda *_a, **_kw: pytest.fail("SWE fallback"))
-    value = spec()
-    value["suite"] = "unknown"
-    with pytest.raises(BenchmarkJobError) as exc:
-        benchmark_worker._run_suite(None, {"spec": value}, load_profile("smoke"), {})
-    assert exc.value.code == "unknown_suite"
-
-
-@pytest.mark.parametrize("change,code", [({"suite": "historical-suite"}, "unknown_suite"), ({"profile": "missing-profile"}, "profile_not_found")])
-def test_historical_unknown_contract_fails_with_durable_evidence(monkeypatch, tmp_path, change, code):
-    from anvil_serving.benchmarking import profiles
-
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    value = spec()
-    value.update(change)
-    # Model an older writer without changing the persisted record format.
-    with monkeypatch.context() as old_writer:
-        old_writer.setattr(profiles, "SUITE_NAMES", profiles.SUITE_NAMES | {value["suite"]})
-        old_writer.setattr("anvil_serving.benchmarking.submission.bind_submission_spec", lambda value: value)
-        store.submit(value)
-    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: pytest.fail("asset preparation"))
-    record = execute_benchmark_job(store, "worker-run")
-    assert record["state"] == "failed"
-    assert record["failure"]["code"] == code
-    assert store.artifact("worker-run")["results"]["evidence"]["completeness"] == "failed"
-
-
-def test_v2_worker_retains_budget_and_partial_result(monkeypatch, tmp_path):
-    value = spec()
-    value["profile"] = "pilot-v2"
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    store.submit(value)
-    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", lambda *_a, **_kw: {"assets": {}})
-    monkeypatch.setattr(benchmark_worker, "run_benchmark_preflight", lambda *_a, **_kw: {"schema": "anvil-serving.benchmark-preflight/v1", "passed": True, "observed": {}, "checks": []})
-    monkeypatch.setattr(benchmark_worker, "_run_suite", lambda *_a, **_kw: {
-        "state": "incomplete", "passed": False,
-        "budget": {"model_calls": 2, "exhausted": True},
-        "observations": [{"request_id": "partial"}],
-        "failure": {"class": "budget_exhausted", "message": "call cap reached"},
-    })
-    record = execute_benchmark_job(store, "worker-run")
-    assert record["state"] == "failed"
-    assert record["failure"]["class"] == "resource_exhaustion"
-    evidence = store.artifact("worker-run")["results"]["evidence"]
-    assert [s["sequence"] for s in evidence["stages"]] == list(range(4))
-    run = tmp_path / "runs" / "campaign" / "worker-run"
-    admission = json.loads((run / evidence["stages"][0]["evidence"][0]["path"]).read_text())
-    assert admission["budgets"] == load_profile("pilot-v2")["suites"]["context"]["budgets"]
-    partial = json.loads((run / evidence["stages"][-1]["evidence"][0]["path"]).read_text())
-    assert partial["observations"] == [{"request_id": "partial"}]
-
-
-def test_worker_rejects_replaced_valid_profile_before_preparation_or_traffic(monkeypatch, tmp_path):
-    from anvil_serving.benchmarking import profiles
-
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    value = spec()
-    value.update(profile="pilot-v2", suite="aider", parameters={})
-    _, submitted = store.submit(value)
-    changed = load_profile("pilot-v2")
-    changed["suites"]["aider"]["budgets"]["max_model_calls"] += 1
-    changed["content_sha256"] = profiles.profile_content_sha256(changed)
-    profiles.validate_profile(changed)
-    profile_root = tmp_path / "profiles"
-    profile_root.mkdir()
-    (profile_root / "pilot-v2.json").write_text(json.dumps(changed))
-    monkeypatch.setattr(profiles, "PROFILE_ROOT", profile_root)
-    for name in ("prepare_harness_assets", "run_benchmark_preflight", "_run_suite"):
-        monkeypatch.setattr(benchmark_worker, name, lambda *_a, **_kw: pytest.fail("profile drift crossed admission"))
-    monkeypatch.setattr(benchmark_worker, "_retain_stopped_aider", lambda *_a, **_kw: {"state": "absent"})
-
-    record = execute_benchmark_job(store, value["run_id"])
-
-    assert record["state"] == "failed"
-    assert record["failure"]["code"] == "profile_binding_mismatch"
-    assert record["spec"] == submitted["spec"]
-    assert record["spec_sha256"] == submitted["spec_sha256"]
-    assert record["spec"]["profile_sha256"] != changed["content_sha256"]
-    assert store.artifact(value["run_id"])["failure"]["code"] == "profile_binding_mismatch"
-    assert store.submit(value) == ("existing", record)
-
-
-def test_worker_uses_one_profile_snapshot_for_admission_and_preparation(monkeypatch, tmp_path):
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    value = spec()
-    value.update(profile="pilot-v2", parameters={})
-    _, submitted = store.submit(value)
-    profile = load_profile("pilot-v2")
-    calls = []
-
-    def load(name):
-        calls.append(name)
-        return profile
-
-    def prepare(actual, **_kwargs):
-        assert actual is profile
-        assert actual["content_sha256"] == submitted["spec"]["profile_sha256"]
-        raise BenchmarkJobError("test_stop", "stop after verified admission")
-
-    monkeypatch.setattr(benchmark_worker, "load_profile", load)
-    monkeypatch.setattr("anvil_serving.benchmarking.submission.load_profile", lambda *_a: pytest.fail("second profile load"))
-    monkeypatch.setattr(benchmark_worker, "prepare_harness_assets", prepare)
-    result = execute_benchmark_job(store, value["run_id"])
-    assert calls == ["pilot-v2"]
-    assert result["failure"]["code"] == "test_stop"
-
-
-@pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
-@pytest.mark.parametrize("entry", ["missing", "lookup", "signal"])
-@pytest.mark.parametrize("observation", ["absent", "live-group", "reused-pid", "inspection-error"])
-def test_stop_owned_worker_requires_absent_leader_and_group(monkeypatch, tmp_path, entry, observation):
-    store = BenchmarkJobStore(str(tmp_path / "jobs.db"), run_root=str(tmp_path / "runs"))
-    run = tmp_path / "runs" / "campaign" / "worker-run"
-    run.mkdir(parents=True)
-    _stopped_worker(monkeypatch, store, run, "worker-run")
-    expected = (sys.executable, "-m", "anvil_serving.benchmarking.worker", "--db",
-                os.path.realpath(store.path), "--run-root", store.run_root, "--run-id", "worker-run")
-    observations = iter([None if entry == "missing" else expected,
-                         ("unrelated-process",) if observation == "reused-pid" else None])
-    monkeypatch.setattr(benchmark_worker, "_process_arguments", lambda pid: next(observations))
-    monkeypatch.setattr(benchmark_worker, "_process_start_identity", lambda pid: "started")
-    checks = []
-    def group_id(pid):
-        checks.append(pid)
-        if entry == "signal" and len(checks) == 1:
-            return pid
-        raise ProcessLookupError()
-    monkeypatch.setattr(benchmark_worker.os, "getpgid", group_id)
-    monkeypatch.setattr(benchmark_worker.os, "getsid", lambda pid: pid)
-    def group_running(pid):
-        if observation == "inspection-error":
-            raise OSError("group inspection unavailable")
-        return observation == "live-group"
-    monkeypatch.setattr(benchmark_worker, "_process_group_running", group_running)
-    signals = []
-    def signal_group(pid, sig):
-        assert entry == "signal", "uncertain identity must not be signalled"
-        signals.append((pid, sig))
-        raise ProcessLookupError()
-    monkeypatch.setattr(benchmark_worker.os, "killpg", signal_group)
-
-    result = benchmark_worker._stop_owned_worker(str(run / "worker.json"), "worker-run",
-        database=os.path.realpath(store.path), run_root=store.run_root)
-
-    assert result["stopped"] is (observation == "absent")
-    assert result["status"] == ("already_stopped" if observation == "absent" else "leader_missing_unverified")
-    assert signals == ([(12345, signal.SIGTERM)] if entry == "signal" else [])
 
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")

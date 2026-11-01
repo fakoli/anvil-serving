@@ -310,8 +310,8 @@ class VoicePipeline:
         Deliberately does NOT read from ``audio_out`` to detect the drain
         (that would consume -- and so discard -- whatever real output the
         caller still wants): callers that need the outgoing session's output
-        (e.g. ``tests/voice/test_pipeline_spine.py``, ``realtime/pool.py``'s
-        drain-before-release) may call :meth:`drain_audio_out` either before
+        (e.g. the realtime pool's drain-before-release path) may call
+        :meth:`drain_audio_out` either before
         OR after ``shutdown_gracefully`` and still see everything that was
         produced.
         """

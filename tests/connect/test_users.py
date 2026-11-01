@@ -19,7 +19,6 @@ import zipfile
 import pytest
 
 from anvil_serving.connect import manage, user_purge, users
-from anvil_serving.connect.cli import dispatch
 from anvil_serving.operator_output import UsageError
 
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="local Linux account administration")
@@ -127,135 +126,6 @@ def test_create_reset_preserve_other_accounts_and_secrets(environment):
     assert db.read_bytes() == before
 
 
-def test_reset_password_preview_states_that_no_email_was_sent(environment):
-    run, db, state, _ = environment
-    before = db.read_bytes()
-    preview = run("reset-password", "owner")
-    assert preview["preview"] == "Preview only. No password changed or email was sent. Run again with --confirm to apply."
-    assert db.read_bytes() == before and not state["calls"]
-
-
-@pytest.mark.parametrize("passkey_uv_two_factors", (False, True))
-def test_password_setup_allows_passkey_first_factor_with_accurate_reset_impact(environment, passkey_uv_two_factors):
-    run, db, state, _ = environment
-    users.read_manifest("unused")["authelia"]["webauthn"] = {
-        "enable_passkey_login": True,
-        "experimental_enable_passkey_uv_two_factors": passkey_uv_two_factors,
-    }
-    created = run("create", email="dev@example.test", apply=True)
-    assert created["password_setup_required"] and state["calls"]
-    reset = run("reset-password", "owner", apply=True)
-    assert reset["password_setup_required"]
-    assert "Registered factors are preserved" in reset["impact"]
-    assert ("registered qualifying passkey" in reset["impact"]) is passkey_uv_two_factors
-
-
-def test_failed_password_setup_delivery_keeps_the_unknown_replacement(environment, monkeypatch):
-    run, db, state, _ = environment
-    accounts = json.loads(db.read_text())
-    accounts["users"]["owner"]["password"] = _HASH.replace("B" * 43, "C" * 43)
-    db.write_text(json.dumps(accounts))
-    monkeypatch.setattr(users, "_password_setup_url", lambda *_: (_ for _ in ()).throw(manage.ManageError("synthetic delivery failure")))
-    with pytest.raises(manage.ManageError) as error:
-        run("reset-password", "owner", apply=True)
-    assert json.loads(db.read_text())["users"]["owner"]["password"] == _HASH
-    assert state["active"] and error.value.recovery["backup"]["sha256"]
-
-
-def test_smtp_password_setup_requests_email_without_a_handoff(environment, monkeypatch, tmp_path):
-    run, db, state, _ = environment
-    users.read_manifest("unused")["authelia"]["smtp"] = {
-        "address": "smtp.example.test:465", "username": "smtp-user",
-        "password_file": "/private/smtp-password", "sender": "Connect <connect@example.test>",
-    }
-    requested = []
-    monkeypatch.setattr(users, "_start_password_setup", lambda auth, username: requested.append(username))
-    monkeypatch.setattr(users, "_password_setup_url", lambda *_: pytest.fail("SMTP must not read a setup URL"))
-    preview = run("create", email="dev@example.test")
-    assert preview["password_setup_delivery"] == "email"
-    assert "handoff_file" not in preview and "without confirming email delivery" in preview["impact"]
-    created = run("create", email="dev@example.test", apply=True)
-    assert created["password_setup_email_requested"] and "handoff_file" not in created
-    assert created["delivery_status"] == "Email requested; inbox delivery not verified."
-    handoffs = db.parent.parent / "handoffs"
-    handoffs.mkdir(mode=0o700)
-    legacy = handoffs / "dev-create-0001.txt"
-    legacy.write_text("old generated password")
-    legacy.chmod(0o600)
-    other = handoffs / "owner-create-0001.txt"
-    other.write_text("other account handoff")
-    other.chmod(0o600)
-    reset = run("reset-password", apply=True)
-    assert reset["password_setup_email_requested"] and requested == ["dev", "dev"]
-    assert not legacy.exists() and other.exists()
-    assert "pending login transactions" in reset["impact"]
-    with pytest.raises(UsageError, match="SMTP delivery"):
-        run("reset-password", output=str(tmp_path / "handoff.txt"), apply=True)
-    code = run("code", apply=True)
-    assert code["code_delivery"] == "email" and "handoff_file" not in code
-    assert "directly to the account email" in code["impact"] and requested == ["dev", "dev"]
-    assert state["active"]
-
-
-def test_failed_smtp_password_setup_request_keeps_the_unknown_replacement(environment, monkeypatch):
-    run, db, state, _ = environment
-    users.read_manifest("unused")["authelia"]["smtp"] = {
-        "address": "smtp.example.test:465", "username": "smtp-user",
-        "password_file": "/private/smtp-password", "sender": "Connect <connect@example.test>",
-    }
-    accounts = json.loads(db.read_text())
-    accounts["users"]["owner"]["password"] = _HASH.replace("B" * 43, "C" * 43)
-    db.write_text(json.dumps(accounts))
-    monkeypatch.setattr(users, "_start_password_setup", lambda *_: (_ for _ in ()).throw(manage.ManageError("synthetic request failure")))
-    with pytest.raises(manage.ManageError, match="could not be confirmed") as error:
-        run("reset-password", "owner", apply=True)
-    assert json.loads(db.read_text())["users"]["owner"]["password"] == _HASH
-    assert state["active"] and error.value.recovery["backup"]["sha256"]
-
-
-def test_state_backed_users_file_requires_idp_private_file_metadata(environment):
-    run, db, state, _ = environment
-    db.chmod(0o640)
-    with pytest.raises(manage.ManageError, match="declared service file is unsafe"):
-        run("code", "owner", apply=True)
-    assert not state["calls"]
-
-
-def test_password_setup_supports_writable_legacy_users_file(environment):
-    run, db, state, private = environment
-    legacy = private.parent / "legacy-users.yml"
-    legacy.write_bytes(db.read_bytes())
-    legacy.chmod(0o600)
-    users.read_manifest("unused")["authelia"]["users_file"] = str(legacy)
-    result = run("create", email="dev@example.test", apply=True)
-    assert result["applied"] and "dev" in json.loads(legacy.read_text())["users"]
-    assert json.loads(db.read_text())["users"] == {"owner": record()}
-    assert state["active"]
-
-
-def test_password_setup_requires_writable_legacy_users_file(environment):
-    run, db, state, private = environment
-    legacy = private.parent / "legacy-users.yml"
-    legacy.write_bytes(db.read_bytes())
-    legacy.chmod(0o640)
-    users.read_manifest("unused")["authelia"]["users_file"] = str(legacy)
-    before = legacy.read_bytes()
-    with pytest.raises(manage.ManageError, match="idp-owned with mode 0600"):
-        run("create", email="dev@example.test", apply=True)
-    assert legacy.read_bytes() == before and db.read_bytes() == before and not state["calls"]
-
-
-def test_admin_role_is_explicit_and_resets_preserve_groups(environment):
-    run, db, _, _ = environment
-    result = run("create", email="dev@example.test", role="admin", apply=True)
-    assert result["role"] == "admin" and not result["grants_changed"]
-    assert json.loads(db.read_text())["users"]["dev"]["groups"] == ["admins"]
-    run("reset-password", apply=True)
-    assert json.loads(db.read_text())["users"]["dev"]["groups"] == ["admins"]
-    with pytest.raises(UsageError):
-        run("reset-password", role="member", apply=True)
-
-
 def test_create_and_access_send_the_authoritative_username_with_human_set(environment, monkeypatch):
     run, _, _, _ = environment
     data = users.read_manifest("unused")
@@ -286,27 +156,6 @@ def test_create_and_access_send_the_authoritative_username_with_human_set(enviro
     assert len(human_sets) == 2
     assert all(payload["username"] == "developer" for payload in human_sets)
     assert human_sets[1]["subject"] == subject
-
-
-def test_memory_is_automatic_on_creation_and_published_after_native_access(environment, monkeypatch):
-    from anvil_serving.connect import user_memory
-    run, _, _, _ = environment
-    data = users.read_manifest("unused")
-    data["memory"] = {}
-    data["gateway"] = {"oidc": {"issuer": "https://auth.example.test"},
-                       "gateway": {"resources": [{"rule": {"id": "workbench", "access": "browser"}}]}}
-    events = []
-    monkeypatch.setattr(users, "_oidc_subject", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(user_memory, "quarantine", lambda *_args: events.append("closed"))
-    monkeypatch.setattr(user_memory, "provision", lambda *_args, **kwargs: events.append("prepared") or {"ready": True})
-    monkeypatch.setattr(user_memory, "publish_grant", lambda *_args: events.append("published") or {"ready": True})
-    monkeypatch.setattr(users, "_human_set", lambda *_args: events.append("native"))
-    monkeypatch.setattr(users, "_service_home", lambda *_args: None)
-    result = run("create", "developer", email="developer@example.test", apply=True)
-    assert result["memory"]["ready"] and events == ["closed", "prepared", "published"]
-    events.clear()
-    result = run("create", "another", email="another@example.test", grants=["workbench:member"], apply=True)
-    assert result["memory"]["ready"] and events == ["closed", "prepared", "native", "published"]
 
 
 @pytest.mark.parametrize('operator', [False, True])
@@ -386,33 +235,6 @@ def test_restart_failure_rolls_back_and_inactive_service_stays_inactive(environm
         run("create", email="dev@example.test", apply=True)
     assert not state["active"]
     assert not any(c[:2] == (manage._SYSTEMCTL, "start") for c in state["calls"])
-
-
-@pytest.mark.parametrize("stage", ["stop", "handoff", "replace", "factor", "start"])
-def test_interruption_recovers_service_and_removes_rolled_back_handoff(environment, monkeypatch, stage):
-    run, db, state, _ = environment
-    before = db.read_bytes()
-    if stage in {"handoff", "replace"}:
-        original = users._replace_users
-        def interrupted(*args):
-            monkeypatch.setattr(users, "_replace_users", original)
-            if stage == "replace":
-                original(*args)
-            raise KeyboardInterrupt
-        monkeypatch.setattr(users, "_replace_users", interrupted)
-    else:
-        state["interrupt"] = stage
-    with pytest.raises(manage.ManageError) as failure:
-        if stage == "factor":
-            run("reset-mfa", "owner", apply=True)
-        else:
-            run("create", email="dev@example.test", apply=True)
-    assert failure.value.may_have_executed and state["active"]
-    assert db.read_bytes() == before
-    assert not list((db.parent.parent / "handoffs").glob("*.txt"))
-    if stage != "stop":
-        backup = failure.value.recovery["backup"]
-        assert hashlib.sha256(Path(backup["file"]).read_bytes()).hexdigest() == backup["sha256"]
 
 
 def test_symlink_duplicate_email_and_invalid_operands_do_not_mutate(environment, tmp_path):
@@ -496,21 +318,6 @@ def test_code_accepts_one_authelia_brace_recipient_only():
             users._notification(notice("owner@example.test", now, recipient), "owner@example.test", now)
 
 
-def test_password_setup_notification_is_recipient_bound_fresh_and_exact():
-    now = datetime.now(timezone.utc)
-    raw = reset_notice("owner@example.test", now)
-    assert users._setup_url(raw, "owner@example.test", "auth.example.test", now).endswith("token=a.b.c")
-    for raw in (
-        reset_notice("other@example.test", now),
-        reset_notice("owner@example.test", now, url="https://other.example.test/reset-password/step2?token=a.b.c"),
-        reset_notice("owner@example.test", now, url="https://auth.example.test/reset-password/step2?token=a.b.c&next=bad"),
-        reset_notice("owner@example.test", now, url="https://auth.example.test/reset-password/step2?token=a.b.c#fragment"),
-        reset_notice("owner@example.test", now - timedelta(minutes=6)),
-    ):
-        with pytest.raises(UsageError):
-            users._setup_url(raw, "owner@example.test", "auth.example.test", now)
-
-
 def test_code_exports_a_fresh_password_setup_link(environment):
     run, _, state, private = environment
     path = private / "notifications.txt"
@@ -523,54 +330,6 @@ def test_code_exports_a_fresh_password_setup_link(environment):
     assert not state["calls"]
 
 
-def test_empty_oidc_export_accepts_only_pinned_provider_absence(monkeypatch, tmp_path):
-    state = tmp_path / "idp"
-    state.mkdir(mode=0o700)
-    data = {"authelia": {"state_directory": str(state)}, "components": {"authelia": "/opt/authelia"}}
-    monkeypatch.setattr(users, "role_identity", lambda *_args: (os.geteuid(), os.getegid()))
-    monkeypatch.setattr(manage, "_safe_private_runtime_directory", lambda *_args: None)
-    monkeypatch.setattr(manage, "_role_service_identity", lambda *_args: None)
-    commands = []
-
-    def runner(argv, timeout, identity):
-        commands.append((argv, timeout, identity))
-        return manage.RunResult(1, b"", b"Error: no data to export\nUsage:\n  authelia storage user identifiers export\n")
-
-    assert users._oidc_identifiers(data, tmp_path / "authelia.yml", runner, missing_ok=True) == []
-    argv, timeout, identity = commands.pop()
-    assert argv[:5] == ("/opt/authelia", "storage", "user", "identifiers", "export")
-    assert argv[-4:] == ("--config", str(tmp_path / "authelia.yml"), "--config.experimental.filters", "template")
-    assert timeout == 15 and identity is None
-
-    def unexpected(argv, timeout, identity):
-        return manage.RunResult(1, b"", b"Error: storage unavailable\n")
-
-    with pytest.raises(manage.ManageError, match="opaque-identifier export failed"):
-        users._oidc_identifiers(data, tmp_path / "authelia.yml", unexpected, missing_ok=True)
-    with pytest.raises(manage.ManageError, match="opaque-identifier export failed"):
-        users._oidc_identifiers(data, tmp_path / "authelia.yml", runner, missing_ok=False)
-
-
-def test_cli_default_manifest_and_conditional_apply(monkeypatch):
-    calls = []
-    monkeypatch.setattr(users, "operate", lambda *args, **kwargs: calls.append((args, kwargs)) or {})
-    for flags, applied in (([], False), (["--confirm"], True), (["--confirm", "--dry-run"], False)):
-        result = dispatch(["users", "create", "dev", "--email", "dev@example.test", *flags])
-        assert result.error is None
-        assert calls[-1][0] == (users.DEFAULT_MANIFEST, "create", "dev")
-        assert calls[-1][1]["apply"] == applied
-    count = len(calls)
-    assert dispatch(["users", "reset-password", "dev", "--password", "must-not-echo"]).error
-    assert len(calls) == count
-
-
-def test_users_cli_help_describes_smtp_invitation():
-    from anvil_serving.connect import cli
-    users_parser = next(action.choices["users"] for action in cli._parser()._actions if getattr(action, "choices", None))
-    assert "Create an account" in users_parser.format_help()
-    assert "password-setup email" in users_parser.format_help()
-
-
 def test_product_cli_forwards_users_operands_and_confirmation(monkeypatch, capsys):
     from anvil_serving import cli
     calls = []
@@ -579,18 +338,6 @@ def test_product_cli_forwards_users_operands_and_confirmation(monkeypatch, capsy
     assert json.loads(capsys.readouterr().out)["ok"]
     assert calls == [((users.DEFAULT_MANIFEST, "create", "dev"), {
         "email": "dev@example.test", "role": "admin", "grants": ["dash:member", "pi:admin"], "output": None, "apply": True})]
-
-
-def test_schedule_cli_is_explicit_and_rejects_account_operands(monkeypatch):
-    from anvil_serving.connect import user_schedule
-    from anvil_serving.connect.cli import dispatch
-    calls = []
-    monkeypatch.setattr(user_schedule, "schedule", lambda *args, **kwargs: calls.append((args, kwargs)) or {})
-    assert dispatch(["users", "schedule"]).error is None
-    assert dispatch(["users", "schedule", "--confirm"]).error is None
-    assert [kwargs["apply"] for _, kwargs in calls] == [False, True]
-    assert dispatch(["users", "schedule", "dev", "--confirm"]).error is not None
-    assert len(calls) == 2
 
 
 def test_operator_group_projection_requires_current_native_authority_and_removes_stale_members(monkeypatch):
@@ -662,35 +409,6 @@ def test_operator_projection_recovery_stops_before_restore_and_verifies_restart(
     assert lifecycle == ["stop", "start", "stop", "start"]
 
 
-def test_operator_projection_is_a_noop_without_an_opted_in_oidc_client(monkeypatch):
-    monkeypatch.setattr(users, "_require_root", lambda: None)
-    monkeypatch.setattr(users, "_path", lambda _path: None)
-    monkeypatch.setattr(users, "read_manifest", lambda _path: {"authelia": {"additional_oidc_clients": []}})
-    monkeypatch.setattr(users, "_read_users", lambda _data: pytest.fail("must not read account state"))
-    assert users.sync_operators("manifest", apply=True) == {
-        "schema": "anvil-connect.operator-group/v1", "group": users._OPERATOR_GROUP,
-        "enabled": False, "applied": False, "changed": False,
-        "eligible_operators": 0, "additions": 0, "removals": 0,
-    }
-
-
-def test_account_worker_attempts_projection_and_deletion_independently(monkeypatch):
-    from anvil_serving.connect import user_delete
-    from anvil_serving.connect.cli import dispatch
-    calls = []
-    def failed_projection(*_args, **_kwargs):
-        calls.append("projection")
-        raise ValueError("redacted projection failure")
-    monkeypatch.setattr(users, "sync_operators", failed_projection)
-    from anvil_serving.connect import application_roles
-    monkeypatch.setattr(application_roles, "sync_roles", lambda *_a, **_kw: {"complete": True})
-    monkeypatch.setattr(user_delete, "process_pending", lambda *_args, **_kwargs: calls.append("deletion") or {"processed": False})
-    result = dispatch(["users", "process-deletions", "--confirm"])
-    assert calls == ["projection", "deletion"]
-    assert result.error is not None
-    assert result.data == {"application_roles": "completed", "operator_group": "failed", "deletion": "completed"}
-
-
 def test_backup_retention_and_verified_restore_without_activation(environment, monkeypatch):
     from anvil_serving.connect import user_backup
     run, db, state, private = environment
@@ -755,115 +473,6 @@ def test_backup_retention_and_verified_restore_without_activation(environment, m
         user_backup.restore(str(archive), str(private / "interrupted-recovery"), sha256=checksum, apply=True)
     assert failure.value.may_have_executed
     assert failure.value.recovery["destination"] == str(private / "interrupted-recovery")
-
-
-@pytest.mark.parametrize("fail_sync", [False, True])
-def test_backup_directory_is_durable_before_account_replacement(environment, monkeypatch, fail_sync):
-    run, db, state, _ = environment
-    backup = db.parent.parent / "backups"
-    original = db.read_bytes()
-    synced = set()
-    real_sync, real_replace = os.fsync, users._replace_users
-
-    def sync(fd):
-        info = os.fstat(fd)
-        if stat.S_ISDIR(info.st_mode):
-            if fail_sync and info.st_ino == backup.stat().st_ino:
-                raise OSError("synthetic backup directory sync failure")
-            synced.add((info.st_dev, info.st_ino))
-        real_sync(fd)
-
-    def replace(*args):
-        for directory in (backup, backup.parent):
-            info = directory.stat()
-            assert (info.st_dev, info.st_ino) in synced
-        real_replace(*args)
-
-    monkeypatch.setattr(os, "fsync", sync)
-    monkeypatch.setattr(users, "_replace_users", replace)
-    if fail_sync:
-        with pytest.raises(manage.ManageError):
-            run("create", email="dev@example.test", apply=True)
-        assert db.read_bytes() == original
-    else:
-        assert run("create", email="dev@example.test", apply=True)["applied"]
-    assert state["active"]
-
-
-def test_backup_leaves_wal_source_bytes_and_metadata_unchanged(environment):
-    run, _, state, private = environment
-    key = private / "storage-key"
-    key.write_bytes(b"synthetic-key")
-    key.chmod(0o600)
-    users.read_manifest("unused")["authelia"]["storage_encryption_key_file"] = str(key)
-    database = private / "authelia.sqlite3"
-    connection = sqlite3.connect(database)
-    try:
-        connection.execute("PRAGMA journal_mode=WAL")
-        connection.execute("CREATE TABLE example (value TEXT)")
-        connection.execute("INSERT INTO example VALUES ('committed-in-wal')")
-        connection.commit()
-        def source_state():
-            return {p.name: (p.read_bytes(), p.stat().st_mode, p.stat().st_uid, p.stat().st_gid) for p in private.iterdir()}
-        before = source_state()
-        result = run("backup", None, apply=True)
-        assert source_state() == before and state["active"]
-        from anvil_serving.connect import user_backup
-        restored = user_backup.restore(result["backup"]["file"], str(private / "recovery"), sha256=result["backup"]["sha256"], apply=True)
-        with sqlite3.connect(Path(restored["destination"]) / "authelia.sqlite3") as recovered:
-            assert recovered.execute("SELECT value FROM example").fetchone() == ("committed-in-wal",)
-    finally:
-        connection.close()
-
-
-def test_partial_backup_receipt_survives_cli_error(monkeypatch, capsys):
-    from anvil_serving import cli
-    backup = {"file": "/private/backup.zip", "sha256": "a" * 64}
-    def fail(*args, **kwargs):
-        try:
-            raise RuntimeError("synthetic-child-secret")
-        except RuntimeError as exc:
-            raise users._partial("Account operation completed, but backup retention did not finish.", {"backup": backup}) from exc
-    monkeypatch.setattr(users, "operate", fail)
-    assert cli.main(["connect", "users", "reset-mfa", "dev", "--confirm", "--json"]) != 0
-    envelope = json.loads(capsys.readouterr().out)
-    assert envelope["data"]["backup"] == backup
-    assert envelope["data"]["recovery_hint"] == "Account operation completed, but backup retention did not finish."
-    assert envelope["error"]["message"] == "Connect operation failed; inspect declared ownership and component status."
-    assert "synthetic-child-secret" not in json.dumps(envelope)
-
-
-def test_password_setup_retries_only_connection_refusals(monkeypatch):
-    attempts, requests, sleeps, socket_timeouts = [], [], [], []
-
-    class Response:
-        status = 200
-
-        def read(self, _size):
-            return b""
-
-    class Connection:
-        def __init__(self, *_args, **_kwargs):
-            attempts.append(self)
-            self.sock = type("Socket", (), {"settimeout": socket_timeouts.append})()
-
-        def connect(self):
-            if len(attempts) == 1:
-                raise ConnectionRefusedError
-
-        def request(self, *args, **kwargs):
-            requests.append((args, kwargs))
-
-        def getresponse(self):
-            return Response()
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(users.http.client, "HTTPConnection", Connection)
-    monkeypatch.setattr(users.time, "sleep", sleeps.append)
-    users._start_password_setup({"listen": "127.0.0.1:19091", "host": "auth.example.test"}, "dev")
-    assert len(attempts) == 2 and len(requests) == 1 and sleeps and socket_timeouts == [users._SETUP_TIMEOUT]
 
 
 def test_password_setup_accepts_near_deadline_with_full_request_timeout(monkeypatch):

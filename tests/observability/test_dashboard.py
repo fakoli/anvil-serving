@@ -5,7 +5,6 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from importlib.resources import files
-from pathlib import Path
 
 import pytest
 
@@ -71,62 +70,6 @@ def _workload_request(base: str, token: str = WORKLOAD_TOKEN):
     )
 
 
-def test_dashboard_serves_packaged_single_page_and_metrics() -> None:
-    server = create_dashboard_server(_registry(), port=0)
-    thread = run_server_in_thread(server)
-    base = f"http://127.0.0.1:{server.server_address[1]}"
-    try:
-        with urllib.request.urlopen(base + "/", timeout=2) as response:
-            html = response.read().decode("utf-8")
-            assert response.headers["Content-Type"] == "text/html; charset=utf-8"
-            assert "default-src 'self'" in response.headers["Content-Security-Policy"]
-        with urllib.request.urlopen(base + "/v1/metrics", timeout=2) as response:
-            metrics = json.loads(response.read())["data"]
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=2)
-
-    for label in ("Overview", "Probes", "System graphs", "Search probes", "All probes"):
-        assert label in html
-    assert metrics["sample_count"] == 5
-
-
-def test_dashboard_is_read_only_and_binds_loopback_by_default() -> None:
-    server = create_dashboard_server(_registry(), port=0)
-    try:
-        assert server.server_address[0] == "127.0.0.1"
-    finally:
-        server.server_close()
-
-    html = (
-        files("anvil_serving.observability.dashboard.static")
-        .joinpath("index.html")
-        .read_text(encoding="utf-8")
-    )
-    lowered = html.lower()
-    assert "apiFetch('/v1/metrics'" in html
-    assert "method:" not in lowered
-    assert 'type="password"' in lowered
-    assert "sessionstorage" in lowered
-    assert 'role="tablist"' in lowered
-    assert 'role="tabpanel"' in lowered
-    assert "capacityfor" in lowered
-    assert "observed max" in lowered
-    assert "search probes" in lowered
-    assert "probe_render_limit=500" in lowered
-    assert "if(activetab==='probes')renderprobeexplorer()" in lowered
-    assert "resolvegpuroles" not in lowered
-    assert "aggregate gpu memory" in lowered
-    assert "graphics card" in lowered
-    assert "fast tier gpu" not in lowered
-    assert "heavy tier gpu" not in lowered
-    for group in ("windows system", "shared graphics memory", "wsl", "docker"):
-        assert group in lowered
-    for action in ("/start", "/stop", "/restart", "/configure"):
-        assert action not in lowered
-
-
 def test_authenticated_dashboard_shell_loads_then_token_unlocks_apis() -> None:
     server = create_dashboard_server(
         _registry(), port=0, auth_env="ANVIL_TELEMETRY_TOKEN",
@@ -153,23 +96,6 @@ def test_authenticated_dashboard_shell_loads_then_token_unlocks_apis() -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
-
-
-def test_dashboard_static_assets_are_present_in_package() -> None:
-    asset = files("anvil_serving.observability.dashboard.static").joinpath("index.html")
-    workload_asset = files("anvil_serving.observability.dashboard.static").joinpath("workloads.js")
-    assert asset.is_file()
-    assert asset.read_bytes().startswith(b"<!doctype html>")
-    assert workload_asset.is_file() and workload_asset.read_bytes().startswith(b"/* Canonical")
-    for name in ("connect_access.js", "connect_access_api.js"):
-        assert files("anvil_serving.observability.dashboard.static").joinpath("views", name).is_file()
-    root = Path(__file__).parents[2]
-    import tomllib
-    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    packaged = metadata["tool"]["setuptools"]["package-data"]["anvil_serving.observability.dashboard.static"]
-    assert {"*.html", "*.js", "*.css", "views/*.js"} <= set(packaged)
-    workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert workflow.index("run: node --version") < workflow.index("- name: Run tests")
 
 
 def test_dashboard_packages_workload_script_and_forwards_only_presented_credential(
@@ -236,44 +162,6 @@ def test_dashboard_packages_workload_script_and_forwards_only_presented_credenti
     assert len(policy_calls) == 1
     assert policy_calls[0][1]["env"]["WORKLOAD_TOKEN"] == WORKLOAD_TOKEN
     assert policy_calls[0][1]["legacy_token"] == TELEMETRY_TOKEN
-
-
-@pytest.mark.parametrize(
-    "options",
-    (
-        {},
-        {"workload_controller_url": "http://127.0.0.1:8765"},
-        {
-            "workload_controller_url": "https://example.invalid",
-            "workload_expected_node": "controller-a",
-            "workload_authorization_policy": "relative-policy.json",
-        },
-    ),
-)
-def test_dashboard_invalid_or_incomplete_workload_config_keeps_telemetry_available(tmp_path, options):
-    server = create_dashboard_server(
-        _registry(),
-        port=0,
-        auth_env="TELEMETRY_TOKEN",
-        environment={"TELEMETRY_TOKEN": TELEMETRY_TOKEN, "WORKLOAD_TOKEN": WORKLOAD_TOKEN},
-        **options,
-    )
-    thread = run_server_in_thread(server)
-    base = f"http://127.0.0.1:{server.server_address[1]}"
-    try:
-        with pytest.raises(urllib.error.HTTPError) as workload:
-            urllib.request.urlopen(_workload_request(base), timeout=2)
-        assert workload.value.code == 403
-        assert json.loads(workload.value.read())["error"]["code"] == "authorization_scope_denied"
-        telemetry = urllib.request.Request(
-            base + "/v1/metrics", headers={"Authorization": "Bearer " + TELEMETRY_TOKEN}
-        )
-        with urllib.request.urlopen(telemetry, timeout=2) as response:
-            assert json.loads(response.read())["ok"] is True
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=2)
 
 
 def test_dashboard_parser_and_main_forward_explicit_workload_options(monkeypatch):

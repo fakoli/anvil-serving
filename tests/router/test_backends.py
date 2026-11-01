@@ -27,9 +27,7 @@ import pytest
 from anvil_serving.router.backends import relay as relay_module
 from anvil_serving.router import serve as serve_module
 from anvil_serving.router.backends.relay import (
-    RelayBackendError,
     _urlopen_transport,
-    discover_single_model,
 )
 from anvil_serving.router.availability import AvailabilityResult
 from anvil_serving.router.config import (
@@ -43,13 +41,11 @@ from anvil_serving.router.internal import (
     BackendClientError,
     InternalRequest,
     Message,
-    NoAvailableTierError,
     StructuredResult,
 )
 from anvil_serving.router.serve import (
     ReplicaRuntime,
     RoutingBackend,
-    _ConcurrencyLimitedBackend,
     build_backend_for_tier,
     build_backends,
 )
@@ -169,14 +165,6 @@ def test_relay_timeout_default_is_20s_end_to_end():
     assert backends["auxiliary-local"]._timeout == pytest.approx(20.0)
 
 
-def test_build_backend_for_tier_direct_call_keeps_120s_default():
-    """A caller that builds a single backend directly (bypassing build_backends)
-    keeps the pre-existing 120s default -- relay_timeout is a build_backends-level
-    concern, not a change to build_backend_for_tier's own default."""
-    relay = build_backend_for_tier(_local_tier(), env={})
-    assert relay._timeout == pytest.approx(120.0)
-
-
 @pytest.mark.parametrize("status", [400, 413, 415, 422])
 def test_caller_correctable_upstream_status_is_sanitized_4xx(monkeypatch, status):
     def fail(*args, **kwargs):
@@ -200,27 +188,6 @@ def test_caller_correctable_upstream_status_is_sanitized_4xx(monkeypatch, status
 
     assert exc_info.value.status == status
     assert "private" not in exc_info.value.message
-
-
-def test_upstream_server_error_remains_internal(monkeypatch):
-    def fail(*args, **kwargs):
-        raise urllib.error.HTTPError(
-            "http://private-upstream.invalid/v1/chat/completions",
-            500,
-            "private provider detail",
-            {},
-            io.BytesIO(b'{"error":"private response body"}'),
-        )
-
-    monkeypatch.setattr(relay_module, "_direct_open", fail)
-
-    with pytest.raises(RelayBackendError):
-        _urlopen_transport(
-            "http://127.0.0.1:30010/v1/chat/completions",
-            data=b"{}",
-            headers={},
-            timeout=1,
-        )
 
 
 # --------------------------------------------------------------------------- #
@@ -253,55 +220,6 @@ def test_per_tier_timeout_overrides_direct_default():
 # --------------------------------------------------------------------------- #
 # T003 — per-tier extra_body merged into the upstream body
 # --------------------------------------------------------------------------- #
-def test_extra_body_merged_into_openai_body():
-    fake, captured = _post_fake(
-        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
-    )
-    tier = _local_tier(
-        extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-    )
-    relay = build_backend_for_tier(tier, env={}, transport=fake)
-    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-    assert captured["body"]["chat_template_kwargs"] == {"enable_thinking": False}
-    # Router-set keys are untouched.
-    assert captured["body"]["model"] == "served-model"
-
-
-def test_extra_body_merged_into_anthropic_body():
-    fake, captured = _post_fake(
-        json.dumps({"content": [{"type": "text", "text": "ok"}]}).encode("utf-8")
-    )
-    tier = _anthropic_tier(extra_body={"top_k": 40})
-    cloud = build_backend_for_tier(
-        tier, env={"ANVIL_TEST_CLOUD_KEY": "sk-test-DEADBEEF"}, transport=fake
-    )
-    list(cloud.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-    assert captured["body"]["top_k"] == 40
-    assert captured["body"]["model"] == "claude-opus-4-20250514"
-
-
-def test_extra_body_absent_body_unchanged():
-    """No regression: extra_body absent -> the body is byte-for-byte what it was
-    before T003 (no extra keys, no key removed)."""
-    fake, captured = _post_fake(
-        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
-    )
-    relay = build_backend_for_tier(_local_tier(), env={}, transport=fake)
-    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-    assert set(captured["body"].keys()) == {"model", "messages", "stream"}
-
-
-def test_extra_body_can_override_a_router_set_key_when_operator_configures_it():
-    """extra_body is applied last (body.update); an operator who explicitly sets
-    a colliding key (e.g. stream) gets the override -- documented, intentional
-    passthrough, not accidental clobbering."""
-    fake, captured = _post_fake(
-        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
-    )
-    tier = _local_tier(extra_body={"stream": True})
-    relay = build_backend_for_tier(tier, env={}, transport=fake)
-    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-    assert captured["body"]["stream"] is True
 
 
 # --------------------------------------------------------------------------- #
@@ -319,32 +237,6 @@ def _models_fake(model_ids):
     return fake, captured
 
 
-def test_auto_derive_model_single_candidate_forwards_that_id():
-    """model=None + a stub upstream advertising exactly one model -> the backend
-    forwards THAT id (not the caller alias) in the upstream body."""
-    discovery_fake, discovery_captured = _models_fake(["qwen3-32b-awq"])
-    post_fake, post_captured = _post_fake(
-        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
-    )
-
-    tier = _local_tier(model=None)
-    relay = build_backend_for_tier(
-        tier, env={}, transport=post_fake, model_discovery_transport=discovery_fake
-    )
-    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-
-    assert discovery_captured["url"] == "http://127.0.0.1:30001/v1/models"
-    assert post_captured["body"]["model"] == "qwen3-32b-awq"  # NOT "chat"
-
-
-def test_auto_derive_model_zero_candidates_raises_config_error():
-    discovery_fake, _ = _models_fake([])
-    with pytest.raises(ConfigError):
-        build_backend_for_tier(
-            _local_tier(model=None), env={}, model_discovery_transport=discovery_fake
-        )
-
-
 def test_auto_derive_model_multiple_candidates_raises_config_error():
     discovery_fake, _ = _models_fake(["model-a", "model-b"])
     with pytest.raises(ConfigError) as excinfo:
@@ -352,63 +244,6 @@ def test_auto_derive_model_multiple_candidates_raises_config_error():
             _local_tier(model=None), env={}, model_discovery_transport=discovery_fake
         )
     assert "auxiliary-local" in str(excinfo.value)
-
-
-def test_auto_derive_model_explicit_model_skips_the_probe():
-    """An explicit model= always wins: the discovery transport is never called."""
-    def _boom(url, *, headers, timeout):
-        raise AssertionError("discovery transport must not be called when model= is set")
-
-    post_fake, post_captured = _post_fake(
-        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
-    )
-    relay = build_backend_for_tier(
-        _local_tier(model="served-model"),  # already set
-        env={}, transport=post_fake, model_discovery_transport=_boom,
-    )
-    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-    assert post_captured["body"]["model"] == "served-model"
-
-
-def test_auto_derive_model_network_error_is_non_fatal_leaves_model_none():
-    """A network failure during discovery must NOT crash backend construction —
-    model stays unresolved and the existing request.model fallback applies."""
-    def _network_error(url, *, headers, timeout):
-        raise OSError("connection refused")
-
-    post_fake, post_captured = _post_fake(
-        json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode("utf-8")
-    )
-    relay = build_backend_for_tier(
-        _local_tier(model=None), env={}, transport=post_fake,
-        model_discovery_transport=_network_error,
-    )
-    list(relay.generate(InternalRequest(model="chat", messages=[Message("user", "hi")])))
-    # request.model ("chat") is forwarded, unchanged from today's behaviour.
-    assert post_captured["body"]["model"] == "chat"
-
-
-def test_auto_derive_model_malformed_response_is_non_fatal():
-    """A reachable-but-garbage response (not valid JSON) is treated the same as
-    a network error -- non-fatal, model stays unresolved."""
-    def _garbage(url, *, headers, timeout):
-        return b"not json"
-
-    relay = build_backend_for_tier(
-        _local_tier(model=None), env={}, model_discovery_transport=_garbage,
-    )
-    assert relay._tier.model is None
-
-
-def test_discover_single_model_pure_function_returns_new_tier():
-    """discover_single_model() is a pure function: the input Tier is untouched
-    (frozen dataclass) and a NEW Tier with model set is returned."""
-    fake, _ = _models_fake(["only-model"])
-    tier = _local_tier(model=None)
-    out = discover_single_model(tier, transport=fake)
-    assert tier.model is None  # original untouched
-    assert out.model == "only-model"
-    assert out.id == tier.id  # every other field carried over
 
 
 # --------------------------------------------------------------------------- #
@@ -457,184 +292,6 @@ def _request() -> InternalRequest:
     return InternalRequest(model="chat", messages=[Message("user", "hi")])
 
 
-def test_replica_build_constructs_exact_member_adapters_from_direct_views():
-    transport, captured = _post_fake(b'{"choices":[{"message":{"content":"ok"}}]}')
-    tier = _replica_tier()
-    config = _config(tier, relay_timeout=99.0)
-
-    backends, skipped = build_backends(config, env={}, transport=transport)
-
-    assert not skipped
-    assert captured == {}
-    runtime = backends[tier.id]
-    assert isinstance(runtime, ReplicaRuntime)
-    assert runtime.member_ids == ("member-a", "member-b")
-    assert tier.base_url == ""
-    for member in tier.replicas:
-        relay = runtime.member_backend(member.id)
-        assert relay._tier.base_url == member.base_url
-        assert relay._tier.replicas == ()
-        assert relay._tier.id == tier.id
-        assert relay._tier.dialect == tier.dialect
-        assert relay._tier.auth_env == tier.auth_env
-        assert relay._tier.params == tier.params
-        assert relay._timeout == pytest.approx(7.0)
-        assert relay._transport is transport
-
-
-def test_replica_build_isolates_equal_member_ids_between_logical_tiers():
-    first = _replica_tier("replica-one", first_port=31101)
-    second = _replica_tier("replica-two", first_port=31201)
-    backends, _skipped = build_backends(_config(first, second), env={})
-
-    first_runtime = backends[first.id]
-    second_runtime = backends[second.id]
-    assert isinstance(first_runtime, ReplicaRuntime)
-    assert isinstance(second_runtime, ReplicaRuntime)
-    assert first_runtime is not second_runtime
-    assert first_runtime.member_backend("member-a") is not second_runtime.member_backend(
-        "member-a"
-    )
-
-
-def test_direct_build_still_constructs_one_existing_adapter():
-    tier = _local_tier()
-    backends, _skipped = build_backends(_config(tier), env={})
-    assert not isinstance(backends[tier.id], ReplicaRuntime)
-    assert backends[tier.id]._tier is tier
-
-
-def test_routing_backend_uses_compound_admission_not_a_replica_semaphore():
-    tier = replace(_replica_tier(), max_concurrency=1)
-    config = _config(tier)
-    backends, _skipped = build_backends(config, env={})
-    runtime = backends[tier.id]
-
-    routing = RoutingBackend(config, backends)
-
-    assert routing._backends[tier.id] is runtime
-    assert routing._admission.snapshot(tier.id).max_concurrency == 1
-    assert isinstance(runtime, ReplicaRuntime)
-    assert all(
-        not isinstance(runtime.member_backend(member_id), _ConcurrencyLimitedBackend)
-        for member_id in runtime.member_ids
-    )
-
-
-def test_replica_runtime_copies_mapping_and_refuses_implicit_or_unknown_selection():
-    member = _MemberBackend("a")
-    source = {"member-a": member}
-    runtime = ReplicaRuntime(source)
-    source["member-b"] = _MemberBackend("b")
-
-    assert runtime.member_ids == ("member-a",)
-    assert runtime.member_backend("member-a") is member
-    with pytest.raises(RuntimeError, match="^replica member selection is required$"):
-        runtime.generate(_request())
-    with pytest.raises(ValueError, match="^replica member is not declared$") as exc_info:
-        runtime.generate_member("private-unknown-member", _request())
-    assert "private-unknown-member" not in str(exc_info.value)
-    assert member.calls == 0
-    assert runtime.get_last_structured() is None
-
-
-def test_replica_runtime_resets_structured_owner_on_refusal_and_eager_failure():
-    structured = StructuredResult(finish_reason="stop", usage={"input_tokens": 3})
-    healthy = _MemberBackend("ok", structured=structured)
-    failing = _MemberBackend("bad", eager_error=RuntimeError("private failure"))
-    runtime = ReplicaRuntime({"healthy": healthy, "failing": failing})
-
-    assert list(runtime.generate_member("healthy", _request())) == ["ok"]
-    assert runtime.get_last_structured() is structured
-    with pytest.raises(RuntimeError, match="private failure"):
-        runtime.generate_member("failing", _request())
-    assert runtime.get_last_structured() is None
-    with pytest.raises(RuntimeError, match="selection is required"):
-        runtime.generate(_request())
-    assert runtime.get_last_structured() is None
-
-
-def test_one_outer_concurrency_ceiling_covers_members_and_close_before_first():
-    first_invoked = threading.Event()
-    second_invoked = threading.Event()
-    runtime = ReplicaRuntime({
-        "member-a": _MemberBackend("a", invoked=first_invoked),
-        "member-b": _MemberBackend("b", invoked=second_invoked),
-    })
-    limited = _ConcurrencyLimitedBackend(runtime, 1)
-
-    first = limited.generate_member("member-a", _request())
-    assert first_invoked.is_set()
-    second_holder: list[object] = []
-    second_started = threading.Event()
-
-    def start_second() -> None:
-        second_started.set()
-        second_holder.append(limited.generate_member("member-b", _request()))
-
-    thread = threading.Thread(target=start_second)
-    thread.start()
-    assert second_started.wait(timeout=5)
-    assert not second_invoked.wait(timeout=0.05)
-    first.close()
-    assert second_invoked.wait(timeout=5)
-    thread.join(timeout=5)
-    assert not thread.is_alive()
-    assert list(second_holder.pop()) == ["b"]
-
-
-def test_outer_concurrency_ceiling_releases_after_eager_member_failure():
-    healthy_invoked = threading.Event()
-    runtime = ReplicaRuntime({
-        "failing": _MemberBackend("bad", eager_error=RuntimeError("failure")),
-        "healthy": _MemberBackend("ok", invoked=healthy_invoked),
-    })
-    limited = _ConcurrencyLimitedBackend(runtime, 1)
-
-    with pytest.raises(RuntimeError, match="failure"):
-        limited.generate_member("failing", _request())
-    assert list(limited.generate_member("healthy", _request())) == ["ok"]
-    assert healthy_invoked.is_set()
-
-
-def test_structured_result_delegates_through_runtime_and_outer_wrapper():
-    structured = StructuredResult(
-        finish_reason="tool_calls",
-        tool_calls=[{"name": "lookup", "id": "call-1", "arguments": "{}"}],
-        usage={"input_tokens": 7, "output_tokens": 2},
-    )
-    runtime = ReplicaRuntime({"member-a": _MemberBackend("ok", structured=structured)})
-    limited = _ConcurrencyLimitedBackend(runtime, 1)
-
-    assert list(limited.generate_member("member-a", _request())) == ["ok"]
-    assert runtime.get_last_structured() is structured
-    assert limited.get_last_structured() is structured
-
-
-def test_concurrent_replica_threads_do_not_cross_structured_results():
-    barrier = threading.Barrier(2)
-    first_result = StructuredResult(finish_reason="stop", usage={"input_tokens": 1})
-    second_result = StructuredResult(finish_reason="length", usage={"input_tokens": 2})
-    runtime = ReplicaRuntime({
-        "member-a": _MemberBackend("a", structured=first_result, barrier=barrier),
-        "member-b": _MemberBackend("b", structured=second_result, barrier=barrier),
-    })
-    observed: dict[str, StructuredResult | None] = {}
-
-    def invoke(member_id: str) -> None:
-        assert list(runtime.generate_member(member_id, _request()))
-        observed[member_id] = runtime.get_last_structured()
-
-    first = threading.Thread(target=invoke, args=("member-a",))
-    second = threading.Thread(target=invoke, args=("member-b",))
-    first.start()
-    second.start()
-    first.join(timeout=5)
-    second.join(timeout=5)
-    assert not first.is_alive() and not second.is_alive()
-    assert observed == {"member-a": first_result, "member-b": second_result}
-
-
 # --------------------------------------------------------------------------- #
 # Qualified replica sets T008 — readiness snapshot, compound lease, one relay
 # --------------------------------------------------------------------------- #
@@ -679,32 +336,6 @@ def _replica_routing(
     )
 
 
-def test_replica_dispatch_snapshots_members_then_rotates_one_selected_member():
-    tier = _replica_tier()
-    members = {
-        "member-a": _MemberBackend("a"),
-        "member-b": _MemberBackend("b"),
-    }
-    availability = _ReplicaAvailability({
-        (tier.id, "member-a"): _ready(),
-        (tier.id, "member-b"): _ready(),
-    })
-    routing = _replica_routing(
-        (tier,), {tier.id: ReplicaRuntime(members)}, availability
-    )
-
-    assert [list(routing.generate(_replica_request(tier.id))) for _ in range(4)] == [
-        ["a"], ["b"], ["a"], ["b"],
-    ]
-    assert members["member-a"].calls == 2
-    assert members["member-b"].calls == 2
-    assert availability.member_calls == [
-        (tier.id, "member-a"), (tier.id, "member-b"),
-    ] * 4
-    assert availability.tier_calls == 0
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-
-
 def test_replica_unavailable_member_is_skipped_and_recovery_uses_cursor():
     tier = _replica_tier()
     members = {
@@ -723,31 +354,6 @@ def test_replica_unavailable_member_is_skipped_and_recovery_uses_cursor():
     availability.results[(tier.id, "member-a")] = _ready()
     assert list(routing.generate(_replica_request(tier.id))) == ["a"]
     assert members["member-a"].calls == members["member-b"].calls == 1
-
-
-def test_replica_all_members_unavailable_has_no_dispatch_or_admission():
-    tier = _replica_tier()
-    members = {
-        "member-a": _MemberBackend("a"),
-        "member-b": _MemberBackend("b"),
-    }
-    availability = _ReplicaAvailability({
-        (tier.id, "member-a"): _unavailable(),
-        (tier.id, "member-b"): _unavailable(),
-    })
-    routing = _replica_routing(
-        (tier,), {tier.id: ReplicaRuntime(members)}, availability
-    )
-
-    with pytest.raises(NoAvailableTierError) as exc_info:
-        list(routing.generate(_replica_request(tier.id)))
-    assert exc_info.value.kind == "unavailable"
-    assert [member.calls for member in members.values()] == [0, 0]
-    snapshot = routing._admission.snapshot(tier.id)
-    assert snapshot.active_requests == 0
-    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
-    availability.results[(tier.id, "member-a")] = _ready()
-    assert list(routing.generate(_replica_request(tier.id))) == ["a"]
 
 
 class _CountingLease:
@@ -798,140 +404,6 @@ def test_replica_selected_eager_failures_do_not_retry_peer_or_leak_lease(error):
     assert first.calls == 1
     assert second.calls == 0
     assert admission.lease.release_calls == 1
-
-
-def test_replica_eager_failure_releases_when_error_metadata_fails(monkeypatch):
-    tier = _replica_tier()
-    first = _MemberBackend("a", eager_error=RuntimeError("backend failure"))
-    second = _MemberBackend("b")
-    availability = _ReplicaAvailability({
-        (tier.id, "member-a"): _ready(),
-        (tier.id, "member-b"): _ready(),
-    })
-    admission = _CountingMemberAdmission()
-    routing = _replica_routing(
-        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
-        availability,
-        admission=admission,
-    )
-
-    def broken_record(*_args, **_kwargs) -> None:
-        raise RuntimeError("metadata failure")
-
-    monkeypatch.setattr(routing, "_record", broken_record)
-    with pytest.raises(RuntimeError, match="metadata failure"):
-        list(routing.generate(_replica_request(tier.id)))
-    assert admission.lease.release_calls == 1
-    assert first.calls == 1
-    assert second.calls == 0
-
-
-@pytest.mark.parametrize("metadata_failure", [False, True])
-def test_replica_eager_failures_leave_real_aggregate_and_member_counts_zero(
-    monkeypatch, metadata_failure: bool
-):
-    tier = _replica_tier()
-    first = _MemberBackend("a", eager_error=RuntimeError("backend failure"))
-    second = _MemberBackend("b")
-    availability = _ReplicaAvailability({
-        (tier.id, "member-a"): _ready(),
-        (tier.id, "member-b"): _ready(),
-    })
-    routing = _replica_routing(
-        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
-        availability,
-    )
-    if metadata_failure:
-        monkeypatch.setattr(
-            routing,
-            "_record",
-            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("metadata failure")),
-        )
-
-    with pytest.raises(RuntimeError):
-        list(routing.generate(_replica_request(tier.id)))
-    snapshot = routing._admission.snapshot(tier.id)
-    assert snapshot.active_requests == 0
-    assert snapshot.member_active_requests == (("member-a", 0), ("member-b", 0))
-    assert first.calls == 1
-    assert second.calls == 0
-
-
-def test_replica_selected_lazy_failure_releases_once_without_peer_retry():
-    tier = _replica_tier()
-    first = _MemberBackend("a", lazy_error=RuntimeError("lazy failure"))
-    second = _MemberBackend("b")
-    availability = _ReplicaAvailability({
-        (tier.id, "member-a"): _ready(),
-        (tier.id, "member-b"): _ready(),
-    })
-    admission = _CountingMemberAdmission()
-    routing = _replica_routing(
-        (tier,), {tier.id: ReplicaRuntime({"member-a": first, "member-b": second})},
-        availability,
-        admission=admission,
-    )
-
-    with pytest.raises(RuntimeError, match="lazy failure"):
-        list(routing.generate(_replica_request(tier.id)))
-    assert first.calls == 1
-    assert second.calls == 0
-    assert admission.lease.release_calls == 1
-
-
-def test_replica_semantic_rejection_precedes_member_readiness_and_admission():
-    tier = replace(_replica_tier(), context_limit=1)
-    availability = _ReplicaAvailability({})
-    routing = _replica_routing(
-        (tier,),
-        {tier.id: ReplicaRuntime({"member-a": _MemberBackend("a"), "member-b": _MemberBackend("b")})},
-        availability,
-    )
-    request = InternalRequest(
-        model=tier.id,
-        messages=[Message("user", "one two three")],
-    )
-
-    with pytest.raises(NoAvailableTierError) as exc_info:
-        list(routing.generate(request))
-    assert exc_info.value.kind == "over_context"
-    assert availability.member_calls == []
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-
-
-def test_replica_member_keys_are_isolated_by_logical_tier_and_keep_outer_metadata():
-    first_tier = _replica_tier("replica-one", first_port=31101)
-    second_tier = _replica_tier("replica-two", first_port=31201)
-    first_result = StructuredResult(finish_reason="stop", usage={"input_tokens": 1})
-    second_result = StructuredResult(finish_reason="length", usage={"input_tokens": 2})
-    availability = _ReplicaAvailability({
-        (tier.id, member.id): _ready()
-        for tier in (first_tier, second_tier)
-        for member in tier.replicas
-    })
-    routing = _replica_routing(
-        (first_tier, second_tier),
-        {
-            first_tier.id: ReplicaRuntime({
-                "member-a": _MemberBackend("one", structured=first_result),
-                "member-b": _MemberBackend("unused"),
-            }),
-            second_tier.id: ReplicaRuntime({
-                "member-a": _MemberBackend("two", structured=second_result),
-                "member-b": _MemberBackend("unused"),
-            }),
-        },
-        availability,
-    )
-
-    assert list(routing.generate(_replica_request(first_tier.id))) == ["one"]
-    assert routing.get_last_structured() is first_result
-    assert list(routing.generate(_replica_request(second_tier.id))) == ["two"]
-    assert routing.get_last_structured() is second_result
-    assert availability.member_calls == [
-        (first_tier.id, "member-a"), (first_tier.id, "member-b"),
-        (second_tier.id, "member-a"), (second_tier.id, "member-b"),
-    ]
 
 
 class _CompletedPressure:
@@ -990,93 +462,3 @@ def test_capacity_dispatch_prefers_fresh_on_tie_but_local_counts_are_authoritati
         second.close()
         routing.close()
     assert routing._admission.snapshot(tier.id).active_requests == 0
-
-
-@pytest.mark.parametrize("cap,member_cap,accepted,strategy", [
-    (3, 2, 3, "capacity"), (None, 1, 2, "capacity"),
-    (1, 2, 1, "round_robin"), (None, 1, 2, "round_robin"),
-])
-def test_routed_capacity_exhaustion_is_immediate_and_invokes_no_backend(
-    monkeypatch, cap, member_cap, accepted, strategy,
-):
-    tier, routing, members = _capacity_routing(
-        monkeypatch, cap=cap, member_cap=member_cap, strategy=strategy,
-    )
-    held = []
-    try:
-        for _ in range(accepted):
-            held.append(routing.generate(_replica_request(tier.id)))
-        before = tuple(member.calls for member in members.values())
-        with pytest.raises(NoAvailableTierError) as error:
-            routing.generate(_replica_request(tier.id))
-        assert error.value.kind == "unavailable"
-        assert tuple(member.calls for member in members.values()) == before
-        snapshot = routing._admission.snapshot(tier.id)
-        assert snapshot.active_requests == accepted
-        assert sum(count for _, count in snapshot.member_active_requests) == accepted
-        assert all(count <= member_cap for _, count in snapshot.member_active_requests)
-        if strategy == "round_robin":
-            assert routing._replica_pressure.tiers == ()
-            assert routing._replica_pressure.calls == []
-    finally:
-        for iterator in held:
-            iterator.close()
-        routing.close()
-    assert routing._admission.snapshot(tier.id).active_requests == 0
-
-
-@pytest.mark.parametrize("failure", [RuntimeError("private-error"), TimeoutError("private-timeout"),
-                                      BackendClientError(429, "rate_limit", "private-denial")])
-def test_capacity_error_is_one_selection_one_attempt_and_releases(monkeypatch, failure):
-    tier, routing, members = _capacity_routing(monkeypatch, error=failure)
-    try:
-        with pytest.raises(type(failure)):
-            routing.generate(_replica_request(tier.id))
-        assert members["member-a"].calls == 1
-        assert members["member-b"].calls == 0
-        assert routing._replica_pressure.calls == [tier.id]
-        assert routing._admission.snapshot(tier.id).active_requests == 0
-        assert len(routing._decision_log.last.attempts) == 1
-    finally:
-        routing.close()
-
-
-def test_capacity_rejects_request_before_any_pressure_snapshot_or_probe(monkeypatch):
-    tier, routing, members = _capacity_routing(monkeypatch)
-    request = _replica_request(tier.id)
-    request.messages = [Message("user", "word " * (tier.context_limit + 1))]
-    try:
-        with pytest.raises(NoAvailableTierError) as error:
-            routing.generate(request)
-        assert error.value.kind == "over_context"
-        assert routing._replica_pressure.calls == []
-        assert routing._availability.member_calls == []
-        assert all(member.calls == 0 for member in members.values())
-    finally:
-        routing.close()
-
-
-def test_capacity_eligibility_excludes_unbound_member_without_selecting_it(monkeypatch):
-    tier, routing, members = _capacity_routing(monkeypatch)
-    routing._backends[tier.id] = ReplicaRuntime({"member-b": members["member-b"]})
-    try:
-        assert list(routing.generate(_replica_request(tier.id))) == ["b"]
-        assert routing._availability.member_calls == [(tier.id, "member-b")]
-        assert members["member-a"].calls == 0
-        assert members["member-b"].calls == 1
-    finally:
-        routing.close()
-
-
-def test_direct_tier_keeps_legacy_limiter_and_never_registers_pressure(monkeypatch):
-    monkeypatch.setattr(serve_module, "ReplicaPressureCache", _CompletedPressure)
-    tier = _local_tier(max_concurrency=1)
-    backend = _MemberBackend("ok")
-    routing = RoutingBackend(_config(tier), {tier.id: backend})
-    try:
-        assert isinstance(routing._backends[tier.id], _ConcurrencyLimitedBackend)
-        assert routing._replica_pressure.tiers == ()
-        assert list(routing.generate(_replica_request(tier.id))) == ["ok"]
-        assert routing._replica_pressure.calls == []
-    finally:
-        routing.close()

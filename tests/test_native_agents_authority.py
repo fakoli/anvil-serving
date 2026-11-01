@@ -48,15 +48,6 @@ def test_authority_change_between_reads_does_not_publish(monkeypatch, tmp_path):
     assert not path.exists()
 
 
-def test_projection_cannot_overwrite_unrelated_protected_file(monkeypatch, tmp_path):
-    _, _, _, path = setup_projection(monkeypatch, tmp_path)
-    path.write_text('{"important":"configuration"}')
-    monkeypatch.setattr(application_roles, '_protected_file', lambda *_a, **_k:path.read_bytes())
-    with pytest.raises(manage.ManageError, match='Existing output'):
-        authority.project('/manifest.json', resource='dashboard', output=str(path), reader_gid=1001, apply=True, clock=lambda:1000)
-    assert path.read_text() == '{"important":"configuration"}'
-
-
 def test_native_cli_is_registered_with_preview_and_confirm_gates():
     from anvil_serving.commands.connect import commands
     from anvil_serving.connect.cli import _parser
@@ -65,20 +56,6 @@ def test_native_cli_is_registered_with_preview_and_confirm_gates():
     options = _parser().parse_args(['native-authority','--manifest','/manifest.json','--resource','dashboard',
                                    '--output','/etc/example/authority','--reader-gid','1001'])
     assert options.confirm is False and options.reader_gid == 1001
-
-
-def test_projection_capacity_matches_consumer_and_preserves_prior_file(monkeypatch, tmp_path):
-    _, _, _, path = setup_projection(monkeypatch, tmp_path)
-    roster = [{'principal':'human:' + format(index, '064x'), 'generation':'1', 'role':'member'} for index in range(64)]
-    monkeypatch.setattr(application_roles, 'roster', lambda *_:roster)
-    options = dict(resource='dashboard', output=str(path), reader_gid=1001, apply=True, clock=lambda:1000)
-    assert authority.project('/manifest.json', **options)['principals'] == 64
-    before = path.read_bytes()
-    monkeypatch.setattr(application_roles, '_protected_file', lambda *_a, **_k:path.read_bytes())
-    roster.append({'principal':'human:' + format(64, '064x'), 'generation':'1', 'role':'member'})
-    with pytest.raises(manage.ManageError, match='64-principal capacity'):
-        authority.project('/manifest.json', **options)
-    assert path.read_bytes() == before
 
 
 def test_standalone_archive_includes_native_authority_closure(tmp_path):

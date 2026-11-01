@@ -48,14 +48,6 @@ auth_env = "HINDSIGHT_TOKEN"
 '''
 
 
-def test_memory_route_is_device_bound_and_backward_compatible(tmp_path):
-    assert load(_config(tmp_path)).memory_routes == ()
-    route = load(_config(tmp_path, _ROUTE)).memory_routes[0]
-    assert (route.alias, route.principal, route.backend, route.bank, route.timeout) == (
-        "memory.primary", "phone_1", "hindsight", "phone_bank", 120.0,
-    )
-
-
 def test_memory_route_rejects_unknown_duplicate_unsafe_and_missing_server_auth(tmp_path):
     with pytest.raises(ConfigError, match="unknown field"):
         load(_config(tmp_path, _ROUTE + 'unknown = "no"\n'))

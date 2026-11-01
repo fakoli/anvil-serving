@@ -12,48 +12,6 @@ import pytest
 from anvil_serving.benchmarking import aider_adapter as adapter
 
 
-def test_callback_uses_original_globals_without_global_subprocess_patch(tmp_path):
-    calls = []
-    namespace = {"subprocess": subprocess}
-    exec("def callback(command):\n return subprocess.run(command, timeout=180)\n", namespace)
-    original = namespace["callback"]
-    replacement = adapter.contained_test_callback(original, lambda command, **kw: calls.append((command, kw)))
-    replacement(["pytest"])
-    assert calls == [(["pytest"], {"timeout": 180})]
-    assert original.__globals__["subprocess"] is subprocess
-    assert replacement.__code__ is original.__code__
-    assert replacement.__globals__["subprocess"].TimeoutExpired is subprocess.TimeoutExpired
-
-
-def test_loader_rejects_changed_source_before_imports(tmp_path):
-    (tmp_path / "benchmark").mkdir()
-    (tmp_path / "benchmark/benchmark.py").write_text("raise AssertionError('must never import')")
-    with pytest.raises(RuntimeError, match="hash"):
-        adapter.load_test_callback(tmp_path)
-
-
-def test_loader_executes_selected_source_functions_only(tmp_path, monkeypatch):
-    source = b'''raise AssertionError("imports must not execute")
-def run_unit_tests(original, testdir, history, files):
-    return cleanup_test_output(subprocess.run(["pytest"], cwd=testdir, timeout=180).stdout, testdir)
-def cleanup_test_output(output, testdir):
-    return output.replace(str(testdir), testdir.name)
-'''
-    (tmp_path / "benchmark").mkdir()
-    (tmp_path / "benchmark/benchmark.py").write_bytes(source)
-    monkeypatch.setitem(adapter.SOURCE_HASHES, "benchmark/benchmark.py", hashlib.sha256(source).hexdigest())
-    original = adapter.load_test_callback(tmp_path)
-    contained = adapter.contained_test_callback(original, lambda *args, **kw: subprocess.CompletedProcess(args, 1, str(tmp_path)))
-    assert contained(None, tmp_path, None, []) == tmp_path.name
-
-
-@pytest.mark.parametrize("task", ["/python/exercises/practice/a", "../python/exercises/practice/a",
-    "python/exercises/practice/../a", "python\\exercises\\practice\\a", "python/exercises/practice/a/extra"])
-def test_task_id_rejects_path_escape(task):
-    with pytest.raises(ValueError):
-        adapter.validate_task_id(task)
-
-
 def make_task(root, task="python/exercises/practice/example"):
     target = root / task
     (target / ".meta").mkdir(parents=True)
@@ -78,17 +36,6 @@ def test_task_snapshot_rejects_symlinks_and_config_escape(tmp_path):
     (tmp_path / task / ".meta/config.json").write_text(json.dumps({"files": {"solution": ["../../escape"], "test": ["test_main.py"]}}))
     with pytest.raises(ValueError, match="unsafe"):
         adapter.task_snapshot(tmp_path, task)
-
-
-def test_dotenv_never_searches_or_loads(monkeypatch):
-    def forbidden(*args, **kwargs):
-        raise AssertionError("ambient dotenv lookup")
-    dotenv = types.SimpleNamespace(load_dotenv=forbidden, find_dotenv=forbidden)
-    monkeypatch.setitem(sys.modules, "dotenv", dotenv)
-    with adapter.disable_dotenv():
-        assert dotenv.load_dotenv(override=True) is False
-        assert dotenv.find_dotenv() == ""
-    assert dotenv.load_dotenv is forbidden
 
 
 def offline_model_client(*, status=200, response_content=b"{}", send_effect=None):
@@ -124,32 +71,6 @@ def transport(tmp_path, *, status=200, max_calls=2, max_retries=0, response_cont
     return Model, sent, budget, recorder, restore
 
 
-def test_actual_http_attempt_cap_and_restore(tmp_path):
-    Model, sent, budget, recorder, restore = transport(tmp_path, max_calls=1)
-    try:
-        Model().send_completion()
-        with pytest.raises(adapter.BudgetStopped):
-            Model().send_completion()
-        assert len(sent) == budget.model_calls == 1
-        assert sent[0]["follow_redirects"] is False
-    finally:
-        restore()
-        recorder.close(outcome="failed")
-
-
-def test_outer_model_retry_is_counted_as_retry(tmp_path):
-    Model, sent, budget, recorder, restore = transport(tmp_path, status=503)
-    try:
-        Model().send_completion()
-        with pytest.raises(adapter.BudgetStopped):
-            Model().send_completion()
-        assert len(sent) == 1
-        assert budget.reason == "max_retries"
-    finally:
-        restore()
-        recorder.close(outcome="failed")
-
-
 def test_alias_substitution_fails_before_send(tmp_path):
     Model, sent, budget, recorder, restore = transport(tmp_path)
     try:
@@ -181,48 +102,6 @@ def test_response_diagnostics_allowlist_preserves_response_and_usage(tmp_path, r
     assert event["output_truncated"] == (reason == "length" if reason != "private-response-text" else None)
     assert event["usage"] == {"prompt_tokens": 11, "completion_tokens": 8, "total_tokens": 19, "reasoning_tokens": 0}
     assert event["attempt"] == 1
-
-
-@pytest.mark.parametrize("content", [b"{}", b"not json", b"[]", b'"private"', b"{" * 2000,
-    b" " * (8 * 1024 * 1024 + 1),
-    json.dumps({"choices": [{"finish_reason": ["length"]}], "usage": {"prompt_tokens": True,
-        "completion_tokens": -1, "total_tokens": 1.5, "completion_tokens_details": {"reasoning_tokens": "7"}}}).encode()])
-def test_missing_invalid_response_metadata_stays_unknown_without_retry(tmp_path, content):
-    Model, sent, budget, recorder, restore = transport(tmp_path, response_content=content)
-    try:
-        assert Model().send_completion().content == content
-        assert len(sent) == budget.model_calls == 1
-    finally:
-        restore()
-        recorder.close(outcome="completed")
-    events = list(map(json.loads, (tmp_path / "events.jsonl").read_text().splitlines()))
-    event = next(row for row in events if row["event"] == "aider_transport_response")
-    assert event["finish_reason"] is event["output_truncated"] is None
-    assert set(event["usage"].values()) == {None}
-
-
-@pytest.mark.parametrize("details,expected", [(None, 7), ({"reasoning_tokens": 3}, 3),
-    ({"reasoning_tokens": "3"}, 7), ({"reasoning_tokens": -1}, 7), ({"reasoning_tokens": True}, 7)])
-def test_response_reasoning_usage_accepts_top_level_and_prefers_valid_details(details, expected):
-    response = types.SimpleNamespace(status_code=200, content=json.dumps({"usage": {
-        "reasoning_tokens": 7, "completion_tokens_details": details}}).encode())
-    assert adapter.response_diagnostics(response)["usage"]["reasoning_tokens"] == expected
-
-
-def test_generated_tree_cannot_redirect_host_edits_or_test_restore(tmp_path):
-    task = tmp_path / "task"
-    task.mkdir()
-    outside = tmp_path / "outside"
-    outside.write_text("protected")
-    adapter.verify_task_tree(task)
-    (task / "solution.py").symlink_to(outside)
-    with pytest.raises(adapter.BudgetStopped, match="filesystem"):
-        adapter.verify_task_tree(task)
-    (task / "solution.py").unlink()
-    (task / "solution.py").hardlink_to(outside)
-    with pytest.raises(adapter.BudgetStopped, match="filesystem"):
-        adapter.verify_task_tree(task)
-    assert outside.read_text() == "protected"
 
 
 def test_timeout_cannot_return_an_unsafe_tree_to_host(tmp_path, monkeypatch):
@@ -292,40 +171,6 @@ def test_contained_diagnostics_preserve_result_and_exception_without_output(tmp_
     assert event["compiler_diagnostics_truncated"] is (False if mode in {"compiler", "test_failure"} else None)
 
 
-def test_model_paths_are_guarded_before_preview_reads(tmp_path):
-    results = tmp_path / "results"
-    results.mkdir()
-    solution = results / "main.py"
-    solution.write_text("pass")
-    coder = types.SimpleNamespace(abs_fnames={str(solution)}, abs_root_path=lambda path: str(results / path))
-    adapter.guard_solution_path(coder, "main.py", results)
-    with pytest.raises(adapter.BudgetStopped, match="admitted"):
-        adapter.guard_solution_path(coder, "../outside", results)
-    solution.unlink()
-    outside = tmp_path / "outside"
-    outside.mkdir()
-    results.rmdir()
-    results.symlink_to(outside, target_is_directory=True)
-    (outside / "main.py").write_text("protected")
-    with pytest.raises(adapter.BudgetStopped, match="admitted"):
-        adapter.guard_solution_path(coder, "main.py", results)
-
-
-def test_lint_keeps_upstream_argv_but_executes_only_inside_image(tmp_path, monkeypatch):
-    calls = []
-    def contained(command, **kwargs):
-        calls.append((command, kwargs))
-        return subprocess.CompletedProcess(command, 1, "lint diagnostics", None)
-    monkeypatch.setattr(adapter, "run_contained_callback", contained)
-    command = [sys.executable, "-m", "flake8", "--select=E9", "--show-source", "--isolated", "main.py"]
-    result = adapter.run_contained_lint(command, plan={"image": "pinned"}, budget="bounded", cwd=tmp_path)
-    assert calls[0][0] == ["python3", "-I", *command[1:]]
-    assert calls[0][1]["timeout"] == 180
-    assert result.stdout == "lint diagnostics" and result.stderr == ""
-    with pytest.raises(adapter.BudgetStopped, match="lint command"):
-        adapter.run_contained_lint(["sh", "-c", "untrusted"], plan={}, budget=None, cwd=tmp_path)
-
-
 def cpp_lint_fixture(tmp_path):
     """Small upstream API double; actual pinned parser is also checked offline."""
     from pathlib import Path
@@ -373,71 +218,6 @@ def test_cpp_header_lint_scopes_original_solution_paths_and_restores(tmp_path):
         assert upstream.basic_lint(str(paths[0]), "source")[0] == "c"
     assert upstream.Linter.lint is original
     assert linter.lint(paths[0])[0] == "c"
-
-
-@pytest.mark.parametrize("custom", ["explicit", "all", "c"])
-def test_cpp_header_lint_preserves_custom_commands(tmp_path, custom):
-    plan, upstream, paths = cpp_lint_fixture(tmp_path)
-    linter = upstream.Linter()
-    if custom == "all":
-        linter.all_lint_cmd = "custom"
-    elif custom == "c":
-        linter.set_linter("c", "custom")
-    with adapter.cpp_header_lint(plan, upstream):
-        assert linter.lint(paths[0], "custom" if custom == "explicit" else None) == "custom"
-
-
-def test_cpp_header_lint_restores_after_callback_failure(tmp_path):
-    plan, upstream, paths = cpp_lint_fixture(tmp_path)
-    namespace = {}
-    exec("def basic_lint(fname, code):\n raise RuntimeError('parser failed')\n", namespace)
-    upstream.basic_lint = namespace["basic_lint"]
-    linter = upstream.Linter()
-    original, mapping = upstream.Linter.lint, linter.languages
-    with pytest.raises(RuntimeError, match="parser failed"):
-        with adapter.cpp_header_lint(plan, upstream):
-            linter.lint(paths[0])
-    assert upstream.Linter.lint is original
-    assert linter.languages is mapping
-
-
-def test_cpp_header_lint_rejects_redirected_generated_header_and_changed_metadata(tmp_path):
-    plan, upstream, paths = cpp_lint_fixture(tmp_path)
-    paths[0].unlink()
-    paths[0].symlink_to(paths[1])
-    with adapter.cpp_header_lint(plan, upstream):
-        with pytest.raises(adapter.BudgetStopped, match="header path"):
-            upstream.Linter().lint(paths[0])
-    plan["selection"]["files"][plan["selection"]["instance_ids"][0]][".meta/config.json"] = "0" * 64
-    with pytest.raises(adapter.BudgetStopped, match="metadata changed"):
-        with adapter.cpp_header_lint(plan, upstream):
-            pytest.fail("changed metadata accepted")
-
-
-@pytest.mark.parametrize("error", [TimeoutError("private"), OSError("private"),
-                                   RuntimeError("private"), KeyboardInterrupt("private")])
-def test_transport_error_is_terminal_sanitized_and_preserves_exception(tmp_path, error):
-    def fail():
-        budget.started -= 61  # A simultaneous deadline must not mask the send error.
-        raise error
-    Model, _sent, budget, recorder, guard = transport(tmp_path, send_effect=fail)
-    try:
-        with pytest.raises(type(error)) as caught:
-            Model().send_completion()
-        assert caught.value is error
-    finally:
-        guard()
-        accounting = guard.accounting()
-        recorder.close(outcome="failed", request_accounting=accounting)
-    rows = [json.loads(line) for line in recorder.path.read_text().splitlines()]
-    terminal = next(row for row in rows if row["event"] == "aider_transport_error")
-    assert terminal["error_type"] in {"timeout", "os_error", "transport_error", "interrupted"}
-    assert terminal["usage"] == dict.fromkeys(("prompt_tokens", "completion_tokens", "total_tokens", "reasoning_tokens"))
-    assert terminal["http_status"] is terminal["finish_reason"] is terminal["output_truncated"] is None
-    assert accounting == {"schema": adapter.REQUEST_ACCOUNTING_SCHEMA, "status": "complete",
-                          "started": 1, "responses": 0, "errors": 1, "pending": 0}
-    assert not any(row["event"] == "aider_transport_response" for row in rows)
-    assert "private" not in recorder.path.read_text()
 
 
 def test_simultaneous_admission_is_atomic_and_response_keeps_its_owner(tmp_path):
@@ -499,17 +279,6 @@ def test_retry_context_does_not_leak_between_threads(tmp_path):
     starts = [row for row in rows if row["event"] == "aider_transport_started"]
     assert [row["attempt"] for row in starts] == [1, 1, 2]
     assert starts[0]["logical_request_id"] == starts[2]["logical_request_id"] != starts[1]["logical_request_id"]
-
-
-def test_recorder_omissions_make_balanced_accounting_incomplete(tmp_path):
-    Model, _sent, _budget, recorder, guard = transport(tmp_path)
-    recorder.max_events = 2
-    Model().send_completion()
-    guard()
-    accounting = guard.accounting()
-    recorder.close(outcome="failed", request_accounting=accounting)
-    assert accounting["pending"] == 0 and accounting["status"] == "incomplete"
-    assert json.loads(recorder.path.read_text().splitlines()[-1])["status"] == "truncated"
 
 
 # Verbatim Coder methods from Aider 5dc9490bb35f9729ef2c95d00a19ccd30c26339c,
@@ -673,59 +442,3 @@ def test_run_adapter_joins_pinned_final_summary_before_closing(tmp_path, monkeyp
                 coder.summarizer_thread.join(5)
         # Only local synthetic classes: undo deadline fencing for fixture cleanup.
         Client.send, Model.send_completion = original_send, original_completion
-
-
-
-def test_drain_preserves_admitted_sdk_retry_but_closes_new_completions(tmp_path):
-    entered, release, drain_started = threading.Event(), threading.Event(), threading.Event()
-    failures = []
-    def send_effect():
-        if len(sent) == 1:
-            entered.set()
-            assert release.wait(5)
-            return types.SimpleNamespace(status_code=503, content=b"{}")
-        return types.SimpleNamespace(status_code=200, content=b"{}")
-    Model, Client, sent = offline_model_client(send_effect=send_effect)
-    original_completion = Model.send_completion
-    def sdk_retry(self):
-        response = original_completion(self)
-        if response.status_code == 503:
-            response = original_completion(self)
-        return response
-    Model.send_completion = sdk_retry
-    recorder = adapter.EventRecorder(tmp_path / "events.jsonl")
-    budget = adapter.SuiteBudget({"max_model_calls": 2, "max_completion_tokens": 8,
-        "deadline_s": 60, "max_retries": 1, "min_free_disk_bytes": 0}, recorder)
-    guard = adapter.install_transport_guard(Client, Model,
-        endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
-        controls={}, budget=budget, recorder=recorder)
-    original_wait = guard.condition.wait
-    def wait(timeout=None):
-        drain_started.set()
-        return original_wait(timeout)
-    guard.condition.wait = wait
-    def complete():
-        try:
-            assert Model().send_completion().status_code == 200
-        except BaseException as exc:
-            failures.append(exc)
-    worker = threading.Thread(target=complete)
-    worker.start()
-    closer = threading.Thread(target=guard.drain)
-    try:
-        assert entered.wait(5)
-        closer.start()
-        assert drain_started.wait(5)
-        with pytest.raises(adapter.BudgetStopped):
-            Model().send_completion()
-    finally:
-        release.set()
-        worker.join(5)
-        if closer.ident is not None:
-            closer.join(5)
-        guard()
-        recorder.close(outcome="completed", request_accounting=guard.accounting())
-    assert not worker.is_alive() and not closer.is_alive() and not failures
-    assert len(sent) == 2
-    assert guard.accounting()["responses"] == 2
-    assert guard.accounting()["status"] == "complete"

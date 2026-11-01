@@ -100,7 +100,7 @@ silently change direction and never delete an ADR — supersede it.
 ## Tests
 
 - Layout: top-level `tests/test_<verb>.py` per CLI verb, a large `tests/router/` suite for the
-  data plane, plus `tests/external_benchmarks/`, `tests/voice/`, and shared `tests/fixtures/`.
+  data plane, plus `tests/voice/`, `tests/connect/`, and shared `tests/fixtures/`.
 - Run everything: `python scripts/run_tests.py tests/ -q`. Run a slice while
   iterating: `python scripts/run_tests.py tests/router/ -q` or
   `python scripts/run_tests.py tests/test_mcp.py -q`. The wrapper gives each
@@ -114,21 +114,35 @@ silently change direction and never delete an ADR — supersede it.
   suitable, preflight fails; select a trusted, non-Git parent with `TMPDIR`.
   `--preflight` checks this selection without starting pytest. CI may invoke
   pytest directly on its isolated runner.
+  The wrapper and CI disable shared home-environment fallback for offline tests.
 - Measure the diagnostic branch-coverage baseline with
   `python -m coverage erase`, `python -m coverage run --branch -m pytest tests/`, and
-  `python -m coverage report -m`. Coverage is development-only and has no arbitrary percentage
-  gate; inspect missing branches and add tests only when they protect a distinct behavior or
-  refusal/recovery/platform contract.
-- The directed-import (acyclic-package) check in `scripts/audit_modularization.py` is a standing
-  CI gate: `tests/test_modularization_architecture.py` runs it against the current worktree on
-  every `pytest tests/` invocation. To reproduce the full milestone-6 facade/package LOC,
-  function, branch, and directed-import audit as a one-time historical comparison, run
+  `python -m coverage report -m`. CI enforces the configured 70% combined coverage floor.
+  Inspect missing branches; the percentage alone does not prove behavior preservation.
+- Before adding a case, find existing coverage for its behavior. Extend that test when
+  possible; keep distinct refusal, recovery and platform contracts. Prefer representative
+  equivalence classes over Cartesian matrices and observable outcomes over incidental prose
+  or mock-call choreography. Deletion reviews identify the retained behavior or explicitly
+  record the noncritical coverage being dropped. Preserve critical contracts and the 70%
+  coverage floor. Moving cases into loops or skips does not count as test reduction.
+- Inspect slow calls, setup and teardown with `python scripts/run_tests.py tests/ -q --durations=40`.
+  CI retains JUnit timings and outcomes for each Python version. Use events for readiness
+  instead of arbitrary sleeps; local HTTP test fixtures should use a short `serve_forever`
+  poll interval and still shut down and join their threads.
+- Target at most 120 seconds for the normal offline suite; record the environment and measure
+  coverage and platform lanes separately. Investigate excess cost before raising a timeout:
+  use deterministic clocks or events, owned cleanup, and short
+  local-server polling. A necessary slower integration belongs in an explicit opt-in evidence
+  lane with its reason and command, not behind a longer default timeout.
+- `scripts/audit_modularization.py` is an optional structure-report tool, not a pytest or CI
+  gate. To reproduce the full milestone-6 facade/package LOC, function, branch, and
+  directed-import audit as a one-time historical comparison, run
   `python scripts/audit_modularization.py` directly. Its default before-ref is the
   pre-modularization `c3af271` baseline and its default after-ref is the current worktree.
-- CI runs the suite on `{ubuntu, windows}` × `{3.11, 3.13}` (the support-envelope
-  boundaries), plus `ruff check .`, the
+- CI runs the full Python suite on Ubuntu with Python 3.11 and 3.13, a focused Windows CLI
+  and native credential-custody smoke, native macOS contracts, plus `ruff check .`, the
   deterministic active-reference audit, strict docs, and a wheel-build/clean-install smoke test
-  on both Windows and Ubuntu. These gates do not read home-directory Anvil state or contact live
+  on Ubuntu and macOS. These gates do not read home-directory Anvil state or contact live
   Docker, SSH, Tailscale, GPU, model, or controller endpoints.
 - To reproduce the package gate, run `python -m build` followed by
   `python scripts/wheel_smoke.py`. The smoke creates and removes a temporary virtual environment,
@@ -142,6 +156,17 @@ silently change direction and never delete an ADR — supersede it.
   only to supported Anvil JSON commands plus `git rev-parse --verify HEAD`; it never reads or
   copies Anvil state files directly. Review dispositions must name the exact HEAD; each observed
   proof must name its full Git commit, which the gate verifies is an ancestor of that HEAD.
+
+## Keep code economical
+
+- Start from the needed observable outcome. Search callers and shared seams before adding code.
+  Reuse existing coverage; add the smallest check only for a distinct risk. Trivial reversible
+  changes and assertions that merely repeat the implementation do not need new tests.
+- Prefer a minimal stdlib implementation; delay an abstraction until repeated real use proves it.
+  Do not add speculative frameworks, dependencies, or generic layers. Delete code only after
+  proving it is unused.
+- Measure CPU, RAM, I/O, subprocesses, and elapsed time before optimizing. Bound concurrency,
+  timeouts, output, and work while preserving security, data-loss, ownership, and recovery guards.
 
 ## Docs
 
@@ -219,8 +244,8 @@ the broader machine-local-path and public-artifact audit remains tracked by issu
    `python scripts/audit_cli_references.py --check --scope full`,
    `python scripts/check_markdown_links.py --root .`, and
    `python -m mkdocs build --strict` locally and make sure they are green.
-4. Open a PR. CI runs the suite across `{ubuntu, windows}` x `{3.11, 3.13}`, builds the
-   wheel, and smoke-tests a clean install on both operating systems - it must be green before
+4. Open a PR. CI runs the Python, native and browser checks described above, builds the
+   wheel, and smoke-tests clean installs - it must be green before
    merge.
 
 Keep PRs focused: one logical change per PR, with a clear description of the *why*. If you are

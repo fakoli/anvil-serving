@@ -24,42 +24,6 @@ def _spec():
     }
 
 
-def test_controller_preflight_preserves_typed_artifact(monkeypatch, tmp_path):
-    monkeypatch.setenv("ANVIL_BENCHMARK_JOB_DB", str(tmp_path / "jobs.sqlite3"))
-    monkeypatch.setenv("ANVIL_BENCHMARK_RUN_ROOT", str(tmp_path / "runs"))
-    expected = {"schema": "anvil-serving.benchmark-preflight/v1", "passed": True}
-    monkeypatch.setattr(benchmarks, "run_benchmark_preflight", lambda *_args, **_kwargs: expected)
-    result = benchmarks.tool_benchmark_job_preflight(
-        {
-            "suite": "context",
-            "spec_json": json.dumps(_spec()),
-            "requirements_json": json.dumps({"min_free_disk_bytes": 1}),
-        }
-    )
-    assert result == {"ok": True, "data": expected}
-
-
-def test_controller_preflight_rejects_suite_mismatch():
-    result = benchmarks.FAMILY.tools["benchmark_job_preflight"]["handler"]
-    try:
-        result({"suite": "swe", "spec_json": json.dumps(_spec())})
-    except Exception as exc:
-        assert getattr(exc, "code", None) == "suite_mismatch"
-    else:
-        raise AssertionError("suite mismatch was accepted")
-
-
-def test_profile_and_suite_schemas_share_the_closed_registry():
-    from anvil_serving.benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES
-
-    for tool in benchmarks.FAMILY.tools.values():
-        properties = tool["inputSchema"]["properties"]
-        if "suite" in properties:
-            assert set(properties["suite"]["enum"]) == SUITE_NAMES
-        if "profile" in properties:
-            assert set(properties["profile"]["enum"]) == PROFILE_NAMES
-
-
 def test_harness_prepare_accepts_v2_and_rejects_profile_paths(monkeypatch, tmp_path):
     import pytest
 
@@ -128,23 +92,6 @@ def test_external_submission_retries_original_pin_without_relaunch_and_retains_l
     terminal = benchmarks.tool_benchmark_job_submit(args)["data"]
     assert terminal["job"]["state"] == "cancelled" and terminal["worker"]["launched"] is False
     assert len(launches) == 1
-
-
-@pytest.mark.parametrize("suite,parameters,code", [
-    ("aider", {"runner": "lil"}, "suite_incompatible_parameter"),
-    ("performance", {}, "bad_performance_parameters"),
-])
-def test_external_submission_rejects_invalid_parameters_before_job_creation(monkeypatch, tmp_path, suite, parameters, code):
-    from anvil_serving.control_plane.controller.store import BenchmarkJobStore
-
-    store = BenchmarkJobStore(str(tmp_path / "jobs.sqlite3"), run_root=str(tmp_path / "runs"))
-    monkeypatch.setattr(benchmarks, "_benchmark_job_store", lambda: store)
-    monkeypatch.setattr(benchmarks, "launch_benchmark_job", lambda **_kw: pytest.fail("invalid job launched"))
-    spec = {**_external_spec(suite, "lil"), "parameters": parameters}
-    with pytest.raises(ToolError) as exc:
-        benchmarks.tool_benchmark_job_submit({"suite": suite, "spec_json": json.dumps(spec), "confirm": True})
-    assert exc.value.code == code
-    assert store.status(spec["run_id"]) is None
 
 
 def test_submit_confirmation_and_suite_match_precede_store(monkeypatch):

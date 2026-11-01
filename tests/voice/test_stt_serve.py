@@ -9,33 +9,16 @@ no network.
 """
 from __future__ import annotations
 
-import io
 import json
-import wave
-from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.voice.cancel_scope import CancelScope
-from anvil_serving.voice.messages import Transcription, VADAudio
-from anvil_serving.voice.serves._common import ServeNotConfigured
-from anvil_serving.voice.serves.stt import STTServe, STTServeConfig
 from anvil_serving.voice.stages.stt import (
-    STTClientError,
-    STTStage,
     STTStageConfig,
-    STTStreamAssembler,
-    build_transcription_fields,
-    pcm_to_wav,
     transcribe_stream,
 )
 from tests.voice.conftest import (
     FakeLineResponse,
-    FakeOpenResponse,
-    FakeReadResponse,
-    FakeRun,
-    fake_open_fails,
-    fake_open_ok,
 )
 
 
@@ -73,194 +56,16 @@ def manifest_with_stt(tmp_path):
 # --------------------------------------------------------------------------- #
 # STTServe: lifecycle (delegates to anvil_serving.serves, never raw docker)
 # --------------------------------------------------------------------------- #
-def test_transcriptions_url_appends_path():
-    serve = STTServe(STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet"))
-    assert serve.transcriptions_url == "http://127.0.0.1:8090/v1/audio/transcriptions"
-
-
-def test_transcriptions_url_strips_trailing_slash():
-    serve = STTServe(STTServeConfig(base_url="http://127.0.0.1:8090/v1/", model="parakeet"))
-    assert serve.transcriptions_url == "http://127.0.0.1:8090/v1/audio/transcriptions"
-
-
-def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
-    missing = str(tmp_path / "does-not-exist.toml")
-    serve = STTServe(STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                                     manifest_path=missing))
-    with pytest.raises(ServeNotConfigured):
-        serve.bring_up()
-
-
-def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
-    p = tmp_path / "serves.toml"
-    p.write_text(
-        '[[serve]]\nname = "tts"\ncontainer = "anvil-tts"\nruntime = "docker"\nport = 8091\n'
-        'model = "kokoro-82m"\nengine = "vllm"\n',
-        encoding="utf-8",
-    )
-    serve = STTServe(STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                                     manifest_path=str(p)))
-    with pytest.raises(ServeNotConfigured):
-        serve.bring_up()
-
-
-def test_bring_up_never_shells_out_to_docker_directly_when_absent_starts_via_up(manifest_with_stt):
-    fake_run = FakeRun([
-        (["docker", "inspect"], 1, "", "Error: No such container: anvil-stt"),
-        (["echo", "bring-up-stt"], 0, "bring-up-stt\n", ""),
-    ])
-    serve = STTServe(
-        STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                        manifest_path=manifest_with_stt),
-        _run=fake_run,
-    )
-    rc = serve.bring_up()
-    assert rc == 0
-    assert ["echo", "bring-up-stt"] in fake_run.calls
-    # every call went through the fake, not a real subprocess -- no bare "docker run".
-    assert all(c[0] == "docker" or c == ["echo", "bring-up-stt"] for c in fake_run.calls)
-
-
-def test_tear_down_stops_a_running_container(manifest_with_stt):
-    # cmd_down now re-inspects after the stop to verify it STUCK, so the
-    # fake must flip to 'exited' once the stop has run (a fixed 'running'
-    # answer reads as a restart-policy revival and rightly fails the stop).
-    stopped = []
-
-    def fake_run(argv, **kwargs):
-        fake_run.calls.append(list(argv))
-        if argv[:2] == ["docker", "inspect"]:
-            state = "exited" if stopped else "running"
-            return SimpleNamespace(returncode=0, stdout=state + "\n", stderr="")
-        if argv[:2] == ["docker", "stop"]:
-            stopped.append(argv)
-            return SimpleNamespace(returncode=0, stdout="anvil-stt\n", stderr="")
-        if argv[:3] == ["docker", "rm", "-f"]:
-            return SimpleNamespace(returncode=0, stdout="anvil-stt\n", stderr="")
-        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher")
-    fake_run.calls = []
-    serve = STTServe(
-        STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                        manifest_path=manifest_with_stt),
-        _run=fake_run,
-    )
-    rc = serve.tear_down()
-    assert rc == 0
-    assert ["docker", "rm", "-f", "anvil-stt"] in fake_run.calls
-    assert ["docker", "stop", "anvil-stt"] in fake_run.calls
-
-
-def test_tear_down_raises_serve_not_configured_when_manifest_missing(tmp_path):
-    missing = str(tmp_path / "nope.toml")
-    serve = STTServe(STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                                     manifest_path=missing))
-    with pytest.raises(ServeNotConfigured):
-        serve.tear_down()
-
-
-def test_wait_ready_true_when_models_endpoint_responds(manifest_with_stt):
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    serve = STTServe(
-        STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                        manifest_path=manifest_with_stt),
-        _run=fake_run, _open=fake_open_ok,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is True
-    assert readiness.docker_state == "running"
-    assert readiness.name == "stt"
-
-
-def test_wait_ready_uses_manifest_ready_url_for_non_openai_stt(manifest_with_stt):
-    """parakeet.cpp exposes root /health rather than /v1/models."""
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    seen = []
-
-    def open_health(url, timeout=None):
-        seen.append(url)
-        return FakeOpenResponse(200)
-
-    serve = STTServe(
-        STTServeConfig(
-            base_url="http://127.0.0.1:8090/v1",
-            model="parakeet",
-            manifest_path=manifest_with_stt,
-            ready_url="http://127.0.0.1:8090/health",
-        ),
-        _run=fake_run,
-        _open=open_health,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is True
-    assert seen == ["http://127.0.0.1:8090/health"]
-
-
-def test_wait_ready_false_when_probe_fails(manifest_with_stt):
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    serve = STTServe(
-        STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                        manifest_path=manifest_with_stt),
-        _run=fake_run, _open=fake_open_fails,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is False
-    assert "not responding" in readiness.detail
-
-
-def test_wait_ready_reports_unconfigured_state_without_raising(tmp_path):
-    missing = str(tmp_path / "nope.toml")
-    serve = STTServe(STTServeConfig(base_url="http://127.0.0.1:8090/v1", model="parakeet",
-                                     manifest_path=missing), _open=fake_open_fails)
-    readiness = serve.wait_ready()  # must not raise even though the manifest is absent
-    assert readiness.docker_state == "unconfigured"
-    assert readiness.ready is False
 
 
 # --------------------------------------------------------------------------- #
 # pcm_to_wav / multipart fields
 # --------------------------------------------------------------------------- #
-def test_pcm_to_wav_produces_a_valid_wav_header_with_declared_rate():
-    wav_bytes = pcm_to_wav(b"\x01\x00\x02\x00", sample_rate=16000)
-    with wave.open(io.BytesIO(wav_bytes), "rb") as w:
-        assert w.getframerate() == 16000
-        assert w.getnchannels() == 1
-        assert w.getsampwidth() == 2
-        assert w.readframes(w.getnframes()) == b"\x01\x00\x02\x00"
-
-
-def test_build_transcription_fields_includes_model_and_stream_flag():
-    fields = build_transcription_fields(STTStageConfig(model="parakeet-tdt", stream=True))
-    assert fields["model"] == "parakeet-tdt"
-    assert fields["stream"] == "true"
-
-
-def test_build_transcription_fields_omits_stream_when_disabled():
-    fields = build_transcription_fields(STTStageConfig(stream=False))
-    assert "stream" not in fields
-
-
-def test_build_transcription_fields_includes_response_format_when_configured():
-    fields = build_transcription_fields(STTStageConfig(stream=False, response_format="json"))
-    assert fields["response_format"] == "json"
 
 
 # --------------------------------------------------------------------------- #
 # STTStreamAssembler
 # --------------------------------------------------------------------------- #
-def test_stream_assembler_accumulates_incremental_deltas():
-    a = STTStreamAssembler()
-    assert a.feed(None, json.dumps({"type": "transcript.text.delta", "delta": "hel"})) == ("hel", False)
-    assert a.feed(None, json.dumps({"type": "transcript.text.delta", "delta": "lo"})) == ("hello", False)
-    assert a.feed(None, json.dumps({"type": "transcript.text.done", "text": "hello there"})) == (
-        "hello there", True,
-    )
-    assert a.done is True
-
-
-def test_stream_assembler_ignores_unrecognized_event_types():
-    a = STTStreamAssembler()
-    assert a.feed(None, json.dumps({"type": "something.else"})) is None
-    assert a.feed(None, "not json") is None
 
 
 # --------------------------------------------------------------------------- #
@@ -282,144 +87,6 @@ def test_transcribe_stream_posts_multipart_to_transcriptions_path():
     assert b"RIFF" in call["data"]  # the WAV container header
 
 
-def test_transcribe_stream_closes_response():
-    payload = _sse_transcript(done_event={"type": "transcript.text.done", "text": "hi"})
-    transport = FakeTransport(FakeLineResponse(payload))
-    list(transcribe_stream(b"\x00\x00", 16000, STTStageConfig(), transport=transport))
-    assert transport.response.closed
-
-
-def test_transcribe_stream_non_streaming_returns_single_final_result():
-    transport = FakeTransport(FakeReadResponse(json.dumps({"text": "non streaming result"}).encode()))
-    config = STTStageConfig(stream=False)
-    results = list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-    assert results == [("non streaming result", True)]
-
-
-def test_transcribe_stream_non_streaming_raises_on_non_json_body():
-    """F6 regression: a non-JSON body must raise, not silently succeed empty."""
-    transport = FakeTransport(FakeReadResponse(b"not json at all"))
-    config = STTStageConfig(stream=False)
-    with pytest.raises(STTClientError):
-        list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-
-
-def test_transcribe_stream_non_streaming_raises_on_missing_text_field():
-    """F6 regression: valid JSON with an unexpected shape (no 'text' field)
-    must raise rather than being treated as a successful empty transcription."""
-    transport = FakeTransport(FakeReadResponse(json.dumps({"error": "bad request"}).encode()))
-    config = STTStageConfig(stream=False)
-    with pytest.raises(STTClientError):
-        list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-
-
-def test_transcribe_stream_non_streaming_raises_when_text_is_not_a_string():
-    transport = FakeTransport(FakeReadResponse(json.dumps({"text": None}).encode()))
-    config = STTStageConfig(stream=False)
-    with pytest.raises(STTClientError):
-        list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-
-
-def test_transcribe_stream_non_streaming_succeeds_on_valid_empty_transcription():
-    """The legitimately-empty-but-valid case must still succeed (not raise)."""
-    transport = FakeTransport(FakeReadResponse(json.dumps({"text": ""}).encode()))
-    config = STTStageConfig(stream=False)
-    results = list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-    assert results == [("", True)]
-
-
-def test_stt_stage_propagates_non_streaming_malformed_response_error():
-    """End-to-end through the stage: a malformed non-streaming STT response
-    must propagate as an error out of `process()`, not a false empty
-    Transcription -- BaseStage's per-item isolation is what actually stops it
-    from wedging the pipeline, but `process()` itself must not swallow it."""
-    scope = CancelScope()
-
-    def fake_stream(pcm, sample_rate, config):
-        transport = FakeTransport(FakeReadResponse(b"not json"))
-        yield from transcribe_stream(pcm, sample_rate, STTStageConfig(stream=False), transport=transport)
-
-    stage = STTStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    with pytest.raises(STTClientError):
-        stage.process(_vad_audio())
-
-
-def test_transcribe_stream_sends_bearer_token_from_env_var(monkeypatch):
-    monkeypatch.setenv("ANVIL_TEST_STT_TOKEN", "secret-stt-token")
-    transport = FakeTransport(FakeLineResponse(
-        _sse_transcript(done_event={"type": "transcript.text.done", "text": "hi"})
-    ))
-    config = STTStageConfig(api_key_env="ANVIL_TEST_STT_TOKEN")
-    list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-stt-token"
-
-
-def test_transcribe_stream_strips_bearer_token_whitespace(monkeypatch):
-    monkeypatch.setenv("ANVIL_TEST_STT_TOKEN", " secret-stt-token\r\n")
-    transport = FakeTransport(FakeLineResponse(
-        _sse_transcript(done_event={"type": "transcript.text.done", "text": "hi"})
-    ))
-    config = STTStageConfig(api_key_env="ANVIL_TEST_STT_TOKEN")
-    list(transcribe_stream(b"\x00\x00", 16000, config, transport=transport))
-    assert transport.calls[0]["headers"]["Authorization"] == "Bearer secret-stt-token"
-
-
 # --------------------------------------------------------------------------- #
 # STTStage: partial + final Transcription, cancel_scope integration
 # --------------------------------------------------------------------------- #
-def _vad_audio(turn_id="t1", generation=0, pcm=b"\x00\x01"):
-    return VADAudio(turn_id=turn_id, turn_revision=0, generation=generation, pcm=pcm, is_final=True)
-
-
-def test_stt_stage_emits_partials_then_final_transcription():
-    scope = CancelScope()
-
-    def fake_stream(pcm, sample_rate, config):
-        yield "hel", False
-        yield "hello", False
-        yield "hello there", True
-
-    stage = STTStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    out = stage.process(_vad_audio())
-
-    assert [m.text for m in out] == ["hel", "hello", "hello there"]
-    assert [m.is_final for m in out] == [False, False, True]
-    assert all(isinstance(m, Transcription) for m in out)
-    assert out[0].turn_id == "t1"
-
-
-def test_stt_stage_skips_already_stale_segment():
-    scope = CancelScope()
-    scope.cancel()  # generation now 1
-
-    def fake_stream(pcm, sample_rate, config):
-        raise AssertionError("must not transcribe an already-stale segment")
-
-    stage = STTStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    assert stage.process(_vad_audio(generation=0)) is None
-
-
-def test_stt_stage_stops_emitting_after_mid_stream_barge_in():
-    scope = CancelScope()
-
-    def fake_stream(pcm, sample_rate, config):
-        yield "first", False
-        scope.cancel()  # barge-in lands mid-transcription
-        yield "must not be emitted", False
-        yield "must not be emitted either", True
-
-    stage = STTStage(in_queue=None, cancel_scope=scope, stream_fn=fake_stream)
-    out = stage.process(_vad_audio())
-    assert [m.text for m in out] == ["first"]
-    assert out[-1].is_final is False
-
-
-def test_stt_stage_ignores_non_final_vad_audio():
-    stage = STTStage(in_queue=None, stream_fn=lambda p, sr, c: iter(()))
-    non_final = VADAudio(turn_id="t", turn_revision=0, generation=0, pcm=b"x", is_final=False)
-    assert stage.process(non_final) is None
-
-
-def test_stt_stage_ignores_non_vad_audio_items():
-    stage = STTStage(in_queue=None, stream_fn=lambda p, sr, c: iter(()))
-    assert stage.process("not vad audio") is None

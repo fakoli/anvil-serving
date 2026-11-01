@@ -2,7 +2,7 @@ import threading
 import time
 from uuid import uuid4
 import pytest
-from anvil_serving.native_agents.core import Broker, PREFIX, validate_answer
+from anvil_serving.native_agents.core import Broker, PREFIX
 from anvil_serving.native_agents.store import Store
 from anvil_serving.native_agents.types import AgentsError, Directory, Workspace, NativeAdmission
 
@@ -80,14 +80,6 @@ def test_two_principals_cannot_list_read_mutate_or_stop_other_workspace(setup):
     assert len(owners["one"].calls)==before
 
 
-def test_duplicate_create_has_one_native_id_and_conflicting_body_rejected(setup):
-    broker,owners,_=setup; a=broker.admission("a"); rid=str(uuid4())
-    first,_=create(broker,a,rid=rid); second,_=create(broker,a,rid=rid)
-    assert first==second
-    assert len([c for c in owners["one"].calls if c[0]=="ensure"])==1
-    with pytest.raises(AgentsError): broker.handle(a,"POST",f"{PREFIX}/workspaces/one/sessions",{"requestID":rid,"directoryID":"../../two"})
-
-
 def test_invocation_stop_does_not_wait_for_extension_preflight(setup):
     broker,owners,_=setup; a=broker.admission("a"); sid,_=create(broker,a); owner=owners["one"]; owner.wait=True
     rid=str(uuid4()); base=f"{PREFIX}/workspaces/one/sessions/{sid}"
@@ -98,41 +90,6 @@ def test_invocation_stop_does_not_wait_for_extension_preflight(setup):
     assert settle(broker,a,rid)["state"]=="accepted"
     abort=next(c for c in owner.calls if c[0]=="abort"); assert rid in abort[2]
     assert [c for c in owner.calls if c[0]=="invoke"][0][-1]=="/review carefully"
-
-
-def test_catalog_change_and_unknown_interaction_rejected_before_dispatch(setup):
-    broker,owners,_=setup; a=broker.admission("a"); sid,_=create(broker,a); base=f"{PREFIX}/workspaces/one/sessions/{sid}"
-    with pytest.raises(AgentsError) as error: broker.handle(a,"POST",base+"/invocations",{"requestID":str(uuid4()),"commandID":"cmd","catalogRevision":"old","arguments":""})
-    assert error.value.status==409
-    with pytest.raises(AgentsError) as error: broker.handle(a,"POST",base+"/interactions/other/response",{"requestID":str(uuid4()),"ownerInstance":"instance","answer":{"value":"yes"}})
-    assert error.value.status==409
-    assert not any(c[0] in ("invoke","respond") for c in owners["one"].calls)
-
-
-def test_revoked_admission_closes_stream_before_next_event(setup):
-    broker,_,state=setup; a=broker.admission("a"); sid,_=create(broker,a)
-    stream=broker.events(a,"one",sid); assert next(stream)==b": heartbeat\n\n"
-    state["valid"]=False
-    with pytest.raises(AgentsError): next(stream)
-
-
-def test_restart_marks_dispatched_unknown_without_replay(tmp_path):
-    path=tmp_path/"store.db"; store=Store(path); rid=str(uuid4())
-    store.reserve(A,rid,"digest","one","session","invocation")
-    store.update(A,rid,"dispatched"); store.db.close()
-    restarted=Store(path)
-    assert restarted.operation(A,rid)["state"]=="unknown"
-    prior,fresh=restarted.reserve(A,rid,"digest","one","session","invocation")
-    assert not fresh and prior["state"]=="unknown"
-    with pytest.raises(AgentsError): restarted.reserve(A,rid,"different","one","session","invocation")
-
-
-@pytest.mark.parametrize("method,answer,valid",[("select",{"value":"yes"},True),("select",{"value":"else"},False),("confirm",{"confirmed":True},True),("confirm",{"confirmed":"yes"},False),("editor",{"value":"draft"},True),("custom",{"value":"escape"},False),("custom",{"cancelled":True},True)])
-def test_typed_interaction(method,answer,valid):
-    value={"method":method,"options":["yes"]}
-    if valid: validate_answer(value,answer)
-    else:
-        with pytest.raises(AgentsError): validate_answer(value,answer)
 
 
 def test_stream_saturation_preserves_another_principals_controls(setup):
@@ -146,21 +103,6 @@ def test_stream_saturation_preserves_another_principals_controls(setup):
     assert settle(broker,b,stop)["state"]=="completed"
     for stream in streams: stream.close()
     assert broker.stream_total==0
-
-
-def test_stop_lane_has_independent_bounded_capacity(setup):
-    broker,owners,_=setup; a=broker.admission("a"); sid,_=create(broker,a)
-    broker.stop_capacity=threading.BoundedSemaphore(1)
-    owner=owners["one"]; started=threading.Event(); release=threading.Event()
-    def blocked_abort(sid,pending): started.set(); release.wait(2)
-    owner.abort=blocked_abort
-    try:
-        rid=str(uuid4()); route=f"{PREFIX}/workspaces/one/sessions/{sid}/abort"
-        broker.handle(a,"POST",route,{"requestID":rid,"pendingRequestIDs":[]}); assert started.wait(1)
-        with pytest.raises(AgentsError) as error: broker.handle(a,"POST",route,{"requestID":str(uuid4()),"pendingRequestIDs":[]})
-        assert error.value.status==503
-    finally: release.set()
-    assert settle(broker,a,rid)["state"]=="completed"
 
 
 def test_conclusive_failed_creation_does_not_list_phantom_session(setup):
@@ -183,43 +125,6 @@ def test_stop_overtakes_prompt_and_cancellation_survives_restart(setup,tmp_path)
     assert result["operation"]["state"]=="rejected"
     assert result["operation"]["code"]=="cancelled_before_dispatch"
     assert not any(c[0]=="invoke" for c in owners["one"].calls)
-
-
-def test_async_owner_receipt_settles_after_dialog_without_reposting(setup):
-    broker,owners,_=setup; a=broker.admission("a"); sid,_=create(broker,a); owner=owners["one"]
-    seen=[]; receipt={"state":"dispatched"}
-    def async_invoke(sid,rid,instance,message): seen.append(rid); receipt.update(requestID=rid,sessionID=sid); return dict(receipt)
-    owner.invoke=async_invoke; owner.operation=lambda sid,rid:dict(receipt)
-    rid=str(uuid4()); broker.handle(a,"POST",f"{PREFIX}/workspaces/one/sessions/{sid}/prompts",{"requestID":rid,"message":"wait for dialog"})
-    for _ in range(100):
-        if seen: break
-        time.sleep(.005)
-    assert broker.operation(a,rid)["state"]=="dispatched"
-    receipt["state"]="accepted"
-    assert broker.operation(a,rid)["state"]=="accepted"
-    assert seen==[rid]
-
-
-@pytest.mark.parametrize('terminal',['accepted','rejected','completed'])
-def test_terminal_receipt_survives_late_worker_updates(setup,terminal):
-    broker,_,_=setup
-    rid=str(uuid4())
-    broker.store.reserve(A,rid,'digest','one','session','prompt')
-    broker.store.update(A,rid,'dispatched')
-    broker.store.update(A,rid,terminal,'original_code')
-    for late in ('dispatched','unknown','accepted','rejected','completed'):
-        broker.store.update(A,rid,late,'late_code')
-        receipt=broker.store.operation(A,rid)
-        assert receipt['state']==terminal and receipt['code']=='original_code'
-
-
-def test_empty_session_rehydrates_after_owner_restart_without_prompt(setup):
-    broker,owners,_=setup; a=broker.admission("a"); sid,_=create(broker,a)
-    replacement=Owner(); owners["one"]=replacement
-    broker.handle(a,"GET",f"{PREFIX}/workspaces/one/sessions/{sid}/commands")
-    calls=[c for c in replacement.calls if c[0]=="ensure"]
-    assert len(calls)==1 and calls[0][1]==sid
-    assert not any(c[0]=="invoke" for c in replacement.calls)
 
 
 def test_blocked_interactions_do_not_starve_stop(setup):

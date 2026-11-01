@@ -252,7 +252,7 @@ US-SETTINGS-01. Settings administration and documentation reader.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/workbench/test_documentation.py tests/observability/test_observatory_connect_access_ui.py -q`
+- `python scripts/run_tests.py tests/workbench/ -q`
 
 ### T012: Task workspace and Pi chat UI
 
@@ -274,7 +274,7 @@ US-WORK-01, US-PI-01, US-PI-02. Task workspace and Pi chat UI.
 
 **Feature:** F005
 **Priority:** high
-**Likely files:** pyproject.toml, anvil_serving/observability/dashboard/app.py, docs/WORKBENCH.md, tests/workbench/test_packaging.py
+**Likely files:** pyproject.toml, anvil_serving/observability/dashboard/app.py, docs/WORKBENCH.md, tests/workbench/
 
 US-DELIVERY-01. Package and install the supported workbench.
 
@@ -284,7 +284,7 @@ US-DELIVERY-01. Package and install the supported workbench.
 
 **Verification:**
 
-- `python scripts/run_tests.py tests/workbench/test_packaging.py -q`
+- `python scripts/run_tests.py tests/workbench/ -q`
 
 ### T014: Verify journeys, adversarial review and merged delivery
 

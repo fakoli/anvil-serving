@@ -33,17 +33,6 @@ def test_actual_create_receives_limits_and_inspection_confirms_them():
                       "nano_cpus": 4000000000, "pids_limit": 512, "network_mode": "none"}, "reload"]
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"network_mode": "host"}, {"network": "host"}, {"privileged": True},
-    {"cap_add": ["SYS_ADMIN"]}, {"volumes": {"/": {"bind": "/host"}}},
-    {"mem_limit": 0}, {"memswap_limit": -1}, {"nano_cpus": 1},
-    {"pids_limit": True}, {"cpu_quota": -1}, {"pid_mode": "host"},
-])
-def test_conflicting_or_alternative_access_options_fail_before_create(kwargs):
-    with pytest.raises(RuntimeError):
-        adapter.contained_kwargs({"image": "pinned", **kwargs})
-
-
 def test_daemon_failure_to_enforce_removes_created_container_before_start():
     calls = []
 
@@ -134,32 +123,6 @@ def test_official_grader_argv_passthrough_guard_installed_and_restored(tmp_path,
     assert (tmp_path / "receipt.json").is_file()
 
 
-@pytest.mark.parametrize("observed", ["a", "b"])
-def test_paired_grader_resolves_selected_tag_and_creates_by_immutable_id(observed):
-    image_id = "sha256:" + "a" * 64
-    tag = "swebench/sweb.eval.x86_64.example:latest"
-    calls = []
-    class Container:
-        attrs = {"Image": image_id, "HostConfig": {
-            "Memory": 8589934592, "MemorySwap": 8589934592,
-            "NanoCpus": 4000000000, "PidsLimit": 512, "NetworkMode": "none"}}
-        def reload(self):
-            pass
-    class Collection:
-        client = SimpleNamespace(images=SimpleNamespace(get=lambda value: SimpleNamespace(id="sha256:" + observed * 64)))
-        def create(self, **kwargs):
-            calls.append(kwargs)
-            return Container()
-    adapter.install_container_guard(Collection, {tag: image_id})
-    if observed == "a":
-        Collection().create(image="docker.io/" + tag)
-        assert calls[0]["image"] == image_id
-    else:
-        with pytest.raises(RuntimeError, match="image identity changed"):
-            Collection().create(image=tag)
-        assert calls == []
-
-
 def test_paired_policy_file_digest_prevents_replacement(tmp_path):
     value = {"swebench/sweb.eval.x86_64.example:latest": "sha256:" + "a" * 64}
     digest = hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -169,15 +132,3 @@ def test_paired_policy_file_digest_prevents_replacement(tmp_path):
     path.write_text(json.dumps({next(iter(value)): "sha256:" + "b" * 64}))
     with pytest.raises(RuntimeError, match="policy changed"):
         adapter.load_image_identities(path, digest)
-
-
-def test_preimported_grader_rejected(tmp_path, monkeypatch):
-    monkeypatch.setitem(sys.modules, "swebench", ModuleType("swebench"))
-    with pytest.raises(RuntimeError, match="imported before"):
-        adapter.verify_imports(tmp_path)
-
-
-def test_wrong_import_origin_rejected(tmp_path, monkeypatch):
-    monkeypatch.setattr(adapter.importlib.util, "find_spec", lambda module: SimpleNamespace(origin="elsewhere.py"))
-    with pytest.raises(RuntimeError, match="outside"):
-        adapter.verify_imports(tmp_path)

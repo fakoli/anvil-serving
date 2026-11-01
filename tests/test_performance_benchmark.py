@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import os
 from pathlib import Path
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -42,84 +42,6 @@ def lil_native():
         "measurement_seconds": 0.2, "request_samples": [sample, dict(sample)]}]}
 
 
-@pytest.mark.parametrize("updates", [
-    {"runner": "unmanaged"}, {"runner": []}, {"cache_condition": []}, {"concurrency": True},
-    {"concurrency": 257}, {"request_count": 0}, {"request_count": 100001},
-    {"duration_s": 10}, {"warmup_requests": 10001}, {"command": "untrusted"},
-    {"workload": {"input_tokens": 5, "output_tokens": 10, "extra": 1}},
-    {"workload": {"input_tokens": 5, "output_tokens": 4097}}, {"request_count": 129},
-])
-def test_parameters_reject_unknown_invalid_and_over_budget(updates):
-    with pytest.raises(BenchmarkJobError):
-        perf.validate_performance_parameters(load_profile("pilot-v2"), {**parameters(), **updates})
-
-
-def test_typed_parameters_preserve_controls_and_reject_unqualified_modes():
-    value = perf.validate_performance_parameters(load_profile("pilot-v2"), {
-        **parameters(), "thinking_mode": "disabled", "temperature": 0})
-    assert value["request_controls"]["chat_template_kwargs"] == {"enable_thinking": False}
-    for change in ({"warmup_requests": 1}, {"cache_condition": "cold"},
-                   {"cache_condition": "warm"}, {"cache_condition": "competing-pressure"}):
-        with pytest.raises(BenchmarkJobError, match="performance|cache"):
-            perf.validate_performance_parameters(load_profile("pilot-v2"), {**parameters(), **change})
-    raw = parameters()
-    raw.pop("request_count")
-    with pytest.raises(BenchmarkJobError, match="finite"):
-        perf.validate_performance_parameters(load_profile("pilot-v2"), {**raw, "duration_s": 30})
-    with pytest.raises(BenchmarkJobError, match="zero padding"):
-        perf.validate_performance_parameters(load_profile("pilot-v2"), {**parameters("lil"), "workload": {"input_tokens": 128, "output_tokens": 16}})
-
-
-def test_aiperf_top_level_scalar_and_explicit_units_preserve_ttft_ttfo():
-    summary = perf.normalize_performance_metrics(native_plan(), aiperf_native())
-    metrics = summary["metrics"]
-    assert summary["native_complete"] is True
-    assert metrics["request_count"]["value"] == 2  # Never use distribution count as total requests.
-    assert metrics["time_to_first_token"]["value"] == 12
-    assert metrics["time_to_first_output_token"]["value"] == 19
-    assert metrics["time_to_first_token"]["unit"] == "ms"
-    assert metrics["output_token_throughput_per_user"]["unit"] == "tokens/sec/user"
-    assert metrics["request_latency"]["value"] is None
-    assert metrics["request_latency"]["unavailable_reason"]
-    assert summary["cache_condition"]["status"] == summary["kernel_timing"]["status"] == "unknown"
-
-
-def test_aiperf_actual_clean_export_omits_error_counter_without_measuring_zero():
-    # Pinned 1.4 export shape observed from a complete real native fake-SSE run.
-    native = {"schema_version": "1.4", "is_complete": True, "was_cancelled": False,
-              "error_summary": [], "request_count": {"avg": 2.0, "unit": "requests"},
-              "time_to_first_token": {"avg": 12.0, "unit": "ms", "count": 2}}
-    summary = perf.normalize_performance_metrics(native_plan(), native)
-    assert summary["native_complete"] is True
-    assert summary["metrics"]["error_request_count"]["value"] is None
-    assert summary["metrics"]["error_request_count"]["status"] == "unknown"
-    for update in ({"error_summary": None}, {"error_summary": {}}, {"error_summary": [{"count": 1}]},
-                   {"error_request_count": None}, {"error_request_count": {"avg": 1, "unit": "requests"}},
-                   {"is_complete": False}, {"was_cancelled": True}, {"request_count": {"avg": 1, "unit": "requests"}}):
-        assert not perf.normalize_performance_metrics(native_plan(), {**native, **update})["native_complete"]
-    native.pop("error_summary")
-    assert not perf.normalize_performance_metrics(native_plan(), native)["native_complete"]
-
-
-@pytest.mark.parametrize("updates", [{"is_complete": False}, {"was_cancelled": True},
-    {"incomplete_reason": "stalled"}, {"error_summary": [{"count": 1}]},
-    {"error_request_count": {"avg": 1, "unit": "requests"}}, {"request_count": {"avg": 1, "unit": "requests"}}])
-def test_aiperf_incomplete_flags_never_become_completed(updates):
-    assert not perf.normalize_performance_metrics(native_plan(), {**aiperf_native(), **updates})["native_complete"]
-
-
-def test_aiperf_unknown_unit_invalid_numbers_and_wrong_schema():
-    native = aiperf_native()
-    native["time_to_first_token"]["unit"] = "mystery"
-    native["time_to_first_output_token"]["avg"] = float("nan")
-    summary = perf.normalize_performance_metrics(native_plan(), native)
-    assert summary["metrics"]["time_to_first_token"]["value"] is None
-    assert summary["metrics"]["time_to_first_output_token"]["value"] is None
-    native["schema_version"] = "1.3"
-    with pytest.raises(ValueError, match="schema"):
-        perf.normalize_performance_metrics(native_plan(), native)
-
-
 def test_lil_usage_label_does_not_prove_tokens_and_native_defaults_are_unknown():
     native = lil_native()
     summary = perf.normalize_performance_metrics(native_plan("lil"), native)
@@ -148,6 +70,11 @@ def prepared_plan(tmp_path, monkeypatch, runner="aiperf"):
             raise BenchmarkJobError("performance_preparation_mismatch", "prepared bytes changed")
         return str(python)
     monkeypatch.setattr(prep, "verify_performance_environment", verify)
+    # Synthetic runners must exercise their retained command/evidence paths,
+    # independently of the real host's disk reserve.  `shutil` is shared with
+    # the worker and adapter modules, so this preserves their normal admission
+    # checks while supplying a deterministic fixture capacity.
+    monkeypatch.setattr(perf.shutil, "disk_usage", lambda _path: SimpleNamespace(free=2**40))
     manifest = {"schema": perf.HARNESS_ASSETS_SCHEMA, "suite": "performance", "profile_sha256": profile["content_sha256"],
         "assets": {name: {**profile["adapters"][name], "dirty": False} for name in ("lil", "aiperf")},
         "performance_environments": {runner: {"fixture": True}}}
@@ -156,21 +83,6 @@ def prepared_plan(tmp_path, monkeypatch, runner="aiperf"):
     kwargs = dict(endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary", "auth_env": "TEST_KEY"},
         parameters=parameters(runner), run_root=str(runs), cache_root=str(cache), ownership_id="owner", run_id="run")
     return profile, manifest, kwargs, python
-
-
-def test_plan_is_bound_to_prepared_interpreter_source_and_owned_artifacts(tmp_path, monkeypatch):
-    profile, manifest, kwargs, python = prepared_plan(tmp_path, monkeypatch)
-    plan = perf.build_performance_run_plan(profile, manifest, **kwargs)
-    assert plan["command"][0] == str(python)
-    assert plan["paths"]["work"].endswith("owner/run/work/performance")
-    assert not Path(plan["run_path"]).exists()
-    altered = copy.deepcopy(manifest)
-    altered["assets"]["aiperf"]["revision"] = "0" * 40
-    with pytest.raises(BenchmarkJobError, match="pinned"):
-        perf.build_performance_run_plan(profile, altered, **kwargs)
-    python.write_text("drift")
-    with pytest.raises(BenchmarkJobError, match="bytes changed"):
-        perf.run_performance_benchmark(plan, command_runner=lambda *_: pytest.fail("traffic before pin verification"))
 
 
 def test_resigned_interpreter_substitution_and_plan_digest_fail_pretraffic(tmp_path, monkeypatch):
@@ -248,29 +160,6 @@ def test_retention_immutable_partial_and_symlink_rejection(tmp_path):
     (base / "retention.json").unlink()
     (base / "plan.json").unlink()
     (base / "plan.json").symlink_to(tmp_path / "outside")
-    assert perf.retain_performance_artifacts(run_path=str(tmp_path))["state"] == "failed"
-
-
-def test_preparation_failure_has_partial_retention_without_creating_evidence(tmp_path):
-    result = perf.retain_performance_artifacts(run_path=str(tmp_path))
-    assert result["state"] == "incomplete" and result["missing"]
-    assert not (tmp_path / "performance").exists()
-
-
-@pytest.mark.parametrize("bound", ["files", "directories", "bytes"])
-def test_retention_rejects_bounded_inventory_overflow(tmp_path, monkeypatch, bound):
-    base = tmp_path / "performance"
-    base.mkdir()
-    if bound == "files":
-        monkeypatch.setattr(perf, "MAX_SWE_RETAINED_FILES", 1)
-        (base / "one").write_text("1")
-        (base / "two").write_text("2")
-    elif bound == "directories":
-        monkeypatch.setattr(perf, "MAX_SWE_RETAINED_DIRECTORIES", 1)
-        (base / "native").mkdir()
-    else:
-        monkeypatch.setattr(perf, "MAX_SWE_RETAINED_BYTES", 1)
-        (base / "oversized").write_text("12")
     assert perf.retain_performance_artifacts(run_path=str(tmp_path))["state"] == "failed"
 
 
@@ -384,47 +273,6 @@ def test_prepared_full_performance_run_fake_sse(tmp_path, runner_name, wire):
     assert result_row["sha256"] == hashlib.sha256(Path(plan["paths"]["result"]).read_bytes()).hexdigest()
 
 
-@pytest.mark.parametrize("defect", ["files", "directories", "bytes", "symlink", "missing", "seal"])
-def test_full_run_retention_failure_persists_same_terminal_result(tmp_path, monkeypatch, defect):
-    profile, manifest, kwargs, _ = prepared_plan(tmp_path, monkeypatch)
-    plan = perf.build_performance_run_plan(profile, manifest, **kwargs)
-
-    def runner(command, cwd, timeout, env):
-        Path(plan["paths"]["native_output"]).write_text(json.dumps(aiperf_native()))
-        write_adapter_evidence(plan)
-        if defect == "files":
-            monkeypatch.setattr(perf, "MAX_SWE_RETAINED_FILES", 1)
-        elif defect == "directories":
-            monkeypatch.setattr(perf, "MAX_SWE_RETAINED_DIRECTORIES", 1)
-        elif defect == "bytes":
-            monkeypatch.setattr(perf, "MAX_SWE_RETAINED_BYTES", 1)
-        elif defect == "symlink":
-            (Path(plan["paths"]["output"]) / "link").symlink_to(tmp_path / "outside")
-        elif defect == "missing":
-            Path(plan["paths"]["plan"]).unlink()
-        else:
-            write = perf.atomic_write_json
-            def fail_seal(path, value):
-                if str(path).endswith("retention.json"):
-                    raise OSError("fixture seal unavailable")
-                return write(path, value)
-            monkeypatch.setattr(perf, "atomic_write_json", fail_seal)
-        return subprocess.CompletedProcess(command, 0, b"", b"")
-
-    result = perf.run_performance_benchmark(plan, command_runner=runner, environ={"TEST_KEY": "fixture-value"})
-    assert result == json.loads(Path(plan["paths"]["result"]).read_text())
-    assert result["state"] == "incomplete"
-    assert result["failure"]["code"] == "performance_retention_incomplete"
-    assert result["retention"]["state"] == ("incomplete" if defect == "missing" else "failed")
-    if defect == "missing":
-        retained = perf.retain_performance_artifacts(run_path=plan["run_path"])
-        assert retained["state"] == "incomplete" and retained["missing"] == ["plan.json"]
-        row = next(row for row in retained["artifacts"] if row["path"] == "performance/result.json")
-        assert row["sha256"] == hashlib.sha256(Path(plan["paths"]["result"]).read_bytes()).hexdigest()
-    else:
-        assert not (Path(plan["paths"]["performance"]) / "retention.json").exists()
-
-
 @pytest.mark.parametrize("defect", [None, "missing", "symlink"])
 def test_durable_worker_publishes_canonical_performance_outcome(tmp_path, monkeypatch, defect):
     from anvil_serving.benchmarking import worker
@@ -468,39 +316,6 @@ def test_durable_worker_publishes_canonical_performance_outcome(tmp_path, monkey
     assert completed["state"] == ("failed" if defect else "completed")
     assert store.status(spec["run_id"])["state"] == completed["state"]
     assert store.artifact(spec["run_id"])["results"]["evidence"]["completeness"] == completed["state"]
-
-
-@pytest.mark.parametrize("defect", ["missing", "duplicate", "terminal", "report"])
-def test_parent_refuses_inconsistent_stream_observations(tmp_path, monkeypatch, defect):
-    profile, manifest, kwargs, _ = prepared_plan(tmp_path, monkeypatch)
-    plan = perf.build_performance_run_plan(profile, manifest, **kwargs)
-
-    def native(command, cwd, timeout, env):
-        Path(plan["paths"]["native_output"]).write_text(json.dumps(aiperf_native()))
-        write_adapter_evidence(plan)
-        events_path = Path(plan["paths"]["request_events"])
-        events = [json.loads(line) for line in events_path.read_text().splitlines()][:-1]
-        if defect == "missing":
-            events.pop()
-        elif defect == "duplicate":
-            events[-1]["model_call"] = 1
-        elif defect == "terminal":
-            events[-1]["terminal_observed"] = False
-        else:
-            terminal_path = Path(plan["paths"]["adapter_result"])
-            terminal = json.loads(terminal_path.read_text())
-            terminal["stream_validation"]["valid"] = 1
-            terminal_path.write_text(json.dumps(terminal))
-        raw = b"".join((json.dumps(row) + "\n").encode() for row in events)
-        final = {"seq": len(events) + 1, "event": "adapter_finished", "status": "complete",
-                 "event_count": len(events), "byte_count": len(raw)}
-        events_path.write_bytes(raw + (json.dumps(final) + "\n").encode())
-        return subprocess.CompletedProcess(command, 0, b"", b"")
-
-    result = perf.run_performance_benchmark(plan, command_runner=native, environ={"TEST_KEY": "fixture-value"})
-    assert result == json.loads(Path(plan["paths"]["result"]).read_text())
-    assert result["state"] == "incomplete"
-    assert result["failure"]["code"] == "missing_performance_observations"
 
 
 def test_finalization_never_rewrites_previously_sealed_result(tmp_path):

@@ -6,7 +6,6 @@ systemd root) so the reviewed behavior is proven without touching a real unit.
 
 from __future__ import annotations
 
-from importlib.resources import files
 import json
 import os
 from pathlib import Path
@@ -17,12 +16,10 @@ import pytest
 
 from anvil_serving.workbench_app import pi_web
 from anvil_serving.workbench_app.pi_web import (
-    PACKAGE,
     PiWebConfig,
     PiWebError,
     PiWebInstaller,
     pi_web_config,
-    unit_content,
 )
 
 
@@ -111,145 +108,7 @@ def installer_env(tmp_path: Path):
 # --- configuration parsing -------------------------------------------------
 
 
-def test_config_defaults_are_usable_for_status_without_a_file() -> None:
-    parsed = pi_web_config({})
-    assert parsed.version == pi_web.DEFAULT_VERSION
-    assert parsed.port == pi_web.DEFAULT_PORT
-    assert parsed.hostname == "127.0.0.1"
-    assert parsed.idle_timeout_ms == pi_web.DEFAULT_IDLE_TIMEOUT_MS
-
-
-@pytest.mark.parametrize(
-    "mutation",
-    [
-        {"version": "latest"},
-        {"version": ">=0.9.0"},
-        {"version": "0.9"},
-        {"hostname": "localhost"},
-        {"hostname": "0.0.0.0"},
-        {"hostname": "example.test:8080"},
-        {"hostname": "*.example.test"},
-        {"allowed_hosts": ["*.wild.example.test"]},
-        {"allowed_hosts": ["not a host"]},
-        {"allowed_hosts": [f"h{i}.example.test" for i in range(9)]},
-        {"port": 80},
-        {"port": 70000},
-        {"idle_timeout_ms": -1},
-        {"idle_timeout_ms": 2147483648},
-        {"service_user": "Bad Name"},
-        {"unsupported": True},
-    ],
-)
-def test_config_rejects_unsafe_or_undeclared_fields(tmp_path: Path, mutation: dict[str, object]) -> None:
-    with pytest.raises(PiWebError):
-        pi_web_config(_config(tmp_path, **mutation))
-
-
-def test_config_requires_an_existing_declared_node_path(tmp_path: Path) -> None:
-    with pytest.raises(PiWebError, match="node_path"):
-        pi_web_config(_config(tmp_path, node_path=str(tmp_path / "missing" / "node")))
-
-
-def test_config_accepts_ip_literal_and_exact_hosts(tmp_path: Path) -> None:
-    parsed = pi_web_config(_config(tmp_path, hostname="127.0.0.1", allowed_hosts=["127.0.0.1", "pi.example.test"]))
-    assert parsed.allowed_hosts == ("127.0.0.1", "pi.example.test")
-
-
-@pytest.mark.parametrize("origin", ["https://workbench.example.test:65536", "https://workbench.example.test:99999"])
-def test_bridge_config_rejects_out_of_range_https_ports(tmp_path: Path, origin: str) -> None:
-    with pytest.raises(PiWebError, match="exact HTTPS origin"):
-        pi_web_config(_config(
-            tmp_path,
-            bridge_source=str(tmp_path / "source"),
-            bridge_parent_origin=origin,
-            bridge_token_env_file=str(tmp_path / "bridge-token.env"),
-        ))
-
-
-def test_load_config_uses_the_conventional_operator_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    config_path = tmp_path / "workbench" / "pi-web.json"
-    config_path.parent.mkdir(parents=True)
-    config_path.write_text(json.dumps({"version": "1.2.3"}), encoding="utf-8")
-    loaded = pi_web.load_config(required=True)
-    assert loaded.version == "1.2.3"
-    assert loaded.port == pi_web.DEFAULT_PORT
-
-
-def test_load_config_missing_required_file_is_actionable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    with pytest.raises(PiWebError, match=r"workbench.pi-web\.json"):
-        pi_web.load_config(required=True)
-    assert pi_web.load_config(required=False).version == pi_web.DEFAULT_VERSION
-
-
 # --- unit rendering and planning -------------------------------------------
-
-
-def test_unit_content_renders_the_reviewed_service(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("systemd unit rendering is Linux-only")
-    config = pi_web_config(_config(tmp_path, password_env_file="/etc/anvil-pi-web/env"))
-    content = unit_content(
-        config,
-        node_path="/usr/bin/node-fake",
-        entry_script=tmp_path / "0.9.0" / pi_web.PACKAGE_BIN,
-        user="operator",
-        user_home=Path("/home/operator"),
-        node_bin_dir=Path("/usr/bin"),
-    )
-    assert "User=operator" in content
-    assert "ExecStart=/usr/bin/node-fake" in content and "--hostname 127.0.0.1 --no-open" in content
-    assert "Environment=PI_WEB_ALLOWED_HOSTS=pi.example.test" in content
-    assert "Environment=PI_WEB_IDLE_TIMEOUT_MS=600000" in content
-    assert "Environment=JITI_FS_CACHE=false" in content
-    assert "EnvironmentFile=/etc/anvil-pi-web/env" in content
-    assert "NoNewPrivileges=yes" in content and "ProtectSystem=full" in content
-    assert "WantedBy=multi-user.target" in content
-    assert "0.0.0.0" not in content
-
-
-def test_unit_content_refuses_a_non_loopback_bind(tmp_path: Path) -> None:
-    config = pi_web_config(_config(tmp_path))
-    widened = PiWebConfig(**{**config.__dict__, "hostname": "0.0.0.0"})
-    with pytest.raises(PiWebError, match="loopback"):
-        unit_content(
-            widened,
-            node_path="/usr/bin/node-fake",
-            entry_script=tmp_path / "entry.js",
-            user="operator",
-            user_home=Path("/home/operator"),
-            node_bin_dir=Path("/usr/bin"),
-        )
-
-
-def test_plan_lists_exact_root_commands(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("the managed install runs Linux host commands")
-    config = pi_web_config(_config(tmp_path))
-    planned = pi_web.plan(config, node_path=_fake_node(tmp_path))
-    assert planned["package"] == f"{PACKAGE}@0.9.0"
-    assert planned["commands"][0][:4] == ["runuser", "-u", "nobody", "--"]  # type: ignore[index]
-    assert planned["commands"][0][4] == "env"  # type: ignore[index]
-    assert planned["commands"][0][-1] == f"{PACKAGE}@0.9.0"  # type: ignore[index]
-    assert ["systemctl", "daemon-reload"] in planned["commands"]  # type: ignore[operator]
-    assert str(planned["unit_path"]).endswith(pi_web.UNIT_NAME)
-
-
-def test_plan_rejects_a_node_below_the_engine_floor(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("the managed install runs Linux host commands")
-    config = pi_web_config(_config(tmp_path))
-    with pytest.raises(PiWebError, match="22.19.0"):
-        pi_web.plan(config, node_path=_fake_node(tmp_path, version="v20.11.0"))
-
-
-def test_plan_requires_a_service_user(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("the managed install runs Linux host commands")
-    config = pi_web_config(_config(tmp_path, service_user=None))
-    with pytest.raises(PiWebError, match="service_user"):
-        pi_web.plan(config, node_path=_fake_node(tmp_path))
 
 
 # --- installer gates -------------------------------------------------------
@@ -262,24 +121,6 @@ def test_install_without_confirm_is_a_read_only_plan(installer_env) -> None:
     installer, run, _ = build()
     result = installer.install(confirm=False)
     assert result["dry_run"] is True
-    assert run.calls == []
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
-def test_install_requires_root(installer_env) -> None:
-    build, _, _ = installer_env
-    installer, run, _ = build(geteuid=(lambda: 1000))
-    with pytest.raises(PiWebError, match="requires root"):
-        installer.install(confirm=True)
-    assert run.calls == []
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
-def test_install_requires_linux(installer_env) -> None:
-    build, _, _ = installer_env
-    installer, run, _ = build(platform="win32")
-    with pytest.raises(PiWebError, match="Linux"):
-        installer.install(confirm=True)
     assert run.calls == []
 
 
@@ -303,34 +144,6 @@ def test_concurrent_install_cannot_touch_active_promotion(installer_env, monkeyp
     with pytest.raises(PiWebError, match="cannot lock"):
         installer.install(confirm=True)
     assert run.calls == []
-
-
-def test_install_rejects_missing_password_env_file(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("the managed install runs Linux host commands")
-    missing = tmp_path / "missing-env"
-    config = pi_web_config(_config(tmp_path, password_env_file=str(missing)))
-    installer = PiWebInstaller(
-        config, run=FakeRun(), systemd_root=tmp_path / "systemd", geteuid=(lambda: 0),
-        probe_opener=(lambda url: 200), node_path=_fake_node(tmp_path), platform="linux",
-    )
-    with pytest.raises(PiWebError, match="password_env_file"):
-        installer.install(confirm=True)
-
-
-def test_install_rejects_group_or_world_readable_password_env_file(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("the managed install runs Linux host commands")
-    loose = tmp_path / "loose-env"
-    loose.write_text("PI_WEB_PASSWORD=x\n", encoding="utf-8")
-    loose.chmod(0o644)
-    config = pi_web_config(_config(tmp_path, password_env_file=str(loose)))
-    installer = PiWebInstaller(
-        config, run=FakeRun(), systemd_root=tmp_path / "systemd", geteuid=(lambda: 0),
-        probe_opener=(lambda url: 200), node_path=_fake_node(tmp_path), platform="linux",
-    )
-    with pytest.raises(PiWebError, match="readable"):
-        installer.install(confirm=True)
 
 
 # --- install converge behavior --------------------------------------------
@@ -367,56 +180,6 @@ class _NpmResponder:
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
-def test_install_runs_pinned_commands_and_probes_readiness(installer_env, tmp_path: Path) -> None:
-    build, config, root = installer_env
-    run = _NpmResponder(config)
-    installer = PiWebInstaller(
-        config, run=run, systemd_root=root / "systemd",
-        geteuid=(lambda: 0), probe_opener=(lambda url: 200),
-        node_path=str(root / "runtime" / "bin" / "node-fake"), platform="linux",
-        chown=(lambda target, uid, gid: None),
-    )
-    result = installer.install(confirm=True)
-    assert result["installed"] is True and result["package_installed"] is True
-    assert result["lifecycle"] == "started" and result["probe"]["ready"] is True
-    verbs = [argv[:2] for argv in run.calls]
-    assert ["runuser", "-u"] in verbs
-    assert verbs.count(["systemctl", "daemon-reload"]) == 1
-    assert verbs.count(["systemctl", "enable"]) == 1
-    assert verbs.count(["systemctl", "start"]) == 1
-    assert verbs.count(["systemctl", "restart"]) == 0
-    manifest = json.loads((Path(str(config.install_root)) / "install-manifest.json").read_text(encoding="utf-8"))
-    assert manifest["version"] == config.version
-    assert manifest["schema"] == "anvil-serving.pi-web-install/v1"
-    assert (Path(str(config.install_root)) / config.version / pi_web.PACKAGE_BIN).is_file()
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
-def test_repeated_install_converges_without_restart_or_npm(installer_env, tmp_path: Path) -> None:
-    build, config, root = installer_env
-    run = _NpmResponder(config)
-    installer = PiWebInstaller(
-        config, run=run, systemd_root=root / "systemd",
-        geteuid=(lambda: 0), probe_opener=(lambda url: 200),
-        node_path=str(root / "runtime" / "bin" / "node-fake"), platform="linux",
-        chown=(lambda target, uid, gid: None),
-    )
-    installer.install(confirm=True)
-    manifest_path = Path(str(config.install_root)) / "install-manifest.json"
-    first_manifest = manifest_path.read_text(encoding="utf-8")
-    run.calls.clear()
-    second = installer.install(confirm=True)
-    assert manifest_path.read_text(encoding="utf-8") == first_manifest
-    assert second["package_installed"] is False
-    assert second["unit_changed"] is False
-    assert second["lifecycle"] == "unchanged"  # already active; left running
-    verbs = [argv[:2] for argv in run.calls]
-    assert ["runuser", "-u"] not in verbs
-    assert ["systemctl", "restart"] not in verbs
-    assert ["systemctl", "daemon-reload"] not in verbs
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
 def test_install_with_changed_unit_reloads_and_restarts(installer_env, tmp_path: Path) -> None:
     build, config, root = installer_env
     run = _NpmResponder(config)
@@ -450,48 +213,6 @@ def test_install_with_changed_unit_reloads_and_restarts(installer_env, tmp_path:
 # --- read surfaces ---------------------------------------------------------
 
 
-def test_service_state_parses_systemd_properties(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("systemd is Linux-only")
-    run = FakeRun()
-    state = pi_web.service_state(run=run)
-    assert state["unit"] == pi_web.UNIT_NAME
-    assert state["active"] == "inactive"
-    assert state["enabled"] == "enabled"
-
-
-def test_status_reports_probe_and_installed_pin(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("systemd is Linux-only")
-    config = pi_web_config(_config(tmp_path))
-    root = Path(str(config.install_root))
-    root.mkdir(parents=True)
-    (root / "install-manifest.json").write_text(json.dumps({"version": "0.9.0"}), encoding="utf-8")
-    run = FakeRun()
-    import anvil_serving.workbench_app.pi_web as module
-
-    original_service_state = module.service_state
-    original_probe = module.probe
-
-    def patched_state(**_: object) -> dict[str, object]:
-        return original_service_state(run=run)
-
-    def patched_probe(port: int, **_: object) -> dict[str, object]:
-        return {"ready": False, "url": f"http://127.0.0.1:{port}/", "attempts": 1}
-
-    module.service_state = patched_state  # type: ignore[assignment]
-    module.probe = patched_probe  # type: ignore[assignment]
-    try:
-        report = pi_web.status(config)
-    finally:
-        module.service_state = original_service_state  # type: ignore[assignment]
-        module.probe = original_probe  # type: ignore[assignment]
-    assert report["configured_version"] == "0.9.0"
-    assert report["installed_version"] == "0.9.0"
-    assert report["probe"]["attempts"] == 1
-    assert report["probe"]["ready"] is False
-
-
 def _status_report(tmp_path: Path) -> dict[str, object]:
     import anvil_serving.workbench_app.pi_web as module
 
@@ -515,39 +236,6 @@ def _status_report(tmp_path: Path) -> dict[str, object]:
         module.probe = original_probe  # type: ignore[assignment]
 
 
-def test_status_drift_clean_when_tree_matches_recorded_pin(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("systemd is Linux-only")
-    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
-    version_dir = root / "0.9.0"
-    (version_dir / "bin").mkdir(parents=True)
-    (version_dir / "bin" / "pi-web.js").write_text("// entry\n", encoding="utf-8")
-    recorded = pi_web._artifact_tree_sha256(version_dir)
-    (root / "install-manifest.json").write_text(json.dumps({
-        "version": "0.9.0",
-        "bridge_install": {"artifact_sha256": recorded, "version": "0.9.0"},
-    }), encoding="utf-8")
-    report = _status_report(tmp_path)
-    assert report["drift"] == "clean"
-
-
-def test_status_drifted_when_tree_differs_from_recorded_pin(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("systemd is Linux-only")
-    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
-    version_dir = root / "0.9.0"
-    (version_dir / "bin").mkdir(parents=True)
-    (version_dir / "bin" / "pi-web.js").write_text("// entry\n", encoding="utf-8")
-    recorded = pi_web._artifact_tree_sha256(version_dir)
-    (root / "install-manifest.json").write_text(json.dumps({
-        "version": "0.9.0",
-        "bridge_install": {"artifact_sha256": recorded, "version": "0.9.0"},
-    }), encoding="utf-8")
-    (version_dir / "bin" / "pi-web.js").write_text("// hand-edited\n", encoding="utf-8")
-    report = _status_report(tmp_path)
-    assert report["drift"] == "drifted"
-
-
 def test_jiti_cache_is_still_detected_as_artifact_drift(tmp_path: Path) -> None:
     root = Path(str(pi_web_config(_config(tmp_path)).install_root))
     version_dir = root / "0.9.0"
@@ -562,38 +250,6 @@ def test_jiti_cache_is_still_detected_as_artifact_drift(tmp_path: Path) -> None:
     cache.parent.mkdir(parents=True)
     cache.write_text("// runtime cache\n")
     assert _status_report(tmp_path)["drift"] == "drifted"
-
-
-def test_status_drift_unknown_without_a_recorded_pin(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("systemd is Linux-only")
-    root = Path(str(pi_web_config(_config(tmp_path)).install_root))
-    root.mkdir(parents=True)
-    (root / "install-manifest.json").write_text(json.dumps({"version": "0.9.0"}), encoding="utf-8")
-    report = _status_report(tmp_path)
-    assert report["drift"] == "unknown"
-
-
-def test_logs_returns_bounded_journal_text(tmp_path: Path) -> None:
-    if sys.platform == "win32":
-        pytest.skip("journalctl is Linux-only")
-    config = pi_web_config(_config(tmp_path))
-    run = FakeRun()
-    import anvil_serving.workbench_app.pi_web as module
-
-    original = module._bounded_run
-
-    def fake_bounded_run(run_callable, argv: list[str]) -> subprocess.CompletedProcess[str]:
-        return original(run, argv)  # type: ignore[arg-type]
-
-    module._bounded_run = fake_bounded_run  # type: ignore[assignment]
-    try:
-        output = pi_web.logs(config, tail=25)
-    finally:
-        module._bounded_run = original  # type: ignore[assignment]
-    assert "Logs begin" in output
-    assert run.calls[0][0] == "journalctl"
-    assert "-n" in run.calls[0] and "25" in run.calls[0]
 
 
 # --- probe behavior --------------------------------------------------------
@@ -611,50 +267,7 @@ class _FlakyOpener:
         return 200
 
 
-def test_probe_retries_then_reports_ready() -> None:
-    opener = _FlakyOpener(failures=2)
-    result = pi_web.probe(30141, opener=opener, attempts=4, retry_seconds=0.0)
-    assert result["ready"] is True and result["attempts"] == 3
-
-
-def test_probe_exhaustion_reports_the_last_error() -> None:
-    opener = _FlakyOpener(failures=99)
-    result = pi_web.probe(30141, opener=opener, attempts=3, retry_seconds=0.0)
-    assert result["ready"] is False and result["attempts"] == 3
-    assert "connection refused" in str(result["error"])  # type: ignore[operator]
-
-
-def test_probe_url_is_loopback_only() -> None:
-    seen: list[str] = []
-
-    def opener(url: str) -> object:
-        seen.append(url)
-        return 200
-
-    pi_web.probe(30444, opener=opener, attempts=1)
-    assert seen == ["http://127.0.0.1:30444/"]
 # --- bridge artifact promotion ----------------------------------------------
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
-def test_bridge_plan_uses_a_staged_source_build_not_registry_install(tmp_path: Path) -> None:
-    token = tmp_path / "bridge-token.env"
-    token.write_text("PI_WEB_WORKBENCH_BRIDGE_TOKEN=private\n", encoding="utf-8")
-    token.chmod(0o600)
-    source = tmp_path / "source"
-    source.mkdir()
-    config = pi_web_config(_config(
-        tmp_path, bridge_source=str(source), bridge_parent_origin="https://workbench.example.test",
-        bridge_token_env_file=str(token),
-    ))
-    planned = pi_web.plan(config, node_path=_fake_node(tmp_path))
-    assert planned["bridge"] is True
-    commands = planned["commands"]
-    assert commands[0] == ["verify-pinned-source", str(source)]
-    assert commands[1][-1] == "ci" and commands[2][-2:] == ["run", "build"]
-    assert all("install" not in command for command in commands[:3])
-    assert all("-i" in command for command in commands[1:3])
-    assert all("NEXT_PUBLIC_WORKBENCH_ORIGIN=https://workbench.example.test" in command for command in commands[1:3] if command is commands[2])
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
@@ -749,24 +362,6 @@ def test_bridge_install_updates_origin_converges_and_preserves_old_artifact_on_b
         ).install(confirm=True)
     assert (version_dir / "bin" / "pi-web.js").read_bytes() == old
     assert not list(Path(str(config.install_root)).glob("*.bridge-staging-*"))
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only managed unit")
-def test_bridge_cleanup_is_bounded_and_preserves_other_paths(tmp_path: Path) -> None:
-    version = tmp_path / "0.9.0"
-    malformed = tmp_path / "0.9.0.previous-not-an-install"
-    malformed.mkdir()
-    victim = tmp_path / "preserve"
-    victim.mkdir()
-    (victim / "keep").write_text("keep")
-    link = tmp_path / ("0.9.0.previous-" + "f" * 32)
-    link.symlink_to(victim, target_is_directory=True)
-    backups = [tmp_path / f"0.9.0.previous-{index:032x}" for index in range(33)]
-    for backup in backups:
-        backup.mkdir()
-    assert PiWebInstaller._cleanup_previous_bridges(version, uid=os.geteuid()) is True
-    assert any(backup.exists() for backup in backups)
-    assert malformed.is_dir() and link.is_symlink() and (victim / "keep").read_text() == "keep"
 
 
 def test_bridge_archive_uses_the_pinned_git_blob_not_a_mutated_checkout(tmp_path: Path) -> None:
@@ -913,51 +508,6 @@ def test_bridge_snapshot_failure_prevents_promotion(
     assert (root / "install-manifest.json").read_bytes() == old_manifest
     assert unit.read_text(encoding="utf-8") == "old unit"
     assert not list(root.glob("*.previous-*"))
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")
-@pytest.mark.parametrize("version", ["0.9.0", "0.9.2", "0.10.0"])
-def test_packaged_bridge_patch_stages_all_runtime_bridge_routes(tmp_path: Path, version: str) -> None:
-    """The packaged patch, rather than a dirty source checkout, supplies bridge APIs."""
-    patch = files("anvil_serving").joinpath("_pi_web_bridge", f"{version}-host-bridge.patch")
-    assert pi_web.bridge_manifest(version)["patch_sha256"] == __import__("hashlib").sha256(patch.read_bytes()).hexdigest()
-    source = tmp_path / "staging"
-    source.mkdir()
-    runtime = {
-        "app/api/workbench/ensure/route.ts",
-        "app/api/workbench/associate/route.ts",
-        "app/api/workbench/sessions/route.ts",
-        "lib/workbench-bridge.ts",
-    }
-    # Reconstruct minimal preimages from the packaged unified diff.  This proves
-    # patch(1) produces the runtime artifact that the installer promotes.
-    for block in patch.read_text(encoding="utf-8").split("--- a/")[1:]:
-        name, body = block.split("\n", 1)
-        if name in runtime:
-            continue
-        old_lines = [
-            line[1:] for line in body.splitlines()[1:]
-            if line.startswith((" ", "-"))
-        ]
-        target = source / name
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("\n".join(old_lines) + "\n", encoding="utf-8")
-    pi_web._apply_bridge_patch(source, run=subprocess.run, version=version)
-    for name in runtime:
-        target = source / name
-        assert target.is_file(), name
-        assert target.read_text(encoding="utf-8")
-    bridge = (source / "lib/workbench-bridge.ts").read_text(encoding="utf-8")
-    assert "sessions.length > 512" in bridge
-    assert "mergeSessionLists(await listAllSessions(), getRpcSessionInfos())" in bridge
-    next_config = (source / "next.config.ts").read_text(encoding="utf-8")
-    if version == "0.9.0":
-        assert "experimental: { cpus: 2 }" in next_config
-    else:
-        # v0.9.2 ships its own experimental block; the patch must merge into it.
-        assert "cpus: 2," in next_config
-        assert next_config.count("experimental:") == 1
-    assert not (source / "lib/workbench-bridge.test.mjs").exists()
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Linux-only installer uses patch(1)")

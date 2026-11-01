@@ -6,8 +6,7 @@ not have (an sm_120 GPU running the STT/TTS/LLM serves, a real microphone/
 speaker, a running anvil router) and is explicitly marked
 ``NOT YET EXECUTED`` in its own module docstring -- see each script and
 ``docs/findings/2026-07-voice-*.md`` for the measurement templates they feed.
-``tests/voice/test_harness_importable.py`` is the only thing actually run
-against these modules in this environment: it proves every guarded
-heavy-dependency import (``torch``, ``sounddevice``, ``openai``) degrades to a
+The modules retain guarded heavy-dependency imports (``torch``,
+``sounddevice``, ``openai``), so a missing optional dependency degrades to a
 clear, catchable error at call time rather than crashing at `import`.
 """

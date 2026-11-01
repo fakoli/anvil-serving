@@ -67,10 +67,9 @@ from typing import Any, Dict, List, Optional, Set
 # Bootstrap the repo root onto sys.path so this file works BOTH as a directly
 # executed script (`python scripts/voice/local_loop_demo.py`, where Python
 # only puts the script's OWN directory -- scripts/voice -- on sys.path) and as
-# an imported module (`import scripts.voice.local_loop_demo`, e.g. from
-# tests/voice/test_harness_importable.py, where pytest's own
-# `pythonpath = ["."]` already covers it -- this insert is then a harmless
-# no-op). `scripts/` is deliberately NOT part of the installed wheel (see
+# an imported module (`import scripts.voice.local_loop_demo`, where a caller
+# has already made the repository root importable -- this insert is then a
+# harmless no-op). `scripts/` is deliberately NOT part of the installed wheel (see
 # pyproject.toml), so it can't be relied on to already be importable.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:

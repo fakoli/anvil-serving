@@ -164,6 +164,7 @@ nav:
           - Architecture decisions: adr/README.md
           - Proposed improvements (PRDs): prds/README.md
           - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
+          - Test-suite reduction: design/test-suite-reduction.md
           - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
           - Strategy - make divergence loud: STRATEGY-MAKE-DIVERGENCE-LOUD.md
           - Model settings example: MODEL-SETTINGS-EXAMPLE.md
