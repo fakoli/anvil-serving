@@ -8,6 +8,7 @@ import os
 import struct
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 

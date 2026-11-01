@@ -14,7 +14,7 @@ from anvil_serving.connect.cli import dispatch
 
 
 ROOT = Path(__file__).parents[2]
-LEAVES = {"resources", "validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend", "qualify", "users", "native-agents", "native-authority", "native-memory-service"}
+LEAVES = {"resources", "validate", "render", "up", "down", "status", "doctor", "logs", "init", "identity", "admin", "keygen", "backup", "restore", "migration", "edge-status", "edge-apply", "extend", "qualify", "users", "native-agents", "native-agents-check", "native-authority", "native-memory-service"}
 
 
 @pytest.fixture
