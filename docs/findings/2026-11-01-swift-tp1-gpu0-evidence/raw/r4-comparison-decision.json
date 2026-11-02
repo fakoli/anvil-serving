@@ -1,0 +1,84 @@
+{
+  "c16": "external queued load, not matched16active",
+  "decision": "MTP r4 wins low-concurrency responsiveness; proceed with one r5 .94 memory allocation successor",
+  "metadata_erratum": "plans/metrics-coverage-erratum-r4.json",
+  "mtp_effective_active_cap": 9,
+  "observed_at": "2026-11-02T00:36:33.900760+00:00",
+  "ordinary_failed": 0,
+  "ordinary_requests": 432,
+  "quality_and_promotion": "pending exact final recipe full gates",
+  "recommended_interactive_requested_concurrency": 2,
+  "rows": [
+    {
+      "aggregate_ratio": 1.8862397627020655,
+      "decode_ratio": 2.6526260006084845,
+      "mtp_first_output_p95_s": 1.8282505230163224,
+      "nominal_context": 8192,
+      "requested_concurrency": 1
+    },
+    {
+      "aggregate_ratio": 1.5744749553399588,
+      "decode_ratio": 2.048406445527938,
+      "mtp_first_output_p95_s": 3.5309026460163295,
+      "nominal_context": 8192,
+      "requested_concurrency": 2
+    },
+    {
+      "aggregate_ratio": 1.325223562607977,
+      "decode_ratio": 1.6391926553080833,
+      "mtp_first_output_p95_s": 7.0145279609714635,
+      "nominal_context": 8192,
+      "requested_concurrency": 4
+    },
+    {
+      "aggregate_ratio": 1.188135120758095,
+      "decode_ratio": 1.5230017408888468,
+      "mtp_first_output_p95_s": 13.965957877982873,
+      "nominal_context": 8192,
+      "requested_concurrency": 8
+    },
+    {
+      "aggregate_ratio": 1.123756773274243,
+      "decode_ratio": 1.6969626813770269,
+      "mtp_first_output_p95_s": 30.867672207998112,
+      "nominal_context": 8192,
+      "requested_concurrency": 16
+    },
+    {
+      "aggregate_ratio": 1.34279547847206,
+      "decode_ratio": 2.686430551073395,
+      "mtp_first_output_p95_s": 8.368183025973849,
+      "nominal_context": 32768,
+      "requested_concurrency": 1
+    },
+    {
+      "aggregate_ratio": 1.1760852835391251,
+      "decode_ratio": 1.6624768789986941,
+      "mtp_first_output_p95_s": 16.599154149997048,
+      "nominal_context": 32768,
+      "requested_concurrency": 2
+    },
+    {
+      "aggregate_ratio": 1.039273929996961,
+      "decode_ratio": 1.466713843251899,
+      "mtp_first_output_p95_s": 33.218711366003845,
+      "nominal_context": 32768,
+      "requested_concurrency": 4
+    },
+    {
+      "aggregate_ratio": 0.9985416539225829,
+      "decode_ratio": 1.0439744313128434,
+      "mtp_first_output_p95_s": 66.42404240503674,
+      "nominal_context": 32768,
+      "requested_concurrency": 8
+    },
+    {
+      "aggregate_ratio": 0.9892774650911561,
+      "decode_ratio": 1.497340351583605,
+      "mtp_first_output_p95_s": 135.7319265519618,
+      "nominal_context": 32768,
+      "requested_concurrency": 16
+    }
+  ],
+  "strict_diagnostic": "separate failed4/4 and incomplete; unchanged"
+}

@@ -1,5 +1,11 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-01 Swift TP1 qualification accepted:** one RTX PRO 6000 Blackwell Max-Q
+measured the final TP1 capacity population (10 cells, 72 requests), resource
+window, and final functional/quality evidence. C2 is the selected interactive
+setting with a retained 32K decode soft miss; C1 remains latency-first. This is
+not sixteen-active-request or stable-p99 evidence. [Finding](../../findings/2026-11-01-swift-tp1-gpu0.md).
+
 **2026-11-01 — keep the current configuration:** the dual-card
 [cache-layout and DFlash scouts](../../findings/2026-11-01-runtime-scouts.md)
 each completed 144 timed requests at ~6K/~25K actual input and requested C1/C4.

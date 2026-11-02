@@ -1,5 +1,11 @@
 # Benchmark results
 
+**2026-11-01 Swift TP1 qualification accepted:** the single-GPU TP1 Swift lane is
+a tested configuration with retained capacity, quality and protocol evidence.
+Current deployment and client assignment are outside this public record. Its selected C2 32K decode p50 is 13.43 tok/s, below the 15 tok/s soft
+objective; C1 is the latency-first alternative. See the [dated finding](findings/2026-11-01-swift-tp1-gpu0.md) for boundaries.
+
+
 ## 2026-11-01 — cache-layout and DFlash scouts retain the original configuration
 
 The [dated finding](findings/2026-11-01-runtime-scouts.md) adds two separate
@@ -8,13 +14,13 @@ Each completed 144 timed requests at approximately 6K/25K input and requested
 C1/C4. Neither candidate met the 10% E2E gate against both controls. The layout
 change added 38.60% reported cache slots; DFlash2 K3 reduced them 40.63%.
 The original private-target MTP3 configuration was restored after each trial
-and remains the recommendation. Natural output, no canaries, no matched
+for that bounded scout. Natural output, no canaries, no matched
 no-speculation control and withheld immutable identity limit the result to a
 bounded scout. No promotion, full-context or broad quality claim follows.
 [Dossier](benchmarks/models/private-runtime-scouts.md) ·
 [Evidence](findings/2026-11-01-runtime-scouts-evidence/README.md).
 
-**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+**Historical primary, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
 promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
@@ -32,7 +38,7 @@ headroom. Full fleet catalog/session propagation remains blocked by the older
 
 **2026-10-15 replacement evaluation:** the completed [campaign finding](findings/2026-10-15-replacement-evaluation.md) records no eligible challenger. DeepSeek V4.1 Flash remained bounded to diagnostic gates, and exact GLM was restored and retained. The finding contains the sole detailed gate table; no new GLM qualification, route change, or performance ranking follows.
 
-**Historical bounded recommendation, 2026-10-13:** At that date, the retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](findings/2026-10-13-full-qualification.md). The later [FP4 promotion follow-up](findings/2026-10-17-glm53-nvidia-fp4-promotion.md) supersedes it as the current primary decision.
+**Historical bounded recommendation, 2026-10-13:** At that date, the retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](findings/2026-10-13-full-qualification.md). The later [FP4 promotion follow-up](findings/2026-10-17-glm53-nvidia-fp4-promotion.md) supersedes it as the tested configuration decision.
 
 **2026-10-13 full qualification:** the [public campaign report](findings/2026-10-13-full-qualification.md) retains a GLM continuity baseline (complete fixed-five 2/5) and terminal Ignis diagnostic (2/5 resolved, three empty). Qwen, DeepSeek, and MiMo records remain bounded to their native lanes. No challenger met the complete 4/5 plus Django/Pylint gate; no challenger was promoted.
 
@@ -71,7 +77,7 @@ attribution and broader qualification remain open. See the
 > [run catalog](benchmarks/runs.md). This stable URL remains the chronological
 > campaign archive, including Fast-tier, voice, and historical rounds.
 
-The prior bounded reference was [GLM Flash EXL3 r11 DCP1](findings/2026-09-23-glm-dcp1-qualification.md): 4-bpw EXL3 with FP8 DS-MLA KV, APC, no speculation, 327,680 configured tokens, C4, and the selected DCP1 mitigation. [r10 APC](findings/2026-09-19-glm53-apc-promotion.md) is historical repeated-prefix performance lineage and r11's immediate rollback. The September 14 [r7 text-only qualification](findings/2026-09-13-intelligence-context-scout.md) supplies retained quality lineage: 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. The later September 18 r9 vision8 configuration is the historical matched APC baseline; its bounded quality evidence is recorded in the APC campaign. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing. The later [2026-10-17 serving comparison](findings/2026-10-17-glm53-serving-performance.md) measures a separate controlled natural/edge workload; its detailed values remain in that finding, and the [FP4 promotion follow-up](findings/2026-10-17-glm53-nvidia-fp4-promotion.md) supersedes r11 as the current primary decision while retaining it as rollback.
+The prior bounded reference was [GLM Flash EXL3 r11 DCP1](findings/2026-09-23-glm-dcp1-qualification.md): 4-bpw EXL3 with FP8 DS-MLA KV, APC, no speculation, 327,680 configured tokens, C4, and the selected DCP1 mitigation. [r10 APC](findings/2026-09-19-glm53-apc-promotion.md) is historical repeated-prefix performance lineage and r11's immediate rollback. The September 14 [r7 text-only qualification](findings/2026-09-13-intelligence-context-scout.md) supplies retained quality lineage: 90/100 one-pass MMLU-Pro, agentic 30/30, frozen five-case SWE 4/5, strict120 120/120, 9/9 post-promotion context through 255,647–255,672 prompt tokens plus reserve, and Pi/Hermes/OpenClaw tool checks passing. The later September 18 r9 vision8 configuration is the historical matched APC baseline; its bounded quality evidence is recorded in the APC campaign. Neither record names an exhaustive intelligence winner, proves concurrent full-window capacity, includes a full-window concurrency soak, or includes fresh boot/reboot testing. The later [2026-10-17 serving comparison](findings/2026-10-17-glm53-serving-performance.md) measures a separate controlled natural/edge workload; its detailed values remain in that finding, and the [FP4 promotion follow-up](findings/2026-10-17-glm53-nvidia-fp4-promotion.md) supersedes r11 as the tested configuration decision while retaining it as rollback.
 
 The current RTX 5090 same-image reuse reference is the [Swift15 96 GB profile](findings/2026-10-05-swift-96gb-baseline.md); the [Huihui NInfer MTP3 160K/C1 profile](findings/2026-09-19-qwen38-context-envelope.md) is the qualified context reference: preflight 8/8, repeated bounded quality, vision 18/18, unique-canary capacity and 150,144-token retrieval passed. The 64K results remain a separate historical comparison. Actual deployment assignments are private.
 

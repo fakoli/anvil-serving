@@ -7,6 +7,11 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-11-01-swift-tp1-gpu0.md`; `docs/benchmarks/models/qwen38-efficient-variants.md`
+(one RTX PRO 6000 Blackwell Max-Q: final TP1 functional, quality, capacity and
+resource evidence; qualification accepted; deployment status private;
+no stable p99 or sixteen-active-request claim).
+
 `docs/findings/2026-10-26-ignis-080-preflight.md`;
 `docs/findings/2026-10-26-ignis-080-preflight-evidence/README.md`
 (one-Max-Q bounded functional and resource measurements; required-tool

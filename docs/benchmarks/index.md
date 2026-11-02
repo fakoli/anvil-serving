@@ -1,12 +1,16 @@
 # Benchmarks
 
-**Latest local decision, 2026-11-01: retain the current configuration.**
+**Current review, 2026-11-01:** Swift TP1 has qualification accepted on one
+RTX PRO 6000 Blackwell Max-Q. This is a qualification result; the measured C2/C1 tradeoff, strict-format
+failure, and SWE limit are retained in the [dated finding](../findings/2026-11-01-swift-tp1-gpu0.md).
+
+**Separate private-target scouts, 2026-11-01: original configuration retained.**
 The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
 each completed 144 timed requests on the dual RTX PRO 6000 pair. Neither
 candidate improved median response latency by 10% against both controls.
 Cache slots increased 38.60% with the layout change and decreased 40.63% with
 DFlash2 K3. Both candidates were removed and the original configuration was
-restored. The current target identity is private; the named October reference
+restored. That scout target identity is private; the named October reference
 below is historical evidence, not a statement of today's selected checkpoint.
 [Private-target dossier](models/private-runtime-scouts.md).
 
@@ -37,7 +41,7 @@ an exhaustive quality ranking.
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-11-01 runtime scouts; earlier named selections remain dated reference evidence.**
+configuration and retained evidence. **Evidence reviewed: 2026-11-01 Swift TP1 qualification and separate private-target runtime scouts; publication readback remains partial.**
 
 ## Engine testing
 

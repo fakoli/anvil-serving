@@ -1,0 +1,58 @@
+{
+  "bounded_retry": "one successor run per overlap mode, 3 rounds each; no other settings, prompts, gates or output caps changed",
+  "commands": {
+    "stability-overlap-repeat-r2": [
+      "[REDACTED_PATH]",
+      "-m",
+      "anvil_serving.cli",
+      "eval",
+      "benchmark",
+      "stability",
+      "--scenario",
+      "[REDACTED_PATH]",
+      "--output",
+      "[REDACTED_PATH]",
+      "--confirm"
+    ],
+    "stability-overlap-unique-r2": [
+      "[REDACTED_PATH]",
+      "-m",
+      "anvil_serving.cli",
+      "eval",
+      "benchmark",
+      "stability",
+      "--scenario",
+      "[REDACTED_PATH]",
+      "--output",
+      "[REDACTED_PATH]",
+      "--confirm"
+    ]
+  },
+  "contract": "contender-stream-active/v1",
+  "focused_tests_sha256": "599ed0d703d64430d190b2e7598b9a4010e48578fc1539be68404a0da790415e",
+  "full_suite_note": "First full run had all4194 passing but wrapper source-change refusal after historical regression added; pinned-source rerun required.",
+  "not_claimed": [
+    "scheduler batch proof",
+    "decode progress during prefill before contender first output"
+  ],
+  "original_artifact": {
+    "path": "[REDACTED_PATH]",
+    "sha256": "9c7ec97c3112d65df00d6756acf3b58aec1b3a4da1dcb4bc3ec96eb8195b9c6b"
+  },
+  "original_inventory_sha256": "597d55dd5ae6314c8a11f31966ad63f6c69589e144f49730c14cf7dc779ec137",
+  "original_product_source_unchanged": true,
+  "reason": "Original response-wait coverage interval was 92 microseconds; successor measures a live anchor delta after contender first output and before contender end. Original incomplete result remains unchanged.",
+  "review_sha256": "02348700eab0746c42fdc66af0b4f18f39e05a4e5b8eb3a342c57b7abc9bd925",
+  "runtime_recipe_unchanged": true,
+  "scenario_sha256": {
+    "stability-overlap-repeat-scenario.json": "56c4d492499b2050e583be3f61adbbd3a481d02af9a515e91afec93f5f84d8cc",
+    "stability-overlap-unique-scenario.json": "b634e11592beeae1b77a89a6a94b0ba8a5b99c80a91a42104a50f27df747647c",
+    "stability-serial-unique-scenario.json": "5cc2502993111961da1202f648b9edaa9b35f2871d5e05268c122cefcbe89516"
+  },
+  "schema": "stability-observer-amendment/v1",
+  "source": {
+    "python_source_sha256": "1e6d1aa5e9d349020832a31556dc2a3526d96939be75744792a8f0adde9c3ee4",
+    "revision": "b15823d74379548f567ce68e117b350f89a521b6",
+    "root": "[REDACTED_PATH]"
+  }
+}

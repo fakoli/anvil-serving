@@ -1,0 +1,21 @@
+{
+  "completeness": "completed",
+  "evidence_kind": "measured",
+  "kind": "campaign",
+  "locally_measured": true,
+  "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+  "path": "[REDACTED_PATH]",
+  "profile": "scout",
+  "promotion_authorized": false,
+  "recorded_at": "2026-11-02T01:44:18.162516Z",
+  "run_id": "[QUALIFICATION_FINAL_SWE_RUN]",
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "suite": "swe",
+  "summary": {
+    "attempted": 5,
+    "completed": 5,
+    "score": 0.8
+  },
+  "validation_errors": [],
+  "warnings": []
+}

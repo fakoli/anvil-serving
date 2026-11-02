@@ -1,0 +1,93 @@
+{
+  "artifact_digest_verification": [
+    {
+      "artifact": "final-r4/context-native/artifact.json",
+      "canonical_json_sha256": "0892ba0d7521789f9a926d153ae3be0d31363fb0ba60ccf23341d3edb1410a09",
+      "canonical_matches_receipt": true,
+      "completion_receipt": "final-r4/context-status-complete.json",
+      "physical_sha256": "9160ce79b203aff96227628dc5f8e80878f91741e109b689741bff60fe743216",
+      "receipt_sha256": "0892ba0d7521789f9a926d153ae3be0d31363fb0ba60ccf23341d3edb1410a09",
+      "suite": "context-native"
+    },
+    {
+      "artifact": "final-r4/swe-native/artifact.json",
+      "canonical_json_sha256": "6c4a6c7b613d0184b0ebf9ad102c69ba024fc32b191e86389e793007c9521fb1",
+      "canonical_matches_receipt": true,
+      "completion_receipt": "final-r4/swe-status-complete.json",
+      "physical_sha256": "9320153bf1292ceef5255adf0aa3d58eaffc282fe772b8c594972f60b120aebd",
+      "receipt_sha256": "6c4a6c7b613d0184b0ebf9ad102c69ba024fc32b191e86389e793007c9521fb1",
+      "suite": "swe-native"
+    },
+    {
+      "artifact": "final-r4/agentic-native/artifact.json",
+      "canonical_json_sha256": "70c47ef01666acea3c44c0101525101f3245cdeafea72e3899e23f947827993e",
+      "canonical_matches_receipt": true,
+      "completion_receipt": "final-r4/agentic-status-complete.json",
+      "physical_sha256": "ac95f93752187b31aac1b0a304beaab1cf9791d052a091d776a735929c932735",
+      "receipt_sha256": "70c47ef01666acea3c44c0101525101f3245cdeafea72e3899e23f947827993e",
+      "suite": "agentic-native"
+    },
+    {
+      "artifact": "final-r4/agentic-pilot-native/artifact.json",
+      "canonical_json_sha256": "1fef163bbb3796ca007e49d096ea0eaf50f0e02b3a400bd22c431d1d1c9fe076",
+      "canonical_matches_receipt": true,
+      "completion_receipt": "final-r4/agentic-pilot-status-complete.json",
+      "physical_sha256": "328ddbf3c2c08247dca1c8ad47cba8ec1d59820eb9da2dec3430181b093ac35b",
+      "receipt_sha256": "1fef163bbb3796ca007e49d096ea0eaf50f0e02b3a400bd22c431d1d1c9fe076",
+      "suite": "agentic-pilot-native"
+    }
+  ],
+  "c2_review": {
+    "amendment": "final-r4/c2-evidence-amendment.json",
+    "amendment_physical_sha256": "9d6698c2570e9426bc439b93f295eba3157614316971a9695de813314e8e4b13",
+    "c1_admission": "final-r4/context-admission.json",
+    "c1_admission_physical_sha256": "e90d75f58204266318dbcba6dbe01002274bf334fa2212f57d76e94d47c938b7",
+    "claim_limit": "This proves two overlapping application requests and observed allocator occupancy. It does not prove nonshared simultaneous full 491236-token KV residency: chat-template prefix sharing remains possible and observed peak KV use was 458520.",
+    "evidence": {
+      "actual_prompt_plus_reserved_output_tokens": 491236,
+      "actual_prompt_tokens": [
+        229222,
+        229246
+      ],
+      "binding": "requests header binds the exact activation, amendment byte hash, C1 admission byte hash, script hash, and native source hashes",
+      "distinct_initial_user_words": [
+        "ALPHA",
+        "BETA"
+      ],
+      "exact_scoring_passed": 2,
+      "in_overlap_running_two_samples": 3,
+      "observed_peak_kv_used": 458520,
+      "overlap_seconds": 260.115100719,
+      "pool_limit_tokens": 504384,
+      "requests": 2,
+      "reserved_output_tokens_each": 16384,
+      "served_model_consistent": true,
+      "shared_user_prompt_prefix_characters": 0
+    },
+    "passed": true,
+    "requests": "final-r4/context-concurrent/requests.jsonl",
+    "requests_physical_sha256": "7a1ae101eff2de16904f33543755552c4b6d57b8a6863b9b7cc01128b79e2f98",
+    "result": "final-r4/context-concurrent/result.json",
+    "result_physical_sha256": "035c18eea90e70381eac822b3152af82ba52e95d424c16d81a67899a0640e5fd"
+  },
+  "canonical_digest_contract": {
+    "definition": "canonical JSON is sorted, compact, ASCII-safe JSON with NaN forbidden",
+    "lines": "235-243",
+    "receipt_writer": "[REDACTED_PATH]",
+    "source": "[REDACTED_PATH]",
+    "writer_behavior": "writes the physical JSON artifact, then records SHA256(canonical_json_bytes(artifact))"
+  },
+  "physical_bytes": {
+    "context_original_export": {
+      "not_equivalent_to": "the sanitized public-staging copy, whose bytes intentionally differ after redaction",
+      "physical_sha256": "9160ce79b203aff96227628dc5f8e80878f91741e109b689741bff60fe743216",
+      "state": "the retained native artifact has this physical digest; the public staging ledger independently preserves it as the original digest"
+    },
+    "finding": "A completion receipt is a canonical-JSON digest, not a physical-file digest. Its mismatch with the pretty JSON byte digest is expected and is not a provenance defect."
+  },
+  "review_kind": "canonical-artifact-digest-and-c2-evidence",
+  "reviewed_at": "2026-11-02T02:00:00Z",
+  "schema": "anvil-serving.independent-review/v1",
+  "scope": "read-only independent review; no inference, lifecycle, or artifact mutation",
+  "verdict": "pass within the retained C2 claim and canonical digest contract; no provenance blocker remains"
+}

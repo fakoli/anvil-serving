@@ -1,0 +1,21 @@
+{
+  "schema": "anvil-serving.public-staging-binding/v1",
+  "purpose": "Minimal official grader report retained to substantiate the fixed five-task SWE campaign floor.",
+  "canonical_retention": {
+    "evidence": "evidence/0-swe-canonical-retention.json",
+    "source": "official-grader report entry in the retained native manifest",
+    "original_relative_path": "[REDACTED_CANONICAL_REPORT_PATH]",
+    "original_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+    "original_bytes": 962
+  },
+  "staged_report": {
+    "path": "evidence/swe-canonical/official-grader/official-grader-report.json",
+    "sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+    "bytes": 962
+  },
+  "native_report_binding": {
+    "native_swe_report": "evidence/2-swe.json",
+    "per_instance_grader_report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98"
+  },
+  "scope": "The retained report proves 5 submitted/completed, 4 resolved, and 1 unresolved for the fixed campaign selection. It does not make this selection a broad coding benchmark population."
+}

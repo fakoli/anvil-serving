@@ -1,0 +1,34 @@
+{
+  "base_temp": "[REDACTED_PATH]",
+  "command": [
+    "[REDACTED_PATH]",
+    "-m",
+    "pytest",
+    "tests/",
+    "-q",
+    "--basetemp",
+    "[REDACTED_PATH]"
+  ],
+  "cwd": "[REDACTED_PATH]",
+  "exit_code": 0,
+  "finished_at": "2026-11-02T02:08:23.214616+00:00",
+  "interpreter": "[REDACTED_PATH]",
+  "pytest_args": [
+    "tests/",
+    "-q"
+  ],
+  "run_id": "46d82b43-bb02-45f4-90bb-9cba24bf502f",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "b15823d74379548f567ce68e117b350f89a521b6",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "b15823d74379548f567ce68e117b350f89a521b6",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-11-02T02:06:37.888948+00:00",
+  "state": "passed"
+}

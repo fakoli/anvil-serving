@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-01 Swift TP1 GPU0 qualification accepted
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Swift 1.5 Qwen3.8 27B BF16 with FP8 KV, TP1, 262,144 configured context and MTP3; selected C2 interactive operating point | One RTX PRO 6000 Blackwell Max-Q; final fresh capacity population is 10 cells / 72 requests, separate from the historical 60-cell matched comparison | Protocol and bounded qualification gates passed; no current deployment or client assignment claim. C2 32K median decode 13.43 tok/s is below its 15 tok/s soft objective while first-output p95 is 16.69 s under the 30 s ceiling; C1 is latency-first. C16 is queued requested load, not 16 active requests. SWE resolved 4/5; strict formatting failed 4/4. Operational records are private. | [Dossier](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-11-01-swift-tp1-gpu0.md) |
+
 ## 2026-11-01 cache-layout and DFlash scouts
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

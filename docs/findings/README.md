@@ -1,5 +1,11 @@
 # Findings index
 
+**2026-11-01 Swift TP1 GPU0 qualification and qualification accepted:** retained
+functional, context, image, agentic, SWE (4/5 resolved), stability, capacity
+(72/72) and resource-window checks supported qualification acceptance. Fresh C2 is the user-preference throughput setting with
+a 32K decode soft miss; C1 remains latency-first. Strict formatting 4/4 failure
+and R5 rejection are retained. Deployment and client assignments are private. [Finding](2026-11-01-swift-tp1-gpu0.md).
+
 **2026-11-01 cache-layout and DFlash scouts:**
 [bounded local results](2026-11-01-runtime-scouts.md) retain 144/144 timed
 requests per experiment on the dual RTX PRO 6000 pair, no 10% E2E improvement
@@ -105,7 +111,7 @@ Multiple STT/TTS and local LLM profiles were tested for English personal, noncom
 
 ## Policy
 
-Latest runtime decision: [NVIDIA FP4 primary promotion](2026-10-17-glm53-nvidia-fp4-promotion.md) — operator-selected current primary with EXL3 r11 retained rollback. The dated APC, DCP1 and earlier restoration decisions below remain historical evidence.
+Latest runtime decision: [NVIDIA FP4 primary promotion](2026-10-17-glm53-nvidia-fp4-promotion.md) — operator-selected tested configuration with EXL3 r11 retained rollback. The dated APC, DCP1 and earlier restoration decisions below remain historical evidence.
 
 Historical 2026-09-11 bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 

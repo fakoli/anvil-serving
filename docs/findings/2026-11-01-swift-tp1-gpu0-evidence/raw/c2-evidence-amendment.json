@@ -1,0 +1,47 @@
+{
+  "acceptance": [
+    "typed native exact-answer scoring bothpass",
+    "bothactualpromptcounts>=99%target; actualinput+reservedoutputs<=504384",
+    "strictlypositive client-request overlap and running>=2 engine sample within it",
+    "full quality resource/cadence gate remains mandatory"
+  ],
+  "activation": {
+    "binding_sha256": "[QUALIFICATION_FINAL_BINDING]",
+    "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+    "generation": "[QUALIFICATION_FINAL_ACTIVATION]",
+    "metrics_url": "[LOOPBACK_ENDPOINT]",
+    "served_model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "started_at": "2026-11-02T00:43:12.309284535Z"
+  },
+  "claim_limit": "Shared chat-templateprefix possible; no shared long user-contentprefix. Full simultaneousKVresidency only to extent actually observed.",
+  "command": [
+    "[REDACTED_PATH]",
+    "[REDACTED_PATH]",
+    "--output",
+    "[REDACTED_PATH]"
+  ],
+  "created_at": "2026-11-02T00:53:34.493348+00:00",
+  "parent_inventory_sha256": "597d55dd5ae6314c8a11f31966ad63f6c69589e144f49730c14cf7dc779ec137",
+  "plan_sha256": "d91bd5eb23f47ff3958d8d800d5dd50fd9f475573f78f22d5978e77fa2b2a253",
+  "prerequisites": [
+    "same-activation C1context all36pass with>=99%actualpromptcoverage",
+    "context-admission.json binds exact native evidence SHA",
+    "all other inference jobs drained and resource observer active"
+  ],
+  "reason": "Native jobs expose latencies but not exact client-request intervals; wrapper reuses same pinned native construction/scoring and adds per-request timestamps plus divergent initial user-content prefixes. Fewer calibration requests, no wider matrix.",
+  "requests": {
+    "calibration": 1,
+    "long_context": 2,
+    "output_reserve_each": 16384,
+    "target_input_each": 229376
+  },
+  "retained_unrun_specs": {
+    "context-c2-needle-spec.json": "1ef7663b0efc8dfe18cb00f9769c68ec4a253a8c83bb9365ffd9215b569a6a54",
+    "context-c2-order-spec.json": "6e2a55d90409f5567b996e5fc85ea26d1900d3b49807323cccaf2555d130fae2"
+  },
+  "script_sha256": "b53ae2f5a2a8851d9b74ca116e1536555a073765a80326e2edc4be3d8230320c",
+  "superseded_unrun_commands": [
+    "context-c2-needle",
+    "context-c2-order"
+  ]
+}

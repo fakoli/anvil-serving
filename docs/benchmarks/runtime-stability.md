@@ -62,8 +62,12 @@ thinking-disabled diagnostic separately from production reasoning quality.
 
 `serial` waits for the anchor to complete; `overlap` releases the contender
 after the anchor's first generated text or reasoning delta. A terminal event
-is not a decode trigger. Coverage also requires anchor output while the
-contender has returned HTTP headers but is awaiting its first output. Correlate engine logs to establish
+is not a decode trigger. New evidence declares
+`overlap_contract="contender-stream-active/v1"`: coverage requires an anchor
+delta after the contender's first output and before its request ends. The old
+headers-to-first-output flag remains diagnostic. Historical evidence without
+this declaration retains its original response-wait contract; it is not rescored.
+Correlate engine logs to establish
 that a specific scheduler batch occurred; client timings do not prove it.
 
 `unique` changes prefixes each round. `repeat` reuses each role's prompt within

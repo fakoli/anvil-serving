@@ -1,0 +1,436 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-02T01:58:03.077341+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:53:51.961095+00:00",
+      "phase": "start",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:53:52.016749+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:55:17.579201+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:55:17.636594+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:56:44.085332+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:56:44.135856+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:58:03.069353+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 512396.457891276,
+        "expected_values": [
+          "VALUE_56b56238477a",
+          "VALUE_8217985b1083",
+          "VALUE_f85ae2b39244"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:55:13.692793+00:00",
+        "first_output": 512323.589636715,
+        "last_output": 512396.457611756,
+        "partial_visible": "\n\n**KEY_0 = VALUE_56b56238477a**\n**KEY_1 = VALUE_8217985b1083**\n**KEY_2 = VALUE_f85ae2b39244**\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## Section 1: Introduction to Component-Based Software Architecture\n\nComponent-based architecture decomposes a system into self-contained, interchangeable units. Each component exposes a well-defined interface and encapsulates its internal logic. This guide addresses the full lifecycle of such components: design, implementation, integration, and verification.\n\n**Implementation:** Define a component as a class or module with a public API. Use dependency injection to decouple components from their collaborators.\n\n**Example:**\n```python\nclass DataProcessor:\n    def __init__(self, storage: StorageService):\n        self._storage = storage\n\n    def process(self, raw: bytes) -> dict:\n        parsed = self._storage.deserialize(raw)\n        return self._transform(parsed)\n```\n\n**Edge Cases:** A component may receive `None` for its dependency during testing. Handle this with explicit null-checks or use a `typing.Optional` annotation.\n\n**Tests:** Verify that the component can be instantiated with mock dependencies and that its public methods behave as specified without triggering side effects on the mock.\n\n---\n\n## Section 2: Interface Contracts and Design by Contract\n\nEvery component should document preconditions, postconditions, and invariants. Design by Contract (DbC) makes these assumptions explicit and testable.\n\n**Implementation:** Use docstrings, type annotations, and assertion guards.\n\n```python\ndef calculate_average(values: list[float]) -> float:\n    \"\"\"Precondition: len(values) > 0. Postcondition: result is within min..max of values.\"\"\"\n    assert len(values) > 0, \"values must be non-empty\"\n    return sum(values) / len(values)\n```\n\n**Example:** A `PaymentGateway` component declares that `amount` must be positive and that a successful call returns a transaction ID of type `str` with length \u2265 8.\n\n**Edge Cases:** Empty collections, negative numbers, floating-point precision at boundaries (e.g., `amount = 0.00`).\n\n**Tests:** Write contract tests that violate each precondition and expect a `PreconditionViolation` exception. Verify postconditions after every successful call.\n\n---\n\n## Section 3: Unit Testing Fundamentals\n\nUnit tests isolate a single function or method and verify its behavior in isolation.\n\n**Implementation:** Use a test framework (pytest, JUnit, xUnit). Follow the Arrange-Act-Assert (AAA) pattern.\n\n```python\ndef test_add_positive_numbers():\n    # Arrange\n    calculator = Calculator()\n    # Act\n    result = calculator.add(2, 3)\n    # Assert\n    assert result == 5\n```\n\n**Example:** Test a `StringTokenizer` component with inputs `\"a,b,c\"`, `\"a,,c\"`, and `\"\"`.\n\n**Edge Cases:** Null input, single-element input, input containing the delimiter as a substring of a token.\n\n**Tests:** Parametrize tests to cover the above cases. Use `pytest.mark.parametrize` for concise multi-case coverage.\n\n---\n\n## Section 4: Mocking and Stubbing Strategies\n\nMocks simulate collaborator behavior to isolate the unit under test.\n\n**Implementation:** Use `unittest.mock`, Mockito, or similar libraries. Distinguish between *stubs* (return fixed values) and *mocks* (verify interactions).\n\n```python\nfrom unittest.mock import Mock\n\ndef test_processor_calls_storage():\n    storage = Mock()\n    storage.deserialize.return_value = {\"key\": \"val\"}\n    processor = DataProcessor(storage)\n    result = processor.process(b\"raw\")\n    storage.deserialize.assert_called_once_with(b\"raw\")\n    assert result == {\"key\": \"val\"}\n```\n\n**Example:** A `NotificationService` that depends on an `EmailSender`. Stub `EmailSender.send()` to return `True` and verify it was called with the correct recipient.\n\n**Edge Cases:** Mocking side effects (exceptions raised by the dependency), verifying call order, and handling `AsyncMock` for coroutines.\n\n**Tests:** Assert both return values and interaction counts. Test that the component handles exceptions thrown by the mock (e.g., `storage.deserialize.side_effect = IOError`).\n\n---\n\n## Section 5: Integration Testing Components Together\n\nIntegration tests verify that multiple components interact correctly through their interfaces.\n\n**Implementation:** Wire real components together (or use a test container like Spring's `@SpringBootTest` or a Docker Compose file). Use a test database or in-memory store.\n\n```python\ndef test_order_flow():\n    db = InMemoryDB()\n    inventory = InventoryService(db)\n    payment = PaymentService(gateway=MockGateway())\n    order_svc = OrderService(inventory, payment)\n    order = order_svc.create(product_id=42, qty=2)\n    assert order.status == \"CONFIRMED\"\n```\n\n**Example:** An e-commerce flow: `Cart \u2192 Checkout \u2192 Payment \u2192 Inventory \u2192 Shipping`.\n\n**Edge Cases:** Partial failures (payment succeeds but inventory update fails), concurrent writes, network timeouts between components.\n\n**Tests:** Use transactional rollback or a snapshot/restore pattern to keep tests independent. Assert final state across all involved components.\n\n---\n\n## Section 6: Test Data Management and Fixtures\n\nConsistent, reproducible test data prevents flaky tests.\n\n**Implementation:** Use fixture factories (e.g., `factory_boy`, `Faker`) and database migrations for test schemas.\n\n```python\n@pytest.fixture\ndef sample_user():\n    return User(id=1, name=\"Alice\", email=\"alice@example.com\", created_at=\"2025-01-01\")\n```\n\n**Example:** A `User` component with varying roles (admin, viewer, editor). Create fixture users for each role.\n\n**Edge Cases:** Data with special characters (unicode, SQL injection strings), maximum-length fields, dates at timezone boundaries.\n\n**Tests:** Ensure fixtures are isolated per test (function-scoped). Verify that no test mutates shared fixture state.\n\n---\n\n## Section 7: Property-Based Testing\n\nProperty-based testing generates thousands of random inputs to find edge cases humans miss.\n\n**Implementation:** Use `hypothesis` (Python), `QuickCheck` (Haskell), or `jqwik` (Java).\n\n```python\nfrom hypothesis import given, strategies as st\n\n@given(st.lists(st.floats(allow_nan=False), min_size=1))\ndef test_average_within_bounds(values):\n    avg = calculate_average(values)\n    assert min(values) <= avg <= max(values)\n```\n\n**Example:** A `HashFunction` component must satisfy: same input \u2192 same output, and output length is fixed.\n\n**Edge Cases:** Empty lists, very large numbers, negative zero, NaN, inf, strings of length 0 and 10\u2076.\n\n**Tests:** Run property tests for \u2265 200 examples. Use `@settings(max_examples=1000)` for critical invariants.\n\n---\n\n## Section 8: Concurrency and Thread-Safety Testing\n\nComponents shared across threads must be thread-safe.\n\n**Implementation:** Use locks, `asyncio` locks, or actor models. Test with concurrent harnesses.\n\n```python\nimport threading\n\ndef test_concurrent_counter():\n    counter = ThreadSafeCounter()\n    threads = [threading.Thread(target=lambda: [counter.increment() for _ in range(1000)]) for _ in range(10)]\n    for t in threads: t.start()\n    for t in threads: t.join()\n    assert counter.value == 10000\n```\n\n**Example:** A `SessionManager` that stores per-user sessions in a shared dict.\n\n**Edge Cases:** Deadlocks (two components acquiring locks in opposite order), lost updates, visibility across CPU cores.\n\n**Tests:** Use a stress-test loop (10 000 iterations \u00d7 50 threads). Employ tools like ThreadSanitizer (C++), Go race detector, or Java's `jcstress`.\n\n---\n\n## Section 9: Error Handling and Exception Propagation\n\nComponents must define which exceptions they throw, catch, and propagate.\n\n**Implementation:** Define a hierarchy of domain exceptions. Catch at appropriate boundaries.\n\n```python\nclass ComponentError(Exception): ...\nclass DataParseError(ComponentError): ...\nclass StorageUnavailableError(ComponentError): ...\n```\n\n**Example:** A `FileParser` that throws `DataParseError` for malformed input and `StorageUnavailableError` if the backing store is down.\n\n**Edge Cases:** Nested exceptions (exception during exception handling), `KeyboardInterrupt` / `SystemExit` that must not be swallowed, multi-exception groups (Python 3.11+ `ExceptionGroup`).\n\n**Tests:** U",
+        "prompt_sha256": "92bc7a58eac3beafdce80cd0fe36d2bb19d26f37ecb035c44d30c2f24da7c364",
+        "prompt_tokens_tokenized": 32617,
+        "request_id": null,
+        "response_headers_at": 512323.589560124,
+        "result": {
+          "content_chunks": 1493,
+          "e2e": 81.52557016198989,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 48,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.65745577600319,
+          "ttft": 10.831382962991484,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32617,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 175,
+            "total_tokens": 36713
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_56b56238477a**\n**KEY_1 = VALUE_8217985b1083**\n**KEY_2 = VALUE_f85ae2b39244**\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## Section 1: Introduction to Component-Based Software Architecture\n\nComponent-based architecture decomposes a system into self-contained, interchangeable units. Each component exposes a well-defined interface and encapsulates its internal logic. This guide addresses the full lifecycle of such components: design, implementation, integration, and verification.\n\n**Implementation:** Define a component as a class or module with a public API. Use dependency injection to decouple components from their collaborators.\n\n**Example:**\n```python\nclass DataProcessor:\n    def __init__(self, storage: StorageService):\n        self._storage = storage\n\n    def process(self, raw: bytes) -> dict:\n        parsed = self._storage.deserialize(raw)\n        return self._transform(parsed)\n```\n\n**Edge Cases:** A component may receive `None` for its dependency during testing. Handle this with explicit null-checks or use a `typing.Optional` annotation.\n\n**Tests:** Verify that the component can be instantiated with mock dependencies and that its public methods behave as specified without triggering side effects on the mock.\n\n---\n\n## Section 2: Interface Contracts and Design by Contract\n\nEvery component should document preconditions, postconditions, and invariants. Design by Contract (DbC) makes these assumptions explicit and testable.\n\n**Implementation:** Use docstrings, type annotations, and assertion guards.\n\n```python\ndef calculate_average(values: list[float]) -> float:\n    \"\"\"Precondition: len(values) > 0. Postcondition: result is within min..max of values.\"\"\"\n    assert len(values) > 0, \"values must be non-empty\"\n    return sum(values) / len(values)\n```\n\n**Example:** A `PaymentGateway` component declares that `amount` must be positive and that a successful call returns a transaction ID of type `str` with length \u2265 8.\n\n**Edge Cases:** Empty collections, negative numbers, floating-point precision at boundaries (e.g., `amount = 0.00`).\n\n**Tests:** Write contract tests that violate each precondition and expect a `PreconditionViolation` exception. Verify postconditions after every successful call.\n\n---\n\n## Section 3: Unit Testing Fundamentals\n\nUnit tests isolate a single function or method and verify its behavior in isolation.\n\n**Implementation:** Use a test framework (pytest, JUnit, xUnit). Follow the Arrange-Act-Assert (AAA) pattern.\n\n```python\ndef test_add_positive_numbers():\n    # Arrange\n    calculator = Calculator()\n    # Act\n    result = calculator.add(2, 3)\n    # Assert\n    assert result == 5\n```\n\n**Example:** Test a `StringTokenizer` component with inputs `\"a,b,c\"`, `\"a,,c\"`, and `\"\"`.\n\n**Edge Cases:** Null input, single-element input, input containing the delimiter as a substring of a token.\n\n**Tests:** Parametrize tests to cover the above cases. Use `pytest.mark.parametrize` for concise multi-case coverage.\n\n---\n\n## Section 4: Mocking and Stubbing Strategies\n\nMocks simulate collaborator behavior to isolate the unit under test.\n\n**Implementation:** Use `unittest.mock`, Mockito, or similar libraries. Distinguish between *stubs* (return fixed values) and *mocks* (verify interactions).\n\n```python\nfrom unittest.mock import Mock\n\ndef test_processor_calls_storage():\n    storage = Mock()\n    storage.deserialize.return_value = {\"key\": \"val\"}\n    processor = DataProcessor(storage)\n    result = processor.process(b\"raw\")\n    storage.deserialize.assert_called_once_with(b\"raw\")\n    assert result == {\"key\": \"val\"}\n```\n\n**Example:** A `NotificationService` that depends on an `EmailSender`. Stub `EmailSender.send()` to return `True` and verify it was called with the correct recipient.\n\n**Edge Cases:** Mocking side effects (exceptions raised by the dependency), verifying call order, and handling `AsyncMock` for coroutines.\n\n**Tests:** Assert both return values and interaction counts. Test that the component handles exceptions thrown by the mock (e.g., `storage.deserialize.side_effect = IOError`).\n\n---\n\n## Section 5: Integration Testing Components Together\n\nIntegration tests verify that multiple components interact correctly through their interfaces.\n\n**Implementation:** Wire real components together (or use a test container like Spring's `@SpringBootTest` or a Docker Compose file). Use a test database or in-memory store.\n\n```python\ndef test_order_flow():\n    db = InMemoryDB()\n    inventory = InventoryService(db)\n    payment = PaymentService(gateway=MockGateway())\n    order_svc = OrderService(inventory, payment)\n    order = order_svc.create(product_id=42, qty=2)\n    assert order.status == \"CONFIRMED\"\n```\n\n**Example:** An e-commerce flow: `Cart \u2192 Checkout \u2192 Payment \u2192 Inventory \u2192 Shipping`.\n\n**Edge Cases:** Partial failures (payment succeeds but inventory update fails), concurrent writes, network timeouts between components.\n\n**Tests:** Use transactional rollback or a snapshot/restore pattern to keep tests independent. Assert final state across all involved components.\n\n---\n\n## Section 6: Test Data Management and Fixtures\n\nConsistent, reproducible test data prevents flaky tests.\n\n**Implementation:** Use fixture factories (e.g., `factory_boy`, `Faker`) and database migrations for test schemas.\n\n```python\n@pytest.fixture\ndef sample_user():\n    return User(id=1, name=\"Alice\", email=\"alice@example.com\", created_at=\"2025-01-01\")\n```\n\n**Example:** A `User` component with varying roles (admin, viewer, editor). Create fixture users for each role.\n\n**Edge Cases:** Data with special characters (unicode, SQL injection strings), maximum-length fields, dates at timezone boundaries.\n\n**Tests:** Ensure fixtures are isolated per test (function-scoped). Verify that no test mutates shared fixture state.\n\n---\n\n## Section 7: Property-Based Testing\n\nProperty-based testing generates thousands of random inputs to find edge cases humans miss.\n\n**Implementation:** Use `hypothesis` (Python), `QuickCheck` (Haskell), or `jqwik` (Java).\n\n```python\nfrom hypothesis import given, strategies as st\n\n@given(st.lists(st.floats(allow_nan=False), min_size=1))\ndef test_average_within_bounds(values):\n    avg = calculate_average(values)\n    assert min(values) <= avg <= max(values)\n```\n\n**Example:** A `HashFunction` component must satisfy: same input \u2192 same output, and output length is fixed.\n\n**Edge Cases:** Empty lists, very large numbers, negative zero, NaN, inf, strings of length 0 and 10\u2076.\n\n**Tests:** Run property tests for \u2265 200 examples. Use `@settings(max_examples=1000)` for critical invariants.\n\n---\n\n## Section 8: Concurrency and Thread-Safety Testing\n\nComponents shared across threads must be thread-safe.\n\n**Implementation:** Use locks, `asyncio` locks, or actor models. Test with concurrent harnesses.\n\n```python\nimport threading\n\ndef test_concurrent_counter():\n    counter = ThreadSafeCounter()\n    threads = [threading.Thread(target=lambda: [counter.increment() for _ in range(1000)]) for _ in range(10)]\n    for t in threads: t.start()\n    for t in threads: t.join()\n    assert counter.value == 10000\n```\n\n**Example:** A `SessionManager` that stores per-user sessions in a shared dict.\n\n**Edge Cases:** Deadlocks (two components acquiring locks in opposite order), lost updates, visibility across CPU cores.\n\n**Tests:** Use a stress-test loop (10 000 iterations \u00d7 50 threads). Employ tools like ThreadSanitizer (C++), Go race detector, or Java's `jcstress`.\n\n---\n\n## Section 9: Error Handling and Exception Propagation\n\nComponents must define which exceptions they throw, catch, and propagate.\n\n**Implementation:** Define a hierarchy of domain exceptions. Catch at appropriate boundaries.\n\n```python\nclass ComponentError(Exception): ...\nclass DataParseError(ComponentError): ...\nclass StorageUnavailableError(ComponentError): ...\n```\n\n**Example:** A `FileParser` that throws `DataParseError` for malformed input and `StorageUnavailableError` if the backing store is down.\n\n**Edge Cases:** Nested exceptions (exception during exception handling), `KeyboardInterrupt` / `SystemExit` that must not be swallowed, multi-exception groups (Python 3.11+ `ExceptionGroup`).\n\n**Tests:** U",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 512314.919224889,
+        "started_at": "2026-11-02T01:53:52.154111+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 512400.295053441,
+        "expected_values": [
+          "VALUE_cb919f338678",
+          "VALUE_26ccc3246042",
+          "VALUE_a4cc7c2764bd"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:55:17.529954+00:00",
+        "first_output": 512398.449688122,
+        "last_output": 512400.246795123,
+        "partial_visible": "\n\nKEY_0 = VALUE_cb919f338678\nKEY_1 = VALUE_26ccc3246042\nKEY_2 = VALUE_a4cc7c2764bd",
+        "prompt_sha256": "606ad61a2492f9d30deac98abee932ab6bd4a5620383c945155fb99dd77eb939",
+        "prompt_tokens_tokenized": 8190,
+        "request_id": null,
+        "response_headers_at": 512398.449633116,
+        "result": {
+          "content_chunks": 13,
+          "e2e": 3.820445060962811,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 148,
+          "output_token_source": "usage",
+          "reasoning_chunks": 27,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.9750996920047328,
+          "ttft": 3.2034079889999703,
+          "usage": {
+            "completion_tokens": 148,
+            "prompt_tokens": 8190,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 97,
+            "total_tokens": 8338
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_cb919f338678\nKEY_1 = VALUE_26ccc3246042\nKEY_2 = VALUE_a4cc7c2764bd",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 512396.470305075,
+        "started_at": "2026-11-02T01:55:13.705193+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 512482.831103271,
+        "expected_values": [
+          "VALUE_70321fd80514",
+          "VALUE_eac78ece70fb",
+          "VALUE_5eadd711d3e1"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:56:40.066004+00:00",
+        "first_output": 512409.564353863,
+        "last_output": 512482.830935642,
+        "partial_visible": "\n\n**Key Values:**\n\n- KEY_0 = VALUE_70321fd80514\n- KEY_1 = VALUE_eac78ece70fb\n- KEY_2 = VALUE_5eadd711d3e1\n\n---\n\n# Engineering Guide: Implementation, Examples, Edge Cases, and Tests for Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nEvery software component follows a layered architecture: interface (public API), core logic (business rules), and infrastructure (I/O, persistence). The interface defines contracts using abstract classes or protocols. For example, a `PaymentProcessor` interface exposes `process(Order) -> Receipt`. The core logic contains pure functions that transform inputs to outputs without side effects. Infrastructure handles networking, file access, and database queries.\n\n**Example:**\n```python\nclass PaymentProcessor(ABC):\n    @abstractmethod\n    def process(self, order: Order) -> Receipt: ...\n\nclass StripePaymentProcessor(PaymentProcessor):\n    def process(self, order: Order) -> Receipt:\n        # infrastructure call to Stripe API\n        ...\n```\n\n**Edge Case:** A component with no infrastructure dependency (pure computation) should be designed to have zero imports from external libraries, making it trivially testable.\n\n**Test:** Verify that the abstract class cannot be instantiated directly and that all concrete implementations satisfy the interface contract.\n\n## 2. Dependency Injection and Wiring\n\nComponents should receive their dependencies through constructor injection rather than creating them internally. This enables substitution in tests and decouples modules. Use a lightweight DI container or manual wiring in a composition root.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, payment: PaymentProcessor, notifier: EmailNotifier):\n        self._payment = payment\n        self._notifier = notifier\n```\n\n**Edge Case:** Circular dependencies (A depends on B, B depends on A) must be detected at startup. Use topological sorting of the dependency graph and fail fast with a clear error message.\n\n**Test:** Inject mock `PaymentProcessor` and `EmailNotifier`, call a method on `OrderService`, and assert the mocks received the expected calls.\n\n## 3. State Management and Immutability\n\nPrefer immutable data structures for component state. When mutation is unavoidable, encapsulate it behind explicit `update` methods that validate preconditions. Use value objects (dataclasses, tuples) for parameters and return types.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass Cart:\n    items: tuple[CartItem, ...]\n\n    def add(self, item: CartItem) -> \"Cart\":\n        return Cart(self.items + (item,))\n```\n\n**Edge Case:** Adding an item that exceeds a maximum quantity. The `add` method must return an error or raise a domain exception rather than silently corrupting state.\n\n**Test:** Create a `Cart`, call `add` five times, verify the resulting cart has exactly five items and the original cart is unchanged (immutability check).\n\n## 4. Error Handling and Exception Hierarchies\n\nDefine a base exception class for your domain (e.g., `DomainError`) with specific subclasses (`InsufficientFundsError`, `ValidationFailedError`). Catch specific exceptions in service layers; let unexpected exceptions propagate. Never swallow exceptions silently.\n\n**Example:**\n```python\nclass DomainError(Exception): ...\nclass InsufficientFundsError(DomainError):\n    def __init__(self, account_id: str, required: Decimal, available: Decimal):\n        super().__init__(f\"Account {account_id}: need {required}, have {available}\")\n```\n\n**Edge Case:** A downstream service returns a 500 with no body. The component must map this to a `TransientServiceError` (retryable) rather than a generic `Exception`.\n\n**Test:** Unit test that `InsufficientFundsError` carries the correct account_id, required, and available attributes. Integration test that a 500 response maps to the correct exception type.\n\n## 5. Configuration Management\n\nExternalize all tunable parameters (timeouts, URLs, feature flags) into a typed configuration object loaded from environment variables, YAML, or a config service. Validate at startup; fail fast on missing or malformed values.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass AppConfig:\n    db_url: str\n    timeout_ms: int\n    max_retries: int\n\n    @classmethod\n    def from_env(cls) -> \"AppConfig\":\n        return cls(\n            db_url=os.environ[\"DB_URL\"],\n            timeout_ms=int(os.environ.get(\"TIMEOUT_MS\", \"3000\")),\n            max_retries=int(os.environ.get(\"MAX_RETRIES\", \"3\")),\n        )\n```\n\n**Edge Case:** `TIMEOUT_MS` is set to a non-numeric string. `from_env` must raise a `ConfigurationError` with a descriptive message, not a raw `ValueError`.\n\n**Test:** Set environment variables in a test fixture, call `from_env`, assert all fields match. Test that a missing `DB_URL` raises `ConfigurationError`.\n\n## 6. Logging and Observability\n\nEvery component must emit structured logs (JSON) at appropriate levels. Include a correlation/trace ID in every log line. Avoid logging sensitive data (tokens, PII). Use log levels: DEBUG for diagnostics, INFO for lifecycle events, WARNING for recoverable issues, ERROR for failures requiring attention.\n\n**Example:**\n```python\nlogger = structlog.get_logger(\"order.service\")\n\ndef place_order(self, order: Order) -> Receipt:\n    logger.info(\"order.placing\", order_id=order.id, trace_id=get_trace_id())\n    try:\n        receipt = self._payment.process(order)\n        logger.info(\"order.placed\", order_id=order.id, receipt_id=receipt.id)\n        return receipt\n    except TransientServiceError:\n        logger.warning(\"order.payment_transient_fail\", order_id=order.id)\n        raise\n```\n\n**Edge Case:** A log message inadvertently includes a full credit card number. Use a redaction filter in the logging pipeline that masks patterns matching `\\b\\d{13,19}\\b`.\n\n**Test:** Capture structured log output using `caplog` (pytest) or a custom handler. Assert that `order.placing` is emitted with the correct `order_id` field and no PII.\n\n## 7. Concurrency and Thread Safety\n\nIdentify shared mutable state. Protect it with locks, use thread-safe data structures (`queue.Queue`, `concurrent.futures`), or design components to be stateless. For async code, ensure no data races across `await` points.\n\n**Example:**\n```python\nclass RateLimiter:\n    def __init__(self, max_per_second: int):\n        self._tokens = max_per_second\n        self._lock = threading.Lock()\n        self._last_refill = time.monotonic()\n\n    def acquire(self) -> bool:\n        with self._lock:\n            now = time.monotonic()\n            elapsed = now - self._last_refill\n            self._tokens = min(self._max, self._tokens + elapsed * self._max)\n            self._last_refill = now\n            if self._tokens >= 1:\n                self._tokens -= 1\n                return True\n            return False\n```\n\n**Edge Case:** Two threads call `acquire` simultaneously when exactly one token remains. Only one must succeed.\n\n**Test:** Spawn 10 threads, each calling `acquire` in a loop 1000 times. Assert the total number of successful acquisitions never exceeds the allowed rate over the test window.\n\n## 8. Caching Strategy\n\nImplement a cache layer (in-memory LRU, Redis, or CDN) for expensive computations. Define a clear invalidation policy (TTL, write-through, version-based). Cache keys must be deterministic and include all relevant inputs.\n\n**Example:**\n```python\nfrom functools import lru_cache\n\n@lru_cache(maxsize=256)\ndef get_user_permissions(user_id: int, role: str) -> frozenset[str]:\n    # expensive DB query\n    ...\n```\n\n**Edge Case:** A user's role changes. The cached value is stale. The write path must invalidate the cache entry (or bump a version counter included in the key).\n\n**Test:** Call `get_user_permissions` twice with the same arguments; assert the underlying DB function is called only once (use a mock with `call_count`).\n\n## 9. Input Validation and Sanitization\n\nValidate all external inputs at the boundary (HTTP handler, CLI parser, message consumer). Use schema validation (Pydantic, JSON Schema). Reject malformed data early with precise error messages. Sanitize inputs that will be interpolated into queries, shell commands, or HTML.\n\n**Example",
+        "prompt_sha256": "3bd33338d8957baefa96b44f5f5a3d34fb6b8c10646f3060c281ec429aa901b5",
+        "prompt_tokens_tokenized": 32626,
+        "request_id": null,
+        "response_headers_at": 512409.564297833,
+        "result": {
+          "content_chunks": 1445,
+          "e2e": 82.28883957699873,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 45,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 9.022166943992488,
+          "ttft": 11.21790060296189,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32626,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 161,
+            "total_tokens": 36722
+          },
+          "visible_content": "\n\n**Key Values:**\n\n- KEY_0 = VALUE_70321fd80514\n- KEY_1 = VALUE_eac78ece70fb\n- KEY_2 = VALUE_5eadd711d3e1\n\n---\n\n# Engineering Guide: Implementation, Examples, Edge Cases, and Tests for Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nEvery software component follows a layered architecture: interface (public API), core logic (business rules), and infrastructure (I/O, persistence). The interface defines contracts using abstract classes or protocols. For example, a `PaymentProcessor` interface exposes `process(Order) -> Receipt`. The core logic contains pure functions that transform inputs to outputs without side effects. Infrastructure handles networking, file access, and database queries.\n\n**Example:**\n```python\nclass PaymentProcessor(ABC):\n    @abstractmethod\n    def process(self, order: Order) -> Receipt: ...\n\nclass StripePaymentProcessor(PaymentProcessor):\n    def process(self, order: Order) -> Receipt:\n        # infrastructure call to Stripe API\n        ...\n```\n\n**Edge Case:** A component with no infrastructure dependency (pure computation) should be designed to have zero imports from external libraries, making it trivially testable.\n\n**Test:** Verify that the abstract class cannot be instantiated directly and that all concrete implementations satisfy the interface contract.\n\n## 2. Dependency Injection and Wiring\n\nComponents should receive their dependencies through constructor injection rather than creating them internally. This enables substitution in tests and decouples modules. Use a lightweight DI container or manual wiring in a composition root.\n\n**Example:**\n```python\nclass OrderService:\n    def __init__(self, payment: PaymentProcessor, notifier: EmailNotifier):\n        self._payment = payment\n        self._notifier = notifier\n```\n\n**Edge Case:** Circular dependencies (A depends on B, B depends on A) must be detected at startup. Use topological sorting of the dependency graph and fail fast with a clear error message.\n\n**Test:** Inject mock `PaymentProcessor` and `EmailNotifier`, call a method on `OrderService`, and assert the mocks received the expected calls.\n\n## 3. State Management and Immutability\n\nPrefer immutable data structures for component state. When mutation is unavoidable, encapsulate it behind explicit `update` methods that validate preconditions. Use value objects (dataclasses, tuples) for parameters and return types.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass Cart:\n    items: tuple[CartItem, ...]\n\n    def add(self, item: CartItem) -> \"Cart\":\n        return Cart(self.items + (item,))\n```\n\n**Edge Case:** Adding an item that exceeds a maximum quantity. The `add` method must return an error or raise a domain exception rather than silently corrupting state.\n\n**Test:** Create a `Cart`, call `add` five times, verify the resulting cart has exactly five items and the original cart is unchanged (immutability check).\n\n## 4. Error Handling and Exception Hierarchies\n\nDefine a base exception class for your domain (e.g., `DomainError`) with specific subclasses (`InsufficientFundsError`, `ValidationFailedError`). Catch specific exceptions in service layers; let unexpected exceptions propagate. Never swallow exceptions silently.\n\n**Example:**\n```python\nclass DomainError(Exception): ...\nclass InsufficientFundsError(DomainError):\n    def __init__(self, account_id: str, required: Decimal, available: Decimal):\n        super().__init__(f\"Account {account_id}: need {required}, have {available}\")\n```\n\n**Edge Case:** A downstream service returns a 500 with no body. The component must map this to a `TransientServiceError` (retryable) rather than a generic `Exception`.\n\n**Test:** Unit test that `InsufficientFundsError` carries the correct account_id, required, and available attributes. Integration test that a 500 response maps to the correct exception type.\n\n## 5. Configuration Management\n\nExternalize all tunable parameters (timeouts, URLs, feature flags) into a typed configuration object loaded from environment variables, YAML, or a config service. Validate at startup; fail fast on missing or malformed values.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass AppConfig:\n    db_url: str\n    timeout_ms: int\n    max_retries: int\n\n    @classmethod\n    def from_env(cls) -> \"AppConfig\":\n        return cls(\n            db_url=os.environ[\"DB_URL\"],\n            timeout_ms=int(os.environ.get(\"TIMEOUT_MS\", \"3000\")),\n            max_retries=int(os.environ.get(\"MAX_RETRIES\", \"3\")),\n        )\n```\n\n**Edge Case:** `TIMEOUT_MS` is set to a non-numeric string. `from_env` must raise a `ConfigurationError` with a descriptive message, not a raw `ValueError`.\n\n**Test:** Set environment variables in a test fixture, call `from_env`, assert all fields match. Test that a missing `DB_URL` raises `ConfigurationError`.\n\n## 6. Logging and Observability\n\nEvery component must emit structured logs (JSON) at appropriate levels. Include a correlation/trace ID in every log line. Avoid logging sensitive data (tokens, PII). Use log levels: DEBUG for diagnostics, INFO for lifecycle events, WARNING for recoverable issues, ERROR for failures requiring attention.\n\n**Example:**\n```python\nlogger = structlog.get_logger(\"order.service\")\n\ndef place_order(self, order: Order) -> Receipt:\n    logger.info(\"order.placing\", order_id=order.id, trace_id=get_trace_id())\n    try:\n        receipt = self._payment.process(order)\n        logger.info(\"order.placed\", order_id=order.id, receipt_id=receipt.id)\n        return receipt\n    except TransientServiceError:\n        logger.warning(\"order.payment_transient_fail\", order_id=order.id)\n        raise\n```\n\n**Edge Case:** A log message inadvertently includes a full credit card number. Use a redaction filter in the logging pipeline that masks patterns matching `\\b\\d{13,19}\\b`.\n\n**Test:** Capture structured log output using `caplog` (pytest) or a custom handler. Assert that `order.placing` is emitted with the correct `order_id` field and no PII.\n\n## 7. Concurrency and Thread Safety\n\nIdentify shared mutable state. Protect it with locks, use thread-safe data structures (`queue.Queue`, `concurrent.futures`), or design components to be stateless. For async code, ensure no data races across `await` points.\n\n**Example:**\n```python\nclass RateLimiter:\n    def __init__(self, max_per_second: int):\n        self._tokens = max_per_second\n        self._lock = threading.Lock()\n        self._last_refill = time.monotonic()\n\n    def acquire(self) -> bool:\n        with self._lock:\n            now = time.monotonic()\n            elapsed = now - self._last_refill\n            self._tokens = min(self._max, self._tokens + elapsed * self._max)\n            self._last_refill = now\n            if self._tokens >= 1:\n                self._tokens -= 1\n                return True\n            return False\n```\n\n**Edge Case:** Two threads call `acquire` simultaneously when exactly one token remains. Only one must succeed.\n\n**Test:** Spawn 10 threads, each calling `acquire` in a loop 1000 times. Assert the total number of successful acquisitions never exceeds the allowed rate over the test window.\n\n## 8. Caching Strategy\n\nImplement a cache layer (in-memory LRU, Redis, or CDN) for expensive computations. Define a clear invalidation policy (TTL, write-through, version-based). Cache keys must be deterministic and include all relevant inputs.\n\n**Example:**\n```python\nfrom functools import lru_cache\n\n@lru_cache(maxsize=256)\ndef get_user_permissions(user_id: int, role: str) -> frozenset[str]:\n    # expensive DB query\n    ...\n```\n\n**Edge Case:** A user's role changes. The cached value is stale. The write path must invalidate the cache entry (or bump a version counter included in the key).\n\n**Test:** Call `get_user_permissions` twice with the same arguments; assert the underlying DB function is called only once (use a mock with `call_count`).\n\n## 9. Input Validation and Sanitization\n\nValidate all external inputs at the boundary (HTTP handler, CLI parser, message consumer). Use schema validation (Pydantic, JSON Schema). Reject malformed data early with precise error messages. Sanitize inputs that will be interpolated into queries, shell commands, or HTML.\n\n**Example",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 512400.537083675,
+        "started_at": "2026-11-02T01:55:17.771971+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 512486.791490089,
+        "expected_values": [
+          "VALUE_6e1e028e4ede",
+          "VALUE_b5cc51c5d3d3",
+          "VALUE_cf69e41b1d91"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:56:44.026391+00:00",
+        "first_output": 512484.860322006,
+        "last_output": 512486.791390049,
+        "partial_visible": "\n\nKEY_0 = VALUE_6e1e028e4ede\nKEY_1 = VALUE_b5cc51c5d3d3\nKEY_2 = VALUE_cf69e41b1d91",
+        "prompt_sha256": "81b209e437111ed80a8ca67f59143655a76c4f8485d2d748e4733ba7032a9ace",
+        "prompt_tokens_tokenized": 8191,
+        "request_id": null,
+        "response_headers_at": 512484.860270799,
+        "result": {
+          "content_chunks": 14,
+          "e2e": 3.9534533909754828,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 149,
+          "output_token_source": "usage",
+          "reasoning_chunks": 27,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 2.0223048749612644,
+          "ttft": 3.3250852759811096,
+          "usage": {
+            "completion_tokens": 149,
+            "prompt_tokens": 8191,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 97,
+            "total_tokens": 8340
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_6e1e028e4ede\nKEY_1 = VALUE_b5cc51c5d3d3\nKEY_2 = VALUE_cf69e41b1d91",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 512482.834135556,
+        "started_at": "2026-11-02T01:56:40.069024+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 512561.743462979,
+        "expected_values": [
+          "VALUE_5093fd8fc906",
+          "VALUE_468381bd2dc7",
+          "VALUE_af967343708f"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:57:58.978364+00:00",
+        "first_output": 512496.211252111,
+        "last_output": 512561.743250188,
+        "partial_visible": "\n\n**KEY_0 = VALUE_5093fd8fc906**\n**KEY_1 = VALUE_468381bd2dc7**\n**KEY_2 = VALUE_af967343708f**\n\n---\n\n# Engineering Guide: Design, Implementation, and Testing of Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nA software component is a self-contained, deployable unit that encapsulates functionality behind a well-defined interface. In this guide, a \"component\" refers to any modular piece of software\u2014whether a library function, a microservice, a UI widget, or a data transformation pipeline\u2014that can be developed, tested, and deployed independently.\n\n**Implementation:** Adopt a layered architecture where each component exposes a public API (functions, methods, endpoints) and hides internal state. Use dependency injection to decouple components from concrete implementations.\n\n**Example:**\n```python\nclass DataProcessor:\n    def __init__(self, storage: StorageInterface):\n        self._storage = storage\n\n    def process(self, raw: bytes) -> bytes:\n        validated = self._validate(raw)\n        transformed = self._transform(validated)\n        return self._storage.write(transformed)\n```\n\n**Edge Cases:**\n- A component receives `None` where a collection is expected.\n- Circular dependencies between two components at initialization time.\n- A component is instantiated in a context where its dependency is not yet available (lazy initialization required).\n\n**Tests:**\n```python\ndef test_processor_rejects_none():\n    proc = DataProcessor(storage=MockStorage())\n    with pytest.raises(TypeError):\n        proc.process(None)\n\ndef test_no_circular_dependency():\n    # Assert that importing module A does not trigger import of module B\n    import importlib, sys\n    sys.modules.pop('module_b', None)\n    importlib.import_module('module_a')\n    assert 'module_b' not in sys.modules\n```\n\n## 2. Interface Design and Contracts\n\nEvery component must define a clear contract: what it accepts, what it returns, and what side effects it produces. Contracts should be expressed through type annotations, docstrings, and formal specifications (e.g., Design by Contract).\n\n**Implementation:** Use abstract base classes or protocol definitions to enforce interface conformance. Validate inputs at the boundary and return typed results.\n\n**Example:**\n```python\nfrom abc import ABC, abstractmethod\n\nclass Serializer(ABC):\n    @abstractmethod\n    def serialize(self, obj: Any) -> str: ...\n\n    @abstractmethod\n    def deserialize(self, data: str) -> Any: ...\n```\n\n**Edge Cases:**\n- A subclass overrides a method with a narrower return type than the base class allows.\n- The contract specifies \"raises `ValueError` for negative inputs\" but the implementation silently clamps to zero.\n- Concurrent calls violate the contract's assumption of single-threaded access.\n\n**Tests:**\n```python\ndef test_contract_violation_raises():\n    class BadSerializer(Serializer):\n        def serialize(self, obj): return str(obj)\n        def deserialize(self, data):\n            if int(data) < 0:\n                return 0  # Contract violation: should raise ValueError\n            return int(data)\n\n    s = BadSerializer()\n    with pytest.raises(ValueError):\n        s.deserialize(\"-5\")\n```\n\n## 3. State Management and Lifecycle\n\nComponents often manage internal state (caches, connections, counters). The lifecycle\u2014initialization, active use, and teardown\u2014must be explicitly modeled to prevent resource leaks and undefined behavior.\n\n**Implementation:** Use context managers (Python's `__enter__`/`__exit__`), constructor/destructor patterns, or explicit `open()`/`close()` methods. Track state with a state machine.\n\n**Example:**\n```python\nclass ConnectionPool:\n    def __init__(self, size: int):\n        self._size = size\n        self._pool: list = []\n        self._closed = False\n\n    def __enter__(self):\n        self._initialize()\n        return self\n\n    def __exit__(self, *exc):\n        self._shutdown()\n\n    def acquire(self) -> Connection:\n        if self._closed:\n            raise RuntimeError(\"Pool is closed\")\n        return self._pool.pop()\n\n    def release(self, conn: Connection) -> None:\n        if self._closed:\n            raise RuntimeError(\"Pool is closed\")\n        self._pool.append(conn)\n```\n\n**Edge Cases:**\n- `release()` is called after `close()`.\n- `acquire()` is called when the pool is empty (should block or raise).\n- An exception occurs during `__enter__`, so `__exit__` is never called.\n\n**Tests:**\n```python\ndef test_acquire_after_close_raises():\n    pool = ConnectionPool(size=2)\n    pool._initialize()\n    pool._shutdown()\n    with pytest.raises(RuntimeError, match=\"Pool is closed\"):\n        pool.acquire()\n\ndef test_context_manager_cleanup_on_error():\n    with pytest.raises(Exception):\n        with ConnectionPool(size=1) as pool:\n            raise Exception(\"simulated failure\")\n    assert pool._closed is True\n```\n\n## 4. Input Validation and Sanitization\n\nAll external inputs\u2014user data, file contents, network payloads\u2014must be validated before processing. Validation prevents injection attacks, data corruption, and undefined behavior downstream.\n\n**Implementation:** Create a dedicated validation layer. Use schema-based validation (e.g., Pydantic, JSON Schema) or explicit check functions. Reject early with descriptive error messages.\n\n**Example:**\n```python\ndef validate_email(raw: str) -> str:\n    if not isinstance(raw, str):\n        raise TypeError(\"Email must be a string\")\n    if len(raw) > 254:\n        raise ValueError(\"Email exceeds 254 characters\")\n    if raw.count('@') != 1:\n        raise ValueError(\"Email must contain exactly one '@'\")\n    local, domain = raw.rsplit('@', 1)\n    if not local or not domain:\n        raise ValueError(\"Email local and domain parts must be non-empty\")\n    if '.' not in domain:\n        raise ValueError(\"Domain must contain a dot\")\n    return raw.lower().strip()\n```\n\n**Edge Cases:**\n- Empty string, whitespace-only string, or a string with Unicode look-alike characters (Cyrillic \"\u0430\" vs Latin \"a\").\n- Email of exactly 254 characters (boundary).\n- Input is a bytes object instead of a string.\n\n**Tests:**\n```python\n@pytest.mark.parametrize(\"bad\", [\"\", \"   \", \"no-at-sign\", \"two@@signs.com\", \"a@b\"])\ndef test_validate_email_rejects(bad):\n    with pytest.raises((TypeError, ValueError)):\n        validate_email(bad)\n\ndef test_validate_email_boundary_254():\n    local = \"a\" * 247\n    email = f\"{local}@example.com\"\n    assert len(email) == 254\n    assert validate_email(email) == email\n\ndef test_validate_email_bytes_input():\n    with pytest.raises(TypeError):\n        validate_email(b\"user@example.com\")\n```\n\n## 5. Error Handling and Exception Propagation\n\nComponents must define a clear error taxonomy: which exceptions are expected (and recoverable), which are bugs (and should propagate), and which are fatal (and should trigger shutdown).\n\n**Implementation:** Define a base exception class per component. Catch specific exceptions, not bare `Exception`. Log context (inputs, state) before re-raising. Never swallow exceptions silently.\n\n**Example:**\n```python\nclass ComponentError(Exception):\n    \"\"\"Base exception for this component.\"\"\"\n\nclass InputValidationError(ComponentError):\n    pass\n\nclass TransientStorageError(ComponentError):\n    def __init__(self, msg: str, retry_after: float):\n        super().__init__(msg)\n        self.retry_after = retry_after\n\nclass InternalInvariantError(ComponentError):\n    \"\"\"Indicates a bug; should never be caught by callers.\"\"\"\n```\n\n**Edge Cases:**\n- An exception is raised inside a `finally` block, masking the original exception.\n- A transient error is retried indefinitely because the backoff is not capped.\n- An `InternalInvariantError` is caught by a broad `except ComponentError` handler and treated as recoverable.\n\n**Tests:**\n```python\ndef test_invariant_error_not_swallowed():\n    with pytest.raises(InternalInvariantError):\n        try:\n            raise InternalInvariantError(\"state corrupted\")\n        except ComponentError:\n            pass  # This would be a bug; the test should fail\n\ndef test_transient_error_includes_retry_after():\n    err = TransientStorageError(\"disk full\", retry_after=2.5)\n    assert err.retry_after == 2.5\n```\n\n## 6. Configuration Ma",
+        "prompt_sha256": "24d4b4932c0ad725fdfc65cf024d449b6bc0f78dc8cdd28d758de08bc11ef269",
+        "prompt_tokens_tokenized": 32625,
+        "request_id": null,
+        "response_headers_at": 512496.211193763,
+        "result": {
+          "content_chunks": 1274,
+          "e2e": 74.69913793698652,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 54,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 9.16702934895875,
+          "ttft": 11.843998515978456,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32625,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 189,
+            "total_tokens": 36721
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_5093fd8fc906**\n**KEY_1 = VALUE_468381bd2dc7**\n**KEY_2 = VALUE_af967343708f**\n\n---\n\n# Engineering Guide: Design, Implementation, and Testing of Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nA software component is a self-contained, deployable unit that encapsulates functionality behind a well-defined interface. In this guide, a \"component\" refers to any modular piece of software\u2014whether a library function, a microservice, a UI widget, or a data transformation pipeline\u2014that can be developed, tested, and deployed independently.\n\n**Implementation:** Adopt a layered architecture where each component exposes a public API (functions, methods, endpoints) and hides internal state. Use dependency injection to decouple components from concrete implementations.\n\n**Example:**\n```python\nclass DataProcessor:\n    def __init__(self, storage: StorageInterface):\n        self._storage = storage\n\n    def process(self, raw: bytes) -> bytes:\n        validated = self._validate(raw)\n        transformed = self._transform(validated)\n        return self._storage.write(transformed)\n```\n\n**Edge Cases:**\n- A component receives `None` where a collection is expected.\n- Circular dependencies between two components at initialization time.\n- A component is instantiated in a context where its dependency is not yet available (lazy initialization required).\n\n**Tests:**\n```python\ndef test_processor_rejects_none():\n    proc = DataProcessor(storage=MockStorage())\n    with pytest.raises(TypeError):\n        proc.process(None)\n\ndef test_no_circular_dependency():\n    # Assert that importing module A does not trigger import of module B\n    import importlib, sys\n    sys.modules.pop('module_b', None)\n    importlib.import_module('module_a')\n    assert 'module_b' not in sys.modules\n```\n\n## 2. Interface Design and Contracts\n\nEvery component must define a clear contract: what it accepts, what it returns, and what side effects it produces. Contracts should be expressed through type annotations, docstrings, and formal specifications (e.g., Design by Contract).\n\n**Implementation:** Use abstract base classes or protocol definitions to enforce interface conformance. Validate inputs at the boundary and return typed results.\n\n**Example:**\n```python\nfrom abc import ABC, abstractmethod\n\nclass Serializer(ABC):\n    @abstractmethod\n    def serialize(self, obj: Any) -> str: ...\n\n    @abstractmethod\n    def deserialize(self, data: str) -> Any: ...\n```\n\n**Edge Cases:**\n- A subclass overrides a method with a narrower return type than the base class allows.\n- The contract specifies \"raises `ValueError` for negative inputs\" but the implementation silently clamps to zero.\n- Concurrent calls violate the contract's assumption of single-threaded access.\n\n**Tests:**\n```python\ndef test_contract_violation_raises():\n    class BadSerializer(Serializer):\n        def serialize(self, obj): return str(obj)\n        def deserialize(self, data):\n            if int(data) < 0:\n                return 0  # Contract violation: should raise ValueError\n            return int(data)\n\n    s = BadSerializer()\n    with pytest.raises(ValueError):\n        s.deserialize(\"-5\")\n```\n\n## 3. State Management and Lifecycle\n\nComponents often manage internal state (caches, connections, counters). The lifecycle\u2014initialization, active use, and teardown\u2014must be explicitly modeled to prevent resource leaks and undefined behavior.\n\n**Implementation:** Use context managers (Python's `__enter__`/`__exit__`), constructor/destructor patterns, or explicit `open()`/`close()` methods. Track state with a state machine.\n\n**Example:**\n```python\nclass ConnectionPool:\n    def __init__(self, size: int):\n        self._size = size\n        self._pool: list = []\n        self._closed = False\n\n    def __enter__(self):\n        self._initialize()\n        return self\n\n    def __exit__(self, *exc):\n        self._shutdown()\n\n    def acquire(self) -> Connection:\n        if self._closed:\n            raise RuntimeError(\"Pool is closed\")\n        return self._pool.pop()\n\n    def release(self, conn: Connection) -> None:\n        if self._closed:\n            raise RuntimeError(\"Pool is closed\")\n        self._pool.append(conn)\n```\n\n**Edge Cases:**\n- `release()` is called after `close()`.\n- `acquire()` is called when the pool is empty (should block or raise).\n- An exception occurs during `__enter__`, so `__exit__` is never called.\n\n**Tests:**\n```python\ndef test_acquire_after_close_raises():\n    pool = ConnectionPool(size=2)\n    pool._initialize()\n    pool._shutdown()\n    with pytest.raises(RuntimeError, match=\"Pool is closed\"):\n        pool.acquire()\n\ndef test_context_manager_cleanup_on_error():\n    with pytest.raises(Exception):\n        with ConnectionPool(size=1) as pool:\n            raise Exception(\"simulated failure\")\n    assert pool._closed is True\n```\n\n## 4. Input Validation and Sanitization\n\nAll external inputs\u2014user data, file contents, network payloads\u2014must be validated before processing. Validation prevents injection attacks, data corruption, and undefined behavior downstream.\n\n**Implementation:** Create a dedicated validation layer. Use schema-based validation (e.g., Pydantic, JSON Schema) or explicit check functions. Reject early with descriptive error messages.\n\n**Example:**\n```python\ndef validate_email(raw: str) -> str:\n    if not isinstance(raw, str):\n        raise TypeError(\"Email must be a string\")\n    if len(raw) > 254:\n        raise ValueError(\"Email exceeds 254 characters\")\n    if raw.count('@') != 1:\n        raise ValueError(\"Email must contain exactly one '@'\")\n    local, domain = raw.rsplit('@', 1)\n    if not local or not domain:\n        raise ValueError(\"Email local and domain parts must be non-empty\")\n    if '.' not in domain:\n        raise ValueError(\"Domain must contain a dot\")\n    return raw.lower().strip()\n```\n\n**Edge Cases:**\n- Empty string, whitespace-only string, or a string with Unicode look-alike characters (Cyrillic \"\u0430\" vs Latin \"a\").\n- Email of exactly 254 characters (boundary).\n- Input is a bytes object instead of a string.\n\n**Tests:**\n```python\n@pytest.mark.parametrize(\"bad\", [\"\", \"   \", \"no-at-sign\", \"two@@signs.com\", \"a@b\"])\ndef test_validate_email_rejects(bad):\n    with pytest.raises((TypeError, ValueError)):\n        validate_email(bad)\n\ndef test_validate_email_boundary_254():\n    local = \"a\" * 247\n    email = f\"{local}@example.com\"\n    assert len(email) == 254\n    assert validate_email(email) == email\n\ndef test_validate_email_bytes_input():\n    with pytest.raises(TypeError):\n        validate_email(b\"user@example.com\")\n```\n\n## 5. Error Handling and Exception Propagation\n\nComponents must define a clear error taxonomy: which exceptions are expected (and recoverable), which are bugs (and should propagate), and which are fatal (and should trigger shutdown).\n\n**Implementation:** Define a base exception class per component. Catch specific exceptions, not bare `Exception`. Log context (inputs, state) before re-raising. Never swallow exceptions silently.\n\n**Example:**\n```python\nclass ComponentError(Exception):\n    \"\"\"Base exception for this component.\"\"\"\n\nclass InputValidationError(ComponentError):\n    pass\n\nclass TransientStorageError(ComponentError):\n    def __init__(self, msg: str, retry_after: float):\n        super().__init__(msg)\n        self.retry_after = retry_after\n\nclass InternalInvariantError(ComponentError):\n    \"\"\"Indicates a bug; should never be caught by callers.\"\"\"\n```\n\n**Edge Cases:**\n- An exception is raised inside a `finally` block, masking the original exception.\n- A transient error is retried indefinitely because the backoff is not capped.\n- An `InternalInvariantError` is caught by a broad `except ComponentError` handler and treated as recoverable.\n\n**Tests:**\n```python\ndef test_invariant_error_not_swallowed():\n    with pytest.raises(InternalInvariantError):\n        try:\n            raise InternalInvariantError(\"state corrupted\")\n        except ComponentError:\n            pass  # This would be a bug; the test should fail\n\ndef test_transient_error_includes_retry_after():\n    err = TransientStorageError(\"disk full\", retry_after=2.5)\n    assert err.retry_after == 2.5\n```\n\n## 6. Configuration Ma",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 512487.034676648,
+        "started_at": "2026-11-02T01:56:44.269562+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 512565.781409495,
+        "expected_values": [
+          "VALUE_d695d7647acf",
+          "VALUE_a296dad98a2b",
+          "VALUE_d254c554020f"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:58:03.016311+00:00",
+        "first_output": 512563.758612576,
+        "last_output": 512565.732999963,
+        "partial_visible": "\n\nKEY_0 = VALUE_d695d7647acf\nKEY_1 = VALUE_a296dad98a2b\nKEY_2 = VALUE_d254c554020f",
+        "prompt_sha256": "187e2538425315e1893c662f06b5eef5ab7d95c6909126b3eb6329100048f905",
+        "prompt_tokens_tokenized": 8190,
+        "request_id": null,
+        "response_headers_at": 512563.758556561,
+        "result": {
+          "content_chunks": 13,
+          "e2e": 4.0212100459611975,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 156,
+          "output_token_source": "usage",
+          "reasoning_chunks": 29,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.9984387109871022,
+          "ttft": 3.395176433958113,
+          "usage": {
+            "completion_tokens": 156,
+            "prompt_tokens": 8190,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 105,
+            "total_tokens": 8346
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_d695d7647acf\nKEY_1 = VALUE_a296dad98a2b\nKEY_2 = VALUE_d254c554020f",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 512561.7562208,
+        "started_at": "2026-11-02T01:57:58.991108+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 32768,
+    "base_url": "[LOOPBACK_ENDPOINT]",
+    "configuration": {
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "label": "Swift BF16 GPU0 262K MTP3 r4 final activation",
+      "model_revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "recipe_sha256": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_sha256": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2"
+    },
+    "contender_max_tokens": 2048,
+    "contender_tokens": 8192,
+    "context_limit": 262144,
+    "managed_container": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "mode": "serial",
+    "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "prefix_mode": "unique",
+    "reasoning_effort": "medium",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 300,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "5113b3a954265616f537cfc14cc4ee0a90fd4c0216405fc1b6043466c8550401",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T01:53:51.835581+00:00",
+  "status": "completed"
+}

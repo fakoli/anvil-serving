@@ -1,0 +1,1293 @@
+{
+  "absolute_request_cutoff": "2026-11-02T05:18:01.563171+00:00",
+  "arms": {
+    "mtp3": {
+      "hardware": "RTX PRO 6000 Max-Q 96GB TP1 GPU0",
+      "image": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+      "recipe_sha256": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "repository": "ukisai/Swift-1.5-Qwen3.8-27b",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "runtime": "sglang-0.5.19"
+    },
+    "nospec": {
+      "hardware": "RTX PRO 6000 Max-Q 96GB TP1 GPU0",
+      "image": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "model": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+      "recipe_sha256": "a76031077933b9bacc2aa310bcc8e4cb0a088fd250f0660b301a8ce1fd54cd33",
+      "repository": "ukisai/Swift-1.5-Qwen3.8-27b",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "runtime": "sglang-0.5.19"
+    }
+  },
+  "attempt_note": "NEW ordinary-summary workload, no output-canary assertion; strict matrix remains failed/incomplete and separate. Unique input prefixes provide cache isolation only. Same recipes, context/concurrency/seeds/medium/T1/p.95/completion cap/telemetry. Independent concurrent structured response correlation required before promotion.",
+  "created_at": "2026-11-01T23:18:01.563163+00:00",
+  "frozen_before_requests": true,
+  "health_policy": {
+    "deep": "GET /health_generate after idle drain with30s timeout",
+    "fast": "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0 on both arms; startup/shutdown checks retained",
+    "prior": "r3 unexecuted; observer fixed2s probe rejected long-prefill heartbeat check"
+  },
+  "matrix": [
+    {
+      "arm": "nospec",
+      "concurrency": 1,
+      "id": "nospec-summary-ctx8192-c1-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11028193
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 2,
+      "id": "nospec-summary-ctx8192-c2-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11028194
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 4,
+      "id": "nospec-summary-ctx8192-c4-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11028196
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 8,
+      "id": "nospec-summary-ctx8192-c8-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 8,
+      "seed": 11028200
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 16,
+      "id": "nospec-summary-ctx8192-c16-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 16,
+      "seed": 11028208
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 1,
+      "id": "nospec-summary-ctx32768-c1-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11052769
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 2,
+      "id": "nospec-summary-ctx32768-c2-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11052770
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 4,
+      "id": "nospec-summary-ctx32768-c4-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11052772
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 8,
+      "id": "nospec-summary-ctx32768-c8-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 8,
+      "seed": 11052776
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 16,
+      "id": "nospec-summary-ctx32768-c16-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 16,
+      "seed": 11052784
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 1,
+      "id": "nospec-summary-ctx8192-c1-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11038193
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 2,
+      "id": "nospec-summary-ctx8192-c2-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11038194
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 4,
+      "id": "nospec-summary-ctx8192-c4-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11038196
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 8,
+      "id": "nospec-summary-ctx8192-c8-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 8,
+      "seed": 11038200
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 16,
+      "id": "nospec-summary-ctx8192-c16-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 16,
+      "seed": 11038208
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 1,
+      "id": "nospec-summary-ctx32768-c1-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11062769
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 2,
+      "id": "nospec-summary-ctx32768-c2-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11062770
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 4,
+      "id": "nospec-summary-ctx32768-c4-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11062772
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 8,
+      "id": "nospec-summary-ctx32768-c8-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 8,
+      "seed": 11062776
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 16,
+      "id": "nospec-summary-ctx32768-c16-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 16,
+      "seed": 11062784
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 1,
+      "id": "nospec-summary-ctx8192-c1-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11048193
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 2,
+      "id": "nospec-summary-ctx8192-c2-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11048194
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 4,
+      "id": "nospec-summary-ctx8192-c4-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11048196
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 8,
+      "id": "nospec-summary-ctx8192-c8-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 8,
+      "seed": 11048200
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 16,
+      "id": "nospec-summary-ctx8192-c16-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 16,
+      "seed": 11048208
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 1,
+      "id": "nospec-summary-ctx32768-c1-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11072769
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 2,
+      "id": "nospec-summary-ctx32768-c2-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11072770
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 4,
+      "id": "nospec-summary-ctx32768-c4-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11072772
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 8,
+      "id": "nospec-summary-ctx32768-c8-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 8,
+      "seed": 11072776
+    },
+    {
+      "arm": "nospec",
+      "concurrency": 16,
+      "id": "nospec-summary-ctx32768-c16-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 16,
+      "seed": 11072784
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "id": "mtp3-summary-ctx8192-c1-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11028193
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "id": "mtp3-summary-ctx8192-c2-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11028194
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "id": "mtp3-summary-ctx8192-c4-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11028196
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "id": "mtp3-summary-ctx8192-c8-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 8,
+      "seed": 11028200
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "id": "mtp3-summary-ctx8192-c16-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 16,
+      "seed": 11028208
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "id": "mtp3-summary-ctx32768-c1-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11052769
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "id": "mtp3-summary-ctx32768-c2-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11052770
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "id": "mtp3-summary-ctx32768-c4-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11052772
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "id": "mtp3-summary-ctx32768-c8-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 8,
+      "seed": 11052776
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "id": "mtp3-summary-ctx32768-c16-r1-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 16,
+      "seed": 11052784
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "id": "mtp3-summary-ctx8192-c1-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11038193
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "id": "mtp3-summary-ctx8192-c2-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11038194
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "id": "mtp3-summary-ctx8192-c4-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11038196
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "id": "mtp3-summary-ctx8192-c8-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 8,
+      "seed": 11038200
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "id": "mtp3-summary-ctx8192-c16-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 16,
+      "seed": 11038208
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "id": "mtp3-summary-ctx32768-c1-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11062769
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "id": "mtp3-summary-ctx32768-c2-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11062770
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "id": "mtp3-summary-ctx32768-c4-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11062772
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "id": "mtp3-summary-ctx32768-c8-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 8,
+      "seed": 11062776
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "id": "mtp3-summary-ctx32768-c16-r2-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 16,
+      "seed": 11062784
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "id": "mtp3-summary-ctx8192-c1-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11048193
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "id": "mtp3-summary-ctx8192-c2-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11048194
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "id": "mtp3-summary-ctx8192-c4-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 4,
+      "seed": 11048196
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "id": "mtp3-summary-ctx8192-c8-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 8,
+      "seed": 11048200
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "id": "mtp3-summary-ctx8192-c16-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 8192,
+      "requests": 16,
+      "seed": 11048208
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "id": "mtp3-summary-ctx32768-c1-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11072769
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "id": "mtp3-summary-ctx32768-c2-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11072770
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "id": "mtp3-summary-ctx32768-c4-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 4,
+      "seed": 11072772
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "id": "mtp3-summary-ctx32768-c8-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 8,
+      "seed": 11072776
+    },
+    {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "id": "mtp3-summary-ctx32768-c16-r3-a1",
+      "outer_timeout_seconds": 1200,
+      "planned_context_tokens": 32768,
+      "requests": 16,
+      "seed": 11072784
+    }
+  ],
+  "metrics_coverage": {
+    "families": [
+      "ttfo",
+      "visible_ttft",
+      "effective_prefill",
+      "decode",
+      "tpot",
+      "e2e",
+      "aggregate_output_throughput",
+      "actual_input_output_distributions",
+      "weights_kv_bytes_pool",
+      "context",
+      "requested_observed_concurrency",
+      "gpu_host_cgroup_memory",
+      "oom_admission",
+      "sample_p50_p95",
+      "workload_recipe_identity"
+    ],
+    "required_cells": [
+      "nospec-strict-ctx8192-c1-r1",
+      "nospec-strict-ctx8192-c2-r1",
+      "nospec-strict-ctx8192-c4-r1",
+      "nospec-strict-ctx8192-c8-r1",
+      "nospec-strict-ctx8192-c16-r1",
+      "nospec-strict-ctx32768-c1-r1",
+      "nospec-strict-ctx32768-c2-r1",
+      "nospec-strict-ctx32768-c4-r1",
+      "nospec-strict-ctx32768-c8-r1",
+      "nospec-strict-ctx32768-c16-r1",
+      "nospec-strict-ctx8192-c1-r2",
+      "nospec-strict-ctx8192-c2-r2",
+      "nospec-strict-ctx8192-c4-r2",
+      "nospec-strict-ctx8192-c8-r2",
+      "nospec-strict-ctx8192-c16-r2",
+      "nospec-strict-ctx32768-c1-r2",
+      "nospec-strict-ctx32768-c2-r2",
+      "nospec-strict-ctx32768-c4-r2",
+      "nospec-strict-ctx32768-c8-r2",
+      "nospec-strict-ctx32768-c16-r2",
+      "nospec-strict-ctx8192-c1-r3",
+      "nospec-strict-ctx8192-c2-r3",
+      "nospec-strict-ctx8192-c4-r3",
+      "nospec-strict-ctx8192-c8-r3",
+      "nospec-strict-ctx8192-c16-r3",
+      "nospec-strict-ctx32768-c1-r3",
+      "nospec-strict-ctx32768-c2-r3",
+      "nospec-strict-ctx32768-c4-r3",
+      "nospec-strict-ctx32768-c8-r3",
+      "nospec-strict-ctx32768-c16-r3",
+      "mtp3-strict-ctx8192-c1-r1",
+      "mtp3-strict-ctx8192-c2-r1",
+      "mtp3-strict-ctx8192-c4-r1",
+      "mtp3-strict-ctx8192-c8-r1",
+      "mtp3-strict-ctx8192-c16-r1",
+      "mtp3-strict-ctx32768-c1-r1",
+      "mtp3-strict-ctx32768-c2-r1",
+      "mtp3-strict-ctx32768-c4-r1",
+      "mtp3-strict-ctx32768-c8-r1",
+      "mtp3-strict-ctx32768-c16-r1",
+      "mtp3-strict-ctx8192-c1-r2",
+      "mtp3-strict-ctx8192-c2-r2",
+      "mtp3-strict-ctx8192-c4-r2",
+      "mtp3-strict-ctx8192-c8-r2",
+      "mtp3-strict-ctx8192-c16-r2",
+      "mtp3-strict-ctx32768-c1-r2",
+      "mtp3-strict-ctx32768-c2-r2",
+      "mtp3-strict-ctx32768-c4-r2",
+      "mtp3-strict-ctx32768-c8-r2",
+      "mtp3-strict-ctx32768-c16-r2",
+      "mtp3-strict-ctx8192-c1-r3",
+      "mtp3-strict-ctx8192-c2-r3",
+      "mtp3-strict-ctx8192-c4-r3",
+      "mtp3-strict-ctx8192-c8-r3",
+      "mtp3-strict-ctx8192-c16-r3",
+      "mtp3-strict-ctx32768-c1-r3",
+      "mtp3-strict-ctx32768-c2-r3",
+      "mtp3-strict-ctx32768-c4-r3",
+      "mtp3-strict-ctx32768-c8-r3",
+      "mtp3-strict-ctx32768-c16-r3"
+    ]
+  },
+  "models": {
+    "mtp3": {
+      "activation_arm": {
+        "activation": {
+          "container": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+          "monitoring_receipt_path": "[REDACTED_PATH]",
+          "observer_base_url": "[LOOPBACK_ENDPOINT]",
+          "registry_path": "[REDACTED_PATH]",
+          "upstream_base_url": "[LOOPBACK_ENDPOINT]"
+        },
+        "arm_id": "mtp3",
+        "endpoint": {
+          "model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4"
+        },
+        "identity": {
+          "hardware": [
+            "[GPU0]"
+          ],
+          "image": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+          "model": "ukisai/Swift-1.5-Qwen3.8-27b",
+          "recipe_selector": "ukisai/Swift-1.5-Qwen3.8-27b",
+          "recipe_sha256": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+          "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+          "runtime": "sglang",
+          "served_model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4"
+        },
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "container": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+      "logical_weight_bytes": 55563006776,
+      "model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+      "port": 39130,
+      "recipe": {
+        "download": {
+          "repo": "ukisai/Swift-1.5-Qwen3.8-27b",
+          "require_complete_cache": true,
+          "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+          "volume": "swift15-bf16-hfcache"
+        },
+        "expected_container": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+        "hardware": {
+          "arch": "sm_120",
+          "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+          "gpu_uuid": "[GPU0]"
+        },
+        "model": "ukisai/Swift-1.5-Qwen3.8-27b",
+        "name": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+        "serve": {
+          "context_tokens": 262144,
+          "engine": "sglang",
+          "entrypoint": [
+            "python3",
+            "-m",
+            "sglang.launch_server"
+          ],
+          "env": [
+            "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0",
+            "HF_HUB_OFFLINE=1",
+            "TRANSFORMERS_OFFLINE=1",
+            "HF_HUB_DISABLE_IMPLICIT_TOKEN=1",
+            "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+            "OMP_NUM_THREADS=4",
+            "MAX_JOBS=4",
+            "TRITON_CACHE_DIR=/cache/triton",
+            "TORCHINDUCTOR_CACHE_DIR=/cache/torchinductor"
+          ],
+          "flags": [
+            "--served-model-name swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4 --dtype bfloat16 --tp 1 --attention-backend flashinfer --kv-cache-dtype fp8_e4m3 --mamba-ssm-dtype float32 --chunked-prefill-size 2048 --max-running-requests 16 --context-length 262144 --mem-fraction-static 0.90 --reasoning-parser qwen3 --tool-call-parser qwen3_coder --host 0.0.0.0 --port 39130 --enable-metrics --speculative-algorithm EAGLE --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4"
+          ],
+          "host_memory_reserve_mib": 24576,
+          "image": "lmsysorg/sglang@sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+          "ipc": "host",
+          "memory_limit_mib": 53248,
+          "memory_swap_limit_mib": 53248,
+          "model_flag": "--model-path",
+          "model_path": "/root/.cache/huggingface/hub/models--ukisai--Swift-1.5-Qwen3.8-27b/snapshots/b4c84d42903a8646b25857eb2827288d92ed85a4",
+          "named_volumes": [
+            "swift15-sglang-jit:/cache"
+          ],
+          "port": 39130,
+          "served_model_name": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+          "startup_timeout_seconds": 1800,
+          "ulimits": [
+            "memlock=-1",
+            "stack=67108864"
+          ]
+        },
+        "source": "User-authorized Swift qualification and conditional promotion, GPU0 only. Publisher BF16 TP1 recipe adapted from locally accepted Qwen27 SGLang profile; no GLM restoration or GPU1 allocation.",
+        "status": "experimental"
+      },
+      "registry": "[REDACTED_PATH]",
+      "repository": "ukisai/Swift-1.5-Qwen3.8-27b",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4"
+    },
+    "nospec": {
+      "activation_arm": {
+        "activation": {
+          "container": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+          "monitoring_receipt_path": "[REDACTED_PATH]",
+          "observer_base_url": "[LOOPBACK_ENDPOINT]",
+          "registry_path": "[REDACTED_PATH]",
+          "upstream_base_url": "[LOOPBACK_ENDPOINT]"
+        },
+        "arm_id": "nospec",
+        "endpoint": {
+          "model": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4"
+        },
+        "identity": {
+          "hardware": [
+            "[GPU0]"
+          ],
+          "image": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+          "model": "ukisai/Swift-1.5-Qwen3.8-27b",
+          "recipe_selector": "ukisai/Swift-1.5-Qwen3.8-27b",
+          "recipe_sha256": "a76031077933b9bacc2aa310bcc8e4cb0a088fd250f0660b301a8ce1fd54cd33",
+          "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+          "runtime": "sglang",
+          "served_model": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4"
+        },
+        "worker": {
+          "id": "Primary Node"
+        }
+      },
+      "container": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+      "logical_weight_bytes": 55563006776,
+      "model": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+      "port": 39130,
+      "recipe": {
+        "download": {
+          "repo": "ukisai/Swift-1.5-Qwen3.8-27b",
+          "require_complete_cache": true,
+          "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+          "volume": "swift15-bf16-hfcache"
+        },
+        "expected_container": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+        "hardware": {
+          "arch": "sm_120",
+          "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+          "gpu_uuid": "[GPU0]"
+        },
+        "model": "ukisai/Swift-1.5-Qwen3.8-27b",
+        "name": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+        "serve": {
+          "context_tokens": 262144,
+          "engine": "sglang",
+          "entrypoint": [
+            "python3",
+            "-m",
+            "sglang.launch_server"
+          ],
+          "env": [
+            "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0",
+            "HF_HUB_OFFLINE=1",
+            "TRANSFORMERS_OFFLINE=1",
+            "HF_HUB_DISABLE_IMPLICIT_TOKEN=1",
+            "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+            "OMP_NUM_THREADS=4",
+            "MAX_JOBS=4",
+            "TRITON_CACHE_DIR=/cache/triton",
+            "TORCHINDUCTOR_CACHE_DIR=/cache/torchinductor"
+          ],
+          "flags": [
+            "--served-model-name swift15-bf16-sglang-gpu0-262k-c16-nospec-r4 --dtype bfloat16 --tp 1 --attention-backend flashinfer --kv-cache-dtype fp8_e4m3 --mamba-ssm-dtype float32 --chunked-prefill-size 2048 --max-running-requests 16 --context-length 262144 --mem-fraction-static 0.90 --reasoning-parser qwen3 --tool-call-parser qwen3_coder --host 0.0.0.0 --port 39130 --enable-metrics"
+          ],
+          "host_memory_reserve_mib": 24576,
+          "image": "lmsysorg/sglang@sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+          "ipc": "host",
+          "memory_limit_mib": 53248,
+          "memory_swap_limit_mib": 53248,
+          "model_flag": "--model-path",
+          "model_path": "/root/.cache/huggingface/hub/models--ukisai--Swift-1.5-Qwen3.8-27b/snapshots/b4c84d42903a8646b25857eb2827288d92ed85a4",
+          "named_volumes": [
+            "swift15-sglang-jit:/cache"
+          ],
+          "port": 39130,
+          "served_model_name": "swift15-bf16-sglang-gpu0-262k-c16-nospec-r4",
+          "startup_timeout_seconds": 1800,
+          "ulimits": [
+            "memlock=-1",
+            "stack=67108864"
+          ]
+        },
+        "source": "User-authorized Swift qualification and conditional promotion, GPU0 only. Publisher BF16 TP1 recipe adapted from locally accepted Qwen27 SGLang profile; no GLM restoration or GPU1 allocation.",
+        "status": "experimental"
+      },
+      "registry": "[REDACTED_PATH]",
+      "repository": "ukisai/Swift-1.5-Qwen3.8-27b",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4"
+    }
+  },
+  "plan_status": "frozen",
+  "profile": "serving-comparison/v1",
+  "required_cells": {
+    "mtp3-summary-ctx32768-c1-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c1-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c1-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c16-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "context_tokens": 32768,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c16-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "context_tokens": 32768,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c16-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "context_tokens": 32768,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c2-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c2-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c2-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c4-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c4-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c4-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c8-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "context_tokens": 32768,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c8-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "context_tokens": 32768,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx32768-c8-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "context_tokens": 32768,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c1-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c1-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c1-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 1,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c16-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "context_tokens": 8192,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c16-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "context_tokens": 8192,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c16-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 16,
+      "context_tokens": 8192,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c2-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c2-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c2-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 2,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c4-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c4-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c4-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 4,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c8-r1-a1": {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "context_tokens": 8192,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c8-r2-a1": {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "context_tokens": 8192,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "mtp3-summary-ctx8192-c8-r3-a1": {
+      "arm": "mtp3",
+      "concurrency": 8,
+      "context_tokens": 8192,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c1-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 1,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c1-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 1,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c1-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 1,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c16-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 16,
+      "context_tokens": 32768,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c16-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 16,
+      "context_tokens": 32768,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c16-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 16,
+      "context_tokens": 32768,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c2-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 2,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c2-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 2,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c2-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 2,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c4-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c4-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c4-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 4,
+      "context_tokens": 32768,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c8-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 8,
+      "context_tokens": 32768,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c8-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 8,
+      "context_tokens": 32768,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx32768-c8-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 8,
+      "context_tokens": 32768,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c1-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 1,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c1-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 1,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c1-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 1,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c16-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 16,
+      "context_tokens": 8192,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c16-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 16,
+      "context_tokens": 8192,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c16-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 16,
+      "context_tokens": 8192,
+      "requests": 16,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c2-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 2,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c2-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 2,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c2-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 2,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c4-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 4,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c4-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 4,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c4-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 4,
+      "context_tokens": 8192,
+      "requests": 4,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c8-r1-a1": {
+      "arm": "nospec",
+      "concurrency": 8,
+      "context_tokens": 8192,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c8-r2-a1": {
+      "arm": "nospec",
+      "concurrency": 8,
+      "context_tokens": 8192,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    },
+    "nospec-summary-ctx8192-c8-r3-a1": {
+      "arm": "nospec",
+      "concurrency": 8,
+      "context_tokens": 8192,
+      "requests": 8,
+      "workload": "synthetic-summary"
+    }
+  },
+  "schema": "serving-comparison/v1",
+  "selection": {
+    "minimum_mtp_gain_fraction": 0.1,
+    "minimum_typical_decode_tokens_s": 15,
+    "rule": "highest useful throughput that preserves responsiveness; publish measured tradeoffs if soft objectives missed",
+    "soft_p95_ttfo_s": {
+      "32768": 30,
+      "8192": 5
+    }
+  },
+  "source_binding": {
+    "python": "[REDACTED_PATH]",
+    "python_source_sha256": "c0019d58c72b7104c132b08b9d0a5edb93172f7532a13078492bcc78099e3e29",
+    "revision": "269bc88e3cb84bd82d14d170058d1c1e493c71cc"
+  },
+  "source_file_hashes": [
+    {
+      "bytes": 282,
+      "sha256": "6cf89e6307a5a71fea6412efea030d30cba31dbf1d988858f9fa48220dec9022"
+    }
+  ],
+  "source_revision": "269bc88e3cb84bd82d14d170058d1c1e493c71cc",
+  "strict_predecessor": "plans/run-plan-r4-strict-attempt2.json"
+}

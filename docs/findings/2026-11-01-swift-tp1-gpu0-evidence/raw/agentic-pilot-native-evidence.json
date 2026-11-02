@@ -1,0 +1,118 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-11-02T00:56:33.826328Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 262144,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "3cf276832d91c1ba43a3392e774384f3642386d555bb764ee09942a25bc039bf"
+    },
+    "hardware": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 634958725120,
+      "harness_assets": [],
+      "id": "Primary Node",
+      "owned_output_writable": true,
+      "platform": "linux"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "alias": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 262144,
+      "id": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "Primary Node"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "swift-gpu0-20261101",
+    "profile": "pilot-v2",
+    "run_id": "swift-gpu0-20261101-agentic-pilot-mtp3-r4",
+    "spec_sha256": "928695d91933dd0f32ed63ce1350c9a3ee6dc953dc8f0ffdfa6d900894c56a81",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 932,
+          "sha256": "e2f82f4e3945f439a2edd453bb88b88488a60e7b5dcd75e741e0dd42279a74bc"
+        }
+      ],
+      "name": "admission",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 596,
+          "sha256": "986c11292939f6542c8dd5ff31e73296dd46955ecf9a38927772774123f7be3c"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 3194,
+          "sha256": "ee991f7d4c7ef9b1f3a224d1b76bfd972019e3542242df570f00816bd636c29b"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 2,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 13248,
+          "sha256": "7f196f47008b1e8147667670e87f2959ac89e8bf3c91c58736e05743cc2e2a90"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 3,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 6,
+    "pass_rate": 1.0,
+    "passed": 6,
+    "required_pass_rate": 0.8
+  }
+}

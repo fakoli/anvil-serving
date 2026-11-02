@@ -1,0 +1,19 @@
+{
+  "command": "Managed recipe status captured during qualification; deployment invocation withheld",
+  "context": {
+    "command": "models-recipes-status",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "gpu_uuid": "[GPU0]",
+    "overlay": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "target": null,
+    "transport": "local"
+  },
+  "data": "{\n  \"container\": \"[QUALIFICATION_CONTAINER]\",\n  \"container_id\": \"[QUALIFICATION_FINAL_CONTAINER]\",\n  \"containment_error\": null,\n  \"health\": null,\n  \"host_memory\": {\n    \"current_bytes\": 46623604736,\n    \"effective_limit_bytes\": 55834574848,\n    \"effective_swap_limit_bytes\": 0,\n    \"events\": {\n      \"high\": 0,\n      \"low\": 0,\n      \"max\": 0,\n      \"oom\": 0,\n      \"oom_group_kill\": 0,\n      \"oom_kill\": 0\n    },\n    \"exit_code\": 0,\n    \"limit_bytes\": 55834574848,\n    \"oom_killed\": false,\n    \"peak_bytes\": 46776918016,\n    \"ram_plus_swap_limit_bytes\": 55834574849\n  },\n  \"image\": \"lmsysorg/sglang@sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262\",\n  \"image_id\": \"sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262\",\n  \"model\": \"ukisai/Swift-1.5-Qwen3.8-27b\",\n  \"revision\": \"b4c84d42903a8646b25857eb2827288d92ed85a4\",\n  \"running\": true,\n  \"schema\": \"recipe-container-status/v1\",\n  \"state\": \"running\"\n}\n",
+  "error": null,
+  "ok": true,
+  "warnings": [],
+  "snapshot_scope": "Historical qualification snapshot only; not current deployment custody."
+}
