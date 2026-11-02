@@ -1,5 +1,10 @@
 # Benchmark results
 
+**2026-11-02 FP8+DFlash2 challenger:** the strict 128-word/canary gate passed
+0 of 6, so this bounded challenger is `no-promotion`; the pretrial service was
+restored with tighter RAM containment. Native capacity/context/agentic/image/stability artifacts do
+not override the frozen strict gate. [Finding](findings/2026-11-02-swift-fp8-dflash2.md).
+
 **2026-11-01 Swift TP1 qualification accepted:** the single-GPU TP1 Swift lane is
 a tested configuration with retained capacity, quality and protocol evidence.
 Current deployment and client assignment are outside this public record. Its selected C2 32K decode p50 is 13.43 tok/s, below the 15 tok/s soft

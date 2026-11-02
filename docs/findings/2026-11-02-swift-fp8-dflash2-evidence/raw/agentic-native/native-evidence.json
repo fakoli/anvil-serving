@@ -1,0 +1,110 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-11-02T04:16:41.590986Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 262144,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+    },
+    "hardware": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 501933330432,
+      "harness_assets": [],
+      "id": "primary-node",
+      "owned_output_writable": true,
+      "platform": "linux"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "alias": "candidate-dflash2"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 262144,
+      "id": "candidate-dflash2"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "primary-node"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "swift-fp8-dflash2-20261102",
+    "profile": "scout",
+    "run_id": "swift-fp8-dflash2-20261102-agentic",
+    "spec_sha256": "afc10c3b71dfe4a4d7cf684f5affd11d42d60a30eeb08b76377ac0075dc0277d",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 593,
+          "path": "evidence/0-assets.json",
+          "sha256": "9a51f7e7d2ef9756d67030ecaed7a60775954864845091d834162dad7473a49e"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 2146,
+          "path": "evidence/0-preflight.json",
+          "sha256": "5f1b98fe50e5a43c7699cbd981adb27de744508078720672a5fd22b49d77c00c"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 35644,
+          "path": "evidence/0-agentic.json",
+          "sha256": "38c56afd0f2bbf7e69072d60fd7ef558e34f59b10e96be96ae5f49c5e1dff61e"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 18,
+    "pass_rate": 1.0,
+    "passed": 18,
+    "required_pass_rate": 0.75
+  }
+}

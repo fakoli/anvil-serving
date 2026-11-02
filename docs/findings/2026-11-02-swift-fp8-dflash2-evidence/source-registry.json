@@ -1,0 +1,45 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "id": "target-metadata",
+      "url": "https://huggingface.co/api/models/realderpz/Swift-1.5-Qwen3.8-27B-FP8/revision/64e5388d1d4ebc1941cc17d41e96573a0f9a5dab?blobs=true",
+      "published_or_observed": "2026-11-02",
+      "observed_at": "2026-11-02",
+      "age_class": "current-observation",
+      "evidence_type": "publisher exact-revision metadata",
+      "hardware_runtime_relevance": "Exacttarget/draftconfigpins; notlocalperformanceproof",
+      "decision_impact": "BindsselectedFP8/DFlash2artifacts"
+    },
+    {
+      "id": "draft-metadata",
+      "url": "https://huggingface.co/api/models/incoai/Qwen3.8-27B-DFlash2/revision/015e795645c74b1a0eeef3b570031fb62e769bc5?blobs=true",
+      "published_or_observed": "2026-11-02",
+      "observed_at": "2026-11-02",
+      "age_class": "current-observation",
+      "evidence_type": "publisher exact-revision metadata",
+      "hardware_runtime_relevance": "Exacttarget/draftconfigpins; notlocalperformanceproof",
+      "decision_impact": "BindsselectedFP8/DFlash2artifacts"
+    },
+    {
+      "id": "target-config",
+      "url": "https://huggingface.co/realderpz/Swift-1.5-Qwen3.8-27B-FP8/raw/64e5388d1d4ebc1941cc17d41e96573a0f9a5dab/config.json",
+      "published_or_observed": "2026-11-02",
+      "observed_at": "2026-11-02",
+      "age_class": "current-observation",
+      "evidence_type": "publisher exact-revision metadata",
+      "hardware_runtime_relevance": "Exacttarget/draftconfigpins; notlocalperformanceproof",
+      "decision_impact": "BindsselectedFP8/DFlash2artifacts"
+    },
+    {
+      "id": "draft-config",
+      "url": "https://huggingface.co/incoai/Qwen3.8-27B-DFlash2/raw/015e795645c74b1a0eeef3b570031fb62e769bc5/config.json",
+      "published_or_observed": "2026-11-02",
+      "observed_at": "2026-11-02",
+      "age_class": "current-observation",
+      "evidence_type": "publisher exact-revision metadata",
+      "hardware_runtime_relevance": "Exacttarget/draftconfigpins; notlocalperformanceproof",
+      "decision_impact": "BindsselectedFP8/DFlash2artifacts"
+    }
+  ]
+}

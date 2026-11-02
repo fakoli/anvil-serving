@@ -1,5 +1,9 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-02 FP8+DFlash2 challenger:** one RTX PRO 6000 Blackwell Max-Q
+measured bounded native evidence, but strict 128-word/canary passed 0 of 6.
+`no-promotion`; pretrial service was restored with tighter RAM containment. [Finding](../../findings/2026-11-02-swift-fp8-dflash2.md).
+
 **2026-11-01 Swift TP1 qualification accepted:** one RTX PRO 6000 Blackwell Max-Q
 measured the final TP1 capacity population (10 cells, 72 requests), resource
 window, and final functional/quality evidence. C2 is the selected interactive

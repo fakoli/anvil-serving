@@ -1,0 +1,213 @@
+{
+  "manifest": {
+    "bytes": 5176847,
+    "files": [
+      {
+        "bytes": 11604,
+        "path": "swe-plan.json",
+        "sha256": "7dde4b8b6861cfe0cc5edc2165897bca9dffe7b6ee0413004259e7768af651cb"
+      },
+      {
+        "bytes": 659,
+        "path": "anvil-swe-config.yaml",
+        "sha256": "fed44d86f393219d2c37b5077114ff83b2c2175efbc2088f63d22517b03559ac"
+      },
+      {
+        "bytes": 4727,
+        "path": "predictions.jsonl",
+        "sha256": "1c6ba807d8aca7ee65a2ef5a41f8183510f709b8f3a2cab685392d11bcd74b5f"
+      },
+      {
+        "bytes": 4951,
+        "path": "mini-output/minisweagent.log",
+        "sha256": "025377b3c278620cab11793666c2b70abde822187adf877e7988f366ebdedec4"
+      },
+      {
+        "bytes": 109600,
+        "path": "mini-output/astropy__astropy-12907/astropy__astropy-12907.traj.json",
+        "sha256": "462e236fda79033ad718ca73c945ba023f33a2c848c165d05aef8b6f9ee5cdc6"
+      },
+      {
+        "bytes": 4964,
+        "path": "mini-output/preds.json",
+        "sha256": "0d917bb63f01d64127cf7d85b339da2b45d67efb8e8129158e1ccf3ddd14d291"
+      },
+      {
+        "bytes": 196,
+        "path": "mini-output/exit_statuses_1793596257.117513.yaml",
+        "sha256": "23defe5722d80980e3143e8dd73f1090ee504ea4d63227f861116297e6208715"
+      },
+      {
+        "bytes": 229523,
+        "path": "mini-output/django__django-10097/django__django-10097.traj.json",
+        "sha256": "02b2eceb58685225d7028eb5985337557713db4f4699b2ac5049e0cc83c51167"
+      },
+      {
+        "bytes": 62141,
+        "path": "mini-output/matplotlib__matplotlib-13989/matplotlib__matplotlib-13989.traj.json",
+        "sha256": "c32ff7fa1ea3c0e1f7802c75cf1a549721e1f9b94ce43009b46993c23704dc57"
+      },
+      {
+        "bytes": 88706,
+        "path": "mini-output/scikit-learn__scikit-learn-10297/scikit-learn__scikit-learn-10297.traj.json",
+        "sha256": "e8e20b1887318fff5529bb3bbe8ada22d870cfc05e3361242b06c6f87e69cea1"
+      },
+      {
+        "bytes": 80996,
+        "path": "mini-output/sympy__sympy-11618/sympy__sympy-11618.traj.json",
+        "sha256": "c482ec51eec049d18fb1592a3e7619a89e570e4fb1feb5ffd9b3f66838247c4e"
+      },
+      {
+        "bytes": 1469,
+        "path": "official-grader/containment.json",
+        "sha256": "69d74f305257955d62df2913f0b65e28ec84f4940d40b6895ed012d9e106ad79"
+      },
+      {
+        "bytes": 4438,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/astropy__astropy-12907/run_instance.log",
+        "sha256": "0955d8e901f3394ee706f33a2124623bb0bce2a00966b40b12c9f1048828b39e"
+      },
+      {
+        "bytes": 504,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/astropy__astropy-12907/patch.diff",
+        "sha256": "7f233cc776d064f8e1d7d39bf0a846434e59d14cc07ac33aab803b7b758ee755"
+      },
+      {
+        "bytes": 2123,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/astropy__astropy-12907/eval.sh",
+        "sha256": "229f462fcbdcae232228507f9491b8538c5aeaeede709c5fc822b586245d9460"
+      },
+      {
+        "bytes": 467013,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/astropy__astropy-12907/test_output.txt",
+        "sha256": "e5d9f1b29a61ee8fab673cb08061172aaab8d2ab2cf8f2d02dee8685d203d015"
+      },
+      {
+        "bytes": 2123,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/astropy__astropy-12907/report.json",
+        "sha256": "fe3f3bddc9631279d3babf7270913070d91e9207c3468bd947823aee3e7b1b86"
+      },
+      {
+        "bytes": 143481,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/django__django-10097/run_instance.log",
+        "sha256": "17d4203c981587513ac0d6b0b67a547ca4823e7e24eb299af347b95150ec3e48"
+      },
+      {
+        "bytes": 584,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/django__django-10097/patch.diff",
+        "sha256": "75f109dadcbf7573722b8727e3ec6dc88851a53b4d33618ce08e33821b98c4a3"
+      },
+      {
+        "bytes": 2166,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/django__django-10097/eval.sh",
+        "sha256": "6c1635c7dd7a9f8ad723934c5aaf8c95f8930c1902e76492bd9e3b6015a8c132"
+      },
+      {
+        "bytes": 2822012,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/django__django-10097/test_output.txt",
+        "sha256": "9b8b9112cc9d749068499c6afef072e4f3bf09ed0c7399167b7a4f104e79fc3f"
+      },
+      {
+        "bytes": 178154,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/django__django-10097/report.json",
+        "sha256": "698946a05a543dd6f8fe866d1017c138d7ea5a9c3e2be740390dde35272b2776"
+      },
+      {
+        "bytes": 32224,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/matplotlib__matplotlib-13989/run_instance.log",
+        "sha256": "26033673b7cb9053559ecd44881ed940dfdeba63a65788e2e54f6d65d8c90c29"
+      },
+      {
+        "bytes": 480,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/matplotlib__matplotlib-13989/patch.diff",
+        "sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769"
+      },
+      {
+        "bytes": 1166,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/matplotlib__matplotlib-13989/eval.sh",
+        "sha256": "50724c4127a83538b94b22313d3b0009dd49073361ffb2b7f4ddfb665ead15da"
+      },
+      {
+        "bytes": 469089,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/matplotlib__matplotlib-13989/test_output.txt",
+        "sha256": "30b4406aec4971d3efc6f8494525af2df85b85080126c2851359f3f1d747afc0"
+      },
+      {
+        "bytes": 37811,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/matplotlib__matplotlib-13989/report.json",
+        "sha256": "3c0a469268633c19f2abafda771f811d30a20a1289288a4a21849ee3a9e60843"
+      },
+      {
+        "bytes": 7344,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/scikit-learn__scikit-learn-10297/run_instance.log",
+        "sha256": "1d5ff0442bedd40997c4141b968a204ed39fb25e207f587319dd22d8942ec126"
+      },
+      {
+        "bytes": 1397,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/scikit-learn__scikit-learn-10297/patch.diff",
+        "sha256": "af89310ec571fb23472f229ae048b408bf960ec9436de6929b51b8f33277a5c4"
+      },
+      {
+        "bytes": 2908,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/scikit-learn__scikit-learn-10297/eval.sh",
+        "sha256": "fd3b9040a63ab761b0ce55a57a883a1f86cd34273e871b8740639ff45dd858ae"
+      },
+      {
+        "bytes": 287109,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/scikit-learn__scikit-learn-10297/test_output.txt",
+        "sha256": "30ed1850f6d687e1c2014695d246cc870fe5c9bb49243022d631c8221d884160"
+      },
+      {
+        "bytes": 3380,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/scikit-learn__scikit-learn-10297/report.json",
+        "sha256": "86ec11cb4757760be7d3e93ea34c7807df48a449a193ee09bd254274d5bbd827"
+      },
+      {
+        "bytes": 4251,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/sympy__sympy-11618/run_instance.log",
+        "sha256": "daaebafb15f5001738e8f8368260a6c085d427fe0d8aec66d874a37cbb171c1a"
+      },
+      {
+        "bytes": 980,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/sympy__sympy-11618/patch.diff",
+        "sha256": "837090eb3d28c42d4cd083c6f8f0053433c985fe3c2c27118cafb7127cb3c307"
+      },
+      {
+        "bytes": 1174,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/sympy__sympy-11618/eval.sh",
+        "sha256": "48d97b2961099fadccbcf8db0ec3f78d96272493c567bd5ca9e51851daaad046"
+      },
+      {
+        "bytes": 102876,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/sympy__sympy-11618/test_output.txt",
+        "sha256": "bbaf45ee216de43e6e32016bc65cd0e7f83ed35a5df6cce64758531a62440afa"
+      },
+      {
+        "bytes": 849,
+        "path": "official-grader/logs/run_evaluation/swift-fp8-dflash2-20261102-swe/openai__candidate-dflash2/sympy__sympy-11618/report.json",
+        "sha256": "7485a1551216cd300d021130fe1a02c18beff797442e30a93a62470b77265fd9"
+      },
+      {
+        "bytes": 962,
+        "path": "official-grader/openai__candidate-dflash2.swift-fp8-dflash2-20261102-swe.json",
+        "sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98"
+      },
+      {
+        "bytes": 713,
+        "path": "paired-image-ids.json",
+        "sha256": "f853e5c17a6ffaa8acb4af8bc75d28913bbdf66b5ffc0074c130c1483033e614"
+      }
+    ],
+    "missing": [],
+    "schema": "anvil-serving.swe-canonical-retention/v1",
+    "source": "work",
+    "state": "retained"
+  },
+  "manifest_reference": {
+    "bytes": 9862,
+    "path": "evidence/swe-canonical/manifest.json",
+    "sha256": "d8f41702a2fd65ba50641b0cfc4d143fd3d3593a7b08f431d059af46c5e1e9a5"
+  },
+  "reused": false,
+  "state": "retained"
+}

@@ -4,6 +4,13 @@
 
 ## Current status and review date
 
+### November 2 FP8+DFlash2 challenger
+
+The distinct FP8+DFlash2 challenger retained bounded native capacity, context,
+agentic, image and stability evidence, but its frozen strict 128-word/canary
+gate passed 0 of 6. It is `no-promotion`; the pretrial service was
+restored with tighter RAM containment. [Finding](../../findings/2026-11-02-swift-fp8-dflash2.md).
+
 ### November 1 single-GPU TP1 Swift qualification
 
 The BF16/FP8-KV Swift 1.5 Qwen3.8 27B recipe passed bounded functional,

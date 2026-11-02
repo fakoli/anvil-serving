@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-summary/v1",
+  "campaign": "2026-11-02-swift-fp8-dflash2",
+  "closed_at": "2026-11-02T05:38:26.655914+00:00",
+  "decision": "no-promotion",
+  "promotion_authorized": false,
+  "reason": "Both FP8 arms passed0of6 strict exact128word/prefix checks; frozen deterministic gate notmet.",
+  "execution": "boundedcampaignfinished; fullservingcomparisonincomplete due8KC1no-specmissingcounterbaseline and failedstrictcells",
+  "quality": {
+    "preflight": "10/10",
+    "agentic": "18/18",
+    "context": "36/36",
+    "vision": "14/14",
+    "stability": "repeat3/3 unique3/3 andlongC2passed",
+    "coding": "4/5 sameinstances/samefailedDjango as acceptedBF16; smallpilot only",
+    "strict_dflash2": "0/6",
+    "strict_nospec": "0/6"
+  },
+  "capacity": {
+    "dflash2": "42/42 requests;6/6telemetryqualifiedcells",
+    "nospec": "42/42 native;39/42 requestsin5telemetryqualifiedcells;8KC1excluded",
+    "interpretation": "DFlash2 faster acrossfiveeligiblematchedshortoutputcells. C2preferredoverC4 forinteractive latency. No fixed-outputlongdecodeclaim.",
+    "data": "raw/capacity-comparison.json"
+  },
+  "restoration": "Private pretrial state restored with tighter RAM containment; public attestation in restoration.json.",
+  "limits": [
+    "Shortoutputscouts/lowN; generatedlengthsdiffer.",
+    "No statistical coding noninferiority claim.",
+    "No promotion, clientcontractchange, reboot or fullfleetconvergencetest.",
+    "Original native hashes inpublicderivatives identify privateoriginals; publiccopies have separatelybound sanitizedhashes."
+  ]
+}

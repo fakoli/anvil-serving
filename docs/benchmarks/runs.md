@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-02 Swift FP8+DFlash2 challenger — no promotion
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Swift FP8+DFlash2 challenger; matched no-spec comparison retained separately | One RTX PRO 6000 Blackwell Max-Q; bounded native cells | Strict 128-word/canary passed 0 of 6, closing promotion under the frozen all-pass gate. Pretrial service was restored with tighter RAM containment; no broad quality or speed claim. | [Dossier](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-11-02-swift-fp8-dflash2.md) |
+
 ## 2026-11-01 Swift TP1 GPU0 qualification accepted
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
