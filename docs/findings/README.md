@@ -1,5 +1,13 @@
 # Findings index
 
+**2026-11-02 Swift FP8+DFlash2 routed follow-up:** a no-change single-profile
+check passed the routed chat family except for a Responses authorization block.
+One retrieval probe returned the needle at 108,178 actual prompt tokens in
+30.337 seconds; all six 64K/C1 rows were canary-ineligible, the 224K nominal
+request was rejected before upstream, and the remaining capacity cells were
+skipped. No capacity, speculative-speed, quality-ranking, or promotion claim.
+[Finding](2026-11-02-swift-fp8-dflash2-live-followup.md).
+
 **2026-11-02 Swift FP8+DFlash2 challenger:** bounded native capacity, context,
 agentic, image and stability evidence is retained, but the frozen strict
 128-word/canary gate passed 0 of 6. The challenger is `no-promotion`; the

@@ -90,3 +90,14 @@ and retain [original-to-public hash lineage](2026-11-02-swift-fp8-dflash2-eviden
 The full high-frequency sampler streams remain private; public results and
 telemetry summaries support the bounded claims. No new deployment, client
 contract, Grafana promotion, or Workbench promotion was applied.
+
+## Routed observational follow-up
+
+A later no-change routed follow-up passed the chat-family checks except for a
+Responses API authorization block, returned one 108,178-actual-prompt-token
+needle in 30.337 seconds, and retained failures rather than retrying them. Its
+six 64K/C1 summary requests were all ineligible under the opening-canary
+contract; the 224K nominal needle was rejected before upstream and remaining
+capacity cells were skipped. It does not alter this finding's strict 0/6 result,
+or establish capacity, speculative-decoding speed, or promotion. See the
+[separate evidence bundle](2026-11-02-swift-fp8-dflash2-live-followup.md).

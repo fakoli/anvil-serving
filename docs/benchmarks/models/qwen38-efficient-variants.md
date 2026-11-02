@@ -11,6 +11,17 @@ agentic, image and stability evidence, but its frozen strict 128-word/canary
 gate passed 0 of 6. It is `no-promotion`; the pretrial service was
 restored with tighter RAM containment. [Finding](../../findings/2026-11-02-swift-fp8-dflash2.md).
 
+### November 2 routed observational follow-up
+
+One no-change routed follow-up passed the chat family except for a Responses
+credential-scope block and returned a retrieval needle with 108,178 actual
+prompt tokens in 30.337 seconds. It did not create a capacity result: its 64K
+C1 cell was 0/6 performance-eligible under the opening-canary contract, the
+224K nominal request was rejected before upstream, and other cells were
+skipped. No matched control means no speculative-speed comparison; this does
+not change the prior strict 0/6 or no-promotion decision.
+[Finding](../../findings/2026-11-02-swift-fp8-dflash2-live-followup.md).
+
 ### November 1 single-GPU TP1 Swift qualification
 
 The BF16/FP8-KV Swift 1.5 Qwen3.8 27B recipe passed bounded functional,

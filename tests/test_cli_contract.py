@@ -86,6 +86,7 @@ def test_mutating_commands_declare_confirmation_or_retain_handler_owned_policy()
     assert handler_owned == {
         "init", "serves render", "router keys init", "router keys revoke",
         "router keys bind", "router keys backup", "router keys restore", "connect users",
+        "router maintenance-console",  # Fresh per-phase TTY acknowledgements, never --confirm.
     }
 
 
