@@ -1001,7 +1001,7 @@ anvil-serving router routes status
 the server a caller-controlled path. `apply` consumes the short-lived,
 content-bound preview. Alias-only changes retain installed backends and let
 existing requests finish on their captured route revision. Tier replacement
-holds its affected request bindings, waits for terminal accounting, verifies
+requires managed usage accounting, holds its affected request bindings, waits for terminal accounting, verifies
 the new exact identity, then reopens only the route hold. A failed replacement
 stays held for `router routes resume --transaction-id ID`; it does not restart
 the router or choose another model. `rollback --revision N` creates a new
@@ -1011,6 +1011,13 @@ preview for the retained projection and follows the same confirmation path.
 also carry `route_revision` and `effective_route_sha256`; consumers must fence
 the pair together instead of treating an unchanged boot config as unchanged
 live routing.
+
+Route status rechecks the protected file and reports `authority_available`.
+Missing, corrupt or changed authority reports `reconciliation_required`; install
+and restart commands refuse to proceed from that condition. They also refuse
+changed boot bytes against an existing route authority. Restart-only configuration
+evolution requires a separately initialized authority for the new boot config;
+initialization never overwrites an existing revision history.
 
 For the reference managed container, set the state path under its existing
 `/var/lib/anvil-router` durable volume, then use the `routes init --compose`

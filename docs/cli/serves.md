@@ -497,6 +497,12 @@ held for a fresh recovery, with no router restart or automatic restore. A
 plain live route update remains configuration/served-name scoped and reports
 artifact identity as unverified.
 
+Hot `--resume` repeats the drain for a prepared transaction. Once its revision
+has committed, recovery verifies the existing owner and readmits that same
+revision without another unload. A completed transaction is rechecked against
+fresh health, qualification, owner evidence and live route identity; it never
+recreates a running model as part of that verification.
+
 Promotion and an explicitly requested rollback also evaluate the enabled machine cache
 policy exactly once after their existing readiness gates. Controller-dispatched serve
 operations inherit the behavior because they execute the same resource-owner CLI; no

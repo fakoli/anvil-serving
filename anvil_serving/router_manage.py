@@ -276,6 +276,8 @@ def _route_authority_base_digest(*, router_url=None, env=None, _route_status=Non
         raise ValueError("router route authority status is unavailable") from exc
     if not isinstance(status, dict) or status.get("enabled") is not True:
         raise ValueError("router route authority status is malformed")
+    if status.get("authority_available") is not True:
+        raise ValueError("router route authority status is unavailable")
     bound = status.get("base_config_sha256")
     if re.fullmatch(r"[a-f0-9]{64}", str(bound)) is None:
         raise ValueError("router route authority status is malformed")

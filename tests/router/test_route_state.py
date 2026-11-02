@@ -125,6 +125,23 @@ def apply(manager, raw, **kwargs):
     return manager.apply(preview["preview_id"], confirm=True, **kwargs)
 
 
+@pytest.mark.parametrize("loss", ["missing", "corrupt"])
+def test_status_and_restart_guard_refuse_lost_durable_authority(manager, loss):
+    from anvil_serving import router_manage
+    assert manager.status()["authority_available"] is True
+    if loss == "missing":
+        manager.path.unlink()
+    else:
+        manager.path.write_bytes(b'{"unexpected":true}')
+    observed = manager.status()
+    assert observed["authority_available"] is False
+    assert observed["state"] == "reconciliation_required"
+    with pytest.raises(ValueError, match="authority status is unavailable"):
+        router_manage._guard_route_authority_base_config(
+            configuration(), _route_status=lambda *_args, **_kwargs: manager.status(),
+        )
+
+
 def test_alias_switch_commits_without_hold_or_drain_and_retry_is_idempotent(manager):
     preview = manager.preview(configuration(selected="b"), mode="alias_only")
     result = manager.apply(preview["preview_id"], confirm=True)

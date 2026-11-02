@@ -265,7 +265,7 @@ llm.voice = "omni-local"
             str(config), topology_path=str(_topology(tmp_path)), confirm=True, dry_run=False,
             _transition=lambda action, **_kwargs: calls.append(action) or {"tiers": []},
             _route_status=lambda *_args, **_kwargs: {
-                "enabled": True, "base_config_sha256": "a" * 64,
+                "enabled": True, "authority_available": True, "base_config_sha256": "a" * 64,
             },
             _install=lambda *_args, **_kwargs: pytest.fail("must not write protected base config"),
         )
@@ -280,7 +280,7 @@ def test_restart_refuses_route_base_drift_before_drain_or_container_stop(monkeyp
         pytest.fail("restart must not stop or restart a drifted router")
     assert router_manage.cmd_restart(
         "anvil-router", dry_run=False, _run=forbidden_run,
-        _route_status=lambda *_args, **_kwargs: {"enabled": True, "base_config_sha256": "a" * 64},
+        _route_status=lambda *_args, **_kwargs: {"enabled": True, "authority_available": True, "base_config_sha256": "a" * 64},
     ) == 1
 
 
@@ -305,7 +305,7 @@ def test_restart_legacy_route_status_404_does_not_require_mounted_boot_config(mo
 def test_route_authority_guard_rejects_enabled_status_without_base_digest():
     with pytest.raises(ValueError, match="status is malformed"):
         router_manage._guard_route_authority_base_config(
-            b"router = {}\n", _route_status=lambda *_args, **_kwargs: {"enabled": True},
+            b"router = {}\n", _route_status=lambda *_args, **_kwargs: {"enabled": True, "authority_available": True},
         )
 
 

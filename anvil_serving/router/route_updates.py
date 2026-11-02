@@ -798,12 +798,18 @@ class RouteUpdateManager:
         state = self._state
         if state is None:
             return {"enabled": True, "state": "unavailable"}
+        try:
+            authority_available = (self._validate_state(_read_state(self.path)) == state
+                                   and not self._uncertain and self._attempted_state is None
+                                   and self._authority_lock is not None and not self._closing)
+        except Exception:
+            authority_available = False
         operation = state["operation"]
         if self._uncertain and self._attempted_state is not None:
             operation = self._attempted_state["operation"]
-        return {"enabled": True, "route_revision": state["route_revision"],
+        return {"enabled": True, "authority_available": authority_available, "route_revision": state["route_revision"],
                 "effective_route_sha256": state["effective_route_sha256"], "base_config_sha256": self.base_sha256,
-                "state": "reconciliation_required" if self._uncertain or self._holds and operation and operation["phase"] in {"readmitted", "cancelled"} else "held" if self._holds else (
+                "state": "reconciliation_required" if not authority_available or self._holds and operation and operation["phase"] in {"readmitted", "cancelled"} else "held" if self._holds else (
                     operation["phase"] if operation else "ready"),
                 "transaction_id": operation["transaction_id"] if operation else None,
                 "mode": operation["mode"] if operation else None,
