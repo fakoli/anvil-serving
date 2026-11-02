@@ -1,0 +1,40 @@
+{
+  "base_commit": "269bc88e3cb84bd82d14d170058d1c1e493c71cc",
+  "branch": "fix/stability-stream-overlap-20261101",
+  "oracle_contract": {
+    "historical_behavior": "Artifacts without overlap_contract retain contender-response-wait/v1 validation and are not rescored under the successor contract.",
+    "independent_validation": "The evidence inspector requires ordered anchor first output, contender first output, recorded active-overlap anchor delta, and contender end times.",
+    "new": "contender-stream-active/v1",
+    "requirement": "An anchor delta is observed after the contender first output and before the contender end stamp.",
+    "retained_diagnostic": "anchor_output_during_contender_response_wait remains recorded but is no longer the successor coverage oracle."
+  },
+  "required_successor_controls": [
+    "retain the original failed stability artifact unchanged",
+    "create a new amendment that pins these exact source hashes and declares the new overlap contract",
+    "use a new output path and require all configured rounds under the successor contract",
+    "do not infer scheduler proof or performance eligibility from client timing"
+  ],
+  "review_kind": "stability overlap observer successor source",
+  "reviewed_files": {
+    "anvil_serving/benchmark_evidence.py": "39e7c58f493642b44abb3301da2b5a40776128e8dd511788cac9f34a419d3751",
+    "anvil_serving/benchmarking/stability.py": "98171d0d75d1eeda5ea12b2368d8605540034bd201d5b408dcbcafdfe5982395",
+    "docs/benchmarks/runtime-stability.md": "c62fbaa60ff8f8382ba853e26bd3dc0c242ae11dd27b766e6e171713ed042921",
+    "tests/test_stability_benchmark.py": "3ddeca83a3f56d74c8ddaf9302b4c5780eb60726352916460ca8ed8c419c1d35"
+  },
+  "schema": "anvil-serving.independent-review/v1",
+  "scope": "isolated source worktree review before live successor scenarios; original campaign runtime source and capacity seal unchanged",
+  "test_review": {
+    "coverage": [
+      "deterministic contender waiting, actively streaming, and finished phases",
+      "corrupt active-overlap timestamp rejection",
+      "historical absent-marker completed evidence validates with the retained response-wait timing",
+      "real SSE overlap and serial distinction",
+      "CLI adaptation"
+    ],
+    "focused_log": "final-r4/stability-observer-fix-tests-r3.log",
+    "focused_log_sha256": "599ed0d703d64430d190b2e7598b9a4010e48578fc1539be68404a0da790415e",
+    "result": "25 passed in 5.56s"
+  },
+  "verdict": "approved for a bounded successor rerun after commit pin and amendment binding",
+  "worktree": "[REDACTED_PATH]"
+}

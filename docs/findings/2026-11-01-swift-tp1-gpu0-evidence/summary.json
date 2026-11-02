@@ -1,0 +1,194 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-01-swift-tp1-gpu0",
+  "complete": false,
+  "identity": {
+    "model_repository": "ukisai/Swift-1.5-Qwen3.8-27b",
+    "model_revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+    "runtime_image": "lmsysorg/sglang@sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+    "engine_revision": "0bcd822377da7b5718e674eaf9c870d349424dd1",
+    "topology": "single RTX PRO 6000 Blackwell Max-Q GPU; TP1",
+    "final_recipe": "BF16 weights, FP8 KV, FP32 Mamba state, MTP3, 262144 configured context, 16384 output reserve, medium reasoning, image limit 8"
+  },
+  "workload": {
+    "historical_comparison": "ordinary-summary with no output-canary assertion; three repetitions per cell",
+    "fresh_quality": "direct protocol, deterministic image, and native agentic suites"
+  },
+  "measurement": {
+    "path": "direct local endpoint; retained historical ordinary-summary comparison and fresh direct quality probes",
+    "warm_cold_state": "not recorded uniformly across scopes",
+    "sample_count": 432,
+    "statistics": [
+      "native nearest-rank p50/p95 for historical rows",
+      "sampled p95 is not a production tail guarantee"
+    ]
+  },
+  "gates": [
+    {
+      "name": "historical MTP/no-spec ordinary-summary comparison",
+      "status": "completed",
+      "evidence": "raw/r4-comparison-decision.json"
+    },
+    {
+      "name": "fresh image qualification",
+      "status": "passed 12/12 plus ordered eight-image probe 2/2",
+      "evidence": "raw/images.json"
+    },
+    {
+      "name": "fresh native agentic",
+      "status": "passed 18/18",
+      "evidence": "raw/agentic-native-evidence.json"
+    },
+    {
+      "name": "fresh native agentic pilot",
+      "status": "passed 6/6",
+      "evidence": "raw/agentic-pilot-native-evidence.json"
+    },
+    {
+      "name": "fresh C1 long-context",
+      "status": "passed 36/36; all stop",
+      "evidence": "raw/context-native/native-evidence.json"
+    },
+    {
+      "name": "fresh coding",
+      "status": "passed fixed campaign floor: 4/5 resolved; all 5 independently graded",
+      "evidence": "raw/swe-native/native-evidence.json"
+    },
+    {
+      "name": "fresh C2 long-context",
+      "status": "passed 2/2 concurrent exact-answer cases; retained overlap and allocator samples",
+      "evidence": "raw/context-concurrent/result.json"
+    },
+    {
+      "name": "fresh stability serial unique-prefix",
+      "status": "passed 3/3; diagnostic only, not performance ranking",
+      "evidence": "raw/stability-serial-unique.json"
+    },
+    {
+      "name": "fresh stability overlap unique-prefix successor",
+      "status": "passed 3/3 under contender-stream-active/v1; diagnostic only",
+      "evidence": "raw/stability-overlap-unique-r2.json"
+    },
+    {
+      "name": "fresh stability overlap repeat-prefix successor",
+      "status": "passed 3/3 under contender-stream-active/v1; diagnostic only",
+      "evidence": "raw/stability-overlap-repeat-r2.json"
+    },
+    {
+      "name": "fresh final capacity",
+      "status": "passed 10/10 cells and 72/72 requests; separate fresh final activation population",
+      "evidence": "raw/capacity-summary.json"
+    },
+    {
+      "name": "fresh resource and deep health closure",
+      "status": "passed; continuous observer closed cleanly",
+      "evidence": "raw/resource-final-validation.json"
+    }
+  ],
+  "headline_results": [
+    {
+      "scope": "historical r4 ordinary-summary, C1, about 7.4K input",
+      "mtp_decode_p50_tokens_s": 67.3,
+      "nospec_decode_p50_tokens_s": 25.4,
+      "caveat": "ordinary output only"
+    },
+    {
+      "scope": "historical r4 ordinary-summary, C2, about 7.4K input",
+      "mtp_decode_p50_tokens_s": 40.0,
+      "nospec_decode_p50_tokens_s": 19.5,
+      "caveat": "ordinary output only"
+    }
+  ],
+  "failures": [
+    {
+      "scope": "historical strict controlled-output diagnostic",
+      "result": "4/4 failed; performance-ineligible",
+      "evidence": "raw/strict-attempt2-adjudication.json"
+    },
+    {
+      "scope": "r5 .94 memory allocation",
+      "result": "rejected under required GPU reserve; r4 .90 restored",
+      "evidence": "raw/mtp3-r5-rejection.json"
+    },
+    {
+      "scope": "fresh SWE fixed campaign floor",
+      "result": "Django10097 unresolved; the other four tasks resolved; no infrastructure failure",
+      "evidence": "raw/swe-native/native-evidence.json"
+    }
+  ],
+  "limitations": [
+    "The historical MTP comparison has a different activation from the fresh final r4 candidate.",
+    "C16 is not cross-arm comparable: MTP effective active cap was 9 while no-spec was 16.",
+    "C1 context timings overlapped coding work and are quality-only, not isolated performance evidence.",
+    "C2 proves two overlapping application requests only to the extent captured by its retained engine samples; it does not establish hypothetical full-residency capacity.",
+    "The original overlap stability artifact remains immutable failed coverage evidence; successors use a separately pinned inspector source and contender-stream-active/v1 contract.",
+    "The initial independent stability review raised a source-digest-method finding; its retained correction accepts the exact run-cell package method without an additional replay.",
+    "Fresh final capacity is a separate 10-cell, 72-request population and is not pooled with the historical 60-cell matched comparison.",
+    "The selected 32K C2 operating point is a concurrency tradeoff: decode p50 13.43 tokens/s is below the 15 objective, while first-output p95 is 16.69 seconds under the 30-second bound. C1 is the latency-first option (63.44/62.46 decode p50 at 8K/32K).",
+    "The completed SWE result is a fixed five-task campaign floor, not a broad coding benchmark population estimate.",
+    "Video was not qualified.",
+    "Current deployment, routing, aliases and client assignments are outside this public record."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality"
+    ],
+    "decision_labels": [
+      "qualification-accepted",
+      "deployment-private"
+    ],
+    "scope": "qualification only; no public deployment authorization or assignment claim"
+  },
+  "evidence": [
+    "redaction-ledger.json",
+    "raw/r4-comparison-decision.json",
+    "raw/images.json",
+    "raw/agentic-native-evidence.json",
+    "raw/context-native/native-evidence.json",
+    "raw/context-admission.json",
+    "raw/swe-native/native-evidence.json",
+    "raw/swe-native-validation.json",
+    "raw/swe-native/official-grader-report-binding.json",
+    "raw/c2-evidence-amendment.json",
+    "raw/context-concurrent/result.json",
+    "raw/context-concurrent/requests.jsonl",
+    "raw/independent-digest-c2-review.json",
+    "raw/stability-serial-unique.json",
+    "raw/stability-overlap-unique.json",
+    "raw/stability-overlap-unique-r2.json",
+    "raw/stability-overlap-repeat-r2.json",
+    "raw/stability-final-validation.json",
+    "raw/stability-observer-amendment.json",
+    "raw/independent-stability-observer-r3-review.json",
+    "raw/independent-stability-final-review.json",
+    "raw/independent-stability-source-binding-correction.json",
+    "raw/stability-observer-full-tests-r2-receipt.json",
+    "raw/capacity-summary.json",
+    "raw/deep-health.json",
+    "raw/resource-final-validation.json",
+    "numerical-import-projection.json"
+  ],
+  "metrics_coverage": {
+    "profile": "serving-comparison/v1",
+    "status": "partial",
+    "frozen_plan": "plans/run-plan-r4-summary-complete.json",
+    "required_cells": [
+      "historical r4 ordinary-summary matrix"
+    ],
+    "cells": {
+      "historical r4 ordinary-summary matrix": {
+        "status": "descriptive-comparison",
+        "reason": "Retained historical rows exist, but strict output control failed and C16 differs in effective capacity."
+      }
+    },
+    "missing_required_metrics": []
+  },
+  "comparison_evidence": null,
+  "decision_labels": [
+    "qualification-accepted",
+    "deployment-private"
+  ],
+  "comparison_scope": "The serving-comparison completeness flag remains false: strict controlled output failed and C16 was unmatched. Independent bounded qualification acceptance is separate."
+}

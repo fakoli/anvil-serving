@@ -1,0 +1,43 @@
+{
+  "activation": {
+    "binding_sha256": "[QUALIFICATION_FINAL_BINDING]",
+    "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+    "generation": "[QUALIFICATION_FINAL_ACTIVATION]",
+    "metrics_url": "[LOOPBACK_ENDPOINT]/engine/[QUALIFICATION_FINAL_ACTIVATION]/metrics",
+    "served_model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+    "started_at": "2026-11-02T00:43:12.309284535Z"
+  },
+  "configured_context_tokens": 262144,
+  "effective_max_running_requests": 9,
+  "kv_pool_tokens": 504384,
+  "observed_at": "2026-11-02T00:45:54.248044+00:00",
+  "passed": true,
+  "scope": "fresh r4 activation, full final quality pending; earlier same-config capacity remains distinct activation",
+  "startup_gpu": {
+    "returncode": 0,
+    "rows": [
+      {
+        "index": 0,
+        "memory_free_mib": 10347,
+        "memory_total_mib": 97887,
+        "memory_used_mib": 86995,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "power_draw_w": 19.8,
+        "temperature_gpu_c": 52,
+        "utilization_gpu_percent": 0,
+        "uuid": "[GPU0]"
+      },
+      {
+        "index": 1,
+        "memory_free_mib": 97341,
+        "memory_total_mib": 97887,
+        "memory_used_mib": 0,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "power_draw_w": 11.4,
+        "temperature_gpu_c": 42,
+        "utilization_gpu_percent": 0,
+        "uuid": "[GPU0]"
+      }
+    ]
+  }
+}

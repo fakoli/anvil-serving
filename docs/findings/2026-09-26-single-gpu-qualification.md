@@ -34,6 +34,11 @@ The exact GLM r11 deployment was restored after isolated trials. Its direct and
 authenticated routed preflights passed and its alias and limits did not change.
 No candidate was promoted, and no performance winner is claimed.
 
+**Follow-up, 2026-11-01:** this restoration record remains historical. A distinct
+Swift TP1 managed promotion later completed on one RTX PRO 6000; see the
+[follow-up finding](2026-11-01-swift-tp1-gpu0.md) for its independent evidence,
+selection tradeoffs, and still-pending publication/catalog readback.
+
 ## Qualification record
 
 The five frozen SWE tasks used the same agent/grader revisions, dependency

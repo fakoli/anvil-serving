@@ -1,0 +1,13 @@
+{
+  "counts": {
+    "engine": 11949,
+    "slow": 2992
+  },
+  "errors": [],
+  "finished": {
+    "monotonic_ns": 514228205722770,
+    "unix_ns": 1793586345440621605
+  },
+  "requested_finish": true,
+  "threads_finished": true
+}

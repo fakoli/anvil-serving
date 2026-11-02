@@ -1,0 +1,65 @@
+{
+  "activation": {
+    "binding_sha256": "[QUALIFICATION_FINAL_BINDING]",
+    "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+    "generation": "[QUALIFICATION_FINAL_ACTIVATION]",
+    "metrics_url": "[LOOPBACK_ENDPOINT]",
+    "served_model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "started_at": "2026-11-02T00:43:12.309284535Z"
+  },
+  "cadence": {
+    "engine": {
+      "in_window_samples": 11933,
+      "max_gap_seconds": 1.410632239,
+      "target_interval_seconds": 0.5
+    },
+    "slow": {
+      "in_window_samples": 2988,
+      "max_gap_seconds": 3.047478887,
+      "target_interval_seconds": 2
+    }
+  },
+  "cgroup_current_peak_bytes": 47457914880,
+  "counts": {
+    "engine": 11949,
+    "slow": 2992
+  },
+  "gpu0_free_min_mib": 6747,
+  "gpu0_used_peak_mib": 90595,
+  "gpu1_memory_used_max_mib": 0,
+  "host_available_min_mib": 71648.4296875,
+  "identity_changes": 0,
+  "observer_completion": {
+    "counts": {
+      "engine": 11949,
+      "slow": 2992
+    },
+    "errors": [],
+    "finished": {
+      "monotonic_ns": 514228205722770,
+      "unix_ns": 1793586345440621605
+    },
+    "requested_finish": true,
+    "threads_finished": true
+  },
+  "oom_events": 0,
+  "passed": true,
+  "source_sha256": {
+    "binding.json": "e2dd11da48255bd8aa3c3cef785f479ca766ff2f029a863cedda0217f311eff7",
+    "engine-metrics.jsonl": "405d59a373de9bcd714de55805bf004845b19889e602463f2a6c69ecd913046e",
+    "result.json": "6444fee19b28d3e45509fa164d8131ad951fbc7a0bc56180c08832e4de4f4dee",
+    "slow.jsonl": "96a83c0911bf9eeb8b175e4e6056d272bf0b93d3cbb172d4058b9fbe495839ec"
+  },
+  "window": {
+    "end": {
+      "monotonic_ns": 514228106168448,
+      "unix_ns": 1793586345341067033
+    },
+    "inventory_sha256": "597d55dd5ae6314c8a11f31966ad63f6c69589e144f49730c14cf7dc779ec137",
+    "start": {
+      "monotonic_ns": 508253187883173,
+      "unix_ns": 1793580370422781851
+    }
+  },
+  "window_seconds": 5974.918285275
+}

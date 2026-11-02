@@ -1,0 +1,4896 @@
+{
+  "agent_interval": {
+    "duration_s": 2548.193231,
+    "ended_at": "2026-11-02T01:38:25.899692Z",
+    "started_at": "2026-11-02T00:55:57.706439Z"
+  },
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-11-02T00:55:57.533766Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": "[REDACTED_PATH]"
+  },
+  "endpoint": {
+    "base_url": "[LOOPBACK_ENDPOINT]",
+    "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "agent_observation": {
+      "adapter_sha256": "9feafeb79cce6bccce0d816abaf125ad70cdc9ded6b01f3d26acffa6b6249fde",
+      "source_hashes": {
+        "src/minisweagent/agents/default.py": "e8ef8aa365942d739c2ec5cb0879f60f377d2dc2de8ec670aaedf3bafb45a4c2",
+        "src/minisweagent/models/litellm_model.py": "6df4483bcdc9620b2f9d7f8bb1027a7fb9729b739976cbcf1a9d18fb58c48227",
+        "src/minisweagent/models/utils/retry.py": "fb9dd9d9ca0253a2b2ac86907fea4c34fe75c55af6d443781e1ab02229a1ac18",
+        "src/minisweagent/run/benchmarks/utils/common.py": "618776d688f11018827ea8eb48ab20839d2d0ec182b4bd844a08af48937df398"
+      }
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "receipt": "[REDACTED_PATH]",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.12.14"
+      },
+      "resolved_packages_sha256": "c02d94f6c677827b9265e15356b97176081a9bce1ed35592ed2eda9d54725216",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [
+    {
+      "images": [
+        {
+          "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+          "instance_id": "astropy__astropy-12907",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+        },
+        {
+          "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+          "instance_id": "django__django-10097",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+        },
+        {
+          "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+          "instance_id": "matplotlib__matplotlib-13989",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+        },
+        {
+          "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+          "instance_id": "scikit-learn__scikit-learn-10297",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+        },
+        {
+          "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+          "instance_id": "sympy__sympy-11618",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+        }
+      ],
+      "stage": "before_agent"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+          "instance_id": "astropy__astropy-12907",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+        },
+        {
+          "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+          "instance_id": "django__django-10097",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+        },
+        {
+          "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+          "instance_id": "matplotlib__matplotlib-13989",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+        },
+        {
+          "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+          "instance_id": "scikit-learn__scikit-learn-10297",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+        },
+        {
+          "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+          "instance_id": "sympy__sympy-11618",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+        }
+      ],
+      "stage": "before_grader"
+    },
+    {
+      "images": [
+        {
+          "image_id": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+          "instance_id": "astropy__astropy-12907",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907@sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest"
+        },
+        {
+          "image_id": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+          "instance_id": "django__django-10097",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.django_1776_django-10097@sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.django_1776_django-10097:latest"
+        },
+        {
+          "image_id": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+          "instance_id": "matplotlib__matplotlib-13989",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989@sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest"
+        },
+        {
+          "image_id": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+          "instance_id": "scikit-learn__scikit-learn-10297",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297@sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest"
+        },
+        {
+          "image_id": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649",
+          "instance_id": "sympy__sympy-11618",
+          "repo_digests": [
+            "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618@sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+          ],
+          "tag": "swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest"
+        }
+      ],
+      "stage": "after_grader"
+    }
+  ],
+  "instances": [
+    {
+      "diagnostics": {
+        "exit": {
+          "kind": "submitted",
+          "status": "Submitted"
+        },
+        "grading": {
+          "status": "resolved"
+        },
+        "prediction": {
+          "bytes": 504,
+          "nonempty": true,
+          "present": true,
+          "sha256": "7f233cc776d064f8e1d7d39bf0a846434e59d14cc07ac33aab803b7b758ee755"
+        }
+      },
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "astropy__astropy-12907",
+      "prediction_sha256": "7f233cc776d064f8e1d7d39bf0a846434e59d14cc07ac33aab803b7b758ee755",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "04738cb3e25e424692ef366841842ce0",
+        "2e459b6751f3479eac06bb1c4e24cc0f",
+        "507bce67c0be4475bf88d723cfbf7a4e",
+        "66f2827351534fce928c9737fa6de646",
+        "6b039d87ef0a4e8282fb8012f386f936",
+        "79fd7a65b76a435ca10a4663f614a199",
+        "b05d1cacd13b4298a750d2265a366730",
+        "b23bd0ad913e414a86490cd6dc72ce6d",
+        "b30fd54a9c8a4d2da265bebceaac01b3",
+        "e6e50281a6e542079e1ec32dff95d83f",
+        "f1e9767345c54cb29733b022f810c008"
+      ],
+      "request_observation_sequences": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56
+      ],
+      "tokens": {
+        "completion_tokens": 1793,
+        "prompt_tokens": 53683,
+        "total_tokens": 55476
+      },
+      "trajectory": {
+        "path": "[REDACTED_PATH]",
+        "sha256": "b5ad7cbe27d8548f0917ee5323f26a6d871b56f617a5227cca8086010db4cbe5"
+      }
+    },
+    {
+      "diagnostics": {
+        "exit": {
+          "kind": "submitted",
+          "status": "Submitted"
+        },
+        "grading": {
+          "status": "unresolved"
+        },
+        "prediction": {
+          "bytes": 597,
+          "nonempty": true,
+          "present": true,
+          "sha256": "f7bcd3300d17c9797ff1be1c81e92fe737cd85fad8cb3491a4bbd62a7acc459c"
+        }
+      },
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-10097",
+      "prediction_sha256": "f7bcd3300d17c9797ff1be1c81e92fe737cd85fad8cb3491a4bbd62a7acc459c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "0668d71fac99484dad1e744fadce1e8b",
+        "1df9f46a29e64c638e36437b322fb805",
+        "28d9cd792e924a149f910d7d439118c9",
+        "34f57be329a14ecf9d39b9c1fc3cc24d",
+        "4a55f07bcb8d40a3841a63a9d932515c",
+        "6d6509de685641c0a3ed3adde1a1a7d9",
+        "859194bfa1524f5dae424d7438f5fac9",
+        "ce403c0334e342cf93ba01a9339cedc3",
+        "de610de473964ac496626132a2b4aaed",
+        "ece3c9d8e3ca4b1cafae8b9228686b49",
+        "fa32a262f388461b820826137b9fec0b"
+      ],
+      "request_observation_sequences": [
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117
+      ],
+      "tokens": {
+        "completion_tokens": 1979,
+        "prompt_tokens": 48762,
+        "total_tokens": 50741
+      },
+      "trajectory": {
+        "path": "[REDACTED_PATH]",
+        "sha256": "51fa7d0fe85931ded434bb02d47730966c2d44a1afd35b095059925bf88e25b3"
+      }
+    },
+    {
+      "diagnostics": {
+        "exit": {
+          "kind": "submitted",
+          "status": "Submitted"
+        },
+        "grading": {
+          "status": "resolved"
+        },
+        "prediction": {
+          "bytes": 480,
+          "nonempty": true,
+          "present": true,
+          "sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769"
+        }
+      },
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "matplotlib__matplotlib-13989",
+      "prediction_sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "02ff5dcce87d4db782753d1baa35a744",
+        "22cbd74832d14b178bf873ac6702791e",
+        "34bbb1ee968c492eaff90af1cb394813",
+        "4352a7dfe3d84088a9574cd73bf0b5ea",
+        "4d1cde5b50eb4e5da014903e35647fdb",
+        "6cf87dcb786047c5b9a044d36259e48d",
+        "721e09fd65ea4c92bd6d68103366ec37",
+        "766e01b7cf8b4f0a98e8a09288c6fdf9",
+        "94f6951d12264c448c178741aab613f6",
+        "98a6e4c55431452fb8a2f57f0203d9f8",
+        "a7bf7e61deb74907bfc1a516ad05a4bb",
+        "aadeba98159f4b6aa9d689ba40311478",
+        "c0360bb902724818ac39bf2eb9efccae"
+      ],
+      "request_observation_sequences": [
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182
+      ],
+      "tokens": {
+        "completion_tokens": 2695,
+        "prompt_tokens": 71894,
+        "total_tokens": 74589
+      },
+      "trajectory": {
+        "path": "[REDACTED_PATH]",
+        "sha256": "9c1c9fa41e61c7f059901c7eff20f64986cdada6a3b1661cfe10324d314da08a"
+      }
+    },
+    {
+      "diagnostics": {
+        "exit": {
+          "kind": "submitted",
+          "status": "Submitted"
+        },
+        "grading": {
+          "status": "resolved"
+        },
+        "prediction": {
+          "bytes": 1551,
+          "nonempty": true,
+          "present": true,
+          "sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a"
+        }
+      },
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "scikit-learn__scikit-learn-10297",
+      "prediction_sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "03960db5983048418b415863da9fe6bc",
+        "0d47811ab6a04ec7bd9992ef502efd26",
+        "3137b3dfbee44fdc963cbaa87d279cc8",
+        "6e01ddd8bcf04147ac0da758bc28bc5f",
+        "904a41d6d4494e5cbc2f416a7f16bf47",
+        "9576d287addd4bd4a456b883279075c3",
+        "961ae56de5664a0a923de2829fe5f26d",
+        "987f8944938c4c308ddcf97a8952fb8b",
+        "b17a630967004764bedfa6fe0d651d7d",
+        "b3c06b6ae77f469385a67588aa729d98",
+        "b5f209eab1f842efb0302b6624d55478",
+        "d781f4b42aa24bbea5aae14f01caae1b",
+        "d9eced4bcbcb4ad7bc4b2c664be12c65",
+        "e53fbd25dd404757992fdab9e8b409c9"
+      ],
+      "request_observation_sequences": [
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252
+      ],
+      "tokens": {
+        "completion_tokens": 2788,
+        "prompt_tokens": 72195,
+        "total_tokens": 74983
+      },
+      "trajectory": {
+        "path": "[REDACTED_PATH]",
+        "sha256": "70a2e9f45fef4a7e783afb07c71f90fc4f533f691ee59875a7aa2498f570b6dc"
+      }
+    },
+    {
+      "diagnostics": {
+        "exit": {
+          "kind": "submitted",
+          "status": "Submitted"
+        },
+        "grading": {
+          "status": "resolved"
+        },
+        "prediction": {
+          "bytes": 1230,
+          "nonempty": true,
+          "present": true,
+          "sha256": "74050e75ea44d1016abaa84207632d6f154fba20e13d0840f59e2f164c9f6cb8"
+        }
+      },
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-11618",
+      "prediction_sha256": "74050e75ea44d1016abaa84207632d6f154fba20e13d0840f59e2f164c9f6cb8",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "1b14347e20a14dfe901887c96280bb19",
+        "245a31bf2447469e9d23f2e288f7fc61",
+        "29ce1ed3ab824dca85428b5667f0b5fa",
+        "2db47029f712481e9beb6843734a3339",
+        "341b1c9e17a842078aecf70bae54359e",
+        "6b9adcf3f15142e9931043745487c7e1",
+        "795857cf706c4e669bb171f521bc6612",
+        "94a7dab6306a4e3fab68561a4a3a057e",
+        "a61cd90e18c24008a9ec3a9f6986202e",
+        "bbd9677925de46ae9c5b561b8ce90330",
+        "cf683cdcfe0d4634961dbc30e971153b",
+        "d362acd2690148ea9cd5362d838f48e7"
+      ],
+      "request_observation_sequences": [
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312
+      ],
+      "tokens": {
+        "completion_tokens": 1883,
+        "prompt_tokens": 39920,
+        "total_tokens": 41803
+      },
+      "trajectory": {
+        "path": "[REDACTED_PATH]",
+        "sha256": "9b2bb41cfefd716d95ae855d5acbea9a9f247bd2db60211ab4e45c56b9496b06"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "[QUALIFICATION_FINAL_CAMPAIGN]",
+  "paired_image_ids": {
+    "astropy__astropy-12907": "sha256:e082963099ed7d5a5f75a0be46e338be36faae33b2cba5289a9ddbd505997f1f",
+    "django__django-10097": "sha256:faf07f1d70370e9a4f76dac2cab0758300018f0eb4346b28aa55ac13630b873a",
+    "matplotlib__matplotlib-13989": "sha256:c84876a26e80d717b571a98a4bb339d0645ed601190c2078658788f0c9cc66ae",
+    "scikit-learn__scikit-learn-10297": "sha256:58b80e9100f9d107291b5ea37c76583ed4851d8e18ec07aef197f1803a290986",
+    "sympy__sympy-11618": "sha256:744c19afa2b657ef131aea81a85d1c9cf86fe934b50db44443a5fdcdc9ac9649"
+  },
+  "plan_sha256": "74faa79f137a5dcda97e9decb4b5e1686897c723993e2c8e0659a60a4ffda7d1",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "prompt_contract": "legacy/v1",
+  "request_controls": {
+    "reasoning_effort": "medium",
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "request_observations": {
+    "bytes": 108035,
+    "event_count": 313,
+    "events": [
+      {
+        "adapter_sha256": "9feafeb79cce6bccce0d816abaf125ad70cdc9ded6b01f3d26acffa6b6249fde",
+        "clock": {
+          "duration": "monotonic",
+          "duration_resolution_s": 1e-09,
+          "synchronized": null,
+          "wall": "UTC system clock",
+          "wall_precision_s": 1e-06,
+          "wall_resolution_s": 1e-09
+        },
+        "dependencies": {
+          "httpx": "0.28.1",
+          "litellm": "1.102.0",
+          "openai": "2.54.0",
+          "tenacity": "9.1.4"
+        },
+        "event": "adapter_ready",
+        "mini_revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+        "retry_seam": "minisweagent.models.litellm_model.retry",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 1,
+        "source_hashes": {
+          "src/minisweagent/agents/default.py": "e8ef8aa365942d739c2ec5cb0879f60f377d2dc2de8ec670aaedf3bafb45a4c2",
+          "src/minisweagent/models/litellm_model.py": "6df4483bcdc9620b2f9d7f8bb1027a7fb9729b739976cbcf1a9d18fb58c48227",
+          "src/minisweagent/models/utils/retry.py": "fb9dd9d9ca0253a2b2ac86907fea4c34fe75c55af6d443781e1ab02229a1ac18",
+          "src/minisweagent/run/benchmarks/utils/common.py": "618776d688f11018827ea8eb48ab20839d2d0ec182b4bd844a08af48937df398"
+        },
+        "transport_seam": "httpx.Client.send",
+        "utc_observed_at": "2026-11-02T00:55:59.432933Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000001",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 2,
+        "step_ordinal": 1,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:00.340549Z",
+        "utc_started_at": "2026-11-02T00:56:00.340526Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000001",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 3,
+        "step_ordinal": 1,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:00.340658Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000001",
+        "monotonic_duration_s": 5.815591,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 4,
+        "step_ordinal": 1,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:06.499895Z",
+        "utc_observed_at": "2026-11-02T00:56:06.499951Z",
+        "utc_started_at": "2026-11-02T00:56:00.684319Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "b05d1cacd13b4298a750d2265a366730"
+        },
+        "logical_request_id": "logical-00000001",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 5,
+        "step_ordinal": 1,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:06.526989Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000001",
+        "monotonic_duration_s": 6.18649,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 6,
+        "step_ordinal": 1,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:06.527027Z",
+        "utc_observed_at": "2026-11-02T00:56:06.527033Z",
+        "utc_started_at": "2026-11-02T00:56:00.340526Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000002",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 7,
+        "step_ordinal": 2,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:06.800933Z",
+        "utc_started_at": "2026-11-02T00:56:06.800909Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000002",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 8,
+        "step_ordinal": 2,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:06.801026Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000002",
+        "monotonic_duration_s": 1.667011,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 9,
+        "step_ordinal": 2,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:08.469961Z",
+        "utc_observed_at": "2026-11-02T00:56:08.469992Z",
+        "utc_started_at": "2026-11-02T00:56:06.802958Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "507bce67c0be4475bf88d723cfbf7a4e"
+        },
+        "logical_request_id": "logical-00000002",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 10,
+        "step_ordinal": 2,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:08.471558Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000002",
+        "monotonic_duration_s": 1.67127,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 11,
+        "step_ordinal": 2,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:08.472191Z",
+        "utc_observed_at": "2026-11-02T00:56:08.472198Z",
+        "utc_started_at": "2026-11-02T00:56:06.800909Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000003",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 12,
+        "step_ordinal": 3,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:08.581149Z",
+        "utc_started_at": "2026-11-02T00:56:08.581128Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000003",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 13,
+        "step_ordinal": 3,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:08.581237Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000003",
+        "monotonic_duration_s": 10.345693,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 14,
+        "step_ordinal": 3,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:18.929348Z",
+        "utc_observed_at": "2026-11-02T00:56:18.929378Z",
+        "utc_started_at": "2026-11-02T00:56:08.583662Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "e6e50281a6e542079e1ec32dff95d83f"
+        },
+        "logical_request_id": "logical-00000003",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 15,
+        "step_ordinal": 3,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:18.931720Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000003",
+        "monotonic_duration_s": 10.351158,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 16,
+        "step_ordinal": 3,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:18.932293Z",
+        "utc_observed_at": "2026-11-02T00:56:18.932307Z",
+        "utc_started_at": "2026-11-02T00:56:08.581128Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000004",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 17,
+        "step_ordinal": 4,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:19.862527Z",
+        "utc_started_at": "2026-11-02T00:56:19.862506Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000004",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 18,
+        "step_ordinal": 4,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:19.862613Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000004",
+        "monotonic_duration_s": 6.161967,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 19,
+        "step_ordinal": 4,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:26.026645Z",
+        "utc_observed_at": "2026-11-02T00:56:26.026674Z",
+        "utc_started_at": "2026-11-02T00:56:19.864688Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "79fd7a65b76a435ca10a4663f614a199"
+        },
+        "logical_request_id": "logical-00000004",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 20,
+        "step_ordinal": 4,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:26.028414Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000004",
+        "monotonic_duration_s": 6.166575,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 21,
+        "step_ordinal": 4,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:26.029091Z",
+        "utc_observed_at": "2026-11-02T00:56:26.029100Z",
+        "utc_started_at": "2026-11-02T00:56:19.862506Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000005",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 22,
+        "step_ordinal": 5,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:26.163673Z",
+        "utc_started_at": "2026-11-02T00:56:26.163653Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000005",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 23,
+        "step_ordinal": 5,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:26.163756Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000005",
+        "monotonic_duration_s": 2.379759,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 24,
+        "step_ordinal": 5,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:28.545804Z",
+        "utc_observed_at": "2026-11-02T00:56:28.545834Z",
+        "utc_started_at": "2026-11-02T00:56:26.166055Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "2e459b6751f3479eac06bb1c4e24cc0f"
+        },
+        "logical_request_id": "logical-00000005",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 25,
+        "step_ordinal": 5,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:28.547304Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000005",
+        "monotonic_duration_s": 2.383683,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 26,
+        "step_ordinal": 5,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:28.547343Z",
+        "utc_observed_at": "2026-11-02T00:56:28.547352Z",
+        "utc_started_at": "2026-11-02T00:56:26.163653Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000006",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 27,
+        "step_ordinal": 6,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:28.655209Z",
+        "utc_started_at": "2026-11-02T00:56:28.655188Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000006",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 28,
+        "step_ordinal": 6,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:28.655296Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000006",
+        "monotonic_duration_s": 4.716514,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 29,
+        "step_ordinal": 6,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:33.374207Z",
+        "utc_observed_at": "2026-11-02T00:56:33.374232Z",
+        "utc_started_at": "2026-11-02T00:56:28.657699Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "66f2827351534fce928c9737fa6de646"
+        },
+        "logical_request_id": "logical-00000006",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 30,
+        "step_ordinal": 6,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:33.375832Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000006",
+        "monotonic_duration_s": 4.721281,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 31,
+        "step_ordinal": 6,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:33.376479Z",
+        "utc_observed_at": "2026-11-02T00:56:33.376487Z",
+        "utc_started_at": "2026-11-02T00:56:28.655188Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000007",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 32,
+        "step_ordinal": 7,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:33.505082Z",
+        "utc_started_at": "2026-11-02T00:56:33.505063Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000007",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 33,
+        "step_ordinal": 7,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:33.505169Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000007",
+        "monotonic_duration_s": 4.322326,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 34,
+        "step_ordinal": 7,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:37.830205Z",
+        "utc_observed_at": "2026-11-02T00:56:37.830233Z",
+        "utc_started_at": "2026-11-02T00:56:33.507888Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "04738cb3e25e424692ef366841842ce0"
+        },
+        "logical_request_id": "logical-00000007",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 35,
+        "step_ordinal": 7,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:37.831811Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000007",
+        "monotonic_duration_s": 4.327289,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 36,
+        "step_ordinal": 7,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:37.832360Z",
+        "utc_observed_at": "2026-11-02T00:56:37.832369Z",
+        "utc_started_at": "2026-11-02T00:56:33.505063Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000008",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 37,
+        "step_ordinal": 8,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:38.407654Z",
+        "utc_started_at": "2026-11-02T00:56:38.407626Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000008",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 38,
+        "step_ordinal": 8,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:38.407774Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000008",
+        "monotonic_duration_s": 2.617268,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 39,
+        "step_ordinal": 8,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:41.028633Z",
+        "utc_observed_at": "2026-11-02T00:56:41.028661Z",
+        "utc_started_at": "2026-11-02T00:56:38.411370Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "f1e9767345c54cb29733b022f810c008"
+        },
+        "logical_request_id": "logical-00000008",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 40,
+        "step_ordinal": 8,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:41.030632Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000008",
+        "monotonic_duration_s": 2.62304,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 41,
+        "step_ordinal": 8,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:41.030682Z",
+        "utc_observed_at": "2026-11-02T00:56:41.030690Z",
+        "utc_started_at": "2026-11-02T00:56:38.407626Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000009",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 42,
+        "step_ordinal": 9,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:42.068177Z",
+        "utc_started_at": "2026-11-02T00:56:42.068158Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000009",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 43,
+        "step_ordinal": 9,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:42.068259Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000009",
+        "monotonic_duration_s": 6.085037,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 44,
+        "step_ordinal": 9,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:48.156693Z",
+        "utc_observed_at": "2026-11-02T00:56:48.156719Z",
+        "utc_started_at": "2026-11-02T00:56:42.071661Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "6b039d87ef0a4e8282fb8012f386f936"
+        },
+        "logical_request_id": "logical-00000009",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 45,
+        "step_ordinal": 9,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:48.158177Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000009",
+        "monotonic_duration_s": 6.090688,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 46,
+        "step_ordinal": 9,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:48.158840Z",
+        "utc_observed_at": "2026-11-02T00:56:48.158863Z",
+        "utc_started_at": "2026-11-02T00:56:42.068158Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000010",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 47,
+        "step_ordinal": 10,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:48.664232Z",
+        "utc_started_at": "2026-11-02T00:56:48.664210Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000010",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 48,
+        "step_ordinal": 10,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:48.664329Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000010",
+        "monotonic_duration_s": 3.001996,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 49,
+        "step_ordinal": 10,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:51.669467Z",
+        "utc_observed_at": "2026-11-02T00:56:51.669489Z",
+        "utc_started_at": "2026-11-02T00:56:48.667473Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "b23bd0ad913e414a86490cd6dc72ce6d"
+        },
+        "logical_request_id": "logical-00000010",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 50,
+        "step_ordinal": 10,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:51.670919Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000010",
+        "monotonic_duration_s": 3.007411,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 51,
+        "step_ordinal": 10,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:51.671633Z",
+        "utc_observed_at": "2026-11-02T00:56:51.671639Z",
+        "utc_started_at": "2026-11-02T00:56:48.664210Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000011",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 52,
+        "step_ordinal": 11,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:51.786178Z",
+        "utc_started_at": "2026-11-02T00:56:51.786159Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000011",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 53,
+        "step_ordinal": 11,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:51.786259Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000011",
+        "monotonic_duration_s": 4.110182,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 54,
+        "step_ordinal": 11,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:55.899865Z",
+        "utc_observed_at": "2026-11-02T00:56:55.899896Z",
+        "utc_started_at": "2026-11-02T00:56:51.789692Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "b30fd54a9c8a4d2da265bebceaac01b3"
+        },
+        "logical_request_id": "logical-00000011",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 55,
+        "step_ordinal": 11,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_observed_at": "2026-11-02T00:56:55.902108Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000011",
+        "monotonic_duration_s": 4.116618,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 56,
+        "step_ordinal": 11,
+        "task_instance_id": "astropy__astropy-12907",
+        "utc_ended_at": "2026-11-02T00:56:55.902784Z",
+        "utc_observed_at": "2026-11-02T00:56:55.902794Z",
+        "utc_started_at": "2026-11-02T00:56:51.786159Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000012",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 57,
+        "step_ordinal": 1,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:56:56.163858Z",
+        "utc_started_at": "2026-11-02T00:56:56.163844Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000012",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 58,
+        "step_ordinal": 1,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:56:56.163944Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000012",
+        "monotonic_duration_s": 3.605812,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 59,
+        "step_ordinal": 1,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T00:56:59.771219Z",
+        "utc_observed_at": "2026-11-02T00:56:59.771244Z",
+        "utc_started_at": "2026-11-02T00:56:56.165414Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "0668d71fac99484dad1e744fadce1e8b"
+        },
+        "logical_request_id": "logical-00000012",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 60,
+        "step_ordinal": 1,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:56:59.772824Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000012",
+        "monotonic_duration_s": 3.609638,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 61,
+        "step_ordinal": 1,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T00:56:59.773485Z",
+        "utc_observed_at": "2026-11-02T00:56:59.773492Z",
+        "utc_started_at": "2026-11-02T00:56:56.163844Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000013",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 62,
+        "step_ordinal": 2,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:57:00.230301Z",
+        "utc_started_at": "2026-11-02T00:57:00.230285Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000013",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 63,
+        "step_ordinal": 2,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:57:00.230384Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000013",
+        "monotonic_duration_s": 1.534426,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 64,
+        "step_ordinal": 2,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T00:57:01.766569Z",
+        "utc_observed_at": "2026-11-02T00:57:01.766594Z",
+        "utc_started_at": "2026-11-02T00:57:00.232150Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "ece3c9d8e3ca4b1cafae8b9228686b49"
+        },
+        "logical_request_id": "logical-00000013",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 65,
+        "step_ordinal": 2,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:57:01.768068Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000013",
+        "monotonic_duration_s": 1.538357,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 66,
+        "step_ordinal": 2,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T00:57:01.768647Z",
+        "utc_observed_at": "2026-11-02T00:57:01.768654Z",
+        "utc_started_at": "2026-11-02T00:57:00.230285Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000014",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 67,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:57:01.880877Z",
+        "utc_started_at": "2026-11-02T00:57:01.880861Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000014",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 68,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T00:57:01.880967Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "error_type": "ReadTimeout",
+        "event": "transport_error",
+        "logical_request_id": "logical-00000014",
+        "monotonic_duration_s": 600.034583,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 69,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:07:01.917427Z",
+        "utc_observed_at": "2026-11-02T01:07:01.917466Z",
+        "utc_started_at": "2026-11-02T00:57:01.882865Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "sdk_retry_planned",
+        "logical_request_id": "logical-00000014",
+        "planned_backoff_s": 0.493455,
+        "retry_reason_type": "ReadTimeout",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 70,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:07:01.917588Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "error_type": "ReadTimeout",
+        "event": "transport_error",
+        "logical_request_id": "logical-00000014",
+        "monotonic_duration_s": 600.10048,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 2,
+        "seq": 71,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:17:02.512085Z",
+        "utc_observed_at": "2026-11-02T01:17:02.512119Z",
+        "utc_started_at": "2026-11-02T01:07:02.411609Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "sdk_retry_planned",
+        "logical_request_id": "logical-00000014",
+        "planned_backoff_s": 0.937468,
+        "retry_reason_type": "ReadTimeout",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 2,
+        "seq": 72,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:17:02.512230Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000014",
+        "monotonic_duration_s": 173.880715,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 3,
+        "seq": 73,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:19:57.330882Z",
+        "utc_observed_at": "2026-11-02T01:19:57.330922Z",
+        "utc_started_at": "2026-11-02T01:17:03.450179Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "fa32a262f388461b820826137b9fec0b"
+        },
+        "logical_request_id": "logical-00000014",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 74,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:19:57.332932Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000014",
+        "monotonic_duration_s": 1375.45261,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 75,
+        "step_ordinal": 3,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:19:57.333474Z",
+        "utc_observed_at": "2026-11-02T01:19:57.333484Z",
+        "utc_started_at": "2026-11-02T00:57:01.880861Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000015",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 76,
+        "step_ordinal": 4,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:19:57.545835Z",
+        "utc_started_at": "2026-11-02T01:19:57.545819Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000015",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 77,
+        "step_ordinal": 4,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:19:57.545924Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000015",
+        "monotonic_duration_s": 149.403004,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 78,
+        "step_ordinal": 4,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:22:26.951168Z",
+        "utc_observed_at": "2026-11-02T01:22:26.951197Z",
+        "utc_started_at": "2026-11-02T01:19:57.548173Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "de610de473964ac496626132a2b4aaed"
+        },
+        "logical_request_id": "logical-00000015",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 79,
+        "step_ordinal": 4,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:22:26.952976Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000015",
+        "monotonic_duration_s": 149.407852,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 80,
+        "step_ordinal": 4,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:22:26.953677Z",
+        "utc_observed_at": "2026-11-02T01:22:26.953685Z",
+        "utc_started_at": "2026-11-02T01:19:57.545819Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000016",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 81,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:22:27.193256Z",
+        "utc_started_at": "2026-11-02T01:22:27.193241Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000016",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 82,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:22:27.193349Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "error_type": "ReadTimeout",
+        "event": "transport_error",
+        "logical_request_id": "logical-00000016",
+        "monotonic_duration_s": 600.099624,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 83,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:32:27.296000Z",
+        "utc_observed_at": "2026-11-02T01:32:27.296022Z",
+        "utc_started_at": "2026-11-02T01:22:27.196380Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "sdk_retry_planned",
+        "logical_request_id": "logical-00000016",
+        "planned_backoff_s": 0.440545,
+        "retry_reason_type": "ReadTimeout",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 84,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:32:27.296110Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000016",
+        "monotonic_duration_s": 204.569294,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 2,
+        "seq": 85,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:52.306466Z",
+        "utc_observed_at": "2026-11-02T01:35:52.306500Z",
+        "utc_started_at": "2026-11-02T01:32:27.737175Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "ce403c0334e342cf93ba01a9339cedc3"
+        },
+        "logical_request_id": "logical-00000016",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 86,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:52.308607Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000016",
+        "monotonic_duration_s": 805.116221,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 87,
+        "step_ordinal": 5,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:52.309466Z",
+        "utc_observed_at": "2026-11-02T01:35:52.309475Z",
+        "utc_started_at": "2026-11-02T01:22:27.193241Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000017",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 88,
+        "step_ordinal": 6,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:52.427107Z",
+        "utc_started_at": "2026-11-02T01:35:52.427088Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000017",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 89,
+        "step_ordinal": 6,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:52.427211Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000017",
+        "monotonic_duration_s": 4.210449,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 90,
+        "step_ordinal": 6,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:56.641289Z",
+        "utc_observed_at": "2026-11-02T01:35:56.641315Z",
+        "utc_started_at": "2026-11-02T01:35:52.430846Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "28d9cd792e924a149f910d7d439118c9"
+        },
+        "logical_request_id": "logical-00000017",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 91,
+        "step_ordinal": 6,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:56.642848Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000017",
+        "monotonic_duration_s": 4.215786,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 92,
+        "step_ordinal": 6,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:56.642883Z",
+        "utc_observed_at": "2026-11-02T01:35:56.642888Z",
+        "utc_started_at": "2026-11-02T01:35:52.427088Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000018",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 93,
+        "step_ordinal": 7,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:56.837701Z",
+        "utc_started_at": "2026-11-02T01:35:56.837685Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000018",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 94,
+        "step_ordinal": 7,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:56.837786Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000018",
+        "monotonic_duration_s": 1.305876,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 95,
+        "step_ordinal": 7,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:58.147252Z",
+        "utc_observed_at": "2026-11-02T01:35:58.147281Z",
+        "utc_started_at": "2026-11-02T01:35:56.841381Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "34f57be329a14ecf9d39b9c1fc3cc24d"
+        },
+        "logical_request_id": "logical-00000018",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 96,
+        "step_ordinal": 7,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:58.148703Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000018",
+        "monotonic_duration_s": 1.311045,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 97,
+        "step_ordinal": 7,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:58.148738Z",
+        "utc_observed_at": "2026-11-02T01:35:58.148743Z",
+        "utc_started_at": "2026-11-02T01:35:56.837685Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000019",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 98,
+        "step_ordinal": 8,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:58.282000Z",
+        "utc_started_at": "2026-11-02T01:35:58.281985Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000019",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 99,
+        "step_ordinal": 8,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:58.282086Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000019",
+        "monotonic_duration_s": 0.800093,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 100,
+        "step_ordinal": 8,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:59.085185Z",
+        "utc_observed_at": "2026-11-02T01:35:59.085209Z",
+        "utc_started_at": "2026-11-02T01:35:58.285099Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "6d6509de685641c0a3ed3adde1a1a7d9"
+        },
+        "logical_request_id": "logical-00000019",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 101,
+        "step_ordinal": 8,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:59.086629Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000019",
+        "monotonic_duration_s": 0.805251,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 102,
+        "step_ordinal": 8,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:35:59.087241Z",
+        "utc_observed_at": "2026-11-02T01:35:59.087247Z",
+        "utc_started_at": "2026-11-02T01:35:58.281985Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000020",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 103,
+        "step_ordinal": 9,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:59.507151Z",
+        "utc_started_at": "2026-11-02T01:35:59.507134Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000020",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 104,
+        "step_ordinal": 9,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:35:59.507240Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000020",
+        "monotonic_duration_s": 1.377299,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 105,
+        "step_ordinal": 9,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:36:00.887961Z",
+        "utc_observed_at": "2026-11-02T01:36:00.887990Z",
+        "utc_started_at": "2026-11-02T01:35:59.510670Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "4a55f07bcb8d40a3841a63a9d932515c"
+        },
+        "logical_request_id": "logical-00000020",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 106,
+        "step_ordinal": 9,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:00.889671Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000020",
+        "monotonic_duration_s": 1.383136,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 107,
+        "step_ordinal": 9,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:36:00.890276Z",
+        "utc_observed_at": "2026-11-02T01:36:00.890284Z",
+        "utc_started_at": "2026-11-02T01:35:59.507134Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000021",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 108,
+        "step_ordinal": 10,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:01.472442Z",
+        "utc_started_at": "2026-11-02T01:36:01.472425Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000021",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 109,
+        "step_ordinal": 10,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:01.472531Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000021",
+        "monotonic_duration_s": 1.263198,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 110,
+        "step_ordinal": 10,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:36:02.739404Z",
+        "utc_observed_at": "2026-11-02T01:36:02.739428Z",
+        "utc_started_at": "2026-11-02T01:36:01.476204Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "1df9f46a29e64c638e36437b322fb805"
+        },
+        "logical_request_id": "logical-00000021",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 111,
+        "step_ordinal": 10,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:02.741149Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000021",
+        "monotonic_duration_s": 1.269336,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 112,
+        "step_ordinal": 10,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:36:02.741765Z",
+        "utc_observed_at": "2026-11-02T01:36:02.741777Z",
+        "utc_started_at": "2026-11-02T01:36:01.472425Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000022",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 113,
+        "step_ordinal": 11,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:02.853819Z",
+        "utc_started_at": "2026-11-02T01:36:02.853803Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000022",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 114,
+        "step_ordinal": 11,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:02.853912Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000022",
+        "monotonic_duration_s": 2.164785,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 115,
+        "step_ordinal": 11,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:36:05.022483Z",
+        "utc_observed_at": "2026-11-02T01:36:05.022510Z",
+        "utc_started_at": "2026-11-02T01:36:02.857704Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "859194bfa1524f5dae424d7438f5fac9"
+        },
+        "logical_request_id": "logical-00000022",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 116,
+        "step_ordinal": 11,
+        "task_instance_id": "django__django-10097",
+        "utc_observed_at": "2026-11-02T01:36:05.024195Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000022",
+        "monotonic_duration_s": 2.170939,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 117,
+        "step_ordinal": 11,
+        "task_instance_id": "django__django-10097",
+        "utc_ended_at": "2026-11-02T01:36:05.024748Z",
+        "utc_observed_at": "2026-11-02T01:36:05.024755Z",
+        "utc_started_at": "2026-11-02T01:36:02.853803Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000023",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 118,
+        "step_ordinal": 1,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:05.286171Z",
+        "utc_started_at": "2026-11-02T01:36:05.286157Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000023",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 119,
+        "step_ordinal": 1,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:05.286245Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000023",
+        "monotonic_duration_s": 3.24149,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 120,
+        "step_ordinal": 1,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:08.529203Z",
+        "utc_observed_at": "2026-11-02T01:36:08.529239Z",
+        "utc_started_at": "2026-11-02T01:36:05.287726Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "4d1cde5b50eb4e5da014903e35647fdb"
+        },
+        "logical_request_id": "logical-00000023",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 121,
+        "step_ordinal": 1,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:08.531765Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000023",
+        "monotonic_duration_s": 3.246245,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 122,
+        "step_ordinal": 1,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:08.532401Z",
+        "utc_observed_at": "2026-11-02T01:36:08.532415Z",
+        "utc_started_at": "2026-11-02T01:36:05.286157Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000024",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 123,
+        "step_ordinal": 2,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:10.382270Z",
+        "utc_started_at": "2026-11-02T01:36:10.382252Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000024",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 124,
+        "step_ordinal": 2,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:10.382367Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000024",
+        "monotonic_duration_s": 2.632683,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 125,
+        "step_ordinal": 2,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:13.017016Z",
+        "utc_observed_at": "2026-11-02T01:36:13.017039Z",
+        "utc_started_at": "2026-11-02T01:36:10.384339Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "02ff5dcce87d4db782753d1baa35a744"
+        },
+        "logical_request_id": "logical-00000024",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 126,
+        "step_ordinal": 2,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:13.018626Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000024",
+        "monotonic_duration_s": 2.636413,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 127,
+        "step_ordinal": 2,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:13.018673Z",
+        "utc_observed_at": "2026-11-02T01:36:13.018679Z",
+        "utc_started_at": "2026-11-02T01:36:10.382252Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000025",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 128,
+        "step_ordinal": 3,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:13.129461Z",
+        "utc_started_at": "2026-11-02T01:36:13.129446Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000025",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 129,
+        "step_ordinal": 3,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:13.129549Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000025",
+        "monotonic_duration_s": 5.769118,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 130,
+        "step_ordinal": 3,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:18.900545Z",
+        "utc_observed_at": "2026-11-02T01:36:18.900571Z",
+        "utc_started_at": "2026-11-02T01:36:13.131434Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "94f6951d12264c448c178741aab613f6"
+        },
+        "logical_request_id": "logical-00000025",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 131,
+        "step_ordinal": 3,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:18.902133Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000025",
+        "monotonic_duration_s": 5.773454,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 132,
+        "step_ordinal": 3,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:18.902905Z",
+        "utc_observed_at": "2026-11-02T01:36:18.902912Z",
+        "utc_started_at": "2026-11-02T01:36:13.129446Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000026",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 133,
+        "step_ordinal": 4,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:19.023408Z",
+        "utc_started_at": "2026-11-02T01:36:19.023394Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000026",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 134,
+        "step_ordinal": 4,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:19.023485Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000026",
+        "monotonic_duration_s": 6.836023,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 135,
+        "step_ordinal": 4,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:25.861879Z",
+        "utc_observed_at": "2026-11-02T01:36:25.861916Z",
+        "utc_started_at": "2026-11-02T01:36:19.025860Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "98a6e4c55431452fb8a2f57f0203d9f8"
+        },
+        "logical_request_id": "logical-00000026",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 136,
+        "step_ordinal": 4,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:25.863450Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000026",
+        "monotonic_duration_s": 6.84063,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 137,
+        "step_ordinal": 4,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:25.864028Z",
+        "utc_observed_at": "2026-11-02T01:36:25.864037Z",
+        "utc_started_at": "2026-11-02T01:36:19.023394Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000027",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 138,
+        "step_ordinal": 5,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:26.409396Z",
+        "utc_started_at": "2026-11-02T01:36:26.409368Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000027",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 139,
+        "step_ordinal": 5,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:26.409543Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000027",
+        "monotonic_duration_s": 5.5551,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 140,
+        "step_ordinal": 5,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:31.968511Z",
+        "utc_observed_at": "2026-11-02T01:36:31.968544Z",
+        "utc_started_at": "2026-11-02T01:36:26.413419Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "c0360bb902724818ac39bf2eb9efccae"
+        },
+        "logical_request_id": "logical-00000027",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 141,
+        "step_ordinal": 5,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:31.970361Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000027",
+        "monotonic_duration_s": 5.561582,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 142,
+        "step_ordinal": 5,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:31.970963Z",
+        "utc_observed_at": "2026-11-02T01:36:31.970970Z",
+        "utc_started_at": "2026-11-02T01:36:26.409368Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000028",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 143,
+        "step_ordinal": 6,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:32.573459Z",
+        "utc_started_at": "2026-11-02T01:36:32.573444Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000028",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 144,
+        "step_ordinal": 6,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:32.573535Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000028",
+        "monotonic_duration_s": 3.698247,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 145,
+        "step_ordinal": 6,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:36.274481Z",
+        "utc_observed_at": "2026-11-02T01:36:36.274509Z",
+        "utc_started_at": "2026-11-02T01:36:32.576240Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "a7bf7e61deb74907bfc1a516ad05a4bb"
+        },
+        "logical_request_id": "logical-00000028",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 146,
+        "step_ordinal": 6,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:36.276150Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000028",
+        "monotonic_duration_s": 3.702739,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 147,
+        "step_ordinal": 6,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:36.276190Z",
+        "utc_observed_at": "2026-11-02T01:36:36.276196Z",
+        "utc_started_at": "2026-11-02T01:36:32.573444Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000029",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 148,
+        "step_ordinal": 7,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:37.973602Z",
+        "utc_started_at": "2026-11-02T01:36:37.973581Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000029",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 149,
+        "step_ordinal": 7,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:37.973744Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000029",
+        "monotonic_duration_s": 1.831559,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 150,
+        "step_ordinal": 7,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:39.809003Z",
+        "utc_observed_at": "2026-11-02T01:36:39.809032Z",
+        "utc_started_at": "2026-11-02T01:36:37.977454Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "721e09fd65ea4c92bd6d68103366ec37"
+        },
+        "logical_request_id": "logical-00000029",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 151,
+        "step_ordinal": 7,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:39.810706Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000029",
+        "monotonic_duration_s": 1.837857,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 152,
+        "step_ordinal": 7,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:39.811447Z",
+        "utc_observed_at": "2026-11-02T01:36:39.811455Z",
+        "utc_started_at": "2026-11-02T01:36:37.973581Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000030",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 153,
+        "step_ordinal": 8,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:42.956945Z",
+        "utc_started_at": "2026-11-02T01:36:42.956928Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000030",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 154,
+        "step_ordinal": 8,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:42.957041Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000030",
+        "monotonic_duration_s": 1.46518,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 155,
+        "step_ordinal": 8,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:44.425499Z",
+        "utc_observed_at": "2026-11-02T01:36:44.425538Z",
+        "utc_started_at": "2026-11-02T01:36:42.960331Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "4352a7dfe3d84088a9574cd73bf0b5ea"
+        },
+        "logical_request_id": "logical-00000030",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 156,
+        "step_ordinal": 8,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:44.428194Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000030",
+        "monotonic_duration_s": 1.472659,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 157,
+        "step_ordinal": 8,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:44.429593Z",
+        "utc_observed_at": "2026-11-02T01:36:44.429601Z",
+        "utc_started_at": "2026-11-02T01:36:42.956928Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000031",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 158,
+        "step_ordinal": 9,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:47.520478Z",
+        "utc_started_at": "2026-11-02T01:36:47.520458Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000031",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 159,
+        "step_ordinal": 9,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:47.520597Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000031",
+        "monotonic_duration_s": 2.256714,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 160,
+        "step_ordinal": 9,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:49.781312Z",
+        "utc_observed_at": "2026-11-02T01:36:49.781339Z",
+        "utc_started_at": "2026-11-02T01:36:47.524603Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "6cf87dcb786047c5b9a044d36259e48d"
+        },
+        "logical_request_id": "logical-00000031",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 161,
+        "step_ordinal": 9,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:49.783267Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000031",
+        "monotonic_duration_s": 2.262841,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 162,
+        "step_ordinal": 9,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:49.783309Z",
+        "utc_observed_at": "2026-11-02T01:36:49.783314Z",
+        "utc_started_at": "2026-11-02T01:36:47.520458Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000032",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 163,
+        "step_ordinal": 10,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:55.937049Z",
+        "utc_started_at": "2026-11-02T01:36:55.937026Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000032",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 164,
+        "step_ordinal": 10,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:55.937178Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000032",
+        "monotonic_duration_s": 2.246259,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 165,
+        "step_ordinal": 10,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:58.187617Z",
+        "utc_observed_at": "2026-11-02T01:36:58.187644Z",
+        "utc_started_at": "2026-11-02T01:36:55.941360Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "766e01b7cf8b4f0a98e8a09288c6fdf9"
+        },
+        "logical_request_id": "logical-00000032",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 166,
+        "step_ordinal": 10,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:36:58.189176Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000032",
+        "monotonic_duration_s": 2.252816,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 167,
+        "step_ordinal": 10,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:36:58.189851Z",
+        "utc_observed_at": "2026-11-02T01:36:58.189860Z",
+        "utc_started_at": "2026-11-02T01:36:55.937026Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000033",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 168,
+        "step_ordinal": 11,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:04.306703Z",
+        "utc_started_at": "2026-11-02T01:37:04.306688Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000033",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 169,
+        "step_ordinal": 11,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:04.306785Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000033",
+        "monotonic_duration_s": 1.986806,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 170,
+        "step_ordinal": 11,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:37:06.297219Z",
+        "utc_observed_at": "2026-11-02T01:37:06.297245Z",
+        "utc_started_at": "2026-11-02T01:37:04.310413Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "34bbb1ee968c492eaff90af1cb394813"
+        },
+        "logical_request_id": "logical-00000033",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 171,
+        "step_ordinal": 11,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:06.298819Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000033",
+        "monotonic_duration_s": 1.992162,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 172,
+        "step_ordinal": 11,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:37:06.298857Z",
+        "utc_observed_at": "2026-11-02T01:37:06.298862Z",
+        "utc_started_at": "2026-11-02T01:37:04.306688Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000034",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 173,
+        "step_ordinal": 12,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:06.410028Z",
+        "utc_started_at": "2026-11-02T01:37:06.410013Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000034",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 174,
+        "step_ordinal": 12,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:06.410123Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000034",
+        "monotonic_duration_s": 2.036425,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 175,
+        "step_ordinal": 12,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:37:08.450255Z",
+        "utc_observed_at": "2026-11-02T01:37:08.450306Z",
+        "utc_started_at": "2026-11-02T01:37:06.413850Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "22cbd74832d14b178bf873ac6702791e"
+        },
+        "logical_request_id": "logical-00000034",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 176,
+        "step_ordinal": 12,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:08.453782Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000034",
+        "monotonic_duration_s": 2.044853,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 177,
+        "step_ordinal": 12,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:37:08.454860Z",
+        "utc_observed_at": "2026-11-02T01:37:08.454881Z",
+        "utc_started_at": "2026-11-02T01:37:06.410013Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000035",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 178,
+        "step_ordinal": 13,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:08.571729Z",
+        "utc_started_at": "2026-11-02T01:37:08.571713Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000035",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 179,
+        "step_ordinal": 13,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:08.571822Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000035",
+        "monotonic_duration_s": 2.043803,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 180,
+        "step_ordinal": 13,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:37:10.619543Z",
+        "utc_observed_at": "2026-11-02T01:37:10.619574Z",
+        "utc_started_at": "2026-11-02T01:37:08.575750Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "aadeba98159f4b6aa9d689ba40311478"
+        },
+        "logical_request_id": "logical-00000035",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 181,
+        "step_ordinal": 13,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_observed_at": "2026-11-02T01:37:10.621497Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000035",
+        "monotonic_duration_s": 2.05037,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 182,
+        "step_ordinal": 13,
+        "task_instance_id": "matplotlib__matplotlib-13989",
+        "utc_ended_at": "2026-11-02T01:37:10.622087Z",
+        "utc_observed_at": "2026-11-02T01:37:10.622097Z",
+        "utc_started_at": "2026-11-02T01:37:08.571713Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000036",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 183,
+        "step_ordinal": 1,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:10.861621Z",
+        "utc_started_at": "2026-11-02T01:37:10.861607Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000036",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 184,
+        "step_ordinal": 1,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:10.861698Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000036",
+        "monotonic_duration_s": 2.158242,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 185,
+        "step_ordinal": 1,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:13.021393Z",
+        "utc_observed_at": "2026-11-02T01:37:13.021420Z",
+        "utc_started_at": "2026-11-02T01:37:10.863161Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "d9eced4bcbcb4ad7bc4b2c664be12c65"
+        },
+        "logical_request_id": "logical-00000036",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 186,
+        "step_ordinal": 1,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:13.023028Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000036",
+        "monotonic_duration_s": 2.161457,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 187,
+        "step_ordinal": 1,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:13.023069Z",
+        "utc_observed_at": "2026-11-02T01:37:13.023074Z",
+        "utc_started_at": "2026-11-02T01:37:10.861607Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000037",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 188,
+        "step_ordinal": 2,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:13.251334Z",
+        "utc_started_at": "2026-11-02T01:37:13.251318Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000037",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 189,
+        "step_ordinal": 2,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:13.251414Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000037",
+        "monotonic_duration_s": 0.964695,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 190,
+        "step_ordinal": 2,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:14.218050Z",
+        "utc_observed_at": "2026-11-02T01:37:14.218074Z",
+        "utc_started_at": "2026-11-02T01:37:13.253357Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "e53fbd25dd404757992fdab9e8b409c9"
+        },
+        "logical_request_id": "logical-00000037",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 191,
+        "step_ordinal": 2,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:14.219560Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000037",
+        "monotonic_duration_s": 0.968272,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 192,
+        "step_ordinal": 2,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:14.219597Z",
+        "utc_observed_at": "2026-11-02T01:37:14.219601Z",
+        "utc_started_at": "2026-11-02T01:37:13.251318Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000038",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 193,
+        "step_ordinal": 3,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:14.333829Z",
+        "utc_started_at": "2026-11-02T01:37:14.333813Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000038",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 194,
+        "step_ordinal": 3,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:14.333919Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000038",
+        "monotonic_duration_s": 0.873102,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 195,
+        "step_ordinal": 3,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:15.208869Z",
+        "utc_observed_at": "2026-11-02T01:37:15.208905Z",
+        "utc_started_at": "2026-11-02T01:37:14.335779Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "0d47811ab6a04ec7bd9992ef502efd26"
+        },
+        "logical_request_id": "logical-00000038",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 196,
+        "step_ordinal": 3,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:15.210664Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000038",
+        "monotonic_duration_s": 0.877408,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 197,
+        "step_ordinal": 3,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:15.211213Z",
+        "utc_observed_at": "2026-11-02T01:37:15.211237Z",
+        "utc_started_at": "2026-11-02T01:37:14.333813Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000039",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 198,
+        "step_ordinal": 4,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:15.320708Z",
+        "utc_started_at": "2026-11-02T01:37:15.320684Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000039",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 199,
+        "step_ordinal": 4,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:15.320802Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000039",
+        "monotonic_duration_s": 1.086943,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 200,
+        "step_ordinal": 4,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:16.410203Z",
+        "utc_observed_at": "2026-11-02T01:37:16.410227Z",
+        "utc_started_at": "2026-11-02T01:37:15.323265Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "b17a630967004764bedfa6fe0d651d7d"
+        },
+        "logical_request_id": "logical-00000039",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 201,
+        "step_ordinal": 4,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:16.411646Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000039",
+        "monotonic_duration_s": 1.091614,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 202,
+        "step_ordinal": 4,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:16.412311Z",
+        "utc_observed_at": "2026-11-02T01:37:16.412318Z",
+        "utc_started_at": "2026-11-02T01:37:15.320684Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000040",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 203,
+        "step_ordinal": 5,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:16.523004Z",
+        "utc_started_at": "2026-11-02T01:37:16.522988Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000040",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 204,
+        "step_ordinal": 5,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:16.523085Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000040",
+        "monotonic_duration_s": 1.600739,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 205,
+        "step_ordinal": 5,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:18.126318Z",
+        "utc_observed_at": "2026-11-02T01:37:18.126349Z",
+        "utc_started_at": "2026-11-02T01:37:16.525590Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "961ae56de5664a0a923de2829fe5f26d"
+        },
+        "logical_request_id": "logical-00000040",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 206,
+        "step_ordinal": 5,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:18.128268Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000040",
+        "monotonic_duration_s": 1.606064,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 207,
+        "step_ordinal": 5,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:18.129049Z",
+        "utc_observed_at": "2026-11-02T01:37:18.129068Z",
+        "utc_started_at": "2026-11-02T01:37:16.522988Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000041",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 208,
+        "step_ordinal": 6,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:18.238652Z",
+        "utc_started_at": "2026-11-02T01:37:18.238635Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000041",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 209,
+        "step_ordinal": 6,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:18.238807Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000041",
+        "monotonic_duration_s": 5.420299,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 210,
+        "step_ordinal": 6,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:23.661651Z",
+        "utc_observed_at": "2026-11-02T01:37:23.661678Z",
+        "utc_started_at": "2026-11-02T01:37:18.241360Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "6e01ddd8bcf04147ac0da758bc28bc5f"
+        },
+        "logical_request_id": "logical-00000041",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 211,
+        "step_ordinal": 6,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:23.663247Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000041",
+        "monotonic_duration_s": 5.425301,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 212,
+        "step_ordinal": 6,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:23.663931Z",
+        "utc_observed_at": "2026-11-02T01:37:23.663949Z",
+        "utc_started_at": "2026-11-02T01:37:18.238635Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000042",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 213,
+        "step_ordinal": 7,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:23.797397Z",
+        "utc_started_at": "2026-11-02T01:37:23.797380Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000042",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 214,
+        "step_ordinal": 7,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:23.797491Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000042",
+        "monotonic_duration_s": 1.410076,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 215,
+        "step_ordinal": 7,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:25.210157Z",
+        "utc_observed_at": "2026-11-02T01:37:25.210190Z",
+        "utc_started_at": "2026-11-02T01:37:23.800092Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "904a41d6d4494e5cbc2f416a7f16bf47"
+        },
+        "logical_request_id": "logical-00000042",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 216,
+        "step_ordinal": 7,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:25.212166Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000042",
+        "monotonic_duration_s": 1.415319,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 217,
+        "step_ordinal": 7,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:25.212703Z",
+        "utc_observed_at": "2026-11-02T01:37:25.212714Z",
+        "utc_started_at": "2026-11-02T01:37:23.797380Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000043",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 218,
+        "step_ordinal": 8,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:25.320652Z",
+        "utc_started_at": "2026-11-02T01:37:25.320635Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000043",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 219,
+        "step_ordinal": 8,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:25.320742Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000043",
+        "monotonic_duration_s": 11.173721,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 220,
+        "step_ordinal": 8,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:36.497245Z",
+        "utc_observed_at": "2026-11-02T01:37:36.497275Z",
+        "utc_started_at": "2026-11-02T01:37:25.323534Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "03960db5983048418b415863da9fe6bc"
+        },
+        "logical_request_id": "logical-00000043",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 221,
+        "step_ordinal": 8,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:36.499207Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000043",
+        "monotonic_duration_s": 11.179781,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 222,
+        "step_ordinal": 8,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:36.500420Z",
+        "utc_observed_at": "2026-11-02T01:37:36.500432Z",
+        "utc_started_at": "2026-11-02T01:37:25.320635Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000044",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 223,
+        "step_ordinal": 9,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:36.624364Z",
+        "utc_started_at": "2026-11-02T01:37:36.624347Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000044",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 224,
+        "step_ordinal": 9,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:36.624451Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000044",
+        "monotonic_duration_s": 1.756054,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 225,
+        "step_ordinal": 9,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:38.383465Z",
+        "utc_observed_at": "2026-11-02T01:37:38.383491Z",
+        "utc_started_at": "2026-11-02T01:37:36.627418Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "d781f4b42aa24bbea5aae14f01caae1b"
+        },
+        "logical_request_id": "logical-00000044",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 226,
+        "step_ordinal": 9,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:38.385011Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000044",
+        "monotonic_duration_s": 1.760695,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 227,
+        "step_ordinal": 9,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:38.385051Z",
+        "utc_observed_at": "2026-11-02T01:37:38.385055Z",
+        "utc_started_at": "2026-11-02T01:37:36.624347Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000045",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 228,
+        "step_ordinal": 10,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:38.492903Z",
+        "utc_started_at": "2026-11-02T01:37:38.492881Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000045",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 229,
+        "step_ordinal": 10,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:38.493005Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000045",
+        "monotonic_duration_s": 3.238179,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 230,
+        "step_ordinal": 10,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:41.734601Z",
+        "utc_observed_at": "2026-11-02T01:37:41.734626Z",
+        "utc_started_at": "2026-11-02T01:37:38.496425Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "9576d287addd4bd4a456b883279075c3"
+        },
+        "logical_request_id": "logical-00000045",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 231,
+        "step_ordinal": 10,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:41.736111Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000045",
+        "monotonic_duration_s": 3.243262,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 232,
+        "step_ordinal": 10,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:41.736152Z",
+        "utc_observed_at": "2026-11-02T01:37:41.736158Z",
+        "utc_started_at": "2026-11-02T01:37:38.492881Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000046",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 233,
+        "step_ordinal": 11,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:41.856054Z",
+        "utc_started_at": "2026-11-02T01:37:41.856037Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000046",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 234,
+        "step_ordinal": 11,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:41.856147Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000046",
+        "monotonic_duration_s": 4.5811,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 235,
+        "step_ordinal": 11,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:46.440923Z",
+        "utc_observed_at": "2026-11-02T01:37:46.440951Z",
+        "utc_started_at": "2026-11-02T01:37:41.859829Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "b3c06b6ae77f469385a67588aa729d98"
+        },
+        "logical_request_id": "logical-00000046",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 236,
+        "step_ordinal": 11,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:46.442480Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000046",
+        "monotonic_duration_s": 4.587262,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 237,
+        "step_ordinal": 11,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:46.443305Z",
+        "utc_observed_at": "2026-11-02T01:37:46.443313Z",
+        "utc_started_at": "2026-11-02T01:37:41.856037Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000047",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 238,
+        "step_ordinal": 12,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:47.153555Z",
+        "utc_started_at": "2026-11-02T01:37:47.153539Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000047",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 239,
+        "step_ordinal": 12,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:47.153651Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000047",
+        "monotonic_duration_s": 1.27253,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 240,
+        "step_ordinal": 12,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:48.429671Z",
+        "utc_observed_at": "2026-11-02T01:37:48.429698Z",
+        "utc_started_at": "2026-11-02T01:37:47.157149Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "987f8944938c4c308ddcf97a8952fb8b"
+        },
+        "logical_request_id": "logical-00000047",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 241,
+        "step_ordinal": 12,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:48.431243Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000047",
+        "monotonic_duration_s": 1.277739,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 242,
+        "step_ordinal": 12,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:48.431285Z",
+        "utc_observed_at": "2026-11-02T01:37:48.431290Z",
+        "utc_started_at": "2026-11-02T01:37:47.153539Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000048",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 243,
+        "step_ordinal": 13,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:49.598227Z",
+        "utc_started_at": "2026-11-02T01:37:49.598211Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000048",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 244,
+        "step_ordinal": 13,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:49.598323Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000048",
+        "monotonic_duration_s": 2.002673,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 245,
+        "step_ordinal": 13,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:51.604863Z",
+        "utc_observed_at": "2026-11-02T01:37:51.604887Z",
+        "utc_started_at": "2026-11-02T01:37:49.602197Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "b5f209eab1f842efb0302b6624d55478"
+        },
+        "logical_request_id": "logical-00000048",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 246,
+        "step_ordinal": 13,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:51.606380Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000048",
+        "monotonic_duration_s": 2.008984,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 247,
+        "step_ordinal": 13,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:51.607202Z",
+        "utc_observed_at": "2026-11-02T01:37:51.607208Z",
+        "utc_started_at": "2026-11-02T01:37:49.598211Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000049",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 248,
+        "step_ordinal": 14,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:51.731291Z",
+        "utc_started_at": "2026-11-02T01:37:51.731271Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000049",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 249,
+        "step_ordinal": 14,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:51.731387Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000049",
+        "monotonic_duration_s": 1.962762,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 250,
+        "step_ordinal": 14,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:53.698008Z",
+        "utc_observed_at": "2026-11-02T01:37:53.698046Z",
+        "utc_started_at": "2026-11-02T01:37:51.735260Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "3137b3dfbee44fdc963cbaa87d279cc8"
+        },
+        "logical_request_id": "logical-00000049",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 251,
+        "step_ordinal": 14,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_observed_at": "2026-11-02T01:37:53.699698Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000049",
+        "monotonic_duration_s": 1.969211,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 252,
+        "step_ordinal": 14,
+        "task_instance_id": "scikit-learn__scikit-learn-10297",
+        "utc_ended_at": "2026-11-02T01:37:53.700490Z",
+        "utc_observed_at": "2026-11-02T01:37:53.700497Z",
+        "utc_started_at": "2026-11-02T01:37:51.731271Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000050",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 253,
+        "step_ordinal": 1,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:53.956023Z",
+        "utc_started_at": "2026-11-02T01:37:53.956009Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000050",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 254,
+        "step_ordinal": 1,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:53.956097Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000050",
+        "monotonic_duration_s": 1.912545,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 255,
+        "step_ordinal": 1,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:37:55.870068Z",
+        "utc_observed_at": "2026-11-02T01:37:55.870098Z",
+        "utc_started_at": "2026-11-02T01:37:53.957535Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "bbd9677925de46ae9c5b561b8ce90330"
+        },
+        "logical_request_id": "logical-00000050",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 256,
+        "step_ordinal": 1,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:55.871972Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000050",
+        "monotonic_duration_s": 1.916506,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 257,
+        "step_ordinal": 1,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:37:55.872518Z",
+        "utc_observed_at": "2026-11-02T01:37:55.872526Z",
+        "utc_started_at": "2026-11-02T01:37:53.956009Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000051",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 258,
+        "step_ordinal": 2,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:56.193411Z",
+        "utc_started_at": "2026-11-02T01:37:56.193395Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000051",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 259,
+        "step_ordinal": 2,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:56.193486Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000051",
+        "monotonic_duration_s": 2.122761,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 260,
+        "step_ordinal": 2,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:37:58.317915Z",
+        "utc_observed_at": "2026-11-02T01:37:58.317950Z",
+        "utc_started_at": "2026-11-02T01:37:56.195167Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "94a7dab6306a4e3fab68561a4a3a057e"
+        },
+        "logical_request_id": "logical-00000051",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 261,
+        "step_ordinal": 2,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:58.319693Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000051",
+        "monotonic_duration_s": 2.126877,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 262,
+        "step_ordinal": 2,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:37:58.320278Z",
+        "utc_observed_at": "2026-11-02T01:37:58.320285Z",
+        "utc_started_at": "2026-11-02T01:37:56.193395Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000052",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 263,
+        "step_ordinal": 3,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:59.209382Z",
+        "utc_started_at": "2026-11-02T01:37:59.209366Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000052",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 264,
+        "step_ordinal": 3,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:37:59.209473Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000052",
+        "monotonic_duration_s": 1.018662,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 265,
+        "step_ordinal": 3,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:00.230193Z",
+        "utc_observed_at": "2026-11-02T01:38:00.230221Z",
+        "utc_started_at": "2026-11-02T01:37:59.211541Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "1b14347e20a14dfe901887c96280bb19"
+        },
+        "logical_request_id": "logical-00000052",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 266,
+        "step_ordinal": 3,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:00.231649Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000052",
+        "monotonic_duration_s": 1.022901,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 267,
+        "step_ordinal": 3,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:00.232272Z",
+        "utc_observed_at": "2026-11-02T01:38:00.232279Z",
+        "utc_started_at": "2026-11-02T01:37:59.209366Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000053",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 268,
+        "step_ordinal": 4,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:00.338315Z",
+        "utc_started_at": "2026-11-02T01:38:00.338296Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000053",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 269,
+        "step_ordinal": 4,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:00.338413Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000053",
+        "monotonic_duration_s": 5.145083,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 270,
+        "step_ordinal": 4,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:05.486036Z",
+        "utc_observed_at": "2026-11-02T01:38:05.486123Z",
+        "utc_started_at": "2026-11-02T01:38:00.341004Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "6b9adcf3f15142e9931043745487c7e1"
+        },
+        "logical_request_id": "logical-00000053",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 271,
+        "step_ordinal": 4,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:05.488289Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000053",
+        "monotonic_duration_s": 5.150654,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 272,
+        "step_ordinal": 4,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:05.488957Z",
+        "utc_observed_at": "2026-11-02T01:38:05.488965Z",
+        "utc_started_at": "2026-11-02T01:38:00.338296Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000054",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 273,
+        "step_ordinal": 5,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:05.612807Z",
+        "utc_started_at": "2026-11-02T01:38:05.612791Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000054",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 274,
+        "step_ordinal": 5,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:05.612891Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000054",
+        "monotonic_duration_s": 2.704753,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 275,
+        "step_ordinal": 5,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:08.320064Z",
+        "utc_observed_at": "2026-11-02T01:38:08.320094Z",
+        "utc_started_at": "2026-11-02T01:38:05.615322Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "245a31bf2447469e9d23f2e288f7fc61"
+        },
+        "logical_request_id": "logical-00000054",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 276,
+        "step_ordinal": 5,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:08.321880Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000054",
+        "monotonic_duration_s": 2.709741,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 277,
+        "step_ordinal": 5,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:08.322526Z",
+        "utc_observed_at": "2026-11-02T01:38:08.322547Z",
+        "utc_started_at": "2026-11-02T01:38:05.612791Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000055",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 278,
+        "step_ordinal": 6,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:08.614914Z",
+        "utc_started_at": "2026-11-02T01:38:08.614886Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000055",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 279,
+        "step_ordinal": 6,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:08.615002Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000055",
+        "monotonic_duration_s": 2.592483,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 280,
+        "step_ordinal": 6,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:11.210202Z",
+        "utc_observed_at": "2026-11-02T01:38:11.210229Z",
+        "utc_started_at": "2026-11-02T01:38:08.617721Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "2db47029f712481e9beb6843734a3339"
+        },
+        "logical_request_id": "logical-00000055",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 281,
+        "step_ordinal": 6,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:11.211763Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000055",
+        "monotonic_duration_s": 2.596908,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 282,
+        "step_ordinal": 6,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:11.211802Z",
+        "utc_observed_at": "2026-11-02T01:38:11.211807Z",
+        "utc_started_at": "2026-11-02T01:38:08.614886Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000056",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 283,
+        "step_ordinal": 7,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:11.335540Z",
+        "utc_started_at": "2026-11-02T01:38:11.335523Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000056",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 284,
+        "step_ordinal": 7,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:11.335628Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000056",
+        "monotonic_duration_s": 1.256222,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 285,
+        "step_ordinal": 7,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:12.594769Z",
+        "utc_observed_at": "2026-11-02T01:38:12.594799Z",
+        "utc_started_at": "2026-11-02T01:38:11.338550Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "341b1c9e17a842078aecf70bae54359e"
+        },
+        "logical_request_id": "logical-00000056",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 286,
+        "step_ordinal": 7,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:12.596593Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000056",
+        "monotonic_duration_s": 1.262232,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 287,
+        "step_ordinal": 7,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:12.597749Z",
+        "utc_observed_at": "2026-11-02T01:38:12.597772Z",
+        "utc_started_at": "2026-11-02T01:38:11.335523Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000057",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 288,
+        "step_ordinal": 8,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:13.282802Z",
+        "utc_started_at": "2026-11-02T01:38:13.282785Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000057",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 289,
+        "step_ordinal": 8,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:13.282890Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000057",
+        "monotonic_duration_s": 1.756055,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 290,
+        "step_ordinal": 8,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:15.041799Z",
+        "utc_observed_at": "2026-11-02T01:38:15.041823Z",
+        "utc_started_at": "2026-11-02T01:38:13.285750Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "29ce1ed3ab824dca85428b5667f0b5fa"
+        },
+        "logical_request_id": "logical-00000057",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 291,
+        "step_ordinal": 8,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:15.043367Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000057",
+        "monotonic_duration_s": 1.761199,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 292,
+        "step_ordinal": 8,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:15.043986Z",
+        "utc_observed_at": "2026-11-02T01:38:15.044000Z",
+        "utc_started_at": "2026-11-02T01:38:13.282785Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000058",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 293,
+        "step_ordinal": 9,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:15.153677Z",
+        "utc_started_at": "2026-11-02T01:38:15.153660Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000058",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 294,
+        "step_ordinal": 9,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:15.153764Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000058",
+        "monotonic_duration_s": 3.428901,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 295,
+        "step_ordinal": 9,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:18.585822Z",
+        "utc_observed_at": "2026-11-02T01:38:18.585848Z",
+        "utc_started_at": "2026-11-02T01:38:15.156929Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "a61cd90e18c24008a9ec3a9f6986202e"
+        },
+        "logical_request_id": "logical-00000058",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 296,
+        "step_ordinal": 9,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:18.587413Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000058",
+        "monotonic_duration_s": 3.43445,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 297,
+        "step_ordinal": 9,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:18.588116Z",
+        "utc_observed_at": "2026-11-02T01:38:18.588124Z",
+        "utc_started_at": "2026-11-02T01:38:15.153660Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000059",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 298,
+        "step_ordinal": 10,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:18.702499Z",
+        "utc_started_at": "2026-11-02T01:38:18.702483Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000059",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 299,
+        "step_ordinal": 10,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:18.702584Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000059",
+        "monotonic_duration_s": 1.717837,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 300,
+        "step_ordinal": 10,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:20.423878Z",
+        "utc_observed_at": "2026-11-02T01:38:20.423914Z",
+        "utc_started_at": "2026-11-02T01:38:18.706050Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "d362acd2690148ea9cd5362d838f48e7"
+        },
+        "logical_request_id": "logical-00000059",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 301,
+        "step_ordinal": 10,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:20.427273Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000059",
+        "monotonic_duration_s": 1.725678,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 302,
+        "step_ordinal": 10,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:20.428157Z",
+        "utc_observed_at": "2026-11-02T01:38:20.428178Z",
+        "utc_started_at": "2026-11-02T01:38:18.702483Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000060",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 303,
+        "step_ordinal": 11,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:21.444372Z",
+        "utc_started_at": "2026-11-02T01:38:21.444353Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000060",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 304,
+        "step_ordinal": 11,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:21.444477Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000060",
+        "monotonic_duration_s": 1.712125,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 305,
+        "step_ordinal": 11,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:23.160031Z",
+        "utc_observed_at": "2026-11-02T01:38:23.160064Z",
+        "utc_started_at": "2026-11-02T01:38:21.447916Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "795857cf706c4e669bb171f521bc6612"
+        },
+        "logical_request_id": "logical-00000060",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 306,
+        "step_ordinal": 11,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:23.161628Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000060",
+        "monotonic_duration_s": 1.717303,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 307,
+        "step_ordinal": 11,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:23.161666Z",
+        "utc_observed_at": "2026-11-02T01:38:23.161671Z",
+        "utc_started_at": "2026-11-02T01:38:21.444353Z"
+      },
+      {
+        "event": "logical_started",
+        "logical_request_id": "logical-00000061",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 308,
+        "step_ordinal": 12,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:23.282694Z",
+        "utc_started_at": "2026-11-02T01:38:23.282678Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "agent_attempt_started",
+        "logical_request_id": "logical-00000061",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 309,
+        "step_ordinal": 12,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:23.282776Z"
+      },
+      {
+        "agent_attempt_ordinal": 1,
+        "event": "transport_response",
+        "http_status": 200,
+        "ids": {},
+        "logical_request_id": "logical-00000061",
+        "monotonic_duration_s": 1.917339,
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "sdk_transport_attempt_ordinal": 1,
+        "seq": 310,
+        "step_ordinal": 12,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:25.203766Z",
+        "utc_observed_at": "2026-11-02T01:38:25.203793Z",
+        "utc_started_at": "2026-11-02T01:38:23.286434Z"
+      },
+      {
+        "event": "model_response",
+        "ids": {
+          "response_id": "cf683cdcfe0d4634961dbc30e971153b"
+        },
+        "logical_request_id": "logical-00000061",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 311,
+        "step_ordinal": 12,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_observed_at": "2026-11-02T01:38:25.205261Z"
+      },
+      {
+        "error_type": null,
+        "event": "logical_finished",
+        "logical_request_id": "logical-00000061",
+        "monotonic_duration_s": 1.922613,
+        "outcome": "success",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 312,
+        "step_ordinal": 12,
+        "task_instance_id": "sympy__sympy-11618",
+        "utc_ended_at": "2026-11-02T01:38:25.205298Z",
+        "utc_observed_at": "2026-11-02T01:38:25.205302Z",
+        "utc_started_at": "2026-11-02T01:38:23.282678Z"
+      },
+      {
+        "byte_count": 107732,
+        "event": "adapter_finished",
+        "event_count": 312,
+        "limits": {
+          "max_bytes": 1048576,
+          "max_events": 2000
+        },
+        "omitted_bytes": 0,
+        "omitted_events": 0,
+        "outcome": "completed",
+        "schema": "anvil-serving.swe-agent-observation/v1",
+        "seq": 313,
+        "status": "complete",
+        "utc_observed_at": "2026-11-02T01:38:25.316128Z"
+      }
+    ],
+    "omitted_bytes": 0,
+    "omitted_events": 0,
+    "path": "[REDACTED_PATH]",
+    "schema": "anvil-serving.swe-agent-observation/v1",
+    "sha256": "d8656dbfab2cb4b2411db5fe92ad9c9bb029b9b429869a138d86853099c6fd1e",
+    "status": "complete"
+  },
+  "run_id": "[QUALIFICATION_FINAL_SWE_RUN]",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "astropy__astropy-12907",
+      "django__django-10097",
+      "matplotlib__matplotlib-13989",
+      "scikit-learn__scikit-learn-10297",
+      "sympy__sympy-11618"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "675265ec1242101c95fdf9e44d4c2e9c6159b9879cbae3f61642740265a66970"
+  },
+  "server_log_evidence": {
+    "status": "not_requested"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "clock": {
+        "duration": "monotonic",
+        "duration_resolution_s": 1e-09,
+        "synchronized": null,
+        "wall": "UTC system clock",
+        "wall_precision_s": 1e-06,
+        "wall_resolution_s": 1e-09
+      },
+      "command": [
+        "[REDACTED_PATH]",
+        "[REDACTED_PATH]",
+        "--mini-root",
+        "[REDACTED_PATH]",
+        "--adapter-sha256",
+        "9feafeb79cce6bccce0d816abaf125ad70cdc9ded6b01f3d26acffa6b6249fde",
+        "--events",
+        "[REDACTED_PATH]",
+        "--",
+        "--output",
+        "[REDACTED_PATH]",
+        "--model",
+        "openai/[QUALIFICATION_FINAL_MODEL_ALIAS]",
+        "--subset",
+        "[REDACTED_PATH]",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:astropy__astropy\\-12907|django__django\\-10097|matplotlib__matplotlib\\-13989|scikit\\-learn__scikit\\-learn\\-10297|sympy__sympy\\-11618)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "[REDACTED_PATH]",
+        "--config",
+        "[REDACTED_PATH]"
+      ],
+      "duration_s": 2548.193231,
+      "ended_at": "2026-11-02T01:38:25.899692Z",
+      "name": "agent",
+      "output_timing": "buffered; individual stdout/stderr event times unknown",
+      "output_truncated": false,
+      "returncode": 0,
+      "started_at": "2026-11-02T00:55:57.706439Z",
+      "status": "completed",
+      "stderr": "",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n[REDACTED_PATH]\nark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/mini-output   \nLogging to '[REDACTED_PATH]\nminisweagent: INFO: Loading dataset                                             \n[REDACTED_PATH]\nark-harness-cache/swe-bench-verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/da\nta, split test...                                                               \nminisweagent: INFO: Instance filter: 500 -> 5 instances                         \nminisweagent: INFO: Running on 5 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['[REDACTED_PATH]\nhmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/\nminisweagent/config/benchmarks/swebench.yaml',                                  \n'[REDACTED_PATH]\nmark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/anvil-swe-con\nfig.yaml']                                                                      \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [SWE_AGENT_CONTAINER] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.astropy_1776_astropy-12907:latest sleep 2h  \nminisweagent.environment: INFO: Started container [SWE_AGENT_CONTAINER] with ID \na50a914d55ebe8c45c3c5d59b4749814d506c382982aefd40256899e14cd4d4d                \nminisweagent: INFO: Saved trajectory to                                         \n'[REDACTED_PATH]\nmark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/mini-output/a\nstropy__astropy-12907/astropy__astropy-12907.traj.json'                         \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [SWE_AGENT_CONTAINER] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.django_1776_django-10097:latest sleep 2h    \nminisweagent.environment: INFO: Started container [SWE_AGENT_CONTAINER] with ID \n13f9e6abfa85469d13f22b443d3ce874dfd5331e496477a7cd3e1e3f3ea8a557                \nminisweagent: INFO: Saved trajectory to                                         \n'[REDACTED_PATH]\nmark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/mini-output/d\njango__django-10097/django__django-10097.traj.json'                             \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [SWE_AGENT_CONTAINER] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.matplotlib_1776_matplotlib-13989:latest     \nsleep 2h                                                                        \nminisweagent.environment: INFO: Started container [SWE_AGENT_CONTAINER] with ID \n787f08afaa0d651ffcc688b735c4f3c398cc37afdd7e364f8d50e96808255a18                \nminisweagent: INFO: Saved trajectory to                                         \n'[REDACTED_PATH]\nmark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/mini-output/m\natplotlib__matplotlib-13989/matplotlib__matplotlib-13989.traj.json'             \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [SWE_AGENT_CONTAINER] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.scikit-learn_1776_scikit-learn-10297:latest \nsleep 2h                                                                        \nminisweagent.environment: INFO: Started container [SWE_AGENT_CONTAINER] with ID \na77d47ae04bdf24d96d42c4864487be2b1336356bf4f9e0d82c9caff2f1162c5                \nminisweagent: INFO: Saved trajectory to                                         \n'[REDACTED_PATH]\nmark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/mini-output/s\ncikit-learn__scikit-learn-10297/scikit-learn__scikit-learn-10297.traj.json'     \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name [SWE_AGENT_CONTAINER] -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512 --pull never                                                   \ndocker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-11618:latest sleep 2h      \nminisweagent.environment: INFO: Started container [SWE_AGENT_CONTAINER] with ID \n9e223da01c32ada4ee423586e0289b81e5141428f00d651364ea957f18495087                \nminisweagent: INFO: Saved trajectory to                                         \n'[REDACTED_PATH]\nmark-runs/[QUALIFICATION_FINAL_CAMPAIGN]/[QUALIFICATION_FINAL_SWE_RUN]/work/mini-output/s\nympy__sympy-11618/sympy__sympy-11618.traj.json'                                 \n  Overall Progress ($0.00) \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5/5 100% 0:42:25 eta: 0:00:00\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Exit Status \u2503 Count \u2503 Most recent instances                                  \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 Submitted   \u2502     5 \u2502 sympy__sympy-11618,                                    \u2502\n\u2502             \u2502       \u2502 scikit-learn__scikit-learn-10297...                    \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+    },
+    {
+      "clock": {
+        "duration": "monotonic",
+        "duration_resolution_s": 1e-09,
+        "synchronized": null,
+        "wall": "UTC system clock",
+        "wall_precision_s": 1e-06,
+        "wall_resolution_s": 1e-09
+      },
+      "command": [
+        "[REDACTED_PATH]",
+        "[REDACTED_PATH]",
+        "--grader-root",
+        "[REDACTED_PATH]",
+        "--adapter-sha256",
+        "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+        "--receipt",
+        "[REDACTED_PATH]",
+        "--image-identities",
+        "[REDACTED_PATH]",
+        "--image-identities-sha256",
+        "66c0369f0c62bba8c1eef400d19f5e76490ceabdfeb7e8b3624de23232fb402a",
+        "--",
+        "--dataset_name",
+        "[REDACTED_PATH]",
+        "--split",
+        "test",
+        "--predictions_path",
+        "[REDACTED_PATH]",
+        "--max_workers",
+        "1",
+        "--namespace",
+        "swebench",
+        "--run_id",
+        "[QUALIFICATION_FINAL_SWE_RUN]",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "[REDACTED_PATH]",
+        "--instance_ids",
+        "astropy__astropy-12907",
+        "django__django-10097",
+        "matplotlib__matplotlib-13989",
+        "scikit-learn__scikit-learn-10297",
+        "sympy__sympy-11618"
+      ],
+      "duration_s": 351.959534,
+      "ended_at": "2026-11-02T01:44:18.005729Z",
+      "name": "official_grader",
+      "output_timing": "buffered; individual stdout/stderr event times unknown",
+      "output_truncated": false,
+      "returncode": 0,
+      "started_at": "2026-11-02T01:38:26.046162Z",
+      "status": "completed",
+      "stderr": "<frozen runpy>:128: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n\rEvaluation:   0%|          | 0/5 [00:00<?, ?it/s, error=0, \u2713=0, \u2716=0]\rEvaluation:   0%|          | 0/5 [00:25<?, ?it/s, \u2713=1, \u2716=0, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:25<01:42, 25.72s/it, \u2713=1, \u2716=0, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [04:15<01:42, 25.72s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [04:15<07:16, 145.59s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [05:04<07:16, 145.59s/it, \u2713=2, \u2716=1, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [05:04<03:23, 101.73s/it, \u2713=2, \u2716=1, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [05:22<03:23, 101.73s/it, \u2713=3, \u2716=1, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [05:22<01:08, 68.76s/it, \u2713=3, \u2716=1, error=0] \rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [05:40<01:08, 68.76s/it, \u2713=4, \u2716=1, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [05:40<00:00, 50.28s/it, \u2713=4, \u2716=1, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [05:40<00:00, 68.10s/it, \u2713=4, \u2716=1, error=0]\n",
+      "stdout": "Found 5 existing instance images. Will reuse them.\nRunning 5 instances...\nAll instances run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 5\nInstances submitted: 5\nInstances completed: 5\nInstances incomplete: 0\nInstances resolved: 4\nInstances unresolved: 1\nInstances with empty patches: 0\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 5\nReport written to openai__[QUALIFICATION_FINAL_MODEL_ALIAS].[QUALIFICATION_FINAL_SWE_RUN].json\n"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.8,
+    "resolved": 4
+  },
+  "task_container_network": "none"
+}

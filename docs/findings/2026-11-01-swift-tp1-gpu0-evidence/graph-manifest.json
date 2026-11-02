@@ -1,0 +1,56 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Historical r4 ordinary-summary decode observations",
+  "subtitle": "Each line is one retained repetition. C1-C8 only; strict controlled output failed separately, so this is not exact controlled-decode evidence.",
+  "metric_semantics": {
+    "metrics.decode_tok_s_p50": "Per-repetition native p50 decode tokens/s for ordinary-summary output. Pooled displayed values remain raw/{nospec,mtp3}-summary.json."
+  },
+  "output": "graphs/historical-r4-ordinary-summary.svg",
+  "data_output": "graphs/historical-r4-ordinary-summary-data.json",
+  "charts": [
+    {
+      "title": "8K nominal context, ordinary-summary decode p50",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Requested concurrency",
+      "y_label": "Decode tokens/s",
+      "series": [
+        {"label": "MTP r1", "points": [
+          {"x": "C1", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r1-a1.json"},
+          {"x": "C2", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r1-a1.json"},
+          {"x": "C4", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r1-a1.json"},
+          {"x": "C8", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r1-a1.json"}
+        ]},
+        {"label": "MTP r2", "points": [
+          {"x": "C1", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r2-a1.json"},
+          {"x": "C2", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r2-a1.json"},
+          {"x": "C4", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r2-a1.json"},
+          {"x": "C8", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r2-a1.json"}
+        ]},
+        {"label": "MTP r3", "points": [
+          {"x": "C1", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r3-a1.json"},
+          {"x": "C2", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r3-a1.json"},
+          {"x": "C4", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r3-a1.json"},
+          {"x": "C8", "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r3-a1.json"}
+        ]},
+        {"label": "No-spec r1", "points": [
+          {"x": "C1", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r1-a1.json"},
+          {"x": "C2", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r1-a1.json"},
+          {"x": "C4", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r1-a1.json"},
+          {"x": "C8", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r1-a1.json"}
+        ]},
+        {"label": "No-spec r2", "points": [
+          {"x": "C1", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r2-a1.json"},
+          {"x": "C2", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r2-a1.json"},
+          {"x": "C4", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r2-a1.json"},
+          {"x": "C8", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r2-a1.json"}
+        ]},
+        {"label": "No-spec r3", "points": [
+          {"x": "C1", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r3-a1.json"},
+          {"x": "C2", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r3-a1.json"},
+          {"x": "C4", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r3-a1.json"},
+          {"x": "C8", "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r3-a1.json"}
+        ]}
+      ]
+    }
+  ]
+}
