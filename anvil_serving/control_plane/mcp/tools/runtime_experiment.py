@@ -207,10 +207,35 @@ def _admissions(binding):
     return result
 
 
+def _refuse_live_route_overlay(binding):
+    """Base-config replacement cannot safely overwrite a live route overlay."""
+    from .... import router_manage
+
+    try:
+        status = router_manage.route_update_request("status", router_url=binding["router_url"])
+    except router_manage.RouteUpdateError as exc:
+        # Only an explicit missing route endpoint is compatible with a legacy
+        # router.  Transport, auth, and decoding failures are unknown live
+        # authority and must hold the base-config mutation.
+        if exc.code == "route_update_http_error" and exc.status == 404:
+            return
+        raise ToolError("experiment_route_overlay_unknown", "live route authority status is unavailable") from exc
+    except ValueError as exc:
+        raise ToolError("experiment_route_overlay_unknown", "live route authority status is unavailable") from exc
+    if (not isinstance(status, dict) or status.get("enabled") is not True
+            or type(status.get("route_revision")) is not int):
+        raise ToolError("experiment_route_overlay_unknown", "live route authority status is unavailable")
+    # Even R0 is bound to the exact boot bytes. Rewriting that file would
+    # invalidate the enabled authority and prevent the replacement router
+    # from starting, regardless of whether a live update has happened yet.
+    raise ToolError("experiment_route_overlay_active", "runtime experiment refuses an active live route overlay")
+
+
 def _preview(binding, expected=None):
     from ....router.config import load
     from .router import tool_router_configuration
 
+    _refuse_live_route_overlay(binding)
     config = load(binding["config"])
     tier = config.route_tier(binding["alias"])
     if tier is None or tier.id != binding["tier"] or tier.replicas:
@@ -284,6 +309,7 @@ def _restore(record):
     from .... import router_manage
 
     binding = record["binding"]
+    _refuse_live_route_overlay(binding)
     baseline = base64.b64decode(record["baseline_bytes"], validate=True)
     if _hash(baseline) != record["baseline_sha256"]:
         raise ToolError("experiment_baseline_invalid", "saved runtime baseline is invalid")

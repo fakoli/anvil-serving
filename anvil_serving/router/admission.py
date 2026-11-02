@@ -248,6 +248,17 @@ class TierAdmission:
                 state.max_concurrency = sum(caps.values())
         self._conditions = {tid: threading.Condition() for tid in ids}
         self._on_state_change = on_state_change
+        self._policy_lock = threading.Lock()
+        self._policy_revision = 0
+
+    def policy_revision(self) -> int:
+        """Monotonic in-memory fence for quiesce/readmit policy mutations."""
+        with self._policy_lock:
+            return self._policy_revision
+
+    def _note_policy_change(self) -> None:
+        with self._policy_lock:
+            self._policy_revision += 1
 
     @staticmethod
     def _validate_strategies(raw: object, known: tuple[str, ...]) -> dict[str, str]:
@@ -463,7 +474,10 @@ class TierAdmission:
                 state.quiesced, state.reason, changed = True, reason, True
             snapshot = self._snapshot_locked(tier_id, state)
         if changed and self._on_state_change is not None:
+            self._note_policy_change()
             self._on_state_change(tier_id)
+        elif changed:
+            self._note_policy_change()
         return snapshot
 
     def readmit(self, tier_id: str) -> AdmissionSnapshot:
@@ -477,7 +491,10 @@ class TierAdmission:
                 state.quiesced, state.reason, changed = False, "admitting", True
             snapshot = self._snapshot_locked(tier_id, state)
         if changed and self._on_state_change is not None:
+            self._note_policy_change()
             self._on_state_change(tier_id)
+        elif changed:
+            self._note_policy_change()
         return snapshot
 
     @staticmethod
@@ -499,7 +516,10 @@ class TierAdmission:
             member.quiesced, member.reason = quiesced, reason
             snapshot = self._member_snapshot_locked(tier_id, member_id, state)
         if changed and self._on_state_change is not None:
+            self._note_policy_change()
             self._on_state_change(tier_id)
+        elif changed:
+            self._note_policy_change()
         return snapshot
 
     def quiesce_member(

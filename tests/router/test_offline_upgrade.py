@@ -34,7 +34,7 @@ def test_offline_cli_migration_preserves_authority_and_protected_snapshot(tmp_pa
     args = ['migrate', '--config', str(config), '--backup-out', str(backup), '--offline', '--confirm']
     assert main(['router', 'keys', *args]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report == {'schema_version': 3, 'migrated': True, 'backup_schema_version': 1, 'offline': True}
+    assert report == {'schema_version': 4, 'migrated': True, 'backup_schema_version': 1, 'offline': True}
     assert keys.KeyStore(store.path).list_keys() == before
     assert keys.KeyStore(store.path).authenticate(secret).key_id == metadata['key_id']
     assert keys.KeyStore(backup).version == 1
@@ -74,7 +74,7 @@ def test_offline_compose_roster_change_refuses_before_launch(monkeypatch):
             value = json.dumps({'id': 'a' * 64, 'status': 'running', 'mounts': [
                 {'Type': 'volume', 'Name': 'synthetic-keys', 'RW': True}]})
         elif 'run' in argv:
-            value = json.dumps({'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3})
+            value = json.dumps({'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 4})
         else:
             value = ''
         return SimpleNamespace(returncode=0, stdout=value, stderr='')

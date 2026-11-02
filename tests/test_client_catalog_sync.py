@@ -2705,7 +2705,7 @@ def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
     for apply in (True, False):
         status, capabilities = _catalog()
         opener = _Opener(status, capabilities)
-        opener.payloads.extend([status] * (2 if apply else 1))
+        opener.payloads.extend(([status, status, capabilities] if apply else [status]))
         result = sync_clients(
             base_url="https://router.example.ts.net/v1", clients="pi",
             expected_config_sha256=CONFIG_SHA, confirm=apply, dry_run=not apply,
@@ -2787,7 +2787,7 @@ def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing
     def restarted():
         reloads.append(True)
         # The router changes only after the client write/service-refresh sequence.
-        opener.payloads.append({"config_sha256": final_hash})
+        opener.payloads.extend([{"config_sha256": final_hash}, capabilities])
         return 0
 
     before = (tmp_path / "models.json").read_bytes()
@@ -2808,6 +2808,33 @@ def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing
         assert json.loads(state_path.read_text()) == prior
     else:
         assert not state_path.exists()
+
+
+def test_hot_route_change_after_reload_never_certifies_config_hash_only_success(tmp_path):
+    _write_inputs(tmp_path)
+    status, capabilities = _catalog()
+    status.update(route_revision=4, effective_route_sha256="a" * 64)
+    capabilities.update(route_revision=4, effective_route_sha256="a" * 64)
+    opener = _Opener(status, capabilities)
+    opener.payloads.append(status)
+    changed_status = dict(status, route_revision=5, effective_route_sha256="b" * 64)
+    changed_capabilities = dict(capabilities, route_revision=5, effective_route_sha256="b" * 64)
+
+    def restarted():
+        opener.payloads.extend([changed_status, changed_capabilities])
+        return 0
+
+    with pytest.raises(ClientCatalogError, match="during client reconciliation"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            expected_config_sha256=CONFIG_SHA, confirm=True, dry_run=False,
+            openclaw_config=str(tmp_path / "openclaw.json"),
+            pi_models=str(tmp_path / "models.json"), pi_settings=str(tmp_path / "settings.json"),
+            state_path=str(tmp_path / "state.json"), backup_root=str(tmp_path / "backups"),
+            restart_openclaw_on_change=True, restart=restarted,
+            refresh_openclaw_service=lambda: 0,
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
 
 
 def test_fenced_catalog_rejects_router_snapshot_that_differs_from_contract(tmp_path):

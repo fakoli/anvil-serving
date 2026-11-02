@@ -80,7 +80,7 @@ def test_atomic_migration_preserves_legacy_authority_expiry_revocation_and_audit
         owned = issue(portal)
     before = rows(store)
     usage = UsageStore(store)
-    assert usage.migrate() == {"schema_version": 3, "migrated": True}
+    assert usage.migrate() == {"schema_version": 4, "migrated": True}
     after = rows(store)
     assert all(after[table] == values for table, values in before.items())
     assert store.authenticate(token).key_id == valid["key_id"]
@@ -95,12 +95,12 @@ def test_atomic_migration_preserves_legacy_authority_expiry_revocation_and_audit
         assert store.admit(owned["key"]["key_id"]) > 0
         assert KeyStore(store.path).authenticate(owned["secret"]) is None
         connect_keys.ConnectKeys(store, ["llm.primary"])
-        assert store.version == 3
+        assert store.version == 4
         approve(portal)
         assert store.authenticate(owned["secret"]) is None
-    assert usage.migrate() == {"schema_version": 3, "migrated": False}
+    assert usage.migrate() == {"schema_version": 4, "migrated": False}
     with store._connect() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 4
         assert db.execute("PRAGMA synchronous").fetchone()[0] == 2
         assert db.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
 

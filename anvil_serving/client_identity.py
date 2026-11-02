@@ -313,7 +313,7 @@ def _offline_store(path):
     store = KeyStore(server.api_keys_path)
     with store._offline_custody(server, allow_retained=True):
         with store._connect() as connection:
-            _require(store.version == 3)
+            _require(store.version == 4)
             _validate_schema(connection)
         usage = UsageStore(store)
         usage.owner_config = server

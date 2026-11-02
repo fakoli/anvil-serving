@@ -480,6 +480,23 @@ inspected and removed through
 [`models recipes status|logs|unload`](models.md#operate-a-loaded-recipe), not
 raw Docker or manifest-only `serves` verbs.
 
+A promotion may opt into a no-restart route handoff with a `route_update`
+mapping containing the router URL, a credential environment-variable name, and
+the protected frozen campaign-arm path (`activation`). A plan that may use the
+same path for a hot rollback must also declare `rollback_activation`: it is the
+separate frozen arm for the restored owner, never the forward candidate receipt.
+The operator config must
+already have initialized live route state. The promotion previews and prepares
+the route hold before any unload, drains the complete affected request set,
+then loads and qualifies the candidate. Before it can resume and publish, it
+re-reads the managed recipe inventory and the monitoring qualification receipt
+for the newly loaded container. That binds the declared recipe revision and
+observed container/image incarnation; it deliberately does **not** claim a
+weight-cache-byte fingerprint. Missing or changed evidence leaves the route
+held for a fresh recovery, with no router restart or automatic restore. A
+plain live route update remains configuration/served-name scoped and reports
+artifact identity as unverified.
+
 Promotion and an explicitly requested rollback also evaluate the enabled machine cache
 policy exactly once after their existing readiness gates. Controller-dispatched serve
 operations inherit the behavior because they execute the same resource-owner CLI; no

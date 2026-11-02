@@ -313,7 +313,11 @@ def device_model_capabilities(payload: dict, principal) -> dict:
             "limits": {key: limits.get(key) for key in ("max_output_tokens", "images_per_request", "video_per_request")},
             "modalities": _safe_modalities(row.get("modalities")),
             "thinking": _thinking(row.get("thinking")), "compat": _compat(row.get("compat"))})
-    return {"object": "list", "data": rows}
+    result = {"object": "list", "data": rows}
+    for key in ("route_revision", "effective_route_sha256"):
+        if key in payload:
+            result[key] = payload[key]
+    return result
 
 
 def device_router_status(payload: dict, principal) -> dict:
@@ -321,8 +325,17 @@ def device_router_status(payload: dict, principal) -> dict:
     aliases = payload.get("model_aliases") if isinstance(payload, dict) else None
     if not isinstance(aliases, list) or any(not isinstance(alias, str) for alias in aliases):
         raise ValueError("invalid status aliases")
-    return {"package_version": payload.get("package_version"), "config_sha256": payload.get("config_sha256"),
-        "model_aliases": [alias for alias in aliases if principal.allows_model(alias)]}
+    # Preserve the absence of both live-route fields for an older backend.
+    # Emitting null placeholders would make a legacy status look like a
+    # malformed partial new contract and prevents the client's explicit
+    # boot-pair compatibility fallback.
+    result = {"package_version": payload.get("package_version"),
+              "config_sha256": payload.get("config_sha256"),
+              "model_aliases": [alias for alias in aliases if principal.allows_model(alias)]}
+    for key in ("route_revision", "effective_route_sha256"):
+        if key in payload:
+            result[key] = payload[key]
+    return result
 
 
 def _canonical_public_config(config: RouterConfig) -> bytes:

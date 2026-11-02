@@ -984,6 +984,56 @@ ready proof and starts CLOSED. Committed accounting remains intact; unfinished
 local requests retain interrupted/unknown outcomes. Remote work remains UNKNOWN
 and `drained` remains false. Readmission still needs its separate fresh approval.
 
+## Live route updates
+
+After the one-time managed install initializes `[server].route_state_path`, an
+operator can change a declared direct tier or move an existing alias without
+restarting the router:
+
+```bash
+anvil-serving router routes init --config /protected/router.toml --compose /protected/router-compose.yml --confirm
+anvil-serving router routes preview --config candidate.toml
+anvil-serving router routes apply --preview-id PREVIEW_ID --confirm
+anvil-serving router routes status
+```
+
+`preview` sends bounded TOML bytes to the authenticated router; it never gives
+the server a caller-controlled path. `apply` consumes the short-lived,
+content-bound preview. Alias-only changes retain installed backends and let
+existing requests finish on their captured route revision. Tier replacement
+holds its affected request bindings, waits for terminal accounting, verifies
+the new exact identity, then reopens only the route hold. A failed replacement
+stays held for `router routes resume --transaction-id ID`; it does not restart
+the router or choose another model. `rollback --revision N` creates a new
+preview for the retained projection and follows the same confirmation path.
+
+`config_sha256` remains the boot-config identity. Client and operator status
+also carry `route_revision` and `effective_route_sha256`; consumers must fence
+the pair together instead of treating an unchanged boot config as unchanged
+live routing.
+
+For the reference managed container, set the state path under its existing
+`/var/lib/anvil-router` durable volume, then use the `routes init --compose`
+command while the declared router service is stopped. It verifies the rendered
+config mount and writable parent volume, verifies the selected service image,
+then runs a one-shot Python helper in that image; it does not start the listener. `--native` is
+required instead for an intentionally host-native state path. Never initialize
+an in-container path with a host-side file write.
+
+For a tier replacement, the route client waits through the bounded drain (up
+to 300 seconds) plus a small response margin. A deadline or transport failure
+does not imply rollback: inspect `router routes status`, then use a fresh
+`resume` preview if the durable transaction remains held.
+
+The durable route authority is POSIX-only: its state file relies on a private
+directory, no-follow file access, advisory locking, atomic replacement, and
+directory fsync. Do not enable `route_state_path` on an unsupported runtime.
+For a prepared-but-unpublished transaction, `router routes rollback --revision`
+must name the current original revision. It produces a cancellation preview;
+after confirmed apply it releases the hold, restores the original projection,
+and does not increment the route revision. A later rollback of an already
+published revision remains a separate, newly previewed route change.
+
 ## Failed startup recovery
 
 ```bash

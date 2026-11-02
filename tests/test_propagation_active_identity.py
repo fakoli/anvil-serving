@@ -42,7 +42,8 @@ class Opener:
 def test_active_identity_requires_exact_runtime_binding(monkeypatch):
     approved = _inspect()
     observed = copy.deepcopy(approved)
-    catalog = {"config_sha256": "d" * 64}
+    catalog = {"config_sha256": "d" * 64, "route_revision": 7,
+               "effective_route_sha256": "e" * 64}
     document = [b'{"data":[{"id":"model-a-exact"}]}']
     def docker(argv, *, merged):
         assert argv == active.local_docker_prefix() + ("inspect", "a" * 64)
@@ -58,18 +59,23 @@ def test_active_identity_requires_exact_runtime_binding(monkeypatch):
         "activation-1", "d" * 64,
         [{"container_id": approved["Id"], "runtime_digest": active._runtime_digest(approved),
           "served_identity": "model-a-exact", "bound_port": 9123}],
-        "http://127.0.0.1:8000/v1", "ROUTER_TOKEN")
+        "http://127.0.0.1:8000/v1", "ROUTER_TOKEN",
+        route_revision=7, effective_route_sha256="e" * 64)
     assert observer().activation_digest == observer.digest
     changes = (
         lambda: observed["Args"].__setitem__(1, "/not-approved/model"),
         lambda: observed["Mounts"][0].__setitem__("Source", "/not-approved/model"),
         lambda: observed["NetworkSettings"]["Ports"]["9123/tcp"][0].__setitem__("HostIp", "127.0.0.2"),
         lambda: catalog.update(config_sha256="e" * 64),
+        lambda: catalog.update(route_revision=8),
+        lambda: catalog.update(effective_route_sha256="f" * 64),
         lambda: document.__setitem__(0, b'{"data":[{"id":"other"}]}'),
     )
     for change in changes:
         observed = copy.deepcopy(approved)
         catalog["config_sha256"] = "d" * 64
+        catalog["route_revision"] = 7
+        catalog["effective_route_sha256"] = "e" * 64
         document[0] = b'{"data":[{"id":"model-a-exact"}]}'
         change()
         with pytest.raises(PropagationJobError, match="active_identity_unavailable"):
@@ -82,9 +88,23 @@ def test_active_identity_refuses_observation_after_aggregate_deadline(monkeypatc
     monkeypatch.setattr(active, "monotonic", lambda: clock[0])
     def slow_catalog(**_kwargs):
         clock[0] = 21.0
-        return {"config_sha256": "d" * 64}
+        return {"config_sha256": "d" * 64, "route_revision": 7,
+                "effective_route_sha256": "e" * 64}
     monkeypatch.setattr(active, "fetch_client_catalog", slow_catalog)
     monkeypatch.setattr(active, "_capture_fixed_child", lambda *_args, **_kwargs: pytest.fail("late Docker observation"))
+    observer = active.ObservedActiveIdentity(
+        "activation-1", "d" * 64,
+        [{"container_id": approved["Id"], "runtime_digest": active._runtime_digest(approved),
+          "served_identity": "model-a-exact", "bound_port": 9123}],
+        "http://127.0.0.1:8000/v1", "ROUTER_TOKEN",
+        route_revision=7, effective_route_sha256="e" * 64)
+    with pytest.raises(PropagationJobError, match="active_identity_unavailable"):
+        observer()
+
+
+def test_legacy_activation_pin_requires_fresh_live_route_observation(monkeypatch):
+    approved = _inspect()
+    monkeypatch.setattr(active, "fetch_client_catalog", lambda **_: pytest.fail("legacy pin must fail before fetch"))
     observer = active.ObservedActiveIdentity(
         "activation-1", "d" * 64,
         [{"container_id": approved["Id"], "runtime_digest": active._runtime_digest(approved),

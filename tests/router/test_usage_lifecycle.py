@@ -13,7 +13,7 @@ import pytest
 from anvil_serving.router import usage_store as ledger
 from anvil_serving.router.decision_log import TokenDirection, TokenUsage
 from anvil_serving.router.identity import EndUser, forwarded_caller, legacy_caller
-from anvil_serving.router.keys import KeyStore
+from anvil_serving.router.keys import KeyStore, KeyStoreError
 from anvil_serving.router.usage_store import (AuthorityScope, Observation, RequestStart, RouteAssociation,
                                             RunOwner, Terminal, UsageError, UsageStore)
 from tests.router.key_fixtures import tmp_path as tmp_path
@@ -22,6 +22,8 @@ AT = "2026-10-07T12:00:00.000000Z"
 END = "2026-10-07T12:00:01.000000Z"
 LATER = "2026-10-07T13:00:00.000000Z"
 ROUTE = RouteAssociation("route_fixture", "backend_fixture", "serve_fixture", "owner_fixture")
+BOUND_ROUTE = RouteAssociation("route_fixture", "backend_fixture", "serve_fixture", "owner_fixture", None,
+                               7, "a" * 64, "configured-fixture", "observed-fixture", "b" * 64)
 _ACTUAL_LINUX_OWNER = ledger._linux_owner
 
 
@@ -104,6 +106,95 @@ def test_start_dispatch_checkpoint_terminal_matching_replays_and_conflicts(store
         assert (group["requests"], group["attempts"], group["measured_input"], group["measured_output"]) == (1, 1, 7, 5)
         assert group["latency_sum_ms"] == group["latency_le_1000_ms"] * 1000 == 1000
         assert group["latency_le_100_ms"] == 0 and group["latency_le_inf"] == 1
+
+
+def test_route_generation_is_durable_at_start_and_only_member_selection_may_change(store):
+    usage, _, run, scope = store
+    start = start_at(run)
+    assert usage.start(start, authority_scope=scope, route_association=BOUND_ROUTE) == "started"
+    assert usage.start(start, authority_scope=scope, route_association=BOUND_ROUTE) == "same"
+    with pytest.raises(UsageError, match="accounting_conflict"):
+        usage.start(start, authority_scope=scope, route_association=replace(BOUND_ROUTE, route_revision=8))
+    selected = replace(BOUND_ROUTE, member_id="member_fixture")
+    assert usage.note_dispatch(start.request_id, selected) == "recorded"
+    assert usage.note_dispatch(start.request_id, selected) == "same"
+    with pytest.raises(UsageError, match="accounting_invalid"):
+        usage.note_dispatch(start.request_id, replace(selected, route_revision=8))
+    assert usage.finalize(terminal(start, route=selected)) == "committed"
+
+
+def test_route_association_accepts_only_legacy_or_complete_generation_shape():
+    legacy = RouteAssociation.from_dict({
+        "route_id": "route_fixture", "backend_id": "backend_fixture", "serve_id": None,
+        "resource_owner_id": None, "member_id": None,
+    })
+    assert legacy.route_revision is None
+    complete = RouteAssociation.from_dict({
+        "route_id": "tier space/a", "backend_id": "tier space/a", "serve_id": "serve_fixture",
+        "resource_owner_id": "owner_fixture", "member_id": None, "route_revision": 7,
+        "effective_route_sha256": "a" * 64, "configured_model": "model://" + "x" * 256,
+        "observed_model": "model observed", "configured_fingerprint_sha256": "b" * 64,
+    })
+    assert complete.route_id == complete.backend_id == "tier space/a"
+    assert complete.configured_fingerprint_sha256 == "b" * 64
+    with pytest.raises(UsageError):
+        RouteAssociation.from_dict({"route_id": "route_fixture"})
+    with pytest.raises(UsageError):
+        RouteAssociation.from_dict({
+            **complete.to_dict(), "fingerprint_sha256": complete.configured_fingerprint_sha256,
+        })
+
+
+@pytest.mark.parametrize("field", ("route_id", "backend_id", "configured_model", "observed_model"))
+def test_route_association_configuration_text_rejects_controls_and_oversize(field):
+    values = BOUND_ROUTE.to_dict()
+    values[field] = "line\nbreak"
+    with pytest.raises(UsageError):
+        RouteAssociation.from_dict(values)
+    values[field] = "x" * 4097
+    with pytest.raises(UsageError):
+        RouteAssociation.from_dict(values)
+
+
+def test_v3_upgrade_refuses_unresolved_legacy_route_association(store):
+    usage, _, run, scope = store
+    usage.start(start_at(run), authority_scope=scope)
+    with usage.key_store._connect() as db:
+        db.execute("PRAGMA user_version=3")
+    with pytest.raises(KeyStoreError, match="requires resolved legacy requests"):
+        usage.migrate()
+    with usage.key_store._connect() as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 3
+
+
+def test_scoped_drain_reader_blocks_ambiguous_chat_but_not_unrelated_nonchat(store):
+    usage, _, run, scope = store
+    chat = start_at(run)
+    usage.start(chat, authority_scope=scope)
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=scope) == 1
+    assert usage.finalize(terminal(chat)) == "committed"
+
+    memory = RequestStart(ident(), run, AT, legacy_caller(), "memory", None, attempt_id=ident())
+    usage.start(memory, authority_scope=scope)
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=scope) == 0
+
+
+def test_scoped_drain_reader_blocks_route_association_without_tier_identity(store):
+    usage, _, run, scope = store
+    usage.start(start_at(run), authority_scope=scope,
+                route_association=RouteAssociation(None, None, "serve_fixture", "owner_fixture"))
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=scope) == 1
+
+
+def test_scoped_drain_reader_fails_closed_on_invalid_bound_route(store):
+    usage, _, run, scope = store
+    start = start_at(run)
+    usage.start(start, authority_scope=scope, route_association=BOUND_ROUTE)
+    with usage.key_store._connect() as db:
+        db.execute("UPDATE usage_starts SET route_association=? WHERE request_id=?",
+                   ('{"route_id":"route_fixture"}', start.request_id))
+    with pytest.raises(UsageError, match="accounting_invalid"):
+        usage.unresolved_route_starts(("route_fixture",), authority_scope=scope)
 
 
 def test_groups_keep_immutable_actor_binding_end_user_credential_and_effective_grant(store):

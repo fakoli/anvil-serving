@@ -266,7 +266,8 @@ class UsageInvocation:
     """
 
     def __init__(self, store, run_id, scope, caller, kind, model, *, registry=None, clock=None,
-                 parent=None, usage_relation="exclusive", applicability=None, gateway_request_id=None):
+                 parent=None, usage_relation="exclusive", applicability=None, gateway_request_id=None,
+                 route_association=None):
         import threading
         import time
         import uuid
@@ -278,7 +279,8 @@ class UsageInvocation:
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.started = time.monotonic()
         self._lock = threading.RLock()
-        self.route = RouteAssociation()
+        self.route = route_association if route_association is not None else RouteAssociation()
+        self._route_association_started = route_association is not None
         initial = (normalize_usage(None, "openai", applicability) if applicability is not None else
                    purpose_usage(kind) if kind != "chat" else normalize_usage(None, "openai"))
         units = (initial.input.applicability, initial.output.applicability)
@@ -291,7 +293,10 @@ class UsageInvocation:
         self.registry = registry
         mutation = registry.usage_mutation() if registry is not None else nullcontext()
         with mutation:
-            store.start(self.start, authority_scope=scope)
+            if self._route_association_started:
+                store.start(self.start, authority_scope=scope, route_association=self.route)
+            else:
+                store.start(self.start, authority_scope=scope)
             self.registry_id = gateway_request_id or "req_" + self.start.request_id.replace("-", "")
             self.token = registry.begin(self.registry_id) if registry is not None else None
             if self.token is not None:
@@ -302,6 +307,7 @@ class UsageInvocation:
         self.generation = None
         self.delivery = None
         self.terminal = None
+        self.terminal_persisted = False
 
     def failure(self):
         try:
@@ -349,29 +355,30 @@ class UsageInvocation:
         import time
         from .usage_store import Terminal
         with self._lock, self.registry.usage_mutation() if self.registry is not None else nullcontext():
-            if self.terminal is not None:
-                return
-            self.delivery = delivery
-            generation = self.generation or "rejected"
-            coverage = ["usage_relation_unknown"] if self.start.usage_relation == "unobserved" else []
-            if self.dispatched is None:
-                coverage.append("dispatch_uncertain")
-            if self.dispatched is not False and any(d.applicability == "applicable" and (d.source != "measured" or d.partial)
-                                                    for d in (self.tokens.input, self.tokens.output)):
-                coverage.append("usage_incomplete")
-            outcome = delivery if delivery != "success" else generation
-            at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
-            self.terminal = Terminal(self.start.request_id, at, self.dispatched, generation, delivery, outcome,
-                                     self.route, self.tokens, latency_ms=max(0, int((time.monotonic() - self.started) * 1000)),
-                                     coverage=tuple(coverage))
+            if self.terminal is None:
+                self.delivery = delivery
+                generation = self.generation or "rejected"
+                coverage = ["usage_relation_unknown"] if self.start.usage_relation == "unobserved" else []
+                if self.dispatched is None:
+                    coverage.append("dispatch_uncertain")
+                if self.dispatched is not False and any(d.applicability == "applicable" and (d.source != "measured" or d.partial)
+                                                        for d in (self.tokens.input, self.tokens.output)):
+                    coverage.append("usage_incomplete")
+                outcome = delivery if delivery != "success" else generation
+                at = self.clock().isoformat(timespec="microseconds").replace("+00:00", "Z")
+                self.terminal = Terminal(self.start.request_id, at, self.dispatched, generation, delivery, outcome,
+                                         self.route, self.tokens, latency_ms=max(0, int((time.monotonic() - self.started) * 1000)),
+                                         coverage=tuple(coverage))
             try:
                 self.store.finalize(self.terminal)
+                self.terminal_persisted = True
             except Exception:
                 self.failure()
             finally:
                 if self.token is not None:
                     from ..observability.workloads import WorkloadOutcome
                     self.token.finish(WorkloadOutcome(delivery))
+            return self.terminal_persisted
 
 
 def usage_invocation(request):

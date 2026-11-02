@@ -67,8 +67,8 @@ def wide_key(tmp_path, owned, migrated):
     return store, metadata, token, models
 
 
-@pytest.mark.parametrize("owned,migrated,schema", [(False, False, 1), (False, True, 3),
-    (True, False, 2), (True, True, 3)], ids=["ordinary-v1", "ordinary-v3", "connect-v2", "connect-v3"])
+@pytest.mark.parametrize("owned,migrated,schema", [(False, False, 1), (False, True, 4),
+    (True, False, 2), (True, True, 4)], ids=["ordinary-v1", "ordinary-v4", "connect-v2", "connect-v4"])
 def test_wide_default_grants_remain_complete_but_tracked_metadata_refuses(tmp_path, owned, migrated, schema):
     store, metadata, token, models = wide_key(tmp_path, owned, migrated)
     with store._connect() as db:
