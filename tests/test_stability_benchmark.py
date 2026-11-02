@@ -80,6 +80,59 @@ def test_unexercised_or_failed_case_cannot_pass_or_continue(tmp_path, fault):
         stability.run(scenario(), path, metadata=metadata)
 
 
+@pytest.mark.parametrize("anchor_phase", ["waiting", "streaming", "finished"])
+def test_overlap_requires_live_anchor_progress_during_contender_stream(tmp_path, anchor_phase):
+    contender_ready = threading.Event()
+    anchor_advanced = threading.Event()
+
+    def stream(base, model, prompt, key, max_tokens, **kwargs):
+        observe = kwargs["observer"]
+        observe("response", {})
+        if prompt == "anchor":
+            observe("delta", {"content": "expected"})
+            assert contender_ready.wait(2)
+            if anchor_phase == "finished":
+                # Wait for the request's own terminal stamp, not merely server return.
+                deadline = time.monotonic() + 2
+                while "end" not in evidence["rounds"][0]["contender"]:
+                    assert time.monotonic() < deadline
+                    time.sleep(.001)
+            observe("delta", {"content": "continued"})
+            anchor_advanced.set()
+        else:
+            if anchor_phase != "waiting":
+                observe("delta", {"content": "expected"})
+            contender_ready.set()
+            if anchor_phase != "finished":
+                assert anchor_advanced.wait(2)
+            if anchor_phase == "waiting":
+                observe("delta", {"content": "expected"})
+        return result()
+
+    path = tmp_path / "overlap.json"
+    evidence = stability.new_evidence(scenario(), path)
+    observed = stability.run(scenario(), path, stream=stream, calibrate=calibration,
+                             metadata=metadata, identity=identity, _evidence=evidence)
+    assert observed["coverage_passed"] is (anchor_phase == "streaming")
+    from anvil_serving.benchmark_evidence import summarize_payload
+    assert summarize_payload(observed, path)["validation_errors"] == []
+    if anchor_phase == "waiting":
+        historical = copy.deepcopy(observed)
+        historical.pop("overlap_contract")
+        historical.update(status="completed", coverage_passed=True)
+        historical["rounds"][0].update(coverage_passed=True)
+        historical["rounds"][0].pop("anchor_output_during_contender_active")
+        assert historical["rounds"][0]["anchor_output_during_contender_response_wait"] is True
+        assert summarize_payload(historical, path)["validation_errors"] == []
+    if anchor_phase == "streaming":
+        corrupted = copy.deepcopy(observed)
+        corrupted["rounds"][0]["active_overlap_output_at"] = corrupted["rounds"][0]["contender"]["end"] + 1
+        assert summarize_payload(corrupted, path)["validation_errors"]
+        corrupted = copy.deepcopy(observed)
+        corrupted.pop("overlap_contract")
+        assert summarize_payload(corrupted, path)["validation_errors"]
+
+
 def test_preview_has_no_network_or_artifact_side_effects(tmp_path, monkeypatch):
     config = tmp_path / "scenario $(not-a-command) ; space.json"
     config.write_text(json.dumps(scenario()))
@@ -100,7 +153,7 @@ def test_preview_has_no_network_or_artifact_side_effects(tmp_path, monkeypatch):
 
 
 def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
-    contender_headers_observed = threading.Event()
+    contender_output_observed = threading.Event()
     anchor_content_observed = threading.Event()
     mode = ["overlap"]
 
@@ -111,8 +164,8 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             # Release the server only after the real client has recorded the
             # event. A server write alone does not establish client ordering.
             observer(kind, data)
-            if prompt == "contender" and kind == "response":
-                contender_headers_observed.set()
+            if prompt == "contender" and kind == "delta":
+                contender_output_observed.set()
             if prompt == "anchor" and kind == "delta" and data.get("content"):
                 anchor_content_observed.set()
 
@@ -143,9 +196,10 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             if anchor:
                 emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                 if mode[0] == "overlap":
-                    assert contender_headers_observed.wait(8)
+                    assert contender_output_observed.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
             else:
+                emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                 assert anchor_content_observed.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
             emit({"choices": [{"delta": {}, "finish_reason": "stop"}],
@@ -159,7 +213,7 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
         base = f"http://127.0.0.1:{server.server_port}/v1"
         for selected in ("overlap", "serial"):
             mode[0] = selected
-            contender_headers_observed.clear()
+            contender_output_observed.clear()
             anchor_content_observed.clear()
             observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30, top_p=.95),
                                      tmp_path / (selected + ".json"), stream=observed_stream,
@@ -167,7 +221,7 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             assert observed["status"] == "completed", observed["rounds"]
             assert observed["coverage_passed"] is True
             pair = observed["rounds"][0]
-            assert pair["anchor_output_during_contender_response_wait"] is (selected == "overlap")
+            assert pair["anchor_output_during_contender_active"] is (selected == "overlap")
             assert pair["anchor"]["request_id"] == "synthetic-id"
             assert observed["scheduler_overlap"] == "not_measured"
             assert observed["performance_eligible"] is False
@@ -278,6 +332,7 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
                     emit({"choices": [{"delta": {"content": "continuing"}}]})
                     advanced.set()
                 else:
+                    emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                     entered.set()
                     assert advanced.wait(3)
                     time.sleep(.05)
