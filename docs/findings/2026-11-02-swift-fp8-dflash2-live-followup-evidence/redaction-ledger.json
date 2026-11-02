@@ -1,0 +1,1 @@
+{"policy":"Public derivatives remove operational paths, endpoints, identities, credentials, container identifiers, GPU identifiers and deployment mappings. Native receipts remain private.","scope":"All files in this bundle are compact sanitized derivatives; their public hashes are recorded in artifact-manifest.json."}

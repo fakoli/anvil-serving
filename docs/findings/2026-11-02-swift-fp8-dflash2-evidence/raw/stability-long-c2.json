@@ -1,0 +1,187 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-02T05:06:48.928951+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T05:01:37.475609+00:00",
+      "phase": "start",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T05:01:37.534271+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T05:06:48.922752+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    }
+  ],
+  "overlap_contract": "contender-stream-active/v1",
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "active_overlap_output_at": 523791.066285606,
+      "anchor": {
+        "end": 523891.624315788,
+        "expected_values": [
+          "VALUE_b82beddf6df7",
+          "VALUE_7b91dc145131",
+          "VALUE_7e243555b198"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T05:06:48.859217+00:00",
+        "first_output": 523685.334390792,
+        "last_output": 523891.6239472,
+        "partial_visible": "\n\n**KEY_0** = VALUE_b82beddf6df7\n**KEY_1** = VALUE_7b91dc145131\n**KEY_2** = VALUE_7e243555b198\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\nSoftware components are the fundamental building blocks of any system. A component encapsulates a specific responsibility\u2014data transformation, I/O handling, state management, or business logic. The architecture of a well-designed component follows the single-responsibility principle: it does one thing and does it well.\n\n**Implementation:** Define the component interface (public API) before writing internal logic. Use dependency injection to keep components loosely coupled.\n\n```python\nclass DataProcessor:\n    def __init__(self, validator, logger):\n        self._validator = validator\n        self._logger = logger\n\n    def process(self, raw_data: bytes) -> dict:\n        validated = self._validator.validate(raw_data)\n        self._logger.info(\"Processing validated data\")\n        return self._transform(validated)\n\n    def _transform(self, data: bytes) -> dict:\n        # internal logic\n        pass\n```\n\n**Example:** A `DataProcessor` component receives raw bytes, delegates validation to an injected `Validator`, logs the operation, and returns a structured dictionary.\n\n**Edge Cases:**\n- The validator raises an exception on malformed input.\n- The logger's sink is unavailable (disk full, network partition).\n- `raw_data` is an empty byte string.\n\n**Tests:**\n```python\ndef test_process_valid_data():\n    proc = DataProcessor(MockValidator(), MockLogger())\n    result = proc.process(b\"valid\")\n    assert isinstance(result, dict)\n\ndef test_process_with_failing_validator():\n    bad_validator = MagicMock(side_effect=ValueError(\"bad\"))\n    proc = DataProcessor(bad_validator, MockLogger())\n    with pytest.raises(ValueError):\n        proc.process(b\"bad\")\n```\n\n---\n\n## 2. Interface Contracts and Type Safety\n\nEvery component exposes a contract: the set of methods, their signatures, preconditions, postconditions, and invariants. Type safety (via static typing, generics, or schema validation) ensures callers and implementations agree on data shapes.\n\n**Implementation:** Use explicit type annotations, protocol classes (structural subtyping), or interface definitions. Document preconditions in docstrings and enforce them at runtime with guard clauses.\n\n```typescript\ninterface StorageAdapter {\n  write(key: string, value: Uint8Array): Promise<void>;\n  read(key: string): Promise<Uint8Array | null>;\n  delete(key: string): Promise<boolean>;\n}\n```\n\n**Example:** A `StorageAdapter` interface defines three operations. Any concrete implementation (S3, local disk, in-memory) must satisfy all three methods.\n\n**Edge Cases:**\n- `write` with a zero-length `Uint8Array`.\n- `read` for a non-existent key (returns `null` vs. throws).\n- `delete` for a non-existent key (returns `false` vs. throws).\n- Concurrent writes to the same key.\n\n**Tests:**\n```typescript\ntest(\"read non-existent key returns null\", async () => {\n  const store = new InMemoryStorage();\n  const result = await store.read(\"missing\");\n  expect(result).toBeNull();\n});\n\ntest(\"delete non-existent key returns false\", async () => {\n  const store = new InMemoryStorage();\n  const result = await store.delete(\"missing\");\n  expect(result).toBe(false);\n});\n```\n\n---\n\n## 3. Dependency Injection and Inversion of Control\n\nComponents should not instantiate their own dependencies. Instead, dependencies are supplied from the outside (constructor injection, factory, or service locator). This decouples components from concrete implementations and enables testing with fakes.\n\n**Implementation:** Accept dependencies through the constructor. Register components in a DI container or compose them manually at the application entry point.\n\n```java\npublic class OrderService {\n    private final PaymentGateway gateway;\n    private final InventoryClient inventory;\n    private final AuditLogger logger;\n\n    public OrderService(PaymentGateway gateway,\n                        InventoryClient inventory,\n                        AuditLogger logger) {\n        this.gateway = gateway;\n        this.inventory = inventory;\n        this.logger = logger;\n    }\n\n    public OrderResult placeOrder(Order order) {\n        logger.log(\"Placing order \" + order.getId());\n        boolean paid = gateway.charge(order.getTotal());\n        if (!paid) return OrderResult.rejected(\"Payment failed\");\n        inventory.reserve(order.getItems());\n        return OrderResult.confirmed();\n    }\n}\n```\n\n**Example:** `OrderService` depends on three collaborators. In production, real implementations are injected; in tests, mocks replace them.\n\n**Edge Cases:**\n- A dependency is `null` (container misconfiguration).\n- A dependency's method throws a runtime exception mid-flow.\n- Circular dependencies between components.\n\n**Tests:**\n```java\n@Test\nvoid placeOrder_rejectsWhenPaymentFails() {\n    PaymentGateway failingGateway = mock(PaymentGateway.class);\n    when(failingGateway.charge(anyDouble())).thenReturn(false);\n    OrderService service = new OrderService(failingGateway,\n                                            mock(InventoryClient.class),\n                                            mock(AuditLogger.class));\n    OrderResult result = service.placeOrder(new Order(\"1\", 99.99, List.of()));\n    assertEquals(OrderResult.Status.REJECTED, result.getStatus());\n}\n```\n\n---\n\n## 4. State Management and Immutability\n\nComponents that hold mutable state are sources of bugs, especially under concurrency. Prefer immutable state representations and explicit state transitions. When mutation is unavoidable, confine it to a single thread or protect it with synchronization.\n\n**Implementation:** Use immutable data classes for state. Model state changes as functions that return new state objects. If using a framework, leverage its state-management primitives (Redux-style stores, atomic variables, etc.).\n\n```rust\n#[derive(Debug, Clone, PartialEq)]\nstruct CartState {\n    items: Vec<CartLine>,\n    total_cents: i64,\n}\n\nimpl CartState {\n    fn add_item(&self, item: CartLine) -> CartState {\n        let mut new_items = self.items.clone();\n        new_items.push(item);\n        let total = new_items.iter().map(|l| l.price_cents * l.qty).sum();\n        CartState { items: new_items, total_cents: total }\n    }\n}\n```\n\n**Example:** `CartState` is immutable. `add_item` returns a new `CartState` rather than mutating in place.\n\n**Edge Cases:**\n- Adding an item with a negative quantity.\n- Overflow of `total_cents` when many high-price items are added.\n- Cloning a `CartState` with thousands of items (memory pressure).\n\n**Tests:**\n```rust\n#[test]\nfn add_item_updates_total() {\n    let empty = CartState { items: vec![], total_cents: 0 };\n    let line = CartLine { sku: \"A\".into(), price_cents: 1500, qty: 2 };\n    let updated = empty.add_item(line);\n    assert_eq!(updated.total_cents, 3000);\n    assert_eq!(updated.items.len(), 1);\n    // original unchanged\n    assert_eq!(empty.total_cents, 0);\n}\n\n#[test]\nfn add_negative_qty_panics() {\n    let empty = CartState { items: vec![], total_cents: 0 };\n    let line = CartLine { sku: \"A\".into(), price_cents: 100, qty: -1 };\n    assert!(std::panic::catch_unwind(move || empty.add_item(line)).is_err());\n}\n```\n\n---\n\n## 5. Error Handling Strategies\n\nComponents must define how they propagate, wrap, or swallow errors. A consistent error taxonomy (retryable vs. permanent, expected vs. unexpected) allows callers to react appropriately.\n\n**Implementation:** Use typed exceptions or Result/Option types. Wrap low-level errors in domain-specific errors that carry context. Avoid catching generic exceptions and re-throwing without enrichment.\n\n```python\nclass ComponentError(Exception):\n    def __init__(self, message: str, retryable: bool = False, cause: Exception = None):\n        super().__init__(message)\n        self.retryable = retryable\n        self.cause = cause\n\nclass TimeoutError(ComponentError):\n    def __init__(self, operation: str, timeout_s: float):\n        super().__init__(f\"{operation} timed out after {timeout_s}s\", retryable=True)\n```\n\n**Example:** A network component catches a socket timeout and w",
+        "prompt_sha256": "9bc6445e423f60285faf92c6f05600b98a22fa8d754c3d18934e76afc7380cd4",
+        "prompt_tokens_tokenized": 229218,
+        "request_id": null,
+        "response_headers_at": 523685.33430309,
+        "result": {
+          "content_chunks": 2686,
+          "e2e": 309.9087000800064,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 10578,
+          "output_token_source": "usage",
+          "reasoning_chunks": 37,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 103.61903951200657,
+          "ttft": 210.36630284198327,
+          "usage": {
+            "completion_tokens": 10578,
+            "prompt_tokens": 229218,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 177,
+            "total_tokens": 239796
+          },
+          "visible_content": "\n\n**KEY_0** = VALUE_b82beddf6df7\n**KEY_1** = VALUE_7b91dc145131\n**KEY_2** = VALUE_7e243555b198\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\nSoftware components are the fundamental building blocks of any system. A component encapsulates a specific responsibility\u2014data transformation, I/O handling, state management, or business logic. The architecture of a well-designed component follows the single-responsibility principle: it does one thing and does it well.\n\n**Implementation:** Define the component interface (public API) before writing internal logic. Use dependency injection to keep components loosely coupled.\n\n```python\nclass DataProcessor:\n    def __init__(self, validator, logger):\n        self._validator = validator\n        self._logger = logger\n\n    def process(self, raw_data: bytes) -> dict:\n        validated = self._validator.validate(raw_data)\n        self._logger.info(\"Processing validated data\")\n        return self._transform(validated)\n\n    def _transform(self, data: bytes) -> dict:\n        # internal logic\n        pass\n```\n\n**Example:** A `DataProcessor` component receives raw bytes, delegates validation to an injected `Validator`, logs the operation, and returns a structured dictionary.\n\n**Edge Cases:**\n- The validator raises an exception on malformed input.\n- The logger's sink is unavailable (disk full, network partition).\n- `raw_data` is an empty byte string.\n\n**Tests:**\n```python\ndef test_process_valid_data():\n    proc = DataProcessor(MockValidator(), MockLogger())\n    result = proc.process(b\"valid\")\n    assert isinstance(result, dict)\n\ndef test_process_with_failing_validator():\n    bad_validator = MagicMock(side_effect=ValueError(\"bad\"))\n    proc = DataProcessor(bad_validator, MockLogger())\n    with pytest.raises(ValueError):\n        proc.process(b\"bad\")\n```\n\n---\n\n## 2. Interface Contracts and Type Safety\n\nEvery component exposes a contract: the set of methods, their signatures, preconditions, postconditions, and invariants. Type safety (via static typing, generics, or schema validation) ensures callers and implementations agree on data shapes.\n\n**Implementation:** Use explicit type annotations, protocol classes (structural subtyping), or interface definitions. Document preconditions in docstrings and enforce them at runtime with guard clauses.\n\n```typescript\ninterface StorageAdapter {\n  write(key: string, value: Uint8Array): Promise<void>;\n  read(key: string): Promise<Uint8Array | null>;\n  delete(key: string): Promise<boolean>;\n}\n```\n\n**Example:** A `StorageAdapter` interface defines three operations. Any concrete implementation (S3, local disk, in-memory) must satisfy all three methods.\n\n**Edge Cases:**\n- `write` with a zero-length `Uint8Array`.\n- `read` for a non-existent key (returns `null` vs. throws).\n- `delete` for a non-existent key (returns `false` vs. throws).\n- Concurrent writes to the same key.\n\n**Tests:**\n```typescript\ntest(\"read non-existent key returns null\", async () => {\n  const store = new InMemoryStorage();\n  const result = await store.read(\"missing\");\n  expect(result).toBeNull();\n});\n\ntest(\"delete non-existent key returns false\", async () => {\n  const store = new InMemoryStorage();\n  const result = await store.delete(\"missing\");\n  expect(result).toBe(false);\n});\n```\n\n---\n\n## 3. Dependency Injection and Inversion of Control\n\nComponents should not instantiate their own dependencies. Instead, dependencies are supplied from the outside (constructor injection, factory, or service locator). This decouples components from concrete implementations and enables testing with fakes.\n\n**Implementation:** Accept dependencies through the constructor. Register components in a DI container or compose them manually at the application entry point.\n\n```java\npublic class OrderService {\n    private final PaymentGateway gateway;\n    private final InventoryClient inventory;\n    private final AuditLogger logger;\n\n    public OrderService(PaymentGateway gateway,\n                        InventoryClient inventory,\n                        AuditLogger logger) {\n        this.gateway = gateway;\n        this.inventory = inventory;\n        this.logger = logger;\n    }\n\n    public OrderResult placeOrder(Order order) {\n        logger.log(\"Placing order \" + order.getId());\n        boolean paid = gateway.charge(order.getTotal());\n        if (!paid) return OrderResult.rejected(\"Payment failed\");\n        inventory.reserve(order.getItems());\n        return OrderResult.confirmed();\n    }\n}\n```\n\n**Example:** `OrderService` depends on three collaborators. In production, real implementations are injected; in tests, mocks replace them.\n\n**Edge Cases:**\n- A dependency is `null` (container misconfiguration).\n- A dependency's method throws a runtime exception mid-flow.\n- Circular dependencies between components.\n\n**Tests:**\n```java\n@Test\nvoid placeOrder_rejectsWhenPaymentFails() {\n    PaymentGateway failingGateway = mock(PaymentGateway.class);\n    when(failingGateway.charge(anyDouble())).thenReturn(false);\n    OrderService service = new OrderService(failingGateway,\n                                            mock(InventoryClient.class),\n                                            mock(AuditLogger.class));\n    OrderResult result = service.placeOrder(new Order(\"1\", 99.99, List.of()));\n    assertEquals(OrderResult.Status.REJECTED, result.getStatus());\n}\n```\n\n---\n\n## 4. State Management and Immutability\n\nComponents that hold mutable state are sources of bugs, especially under concurrency. Prefer immutable state representations and explicit state transitions. When mutation is unavoidable, confine it to a single thread or protect it with synchronization.\n\n**Implementation:** Use immutable data classes for state. Model state changes as functions that return new state objects. If using a framework, leverage its state-management primitives (Redux-style stores, atomic variables, etc.).\n\n```rust\n#[derive(Debug, Clone, PartialEq)]\nstruct CartState {\n    items: Vec<CartLine>,\n    total_cents: i64,\n}\n\nimpl CartState {\n    fn add_item(&self, item: CartLine) -> CartState {\n        let mut new_items = self.items.clone();\n        new_items.push(item);\n        let total = new_items.iter().map(|l| l.price_cents * l.qty).sum();\n        CartState { items: new_items, total_cents: total }\n    }\n}\n```\n\n**Example:** `CartState` is immutable. `add_item` returns a new `CartState` rather than mutating in place.\n\n**Edge Cases:**\n- Adding an item with a negative quantity.\n- Overflow of `total_cents` when many high-price items are added.\n- Cloning a `CartState` with thousands of items (memory pressure).\n\n**Tests:**\n```rust\n#[test]\nfn add_item_updates_total() {\n    let empty = CartState { items: vec![], total_cents: 0 };\n    let line = CartLine { sku: \"A\".into(), price_cents: 1500, qty: 2 };\n    let updated = empty.add_item(line);\n    assert_eq!(updated.total_cents, 3000);\n    assert_eq!(updated.items.len(), 1);\n    // original unchanged\n    assert_eq!(empty.total_cents, 0);\n}\n\n#[test]\nfn add_negative_qty_panics() {\n    let empty = CartState { items: vec![], total_cents: 0 };\n    let line = CartLine { sku: \"A\".into(), price_cents: 100, qty: -1 };\n    assert!(std::panic::catch_unwind(move || empty.add_item(line)).is_err());\n}\n```\n\n---\n\n## 5. Error Handling Strategies\n\nComponents must define how they propagate, wrap, or swallow errors. A consistent error taxonomy (retryable vs. permanent, expected vs. unexpected) allows callers to react appropriately.\n\n**Implementation:** Use typed exceptions or Result/Option types. Wrap low-level errors in domain-specific errors that carry context. Avoid catching generic exceptions and re-throwing without enrichment.\n\n```python\nclass ComponentError(Exception):\n    def __init__(self, message: str, retryable: bool = False, cause: Exception = None):\n        super().__init__(message)\n        self.retryable = retryable\n        self.cause = cause\n\nclass TimeoutError(ComponentError):\n    def __init__(self, operation: str, timeout_s: float):\n        super().__init__(f\"{operation} timed out after {timeout_s}s\", retryable=True)\n```\n\n**Example:** A network component catches a socket timeout and w",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523581.698087101,
+        "started_at": "2026-11-02T05:01:38.932972+00:00",
+        "status": "completed",
+        "stream_id": "4b27e4337ed4463089285573f2074af5",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523792.499010365,
+        "expected_values": [
+          "VALUE_7f14c24b58d5",
+          "VALUE_0b1f5160f28a",
+          "VALUE_f0740dee41e9"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T05:05:09.733912+00:00",
+        "first_output": 523791.022226034,
+        "last_output": 523792.498867964,
+        "partial_visible": "\n\nKEY_0 = VALUE_7f14c24b58d5\nKEY_1 = VALUE_0b1f5160f28a\nKEY_2 = VALUE_f0740dee41e9",
+        "prompt_sha256": "a87f636b85bbd576b2b8cc48460d861bcda9e04edb367487ab86a18d2c917fe7",
+        "prompt_tokens_tokenized": 229246,
+        "request_id": null,
+        "response_headers_at": 523791.0221629,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 107.14577166299568,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 146,
+          "output_token_source": "usage",
+          "reasoning_chunks": 26,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 105.66902239999035,
+          "ttft": 106.82109379098983,
+          "usage": {
+            "completion_tokens": 146,
+            "prompt_tokens": 229246,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 91,
+            "total_tokens": 229392
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_7f14c24b58d5\nKEY_1 = VALUE_0b1f5160f28a\nKEY_2 = VALUE_f0740dee41e9",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523685.347353079,
+        "started_at": "2026-11-02T05:03:22.582238+00:00",
+        "status": "completed",
+        "stream_id": "892090e7c6fc4472befc69f05bf430aa",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 16384,
+    "anchor_tokens": 229376,
+    "base_url": "http://127.0.0.1:8001",
+    "configuration": {
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "label": "Swift1.5 FP8 DFlash2 GPU0 r1",
+      "model_revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "recipe_sha256": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_sha256": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda"
+    },
+    "contender_max_tokens": 16384,
+    "contender_tokens": 229376,
+    "context_limit": 262144,
+    "managed_container": "candidate-dflash2",
+    "mode": "overlap",
+    "model": "candidate-dflash2",
+    "prefix_mode": "unique",
+    "reasoning_effort": "medium",
+    "rounds": 1,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 900,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "f8cd3d500b0a7f680b62892a94bde30a8f4c406a913182f630fc97f2e5e4165d",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "candidate-dflash2",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T05:01:37.358508+00:00",
+  "status": "completed"
+}

@@ -1,0 +1,164 @@
+{
+  "created_at": "2026-11-02T05:19:28.934866Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "base_url": "http://127.0.0.1:8001",
+      "model": "candidate-dflash2"
+    },
+    "finished_at": "2026-11-02T05:19:28.934742Z",
+    "started_at": "2026-11-02T05:10:53.931190Z",
+    "submitted_at": "2026-11-02T04:50:57.542677+00:00",
+    "worker": {
+      "id": "primary-node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-11-02T05:19:28.925074Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 262144,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "free_disk_bytes": 500689440768,
+          "harness_assets": [],
+          "id": "primary-node",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "alias": "candidate-dflash2"
+        },
+        "runtime": {
+          "reason": "not exposed by router preflight",
+          "status": "unavailable"
+        },
+        "served_model": {
+          "configured_context": 262144,
+          "id": "candidate-dflash2"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "primary-node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "swift-fp8-dflash2-20261102",
+        "profile": "scout",
+        "run_id": "swift-fp8-dflash2-20261102-swe",
+        "spec_sha256": "bcf560c980b40102846fb304707c8ecfaccb50458fc7ac0f76c1014b7d7b7736",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 11061,
+              "path": "evidence/0-assets.json",
+              "sha256": "34969e4be44e29063df6c42b7786faf31ca18b1d7a1121caacec8b8b6c25dda6"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2143,
+              "path": "evidence/0-preflight.json",
+              "sha256": "52ac1aee8636debb82a503a9d324d353813352f8879491b488314932aa426ec8"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 10511,
+              "path": "evidence/0-swe-canonical-retention.json",
+              "sha256": "83c27167af15ccb486b85fd53fe699107bbc5c9f61b1fb30d05fcb8ae0c06a24"
+            }
+          ],
+          "name": "swe_canonical_retention",
+          "sequence": 2,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 215163,
+              "path": "evidence/2-swe.json",
+              "sha256": "1e09a3b43af8560ec4d5c0f9600cfae5f4b95953c854187b1e8e37e897f5aaa6"
+            }
+          ],
+          "name": "swe",
+          "sequence": 3,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.8,
+        "resolved": 4
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "swift-fp8-dflash2-20261102",
+    "profile": "scout",
+    "run_id": "swift-fp8-dflash2-20261102-swe",
+    "spec_sha256": "bcf560c980b40102846fb304707c8ecfaccb50458fc7ac0f76c1014b7d7b7736",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

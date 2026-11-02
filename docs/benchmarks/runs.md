@@ -1,5 +1,17 @@
 # Benchmark run catalog
 
+## 2026-11-02 Swift FP8+DFlash2 routed follow-up — closed with failures
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Single already-loaded FP8+DFlash2 profile; routed, no model or configuration change | One RTX PRO 6000 Blackwell Max-Q; routed functional checks plus one retrieval probe | Chat family passed except Responses HTTP 403. One 108,178-actual-prompt-token needle returned in 30.337 s. The 224K nominal request was rejected before upstream; 64K/C1 was 0/6 performance-eligible on opening-canary failure; remaining cells skipped. No capacity or speculative-speed claim. | [Dossier](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-11-02-swift-fp8-dflash2-live-followup.md) |
+
+## 2026-11-02 Swift FP8+DFlash2 challenger — no promotion
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Swift FP8+DFlash2 challenger; matched no-spec comparison retained separately | One RTX PRO 6000 Blackwell Max-Q; bounded native cells | Strict 128-word/canary passed 0 of 6, closing promotion under the frozen all-pass gate. Pretrial service was restored with tighter RAM containment; no broad quality or speed claim. | [Dossier](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-11-02-swift-fp8-dflash2.md) |
+
 ## 2026-11-01 Swift TP1 GPU0 qualification accepted
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

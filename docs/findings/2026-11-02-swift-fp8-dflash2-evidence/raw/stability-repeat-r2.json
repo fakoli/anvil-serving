@@ -1,0 +1,443 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-02T04:57:44.632452+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:55:35.059441+00:00",
+      "phase": "start",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:55:35.122111+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:56:28.965554+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:56:29.027099+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:57:09.624089+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:57:09.680972+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    },
+    {
+      "bound_port": 18001,
+      "container_id": "[REDACTED_OPERATOR_IDENTITY]",
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "observed_at": "2026-11-02T04:57:44.625561+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_digest": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda",
+      "revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "running": true,
+      "served_identity": "candidate-dflash2"
+    }
+  ],
+  "overlap_contract": "contender-stream-active/v1",
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "active_overlap_output_at": 523225.129499746,
+      "anchor": {
+        "end": 523271.674868278,
+        "expected_values": [
+          "VALUE_25896f46b5a9",
+          "VALUE_808905553a2f",
+          "VALUE_119f55a951b9"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:56:28.909770+00:00",
+        "first_output": 523223.766994887,
+        "last_output": 523271.674654605,
+        "partial_visible": "\n\n**KEY_0 = VALUE_25896f46b5a9**\n**KEY_1 = VALUE_808905553a2f**\n**KEY_2 = VALUE_119f55a951b9**\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## 1. Introduction to Software Components\n\nA software component is a self-contained, deployable unit of functionality that exposes well-defined interfaces. Components encapsulate state, behavior, and configuration behind contractual boundaries. In modern architectures, components range from small utility classes to large microservices. The key principle is that a component should be independently buildable, testable, and deployable. Understanding the lifecycle of a component\u2014from design through decommissioning\u2014is foundational to building reliable systems.\n\n## 2. Component Interface Design\n\nEvery component exposes one or more interfaces that define its contract. Interfaces should follow the Interface Segregation Principle: expose only what consumers need. Use method signatures, return types, and documented exceptions to form the contract. Avoid exposing internal state directly; prefer getter methods, value objects, or event streams. A well-designed interface is minimal, cohesive, and stable over time. Changes to an interface should be treated as breaking changes and versioned accordingly.\n\n## 3. Dependency Injection and Inversion of Control\n\nComponents should declare their dependencies explicitly rather than constructing them internally. Dependency Injection (DI) allows substituting implementations at runtime, enabling testing with mocks and swapping configurations. Use constructor injection for required dependencies and setter or method injection for optional ones. Define interfaces for dependencies rather than concrete classes. This decoupling is what makes unit testing feasible and keeps components composable.\n\n## 4. State Management and Immutability\n\nComponents that hold mutable state are the source of most concurrency bugs. Prefer immutable data structures where possible. When mutability is required, confine it to a single thread or protect it with synchronization primitives. Document the thread-safety guarantees of each component. Use value objects for data that is copied on read. Stateless components (pure functions) are inherently thread-safe and trivially testable.\n\n## 5. Unit Testing Fundamentals\n\nUnit tests verify the behavior of a single component in isolation. Each test should follow the Arrange-Act-Assert (AAA) pattern. Tests must be deterministic, independent, and fast (ideally under 100ms each). Use test doubles\u2014mocks, stubs, fakes, and spies\u2014to isolate the unit under test. Name tests descriptively: `test_componentName_condition_expectedBehavior`. A well-written unit test reads as a specification of expected behavior.\n\n## 6. Test Data Management\n\nTest data should be constructed programmatically within tests rather than loaded from external files, ensuring hermeticity. Use factory methods or builders to create test fixtures. For database-backed tests, use in-memory databases (H2, SQLite) or transactional rollback. Avoid shared mutable test state between tests. Each test should set up and tear down its own data. Parameterized tests with data providers reduce duplication when testing multiple input/output pairs.\n\n## 7. Mocking and Test Doubles\n\nMocks verify that interactions occurred; stubs provide canned responses; fakes provide simplified working implementations; spies record calls while delegating. Choose the appropriate double based on what you are verifying. Avoid over-mocking: if a dependency is simple enough (e.g., a value object), use a real instance. Mocking frameworks (Mockito, Moq, Jest) reduce boilerplate. A common anti-pattern is mocking the class under test, which tests the mock rather than the code.\n\n## 8. Integration Testing Strategy\n\nIntegration tests verify that multiple components work together correctly. They test the seams between components: API contracts, database schemas, message formats. Use a real environment as closely as possible while maintaining speed. Docker containers or test orchestration tools (Testcontainers) provide realistic infrastructure. Integration tests should be idempotent and able to run in any order. Keep their count manageable by testing critical paths and cross-component interactions.\n\n## 9. Contract Testing\n\nContract tests verify that a provider and consumer agree on the interface. For APIs, use OpenAPI specifications or protocol buffers as the source of truth. For inter-service communication, use Pact or similar tools. Contract tests run on both the provider side (verifying the provider honors the contract) and the consumer side (verifying the consumer's expectations match). This prevents \"it works on my machine\" failures in distributed systems.\n\n## 10. Edge Case Identification\n\nEdge cases include: empty inputs, null values, boundary values (0, -1, Integer.MAX_VALUE), oversized inputs, concurrent access patterns, timeout scenarios, and resource exhaustion. Systematically enumerate edge cases from the input domain. Use equivalence partitioning and boundary value analysis. For I/O operations, test network failures, disk full, permission denied, and partial writes. Document every edge case and its expected behavior in the component's specification.\n\n## 11. Exception Handling and Error Propagation\n\nComponents should define a clear exception hierarchy. Catch exceptions at the appropriate boundary: handle recoverable errors locally, propagate unrecoverable errors upward. Never swallow exceptions silently. Log with sufficient context (correlation IDs, input parameters) to diagnose issues. Use result types (Option, Either) for expected failure modes rather than exceptions. Document which exceptions are checked vs. unchecked and what triggers each.\n\n## 12. Concurrency and Thread Safety Testing\n\nTest components under concurrent access using stress tests and race condition detection tools (ThreadSanitizer, Helgrind). Verify thread-safety guarantees: is the component safe for concurrent reads? Concurrent reads and writes? Sequential only? Use barrier synchronization to create specific race conditions deterministically. Test under high contention. Verify that no deadlocks occur under all interleavings of operations.\n\n## 13. Performance Benchmarking\n\nEstablish performance baselines for each component. Measure latency (p50, p95, p99), throughput, and resource consumption (CPU, memory, I/O). Use dedicated benchmarking frameworks (JMH, pyperformance, criterion) rather than ad-hoc timing. Run benchmarks in a controlled environment. Track performance regressions in CI. Set performance budgets and fail builds that exceed them. Profile to identify hot paths before optimizing.\n\n## 14. Fuzz Testing\n\nFuzzing generates large volumes of random or semi-random inputs to discover crashes, hangs, or security vulnerabilities. Use grammar-based fuzzing for structured inputs (JSON, XML, protocol messages). Integrate fuzzers into CI for short runs and run extended fuzzing campaigns overnight. Track coverage to ensure new code paths are exercised. For network-facing components, use protocol-specific fuzzers. Treat any crash found by a fuzzer as a critical bug.\n\n## 15. Property-Based Testing\n\nProperty-based testing (PBT) expresses invariants that must hold for all inputs, then generates inputs to verify them. Examples: `sort(sort(x)) == sort(x)`, `parse(serialize(x)) == x`, `add(a, add(b, c)) == add(add(a, b), c)`. Use frameworks like Hypothesis, QuickCheck, or jqwik. PBT complements example-based testing by exploring the input space systematically. Shrink failing inputs to minimal counterexamples for easy debugging.\n\n## 16. Test Automation and CI/CD Integration\n\nAll tests must run automatically in CI. Structure the pipeline: unit tests on every commit (fast, < 5 min), integration tests on merge to main (medium, < 15 min), end-to-end tests on release candidates (slow, < 30 min). Fail the build on any test failure. Generate code coverage reports and enforce minimum thresholds. Use parallel test execution to reduce wall-clock time. Cache dependencies and test environments to speed up pipelines.\n\n## 17. Code Coverage Metrics and Limitations\n\nCoverage measures",
+        "prompt_sha256": "393e5c38833c039f5a28669a0d3b51069ac4fb9fb1cee8d98e74957e99afe007",
+        "prompt_tokens_tokenized": 32613,
+        "request_id": null,
+        "response_headers_at": 523223.766917988,
+        "result": {
+          "content_chunks": 1519,
+          "e2e": 53.65174743998796,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 38,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.743976427998859,
+          "ttft": 8.124220274970867,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32613,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 176,
+            "total_tokens": 36709
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_25896f46b5a9**\n**KEY_1 = VALUE_808905553a2f**\n**KEY_2 = VALUE_119f55a951b9**\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## 1. Introduction to Software Components\n\nA software component is a self-contained, deployable unit of functionality that exposes well-defined interfaces. Components encapsulate state, behavior, and configuration behind contractual boundaries. In modern architectures, components range from small utility classes to large microservices. The key principle is that a component should be independently buildable, testable, and deployable. Understanding the lifecycle of a component\u2014from design through decommissioning\u2014is foundational to building reliable systems.\n\n## 2. Component Interface Design\n\nEvery component exposes one or more interfaces that define its contract. Interfaces should follow the Interface Segregation Principle: expose only what consumers need. Use method signatures, return types, and documented exceptions to form the contract. Avoid exposing internal state directly; prefer getter methods, value objects, or event streams. A well-designed interface is minimal, cohesive, and stable over time. Changes to an interface should be treated as breaking changes and versioned accordingly.\n\n## 3. Dependency Injection and Inversion of Control\n\nComponents should declare their dependencies explicitly rather than constructing them internally. Dependency Injection (DI) allows substituting implementations at runtime, enabling testing with mocks and swapping configurations. Use constructor injection for required dependencies and setter or method injection for optional ones. Define interfaces for dependencies rather than concrete classes. This decoupling is what makes unit testing feasible and keeps components composable.\n\n## 4. State Management and Immutability\n\nComponents that hold mutable state are the source of most concurrency bugs. Prefer immutable data structures where possible. When mutability is required, confine it to a single thread or protect it with synchronization primitives. Document the thread-safety guarantees of each component. Use value objects for data that is copied on read. Stateless components (pure functions) are inherently thread-safe and trivially testable.\n\n## 5. Unit Testing Fundamentals\n\nUnit tests verify the behavior of a single component in isolation. Each test should follow the Arrange-Act-Assert (AAA) pattern. Tests must be deterministic, independent, and fast (ideally under 100ms each). Use test doubles\u2014mocks, stubs, fakes, and spies\u2014to isolate the unit under test. Name tests descriptively: `test_componentName_condition_expectedBehavior`. A well-written unit test reads as a specification of expected behavior.\n\n## 6. Test Data Management\n\nTest data should be constructed programmatically within tests rather than loaded from external files, ensuring hermeticity. Use factory methods or builders to create test fixtures. For database-backed tests, use in-memory databases (H2, SQLite) or transactional rollback. Avoid shared mutable test state between tests. Each test should set up and tear down its own data. Parameterized tests with data providers reduce duplication when testing multiple input/output pairs.\n\n## 7. Mocking and Test Doubles\n\nMocks verify that interactions occurred; stubs provide canned responses; fakes provide simplified working implementations; spies record calls while delegating. Choose the appropriate double based on what you are verifying. Avoid over-mocking: if a dependency is simple enough (e.g., a value object), use a real instance. Mocking frameworks (Mockito, Moq, Jest) reduce boilerplate. A common anti-pattern is mocking the class under test, which tests the mock rather than the code.\n\n## 8. Integration Testing Strategy\n\nIntegration tests verify that multiple components work together correctly. They test the seams between components: API contracts, database schemas, message formats. Use a real environment as closely as possible while maintaining speed. Docker containers or test orchestration tools (Testcontainers) provide realistic infrastructure. Integration tests should be idempotent and able to run in any order. Keep their count manageable by testing critical paths and cross-component interactions.\n\n## 9. Contract Testing\n\nContract tests verify that a provider and consumer agree on the interface. For APIs, use OpenAPI specifications or protocol buffers as the source of truth. For inter-service communication, use Pact or similar tools. Contract tests run on both the provider side (verifying the provider honors the contract) and the consumer side (verifying the consumer's expectations match). This prevents \"it works on my machine\" failures in distributed systems.\n\n## 10. Edge Case Identification\n\nEdge cases include: empty inputs, null values, boundary values (0, -1, Integer.MAX_VALUE), oversized inputs, concurrent access patterns, timeout scenarios, and resource exhaustion. Systematically enumerate edge cases from the input domain. Use equivalence partitioning and boundary value analysis. For I/O operations, test network failures, disk full, permission denied, and partial writes. Document every edge case and its expected behavior in the component's specification.\n\n## 11. Exception Handling and Error Propagation\n\nComponents should define a clear exception hierarchy. Catch exceptions at the appropriate boundary: handle recoverable errors locally, propagate unrecoverable errors upward. Never swallow exceptions silently. Log with sufficient context (correlation IDs, input parameters) to diagnose issues. Use result types (Option, Either) for expected failure modes rather than exceptions. Document which exceptions are checked vs. unchecked and what triggers each.\n\n## 12. Concurrency and Thread Safety Testing\n\nTest components under concurrent access using stress tests and race condition detection tools (ThreadSanitizer, Helgrind). Verify thread-safety guarantees: is the component safe for concurrent reads? Concurrent reads and writes? Sequential only? Use barrier synchronization to create specific race conditions deterministically. Test under high contention. Verify that no deadlocks occur under all interleavings of operations.\n\n## 13. Performance Benchmarking\n\nEstablish performance baselines for each component. Measure latency (p50, p95, p99), throughput, and resource consumption (CPU, memory, I/O). Use dedicated benchmarking frameworks (JMH, pyperformance, criterion) rather than ad-hoc timing. Run benchmarks in a controlled environment. Track performance regressions in CI. Set performance budgets and fail builds that exceed them. Profile to identify hot paths before optimizing.\n\n## 14. Fuzz Testing\n\nFuzzing generates large volumes of random or semi-random inputs to discover crashes, hangs, or security vulnerabilities. Use grammar-based fuzzing for structured inputs (JSON, XML, protocol messages). Integrate fuzzers into CI for short runs and run extended fuzzing campaigns overnight. Track coverage to ensure new code paths are exercised. For network-facing components, use protocol-specific fuzzers. Treat any crash found by a fuzzer as a critical bug.\n\n## 15. Property-Based Testing\n\nProperty-based testing (PBT) expresses invariants that must hold for all inputs, then generates inputs to verify them. Examples: `sort(sort(x)) == sort(x)`, `parse(serialize(x)) == x`, `add(a, add(b, c)) == add(add(a, b), c)`. Use frameworks like Hypothesis, QuickCheck, or jqwik. PBT complements example-based testing by exploring the input space systematically. Shrink failing inputs to minimal counterexamples for easy debugging.\n\n## 16. Test Automation and CI/CD Integration\n\nAll tests must run automatically in CI. Structure the pipeline: unit tests on every commit (fast, < 5 min), integration tests on merge to main (medium, < 15 min), end-to-end tests on release candidates (slow, < 30 min). Fail the build on any test failure. Generate code coverage reports and enforce minimum thresholds. Use parallel test execution to reduce wall-clock time. Cache dependencies and test environments to speed up pipelines.\n\n## 17. Code Coverage Metrics and Limitations\n\nCoverage measures",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523218.018648103,
+        "started_at": "2026-11-02T04:55:35.253535+00:00",
+        "status": "completed",
+        "stream_id": "84fba63c1f3d44e2814671f3f9e1363c",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523226.087343429,
+        "expected_values": [
+          "VALUE_f680114a383c",
+          "VALUE_fceff599d8e5",
+          "VALUE_03685028e19a"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:55:43.322244+00:00",
+        "first_output": 523225.10051768,
+        "last_output": 523226.056091798,
+        "partial_visible": "\n\nKEY_0 = VALUE_f680114a383c\nKEY_1 = VALUE_fceff599d8e5\nKEY_2 = VALUE_03685028e19a",
+        "prompt_sha256": "031146c0ee3ffc7e263efaefa42c2508afe842d555af3908d546a0eed93570f1",
+        "prompt_tokens_tokenized": 8193,
+        "request_id": null,
+        "response_headers_at": 523225.10044613,
+        "result": {
+          "content_chunks": 7,
+          "e2e": 2.3049220250104554,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 152,
+          "output_token_source": "usage",
+          "reasoning_chunks": 26,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.3181190749746747,
+          "ttft": 2.085652119014412,
+          "usage": {
+            "completion_tokens": 152,
+            "prompt_tokens": 8193,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 98,
+            "total_tokens": 8345
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_f680114a383c\nKEY_1 = VALUE_fceff599d8e5\nKEY_2 = VALUE_03685028e19a",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523223.77983678,
+        "started_at": "2026-11-02T04:55:41.014724+00:00",
+        "status": "completed",
+        "stream_id": "e1822a3eebda441f8dd75e8befd58aaf",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 523272.096177184,
+      "anchor": {
+        "end": 523312.335543498,
+        "expected_values": [
+          "VALUE_25896f46b5a9",
+          "VALUE_808905553a2f",
+          "VALUE_119f55a951b9"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:57:09.570444+00:00",
+        "first_output": 523271.877008865,
+        "last_output": 523312.335367893,
+        "partial_visible": "\n\n**KEY_0 = VALUE_25896f46b5a9**\n**KEY_1 = VALUE_808905553a2f**\n**KEY_2 = VALUE_119f55a951b9**\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## 1. Introduction and Scope\n\nThis guide provides a comprehensive reference for designing, implementing, and testing ordinary software components. A \"component\" here refers to a self-contained unit of functionality\u2014such as a utility class, a service module, a data transformation pipeline, or a configuration parser\u2014that can be developed, tested, and deployed in isolation. The scope covers the full lifecycle: requirements decomposition, architecture selection, implementation patterns, unit and integration testing, edge-case handling, and deployment considerations.\n\n**Example:** A `DateFormatter` component that converts timestamps into localized human-readable strings.\n\n**Edge Case:** Timezone ambiguity when a timestamp lacks an explicit UTC offset.\n\n**Test:** Verify that `format(1609459200, \"America/New_York\")` yields `2021-01-01 00:00:00 EST`.\n\n## 2. Component Identification and Boundary Definition\n\nBefore writing code, identify the minimal set of responsibilities a component will own. Use the Single Responsibility Principle (SRP) to ensure each component has exactly one reason to change. Define the component's public API surface (methods, properties, events) and its private internals.\n\n**Example:** A `RateLimiter` component exposes `tryAcquire(token: string): boolean` and `reset(token: string): void`. Internally it maintains a sliding-window counter.\n\n**Edge Case:** A component that appears to need two responsibilities (e.g., rate limiting *and* logging) should be split into `RateLimiter` and `AuditLogger`, composed externally.\n\n**Test:** Assert that modifying the logging strategy does not require changes to `RateLimiter` source code.\n\n## 3. Dependency Management and Inversion of Control\n\nComponents should depend on abstractions, not concrete implementations. Use constructor injection, factory patterns, or service locators to externalize dependencies. This makes components testable and swappable.\n\n**Example:**\n```python\nclass ReportGenerator:\n    def __init__(self, data_source: DataSource, renderer: Renderer):\n        self._ds = data_source\n        self._renderer = renderer\n```\n\n**Edge Case:** Cyclic dependencies between two components (A needs B, B needs A) indicate a design flaw. Refactor by extracting a shared interface or introducing a mediator.\n\n**Test:** Instantiate `ReportGenerator` with a `MockDataSource` and `MockRenderer`; verify output without touching a real database.\n\n## 4. State Management and Immutability\n\nPrefer immutable data structures for component state where possible. When mutation is necessary, encapsulate it behind a single method and document the state machine. Avoid shared mutable state across threads without explicit synchronization.\n\n**Example:** A `ShoppingCart` stores items in a frozen tuple. Adding an item returns a *new* cart instance.\n\n**Edge Case:** A component that caches results in a mutable dictionary shared across requests will produce data races in a multi-threaded server.\n\n**Test:** Run 1000 concurrent `add_item()` calls on the same cart instance; assert the final item count equals 1000 with no lost updates.\n\n## 5. Error Handling Strategy\n\nDefine a clear taxonomy of errors: *expected* (retriable, user-correctable), *unexpected* (bug, resource exhaustion), and *fatal* (corrupt state). Use typed exceptions, error codes, or Result/Either types. Never swallow exceptions silently.\n\n**Example:**\n```rust\nenum PaymentError {\n    InsufficientFunds { available: u64, requested: u64 },\n    GatewayTimeout { retry_after: Duration },\n    CardDeclined { reason: String },\n}\n```\n\n**Edge Case:** A network timeout during a payment must not be treated as a decline; it should be re-queued with exponential backoff.\n\n**Test:** Simulate a gateway that returns `504` three times, then `200`; assert the component retries and eventually succeeds.\n\n## 6. Configuration and Environment Separation\n\nExternalize all tunable parameters (timeouts, thresholds, feature flags) into configuration objects loaded from environment variables, config files, or a config service. The component receives a fully-populated config struct at construction time.\n\n**Example:**\n```yaml\n# config.yaml\nrate_limiter:\n  window_seconds: 60\n  max_requests: 100\n  burst_size: 10\n```\n\n**Edge Case:** A missing config key should fail fast at startup with a clear message, not default to a silent `0` that causes division-by-zero later.\n\n**Test:** Load a config with `max_requests` omitted; assert startup raises `ConfigurationError(\"rate_limiter.max_requests is required\")`.\n\n## 7. Logging and Observability\n\nEvery component should emit structured logs (JSON) at appropriate levels (DEBUG, INFO, WARN, ERROR). Include correlation IDs, component name, operation, and relevant context. Expose metrics (counters, histograms, gauges) for monitoring.\n\n**Example:**\n```json\n{\"level\":\"WARN\",\"component\":\"RateLimiter\",\"op\":\"acquire\",\"token\":\"abc\",\"result\":\"rejected\",\"remaining\":0}\n```\n\n**Edge Case:** Logging sensitive data (passwords, tokens) must be redacted. A misconfigured logger that prints the full request body will leak credentials.\n\n**Test:** Invoke the component with a request containing `password=secret123`; capture logs; assert `\"secret123\"` does not appear in any log line.\n\n## 8. Threading and Concurrency Models\n\nChoose a concurrency model explicitly: single-threaded with async I/O, thread-pool, actor model, or reactive streams. Document thread-safety guarantees in the component's contract.\n\n**Example:** A `ConnectionPool` is thread-safe; its `acquire()` method uses a `ReentrantLock` internally.\n\n**Edge Case:** Deadlock occurs when two components each hold a lock and request the other's. Always document lock ordering.\n\n**Test:** Use a stress test with 50 threads acquiring and releasing connections for 60 seconds; assert no thread is blocked longer than the configured timeout.\n\n## 9. Caching Strategy\n\nImplement caching at the appropriate layer (in-process LRU, distributed Redis, CDN). Define the cache key, TTL, invalidation policy, and eviction strategy. Cache-aside, write-through, and write-behind patterns each have trade-offs.\n\n**Example:** A `UserProfileService` caches user records in a local LRU (size 10 000, TTL 5 min). On update, it evicts the entry (write-invalidate).\n\n**Edge Case:** Cache stampede\u201410 000 concurrent requests for the same expired key cause 10 000 backend calls. Use a \"single-flight\" or mutex-per-key pattern.\n\n**Test:** Expire a cache entry; fire 1 000 concurrent reads; assert the backend is called exactly once.\n\n## 10. Data Serialization and Format Versioning\n\nAny component that serializes data to disk, network, or message queues must version its format. Include a `schema_version` field. Provide migration paths for older versions.\n\n**Example:**\n```json\n{\"schema_version\": 3, \"user_id\": 42, \"preferences\": {\"theme\": \"dark\"}}\n```\n\n**Edge Case:** A v2 payload arrives at a v3-only reader. The deserializer must either migrate in-memory or reject with a clear error.\n\n**Test:** Feed a v1 JSON blob to the v3 deserializer; assert it migrates correctly and the output matches a known v3 fixture.\n\n## 11. Input Validation and Sanitization\n\nValidate all external input at the component boundary. Enforce type, range, length, and format constraints. Sanitize data that will be interpolated into SQL, HTML, or shell commands.\n\n**Example:**\n```python\ndef parse_user_id(raw: str) -> int:\n    if not raw.isdigit() or not (1 <= int(raw) <= 9_999_999):\n        raise ValidationError(f\"Invalid user_id: {raw!r}\")\n    return int(raw)\n```\n\n**Edge Case:** Unicode homoglyphs in a username (`\u0430` Cyrillic vs `a` Latin) can bypass a naive `isalpha()` check.\n\n**Test:** Provide inputs: `\"\"`, `\"abc\"`, `\"-1\"`, `\"1000000\"`, `\"\\u0430\"`, `\"9999999\"`; assert only valid integers pass.\n\n## 12. Output Formatting and Localization\n\nComponents that produce human-facing output must support localization (i18n) and internationalization. Use message catalogs, avoid hardcoded strings, and handle pluralization, gender, and right-to-left scripts.\n\n**Example",
+        "prompt_sha256": "393e5c38833c039f5a28669a0d3b51069ac4fb9fb1cee8d98e74957e99afe007",
+        "prompt_tokens_tokenized": 32613,
+        "request_id": null,
+        "response_headers_at": 523271.876937785,
+        "result": {
+          "content_chunks": 1280,
+          "e2e": 40.50000923499465,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 40,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.04155639297096059,
+          "ttft": 1.3969312499975786,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32613,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 175,
+            "total_tokens": 36709
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_25896f46b5a9**\n**KEY_1 = VALUE_808905553a2f**\n**KEY_2 = VALUE_119f55a951b9**\n\n---\n\n# Engineering Guide: Software Components and Their Tests\n\n## 1. Introduction and Scope\n\nThis guide provides a comprehensive reference for designing, implementing, and testing ordinary software components. A \"component\" here refers to a self-contained unit of functionality\u2014such as a utility class, a service module, a data transformation pipeline, or a configuration parser\u2014that can be developed, tested, and deployed in isolation. The scope covers the full lifecycle: requirements decomposition, architecture selection, implementation patterns, unit and integration testing, edge-case handling, and deployment considerations.\n\n**Example:** A `DateFormatter` component that converts timestamps into localized human-readable strings.\n\n**Edge Case:** Timezone ambiguity when a timestamp lacks an explicit UTC offset.\n\n**Test:** Verify that `format(1609459200, \"America/New_York\")` yields `2021-01-01 00:00:00 EST`.\n\n## 2. Component Identification and Boundary Definition\n\nBefore writing code, identify the minimal set of responsibilities a component will own. Use the Single Responsibility Principle (SRP) to ensure each component has exactly one reason to change. Define the component's public API surface (methods, properties, events) and its private internals.\n\n**Example:** A `RateLimiter` component exposes `tryAcquire(token: string): boolean` and `reset(token: string): void`. Internally it maintains a sliding-window counter.\n\n**Edge Case:** A component that appears to need two responsibilities (e.g., rate limiting *and* logging) should be split into `RateLimiter` and `AuditLogger`, composed externally.\n\n**Test:** Assert that modifying the logging strategy does not require changes to `RateLimiter` source code.\n\n## 3. Dependency Management and Inversion of Control\n\nComponents should depend on abstractions, not concrete implementations. Use constructor injection, factory patterns, or service locators to externalize dependencies. This makes components testable and swappable.\n\n**Example:**\n```python\nclass ReportGenerator:\n    def __init__(self, data_source: DataSource, renderer: Renderer):\n        self._ds = data_source\n        self._renderer = renderer\n```\n\n**Edge Case:** Cyclic dependencies between two components (A needs B, B needs A) indicate a design flaw. Refactor by extracting a shared interface or introducing a mediator.\n\n**Test:** Instantiate `ReportGenerator` with a `MockDataSource` and `MockRenderer`; verify output without touching a real database.\n\n## 4. State Management and Immutability\n\nPrefer immutable data structures for component state where possible. When mutation is necessary, encapsulate it behind a single method and document the state machine. Avoid shared mutable state across threads without explicit synchronization.\n\n**Example:** A `ShoppingCart` stores items in a frozen tuple. Adding an item returns a *new* cart instance.\n\n**Edge Case:** A component that caches results in a mutable dictionary shared across requests will produce data races in a multi-threaded server.\n\n**Test:** Run 1000 concurrent `add_item()` calls on the same cart instance; assert the final item count equals 1000 with no lost updates.\n\n## 5. Error Handling Strategy\n\nDefine a clear taxonomy of errors: *expected* (retriable, user-correctable), *unexpected* (bug, resource exhaustion), and *fatal* (corrupt state). Use typed exceptions, error codes, or Result/Either types. Never swallow exceptions silently.\n\n**Example:**\n```rust\nenum PaymentError {\n    InsufficientFunds { available: u64, requested: u64 },\n    GatewayTimeout { retry_after: Duration },\n    CardDeclined { reason: String },\n}\n```\n\n**Edge Case:** A network timeout during a payment must not be treated as a decline; it should be re-queued with exponential backoff.\n\n**Test:** Simulate a gateway that returns `504` three times, then `200`; assert the component retries and eventually succeeds.\n\n## 6. Configuration and Environment Separation\n\nExternalize all tunable parameters (timeouts, thresholds, feature flags) into configuration objects loaded from environment variables, config files, or a config service. The component receives a fully-populated config struct at construction time.\n\n**Example:**\n```yaml\n# config.yaml\nrate_limiter:\n  window_seconds: 60\n  max_requests: 100\n  burst_size: 10\n```\n\n**Edge Case:** A missing config key should fail fast at startup with a clear message, not default to a silent `0` that causes division-by-zero later.\n\n**Test:** Load a config with `max_requests` omitted; assert startup raises `ConfigurationError(\"rate_limiter.max_requests is required\")`.\n\n## 7. Logging and Observability\n\nEvery component should emit structured logs (JSON) at appropriate levels (DEBUG, INFO, WARN, ERROR). Include correlation IDs, component name, operation, and relevant context. Expose metrics (counters, histograms, gauges) for monitoring.\n\n**Example:**\n```json\n{\"level\":\"WARN\",\"component\":\"RateLimiter\",\"op\":\"acquire\",\"token\":\"abc\",\"result\":\"rejected\",\"remaining\":0}\n```\n\n**Edge Case:** Logging sensitive data (passwords, tokens) must be redacted. A misconfigured logger that prints the full request body will leak credentials.\n\n**Test:** Invoke the component with a request containing `password=secret123`; capture logs; assert `\"secret123\"` does not appear in any log line.\n\n## 8. Threading and Concurrency Models\n\nChoose a concurrency model explicitly: single-threaded with async I/O, thread-pool, actor model, or reactive streams. Document thread-safety guarantees in the component's contract.\n\n**Example:** A `ConnectionPool` is thread-safe; its `acquire()` method uses a `ReentrantLock` internally.\n\n**Edge Case:** Deadlock occurs when two components each hold a lock and request the other's. Always document lock ordering.\n\n**Test:** Use a stress test with 50 threads acquiring and releasing connections for 60 seconds; assert no thread is blocked longer than the configured timeout.\n\n## 9. Caching Strategy\n\nImplement caching at the appropriate layer (in-process LRU, distributed Redis, CDN). Define the cache key, TTL, invalidation policy, and eviction strategy. Cache-aside, write-through, and write-behind patterns each have trade-offs.\n\n**Example:** A `UserProfileService` caches user records in a local LRU (size 10 000, TTL 5 min). On update, it evicts the entry (write-invalidate).\n\n**Edge Case:** Cache stampede\u201410 000 concurrent requests for the same expired key cause 10 000 backend calls. Use a \"single-flight\" or mutex-per-key pattern.\n\n**Test:** Expire a cache entry; fire 1 000 concurrent reads; assert the backend is called exactly once.\n\n## 10. Data Serialization and Format Versioning\n\nAny component that serializes data to disk, network, or message queues must version its format. Include a `schema_version` field. Provide migration paths for older versions.\n\n**Example:**\n```json\n{\"schema_version\": 3, \"user_id\": 42, \"preferences\": {\"theme\": \"dark\"}}\n```\n\n**Edge Case:** A v2 payload arrives at a v3-only reader. The deserializer must either migrate in-memory or reject with a clear error.\n\n**Test:** Feed a v1 JSON blob to the v3 deserializer; assert it migrates correctly and the output matches a known v3 fixture.\n\n## 11. Input Validation and Sanitization\n\nValidate all external input at the component boundary. Enforce type, range, length, and format constraints. Sanitize data that will be interpolated into SQL, HTML, or shell commands.\n\n**Example:**\n```python\ndef parse_user_id(raw: str) -> int:\n    if not raw.isdigit() or not (1 <= int(raw) <= 9_999_999):\n        raise ValidationError(f\"Invalid user_id: {raw!r}\")\n    return int(raw)\n```\n\n**Edge Case:** Unicode homoglyphs in a username (`\u0430` Cyrillic vs `a` Latin) can bypass a naive `isalpha()` check.\n\n**Test:** Provide inputs: `\"\"`, `\"abc\"`, `\"-1\"`, `\"1000000\"`, `\"\\u0430\"`, `\"9999999\"`; assert only valid integers pass.\n\n## 12. Output Formatting and Localization\n\nComponents that produce human-facing output must support localization (i18n) and internationalization. Use message catalogs, avoid hardcoded strings, and handle pluralization, gender, and right-to-left scripts.\n\n**Example",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523271.830452195,
+        "started_at": "2026-11-02T04:56:29.065340+00:00",
+        "status": "completed",
+        "stream_id": "01af509837154ead95cb67e8ee59c8b2",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523273.109626273,
+        "expected_values": [
+          "VALUE_f680114a383c",
+          "VALUE_fceff599d8e5",
+          "VALUE_03685028e19a"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:56:30.344527+00:00",
+        "first_output": 523272.065918905,
+        "last_output": 523273.109528623,
+        "partial_visible": "\n\nKEY_0 = VALUE_f680114a383c\nKEY_1 = VALUE_fceff599d8e5\nKEY_2 = VALUE_03685028e19a",
+        "prompt_sha256": "031146c0ee3ffc7e263efaefa42c2508afe842d555af3908d546a0eed93570f1",
+        "prompt_tokens_tokenized": 8193,
+        "request_id": null,
+        "response_headers_at": 523272.065862287,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 1.225693239015527,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 148,
+          "output_token_source": "usage",
+          "reasoning_chunks": 27,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.18200623500160873,
+          "ttft": 1.0010815850109793,
+          "usage": {
+            "completion_tokens": 148,
+            "prompt_tokens": 8193,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 94,
+            "total_tokens": 8341
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_f680114a383c\nKEY_1 = VALUE_fceff599d8e5\nKEY_2 = VALUE_03685028e19a",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523271.880892721,
+        "started_at": "2026-11-02T04:56:29.115765+00:00",
+        "status": "completed",
+        "stream_id": "94172014324442ccb9a1dbbe4c384d9c",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 523312.689973992,
+      "anchor": {
+        "end": 523347.327941204,
+        "expected_values": [
+          "VALUE_25896f46b5a9",
+          "VALUE_808905553a2f",
+          "VALUE_119f55a951b9"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:57:44.562842+00:00",
+        "first_output": 523312.533560107,
+        "last_output": 523347.32775511,
+        "partial_visible": "\n\n**KEY_0 = VALUE_25896f46b5a9**\n**KEY_1 = VALUE_808905553a2f**\n**KEY_2 = VALUE_119f55a951b9**\n\n---\n\n# Engineering Guide: Design, Implementation, and Testing of Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nEvery ordinary software component follows a layered architecture: the interface layer (public API), the logic layer (core business rules), and the integration layer (external dependencies). The interface layer defines contracts via typed function signatures, the logic layer contains pure functions and state machines, and the integration layer wraps I/O, network calls, and persistence. Separating these layers ensures that a component can be tested in isolation by mocking the integration layer and verifying the logic layer against the interface contract.\n\n**Example:**\n```python\nclass DataProcessor:\n    def __init__(self, repository: Repository):\n        self._repo = repository  # integration layer\n\n    def process(self, raw: bytes) -> Result:  # interface layer\n        validated = self._validate(raw)       # logic layer\n        return self._transform(validated)     # logic layer\n```\n\n**Edge Case:** A component with no external dependencies (a \"pure\" component) should not accept a repository parameter. Enforcing this via constructor typing prevents accidental coupling.\n\n**Test Strategy:** Unit tests target the logic layer with no mocks. Integration tests inject a fake repository. Contract tests verify the interface layer matches documented behavior.\n\n---\n\n## 2. Interface Design and API Contracts\n\nThe public API of a component is its most critical surface. Every method must have a precise precondition, postcondition, and invariant. Use documentation strings, type annotations, and formal contract annotations (e.g., `@precondition`, `@postcondition`) to make expectations explicit. The API should be minimal: expose only what consumers need, hide internal state, and prefer composition over inheritance.\n\n**Example:**\n```python\ndef fetch_user(user_id: int, *, timeout: float = 30.0) -> User | None:\n    \"\"\"\n    Precondition: user_id > 0\n    Postcondition: returns User if exists, None if not found\n    Raises: TimeoutError if response exceeds timeout\n    \"\"\"\n```\n\n**Edge Case:** An API that accepts `None` for an `int` parameter silently creates a null-check burden downstream. Reject ambiguous inputs at the boundary with explicit type guards.\n\n**Test Strategy:** Write contract tests that verify preconditions are enforced (passing `user_id = -1` raises `ValueError`) and postconditions hold for all valid inputs.\n\n---\n\n## 3. State Management and Immutability\n\nOrdinary components should minimize mutable state. Where state is required, encapsulate it in a single, well-defined state object and restrict transitions to explicit methods. Prefer immutable data structures (tuples, frozen dataclasses, records) for value types. Mutable state should be confined to a single owner, accessed through a well-defined interface, and protected by clear ownership semantics.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass ComponentState:\n    id: str\n    version: int\n    flags: frozenset[str]\n\nclass Component:\n    def __init__(self, state: ComponentState):\n        self._state = state  # private, single owner\n\n    def upgrade(self) -> None:\n        self._state = ComponentState(\n            id=self._state.id,\n            version=self._state.version + 1,\n            flags=self._state.flags,\n        )\n```\n\n**Edge Case:** A component that stores a mutable list internally and exposes it directly allows external code to mutate internal state. Always return copies or read-only views.\n\n**Test Strategy:** Verify that external mutation of returned collections does not affect internal state. Test state transitions by asserting the full state object after each operation.\n\n---\n\n## 4. Error Handling and Failure Modes\n\nDefine a closed set of failure modes for each component. Every operation either succeeds with a documented return value or fails with a specific, typed exception. Avoid generic `Exception` catches. Design error hierarchies: a base `ComponentError` with subclasses for each distinct failure (e.g., `ValidationFailed`, `ResourceExhausted`, `DependencyUnavailable`). Each error should carry a machine-readable code and a human-readable message.\n\n**Example:**\n```python\nclass ComponentError(Exception):\n    def __init__(self, code: str, message: str, context: dict = None):\n        self.code = code\n        self.message = message\n        self.context = context or {}\n        super().__init__(message)\n\nclass ValidationFailed(ComponentError):\n    def __init__(self, field: str, reason: str):\n        super().__init__(code=\"VALIDATION\", message=f\"{field}: {reason}\", context={\"field\": field})\n```\n\n**Edge Case:** An error that swallows the original exception loses the stack trace. Always chain exceptions with `raise NewError(...) from original_error`.\n\n**Test Strategy:** For each documented failure mode, write a test that triggers it and asserts the exception type, code, and message. Test that no undocumented exception type can escape the component.\n\n---\n\n## 5. Dependency Injection and Inversion of Control\n\nComponents should receive their dependencies through constructors or factory functions rather than creating them internally. This enables testing with fakes, supports configuration-driven behavior, and prevents hidden coupling. Use protocols/interfaces (not concrete classes) in type annotations to declare what a dependency must provide.\n\n**Example:**\n```python\nfrom typing import Protocol\n\nclass Clock(Protocol):\n    def now(self) -> datetime: ...\n\nclass Logger(Protocol):\n    def info(self, msg: str, **kwargs): ...\n    def error(self, msg: str, **kwargs): ...\n\nclass AuditService:\n    def __init__(self, clock: Clock, logger: Logger, store: EventStore):\n        self._clock = clock\n        self._logger = logger\n        self._store = store\n```\n\n**Edge Case:** Injecting 10+ dependencies signals a component that does too much. Split it into smaller, single-responsibility units.\n\n**Test Strategy:** Provide fake implementations of each protocol in unit tests. Verify the component never calls `type()` or `isinstance()` on dependencies\u2014only protocol methods.\n\n---\n\n## 6. Configuration and Parameterization\n\nComponents must be configurable without code changes. Use a typed configuration object (not a flat dictionary) passed at construction time. Validate configuration eagerly at startup, not lazily at first use. Support environment variable overrides, file-based configs, and programmatic defaults in a clear precedence order.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass ComponentConfig:\n    max_retries: int = 3\n    timeout_ms: int = 5000\n    batch_size: int = 100\n\n    def __post_init__(self):\n        if self.max_retries < 0:\n            raise ValueError(\"max_retries must be >= 0\")\n        if self.timeout_ms <= 0:\n            raise ValueError(\"timeout_ms must be > 0\")\n```\n\n**Edge Case:** A config value that is valid in isolation but invalid in combination with another (e.g., `batch_size > max_queue_size`) must be validated holistically.\n\n**Test Strategy:** Test every validation rule. Test that invalid configs raise immediately at construction, not at first use. Test environment variable override precedence.\n\n---\n\n## 7. Threading and Concurrency Safety\n\nDocument whether a component is thread-safe, single-threaded, or requires external synchronization. If thread-safe, specify which operations are atomic and which require external locks. Prefer lock-free designs where possible (atomic operations, concurrent data structures). Avoid shared mutable state across threads.\n\n**Example:**\n```python\nclass Counter:\n    \"\"\"Thread-safe counter. All methods are atomic.\"\"\"\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n\n    def increment(self) -> int:\n        with self._lock:\n            self._value += 1\n            return self._value\n\n    @property\n    def value(self) -> int:\n        with self._lock:\n            return self._value\n```\n\n**Edge Case:** A component that is safe under CPython's GIL but not under true parallelism (e.g., Cython-extended ",
+        "prompt_sha256": "393e5c38833c039f5a28669a0d3b51069ac4fb9fb1cee8d98e74957e99afe007",
+        "prompt_tokens_tokenized": 32613,
+        "request_id": null,
+        "response_headers_at": 523312.533497192,
+        "result": {
+          "content_chunks": 1097,
+          "e2e": 34.836683098983485,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 36,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.04239084699656814,
+          "ttft": 1.2245200339821167,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32613,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 158,
+            "total_tokens": 36709
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_25896f46b5a9**\n**KEY_1 = VALUE_808905553a2f**\n**KEY_2 = VALUE_119f55a951b9**\n\n---\n\n# Engineering Guide: Design, Implementation, and Testing of Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nEvery ordinary software component follows a layered architecture: the interface layer (public API), the logic layer (core business rules), and the integration layer (external dependencies). The interface layer defines contracts via typed function signatures, the logic layer contains pure functions and state machines, and the integration layer wraps I/O, network calls, and persistence. Separating these layers ensures that a component can be tested in isolation by mocking the integration layer and verifying the logic layer against the interface contract.\n\n**Example:**\n```python\nclass DataProcessor:\n    def __init__(self, repository: Repository):\n        self._repo = repository  # integration layer\n\n    def process(self, raw: bytes) -> Result:  # interface layer\n        validated = self._validate(raw)       # logic layer\n        return self._transform(validated)     # logic layer\n```\n\n**Edge Case:** A component with no external dependencies (a \"pure\" component) should not accept a repository parameter. Enforcing this via constructor typing prevents accidental coupling.\n\n**Test Strategy:** Unit tests target the logic layer with no mocks. Integration tests inject a fake repository. Contract tests verify the interface layer matches documented behavior.\n\n---\n\n## 2. Interface Design and API Contracts\n\nThe public API of a component is its most critical surface. Every method must have a precise precondition, postcondition, and invariant. Use documentation strings, type annotations, and formal contract annotations (e.g., `@precondition`, `@postcondition`) to make expectations explicit. The API should be minimal: expose only what consumers need, hide internal state, and prefer composition over inheritance.\n\n**Example:**\n```python\ndef fetch_user(user_id: int, *, timeout: float = 30.0) -> User | None:\n    \"\"\"\n    Precondition: user_id > 0\n    Postcondition: returns User if exists, None if not found\n    Raises: TimeoutError if response exceeds timeout\n    \"\"\"\n```\n\n**Edge Case:** An API that accepts `None` for an `int` parameter silently creates a null-check burden downstream. Reject ambiguous inputs at the boundary with explicit type guards.\n\n**Test Strategy:** Write contract tests that verify preconditions are enforced (passing `user_id = -1` raises `ValueError`) and postconditions hold for all valid inputs.\n\n---\n\n## 3. State Management and Immutability\n\nOrdinary components should minimize mutable state. Where state is required, encapsulate it in a single, well-defined state object and restrict transitions to explicit methods. Prefer immutable data structures (tuples, frozen dataclasses, records) for value types. Mutable state should be confined to a single owner, accessed through a well-defined interface, and protected by clear ownership semantics.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass ComponentState:\n    id: str\n    version: int\n    flags: frozenset[str]\n\nclass Component:\n    def __init__(self, state: ComponentState):\n        self._state = state  # private, single owner\n\n    def upgrade(self) -> None:\n        self._state = ComponentState(\n            id=self._state.id,\n            version=self._state.version + 1,\n            flags=self._state.flags,\n        )\n```\n\n**Edge Case:** A component that stores a mutable list internally and exposes it directly allows external code to mutate internal state. Always return copies or read-only views.\n\n**Test Strategy:** Verify that external mutation of returned collections does not affect internal state. Test state transitions by asserting the full state object after each operation.\n\n---\n\n## 4. Error Handling and Failure Modes\n\nDefine a closed set of failure modes for each component. Every operation either succeeds with a documented return value or fails with a specific, typed exception. Avoid generic `Exception` catches. Design error hierarchies: a base `ComponentError` with subclasses for each distinct failure (e.g., `ValidationFailed`, `ResourceExhausted`, `DependencyUnavailable`). Each error should carry a machine-readable code and a human-readable message.\n\n**Example:**\n```python\nclass ComponentError(Exception):\n    def __init__(self, code: str, message: str, context: dict = None):\n        self.code = code\n        self.message = message\n        self.context = context or {}\n        super().__init__(message)\n\nclass ValidationFailed(ComponentError):\n    def __init__(self, field: str, reason: str):\n        super().__init__(code=\"VALIDATION\", message=f\"{field}: {reason}\", context={\"field\": field})\n```\n\n**Edge Case:** An error that swallows the original exception loses the stack trace. Always chain exceptions with `raise NewError(...) from original_error`.\n\n**Test Strategy:** For each documented failure mode, write a test that triggers it and asserts the exception type, code, and message. Test that no undocumented exception type can escape the component.\n\n---\n\n## 5. Dependency Injection and Inversion of Control\n\nComponents should receive their dependencies through constructors or factory functions rather than creating them internally. This enables testing with fakes, supports configuration-driven behavior, and prevents hidden coupling. Use protocols/interfaces (not concrete classes) in type annotations to declare what a dependency must provide.\n\n**Example:**\n```python\nfrom typing import Protocol\n\nclass Clock(Protocol):\n    def now(self) -> datetime: ...\n\nclass Logger(Protocol):\n    def info(self, msg: str, **kwargs): ...\n    def error(self, msg: str, **kwargs): ...\n\nclass AuditService:\n    def __init__(self, clock: Clock, logger: Logger, store: EventStore):\n        self._clock = clock\n        self._logger = logger\n        self._store = store\n```\n\n**Edge Case:** Injecting 10+ dependencies signals a component that does too much. Split it into smaller, single-responsibility units.\n\n**Test Strategy:** Provide fake implementations of each protocol in unit tests. Verify the component never calls `type()` or `isinstance()` on dependencies\u2014only protocol methods.\n\n---\n\n## 6. Configuration and Parameterization\n\nComponents must be configurable without code changes. Use a typed configuration object (not a flat dictionary) passed at construction time. Validate configuration eagerly at startup, not lazily at first use. Support environment variable overrides, file-based configs, and programmatic defaults in a clear precedence order.\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass ComponentConfig:\n    max_retries: int = 3\n    timeout_ms: int = 5000\n    batch_size: int = 100\n\n    def __post_init__(self):\n        if self.max_retries < 0:\n            raise ValueError(\"max_retries must be >= 0\")\n        if self.timeout_ms <= 0:\n            raise ValueError(\"timeout_ms must be > 0\")\n```\n\n**Edge Case:** A config value that is valid in isolation but invalid in combination with another (e.g., `batch_size > max_queue_size`) must be validated holistically.\n\n**Test Strategy:** Test every validation rule. Test that invalid configs raise immediately at construction, not at first use. Test environment variable override precedence.\n\n---\n\n## 7. Threading and Concurrency Safety\n\nDocument whether a component is thread-safe, single-threaded, or requires external synchronization. If thread-safe, specify which operations are atomic and which require external locks. Prefer lock-free designs where possible (atomic operations, concurrent data structures). Avoid shared mutable state across threads.\n\n**Example:**\n```python\nclass Counter:\n    \"\"\"Thread-safe counter. All methods are atomic.\"\"\"\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n\n    def increment(self) -> int:\n        with self._lock:\n            self._value += 1\n            return self._value\n\n    @property\n    def value(self) -> int:\n        with self._lock:\n            return self._value\n```\n\n**Edge Case:** A component that is safe under CPython's GIL but not under true parallelism (e.g., Cython-extended ",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 523312.485974575,
+        "started_at": "2026-11-02T04:57:09.720862+00:00",
+        "status": "completed",
+        "stream_id": "911c5479b8214697ae4ad0a759bf3df7",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 523313.715882629,
+        "expected_values": [
+          "VALUE_f680114a383c",
+          "VALUE_fceff599d8e5",
+          "VALUE_03685028e19a"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T04:57:10.950783+00:00",
+        "first_output": 523312.660087394,
+        "last_output": 523313.715780285,
+        "partial_visible": "\n\nKEY_0 = VALUE_f680114a383c\nKEY_1 = VALUE_fceff599d8e5\nKEY_2 = VALUE_03685028e19a",
+        "prompt_sha256": "031146c0ee3ffc7e263efaefa42c2508afe842d555af3908d546a0eed93570f1",
+        "prompt_tokens_tokenized": 8193,
+        "request_id": null,
+        "response_headers_at": 523312.660028929,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 1.1752591980039142,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 162,
+          "output_token_source": "usage",
+          "reasoning_chunks": 27,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.11948461801512167,
+          "ttft": 0.9486323749879375,
+          "usage": {
+            "completion_tokens": 162,
+            "prompt_tokens": 8193,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 108,
+            "total_tokens": 8355
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_f680114a383c\nKEY_1 = VALUE_fceff599d8e5\nKEY_2 = VALUE_03685028e19a",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 523312.537097835,
+        "started_at": "2026-11-02T04:57:09.771985+00:00",
+        "status": "completed",
+        "stream_id": "2b48aab6b3004cb3b190dae47d61b610",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 32768,
+    "base_url": "http://127.0.0.1:8001",
+    "configuration": {
+      "image_digest": "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521",
+      "label": "Swift1.5 FP8 DFlash2 GPU0 r1",
+      "model_revision": "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab",
+      "recipe_sha256": "f6bf24d339efc2e863c2d55b835d1dcb278d96366571ba308414f604dd71f86f",
+      "registry_sha256": "3e540ec6a4841cf268cf3199d0d6b7e932a3704658e1e68948e7a93cd8fa1cda"
+    },
+    "contender_max_tokens": 2048,
+    "contender_tokens": 8192,
+    "context_limit": 262144,
+    "managed_container": "candidate-dflash2",
+    "mode": "overlap",
+    "model": "candidate-dflash2",
+    "prefix_mode": "repeat",
+    "reasoning_effort": "medium",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 300,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "aecda1b2c9ed8b88d622a13fe2e80abb5a12dca477b6417c4ae304d266cb3499",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "candidate-dflash2",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T04:55:34.950428+00:00",
+  "status": "completed"
+}

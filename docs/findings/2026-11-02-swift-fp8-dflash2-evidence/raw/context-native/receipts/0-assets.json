@@ -1,0 +1,27 @@
+{
+  "command": "eval benchmark context artifact --run-id swift-fp8-dflash2-20261102-context --path evidence/0-assets.json --transport local",
+  "context": {
+    "command": "eval-benchmark-context-artifact",
+    "command_host": "primary-node",
+    "command_runtime": "primary-node",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "primary-node",
+    "execution_runtime": "primary-node",
+    "gpu_role": null,
+    "gpu_uuid": "[REDACTED_OPERATOR_IDENTITY]",
+    "overlay": null,
+    "resource": "evaluation",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "primary-node",
+    "resource_runtime": "primary-node",
+    "target": null,
+    "topology": "primary-node",
+    "transport": "local"
+  },
+  "data": "{\"data\": {\"bytes\": 593, \"data\": {\"aider_environment\": null, \"architecture\": \"x86_64\", \"assets\": {}, \"cache_identity\": \"86c9c2f03f25284cffe500f6bbf8ab83ab3e4e018ab9265073927e3535bea41c\", \"command_logs\": [], \"created_at\": \"2026-11-02T04:23:27.494490Z\", \"offline\": false, \"ownership_id\": \"swift-fp8-dflash2-20261102\", \"platform\": \"linux\", \"profile\": \"scout\", \"profile_sha256\": \"fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6\", \"python_environment\": null, \"run_id\": \"swift-fp8-dflash2-20261102-context\", \"schema\": \"anvil-serving.benchmark-harness-assets/v1\", \"suite\": \"context\"}, \"path\": \"evidence/0-assets.json\", \"sha256\": \"2b3f7f8dae53bbade6713875d768ddfaa536406711b743fb9f49a7784f4d4fc1\"}, \"ok\": true}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

@@ -1,0 +1,58 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "realderpz/Swift-1.5-Qwen3.8-27B-FP8"
+name = "candidate-nospec"
+expected_container = "candidate-nospec"
+status = "experimental"
+source = "User-authorized FP8+DFlash2 optimization trial. Adapted from accepted BF16 recipe and current upstream DFlash2 settings. GPU0 only; preserve GPU1 owners. Separate candidate endpoint; baseline rollback retained."
+
+  [recipe.download]
+  repo = "realderpz/Swift-1.5-Qwen3.8-27B-FP8"
+  revision = "64e5388d1d4ebc1941cc17d41e96573a0f9a5dab"
+  volume = "candidate-target-cache"
+  require_complete_cache = true
+
+  [recipe.hardware]
+  gpu_uuid = "GPU-00000000-0000-0000-0000-000000000000"
+  gpu = "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+
+  [recipe.serve]
+  engine = "sglang"
+  image = "sha256:baca1e7d5cedff2d906722a5c8013f9736d848300ea1632ae444eee664c37521"
+  entrypoint = [
+    "python3",
+    "-m",
+    "sglang.launch_server",
+  ]
+  model_flag = "--model-path"
+  model_path = "/models/snapshot"
+  context_tokens = 262144
+  port = 18001
+  served_model_name = "candidate-nospec"
+  startup_timeout_seconds = 1800
+  ipc = "host"
+  memory_limit_mib = 40960
+  memory_swap_limit_mib = 40960
+  host_memory_reserve_mib = 24576
+  ulimits = [
+    "memlock=-1",
+    "stack=67108864",
+  ]
+  named_volumes = [
+    "candidate-jit-cache:/cache",
+    "candidate-draft-cache:/draft-cache:ro",
+  ]
+  env = [
+    "SGLANG_ENABLE_HEALTH_ENDPOINT_GENERATION=0",
+    "HF_HUB_OFFLINE=1",
+    "TRANSFORMERS_OFFLINE=1",
+    "HF_HUB_DISABLE_IMPLICIT_TOKEN=1",
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "OMP_NUM_THREADS=4",
+    "MAX_JOBS=4",
+    "TRITON_CACHE_DIR=/models/snapshot",
+    "TORCHINDUCTOR_CACHE_DIR=/models/snapshot",
+  ]
+  flags = ["--served-model-name candidate-nospec --dtype bfloat16 --tp 1 --attention-backend flashinfer --kv-cache-dtype fp8_e4m3 --mamba-ssm-dtype float32 --chunked-prefill-size 2048 --max-running-requests 8 --context-length 262144 --mem-fraction-static 0.90 --reasoning-parser qwen3 --tool-call-parser qwen3_coder --host 0.0.0.0 --port 18001 --enable-metrics"]

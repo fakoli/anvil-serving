@@ -1,0 +1,151 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-02-swift-live-followup",
+    "capability": "routed text follow-up",
+    "repository_revision": "cfd018d17ae149d205c39d82e9dca3beea9f70ae",
+    "dirty_state": "sanitized public derivatives",
+    "started_at": "2026-11-02T09:10:18Z",
+    "completed_at": "2026-11-02T09:21:53Z",
+    "evidence_labels": [
+      "functional",
+      "negative-evidence",
+      "context-scout",
+      "continuity"
+    ],
+    "decision_labels": [
+      "closed-with-failures",
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.benchmark/v1",
+    "observational-continuity-check/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "dc504305c7fb50d677fc749950cd01239d456e8c053f9bfdf93de8601a8ac8f4",
+          "bytes": 996
+        }
+      ]
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "ba6556256b8b0c645e7ba5a8ebc91a589136f60bbbd41bba00a5becbd9a1ce91",
+          "bytes": 317
+        },
+        {
+          "path": "redaction-ledger.json",
+          "sha256": "73e969d68f192925b22cd4121ddf5928c9872bdbce2646fde90b22536adbe3b7",
+          "bytes": 320
+        }
+      ]
+    },
+    {
+      "role": "workload-manifest",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Synthetic built-in workload; no separately retained corpus."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/plan.json",
+          "sha256": "c6f72c68ea3c1eaae2af986cf7b489b4b624d13e2c022a7dfa1beaa6360c3038",
+          "bytes": 753
+        }
+      ]
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Private deployment identity and mappings are intentionally not public; public claims are single-profile only."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/preflight.json",
+          "sha256": "9d5875f0a4c1d9aa81f6d95a27f9664e493b8cafaac31daaf809c2af5531272a",
+          "bytes": 627
+        },
+        {
+          "path": "raw/ctx65536-c1.json",
+          "sha256": "5e82fb47e56a37cda5bbca60d92b4607c8ec2e8a278bd46c959423763358f1a0",
+          "bytes": 15766
+        },
+        {
+          "path": "raw/ctx65536-c1.journal.json",
+          "sha256": "8aa69e3af90e62e822b8f88be98a028afbb3cb47347f1028bf06ed3bf6b649bb",
+          "bytes": 14959
+        },
+        {
+          "path": "raw/needle-probes.json",
+          "sha256": "d63ffd585931920e203ac9968c918be164f8bd68d98e936b61ff095f89967d03",
+          "bytes": 874
+        }
+      ]
+    },
+    {
+      "role": "restoration",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No lifecycle or configuration mutation was performed; continuity evidence is retained instead."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "9d933b8194369759bf7255d71b2a71b3737331fa2b16a2031980af21eab155c1",
+          "bytes": 511
+        }
+      ]
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "aa5ad8e1643fad99dd379302dc5f4ce4e4abf0450a630ece995a3aa140354054",
+          "bytes": 2262
+        }
+      ]
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/continuity.json",
+          "sha256": "8b0a2aa210618f4adf0295b244d653621071cf92982fa8ba3ceb82c32feeb80a",
+          "bytes": 436
+        }
+      ],
+      "reason": "Sanitized point-in-time continuity record."
+    }
+  ],
+  "gaps": [
+    "No capacity-eligible cell",
+    "no matched no-speculation control",
+    "no DFlash2 speed comparison",
+    "no whole-fleet closure"
+  ]
+}

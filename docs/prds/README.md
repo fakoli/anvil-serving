@@ -6,6 +6,14 @@ unfinished implementation and separate draft proposals; none proves deployment.
 Each includes requirements, source pointers, small tasks, negative tests, and
 completion evidence for an agent starting without the original conversation.
 
+## New draft proposals
+
+- [Scoped live route reconfiguration](scoped-live-route-reconfiguration.md)
+  (2026-11-01): change explicit chat routes without restarting the shared router,
+  with scoped drain, request-bound revisions, durable rollback, and unchanged
+  owner/accounting custody. Specification only; implementation and deployment
+  remain unperformed.
+
 ## Router and fleet delivery order
 
 ### Source-only merge checkpoint

@@ -1,0 +1,105 @@
+{
+  "argv": [
+    "/private/redacted",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "benchmark",
+    "capacity",
+    "--base-url",
+    "http://127.0.0.1:8001",
+    "--model",
+    "candidate-dflash2",
+    "--engine",
+    "sglang-0.5.22",
+    "--gpu",
+    "rtx-pro-6000-maxq-tp1",
+    "--requests",
+    "6",
+    "--concurrency",
+    "2",
+    "--ctx-tokens",
+    "32768",
+    "--seed",
+    "11052770",
+    "--max-model-len",
+    "262144",
+    "--margin",
+    "16384",
+    "--max-tokens",
+    "4096",
+    "--prompt-cache-mode",
+    "unique",
+    "--response-words",
+    "128",
+    "--controlled-output-policy",
+    "strict",
+    "--reasoning-effort",
+    "medium",
+    "--temperature",
+    "1",
+    "--top-p",
+    "0.95",
+    "--timeout",
+    "600",
+    "--output",
+    "/private/redacted",
+    "--request-canaries",
+    "--confirm"
+  ],
+  "cell": "dflash2-ctx32768-c2-strict128",
+  "collector_errors": [],
+  "collector_sha256": "46d1d5149cbeea7120f2b47cd5d900da2422582d657f4c97d906b717b988adc6",
+  "counter_reconciliation": {
+    "deltas": {
+      "generation_tokens_total": 3836.0,
+      "num_requests_total": 6.0,
+      "prompt_tokens_total": 182401.0,
+      "sglang:http_requests_total": 6.0,
+      "sglang:http_responses_total": 6.0
+    },
+    "status": "exact"
+  },
+  "coverage_passed": true,
+  "end": {
+    "monotonic_ns": 524048060627757,
+    "unix_ns": 1793596165295526395
+  },
+  "frozen_plan_sha256": "d75f8ee25d8a322819bf040c2ec93d4ad2ece4e623c84cff30957400ac66d072",
+  "identity_receipt_sha256": "e93b9c2c409248b7f54d6b5d56fef33626841e4a83641cf48f302020402cac16",
+  "oom_event_deltas": {
+    "oom": 0,
+    "oom_group_kill": 0,
+    "oom_kill": 0
+  },
+  "process_finished": {
+    "monotonic_ns": 524044505401855,
+    "unix_ns": 1793596161740300318
+  },
+  "process_started": {
+    "monotonic_ns": 524003165572274,
+    "unix_ns": 1793596120400471275
+  },
+  "returncode": 1,
+  "runner_sha256": "d3c97a18d751e0546c81d2b48de44e15890214880dec3cbd5dd161cc62ffd9b0",
+  "sample_counts": {
+    "engine": 83,
+    "slow": 21
+  },
+  "sampling_window": {
+    "engine": {
+      "in_window_samples": 82,
+      "max_gap_seconds": 0.664166394,
+      "target_interval_seconds": 0.5
+    },
+    "slow": {
+      "in_window_samples": 21,
+      "max_gap_seconds": 2.040407352,
+      "target_interval_seconds": 2
+    }
+  },
+  "start": {
+    "monotonic_ns": 524003165132972,
+    "unix_ns": 1793596120400031650
+  }
+}
