@@ -467,15 +467,18 @@ class RouteUpdateManager:
         # Reconstruct the durable pointer before admitting requests. This is a
         # startup-only bootstrap hold; it must not become the retained hold for
         # a later prepared operation, whose scope is relative to this pointer.
-        bootstrap_hold = self.routing.begin_route_update_hold(
-            update_id=secrets.token_hex(16), expected_revision=snapshot.route_revision,
-            tier_ids=tuple(scope["tier_ids"]), aliases=tuple(scope["aliases"]),
-        )
+        bootstrap_hold = None
+        if scope["mode"] != "noop":
+            bootstrap_hold = self.routing.begin_route_update_hold(
+                update_id=secrets.token_hex(16), expected_revision=snapshot.route_revision,
+                tier_ids=tuple(scope["tier_ids"]), aliases=tuple(scope["aliases"]),
+            )
         runtime = self.routing.prepare_route_runtime(candidate, revision=self._state["route_revision"],
                                                      digest=self._state["effective_route_sha256"])
         self.routing.publish_route_runtime(runtime, expected_revision=snapshot.route_revision,
-                                           hold=bootstrap_hold, alias_only=False)
-        self.routing.open_route_update_hold(bootstrap_hold)
+                                           hold=bootstrap_hold, alias_only=scope["mode"] == "noop")
+        if bootstrap_hold is not None:
+            self.routing.open_route_update_hold(bootstrap_hold)
         hold = None
         if operation and operation["phase"] in {"prepared", "committed"}:
             hold = self.routing.begin_route_update_hold(
