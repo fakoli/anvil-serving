@@ -2369,6 +2369,10 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
     if len(config_bytes) > MAX_ROUTER_CONFIG_BYTES:
         raise ValueError("route state config exceeds byte bound")
     server = load_server_config(config_path)
+    execution_env = None
+    if current_stop_receipt is not None:
+        execution_env = (_compose_execution_env(compose, env_file, environ={"PATH": os.defpath})
+                         or {"PATH": os.defpath})
     state_path = server.route_state_path
     if not state_path:
         raise ValueError("router config does not declare [server].route_state_path")
@@ -2380,11 +2384,12 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
         from .router_current_stop import _snapshot, completed_receipt, require_successor
         stopped = completed_receipt(current_stop_receipt)['stopped']
         require_successor(current_stop_receipt, compose, service, container, stopped,
-                          _run=_run, env_file=env_file)
-        _receipt, predecessor, candidate, _scope = _snapshot(
+                          _run=_run, env_file=env_file, execution_env=execution_env)
+        before_snapshot = _snapshot(
             current_stop_receipt, compose, service, container, stopped,
-            _run=_run, env_file=env_file, execution_env=None,
+            _run=_run, env_file=env_file, execution_env=execution_env,
         )
+        _receipt, predecessor, candidate, _scope = before_snapshot
         from dataclasses import replace
         import tomllib
         from .operator_config import _read_bounded
@@ -2404,8 +2409,8 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
             return raw, _parse_server_config(tomllib.loads(raw.decode()), str(source_path),
                                              container_paths=True), load_bytes(raw)
 
-        old_raw, old_server, old_routing = mounted_config(predecessor)
-        new_raw, new_server, new_routing = mounted_config(candidate)
+        _old_raw, old_server, old_routing = mounted_config(predecessor["rendered"])
+        _new_raw, new_server, new_routing = mounted_config(candidate)
         if (old_server.route_state_path is not None or new_server.route_state_path is None
                 or old_routing != new_routing
                 or replace(old_server, route_state_path=None) != replace(new_server, route_state_path=None)):
@@ -2439,8 +2444,10 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
         raise ValueError("router_route_state_image_unknown")
     if current_stop_receipt is not None and image != stopped["image_id"]:
         raise ValueError("router_current_stop_route_init_refused")
-    inspected = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image],
-                     capture_output=True, text=True, encoding="utf-8", timeout=10)
+    inspect_kwargs = {"capture_output": True, "text": True, "encoding": "utf-8", "timeout": 10}
+    if execution_env is not None:
+        inspect_kwargs["env"] = execution_env
+    inspected = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image], **inspect_kwargs)
     image_id = (inspected.stdout or "").strip()
     if inspected.returncode != 0 or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None:
         raise ValueError("router_route_state_image_unknown")
@@ -2458,17 +2465,18 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
     else:
         result = _run([*_compose_argv(compose, env_file=env_file), "run", "--rm", "--no-deps",
                        "--entrypoint", "python", service, "-c", code], capture_output=True,
-                      text=True, encoding="utf-8", timeout=30)
+                      text=True, encoding="utf-8", timeout=30, env=execution_env)
         if result.returncode or len(result.stdout or "") > 131072:
             raise ValueError("router_offline_custody_refused")
         from .observability.dashboard.contracts import strict_json
         receipt = strict_json((result.stdout or "").encode())
-        from .router_current_stop import completed_receipt, require_successor
-        stopped = completed_receipt(current_stop_receipt)['stopped']
+        from .router_current_stop import _snapshot, require_successor
         require_successor(current_stop_receipt, compose, service, container, stopped,
-                          _run=_run, env_file=env_file)
-    after = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image],
-                 capture_output=True, text=True, encoding="utf-8", timeout=10)
+                          _run=_run, env_file=env_file, execution_env=execution_env)
+        if _snapshot(current_stop_receipt, compose, service, container, stopped,
+                     _run=_run, env_file=env_file, execution_env=execution_env) != before_snapshot:
+            raise ValueError("router_current_stop_route_init_refused")
+    after = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image], **inspect_kwargs)
     if after.returncode != 0 or (after.stdout or "").strip() != image_id:
         raise ValueError("router_route_state_image_changed")
     if (not isinstance(receipt, dict) or receipt.get("initialized") is not True

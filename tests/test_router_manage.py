@@ -397,9 +397,10 @@ llm.primary = "synthetic"
     ]}}}
     checks = []
     monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: pytest.fail("generic roster must stay strict"))
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: {"PATH": "/usr/bin"})
     monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {"stopped": stopped})
     monkeypatch.setattr(router_current_stop, "require_successor", lambda *args, **kwargs: checks.append(args))
-    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: ({}, predecessor, candidate, {}))
+    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: ({}, {"rendered": predecessor}, candidate, {}))
 
     def docker(argv, **kwargs):
         if argv[:3] == ["docker", "image", "inspect"]:
