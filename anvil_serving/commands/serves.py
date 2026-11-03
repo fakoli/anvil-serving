@@ -133,6 +133,12 @@ def commands() -> CommandNode:
                                  "(loudly logged; local invocation only).",
                     ),
                     _option(
+                        "--recover-prepared",
+                        summary="With --rollback, recover one exact held route transaction.",
+                        value_name="TRANSACTION_ID",
+                        requires_confirmation=True,
+                    ),
+                    _option(
                         "--derive",
                         summary="Derive and print a [[promotion]] plan from "
                                  "TARGET and ROLLBACK (read-only).",
@@ -158,7 +164,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "serves_promote",
                     confirmed=(("human_approved", True),),
-                    allowed=("manifest", "rollback", "resume", "dry_run"),
+                    allowed=("manifest", "rollback", "resume", "recover_prepared", "dry_run"),
                     positionals=("plan",),
                 ),
             ),

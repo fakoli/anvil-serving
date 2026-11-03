@@ -1094,6 +1094,8 @@ def _hot_route_promotion_setup(tmp_path, monkeypatch):
         "source": "campaign_activation/v1", "binding_sha256": "a" * 64,
         "container_id": "b" * 64, "served_model": "new-heavy",
     })
+    monkeypatch.setattr(serves, "_refresh_hot_promotion_monitoring",
+                        lambda *a, **k: {"state": "active"})
     return path, managed, plan
 
 
@@ -1507,6 +1509,17 @@ def test_readiness_timeout_skips_reclaim_but_preserves_success(tmp_path, monkeyp
     monkeypatch.setattr(serves.host_ops, "render_cache_reclaim_result", lambda _result: None)
     assert serves.main(["up", "heavy", "--manifest", manifest]) == 0
     assert seen == [{"operation": "serves up", "readiness": False}]
+
+
+@pytest.mark.parametrize("argv", [
+    ["promote", "heavy-v2", "--recover-prepared", "a" * 32],
+    ["promote", "heavy-v2", "--rollback", "--resume", "--recover-prepared", "a" * 32],
+    ["promote", "heavy-v2", "--rollback", "--dry-run", "--recover-prepared", "a" * 32],
+    ["promote", "heavy-v2", "--rollback", "--recover-prepared", "not-a-transaction"],
+])
+def test_prepared_recovery_cli_requires_an_unambiguous_live_transaction(argv, capsys):
+    assert serves.main(argv) == 2
+    assert "recover-prepared" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(("argv", "operation"), [
