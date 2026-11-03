@@ -303,6 +303,7 @@ def commands() -> CommandNode:
                                  _option("--compose", summary="Stopped managed router Compose file for volume-safe initialization.", value_name="PATH"),
                                  _option("--env-file", summary="Selected Compose environment file.", value_name="PATH"),
                                  _option("--container", summary="Declared managed router container name.", value_name="NAME"),
+                                 _option("--current-stop-receipt", summary="Completed current-owner stop authorizing this exact stopped successor.", value_name="PATH"),
                                  _option("--native", summary="Initialize only an explicitly host-native state path."),
                                  _option("--confirm", summary="Initialize the protected route state exactly once.", requires_confirmation=True)),
                         mutation="mutate", execution_runtime_roles=("native",), docs_anchor="docs/cli/router.md#live-route-updates"),

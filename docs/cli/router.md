@@ -1021,7 +1021,11 @@ initialization never overwrites an existing revision history.
 
 For the reference managed container, set the state path under its existing
 `/var/lib/anvil-router` durable volume, then use the `routes init --compose`
-command while the declared router service is stopped. It verifies the rendered
+command while the declared router service is stopped. When an acknowledged
+current-owner stop authorizes the exact successor, add
+`--current-stop-receipt /protected/current-stop.json`; this revalidates that
+one stopped successor before and after the init-only helper and never starts
+the listener. It verifies the rendered
 config mount and writable parent volume, verifies the selected service image,
 then runs a one-shot Python helper in that image; it does not start the listener. `--native` is
 required instead for an intentionally host-native state path. Never initialize

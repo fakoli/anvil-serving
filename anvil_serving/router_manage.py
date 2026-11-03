@@ -1137,6 +1137,8 @@ def _build_parser():
             item.add_argument("--compose", help="Stopped managed router Compose file.")
             item.add_argument("--env-file", help="Optional selected Compose environment file.")
             item.add_argument("--container", default=DEFAULT_CONTAINER)
+            item.add_argument("--current-stop-receipt",
+                              help="Completed current-owner stop authorizing this exact stopped successor.")
         else:
             item.add_argument("--router-url")
         if action == "preview":
@@ -1238,10 +1240,12 @@ def main(argv=None):
                     candidate = source.read(MAX_ROUTER_CONFIG_BYTES + 1)
                 if args.native == bool(args.compose):
                     raise ValueError("route state initialization requires exactly one of --native or --compose")
+                if args.current_stop_receipt and not args.compose:
+                    raise ValueError("current-stop receipt requires managed Compose route initialization")
                 if args.compose:
                     result = initialize_route_state_managed(
                         args.config, os.path.abspath(args.compose), container=args.container,
-                        env_file=args.env_file,
+                        env_file=args.env_file, current_stop_receipt=args.current_stop_receipt,
                     )
                 else:
                     from .router.config import load_server_config
@@ -2344,9 +2348,10 @@ def _offline_compose_run(compose, service, container, code, *, _run, env_file=No
     return receipt
 
 
+@_serving_authority_mutation
 def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERVICE,
                                   container=DEFAULT_CONTAINER, env_file=None,
-                                  _run=subprocess.run):
+                                  current_stop_receipt=None, _run=subprocess.run):
     """Initialize route state in the declared stopped Compose service volume.
 
     The configured path is container-relative and may live in a named volume,
@@ -2368,8 +2373,44 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
     if not state_path:
         raise ValueError("router config does not declare [server].route_state_path")
     state_target = PurePosixPath(state_path)
-    roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file,
-                                    _owner_state_only=True)
+    if current_stop_receipt is None:
+        roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file,
+                                        _owner_state_only=True)
+    else:
+        from .router_current_stop import _snapshot, completed_receipt, require_successor
+        stopped = completed_receipt(current_stop_receipt)['stopped']
+        require_successor(current_stop_receipt, compose, service, container, stopped,
+                          _run=_run, env_file=env_file)
+        _receipt, predecessor, candidate, _scope = _snapshot(
+            current_stop_receipt, compose, service, container, stopped,
+            _run=_run, env_file=env_file, execution_env=None,
+        )
+        from dataclasses import replace
+        import tomllib
+        from .operator_config import _read_bounded
+        from .router.config import _parse_server_config, load_bytes
+
+        def mounted_config(rendered):
+            mounts = rendered["services"][service]["volumes"]
+            matches = [mount for mount in mounts if mount.get("target") == DEFAULT_INSTALLED_CONFIG]
+            if len(matches) != 1 or matches[0].get("type") != "bind":
+                raise ValueError("router_current_stop_route_init_refused")
+            source = matches[0].get("source")
+            if not isinstance(source, str):
+                raise ValueError("router_current_stop_route_init_refused")
+            from pathlib import Path
+            source_path = Path(source)
+            raw = _read_bounded(source_path, max_bytes=MAX_ROUTER_CONFIG_BYTES)
+            return raw, _parse_server_config(tomllib.loads(raw.decode()), str(source_path),
+                                             container_paths=True), load_bytes(raw)
+
+        old_raw, old_server, old_routing = mounted_config(predecessor)
+        new_raw, new_server, new_routing = mounted_config(candidate)
+        if (old_server.route_state_path is not None or new_server.route_state_path is None
+                or old_routing != new_routing
+                or replace(old_server, route_state_path=None) != replace(new_server, route_state_path=None)):
+            raise ValueError("router_current_stop_route_init_refused")
+        roster = {"rendered": candidate}
     mounts = roster["rendered"]["services"][service]["volumes"]
     config_mounts = [mount for mount in mounts if mount.get("target") == DEFAULT_INSTALLED_CONFIG]
     if (len(config_mounts) != 1 or config_mounts[0].get("type") != "bind"
@@ -2396,6 +2437,8 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
     image = roster["rendered"]["services"][service].get("image")
     if not isinstance(image, str) or not image or image.startswith("-"):
         raise ValueError("router_route_state_image_unknown")
+    if current_stop_receipt is not None and image != stopped["image_id"]:
+        raise ValueError("router_current_stop_route_init_refused")
     inspected = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image],
                      capture_output=True, text=True, encoding="utf-8", timeout=10)
     image_id = (inspected.stdout or "").strip()
@@ -2409,8 +2452,21 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
         f"assert hashlib.sha256(raw).hexdigest()=={hashlib.sha256(config_bytes).hexdigest()!r}; "
         f"print(json.dumps(initialize_route_state(raw, {state_path!r}), sort_keys=True))"
     )
-    receipt = _offline_compose_run(compose, service, container, code, _run=_run,
-                                   env_file=env_file, _owner_state_only=True, entrypoint="python")
+    if current_stop_receipt is None:
+        receipt = _offline_compose_run(compose, service, container, code, _run=_run,
+                                       env_file=env_file, _owner_state_only=True, entrypoint="python")
+    else:
+        result = _run([*_compose_argv(compose, env_file=env_file), "run", "--rm", "--no-deps",
+                       "--entrypoint", "python", service, "-c", code], capture_output=True,
+                      text=True, encoding="utf-8", timeout=30)
+        if result.returncode or len(result.stdout or "") > 131072:
+            raise ValueError("router_offline_custody_refused")
+        from .observability.dashboard.contracts import strict_json
+        receipt = strict_json((result.stdout or "").encode())
+        from .router_current_stop import completed_receipt, require_successor
+        stopped = completed_receipt(current_stop_receipt)['stopped']
+        require_successor(current_stop_receipt, compose, service, container, stopped,
+                          _run=_run, env_file=env_file)
     after = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image],
                  capture_output=True, text=True, encoding="utf-8", timeout=10)
     if after.returncode != 0 or (after.stdout or "").strip() != image_id:

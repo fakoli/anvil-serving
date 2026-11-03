@@ -232,6 +232,11 @@ def test_router_routes_init_forwards_confirmation_and_creates_authority(tmp_path
     assert json.loads(capsys.readouterr().out)["route_revision"] == 0
     assert state.exists()
 
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--native", "--confirm",
+        "--current-stop-receipt", str(tmp_path / "receipt.json"),
+    ]) == 1
+
 
 def test_router_routes_apply_forwards_confirmation_to_route_client(monkeypatch, capsys):
     seen = {}
@@ -257,6 +262,21 @@ def test_router_routes_apply_forwards_confirmation_to_route_client(monkeypatch, 
         "confirm": True,
     }
     assert json.loads(capsys.readouterr().out) == {"applied": True}
+
+
+def test_router_routes_init_forwards_current_stop_receipt_to_managed_initializer(tmp_path, monkeypatch, capsys):
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/protected/routes.json"\n[router]\n')
+    captured = {}
+    monkeypatch.setattr(router_manage, "initialize_route_state_managed", lambda *args, **kwargs: captured.update(
+        args=args, kwargs=kwargs) or {"initialized": True, "route_revision": 0, "effective_route_sha256": "a" * 64})
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--compose", str(tmp_path / "compose.yml"),
+        "--current-stop-receipt", str(tmp_path / "receipt.json"), "--confirm",
+    ]) == 0
+    assert captured["kwargs"]["current_stop_receipt"] == str(tmp_path / "receipt.json")
+    assert captured["kwargs"]["env_file"] is None
+    assert json.loads(capsys.readouterr().out)["initialized"] is True
 
 
 def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(monkeypatch, capsys):
