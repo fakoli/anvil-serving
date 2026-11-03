@@ -756,8 +756,10 @@ anvil-serving router maintenance --config maintenance.json --preview-out preview
 anvil-serving router maintenance --config maintenance.json --confirm
 ```
 
-Installation prepares the protected declaration and authorization from the
-explicit human decision, final artifact identities and the fresh native preview.
+Installation prepares the protected declaration and phase authorization from
+the operator-approved bounded scope, final artifact identities and the fresh
+native preview. That approval persists across the declared sequence; only the
+machine-bound preview and phase authorization expire and are refreshed.
 The declaration names the exact Compose profile and its SHA-256, the protected
 authorization, and an absent protected receipt destination. Preview does not
 stop or reopen the router. Confirmation requires the exact preview digest and a
@@ -836,8 +838,9 @@ it does not resolve project dotenv or service environment files. The stopped
 owner's native preview binds its actual run, store, anchor, closed generation,
 roster and policy, while host observation binds daemon/start identity and the
 complete mounted-state consumer roster. Confirmation requires the exact fresh
-preview digest and a new explicit human acknowledgement of remote uncertainty.
-Neither a legacy-stop grant nor an earlier readmission grant can authorize it.
+preview digest and a phase authorization bound to that preview. Neither a
+legacy-stop grant nor an earlier readmission grant can authorize it. The
+operator's bounded approval remains effective unless the material scope changes.
 
 When the admitted Compose file requires credential interpolation, this phase's
 maintenance declaration can include an optional closed `environment` object:
@@ -872,7 +875,8 @@ and staged native custody commit establish its immutable death proof. Committed
 accounting and historical gaps are preserved; no migration or old-snapshot
 restore occurs. The intended successor is only an approved intent, not an
 automatic activation: use guarded `router up` separately. It starts CLOSED and
-requires a new successor-readmit preview and separate human acknowledgement.
+requires a new successor-readmit preview and separate phase authorization under
+the same bounded operator approval.
 
 For a successor whose router configuration uses a new read-only bind source,
 pass the completed current-stop receipt to the existing lifecycle command:
@@ -913,7 +917,7 @@ handshake; it does not start, stop, recreate or readmit a container. An exact
 already-finalized successor is an idempotent result. A changed or restarted
 successor, admitted or consumed closure, conflicting record, or mismatched
 transfer remains HOLD. Reopening traffic still requires its own fresh preview
-and human acknowledgement.
+and phase authorization.
 
 If the acknowledged successor fails its offline custody probe before it starts,
 the completed stop receipt also permits one explicit rollback to the exact
@@ -982,7 +986,69 @@ and acknowledged intent. Old runtimes reject this schema; recovery and subsequen
 startup both require the qualified successor. Guarded `router up` consumes the
 ready proof and starts CLOSED. Committed accounting remains intact; unfinished
 local requests retain interrupted/unknown outcomes. Remote work remains UNKNOWN
-and `drained` remains false. Readmission still needs its separate fresh approval.
+and `drained` remains false. Readmission still needs its separate fresh machine
+preview and phase authorization.
+
+## Live route updates
+
+After the one-time managed install initializes `[server].route_state_path`, an
+operator can change a declared direct tier or move an existing alias without
+restarting the router:
+
+```bash
+anvil-serving router routes init --config /protected/router.toml --compose /protected/router-compose.yml --confirm
+anvil-serving router routes preview --config candidate.toml
+anvil-serving router routes apply --preview-id PREVIEW_ID --confirm
+anvil-serving router routes status
+```
+
+`preview` sends bounded TOML bytes to the authenticated router; it never gives
+the server a caller-controlled path. `apply` consumes the short-lived,
+content-bound preview. Alias-only changes retain installed backends and let
+existing requests finish on their captured route revision. Tier replacement
+requires managed usage accounting, holds its affected request bindings, waits for terminal accounting, verifies
+the new exact identity, then reopens only the route hold. A failed replacement
+stays held for `router routes resume --transaction-id ID`; it does not restart
+the router or choose another model. `rollback --revision N` creates a new
+preview for the retained projection and follows the same confirmation path.
+
+`config_sha256` remains the boot-config identity. Client and operator status
+also carry `route_revision` and `effective_route_sha256`; consumers must fence
+the pair together instead of treating an unchanged boot config as unchanged
+live routing.
+
+Route status rechecks the protected file and reports `authority_available`.
+Missing, corrupt or changed authority reports `reconciliation_required`; install
+and restart commands refuse to proceed from that condition. They also refuse
+changed boot bytes against an existing route authority. Restart-only configuration
+evolution requires a separately initialized authority for the new boot config;
+initialization never overwrites an existing revision history.
+
+For the reference managed container, set the state path under its existing
+`/var/lib/anvil-router` durable volume, then use the `routes init --compose`
+command while the declared router service is stopped. When an acknowledged
+current-owner stop authorizes the exact successor, add
+`--current-stop-receipt /protected/current-stop.json`; this revalidates that
+one stopped successor before and after the init-only helper and never starts
+the listener. It verifies the rendered
+config mount and writable parent volume, verifies the selected service image,
+then runs a one-shot Python helper in that image; it does not start the listener. `--native` is
+required instead for an intentionally host-native state path. Never initialize
+an in-container path with a host-side file write.
+
+For a tier replacement, the route client waits through the bounded drain (up
+to 300 seconds) plus a small response margin. A deadline or transport failure
+does not imply rollback: inspect `router routes status`, then use a fresh
+`resume` preview if the durable transaction remains held.
+
+The durable route authority is POSIX-only: its state file relies on a private
+directory, no-follow file access, advisory locking, atomic replacement, and
+directory fsync. Do not enable `route_state_path` on an unsupported runtime.
+For a prepared-but-unpublished transaction, `router routes rollback --revision`
+must name the current original revision. It produces a cancellation preview;
+after confirmed apply it releases the hold, restores the original projection,
+and does not increment the route revision. A later rollback of an already
+published revision remains a separate, newly previewed route change.
 
 ## Failed startup recovery
 

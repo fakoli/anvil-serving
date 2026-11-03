@@ -32,6 +32,7 @@ DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
 DEFAULT_STATE = "~/.anvil-serving/state/client-catalog.json"
 DEFAULT_BACKUP_ROOT = "~/.anvil-serving/backups/client-catalog"
 DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+_ROUTE_SNAPSHOT_RETRIES = 3
 PI_ALIASES = ("llm.primary", "llm.secondary", "vision.general", "vision.ocr")
 OPENCLAW_EXCLUDED_ALIASES = frozenset({"llm.auxiliary"})
 COMPACTION_EXCLUDED_ALIASES = frozenset({"llm.voice"})
@@ -244,23 +245,30 @@ def fetch_client_catalog(
         raise ClientCatalogError("required router credential environment variable is unset")
     if not isinstance(timeout_seconds, int) or isinstance(timeout_seconds, bool) or timeout_seconds < 1:
         raise ClientCatalogError("timeout_seconds must be a positive integer")
-    status = _fetch_json(
-        base_url,
-        "/router/status",
-        token=token,
-        timeout_seconds=timeout_seconds,
-        max_bytes=max_response_bytes,
-        opener=opener,
-    )
-    capabilities = _fetch_json(
-        base_url,
-        "/models/capabilities",
-        token=token,
-        timeout_seconds=timeout_seconds,
-        max_bytes=max_response_bytes,
-        opener=opener,
-    )
+    # Existing metadata endpoints are independently captured. Refuse to write
+    # a mixed catalog if a live-route publication lands between these requests.
+    status = capabilities = None
+    for _attempt in range(_ROUTE_SNAPSHOT_RETRIES):
+        status = _fetch_json(base_url, "/router/status", token=token,
+                            timeout_seconds=timeout_seconds, max_bytes=max_response_bytes, opener=opener)
+        capabilities = _fetch_json(base_url, "/models/capabilities", token=token,
+                                  timeout_seconds=timeout_seconds, max_bytes=max_response_bytes, opener=opener)
+        status_has_route = "route_revision" in status or "effective_route_sha256" in status
+        capability_has_route = "route_revision" in capabilities or "effective_route_sha256" in capabilities
+        if not status_has_route and not capability_has_route:
+            # Older routers have no hot overlay. Their immutable boot config is
+            # the only available snapshot fence during a rolling upgrade.
+            status["route_revision"] = capabilities["route_revision"] = 0
+            status["effective_route_sha256"] = capabilities["effective_route_sha256"] = status.get("config_sha256")
+            break
+        if (status.get("route_revision") == capabilities.get("route_revision")
+                and status.get("effective_route_sha256") == capabilities.get("effective_route_sha256")):
+            break
+    else:
+        raise ClientCatalogError("router route snapshot changed while reading catalog")
     config_sha256 = status.get("config_sha256")
+    route_revision = status.get("route_revision")
+    effective_route_sha256 = status.get("effective_route_sha256")
     aliases = status.get("model_aliases")
     if (
         not isinstance(config_sha256, str)
@@ -270,6 +278,10 @@ def fetch_client_catalog(
         raise ClientCatalogError("router status has no valid config_sha256")
     if not isinstance(aliases, list) or any(not isinstance(alias, str) for alias in aliases):
         raise ClientCatalogError("router status has no valid model_aliases list")
+    if (type(route_revision) is not int or route_revision < 0
+            or not isinstance(effective_route_sha256, str) or len(effective_route_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in effective_route_sha256)):
+        raise ClientCatalogError("router status has no valid live route revision")
     if len(set(aliases)) != len(aliases):
         raise ClientCatalogError("router status contains duplicate model aliases")
     rows = capabilities.get("data")
@@ -344,9 +356,25 @@ def fetch_client_catalog(
         )
     return {
         "config_sha256": config_sha256,
+        "route_revision": route_revision,
+        "effective_route_sha256": effective_route_sha256,
         "package_version": status.get("package_version"),
         "models": {alias: models[alias] for alias in sorted(models)},
     }
+
+
+def _catalog_fence(catalog: Mapping) -> tuple[str, int | None, str | None]:
+    """The immutable live route identity carried through client journals."""
+    return (catalog["config_sha256"], catalog.get("route_revision"),
+            catalog.get("effective_route_sha256"))
+
+
+def _prior_catalog_fence(state: Mapping, key: str, config_sha256: str):
+    """Read an old marker as a boot-only route fence during rolling upgrade."""
+    value = state.get(key)
+    if isinstance(value, list) and len(value) == 3:
+        return tuple(value)
+    return (config_sha256, 0, config_sha256)
 
 
 def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str, pi: bool = False) -> dict:
@@ -1910,6 +1938,8 @@ def _summary(
     models = catalog["models"]
     return {
         "config_sha256": catalog["config_sha256"],
+        "route_revision": catalog.get("route_revision"),
+        "effective_route_sha256": catalog.get("effective_route_sha256"),
         "package_version": catalog.get("package_version"),
         "clients": list(clients),
         "client_excluded_aliases": dict(exclusions or {}),
@@ -2889,8 +2919,8 @@ def _sync_clients(
     openclaw_service_marker_pending = (
         "openclaw" in selected_clients
         and openclaw_service_tracking
-        and prior_state.get("openclaw_service_restarted_sha256")
-        != catalog["config_sha256"]
+        and _prior_catalog_fence(prior_state, "openclaw_service_route_fence", catalog["config_sha256"])
+        != _catalog_fence(catalog)
     )
     openclaw_policy_changed = (
         "openclaw" in selected_clients
@@ -2903,7 +2933,8 @@ def _sync_clients(
         "openclaw" in selected_clients
         and restart_openclaw_on_change
         and (
-            prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+            _prior_catalog_fence(prior_state, "openclaw_route_fence", catalog["config_sha256"])
+            != _catalog_fence(catalog)
             or "openclaw_env" in changed
             or "openclaw" in changed
             or openclaw_policy_changed
@@ -2924,8 +2955,13 @@ def _sync_clients(
             timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
             opener=opener,
         )
-        if current.get("config_sha256") != expected_config_sha256:
-            raise ClientCatalogError("router configuration changed before client reconciliation")
+        if "route_revision" not in current and "effective_route_sha256" not in current:
+            current["route_revision"] = 0
+            current["effective_route_sha256"] = current.get("config_sha256")
+        if (current.get("config_sha256") != expected_config_sha256
+                or current.get("route_revision") != catalog.get("route_revision")
+                or current.get("effective_route_sha256") != catalog.get("effective_route_sha256")):
+            raise ClientCatalogError("router configuration changed during client reconciliation")
     if dry_run or not confirm:
         summary = _summary(
             catalog,
@@ -2944,6 +2980,8 @@ def _sync_clients(
             summary["state_converged"] = (
                 prior_state_exists
                 and prior_state.get("config_sha256") == catalog["config_sha256"]
+                and _prior_catalog_fence(prior_state, "route_fence", catalog["config_sha256"])
+                == _catalog_fence(catalog)
                 and prior_exclusions == {**prior_exclusions, **exclusions}
                 and ("openclaw" not in selected_clients
                      or prior_state.get("openclaw_allowed_aliases") == list(additions))
@@ -3056,6 +3094,9 @@ def _sync_clients(
                             for profile, path in hermes_configs.items()})
     state = {
         "config_sha256": catalog["config_sha256"],
+        "route_revision": catalog.get("route_revision"),
+        "effective_route_sha256": catalog.get("effective_route_sha256"),
+        "route_fence": list(_catalog_fence(catalog)),
         "client_excluded_aliases": {**prior_exclusions, **exclusions},
         "openclaw_allowed_aliases": (
             list(additions) if "openclaw" in selected_clients
@@ -3066,6 +3107,8 @@ def _sync_clients(
         "openclaw_service_restarted_sha256": prior_state.get(
             "openclaw_service_restarted_sha256"
         ),
+        "openclaw_route_fence": prior_state.get("openclaw_route_fence"),
+        "openclaw_service_route_fence": prior_state.get("openclaw_service_route_fence"),
     }
 
     if "openclaw" in changed or openclaw_policy_changed:
@@ -3150,16 +3193,24 @@ def _sync_clients(
         restarted = True
         state["openclaw_restarted_sha256"] = catalog["config_sha256"]
         state["openclaw_service_restarted_sha256"] = catalog["config_sha256"]
+        state["openclaw_route_fence"] = list(_catalog_fence(catalog))
+        state["openclaw_service_route_fence"] = list(_catalog_fence(catalog))
     if expected_config_sha256 is not None:
         try:
-            current = _fetch_json(
-                _safe_base_url(base_url), "/router/status", token=environ[api_key_env],
-                timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
-                opener=opener,
+            # A base config hash remains stable across a hot alias/tier
+            # publication.  Re-read the coupled status/capabilities snapshot
+            # and compare its complete fence before claiming this write
+            # converged.
+            current = fetch_client_catalog(
+                base_url=base_url, api_key_env=api_key_env,
+                timeout_seconds=timeout_seconds,
+                max_response_bytes=DEFAULT_MAX_RESPONSE_BYTES,
+                environ=environ, opener=opener,
             )
-            if current.get("config_sha256") != expected_config_sha256:
+            if (current.get("config_sha256") != expected_config_sha256
+                    or _catalog_fence(current) != _catalog_fence(catalog)):
                 raise ClientCatalogError("router configuration changed during client reconciliation")
-        except Exception:
+        except Exception as exc:
             # A fenced run records uncertainty and never overwrites concurrent
             # state merely to make bookkeeping look rolled back.
             if journal is not None:
@@ -3167,7 +3218,9 @@ def _sync_clients(
                     journal.mark_uncertain(effect)
                 raise ClientCatalogError("client catalog sync requires fenced recovery") from None
             restore_prior_state()
-            raise
+            if isinstance(exc, ClientCatalogError) and str(exc) == "router configuration changed during client reconciliation":
+                raise
+            raise ClientCatalogError("router configuration changed during client reconciliation") from exc
     state_bytes = _json_bytes(state)
     if journal is not None:
         if hermes_profiles and "hermes" in selected_clients and _discover_hermes_profile_configs(hermes_home, hermes_profiles) != expected_hermes_configs:

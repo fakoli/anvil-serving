@@ -28,7 +28,9 @@ DEFAULT_SERVICE = "router"
 DEFAULT_ROUTER_URL = "http://127.0.0.1:8000"
 DEFAULT_INSTALLED_CONFIG = "/etc/anvil/config.toml"
 TRANSITION_PATH = "/v1/admin/transition"
+ROUTE_UPDATE_PATH = "/v1/router/routes"
 MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
+ROUTE_UPDATE_REQUEST_TIMEOUT = 365.0
 MAX_COMPOSE_FILE_BYTES = 2 * 1024 * 1024
 _COMPOSE_ENV_REFERENCE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)")
 _CREDENTIAL_ENV_NAME_RE = re.compile(
@@ -96,6 +98,15 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+class RouteUpdateError(ValueError):
+    """A bounded route-authority failure with machine-readable context."""
+
+    def __init__(self, code, message, *, status=None):
+        super().__init__(message)
+        self.code = code
+        self.status = status
+
+
 def _safe_router_url(value):
     value = runtime_url(value)
     parsed = urllib.parse.urlsplit(value)
@@ -138,6 +149,185 @@ def transition_request(action, *, tier_id=None, member_id=None, scope="tier", ba
                 router_url=router_url, confirm=confirm, dry_run=dry_run, reason=reason, env=env, _open=_open)
     return _transition_request(action, tier_id=tier_id, member_id=member_id, scope=scope, barrier_token=barrier_token, timeout=timeout,
         router_url=router_url, confirm=confirm, dry_run=dry_run, reason=reason, env=env, _open=_open)
+
+
+def route_update_request(action, *, candidate_bytes=None, preview_id=None, revision=None,
+                         transaction_id=None, drain_timeout=None, router_url=None,
+                         confirm=False, prepare_only=False, owner_evidence=None,
+                         env=None, _open=None):
+    """Call the authenticated live-route API without exposing server paths."""
+    if action not in {"preview", "apply", "status", "rollback", "resume"}:
+        raise ValueError("unsupported route update action")
+    base = _safe_router_url(router_url or (env or os.environ).get("ANVIL_ROUTER_URL") or DEFAULT_ROUTER_URL)
+    token = (env or os.environ).get("ANVIL_ROUTER_TOKEN") or ""
+    if not token:
+        raise ValueError("ANVIL_ROUTER_TOKEN is required")
+    headers = {"Accept": "application/json", "Authorization": "Bearer " + token}
+    suffix = "/" + action
+    body = None
+    if action == "preview":
+        if type(candidate_bytes) is not bytes or len(candidate_bytes) > MAX_ROUTER_CONFIG_BYTES:
+            raise ValueError("route candidate must be bounded bytes")
+        try:
+            candidate = candidate_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            raise ValueError("route candidate must be UTF-8") from None
+        body = {"config": candidate}
+        if drain_timeout is not None:
+            body["drain_timeout"] = drain_timeout
+    elif action == "apply":
+        if not isinstance(preview_id, str) or not re.fullmatch("[0-9a-f]{32}", preview_id):
+            raise ValueError("route preview_id is required")
+        # Do not silently turn arbitrary JSON values (notably non-empty
+        # strings) into an operator confirmation.  The HTTP service likewise
+        # requires exact booleans, so keep every client declaration path on
+        # the same fail-closed contract.
+        if type(confirm) is not bool or type(prepare_only) is not bool:
+            raise ValueError("route confirm and prepare_only must be booleans")
+        body = {"preview_id": preview_id, "confirm": confirm, "prepare_only": prepare_only}
+        if owner_evidence is not None:
+            raise ValueError("route owner_evidence is bound during resume")
+    elif action == "rollback":
+        if type(revision) is not int or revision < 0:
+            raise ValueError("route revision is required")
+        body = {"revision": revision}
+    elif action == "resume":
+        if not isinstance(transaction_id, str) or not re.fullmatch("[0-9a-f]{32}", transaction_id):
+            raise ValueError("route transaction_id is required")
+        body = {"transaction_id": transaction_id}
+        if owner_evidence is not None:
+            if (type(owner_evidence) is not dict
+                    or set(owner_evidence) != {"source", "binding_sha256", "container_id", "served_model"}
+                    or owner_evidence.get("source") != "campaign_activation/v1"
+                    or not isinstance(owner_evidence.get("served_model"), str)
+                    or not owner_evidence["served_model"]
+                    or re.fullmatch(r"[a-f0-9]{64}", str(owner_evidence.get("binding_sha256", ""))) is None
+                    or re.fullmatch(r"[a-f0-9]{64}", str(owner_evidence.get("container_id", ""))) is None):
+                raise ValueError("route owner_evidence is invalid")
+            body["owner_evidence"] = dict(owner_evidence)
+    elif owner_evidence is not None:
+        raise ValueError("route owner_evidence is valid only for resume")
+    if body is None:
+        request = urllib.request.Request(base + ROUTE_UPDATE_PATH + suffix, headers=headers)
+    else:
+        headers["Content-Type"] = "application/json"
+        request = urllib.request.Request(base + ROUTE_UPDATE_PATH + suffix,
+            data=json.dumps(body, separators=(",", ":")).encode("utf-8"), headers=headers, method="POST")
+    opener = _open or urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect()).open
+    try:
+        # Tier replacement may legitimately wait for the operator-bounded
+        # 300-second terminal drain plus a small request/response margin.  A
+        # shorter client socket timeout would turn a durable held operation
+        # into an ambiguous transport error; status/resume remain the recovery
+        # path after this bounded deadline.
+        with opener(request, timeout=ROUTE_UPDATE_REQUEST_TIMEOUT) as response:
+            raw = response.read(256 * 1024 + 1)
+    except urllib.error.HTTPError as exc:
+        raise RouteUpdateError("route_update_http_error", "route update request failed with HTTP %s" % exc.code,
+                               status=exc.code) from None
+    except Exception as exc:
+        raise RouteUpdateError("route_update_transport_error", "route update transport failed (%s)" % type(exc).__name__) from None
+    if len(raw) > 256 * 1024:
+        raise RouteUpdateError("route_update_response_oversized", "route update response was oversized")
+    try:
+        from .observability.dashboard.contracts import strict_json
+        result = strict_json(raw)
+    except ValueError:
+        raise RouteUpdateError("route_update_response_malformed", "route update response was malformed") from None
+    if not isinstance(result, dict):
+        raise RouteUpdateError("route_update_response_malformed", "route update response was malformed")
+    return result
+
+
+def route_update_environment(router_url, auth_env, *, env=None):
+    """Resolve the non-secret route endpoint and one declared credential name.
+
+    Callers deliberately pass this small mapping to :func:`route_update_request`
+    rather than each reimplementing environment lookup and accepting a subtly
+    different credential declaration.  The token itself never enters a plan,
+    journal, or return value.
+    """
+    if router_url is None:
+        router_url = DEFAULT_ROUTER_URL
+    if not isinstance(router_url, str) or not router_url.strip():
+        raise ValueError("route router_url is required")
+    if not isinstance(auth_env, str) or re.fullmatch(r"[A-Z][A-Z0-9_]*", auth_env) is None:
+        raise ValueError("route auth_env is invalid")
+    source = os.environ if env is None else env
+    token = source.get(auth_env)
+    if not isinstance(token, str) or not token:
+        raise ValueError("configured route update credential is unavailable")
+    return {
+        "ANVIL_ROUTER_URL": _safe_router_url(router_url),
+        "ANVIL_ROUTER_TOKEN": token,
+    }
+
+
+def _route_authority_base_digest(*, router_url=None, env=None, _route_status=None):
+    """Return the enabled authority's boot digest; only explicit 404 is legacy."""
+    route_status = route_update_request if _route_status is None else _route_status
+    try:
+        status = route_status("status", router_url=router_url, env=env)
+    except RouteUpdateError as exc:
+        if exc.code == "route_update_http_error" and exc.status == 404:
+            return None
+        raise ValueError("router route authority status is unavailable") from exc
+    except ValueError as exc:
+        raise ValueError("router route authority status is unavailable") from exc
+    if not isinstance(status, dict) or status.get("enabled") is not True:
+        raise ValueError("router route authority status is malformed")
+    if status.get("authority_available") is not True:
+        raise ValueError("router route authority status is unavailable")
+    bound = status.get("base_config_sha256")
+    if re.fullmatch(r"[a-f0-9]{64}", str(bound)) is None:
+        raise ValueError("router route authority status is malformed")
+    return bound
+
+
+def _guard_route_authority_base_config(config_bytes, *, router_url=None, env=None,
+                                       _route_status=None):
+    """Reject a boot-config change while live route state binds other bytes."""
+    if type(config_bytes) is not bytes or len(config_bytes) > MAX_ROUTER_CONFIG_BYTES:
+        raise ValueError("router route authority boot config is invalid")
+    bound = _route_authority_base_digest(router_url=router_url, env=env, _route_status=_route_status)
+    if bound is None:
+        return False
+    if bound != hashlib.sha256(config_bytes).hexdigest():
+        raise ValueError("router protected route state requires explicit reinitialization")
+    return True
+
+
+def _mounted_router_boot_config(container, *, _run):
+    """Read the exact readonly runtime config without trusting host mount access."""
+    import base64
+    from pathlib import Path
+    from .router_config_export import _CAPTURE_CODE, _HASH_CODE, MAX_CAPTURE_BYTES
+    custody = _restart_custody(container, _run)
+    mounts = custody.get("mounts") if custody.get("available") is True else None
+    matches = [mount for mount in mounts or [] if mount.get("destination") == DEFAULT_INSTALLED_CONFIG]
+    if (len(matches) != 1 or matches[0].get("type") != "bind" or matches[0].get("read_only") is not True):
+        raise ValueError("router mounted boot config is unavailable")
+    source = Path(matches[0].get("source", ""))
+    if not source.is_absolute() or ".." in source.parts:
+        raise ValueError("router mounted boot config is unavailable")
+    try:
+        captured = _run(["docker", "exec", custody["container_id"], "python", "-c", _CAPTURE_CODE],
+                        capture_output=True, text=True, encoding="ascii", timeout=10)
+        encoded = captured.stdout.strip() if captured.returncode == 0 and isinstance(captured.stdout, str) else ""
+        if not encoded or len(encoded) > MAX_CAPTURE_BYTES:
+            raise ValueError()
+        raw = base64.b64decode(encoded, validate=True)
+        if len(raw) > MAX_ROUTER_CONFIG_BYTES:
+            raise ValueError()
+        hashed = _run(["docker", "exec", custody["container_id"], "python", "-c", _HASH_CODE],
+                      capture_output=True, text=True, encoding="ascii", timeout=10)
+        if (hashed.returncode != 0 or not isinstance(hashed.stdout, str)
+                or hashlib.sha256(raw).hexdigest() != hashed.stdout.strip()
+                or _restart_custody(container, _run) != custody):
+            raise ValueError()
+    except (OSError, ValueError, TypeError, subprocess.SubprocessError) as exc:
+        raise ValueError("router mounted boot config is unavailable") from exc
+    return raw
 
 
 def _transition_request(action, *, tier_id=None, member_id=None, scope="tier", barrier_token=None, timeout=None, router_url=None,
@@ -534,9 +724,15 @@ def cmd_down(compose, service, dry_run=False, _run=subprocess.run):
 
 @_serving_authority_mutation
 def cmd_restart(container, dry_run=False, verify=True, _run=subprocess.run, _sleep=None,
-                compose=None, service=DEFAULT_SERVICE, env_file=None):
+                compose=None, service=DEFAULT_SERVICE, env_file=None, router_url=None,
+                _route_status=None):
     if not dry_run:
         try:
+            bound = _route_authority_base_digest(router_url=router_url, _route_status=_route_status)
+            if bound is not None:
+                raw = _mounted_router_boot_config(container, _run=_run)
+                if hashlib.sha256(raw).hexdigest() != bound:
+                    raise ValueError("router protected route state requires explicit reinitialization")
             receipt = require_router_drain(container, _run=_run)
             managed = receipt.get('owner_backend', 'native-process') == 'managed-container'
             if managed:
@@ -751,6 +947,7 @@ def install_config(
     confirm=False,
     dry_run=True,
     _transition=transition_request,
+    _route_status=None,
     _install=None,
     _sleep=time.sleep,
 ):
@@ -792,6 +989,10 @@ def install_config(
     }
     if dry_run or not confirm:
         return {"applied": False, "dry_run": True, **plan}
+
+    _guard_route_authority_base_config(
+        snapshot.config_bytes, router_url=router_url, _route_status=_route_status,
+    )
 
     closure = _transition("quiesce", scope="router", router_url=router_url,
                           confirm=True, dry_run=False).get("result", {})
@@ -924,6 +1125,32 @@ def _build_parser():
     install.add_argument("--router-url")
     install.add_argument("--drain-timeout", type=int, default=120)
     install.add_argument("--dry-run", action="store_true")
+    routes = actions.add_parser("routes")
+    route_actions = routes.add_subparsers(dest="route_action", required=True)
+    for action in ("init", "preview", "apply", "status", "rollback", "resume"):
+        item = route_actions.add_parser(action)
+        if action == "init":
+            item.add_argument("--config", required=True)
+            item.add_argument("--confirm", action="store_true")
+            item.add_argument("--native", action="store_true",
+                              help="Initialize an explicitly host-native route_state_path.")
+            item.add_argument("--compose", help="Stopped managed router Compose file.")
+            item.add_argument("--env-file", help="Optional selected Compose environment file.")
+            item.add_argument("--container", default=DEFAULT_CONTAINER)
+            item.add_argument("--current-stop-receipt",
+                              help="Completed current-owner stop authorizing this exact stopped successor.")
+        else:
+            item.add_argument("--router-url")
+        if action == "preview":
+            item.add_argument("--config", required=True)
+            item.add_argument("--drain-timeout", type=int, default=30)
+        elif action == "apply":
+            item.add_argument("--preview-id", required=True)
+            item.add_argument("--confirm", action="store_true")
+        elif action == "rollback":
+            item.add_argument("--revision", required=True, type=int)
+        elif action == "resume":
+            item.add_argument("--transaction-id", required=True)
     return parser
 
 
@@ -1001,6 +1228,47 @@ def main(argv=None):
             if not isinstance(code, str):
                 code = "router_config_install_refused"
             print("router config install failed: %s" % code, file=sys.stderr)
+            return 1
+        print(json.dumps(result, sort_keys=True))
+        return 0
+    if args.action == "routes":
+        try:
+            if args.route_action == "init":
+                if not args.confirm:
+                    raise ValueError("route state initialization requires --confirm")
+                with open(args.config, "rb") as source:
+                    candidate = source.read(MAX_ROUTER_CONFIG_BYTES + 1)
+                if args.native == bool(args.compose):
+                    raise ValueError("route state initialization requires exactly one of --native or --compose")
+                if args.current_stop_receipt and not args.compose:
+                    raise ValueError("current-stop receipt requires managed Compose route initialization")
+                if args.compose:
+                    result = initialize_route_state_managed(
+                        args.config, os.path.abspath(args.compose), container=args.container,
+                        env_file=args.env_file, current_stop_receipt=args.current_stop_receipt,
+                    )
+                else:
+                    from .router.config import load_server_config
+                    from .router.route_updates import initialize_route_state
+                    route_state_path = load_server_config(args.config).route_state_path
+                    if not route_state_path:
+                        raise ValueError("router config does not declare [server].route_state_path")
+                    result = initialize_route_state(candidate, route_state_path)
+                print(json.dumps(result, sort_keys=True))
+                return 0
+            candidate = None
+            if args.route_action == "preview":
+                with open(args.config, "rb") as source:
+                    candidate = source.read(MAX_ROUTER_CONFIG_BYTES + 1)
+            result = route_update_request(
+                args.route_action, candidate_bytes=candidate,
+                preview_id=getattr(args, "preview_id", None), revision=getattr(args, "revision", None),
+                transaction_id=getattr(args, "transaction_id", None),
+                drain_timeout=getattr(args, "drain_timeout", None), router_url=args.router_url,
+                confirm=getattr(args, "confirm", False),
+            )
+        except (OSError, ValueError) as exc:
+            print("router route update failed: %s" % getattr(exc, "code", str(exc)), file=sys.stderr)
             return 1
         print(json.dumps(result, sort_keys=True))
         return 0
@@ -1605,7 +1873,7 @@ def _offline_router_start(*, _legacy_incarnation=None):
     settings = load_server_config(DEFAULT_INSTALLED_CONFIG)
     store = KeyStore(settings.api_keys_path)
     with store._offline_custody(settings, allow_retained=True), store._connect() as db:
-        if store.version != 3:
+        if store.version != 4:
             raise ValueError('router_accounting_migration_required')
         _validate_schema(db)
         from .router.usage_store import UsageStore
@@ -1620,7 +1888,7 @@ def _offline_router_start(*, _legacy_incarnation=None):
             legacy = legacy_frontier(store)
             require(legacy is not None and db.execute('SELECT count(*) FROM usage_runs').fetchone()==(0,)
                 and _private_json(Path(str(store.path)+'.maintenance-legacy.json'))['receipt']['stopped']==_legacy_incarnation)
-    result = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
+    result = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 4}
     if _legacy_incarnation is not None: result['legacy_receipt_sha256']=legacy
     return result
 
@@ -1669,6 +1937,10 @@ def _owner_storage_scope(rendered, mounts, config, incumbent, read):
     settings = _parse_server_config(tomllib.loads(raw.decode()), str(source), container_paths=True)
     # The parent includes WAL/SHM, locks, custody sidecars and admission receipts.
     targets = [path(settings.api_keys_path), path(settings.admission_state_path + '.router')]
+    route_targets = set()
+    if settings.route_state_path is not None:
+        route_targets = {path(settings.route_state_path), path(settings.route_state_path + '.lock')}
+        targets.extend(sorted(route_targets))
     declared = [{**m, 'destination': str(path(m['target'])), 'read_only': m.get('read_only', False),
                  'name': rendered.get('volumes', {}).get(m['source'], {}).get('name', '')}
                 for m in mounts]
@@ -1678,9 +1950,15 @@ def _owner_storage_scope(rendered, mounts, config, incumbent, read):
         require(installed['destination'] == DEFAULT_INSTALLED_CONFIG and installed['type'] == 'bind'
                 and installed['read_only'] and installed['source'] == str(source))
     sources, directories = set(), set()
+    route_mount = None
     for target in targets:
         mount = _covering_mount(declared, target.parent)
         require(mount == _covering_mount(declared, target) and not mount['read_only'])
+        if target in route_targets:
+            if route_mount is None:
+                route_mount = mount
+            else:
+                require(mount == route_mount)
         identity = (mount['type'], mount['name'] if mount['type'] == 'volume' else mount['source'])
         require(identity[0] in {'bind', 'volume'} and identity[1])
         if actual is not None:
@@ -1695,7 +1973,10 @@ def _owner_storage_scope(rendered, mounts, config, incumbent, read):
         else:
             physical = path(mount['source'])
         sources.add(identity)
-        directory = physical / target.parent.relative_to(mount['destination'])
+        # A new route-state parent may not exist until route initialization.
+        # Its enclosing writable mount does exist and is the conservative
+        # protected scope; narrower future-path lineage would be unprovable.
+        directory = physical if target in route_targets else physical / target.parent.relative_to(mount['destination'])
         directories.add(str(Path(str(directory)).resolve()))
     import stat
     lineages = [_storage_lineage(directory) for directory in sorted(directories)]
@@ -2047,13 +2328,14 @@ def _startup_abort_custody(config, compose, service, container, stopped, *, _run
     return saved
 
 
-def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None, _owner_state_only=False):
+def _offline_compose_run(compose, service, container, code, *, _run, env_file=None, execution_env=None,
+                         _owner_state_only=False, entrypoint="python"):
     # Owner scope is only for fixed reviewed accounting programs below and in
     # maintenance. Generic migration/key/client workers retain every RW mount.
     before = _offline_compose_roster(compose, service, container, _run=_run,
                                     env_file=env_file, execution_env=execution_env, _owner_state_only=_owner_state_only)
     result = _run([*_compose_argv(compose, env_file=env_file), 'run', '--rm', '--no-deps',
-                   '--entrypoint', 'python', service, '-c', code], capture_output=True,
+                   '--entrypoint', entrypoint, service, '-c', code], capture_output=True,
                   text=True, encoding='utf-8', timeout=30, env=execution_env)
     if result.returncode or len(result.stdout or '') > 131072:
         raise ValueError('router_offline_custody_refused')
@@ -2063,6 +2345,153 @@ def _offline_compose_run(compose, service, container, code, *, _run, env_file=No
                                    env_file=env_file, execution_env=execution_env, _owner_state_only=_owner_state_only)
     if before != after:
         raise ValueError('router_offline_roster_changed')
+    return receipt
+
+
+@_serving_authority_mutation
+def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERVICE,
+                                  container=DEFAULT_CONTAINER, env_file=None,
+                                  current_stop_receipt=None, _run=subprocess.run):
+    """Initialize route state in the declared stopped Compose service volume.
+
+    The configured path is container-relative and may live in a named volume,
+    so a host-side write would neither prove the mounted target nor survive the
+    first container creation.  Reuse the offline Compose roster to require a
+    stopped owner, its exact read-only config mount, and one writable mount
+    covering both the state file and its lock sibling.  The helper uses the
+    selected service image without opening a listener.
+    """
+    from pathlib import PurePosixPath
+    from .router.config import load_server_config
+
+    with open(config_path, "rb") as source:
+        config_bytes = source.read(MAX_ROUTER_CONFIG_BYTES + 1)
+    if len(config_bytes) > MAX_ROUTER_CONFIG_BYTES:
+        raise ValueError("route state config exceeds byte bound")
+    server = load_server_config(config_path)
+    execution_env = None
+    receipt_run = _run
+    stopped = None
+    if current_stop_receipt is not None:
+        from .router_current_stop import completed_receipt
+        saved = completed_receipt(current_stop_receipt)
+        execution_env = {"PATH": os.defpath}
+        stopped = saved["stopped"]
+
+        def receipt_run(argv, **kwargs):
+            return _run(argv, **{**kwargs, "env": execution_env})
+    state_path = server.route_state_path
+    if not state_path:
+        raise ValueError("router config does not declare [server].route_state_path")
+    state_target = PurePosixPath(state_path)
+    if current_stop_receipt is None:
+        roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file,
+                                        _owner_state_only=True)
+    else:
+        from .router_current_stop import _snapshot, require_successor
+        before_snapshot = _snapshot(
+            current_stop_receipt, compose, service, container, stopped,
+            _run=receipt_run, env_file=env_file, execution_env=execution_env,
+        )
+        execution_env = (_compose_execution_env(compose, env_file, environ={"PATH": os.defpath})
+                         or {"PATH": os.defpath})
+        require_successor(current_stop_receipt, compose, service, container, stopped,
+                          _run=receipt_run, env_file=env_file, execution_env=execution_env)
+        _receipt, predecessor, candidate, _scope = before_snapshot
+        from dataclasses import replace
+        import tomllib
+        from .operator_config import _read_bounded
+        from .router.config import _parse_server_config, load_bytes
+
+        def mounted_config(rendered):
+            mounts = rendered["services"][service]["volumes"]
+            matches = [mount for mount in mounts if mount.get("target") == DEFAULT_INSTALLED_CONFIG]
+            if len(matches) != 1 or matches[0].get("type") != "bind":
+                raise ValueError("router_current_stop_route_init_refused")
+            source = matches[0].get("source")
+            if not isinstance(source, str):
+                raise ValueError("router_current_stop_route_init_refused")
+            from pathlib import Path
+            source_path = Path(source)
+            raw = _read_bounded(source_path, max_bytes=MAX_ROUTER_CONFIG_BYTES)
+            return raw, _parse_server_config(tomllib.loads(raw.decode()), str(source_path),
+                                             container_paths=True), load_bytes(raw)
+
+        _old_raw, old_server, old_routing = mounted_config(predecessor["rendered"])
+        _new_raw, new_server, new_routing = mounted_config(candidate)
+        if (old_server.route_state_path is not None or new_server.route_state_path is None
+                or old_routing != new_routing
+                or replace(old_server, route_state_path=None) != replace(new_server, route_state_path=None)):
+            raise ValueError("router_current_stop_route_init_refused")
+        roster = {"rendered": candidate}
+    mounts = roster["rendered"]["services"][service]["volumes"]
+    config_mounts = [mount for mount in mounts if mount.get("target") == DEFAULT_INSTALLED_CONFIG]
+    if (len(config_mounts) != 1 or config_mounts[0].get("type") != "bind"
+            or config_mounts[0].get("read_only") is not True
+            or os.path.abspath(str(config_mounts[0].get("source", ""))) != os.path.abspath(config_path)):
+        raise ValueError("router_route_state_config_mount_unknown")
+
+    def covering(target):
+        choices = []
+        for mount in mounts:
+            destination = mount.get("target")
+            if not isinstance(destination, str):
+                continue
+            candidate = PurePosixPath(destination)
+            if target.is_relative_to(candidate):
+                choices.append((len(candidate.parts), mount))
+        return max(choices, default=(0, None), key=lambda item: item[0])[1]
+
+    mount = covering(state_target)
+    lock_mount = covering(PurePosixPath(str(state_target) + ".lock"))
+    if (mount is None or mount is not lock_mount or mount.get("read_only", False) is not False
+            or mount.get("type") not in {"bind", "volume"}):
+        raise ValueError("router_route_state_mount_unknown")
+    image = roster["rendered"]["services"][service].get("image")
+    if not isinstance(image, str) or not image or image.startswith("-"):
+        raise ValueError("router_route_state_image_unknown")
+    if current_stop_receipt is not None and image != stopped["image_id"]:
+        raise ValueError("router_current_stop_route_init_refused")
+    inspect_kwargs = {"capture_output": True, "text": True, "encoding": "utf-8", "timeout": 10}
+    if execution_env is not None:
+        inspect_kwargs["env"] = execution_env
+    inspected = receipt_run(["docker", "image", "inspect", "--format", "{{.Id}}", image], **inspect_kwargs)
+    image_id = (inspected.stdout or "").strip()
+    if inspected.returncode != 0 or re.fullmatch(r"sha256:[0-9a-f]{64}", image_id) is None:
+        raise ValueError("router_route_state_image_unknown")
+    # Read the already-mounted config inside the selected image.  No candidate
+    # bytes/path are supplied by the caller to the helper.
+    code = (
+        "import hashlib,json; from anvil_serving.router.route_updates import initialize_route_state; "
+        f"raw=open({DEFAULT_INSTALLED_CONFIG!r}, 'rb').read({MAX_ROUTER_CONFIG_BYTES + 1}); "
+        f"assert hashlib.sha256(raw).hexdigest()=={hashlib.sha256(config_bytes).hexdigest()!r}; "
+        f"print(json.dumps(initialize_route_state(raw, {state_path!r}), sort_keys=True))"
+    )
+    if current_stop_receipt is None:
+        receipt = _offline_compose_run(compose, service, container, code, _run=_run,
+                                       env_file=env_file, _owner_state_only=True, entrypoint="python")
+    else:
+        result = receipt_run([*_compose_argv(compose, env_file=env_file), "run", "--rm", "--no-deps",
+                       "--entrypoint", "python", service, "-c", code], capture_output=True,
+                      text=True, encoding="utf-8", timeout=30)
+        if result.returncode or len(result.stdout or "") > 131072:
+            raise ValueError("router_offline_custody_refused")
+        from .observability.dashboard.contracts import strict_json
+        receipt = strict_json((result.stdout or "").encode())
+        from .router_current_stop import _snapshot, require_successor
+        require_successor(current_stop_receipt, compose, service, container, stopped,
+                          _run=receipt_run, env_file=env_file, execution_env=execution_env)
+        if _snapshot(current_stop_receipt, compose, service, container, stopped,
+                     _run=receipt_run, env_file=env_file, execution_env=execution_env) != before_snapshot:
+            raise ValueError("router_current_stop_route_init_refused")
+    after = receipt_run(["docker", "image", "inspect", "--format", "{{.Id}}", image], **inspect_kwargs)
+    if after.returncode != 0 or (after.stdout or "").strip() != image_id:
+        raise ValueError("router_route_state_image_changed")
+    if (not isinstance(receipt, dict) or receipt.get("initialized") is not True
+            or type(receipt.get("route_revision")) is not int
+            or not isinstance(receipt.get("effective_route_sha256"), str)
+            or re.fullmatch(r"[0-9a-f]{64}", receipt["effective_route_sha256"]) is None):
+        raise ValueError("router_route_state_initialize_refused")
     return receipt
 
 
@@ -2078,7 +2507,7 @@ def require_router_offline(compose, service, *, container=DEFAULT_CONTAINER, _ru
                 f'print(json.dumps(_offline_router_start(_legacy_incarnation={_legacy_incarnation!r}),sort_keys=True))')
         receipt = _offline_compose_run(compose, service, container, code, _run=_run,
                                       env_file=env_file, execution_env=execution_env, _owner_state_only=True)
-        expected = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3}
+        expected = {'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 4}
         if _legacy_incarnation is not None:
             legacy = receipt.get('legacy_receipt_sha256') if type(receipt) is dict else None
             if type(legacy) is not str or not re.fullmatch('[0-9a-f]{64}',legacy):
@@ -2112,12 +2541,12 @@ def migrate_router_offline(compose, backup_out, *, env_file=None, _run=subproces
     code = ('import json; from anvil_serving.router.keys import _migrate_offline; '
             f'print(json.dumps(_migrate_offline({DEFAULT_INSTALLED_CONFIG!r},{backup_out!r},journal_mode={journal_mode!r},_legacy_receipt={legacy!r},_managed_worker=True),sort_keys=True))')
     result = _offline_compose_run(compose, DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
-                                 env_file=env_file, execution_env=execution_env)
+                                 env_file=env_file, execution_env=execution_env, _owner_state_only=True)
     if maintenance_receipt is not None and _container_incarnation(DEFAULT_CONTAINER,_run=_run,stopped=True) != legacy['stopped']:
         raise ValueError('router_legacy_incarnation_changed')
     if (type(result) is not dict or set(result) != {'schema_version', 'migrated', 'backup_schema_version', 'offline'} | ({'journal_mode', 'checkpoint_frames'} if journal_mode else set()) | ({'legacy_receipt_sha256'} if legacy else set())
-            or result['schema_version'] != 3 or type(result['migrated']) is not bool
-            or result['backup_schema_version'] not in {1, 2, 3} or result['offline'] is not True
+            or result['schema_version'] != 4 or type(result['migrated']) is not bool
+            or result['backup_schema_version'] not in {1, 2, 3, 4} or result['offline'] is not True
             or journal_mode and (result['journal_mode'] != 'wal' or type(result['checkpoint_frames']) is not int
                                 or not 0 <= result['checkpoint_frames'] < 2**53)):
         raise ValueError('router_offline_migration_refused')

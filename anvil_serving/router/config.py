@@ -114,6 +114,7 @@ _MAX_AUDIO_GATEWAY_BYTES = 32 * 1024 * 1024
 # topology documents they join.  Readers use one overflow byte so an attacker
 # cannot force an unbounded allocation before this limit is enforced.
 MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
+MAX_ROUTE_IDENTITY_BYTES = 4096
 
 _REQUIRED_TIER_KEYS = (
     "id",
@@ -460,6 +461,7 @@ class ServerConfig:
 
     auth_env: Optional[str] = None
     admission_state_path: Optional[str] = None
+    route_state_path: Optional[str] = None
     decision_log_path: Optional[str] = None
     media_principal: Optional[str] = None
     media_scopes: tuple[str, ...] = ()
@@ -489,6 +491,7 @@ class ServerConfig:
 _SERVER_KEYS = frozenset({
     "auth_env",
     "admission_state_path",
+    "route_state_path",
     "decision_log_path",
     "media_principal",
     "media_scopes",
@@ -566,7 +569,7 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
         raw_media_scopes = []
 
     paths: dict[str, Optional[str]] = {}
-    for key in ("admission_state_path", "decision_log_path", "authorization_policy_path", "api_keys_path"):
+    for key in ("admission_state_path", "route_state_path", "decision_log_path", "authorization_policy_path", "api_keys_path"):
         value = server.get(key)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ConfigError(f"[server].{key} must be a non-empty file path")
@@ -575,6 +578,15 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
     is_absolute = posixpath.isabs if container_paths else os.path.isabs
     if paths["api_keys_path"] is not None and not is_absolute(paths["api_keys_path"]):
         raise ConfigError("[server].api_keys_path must be an absolute file path")
+    if paths["route_state_path"] is not None and (
+        not is_absolute(paths["route_state_path"]) or auth_env is None
+        or any(ord(char) < 32 for char in paths["route_state_path"])
+        or {posixpath.normpath(paths["route_state_path"] + suffix) for suffix in ("", ".lock")} & {
+            posixpath.normpath(value + suffix) for key, value in paths.items()
+            if key != "route_state_path" and value is not None for suffix in ("", ".lock")
+        }
+    ):
+        raise ConfigError("[server].route_state_path requires authentication and a distinct absolute protected path")
 
     connect_keys_env, connect_home_url = server.get("connect_keys_env"), server.get("connect_home_url")
     connect_check_env = server.get("connect_check_env")
@@ -669,6 +681,7 @@ def _parse_server_config(data: Mapping[str, Any], path: str, *, container_paths:
     return ServerConfig(
         auth_env=auth_env,
         admission_state_path=paths["admission_state_path"],
+        route_state_path=paths["route_state_path"],
         decision_log_path=paths["decision_log_path"],
         media_principal=media_principal,
         media_scopes=tuple(raw_media_scopes),
@@ -925,6 +938,8 @@ def _parse_tier(raw: object) -> Tier:
     tid = raw["id"]
     if not isinstance(tid, str) or not tid:
         raise ConfigError(f"tier id must be a non-empty string, got {tid!r}")
+    if len(tid.encode("utf-8")) > MAX_ROUTE_IDENTITY_BYTES or any(ord(char) < 32 or ord(char) == 127 for char in tid):
+        raise ConfigError("tier id must contain at most 4096 UTF-8 bytes and no control characters")
 
     dialect = raw["dialect"]
     if not isinstance(dialect, str) or dialect not in VALID_DIALECTS:
@@ -1012,6 +1027,11 @@ def _parse_tier(raw: object) -> Tier:
         raise ConfigError(
             f"tier {tid!r}: model must be a string or absent, got {tier_model!r}"
         )
+    if tier_model is not None and (
+        len(tier_model.encode("utf-8")) > MAX_ROUTE_IDENTITY_BYTES
+        or any(ord(char) < 32 or ord(char) == 127 for char in tier_model)
+    ):
+        raise ConfigError("tier model must contain at most 4096 UTF-8 bytes and no control characters")
 
     if (
         metadata_source == METADATA_UPSTREAM

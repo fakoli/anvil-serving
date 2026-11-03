@@ -245,7 +245,10 @@ def tool_router_transition(args: dict) -> dict:
         if type(member) is not str or not member:
             raise ToolError("bad_argument", "member must be a nonempty replica member ID")
         member_scope["member_id"] = member
-    router_url = _str_arg(args, "router_url", "")
+    # Match the CLI's conventional loopback default.  Supplying an explicit
+    # endpoint remains supported, but an omitted optional schema field must
+    # not be turned into an invalid empty URL by this adapter.
+    router_url = _str_arg(args, "router_url", router_manage.DEFAULT_ROUTER_URL)
     dry_run = _arg_bool(args.get("dry_run"), True, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout = args.get("timeout")
@@ -370,6 +373,18 @@ def _tool_router_configuration(args: dict) -> dict:
         raise ToolError("config_unavailable", "configured router source is unavailable") from exc
     if len(raw) > router_manage.MAX_ROUTER_CONFIG_BYTES:
         raise ToolError("config_too_large", "router config exceeds the 1 MiB limit")
+    # This legacy adapter writes the mounted TOML then recreates the router.
+    # Once live-route authority is enabled it must never overwrite the boot
+    # file behind a committed overlay; callers use the route preview/apply
+    # operation instead.
+    try:
+        from ....router.config import load_server_config
+        live_route_state = load_server_config(source).route_state_path
+    except Exception as exc:
+        raise ToolError("config_unavailable", "configured router source is unavailable") from exc
+    if live_route_state is not None and action == "apply":
+        raise ToolError("live_route_operation_required",
+                        "use the authenticated live route preview/apply operation")
     baseline = hashlib.sha256(raw).hexdigest()
     try:
         installed = router_manage.installed_fleet_status(
@@ -394,7 +409,7 @@ def _tool_router_configuration(args: dict) -> dict:
         raise ToolError("human_approval_required", "configuration apply requires the confirmed human gate")
     topology = _str_arg(args, "topology", "")
     overlay = _str_arg(args, "topology_overlay", "")
-    router_url = _str_arg(args, "router_url", "")
+    router_url = _str_arg(args, "router_url", router_manage.DEFAULT_ROUTER_URL)
     compose = _str_arg(args, "compose", required=True)
     service = _str_arg(args, "service", required=True)
     env_file = _str_arg(args, "env_file", required=True)
@@ -534,6 +549,36 @@ def tool_router_configuration(args: dict) -> dict:
 
     with serves_mod._switch_role_lock("promotion"):
         return _tool_router_configuration(args)
+
+
+def tool_router_routes(args: dict) -> dict:
+    """Typed MCP adapter for the same route transaction library as the CLI."""
+    from .... import router_manage
+    action = _str_arg(args, "action", required=True)
+    if action not in {"preview", "apply", "status", "rollback", "resume"}:
+        raise ToolError("bad_action", "unsupported live route action")
+    router_url = _str_arg(args, "router_url", router_manage.DEFAULT_ROUTER_URL)
+    auth_env = _str_arg(args, "auth_env", "ANVIL_ROUTER_TOKEN")
+    if re.fullmatch(r"[A-Z][A-Z0-9_]*", auth_env) is None:
+        raise ToolError("bad_argument", "auth_env must name an environment variable")
+    candidate = None
+    if action == "preview":
+        raw = args.get("config")
+        if not isinstance(raw, str):
+            raise ToolError("bad_argument", "preview requires UTF-8 configuration text")
+        candidate = raw.encode("utf-8")
+    try:
+        route_env = router_manage.route_update_environment(router_url, auth_env)
+        result = router_manage.route_update_request(
+            action, candidate_bytes=candidate, preview_id=_str_arg(args, "preview_id", "") or None,
+            revision=args.get("revision"), transaction_id=_str_arg(args, "transaction_id", "") or None,
+            drain_timeout=args.get("drain_timeout"), router_url=router_url,
+            confirm=_arg_bool(args.get("confirm"), False, name="confirm"),
+            env=route_env,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ToolError("route_update_refused", getattr(exc, "code", "route update refused")) from exc
+    return _ok(result)
 
 
 def _decision_records_from_path(path: str, *, max_input_bytes: int) -> list[dict]:
@@ -751,6 +796,23 @@ FAMILY = ToolFamily(
                 }, required=["action", "config", "tier"],
             ),
             "handler": tool_router_configuration,
+        },
+        "router_routes": {
+            "description": "Preview, apply, inspect, rollback, or resume a bounded live route transaction.",
+            "inputSchema": _schema(
+                {
+                    "action": {"type": "string", "enum": ["preview", "apply", "status", "rollback", "resume"]},
+                    "config": {"type": "string", "maxLength": 1048576},
+                    "preview_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+                    "revision": {"type": "integer", "minimum": 0},
+                    "transaction_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+                    "drain_timeout": _bounded_integer_schema(1, 300, 30),
+                    "router_url": {"type": "string"},
+                    "auth_env": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+                    "confirm": {"type": "boolean"},
+                }, required=["action"],
+            ),
+            "handler": tool_router_routes,
         },
         "decision_summary": {
             "description": "Summarize recent router decisions without prompts or secrets; defaults to GET /v1/decisions.",

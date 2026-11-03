@@ -40,7 +40,7 @@ def _router_config(tmp_path, filename, model, tier_id="primary-local"):
         [router]
         [[router.tiers]]
         id = "%s"
-        base_url = "http://127.0.0.1:30002/v1"
+        base_url = "http://127.0.0.1:39002/v1"
         model = "%s"
         dialect = "openai"
         context_limit = 4096

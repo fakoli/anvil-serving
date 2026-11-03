@@ -81,6 +81,9 @@ def runtime(tmp_path, monkeypatch):
     monkeypatch.setattr(experiment, "_probe", probe)
     monkeypatch.setattr(router_manage, "cmd_up", up)
     monkeypatch.setattr(router_manage, "transition_request", admission)
+    monkeypatch.setattr(router_manage, "route_update_request", lambda action, **kwargs: (_ for _ in ()).throw(
+        router_manage.RouteUpdateError("route_update_http_error", "not found", status=404)
+    ) if action == "status" else pytest.fail("unexpected route action"))
     def install(_candidate, *, _install, **kwargs):
         assert kwargs["confirm"] is True and kwargs["dry_run"] is False
         state["calls"].append("drain")
@@ -101,6 +104,40 @@ def confirmed(args, **changes):
     preview = experiment.tool_runtime_experiment(args)["data"]
     return {**args, "action": "apply", "run_id": "fixture-intent", "confirm": True,
             "dry_run": False, "human_approved": True, "expected_baseline_sha256": preview["baseline_sha256"], **changes}
+
+
+@pytest.mark.parametrize("revision", [0, 1])
+def test_runtime_experiment_refuses_active_live_route_overlay(runtime, monkeypatch, revision):
+    args, state, config, baseline = runtime
+    monkeypatch.setattr(router_manage, "route_update_request", lambda *_args, **_kwargs: {
+        "enabled": True, "route_revision": revision, "state": "ready"
+    })
+    with pytest.raises(ToolError, match="active live route overlay"):
+        experiment.tool_runtime_experiment(args)
+    assert state["calls"] == [] and config.read_bytes() == baseline
+
+
+@pytest.mark.parametrize("failure", [
+    router_manage.RouteUpdateError("route_update_transport_error", "offline"),
+    router_manage.RouteUpdateError("route_update_http_error", "denied", status=401),
+    router_manage.RouteUpdateError("route_update_http_error", "busy", status=503),
+    router_manage.RouteUpdateError("route_update_response_malformed", "bad response"),
+    ValueError("missing route credential"),
+])
+def test_runtime_experiment_refuses_unreadable_live_route_authority(runtime, monkeypatch, failure):
+    args, _state, _config, _baseline = runtime
+    monkeypatch.setattr(router_manage, "route_update_request",
+                        lambda *_args, **_kwargs: (_ for _ in ()).throw(failure))
+    with pytest.raises(ToolError, match="live route authority status is unavailable"):
+        experiment.tool_runtime_experiment(args)
+
+
+def test_runtime_experiment_allows_only_explicit_missing_live_route_endpoint(runtime, monkeypatch):
+    args, _state, _config, _baseline = runtime
+    monkeypatch.setattr(router_manage, "route_update_request", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        router_manage.RouteUpdateError("route_update_http_error", "not found", status=404)
+    ))
+    experiment._refuse_live_route_overlay({"router_url": "http://127.0.0.1:8000"})
 
 
 def test_incorrect_candidate_is_retained_and_never_promoted(runtime):

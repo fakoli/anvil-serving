@@ -101,7 +101,7 @@ def migrate(store):
             _create_schema(db)
             db.execute("PRAGMA user_version=2")
             version = 2
-        elif version not in (2, 3):
+        elif version not in (2, 3, 4):
             raise KeyStoreError("credential store format is unsupported")
         db.execute("COMMIT")
     store.version = version

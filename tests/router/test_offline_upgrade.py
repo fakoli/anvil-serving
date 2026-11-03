@@ -34,7 +34,7 @@ def test_offline_cli_migration_preserves_authority_and_protected_snapshot(tmp_pa
     args = ['migrate', '--config', str(config), '--backup-out', str(backup), '--offline', '--confirm']
     assert main(['router', 'keys', *args]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report == {'schema_version': 3, 'migrated': True, 'backup_schema_version': 1, 'offline': True}
+    assert report == {'schema_version': 4, 'migrated': True, 'backup_schema_version': 1, 'offline': True}
     assert keys.KeyStore(store.path).list_keys() == before
     assert keys.KeyStore(store.path).authenticate(secret).key_id == metadata['key_id']
     assert keys.KeyStore(backup).version == 1
@@ -74,7 +74,7 @@ def test_offline_compose_roster_change_refuses_before_launch(monkeypatch):
             value = json.dumps({'id': 'a' * 64, 'status': 'running', 'mounts': [
                 {'Type': 'volume', 'Name': 'synthetic-keys', 'RW': True}]})
         elif 'run' in argv:
-            value = json.dumps({'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 3})
+            value = json.dumps({'schema': 'router-offline-start/v1', 'offline': True, 'schema_version': 4})
         else:
             value = ''
         return SimpleNamespace(returncode=0, stdout=value, stderr='')
@@ -92,6 +92,13 @@ def test_offline_migration_requires_closed_owner_and_explicit_confirmation(tmp_p
                                               'router_owner_roster=["synthetic-owner","other-owner"]'))
     assert keys.dispatch(base + ['--offline', '--confirm']) == 2
     assert keys.KeyStore(store.path).version == 1 and not backup.exists()
+
+
+def test_managed_offline_migration_refuses_backup_outside_credential_parent_before_open(tmp_path, monkeypatch):
+    _, _, _, config = fixture(tmp_path)
+    monkeypatch.setattr(keys, 'KeyStore', lambda *_args, **_kwargs: pytest.fail('must not open the credential store'))
+    with pytest.raises(keys.KeyStoreError, match='backup must share'):
+        keys._migrate_offline(str(config), str(tmp_path / 'backup' / 'keys.sqlite3'), _managed_worker=True)
 
 
 def test_offline_custody_refuses_unsupported_platform(tmp_path, monkeypatch):
@@ -170,3 +177,54 @@ def test_owner_roster_separates_media_but_rejects_accounting_writers(tmp_path, m
         assert before['owner_storage'] != observe()['owner_storage']
         actual[1]['name']='changed-key-volume'
         with pytest.raises(ValueError): observe()
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='native owner storage uses POSIX mount paths')
+@pytest.mark.parametrize('consumer,blocked', [('media', False), ('route-state', True)])
+def test_route_state_owner_scope_allows_media_but_protects_absent_route_parent(tmp_path, monkeypatch, consumer, blocked):
+    keys_private = tmp_path / 'keys-private'; keys_private.mkdir()
+    routes_private = tmp_path / 'routes-private'; routes_private.mkdir()
+    media = tmp_path / 'media'; media.mkdir()
+    config = tmp_path / 'router.toml'
+    config.write_text('[server]\nauth_env="SYNTHETIC_AUTH"\napi_keys_path="/state/keys/keys.sqlite3"\n'
+                      'admission_state_path="/state/keys/intent.json"\n'
+                      'route_state_path="/state/routes/live-routes/state.json"\n')
+    mounts = [
+        dict(type='volume', source='keys', target='/state/keys'),
+        dict(type='volume', source='routes', target='/state/routes'),
+        dict(type='bind', source=str(media), target='/media'),
+        dict(type='bind', source=str(config), target=router_manage.DEFAULT_INSTALLED_CONFIG, read_only=True),
+    ]
+    rendered = {'name': 'anvil-serving', 'services': {'router': {'container_name': 'anvil-router', 'volumes': mounts}},
+                'volumes': {'keys': {'name': 'synthetic-keys'}, 'routes': {'name': 'synthetic-routes'}}}
+    actual = [
+        dict(type='volume', source=str(keys_private), name='synthetic-keys', destination='/state/keys', read_only=False),
+        dict(type='volume', source=str(routes_private), name='synthetic-routes', destination='/state/routes', read_only=False),
+        dict(type='bind', source=str(media), name='', destination='/media', read_only=False),
+        dict(type='bind', source=str(config), name='', destination=router_manage.DEFAULT_INSTALLED_CONFIG, read_only=True),
+    ]
+    incumbent = dict(available=True, container_id='a' * 64, mounts=actual)
+    monkeypatch.setattr(router_manage, '_restart_custody', lambda *args: incumbent)
+    monkeypatch.setattr(router_manage, '_container_compose_project', lambda *args, **kwargs: ('running', 'anvil-serving'))
+    shared = (dict(Type='bind', Source=str(media), RW=True) if consumer == 'media'
+              else dict(Type='volume', Name='synthetic-routes', Source=str(routes_private), RW=True))
+    rows = [{'id': 'a' * 64, 'status': 'running', 'mounts': []},
+            {'id': 'b' * 64, 'status': 'running', 'mounts': [shared]}]
+
+    def run(argv, **kwargs):
+        if 'config' in argv:
+            return SimpleNamespace(returncode=0, stdout=json.dumps(rendered))
+        if argv[:2] == ['docker', 'ps']:
+            return SimpleNamespace(returncode=0, stdout='a' * 64 if '--filter' in argv else 'a' * 64 + '\n' + 'b' * 64)
+        if argv[:2] == ['docker', 'inspect']:
+            return SimpleNamespace(returncode=0, stdout='\n'.join(json.dumps(row) for row in rows))
+        raise AssertionError(argv)
+
+    if blocked:
+        with pytest.raises(ValueError, match='router_offline_storage_busy'):
+            router_manage._offline_compose_roster('owned.yml', 'router', 'anvil-router', _run=run,
+                                                  live_target=True, _metadata_only=True, _owner_state_only=True)
+    else:
+        roster = router_manage._offline_compose_roster('owned.yml', 'router', 'anvil-router', _run=run,
+                                                       live_target=True, _metadata_only=True, _owner_state_only=True)
+        assert roster['owner_storage']['directories'] == sorted([str(keys_private), str(routes_private)])

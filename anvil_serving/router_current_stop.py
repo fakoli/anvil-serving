@@ -147,12 +147,13 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
     before = snapshot()
     receipt = before[0]
     preview, auth = receipt['preview'], receipt['authorization']
-    _verify_unconsumed_death(receipt, stopped, _run=_run, service=service, container=container,
-        env_file=env_file, execution_env=execution_env)
     if auth['successor']['image_id'] != stopped['image_id']:
         # An image update is bounded to unchanged config bytes. Probe the exact
         # new image with the old bind sources so generic incumbent custody stays
         # strict; the actual successor's source relocation is separately bound.
+        # The predecessor image need not understand a store schema upgraded
+        # under the acknowledged stop. The exact selected successor must read
+        # the durable death proof through this same old-config probe instead.
         require(auth['successor']['configuration_revision'] == auth['expected_configuration_revision'])
         probe = strict_json(read_private_auth_file(preview['compose_path'], max_bytes=2*1024**2))
         probe['services'][service]['image'] = before[2]['services'][service]['image']
@@ -160,19 +161,26 @@ def require_successor(path, compose, service, container, stopped, *, _run, env_f
         with tempfile.TemporaryDirectory(prefix='anvil-router-successor-probe-') as directory:
             probe_path = Path(directory) / 'compose.json'
             _publish(probe_path, probe)
+            _verify_unconsumed_death(receipt, stopped, _run=_run, service=service, container=container,
+                env_file=env_file, execution_env=execution_env, compose=str(probe_path))
             lifecycle.require_router_offline(str(probe_path), service, container=container, _run=_run,
                 env_file=env_file, execution_env=execution_env)
+    else:
+        _verify_unconsumed_death(receipt, stopped, _run=_run, service=service, container=container,
+            env_file=env_file, execution_env=execution_env)
     require(snapshot() == before)
     return receipt
 
 
 def _verify_unconsumed_death(receipt, stopped, *, _run, service, container, env_file,
-                             execution_env):
+                             execution_env, compose=None):
     preview, auth = receipt['preview'], receipt['authorization']
     native = preview['native']
     marker = {'schema': 'router-current-stop-permission/v1', 'authorization': auth,
               'native_sha256': digest(native)}
-    # This helper runs the predecessor image and only reads its retained store.
+    # For an image successor this helper runs under the byte-pinned old-config
+    # probe, so its KeyStore supports any acknowledged offline schema migration
+    # while every durable path remains the predecessor's exact mount declaration.
     code = ("import json;from pathlib import Path;"
         "from anvil_serving.router.config import load_server_config;"
         "from anvil_serving.router.keys import KeyStore,_private_json;"
@@ -186,7 +194,7 @@ def _verify_unconsumed_death(receipt, stopped, *, _run, service, container, env_
         f" require(closure(store)['closure']=={native['observation']['closure']!r})\n"
         " require(record['death']['closure_sha256']==digest(closure(store)))\n"
         "_offline_router_start()\nprint(json.dumps(record))\n")
-    record = validate(lifecycle._offline_compose_run(preview['compose_path'], service, container, code,
+    record = validate(lifecycle._offline_compose_run(compose or preview['compose_path'], service, container, code,
         _run=_run, env_file=env_file, execution_env=execution_env, _owner_state_only=True))
     require(record['phase'] == 'ready' and record['anchor'] == native['record']['anchor']
         and record['death']['stopped'] == stopped and digest(record['death']) == receipt['death_sha256']

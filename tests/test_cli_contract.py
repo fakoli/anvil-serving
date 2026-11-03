@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 
 import pytest
 
@@ -194,6 +195,117 @@ def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, 
         "action": "quiesce",
         "applied": True,
     }
+
+
+@pytest.mark.skipif(os.name != "posix", reason="route authority requires POSIX durability")
+def test_router_routes_init_forwards_confirmation_and_creates_authority(tmp_path, capsys):
+    state = tmp_path / "routes.json"
+    config = tmp_path / "router.toml"
+    config.write_text(
+        "[server]\n"
+        'auth_env = "ROUTER_TOKEN"\n'
+        f'route_state_path = "{state}"\n'
+        "[router.model_routes]\n"
+        '"llm.primary" = "primary"\n'
+        "[[router.tiers]]\n"
+        'id = "primary"\n'
+        'base_url = "http://127.0.0.1:30001/v1"\n'
+        'dialect = "openai"\n'
+        'privacy = "local"\n'
+        'tool_support = true\n'
+        'auth_env = "MODEL_TOKEN"\n'
+        'model = "test-model"\n'
+        "context_limit = 1024\n"
+        "max_concurrency = 1\n"
+        'health_path = "/health"\n'
+        "model_identity = true\n",
+        encoding="utf-8",
+    )
+
+    assert cli.main(["router", "routes", "init", "--config", str(config), "--native"]) == 1
+    assert not state.exists()
+    capsys.readouterr()
+
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--native", "--confirm",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["route_revision"] == 0
+    assert state.exists()
+
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--native", "--confirm",
+        "--current-stop-receipt", str(tmp_path / "receipt.json"),
+    ]) == 1
+
+
+def test_router_routes_apply_forwards_confirmation_to_route_client(monkeypatch, capsys):
+    seen = {}
+
+    def request(action, **kwargs):
+        seen.update(action=action, **kwargs)
+        return {"applied": True}
+
+    monkeypatch.setattr(router_manage, "route_update_request", request)
+
+    assert cli.main([
+        "router", "routes", "apply", "--preview-id", "a" * 32,
+        "--router-url", "http://127.0.0.1:18000", "--confirm",
+    ]) == 0
+    assert seen == {
+        "action": "apply",
+        "candidate_bytes": None,
+        "preview_id": "a" * 32,
+        "revision": None,
+        "transaction_id": None,
+        "drain_timeout": None,
+        "router_url": "http://127.0.0.1:18000",
+        "confirm": True,
+    }
+    assert json.loads(capsys.readouterr().out) == {"applied": True}
+
+
+def test_router_routes_init_forwards_current_stop_receipt_to_managed_initializer(tmp_path, monkeypatch, capsys):
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/protected/routes.json"\n[router]\n')
+    topology = tmp_path / "topology.toml"
+    topology.write_text(
+        "schema_version = 1\n"
+        'id = "router-routes-init-docker"\n'
+        'command_host = "host:primary"\n'
+        'command_runtime = "runtime:primary-native"\n\n'
+        "[[hosts]]\n"
+        'id = "primary"\n'
+        'roles = ["router"]\n'
+        'address = "127.0.0.1"\n'
+        'os = "linux"\n\n'
+        "[[runtimes]]\n"
+        'id = "primary-native"\n'
+        'host = "primary"\n'
+        'role = "native"\n\n'
+        "[[runtimes]]\n"
+        'id = "router-docker"\n'
+        'host = "primary"\n'
+        'role = "docker"\n\n'
+        "[[resources]]\n"
+        'id = "router-service"\n'
+        'role = "router"\n'
+        'host = "primary"\n'
+        'runtime = "router-docker"\n'
+        'endpoint = "http://127.0.0.1:30000"\n'
+        'endpoint_kind = "http"\n',
+        encoding="utf-8",
+    )
+    captured = {}
+    monkeypatch.setattr(router_manage, "initialize_route_state_managed", lambda *args, **kwargs: captured.update(
+        args=args, kwargs=kwargs) or {"initialized": True, "route_revision": 0, "effective_route_sha256": "a" * 64})
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--compose", str(tmp_path / "compose.yml"),
+        "--current-stop-receipt", str(tmp_path / "receipt.json"), "--topology", str(topology),
+        "--transport", "local", "--confirm",
+    ]) == 0
+    assert captured["kwargs"]["current_stop_receipt"] == str(tmp_path / "receipt.json")
+    assert captured["kwargs"]["env_file"] is None
+    assert json.loads(capsys.readouterr().out)["initialized"] is True
 
 
 def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(monkeypatch, capsys):

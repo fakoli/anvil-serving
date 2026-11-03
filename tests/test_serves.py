@@ -11,6 +11,8 @@ import json
 import pytest
 
 from anvil_serving import serves
+from anvil_serving.router.config import load_bytes as load_router_config_bytes
+from anvil_serving.router.route_updates import route_digest
 from tests.conftest import enabled_cache_policy as _enabled_cache_policy
 from tests.conftest import proc
 
@@ -19,6 +21,10 @@ from tests.conftest import proc
 def _isolated_host_policy(monkeypatch, tmp_path):
     """Never let a developer's enabled machine policy affect unit timing."""
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / ".anvil-serving"))
+    from anvil_serving import router_manage
+    def legacy_routes(*_args, **_kwargs):
+        raise router_manage.RouteUpdateError("route_update_http_error", "not found", status=404)
+    monkeypatch.setattr(router_manage, "route_update_request", legacy_routes)
 
 
 def _manifest(tmp_path, body):
@@ -1046,6 +1052,7 @@ def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatc
 
     monkeypatch.setattr(serves, "_promotion_transition_cli", transition)
     monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_hot_promotion_activation_path", lambda _plan, *, rollback: "activation")
     monkeypatch.setattr(serves, "_install_router_config", lambda *a, **k: 0)
     monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
     monkeypatch.setattr(serves, "docker_state", lambda *a, **k: "running")
@@ -1065,6 +1072,269 @@ def test_promotion_retries_transient_post_restart_readiness(tmp_path, monkeypatc
     ) == 0
     assert [action for action, _ in transitions].count("readmit") == 2
     assert sleeps == [plan["poll_interval"]]
+
+
+def _hot_route_promotion_setup(tmp_path, monkeypatch):
+    path = _promotion_manifest(tmp_path)
+    managed = serves.load_manifest(path)
+    (plan,) = serves.load_promotions(path)
+    plan["route_update"] = {
+        "router_url": "http://127.0.0.1:8000",
+        "auth_env": "HOT_ROUTE_TOKEN",
+        "activation": str(tmp_path / "activation.json"),
+    }
+    monkeypatch.setenv("HOT_ROUTE_TOKEN", "test-only-token")
+    monkeypatch.setattr(serves, "docker_state", lambda *a, **k: "running")
+    monkeypatch.setattr(serves, "_health", lambda *a, **k: 200)
+    monkeypatch.setattr(serves, "_serve_identity_ready", lambda *a, **k: True)
+    monkeypatch.setattr(serves, "_await_healthy", lambda *a, **k: True)
+    monkeypatch.setattr(serves, "_promotion_cli", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_hot_promotion_activation_path", lambda _plan, *, rollback: "activation")
+    monkeypatch.setattr(serves, "_hot_promotion_owner_evidence", lambda *a, **k: {
+        "source": "campaign_activation/v1", "binding_sha256": "a" * 64,
+        "container_id": "b" * 64, "served_model": "new-heavy",
+    })
+    return path, managed, plan
+
+
+def test_hot_promotion_prepares_route_drain_before_any_unload(tmp_path, monkeypatch):
+    path, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    from anvil_serving import router_manage
+    calls = []
+    route_sha = {}
+
+    def route(action, **kwargs):
+        calls.append((action, kwargs.get("prepare_only"), kwargs.get("owner_evidence")))
+        if action == "status":
+            return {"state": "ready", "route_revision": 0}
+        if action == "preview":
+            route_sha["value"] = route_digest(load_router_config_bytes(kwargs["candidate_bytes"]))
+            return {"preview_id": "a" * 32, "candidate_sha256": route_sha["value"],
+                    "route_revision": 0, "mode": "tier_replacement", "tier_ids": ["primary-local"],
+                    "authority_route_revision": 0, "operation_phase": "prepared"}
+        if action == "apply" and kwargs.get("prepare_only"):
+            return {"transaction_id": "b" * 32, "state": "held", "mode": "tier_replacement",
+                    "drain_scope": "chat_route_bindings", "owner_release_authorized": False}
+        if action == "resume":
+            return {"preview_id": "c" * 32, "candidate_sha256": route_sha["value"],
+                    "route_revision": 0, "mode": "tier_replacement", "tier_ids": ["primary-local"],
+                    "authority_route_revision": 0, "operation_phase": "prepared"}
+        return {"route_revision": 1, "effective_route_sha256": route_sha["value"],
+                "state": "complete", "publish_pending": False,
+                "owner_evidence": next(call[2] for call in calls if call[0] == "resume")}
+
+    monkeypatch.setattr(router_manage, "route_update_request", route)
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: calls.append(("down", None)) or 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *a, **k: calls.append(("up", None)) or 0)
+    monkeypatch.setattr(serves, "_install_router_config", lambda *a, **k: pytest.fail("hot promotion restarted router"))
+    assert serves._promotion_transition(managed, plan, path, require_candidate=False, resume=True) == 0
+    assert calls[:3] == [("status", None, None), ("preview", None, None), ("apply", True, None)]
+    assert calls[3] == ("down", None)
+    assert calls[-2:] == [
+        ("resume", None, {"source": "campaign_activation/v1", "binding_sha256": "a" * 64,
+                           "container_id": "b" * 64, "served_model": "new-heavy"}),
+        ("apply", None, None),
+    ]
+
+
+def test_hot_promotion_prepare_failure_never_unloads(tmp_path, monkeypatch):
+    path, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    from anvil_serving import router_manage
+    monkeypatch.setattr(router_manage, "route_update_request", lambda action, **kwargs: (_ for _ in ()).throw(ValueError("held")))
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: pytest.fail("unload after failed prepare"))
+    assert serves._promotion_transition(managed, plan, path, require_candidate=False) == 2
+
+
+def test_hot_rollback_requires_distinct_activation_before_route_hold_or_unload(tmp_path, monkeypatch):
+    path, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    from anvil_serving import router_manage
+    plan["route_update"].pop("rollback_activation", None)
+    monkeypatch.setattr(serves, "_hot_promotion_activation_path", lambda _plan, *, rollback: (
+        (_ for _ in ()).throw(ValueError("rollback_activation is required")) if rollback else "forward-arm"
+    ))
+    monkeypatch.setattr(router_manage, "route_update_request",
+                        lambda *_args, **_kwargs: pytest.fail("rollback must reject before route hold"))
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: pytest.fail("rollback must reject before unload"))
+    assert serves._promotion_transition(managed, plan, path, rollback=True, require_candidate=False) == 2
+
+
+def test_hot_promotion_postload_failure_leaves_route_held(tmp_path, monkeypatch):
+    path, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    from anvil_serving import router_manage
+    calls = []
+    route_sha = {}
+
+    def route(action, **kwargs):
+        calls.append(action)
+        if action == "preview":
+            route_sha["value"] = route_digest(load_router_config_bytes(kwargs["candidate_bytes"]))
+            return {"preview_id": "a" * 32, "candidate_sha256": route_sha["value"],
+                    "route_revision": 0, "mode": "tier_replacement", "tier_ids": ["primary-local"],
+                    "authority_route_revision": 0, "operation_phase": "prepared"}
+        if action == "apply": return {"transaction_id": "b" * 32, "state": "held", "mode": "tier_replacement",
+                                        "drain_scope": "chat_route_bindings", "owner_release_authorized": False}
+        pytest.fail("a failed target must not resume or roll back route state")
+
+    monkeypatch.setattr(router_manage, "route_update_request", route)
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_await_healthy", lambda *a, **k: False)
+    assert serves._promotion_transition(managed, plan, path, require_candidate=False) == 1
+    assert calls == ["preview", "apply"]
+
+
+def test_hot_promotion_same_served_name_without_owner_artifact_evidence_stays_held(tmp_path, monkeypatch):
+    """A matching /models name cannot substitute for an owner/asset receipt."""
+    path, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    from anvil_serving import router_manage
+    calls = []
+    route_sha = {}
+
+    def route(action, **kwargs):
+        calls.append(action)
+        if action == "preview":
+            route_sha["value"] = route_digest(load_router_config_bytes(kwargs["candidate_bytes"]))
+            return {"preview_id": "a" * 32, "candidate_sha256": route_sha["value"],
+                    "route_revision": 0, "mode": "tier_replacement", "tier_ids": ["primary-local"],
+                    "authority_route_revision": 0, "operation_phase": "prepared"}
+        if action == "apply" and kwargs.get("prepare_only"):
+            return {"transaction_id": "b" * 32, "state": "held", "mode": "tier_replacement",
+                    "drain_scope": "chat_route_bindings", "owner_release_authorized": False}
+        pytest.fail("unverified same-name candidate must never resume/publish")
+
+    monkeypatch.setattr(router_manage, "route_update_request", route)
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "_hot_promotion_owner_evidence", lambda *a, **k: (_ for _ in ()).throw(
+        ValueError("managed recipe image differs from frozen activation")))
+    assert serves._promotion_transition(managed, plan, path, require_candidate=False) == 1
+    assert calls == ["preview", "apply"]
+
+
+def test_hot_promotion_refuses_unconfirmed_final_route_publish(tmp_path, monkeypatch):
+    path, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    from anvil_serving import router_manage
+    calls = []
+
+    def route(action, **kwargs):
+        calls.append(action)
+        if action == "preview":
+            digest = route_digest(load_router_config_bytes(kwargs["candidate_bytes"]))
+            return {"preview_id": "a" * 32, "candidate_sha256": digest,
+                    "route_revision": 0, "mode": "tier_replacement", "tier_ids": ["primary-local"],
+                    "authority_route_revision": 0, "operation_phase": "prepared"}
+        if action == "apply" and kwargs.get("prepare_only"):
+            return {"transaction_id": "b" * 32, "state": "held", "mode": "tier_replacement",
+                    "drain_scope": "chat_route_bindings", "owner_release_authorized": False}
+        if action == "resume":
+            return {"preview_id": "c" * 32, "candidate_sha256": route_digest(load_router_config_bytes(
+                (tmp_path / "router-promoted.toml").read_bytes())), "route_revision": 0,
+                    "mode": "tier_replacement", "tier_ids": ["primary-local"],
+                    "authority_route_revision": 0, "operation_phase": "prepared"}
+        return {}  # An authenticated but incomplete response is not publication proof.
+
+    monkeypatch.setattr(router_manage, "route_update_request", route)
+    monkeypatch.setattr(serves, "cmd_down", lambda *a, **k: 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *a, **k: 0)
+    assert serves._promotion_transition(managed, plan, path, require_candidate=False) == 1
+    assert calls == ["preview", "apply", "resume", "apply"]
+
+
+def test_promotion_refuses_route_tier_with_unrelated_manifest_owner_port(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    for filename in ("router-promoted.toml", "router-rollback.toml"):
+        config = tmp_path / filename
+        config.write_text(config.read_text(encoding="utf-8").replace(":30002/v1", ":39999/v1"), encoding="utf-8")
+    with pytest.raises(ValueError, match="does not bind manifest serve"):
+        serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0])
+
+
+def test_promotion_accepts_supported_docker_owner_perspective(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    for filename in ("router-promoted.toml", "router-rollback.toml"):
+        config = tmp_path / filename
+        config.write_text(config.read_text(encoding="utf-8").replace("127.0.0.1", "host.docker.internal"),
+                          encoding="utf-8")
+    assert serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0]) is True
+
+
+@pytest.mark.parametrize("family", ["purpose", "audio"])
+def test_promotion_refuses_shared_nonchat_endpoint(tmp_path, family):
+    path = _promotion_manifest(tmp_path)
+    for filename in ("router-promoted.toml", "router-rollback.toml"):
+        config = tmp_path / filename
+        if family == "purpose":
+            extra = '''
+[[router.purpose_models]]
+id = "shared-embedding"
+kind = "embedding"
+model = "embed"
+base_url = "http://127.0.0.1:30002/v1"
+'''
+        else:
+            extra = '''
+[[router.audio_routes]]
+id = "shared-tts"
+purpose = "tts"
+model = "voice"
+base_url = "http://127.0.0.1:30002/v1"
+source_sample_rate = 24000
+'''
+        config.write_text(config.read_text(encoding="utf-8") + extra, encoding="utf-8")
+    with pytest.raises(ValueError, match="shared endpoint"):
+        serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0])
+
+
+def test_promotion_refuses_same_owner_port_through_different_url(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    for filename in ("router-promoted.toml", "router-rollback.toml"):
+        config = tmp_path / filename
+        config.write_text(config.read_text(encoding="utf-8").replace(
+            'llm.primary = "primary-local"',
+            'llm.primary = "primary-local"\nllm.shared = "shared-owner-alias"',
+        ) + '''
+[[router.tiers]]
+id = "shared-owner-alias"
+model = "shared-model"
+dialect = "openai"
+context_limit = 4096
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_REPLICA_KEY"
+health_path = "/health"
+model_identity = true
+base_url = "http://127.0.0.2:30002/v1"
+''', encoding="utf-8")
+    with pytest.raises(ValueError, match="shared endpoint.*shared-owner-alias"):
+        serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0])
+
+
+def test_promotion_refuses_replica_route_family_before_owner_release(tmp_path):
+    path = _promotion_manifest(tmp_path)
+    for filename in ("router-promoted.toml", "router-rollback.toml"):
+        config = tmp_path / filename
+        config.write_text(config.read_text(encoding="utf-8").replace(
+            'llm.primary = "primary-local"',
+            'llm.primary = "primary-local"\nllm.replicated = "replicated-shared-owner"',
+        ) + '''
+[[router.tiers]]
+id = "replicated-shared-owner"
+model = "replica-model"
+dialect = "openai"
+context_limit = 4096
+privacy = "local"
+tool_support = true
+auth_env = "ANVIL_REPLICA_KEY"
+health_path = "/health"
+model_identity = true
+replicas = [
+  { id = "member-a", base_url = "http://127.0.0.2:30002/v1", host_id = "host-a", resource_id = "gpu-a", qualification_ref = "qualification:a" },
+  { id = "member-b", base_url = "http://127.0.0.1:39032/v1", host_id = "host-b", resource_id = "gpu-b", qualification_ref = "qualification:b" },
+]
+replica_identity = { model_revision = "revision-1", engine_version = "engine-1", image_digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", config_fingerprint = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+''', encoding="utf-8")
+    with pytest.raises(ValueError, match="replica_lifecycle_configuration_unavailable"):
+        serves._validate_promotion_topology(serves.load_manifest(path), serves.load_promotions(path)[0])
 
 
 # ---- status: reservation ledger surface (gpu-reservations:T004) ---------------

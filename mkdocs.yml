@@ -162,6 +162,7 @@ nav:
       - Help and project records:
           - Troubleshooting: TROUBLESHOOTING.md
           - Architecture decisions: adr/README.md
+          - Scoped live route reconfiguration: adr/0046-scoped-live-route-reconfiguration.md
           - Proposed improvements (PRDs): prds/README.md
           - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
           - Test-suite reduction: design/test-suite-reduction.md

@@ -5,6 +5,11 @@ Use a stronger independent model for architecture changes, benchmark synthesis, 
 review. Neither class may change a serve, capability alias, or host state without the required human
 authorization.
 
+For a bounded, declared multi-phase maintenance sequence, one explicit operator
+authorization covers its stated scope. Each phase still needs a fresh
+machine-validated preview plus its exact protected authorization and receipt;
+re-prompt only when the material scope changes.
+
 ## Codex development models
 
 Trusted checkouts load the project defaults from `.codex/config.toml`: GPT-6

@@ -1353,9 +1353,16 @@ class RelayBackend:
         ``extra_body`` (tier wins, via ``update``). A key present in both -> ``extra_body`` wins.
         This is what lets a tier set e.g. ``reasoning_effort`` as a DEFAULT that a caller (OpenClaw's
         reasoning selector) can override per request, without loosening the hard-override contract."""
+        def thaw(value):
+            if isinstance(value, Mapping):
+                return {key: thaw(item) for key, item in value.items()}
+            if isinstance(value, (list, tuple)):
+                return [thaw(item) for item in value]
+            return value
+
         for k, v in (self._tier.extra_body_defaults or {}).items():
-            body.setdefault(k, v)
-        body.update(self._tier.extra_body or {})
+            body.setdefault(k, thaw(v))
+        body.update({k: thaw(v) for k, v in (self._tier.extra_body or {}).items()})
         return body
 
     def _extract_text(self, raw: bytes) -> str:

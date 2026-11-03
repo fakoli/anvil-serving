@@ -39,7 +39,7 @@ _MAX_KEYS = 1024
 _MAX_AUDIT = 10_000
 _MAX_WAL_BYTES = 64 * 1024**2
 _WAL_CHECKPOINT_BYTES = 4 * 1024**2
-_SUPPORTED_VERSIONS = (1, 2, 3)
+_SUPPORTED_VERSIONS = (1, 2, 3, 4)
 _POST_PATHS = frozenset({
     "/v1/chat/completions", "/v1/messages", "/v1/responses",
     "/v1/embeddings", "/v1/rerank",
@@ -874,7 +874,7 @@ class KeyStore:
             try:
                 with self._connect() as db:
                     self.version = db.execute('PRAGMA user_version').fetchone()[0]
-                    if not allow_retained and self.version == 3 and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
+                    if not allow_retained and self.version in (3, 4) and db.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone():
                         raise KeyStoreError('retained router runs require owner reconciliation')
                 yield
             finally:
@@ -1249,7 +1249,7 @@ class KeyStore:
                   for name in ("models", "paths", "rpm", "created_at", "expires_at")}
         version = connection.execute("PRAGMA user_version").fetchone()[0]
         owner = None
-        if version in (2, 3):
+        if version in (2, 3, 4):
             from .connect_keys import owned_account
             binding, account = owned_account(connection, key_id)
             if binding is not None:
@@ -1265,7 +1265,7 @@ class KeyStore:
                 account_rpm=account["rpm"], account_expires_days=account["expires_days"], **policy)
             return Principal(key_id, policy["models"], policy["paths"], owner,
                              CallerSnapshot(key_id, actor, grant, "owned_human"))
-        actor = self._bound_actor(connection, key_id) if version == 3 else Actor("unattributed")
+        actor = self._bound_actor(connection, key_id) if version in (3, 4) else Actor("unattributed")
         grant = EffectiveGrant("key_policy", reference=key_id, policy_digest=_digest(policy), **policy)
         caller = CallerSnapshot(key_id, actor, grant, "unbound" if actor.kind == "unattributed" else "owned_" + actor.kind)
         return Principal(key_id, policy["models"], policy["paths"], owner, caller)
@@ -1284,7 +1284,7 @@ class KeyStore:
         try:
             with self._write() as connection:
                 connection.execute("BEGIN IMMEDIATE")
-                if connection.execute("PRAGMA user_version").fetchone()[0] != 3:
+                if connection.execute("PRAGMA user_version").fetchone()[0] != 4:
                     raise KeyStoreError("owner binding requires accounting migration")
                 principal = self._caller_candidate(connection, key_id, time.time())
                 if principal is None or principal.owner is not None:
@@ -1395,7 +1395,7 @@ class KeyStore:
                 if row is None or row[1] is not None or (row[2] is not None and row[2] <= int(now)):
                     connection.execute("ROLLBACK")
                     raise KeyStoreError("credential key is unavailable")
-                if connection.execute("PRAGMA user_version").fetchone()[0] in (2, 3):
+                if connection.execute("PRAGMA user_version").fetchone()[0] in (2, 3, 4):
                     from .connect_keys import admit_owner
                     retry = admit_owner(connection, key_id, now)
                     if retry:
@@ -1662,6 +1662,17 @@ def _migrate_offline(config_path, backup_out, *, journal_mode=None, _legacy_rece
     from .usage_store import UsageStore
     from ..serves import _switch_role_lock
     server = load_server_config(resolve_config_path(config_path))
+    if _managed_worker:
+        if not isinstance(server.api_keys_path, str):
+            raise KeyStoreError('managed offline backup must share the credential store parent')
+        backup_path = Path(backup_out)
+        key_store_path = Path(server.api_keys_path)
+        try:
+            same_parent = backup_path.parent.resolve(strict=True) == key_store_path.parent.resolve(strict=True)
+        except OSError:
+            same_parent = False
+        if not backup_path.is_absolute() or '..' in backup_path.parts or not same_parent:
+            raise KeyStoreError('managed offline backup must share the credential store parent')
     if journal_mode not in {None, 'WAL'}:
         raise KeyStoreError('unsupported offline storage policy')
     if journal_mode == 'WAL':
@@ -1675,7 +1686,7 @@ def _migrate_offline(config_path, backup_out, *, journal_mode=None, _legacy_rece
     with role, store._offline_custody(server, allow_retained=journal_mode == 'WAL',
                                                             _wal_conversion=journal_mode == 'WAL'):
         usage = UsageStore(store)
-        if store.version == 3:
+        if store.version in (3, 4):
             with store._connect() as connection:
                 retained = connection.execute('SELECT 1 FROM usage_runs LIMIT 1').fetchone()
             if retained:
@@ -1748,7 +1759,7 @@ def _create_offline(request):
     if not target.is_absolute() or os.path.lexists(target):
         raise KeyStoreError('credential output file already exists')
     with store._offline_custody(server, allow_retained=True):
-        if store.version != 3:
+        if store.version != 4:
             raise KeyStoreError('offline issuance requires accounting migration')
         usage = UsageStore(store)
         usage.owner_config = server

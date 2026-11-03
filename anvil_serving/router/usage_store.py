@@ -26,7 +26,7 @@ from ..observability.dashboard.contracts import strict_json
 from .keys import (KeyStore, KeyStoreError, _publish_database, _secure_database,
                    _staged_database, _unlink_created)
 
-_VERSION = 3
+_VERSION = 4
 _MAX_INT = 2**63 - 1
 
 
@@ -66,6 +66,23 @@ def _id(value):
     try:
         opaque_id(value)
     except KeyStoreError:
+        raise UsageError() from None
+    return value
+
+
+def _configuration_text(value):
+    """Accept configured identifiers without treating them as opaque IDs.
+
+    Router tier and model text are configuration metadata: unlike serve,
+    resource-owner, and replica-member identifiers they may contain spaces or
+    punctuation and are not constrained by ``opaque_id``.  Keep the durable
+    payload bounded and single-line so it cannot alter a later log/receipt.
+    """
+    _require(type(value) is str and value and not any(ord(char) < 32 or ord(char) == 127
+                                                      for char in value))
+    try:
+        _require(len(value.encode("utf-8")) <= 4096)
+    except UnicodeError:
         raise UsageError() from None
     return value
 
@@ -157,18 +174,47 @@ class RouteAssociation(_Payload):
     serve_id: str | None = None
     resource_owner_id: str | None = None
     member_id: str | None = None
+    route_revision: int | None = None
+    effective_route_sha256: str | None = None
+    configured_model: str | None = None
+    observed_model: str | None = None
+    configured_fingerprint_sha256: str | None = None
 
     def __post_init__(self):
-        for f in fields(self):
-            if getattr(self, f.name) is not None:
-                _id(getattr(self, f.name))
+        for name in ("route_id", "backend_id", "configured_model", "observed_model"):
+            value = getattr(self, name)
+            if value is not None:
+                _configuration_text(value)
+        for name in ("serve_id", "resource_owner_id", "member_id"):
+            value = getattr(self, name)
+            if value is not None:
+                _id(value)
+        _require(self.route_revision is None or type(self.route_revision) is int
+                 and 0 <= self.route_revision <= 9007199254740991)
+        for name in ("effective_route_sha256", "configured_fingerprint_sha256"):
+            value = getattr(self, name)
+            _require(value is None or type(value) is str and re.fullmatch(r"[0-9a-f]{64}", value) is not None)
 
     def to_dict(self):
         return {f.name: getattr(self, f.name) for f in fields(self)}
 
     @classmethod
     def from_dict(cls, value):
-        return cls(**_closed(cls, value))
+        _require(type(value) is dict)
+        legacy = {"route_id", "backend_id", "serve_id", "resource_owner_id", "member_id"}
+        current = {field.name for field in fields(cls)}
+        keys = set(value)
+        _require(keys == legacy or keys == current)
+        return cls(**dict(value))
+
+    def with_dispatch_member(self, attempt):
+        """Return the only permitted dispatch-time enrichment of a bound route."""
+        _require(type(attempt) is RouteAssociation)
+        if self == attempt:
+            return self
+        _require(self.member_id is None and attempt.member_id is not None
+                 and replace(attempt, member_id=None) == self)
+        return attempt
 
 
 _OUTCOMES = {"success", "error", "cancelled", "timeout", "rejected", "disconnected", "interrupted", "unknown"}
@@ -993,18 +1039,21 @@ class UsageStore:
             self._revision(db, run["domain_id"])
         return segment_id
 
-    def start(self, start, *, authority_scope=None):
+    def start(self, start, *, authority_scope=None, route_association=None):
         _require(type(start) is RequestStart)
+        _require(route_association is None or type(route_association) is RouteAssociation)
         payload = start.to_json()
+        route_payload = route_association.to_json() if route_association is not None else None
         with self._write() as db:
             now = _now()  # sample after writer wait, not before acquiring it
             cutoff = (datetime.fromisoformat(now[:-1] + "+00:00") - timedelta(days=30)).isoformat(
                 timespec="microseconds").replace("+00:00", "Z")
             if start.accepted_at < cutoff:
                 raise UsageError("accounting_conflict")
-            prior = db.execute("SELECT start_payload FROM usage_starts WHERE request_id=?", (start.request_id,)).fetchone()
+            prior = db.execute("SELECT start_payload,route_association FROM usage_starts WHERE request_id=?", (start.request_id,)).fetchone()
             if prior:
-                if prior[0] != payload:
+                saved_route = RouteAssociation.from_json(prior[1]) if prior[1] is not None else None
+                if prior[0] != payload or saved_route != route_association:
                     raise UsageError("accounting_conflict")
                 return "same"
             run = db.execute("SELECT * FROM usage_runs WHERE run_id=?", (start.run_id,)).fetchone()
@@ -1034,13 +1083,66 @@ class UsageStore:
                         or saved.usage_relation == "inclusive_parent" and start.usage_relation == "exclusive"):
                     raise UsageError("accounting_conflict")
             names = ("request_id", "run_id", "domain_id", "segment_id", "configuration_revision", "accepted_at",
-                     "caller", "kind", "model", "parent_request_id", "attempt_id", "usage_relation", "start_payload")
+                     "caller", "kind", "model", "parent_request_id", "attempt_id", "usage_relation", "start_payload", "route_association")
             values = (start.request_id, start.run_id, run["domain_id"], segment[0]["segment_id"], domain["configuration_revision"],
                       start.accepted_at, start.caller.to_json(), start.kind, start.model, start.parent_request_id,
-                      start.attempt_id, start.usage_relation, payload)
+                      start.attempt_id, start.usage_relation, payload, route_payload)
             db.execute(f"INSERT INTO usage_starts({','.join(names)}) VALUES({','.join('?' for _ in names)})", values)
             self._revision(db, run["domain_id"])
         return "started"
+
+    def unresolved_route_starts(self, tier_ids, *, authority_scope):
+        """Count unresolved chat starts that can block a scoped tier drain.
+
+        This is intentionally a bounded, fail-closed owner read.  A route lease
+        only covers the current process; committed starts survive a lost reply
+        and must therefore remain visible until their terminal is durable.
+        Legacy chat rows without a route association are ambiguous and block a
+        destructive scoped drain.  Non-chat rows have no tier lifecycle
+        meaning, so they never globally block model ownership.
+        """
+        _require(type(authority_scope) is AuthorityScope)
+        _require(type(tier_ids) is tuple and 0 < len(tier_ids) <= 256)
+        for tier_id in tier_ids:
+            _configuration_text(tier_id)
+        selected = frozenset(tier_ids)
+        try:
+            with self.key_store._connect() as db:
+                db.row_factory = sqlite3.Row
+                if db.execute("PRAGMA user_version").fetchone()[0] != _VERSION:
+                    raise UsageError("accounting_unavailable")
+                state = self._coverage_state(db, authority_scope)
+                if not state.roster_complete:
+                    raise UsageError("accounting_unavailable")
+                placeholders = ",".join("?" for _ in authority_scope.run_ids)
+                records = db.execute(
+                    "SELECT route_association FROM usage_starts s "
+                    "LEFT JOIN usage_details d USING(request_id) "
+                    "WHERE d.request_id IS NULL AND s.kind='chat' "
+                    f"AND s.run_id IN ({placeholders}) LIMIT 4097",
+                    authority_scope.run_ids,
+                ).fetchall()
+                if len(records) > 4096:
+                    raise UsageError("accounting_unavailable")
+                pending = 0
+                for record in records:
+                    raw = record["route_association"]
+                    if raw is None:
+                        pending += 1
+                        continue
+                    route = RouteAssociation.from_json(raw)
+                    # A syntactically valid association still cannot authorize
+                    # an unload when neither tier identity was captured.  It is
+                    # equivalent to an unresolved legacy chat start for every
+                    # destructive route scope.
+                    if ((route.route_id is None and route.backend_id is None)
+                            or route.route_id in selected or route.backend_id in selected):
+                        pending += 1
+                return pending
+        except UsageError:
+            raise
+        except (sqlite3.Error, KeyStoreError, OSError):
+            raise UsageError("accounting_unavailable") from None
 
     @staticmethod
     def _unresolved(db, request_id):
@@ -1053,11 +1155,13 @@ class UsageStore:
 
     def note_dispatch(self, request_id, attempt_route):
         _uuid(request_id); _require(type(attempt_route) is RouteAssociation)
-        payload = attempt_route.to_json()
         with self._write() as db:
             row = self._unresolved(db, request_id)
+            saved_route = RouteAssociation.from_json(row["route_association"]) if row["route_association"] is not None else None
+            route = attempt_route if saved_route is None else saved_route.with_dispatch_member(attempt_route)
+            payload = route.to_json()
             if row["dispatched"] is not None:
-                if row["dispatched"] != 1 or row["route_association"] != payload:
+                if row["dispatched"] != 1 or saved_route != route:
                     raise UsageError("accounting_conflict")
                 return "same"
             db.execute("UPDATE usage_starts SET dispatched=1,route_association=? WHERE request_id=?", (payload, request_id))
@@ -1101,9 +1205,8 @@ class UsageStore:
         if row is None:
             raise UsageError("accounting_start_missing")
         prior = db.execute("SELECT terminal_payload FROM usage_details WHERE request_id=?", (terminal.request_id,)).fetchone()
-        payload = terminal.to_json()
         if prior:
-            if prior[0] != payload:
+            if Terminal.from_json(prior[0]) != terminal:
                 raise UsageError("accounting_conflict")
             return "same"
         start = RequestStart.from_json(row["start_payload"])
@@ -1112,9 +1215,10 @@ class UsageStore:
         _require(start.usage_relation != "unobserved" or "usage_relation_unknown" in terminal.coverage)
         if row["dispatched"] == 1 and terminal.dispatched is False:
             raise UsageError("accounting_conflict")
-        if row["route_association"] is not None and row["route_association"] != terminal.route.to_json():
+        if (row["route_association"] is not None
+                and RouteAssociation.from_json(row["route_association"]) != terminal.route):
             raise UsageError("accounting_conflict")
-        db.execute("INSERT INTO usage_details VALUES(?,?,?,?)", (terminal.request_id, terminal.ended_at, terminal.outcome, payload))
+        db.execute("INSERT INTO usage_details VALUES(?,?,?,?)", (terminal.request_id, terminal.ended_at, terminal.outcome, terminal.to_json()))
         dimensions, counters = self._contribution(start, terminal, row["domain_id"])
         for table in ("usage_daily", "usage_cumulative"):
             self._add(db, table, dimensions, counters, start.accepted_at[:10], terminal.ended_at)
@@ -1613,14 +1717,29 @@ class UsageStore:
             with self.key_store._write() as db:
                 db.execute("BEGIN IMMEDIATE")
                 version = db.execute("PRAGMA user_version").fetchone()[0]
+                if version > _VERSION:
+                    raise KeyStoreError("accounting store format is unsupported")
                 if version == _VERSION:
                     _validate_schema(db)
                 else:
-                    if version == 1:
-                        from .connect_keys import _create_schema
-                        _create_schema(db)
-                    for _name, statement in _DDL:
-                        db.execute(statement)
+                    if version == 3:
+                        _validate_schema(db)
+                        unresolved = db.execute(
+                            "SELECT route_association FROM usage_starts s "
+                            "LEFT JOIN usage_details d USING(request_id) "
+                            "WHERE d.request_id IS NULL LIMIT 4097"
+                        ).fetchall()
+                        if len(unresolved) > 4096:
+                            raise KeyStoreError("accounting migration has too many unresolved requests")
+                        for row in unresolved:
+                            if row[0] is None or RouteAssociation.from_json(row[0]).route_revision is None:
+                                raise KeyStoreError("accounting migration requires resolved legacy requests")
+                    else:
+                        if version == 1:
+                            from .connect_keys import _create_schema
+                            _create_schema(db)
+                        for _name, statement in _DDL:
+                            db.execute(statement)
                     _validate_schema(db)
                     db.execute(f"PRAGMA user_version={_VERSION}")
                 epoch_metadata = db.execute("SELECT 1 FROM sqlite_master WHERE name='usage_epoch_metadata'").fetchone()
@@ -1668,7 +1787,7 @@ class UsageStore:
                         if copied.execute('PRAGMA journal_mode=DELETE').fetchone() != ('delete',):
                             raise KeyStoreError('accounting snapshot is not standalone')
                         copied_version = copied.execute("PRAGMA user_version").fetchone()[0]
-                        if copied_version not in (1, 2, _VERSION):
+                        if copied_version not in (1, 2, 3, _VERSION):
                             raise KeyStoreError("accounting snapshot format is unsupported")
                         if copied_version == _VERSION:
                             _validate_schema(copied)

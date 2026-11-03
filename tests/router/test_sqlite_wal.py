@@ -186,6 +186,34 @@ def test_existing_read_lease_blocks_conversion_without_pending_permission(tmp_pa
     keys._migrate_offline(str(config), str(tmp_path / 'before.sqlite3'), journal_mode='WAL')
 
 
+@native
+def test_v3_offline_wal_upgrade_keeps_backup_and_is_idempotent(tmp_path):
+    store, config = configured(tmp_path)
+    state = Path(str(store.path.parent / 'admission.json') + '.router')
+    state.write_text(json.dumps({'schema': 'router-admission/v1', 'owner_id': 'synthetic-owner', 'closure': {
+        'barrier_token': 'a' * 64, 'configuration_revision': 'b' * 64,
+        'roster_revision': 'c' * 64, 'policy_revision': 'd' * 64,
+        'generation': 1, 'consumed': False,
+    }}))
+    state.chmod(0o600)
+    keys._bind_router_store(store.path, state, 'synthetic-owner')
+    with store._connect() as db:
+        db.execute('PRAGMA user_version=3')
+    backup = tmp_path / 'before.sqlite3'
+    result = keys._migrate_offline(str(config), str(backup), journal_mode='WAL')
+    assert result == {'schema_version': 4, 'migrated': True, 'backup_schema_version': 3,
+                      'offline': True, 'journal_mode': 'wal', 'checkpoint_frames': 0}
+    with keys.KeyStore(backup)._connect() as db:
+        assert db.execute('PRAGMA user_version').fetchone() == (3,)
+    current = keys.KeyStore(store.path)
+    assert current.version == 4
+    assert Path(str(store.path) + '.sqlite-policy').exists()
+    repeat_backup = tmp_path / 'after.sqlite3'
+    repeat = keys._migrate_offline(str(config), str(repeat_backup), journal_mode='WAL')
+    assert repeat['schema_version'] == 4 and repeat['migrated'] is False
+    assert repeat['backup_schema_version'] == 4 and repeat['journal_mode'] == 'wal'
+
+
 @pytest.mark.skipif(os.name != 'posix', reason='actual thread-local POSIX gate lifetime')
 def test_borrowed_gate_cancellation_and_inconsistent_nesting_never_escape_scope(tmp_path):
     from concurrent.futures import ThreadPoolExecutor

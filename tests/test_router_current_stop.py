@@ -84,8 +84,16 @@ usage_domain_id="fixture"
             return SimpleNamespace(returncode=0, stdout='')
         pytest.fail(str(argv))
     proof = f['proof']()
+    proof_composes = []
     def native(compose, service, container, code, **kwargs):
-        assert compose == str(f['old']) and kwargs['_owner_state_only']
+        assert kwargs['_owner_state_only']
+        if compose == str(f['old']):
+            rendered = old
+        else:
+            rendered = json.loads(Path(compose).read_bytes())
+            expected = deepcopy(old)
+            expected['services'][service]['image'] = candidate['services'][service]['image']
+            assert rendered == expected and Path(compose).stat().st_mode & 0o777 == 0o600
         assert '_offline_router_start()' in code and 'native_transaction' not in code
         helper = ast.parse(code)
         custody_block = next(node for node in ast.walk(helper)
@@ -95,6 +103,7 @@ usage_domain_id="fixture"
         start_call = next(node for node in ast.walk(helper)
                           if isinstance(node, ast.Call) and ast.unparse(node.func) == '_offline_router_start')
         assert start_call not in ast.walk(custody_block)
+        proof_composes.append(rendered)
         calls.append('native-read')
         return deepcopy(proof)
     monkeypatch.setattr(router_manage, '_offline_compose_run', native)
@@ -108,7 +117,8 @@ usage_domain_id="fixture"
     monkeypatch.setattr(router_manage, '_managed_container_custody', lambda kind, *a, **k: calls.append(kind))
     return SimpleNamespace(path=receipt_path, receipt=receipt, stopped=stopped, old=old,
         candidate=candidate, config=candidate_config, compose=f['new'], proof=proof, calls=calls, run=run,
-        old_compose=f['old'], router_config=f['router_config'], scope=scope, protected=f['protected'])
+        old_compose=f['old'], router_config=f['router_config'], scope=scope, protected=f['protected'],
+        proof_composes=proof_composes)
 
 
 def invoke(f, **kwargs):
@@ -255,6 +265,9 @@ def test_changed_image_and_source_require_exact_receipt_and_preview_is_read_only
     f.run=run
     assert bootstrap.completed_receipt(f.path, f.stopped) == f.receipt
     bootstrap.require_successor(str(f.path), str(f.compose), 'router', 'anvil-router', f.stopped, _run=f.run)
+    expected_probe = deepcopy(f.old)
+    expected_probe['services']['router']['image'] = f.candidate['services']['router']['image']
+    assert f.proof_composes == [expected_probe]
     assert invoke(f, dry_run=True) == 0
     assert 'native-read' in f.calls and 'candidate-offline' in f.calls and 'live' not in f.calls
     assert not any(isinstance(c, list) and 'up' in c for c in f.calls)
