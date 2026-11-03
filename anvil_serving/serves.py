@@ -2293,10 +2293,6 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                 print("  %s refused: drain timed out for %s before container mutation" % (label, tier_id))
                 return 2 if _compensate_quiesce(plan, quiesced, _run=_run) else 3
 
-    # Preserve displaced/candidate containers and their logs until the
-    # promotion transaction and its rollback opportunity complete.
-    if not hot_recovery_only and cmd_down(serves, stop_names, keep_container=True, _run=_run) != 0:
-        return 1
     target_state = docker_state(target["container"], _run=_run)
     if hot_recovery_only and target_state != "running":
         print("  %s recovery refused: published owner is not running" % label)
@@ -2307,7 +2303,12 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         and _health(target["port"], target["health"], _open=_open) == 200
         and _serve_identity_ready(target, _open=_open)
     )
-    target_recreated = False
+    # A resume of the held prepared transaction has already preserved the
+    # displaced containers. Repeating their stop is an unnecessary lifecycle
+    # mutation and can obscure the first failure's retained evidence.
+    if (not hot_recovery_only and not reuse_target
+            and cmd_down(serves, stop_names, keep_container=True, _run=_run) != 0):
+        return 1
     if reuse_target:
         print("  resume: %s is already healthy with exact model identity" % target["name"])
     elif not hot_recovery_only and cmd_up(
@@ -2319,8 +2320,6 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         _run=_run,
     ) != 0:
         return 1
-    else:
-        target_recreated = not hot_recovery_only
     startup_timeout = plan["rollback_startup_timeout"] if rollback else plan["startup_timeout"]
     if not _await_healthy(target, startup_timeout, plan["poll_interval"],
                           _open=_open, _sleep=_sleep):
@@ -2336,7 +2335,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         from . import router_manage
         route = plan["route_update"]
         try:
-            if target_recreated:
+            if not hot_recovery_only:
                 _refresh_hot_promotion_monitoring(plan, target, rollback=rollback)
             # This is intentionally after load/health/preflight: it binds the
             # freshly observed owner incarnation, rather than the displaced

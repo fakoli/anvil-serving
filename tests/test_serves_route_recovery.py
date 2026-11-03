@@ -94,7 +94,7 @@ def test_promotion_recovery_preserves_drain_revision_and_owner_proof(tmp_path, m
         else:
             assert result == 0 and status["state"] == "complete"
             assert status["route_revision"] == (2 if phase == "rollback" else 1)
-            assert lifecycle == (["down"] if phase in {"prepared", "rollback"} else [])
+            assert lifecycle == []
             assert verified == [("old-heavy", True)] if phase == "rollback" else verified == [("new-heavy", False)]
             assert status["owner_evidence"]["served_model"] == verified[0][0]
             if phase == "committed":
@@ -163,6 +163,50 @@ def test_monitoring_refresh_failure_keeps_hot_route_held(tmp_path, monkeypatch):
     monkeypatch.setattr(serves, "cmd_up", lambda *_a, **_k: 0)
     assert serves._promotion_transition(managed, plan, manifest, require_candidate=False) == 1
     assert calls == ["preview", "apply"]
+
+
+def test_resume_republishes_pending_receipt_without_repeating_lifecycle(tmp_path, monkeypatch):
+    manifest, managed, plan = _hot_route_promotion_setup(tmp_path, monkeypatch)
+    _fresh_monitoring_activation(tmp_path, plan, managed)
+    monkeypatch.setattr(serves, "_hot_promotion_activation_path",
+                        lambda value, *, rollback: value["route_update"]["activation"])
+    monkeypatch.setattr(serves, "_refresh_hot_promotion_monitoring", REAL_REFRESH)
+    attempts, lifecycle, route_calls = [], [], []
+    monkeypatch.setattr(recipe_monitoring, "withdraw", lambda **_kwargs: None)
+    monkeypatch.setattr(recipe_monitoring, "publish", lambda *_a, **_k: attempts.append("publish") or (
+        (_ for _ in ()).throw(ValueError("first publish failed")) if len(attempts) == 1 else {"state": "active"}))
+    monkeypatch.setattr(serves, "_hot_promotion_owner_evidence", lambda *_a, **_k: {
+        "source": "campaign_activation/v1", "binding_sha256": "a" * 64,
+        "container_id": "b" * 64, "served_model": "new-heavy"})
+    digest = route_digest(load_router_config_bytes(Path(plan["router_config"]).read_bytes()))
+    def route(action, **kwargs):
+        route_calls.append(action)
+        if action == "status":
+            return {"state": "held", "mode": "tier_replacement", "transaction_id": "b" * 32,
+                    "route_revision": 0, "operation_phase": "prepared"}
+        if action == "preview":
+            return {"preview_id": "a" * 32, "candidate_sha256": digest, "route_revision": 0,
+                    "mode": "tier_replacement", "tier_ids": ["primary-local"], "authority_route_revision": 0,
+                    "operation_phase": "prepared"}
+        if action == "apply" and kwargs.get("prepare_only"):
+            return {"transaction_id": "b" * 32, "state": "held", "mode": "tier_replacement",
+                    "drain_scope": "chat_route_bindings", "owner_release_authorized": False}
+        if action == "resume":
+            return {"preview_id": "c" * 32, "candidate_sha256": digest, "route_revision": 0,
+                    "mode": "tier_replacement", "tier_ids": ["primary-local"], "authority_route_revision": 0,
+                    "operation_phase": "prepared"}
+        return {"route_revision": 1, "effective_route_sha256": digest, "state": "complete",
+                "publish_pending": False, "owner_evidence": {"source": "campaign_activation/v1",
+                "binding_sha256": "a" * 64, "container_id": "b" * 64, "served_model": "new-heavy"}}
+    monkeypatch.setattr(router_manage, "route_update_request", route)
+    monkeypatch.setattr(serves, "cmd_down", lambda *_a, **_k: lifecycle.append("down") or 0)
+    monkeypatch.setattr(serves, "cmd_up", lambda *_a, **_k: lifecycle.append("up") or 0)
+    assert serves._promotion_transition(managed, plan, manifest, require_candidate=False) == 1
+    assert lifecycle == ["down", "up"]
+    assert serves._promotion_transition(managed, plan, manifest, require_candidate=False, resume=True) == 0
+    assert attempts == ["publish", "publish"]
+    assert lifecycle == ["down", "up"]
+    assert route_calls[-2:] == ["resume", "apply"]
 
 
 def test_recreated_hot_target_refreshes_receipt_before_owner_evidence(tmp_path, monkeypatch):
