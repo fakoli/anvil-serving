@@ -396,13 +396,15 @@ llm.primary = "synthetic"
         mounts[1],
     ]}}}
     checks = []
+    runner_envs = []
     monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: pytest.fail("generic roster must stay strict"))
     monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: {"PATH": "/usr/bin"})
-    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {"stopped": stopped})
+    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {"stopped": stopped, "preview": {}})
     monkeypatch.setattr(router_current_stop, "require_successor", lambda *args, **kwargs: checks.append(args))
     monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: ({}, {"rendered": predecessor}, candidate, {}))
 
     def docker(argv, **kwargs):
+        runner_envs.append(kwargs.get("env"))
         if argv[:3] == ["docker", "image", "inspect"]:
             return proc(0, stopped["image_id"])
         if "run" in argv:
@@ -413,12 +415,27 @@ llm.primary = "synthetic"
         str(config), str(tmp_path / "compose.yml"), current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
     )["initialized"] is True
     assert len(checks) == 2
+    assert runner_envs and all(env == {"PATH": "/usr/bin"} for env in runner_envs)
 
     candidate["services"]["router"]["image"] = "router:mutable"
     with pytest.raises(ValueError, match="current_stop_route_init_refused"):
         router_manage.initialize_route_state_managed(
             str(config), str(tmp_path / "compose.yml"), current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
         )
+    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {
+        "stopped": stopped, "preview": {"environment": {"file": str(tmp_path / "bound.env")}},
+    })
+    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: (_ for _ in ()).throw(
+        ValueError("router_current_stop_environment_mismatch")))
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: pytest.fail("must not read unbound environment"))
+    with pytest.raises(ValueError, match="current_stop_environment_mismatch"):
+        router_manage.initialize_route_state_managed(
+            str(config), str(tmp_path / "compose.yml"), env_file=str(tmp_path / "other.env"),
+            current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
+        )
+    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {"stopped": stopped, "preview": {}})
+    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: ({}, {"rendered": predecessor}, candidate, {}))
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: {"PATH": "/usr/bin"})
     candidate["services"]["router"]["image"] = stopped["image_id"]
     old_config.write_text(config.read_text())
     with pytest.raises(ValueError, match="current_stop_route_init_refused"):
