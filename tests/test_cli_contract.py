@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 
 import pytest
 
@@ -196,6 +197,7 @@ def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, 
     }
 
 
+@pytest.mark.skipif(os.name != "posix", reason="route authority requires POSIX durability")
 def test_router_routes_init_forwards_confirmation_and_creates_authority(tmp_path, capsys):
     state = tmp_path / "routes.json"
     config = tmp_path / "router.toml"
