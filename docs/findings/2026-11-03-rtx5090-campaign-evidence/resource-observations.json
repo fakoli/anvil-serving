@@ -1,0 +1,14 @@
+{
+  "schema": "anvil-serving.public-resource-observations/v1",
+  "profile": "ignis-256k-vision",
+  "start": {
+    "gpu_used_mib": 18142,
+    "gpu_free_mib": 14046
+  },
+  "final": {
+    "gpu_used_mib": 18144,
+    "gpu_free_mib": 14044
+  },
+  "scope": "Two historical nvidia-smi snapshots, not sustained minimum or measured simultaneous full-context capacity.",
+  "source": "Protected startup/final GPU snapshots; numeric transcription independently checked."
+}

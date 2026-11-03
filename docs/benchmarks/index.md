@@ -1,5 +1,11 @@
 # Benchmarks
 
+**2026-11-03 RTX5090 research update:** the
+[candidate campaign](../findings/2026-11-03-rtx5090-campaign.md) records bounded
+coding and synthetic capability results without changing any deployment decision.
+The [Ignis note](../findings/2026-11-03-ignis-improvements.md) separates model,
+runtime and evaluator improvements. [Dossier](models/rtx5090-campaign-candidates.md).
+
 **Current review, 2026-11-01:** Swift TP1 has qualification accepted on one
 RTX PRO 6000 Blackwell Max-Q. This is a qualification result; the measured C2/C1 tradeoff, strict-format
 failure, and SWE limit are retained in the [dated finding](../findings/2026-11-01-swift-tp1-gpu0.md).

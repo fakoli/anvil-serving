@@ -1,5 +1,14 @@
 # Benchmark results
 
+## 2026-11-03 — RTX5090 coding and Ignis budget follow-up
+
+The [campaign](findings/2026-11-03-rtx5090-campaign.md) publishes three candidate
+families, nineteen coding cohorts, negative settings and synthetic capability
+checks. Selected configurations passed123/123; the restored reference114/123.
+The [Ignis note](findings/2026-11-03-ignis-improvements.md) documents a matched
+reasoning-budget correctness/latency tradeoff, image-grounding and metadata gaps,
+and proposed memory/admission/telemetry work. No equivalent replacement or promotion.
+
 **2026-11-01 Swift TP1 qualification accepted:** the single-GPU TP1 Swift lane is
 a tested configuration with retained capacity, quality and protocol evidence.
 Current deployment and client assignment are outside this public record. Its selected C2 32K decode p50 is 13.43 tok/s, below the 15 tok/s soft

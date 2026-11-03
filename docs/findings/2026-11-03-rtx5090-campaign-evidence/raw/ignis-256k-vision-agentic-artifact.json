@@ -1,0 +1,142 @@
+{
+  "data": {
+    "created_at": "2026-11-03T14:40:47.290879Z",
+    "failure": null,
+    "partial": false,
+    "provenance": {
+      "endpoint": {
+        "base_url": "[private operator or asset text withheld]",
+        "model": "[private identity withheld]"
+      },
+      "finished_at": "2026-11-03T14:40:47.290802Z",
+      "started_at": "2026-11-03T14:39:37.397688Z",
+      "submitted_at": "2026-11-03T14:14:21.251881+00:00",
+      "worker": "[private topology withheld]"
+    },
+    "results": {
+      "evidence": {
+        "completeness": "completed",
+        "created_at": "2026-11-03T14:40:47.279232Z",
+        "evidence_kind": "measured",
+        "failure": null,
+        "identities": {
+          "concurrency": {
+            "configured_lanes": 4,
+            "test_requests_sequential": true
+          },
+          "context": {
+            "configured_tokens": 262144
+          },
+          "dataset": {
+            "name": "deterministic-native",
+            "profile_sha256": "[private fingerprint withheld]"
+          },
+          "hardware": {
+            "driver": "621.01",
+            "gpu": "NVIDIA GeForce RTX 5090",
+            "ram_total_bytes": 100582346752,
+            "vram_total_mib": 32607
+          },
+          "harnesses": {
+            "native": {
+              "schema": "anvil-serving.agentic/v1"
+            }
+          },
+          "image": {
+            "reference": "anvil-ignis@[private fingerprint withheld]"
+          },
+          "model": {
+            "artifact_sha256": "[private fingerprint withheld]",
+            "repo": "[private identity withheld]",
+            "require_complete_cache": true,
+            "revision": "[private identity withheld]",
+            "volume": "[private topology withheld]"
+          },
+          "runtime": {
+            "canonical_recipe_digest": "[private fingerprint withheld]",
+            "engine": "ignis",
+            "managed_container_id": "[private fingerprint withheld]",
+            "recipe_digest_semantics": "retained TOML input SHA256; canonical loaded identity captured separately",
+            "recipe_sha256": "[private fingerprint withheld]",
+            "registry_digest": "[private identity withheld]",
+            "revision": "[private identity withheld]"
+          },
+          "served_model": {
+            "configured_context": 262144,
+            "id": "[private-model]"
+          },
+          "topology": {
+            "kind": "co-resident-benchmark-client",
+            "worker_id": "[private topology withheld]"
+          }
+        },
+        "promotion": {
+          "authorized": false,
+          "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+        },
+        "run": {
+          "ownership_id": "llm-campaign-20261103",
+          "profile": "deep",
+          "run_id": "ignis-256k-vision-agentic-20261103",
+          "spec_sha256": "[private fingerprint withheld]",
+          "suite": "agentic"
+        },
+        "schema": "anvil-serving.benchmark-evidence/v1",
+        "stages": [
+          {
+            "evidence": [
+              {
+                "bytes": 559,
+                "path": "evidence/0-assets.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "asset_preparation",
+            "sequence": 0,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 1960,
+                "path": "evidence/0-preflight.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "preflight",
+            "sequence": 1,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 206064,
+                "path": "evidence/0-agentic.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "agentic",
+            "sequence": 2,
+            "status": "completed"
+          }
+        ],
+        "summary": {
+          "attempted": 30,
+          "pass_rate": 1.0,
+          "passed": 30,
+          "required_pass_rate": 0.7
+        }
+      }
+    },
+    "run": {
+      "ownership_id": "llm-campaign-20261103",
+      "profile": "deep",
+      "run_id": "ignis-256k-vision-agentic-20261103",
+      "spec_sha256": "[private fingerprint withheld]",
+      "suite": "agentic"
+    },
+    "schema": "anvil-serving.benchmark-result/v1",
+    "status": "completed"
+  },
+  "ok": true
+}
