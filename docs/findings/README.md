@@ -1,5 +1,12 @@
 # Findings index
 
+**2026-11-03 RTX5090 candidate campaign:** three families reached123/123 on selected
+coding configurations; private reference114/123. Different capabilities, seven task
+types repeated three times, no equivalent replacement or promotion.
+[Campaign finding](2026-11-03-rtx5090-campaign.md) ·
+[Ignis use and improvements](2026-11-03-ignis-improvements.md) ·
+[Sanitized evidence](2026-11-03-rtx5090-campaign-evidence/README.md).
+
 **2026-11-01 Swift TP1 GPU0 qualification and qualification accepted:** retained
 functional, context, image, agentic, SWE (4/5 resolved), stability, capacity
 (72/72) and resource-window checks supported qualification acceptance. Fresh C2 is the user-preference throughput setting with

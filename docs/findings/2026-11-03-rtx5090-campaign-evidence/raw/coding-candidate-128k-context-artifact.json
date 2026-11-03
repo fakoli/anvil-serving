@@ -1,0 +1,157 @@
+{
+  "data": {
+    "created_at": "2026-11-03T12:07:42.338808Z",
+    "failure": {
+      "class": "worker_runtime",
+      "code": "bad_spec",
+      "message": "parameters exceed the item limit"
+    },
+    "partial": true,
+    "provenance": {
+      "endpoint": {
+        "base_url": "[private operator or asset text withheld]",
+        "model": "[private identity withheld]"
+      },
+      "finished_at": "2026-11-03T12:07:42.338722Z",
+      "started_at": "2026-11-03T11:15:13.702923Z",
+      "submitted_at": "2026-11-03T11:14:32.860952+00:00",
+      "worker": "[private topology withheld]"
+    },
+    "results": {
+      "evidence": {
+        "completeness": "failed",
+        "created_at": "2026-11-03T12:07:42.323702Z",
+        "evidence_kind": "measured",
+        "failure": {
+          "class": "worker_runtime",
+          "code": "bad_spec",
+          "message": "parameters exceed the item limit"
+        },
+        "identities": {
+          "concurrency": {
+            "configured_lanes": 1,
+            "test_requests_sequential": true
+          },
+          "context": {
+            "configured_tokens": 131072
+          },
+          "dataset": {
+            "name": "deterministic-native",
+            "profile_sha256": "[private fingerprint withheld]"
+          },
+          "hardware": {
+            "driver": "621.01",
+            "gpu": "NVIDIA GeForce RTX 5090",
+            "ram_total_bytes": 100582346752,
+            "vram_total_mib": 32607
+          },
+          "harnesses": {
+            "native": {
+              "schema": "anvil-serving.context/v1"
+            }
+          },
+          "image": {
+            "reference": "anvil-ninfer@[private fingerprint withheld]"
+          },
+          "model": {
+            "artifact_sha256": "[private fingerprint withheld]",
+            "repo": "[private identity withheld]",
+            "require_complete_cache": true,
+            "revision": "[private identity withheld]",
+            "volume": "[private topology withheld]"
+          },
+          "runtime": {
+            "engine": "ninfer",
+            "recipe_digest_semantics": "SHA256 of retained TOML input bytes; managed canonical label is captured separately",
+            "recipe_sha256": "[private fingerprint withheld]",
+            "revision": "[private identity withheld]"
+          },
+          "served_model": {
+            "configured_context": 131072,
+            "id": "[private-model]"
+          },
+          "topology": {
+            "kind": "co-resident-benchmark-client",
+            "worker_id": "[private topology withheld]"
+          }
+        },
+        "promotion": {
+          "authorized": false,
+          "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+        },
+        "run": {
+          "ownership_id": "llm-campaign-20261103",
+          "profile": "scout",
+          "run_id": "coding-candidate-128k-context-20261103",
+          "spec_sha256": "[private fingerprint withheld]",
+          "suite": "context"
+        },
+        "schema": "anvil-serving.benchmark-evidence/v1",
+        "stages": [
+          {
+            "evidence": [
+              {
+                "bytes": 553,
+                "path": "evidence/0-assets.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "asset_preparation",
+            "sequence": 0,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 1980,
+                "path": "evidence/0-preflight.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "preflight",
+            "sequence": 1,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 451399,
+                "path": "evidence/0-context.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "context",
+            "sequence": 2,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 74,
+                "path": "evidence/0-failure.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "failure",
+            "sequence": 3,
+            "status": "failed"
+          }
+        ],
+        "summary": {
+          "attempted": true,
+          "completed": false
+        }
+      }
+    },
+    "run": {
+      "ownership_id": "llm-campaign-20261103",
+      "profile": "scout",
+      "run_id": "coding-candidate-128k-context-20261103",
+      "spec_sha256": "[private fingerprint withheld]",
+      "suite": "context"
+    },
+    "schema": "anvil-serving.benchmark-result/v1",
+    "status": "failed"
+  },
+  "ok": true
+}

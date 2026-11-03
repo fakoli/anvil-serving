@@ -1,0 +1,533 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-03-rtx5090-campaign",
+    "publication": "sanitized retrospective derivative",
+    "structurally_complete": true,
+    "full_serving_comparison_complete": false,
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-observation/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.agentic/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.coding-fixture-grade/v1",
+    "anvil-serving.context-curve-summary/v1",
+    "anvil-serving.context-curve/v1",
+    "anvil-serving.context-observation/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.context/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.public-resource-observations/v1",
+    "anvil-serving.public-workload-description/v1",
+    "anvil-serving.publication-redaction/v1",
+    "anvil-serving.stability-scenario/v1",
+    "anvil-serving.stability/v1",
+    "local-runtime-reasoning-observation/v1",
+    "multimodal-benchmark-evidence/v1",
+    "multimodal-corpus/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "c232f3fe5f5e31dcfed9bd5b62847ba3114b1f578ab57b7b3f5a7b8e8d32d7b0",
+          "bytes": 1605
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "77a00d9e307ac61e7233f99881e94a33f64eef8be3d3ebd9fb4b7d09a5364080",
+          "bytes": 3236
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "8cbf3daf4b4bf80d633fc704c225c81ed93db33dc27b179dda909e074fe6809e",
+          "bytes": 1352
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.md",
+          "sha256": "f54f349759089e054f06a670ac2eb451aa0ed1f574fb498d51b31e4d2f4be01e",
+          "bytes": 1417
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.md",
+          "sha256": "bdb68f440347877e2b6752c728789ab3d4707cf813755725e8c7ea48aceae50f",
+          "bytes": 4051
+        },
+        {
+          "path": "redaction-ledger.json",
+          "sha256": "5804ecbcbe6c152b0de706fd34c6ee9d24294da761a95112dde4fe941a644597",
+          "bytes": 4409
+        },
+        {
+          "path": "resource-observations.json",
+          "sha256": "fcb3a0bf22967183e557011b3ea1e4c169f0ae78149a855a74f8462e4ef1d4db",
+          "bytes": 460
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/coding-candidate-128k-agentic-deep-raw.json",
+          "sha256": "ea2c0c7c711437ab0d13cd955b51e7b8aee06af4690485693f462c4cb1a30e8f",
+          "bytes": 208519
+        },
+        {
+          "path": "raw/coding-candidate-128k-context-artifact.json",
+          "sha256": "9d3b9189a5163f707e3b24b4514153a81aeedfd62a983974f9053618fad8702d",
+          "bytes": 4877
+        },
+        {
+          "path": "raw/coding-candidate-128k-context-raw.json",
+          "sha256": "ce2fb6fae8ac830116347a873a8a2a2125abe81ea4ac0ea7560d9a4bcd944d82",
+          "bytes": 465694
+        },
+        {
+          "path": "raw/coding-candidate-128k-recheck-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/coding-candidate-128k-recheck-coding.json",
+          "sha256": "98ca8076fba89a9913e6fdb968d77f9ae9f2a6c704eeb045e5feaee3509ac81f",
+          "bytes": 37334
+        },
+        {
+          "path": "raw/coding-candidate-coding-grade-final.json",
+          "sha256": "6605d7824012efe3eb0fee04fdb47447aae4d1b0cefb0db81a1a347dec88fcc0",
+          "bytes": 26382
+        },
+        {
+          "path": "raw/coding-candidate-coding.json",
+          "sha256": "462745626d467b456f7376116cd3e7633528c5e43034947929941337e176b95a",
+          "bytes": 37333
+        },
+        {
+          "path": "raw/coding-candidate-df-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/coding-candidate-df-coding.json",
+          "sha256": "0a2d143b6abd7109fd6b33b55af58e873fc09fde8b89da6de40d5bd48bd403b6",
+          "bytes": 37316
+        },
+        {
+          "path": "raw/historical-reference-coding-grade-final.json",
+          "sha256": "c41cd29c231c2e827c167f75cd79f040809ad81a8742a2ec8066ed4b1d576280",
+          "bytes": 26986
+        },
+        {
+          "path": "raw/historical-reference-coding.json",
+          "sha256": "3045d9d5a5613ee0e51ad1658220c2e65f08a3cd99c5195bb95b6215abacbd3b",
+          "bytes": 37289
+        },
+        {
+          "path": "raw/ignis-256k-vision-agentic-artifact.json",
+          "sha256": "061ba7321266294af1b17151c69d681ab95ae34f55ed3e225e1dc32bc7d249be",
+          "bytes": 4554
+        },
+        {
+          "path": "raw/ignis-256k-vision-agentic-raw.json",
+          "sha256": "75c3702e08d9a3f7725eddf9ff315b44269a3a57eebd592640486fd170847f7a",
+          "bytes": 201384
+        },
+        {
+          "path": "raw/ignis-256k-vision-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/ignis-256k-vision-coding.json",
+          "sha256": "25be8b5414eaa15c84386ac26d32399aee22af53ffc08988ff891775cfa7dfc0",
+          "bytes": 36008
+        },
+        {
+          "path": "raw/ignis-256k-vision-context-artifact.json",
+          "sha256": "d0cc9379c55c653234cb82f8ea4690c4e57ed2ffa03cecdca89ff3f2424d800c",
+          "bytes": 7254
+        },
+        {
+          "path": "raw/ignis-256k-vision-context-raw.json",
+          "sha256": "712abdda3ebafbb56ffa6e01c63946e3bc1ebf3f51fa94907cc058cfda81e64a",
+          "bytes": 94399
+        },
+        {
+          "path": "raw/ignis-256k-vision-final-status.json",
+          "sha256": "4227b8d280d22fec15cb4f049d9750c9124ffd4191537a38b480cec4332c7ada",
+          "bytes": 1063
+        },
+        {
+          "path": "raw/ignis-256k-vision-models.json",
+          "sha256": "cadba5af03884f729ba3f36ed30b5eee631ab69464d762f836f12ffc66c06809",
+          "bytes": 303
+        },
+        {
+          "path": "raw/ignis-256k-vision-multimodal.json",
+          "sha256": "60ec43105b1fb85f1238b63f68558f8b794026d79631061e5caf6bab9e052d9f",
+          "bytes": 29064
+        },
+        {
+          "path": "raw/ignis-256k-vision-preflight-disabled-v2.json",
+          "sha256": "0fbb92cae4d4cce11479dd527b0eac4273af99d0b1dcda4768aba6a115b51c92",
+          "bytes": 10127
+        },
+        {
+          "path": "raw/ignis-256k-vision-preflight-disabled.json",
+          "sha256": "4a79753752f10c6ed703a07d81d19fcf51353eaab871a105192bc75cd6154b92",
+          "bytes": 10177
+        },
+        {
+          "path": "raw/ignis-256k-vision-start-status.json",
+          "sha256": "f7e1c5c6db628780ff33a6f65adda5a966cf0618068a44dbdde868fe037c9df2",
+          "bytes": 1064
+        },
+        {
+          "path": "raw/ignis-budget1024-coding-grade-final.json",
+          "sha256": "8c2f2de131f4fcd6d1883244904fdc8332fa555c2e2a1b85e5d1aeb52d8c0fe4",
+          "bytes": 26529
+        },
+        {
+          "path": "raw/ignis-budget1024-coding-reasoning-observation.json",
+          "sha256": "289132b38e9f7acc2e69b94428ca781cb2bfb720f82defb2eae8b125d8d11f18",
+          "bytes": 7365
+        },
+        {
+          "path": "raw/ignis-budget1024-coding.json",
+          "sha256": "2f0513804b5f4a85f0d5b85e6d8606b8c18c1f6f858f74354592f5ddeb802e43",
+          "bytes": 35957
+        },
+        {
+          "path": "raw/ignis-budget4096-agentic-raw.json",
+          "sha256": "16d4d560140404072484971e4a79e6f972e1b49cd24248e97bc2645e8cfe9636",
+          "bytes": 201379
+        },
+        {
+          "path": "raw/ignis-budget4096-capacity16-120.json",
+          "sha256": "b3106225270161bc5888b037162cedf80ece1dc64e99e65b4c0c6f0fd08b9995",
+          "bytes": 180198
+        },
+        {
+          "path": "raw/ignis-budget4096-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/ignis-budget4096-coding-reasoning-observation.json",
+          "sha256": "349f687b0d37a6665a26fcd34e85c53d6370b15a98b74fe549fb6a4a463d1442",
+          "bytes": 7386
+        },
+        {
+          "path": "raw/ignis-budget4096-coding.json",
+          "sha256": "6b937caf02501207c9828b31cad9fd2cb86db1deb8a92eb0249d075ad7d1e34f",
+          "bytes": 35987
+        },
+        {
+          "path": "raw/ignis-budget4096-context-raw.json",
+          "sha256": "4f69e37906882772c70505fe22896cd13356b14de625acc2fb39e2681675cc7e",
+          "bytes": 273188
+        },
+        {
+          "path": "raw/ignis-budget4096-stability-overlap.json",
+          "sha256": "f156089401f3fe9414dacf05ac86448359061dada459b9f391c085cc34c5868e",
+          "bytes": 15553
+        },
+        {
+          "path": "raw/ignis-budget4096-stability-serial.json",
+          "sha256": "bbb3fdfac2bea977c357dd6217fe9af2df5144f492b2974e62d60c340ea9c5f0",
+          "bytes": 15424
+        },
+        {
+          "path": "raw/ignis-coding-grade-final.json",
+          "sha256": "2a5058f0fe795be2b2238eaf6486306d4265a3a3de04a4331b6c9c220730c27b",
+          "bytes": 25346
+        },
+        {
+          "path": "raw/ignis-coding.json",
+          "sha256": "8f97de013df6d2e0ffde5a38cb87024a3776fc25289e66460db5d4e995d86887",
+          "bytes": 35125
+        },
+        {
+          "path": "raw/ignis-l4-thinking-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/ignis-l4-thinking-coding.json",
+          "sha256": "bd62383d30fb193ea2ea2c2f943c29a168626951c65569a9a3be8e38b41b3456",
+          "bytes": 36895
+        },
+        {
+          "path": "raw/qat-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/qat-coding.json",
+          "sha256": "1960323ff8aa5b67d9fc899fe65d81cc178b9113bd18c0e07ddee47d9577b879",
+          "bytes": 37304
+        },
+        {
+          "path": "raw/qat-df-coding-grade-final.json",
+          "sha256": "f95041e76b5b2fddd5088ec52a7ae686d0cbf4e2db782044facf1f5e1123a67b",
+          "bytes": 27189
+        },
+        {
+          "path": "raw/qat-df-coding.json",
+          "sha256": "0a5e04ed4b826b86cc092c8cbd7d72a8875ab2638fae527445ddf403e3884af6",
+          "bytes": 37350
+        },
+        {
+          "path": "raw/qat-draft3-coding-grade-final.json",
+          "sha256": "702783d7a2d44b4dd5f7896eeb298ba3497a3db6b27a7009fb66c420566500fb",
+          "bytes": 26385
+        },
+        {
+          "path": "raw/qat-draft3-coding.json",
+          "sha256": "a6f9678d137fb311dbd95af3a5db1dab10ee322f85deb2382c5321a8d2d6f482",
+          "bytes": 37315
+        },
+        {
+          "path": "raw/qat-nospec160k-failed-load-status.json",
+          "sha256": "e4e257b4191dd4508bfae73e266ec17a9fdb2331641a03628fb40ddebf8aeb04",
+          "bytes": 1065
+        },
+        {
+          "path": "raw/qat-reverse-capacity16-120.json",
+          "sha256": "0c5d34216cf33645102e154c7079457c118c8c6a3a03166fd6601418039642ba",
+          "bytes": 180252
+        },
+        {
+          "path": "raw/qat-reverse-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/qat-reverse-coding.json",
+          "sha256": "6ae8bbe7b76774bf095740c4b5d1b8aee9a01695618477218e9df8625d0bc2b9",
+          "bytes": 37322
+        },
+        {
+          "path": "raw/qat-text160k-agentic-raw.json",
+          "sha256": "d84e7d74a4658d2b5d854c0f24b6813f97dc72b8974ffac6a8da80bee9627381",
+          "bytes": 208413
+        },
+        {
+          "path": "raw/qat-text160k-coding-grade-final.json",
+          "sha256": "37dc3ae995aca49b7b6adadf165656b3118c5586e68e3523d91502c81d80ee5e",
+          "bytes": 26653
+        },
+        {
+          "path": "raw/qat-text160k-coding.json",
+          "sha256": "424c1c3893f26ee2f01f6f290f5cf7d99d453d841046e22c7e5aa0b705a139c6",
+          "bytes": 37325
+        },
+        {
+          "path": "raw/qat-text160k-context-raw.json",
+          "sha256": "f86131629efed29f7f20fd5c8f06b5aa51462744e0c93ae11603a690a9b83c99",
+          "bytes": 96504
+        },
+        {
+          "path": "raw/qat-vision-load-finding.json",
+          "sha256": "2ecc311cde0f4f951f8066406c5ccb4e88f3ec6c82b02925fdc1554df0dd907e",
+          "bytes": 2084
+        },
+        {
+          "path": "raw/reference-budget1024-coding-grade-final.json",
+          "sha256": "6a0abd3ff717ea33fe4e10349f4738efa64142fe05b9e3bcb549c36109bedc13",
+          "bytes": 22640
+        },
+        {
+          "path": "raw/reference-budget1024-coding.json",
+          "sha256": "c26101d47a3cf50fbad70041bd25be6154e9573483160b3ddd9a0bdeb65f5e52",
+          "bytes": 38238
+        },
+        {
+          "path": "raw/reference-coding-grade-final.json",
+          "sha256": "d6bdcaf066cca154806e345d07ff49717594fc072a3082939838bd318a1c6e34",
+          "bytes": 27242
+        },
+        {
+          "path": "raw/reference-coding.json",
+          "sha256": "85b5fa8e36529bced4ecac2a02c1139aa2b912593265f9207c0ce9c700f1b4f9",
+          "bytes": 32950
+        },
+        {
+          "path": "raw/reference-matched-capacity16-120.json",
+          "sha256": "c5f493adf4d928495021864b26fd7e54daebdea871d6d19e0fd900241031406e",
+          "bytes": 180013
+        },
+        {
+          "path": "raw/reference-matched-coding-grade-final.json",
+          "sha256": "f95041e76b5b2fddd5088ec52a7ae686d0cbf4e2db782044facf1f5e1123a67b",
+          "bytes": 27189
+        },
+        {
+          "path": "raw/reference-matched-coding.json",
+          "sha256": "c013296b7c152a6f8610fc4a3d7396753410a5a04b7c59060f9d79e6c83dbca7",
+          "bytes": 37313
+        },
+        {
+          "path": "raw/reference-matched-thinking-coding-grade-final.json",
+          "sha256": "d6dcc08daf01a1abfbfc165da3b4d8036a9043a377fc6107369b66cf5ab11364",
+          "bytes": 24063
+        },
+        {
+          "path": "raw/reference-matched-thinking-coding.json",
+          "sha256": "6d81ea4241356b07ab491b803210253d6f5c0f56fec0550e1d4b3b700172475d",
+          "bytes": 38605
+        },
+        {
+          "path": "raw/reference-restored-agentic-raw.json",
+          "sha256": "33277fdc8f1743c89bb9d32ddd4ac41ca29c9ecf34325770fdbc8d6aa6eb013c",
+          "bytes": 190243
+        },
+        {
+          "path": "raw/reference-restored-coding-grade-final.json",
+          "sha256": "d6bdcaf066cca154806e345d07ff49717594fc072a3082939838bd318a1c6e34",
+          "bytes": 27242
+        },
+        {
+          "path": "raw/reference-restored-coding.json",
+          "sha256": "acb9bfa7a8f5e72eb0569919895ecf71ffea082590a77d5712aa3a07b23f3b63",
+          "bytes": 33000
+        },
+        {
+          "path": "raw/reference-restored-context-raw.json",
+          "sha256": "5bf7886a98964a8fd9b424e63a3272eadd2a96a8de49155b799431f9fc4b724a",
+          "bytes": 32848
+        },
+        {
+          "path": "raw/reference-restored-multimodal.json",
+          "sha256": "7556b120fe92a75c40bde5c270e18da8457553629498f24b151e6fc659d19cbf",
+          "bytes": 27692
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "2bdd1737ee1f859f7ce420b55a7cc535c4f4d8cde1035f38d655bc4ff536d8a5",
+          "bytes": 2879
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/restoration-final-health.json",
+          "sha256": "5f202cf392d19b4ce83f12e056933f88d813241ce1db9eb377c55c992fabd944",
+          "bytes": 1493
+        },
+        {
+          "path": "raw/restoration-final-main-status.json",
+          "sha256": "7013b0d6e5d9eb9d6ccda616ac8253c32167ac5b644cfcbe0a5c0b5b4b8246a1",
+          "bytes": 1620
+        },
+        {
+          "path": "restoration.json",
+          "sha256": "5a195fca1dfcd661cd9fe822b415b8bd0a20a6d8bb946b40693a91c677d4e12d",
+          "bytes": 574
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "capacity-comparison.svg",
+          "sha256": "6cb4549c88203c6768d2efd06f2192ab2f998b546061d1851dbaff1bb97de63f",
+          "bytes": 8690
+        },
+        {
+          "path": "capacity-graph-data.json",
+          "sha256": "e2d22f59091a7562c8c70ef985efd0f8c7dcf90aedb2d6af37fd5eadfcc00236",
+          "bytes": 6191
+        },
+        {
+          "path": "capacity-graph-manifest.json",
+          "sha256": "ec2d7349b07c1aa386eb1fec3faebbe6a303097cd93aa8593c4c6b3abe1a9b06",
+          "bytes": 4559
+        },
+        {
+          "path": "coding-results.md",
+          "sha256": "0bee1a30ec5ca1561c590a9761eb23d8cab8a82ad1df00d451d0250ba10cfa2e",
+          "bytes": 3192
+        },
+        {
+          "path": "summary.json",
+          "sha256": "d3a2b8cd14431eb515496e1fe36bd48219047f80e0a2127cc50f9dfce45d81e8",
+          "bytes": 22261
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "0a623c0471879c739bc325f29b4dfb31992f348a9a74c19e8a634d7fbab200f7",
+          "bytes": 3527
+        }
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 5 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

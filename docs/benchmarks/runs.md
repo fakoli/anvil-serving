@@ -1,5 +1,18 @@
 # Benchmark run catalog
 
+## 2026-11-03 RTX5090 candidate campaign
+
+| Configuration | Measured GPU / path | PRO relationship | Evidence labels | Decision labels | Evidence |
+|---|---|---|---|---|---|
+| Private candidate on Ignis 0.8.0,32K budget pair and256K vision profile | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional, bounded capacity | challenger, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) · [Ignis note](../findings/2026-11-03-ignis-improvements.md) |
+| Private QAT/NInfer text160K and failed vision sibling | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; compatibility-only failure | challenger / rejected, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+| Private coding/NInfer128K fresh recheck and earlier distinct process | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; failed outer context job retained | challenger, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+| Private historical and restored160K vision references | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; historical-invalid (initial identity provenance incomplete) | no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+
+Selected candidate configurations passed123/123 coding checks; the restored
+reference114/123. These are seven task types repeated three times with different
+loaded policies/capabilities, not a complete serving comparison or universal ranking.
+
 ## 2026-11-01 Swift TP1 GPU0 qualification accepted
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
