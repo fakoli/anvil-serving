@@ -196,6 +196,67 @@ def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, 
     }
 
 
+def test_router_routes_init_forwards_confirmation_and_creates_authority(tmp_path, capsys):
+    state = tmp_path / "routes.json"
+    config = tmp_path / "router.toml"
+    config.write_text(
+        "[server]\n"
+        'auth_env = "ROUTER_TOKEN"\n'
+        f'route_state_path = "{state}"\n'
+        "[router.model_routes]\n"
+        '"llm.primary" = "primary"\n'
+        "[[router.tiers]]\n"
+        'id = "primary"\n'
+        'base_url = "http://127.0.0.1:30001/v1"\n'
+        'dialect = "openai"\n'
+        'privacy = "local"\n'
+        'tool_support = true\n'
+        'auth_env = "MODEL_TOKEN"\n'
+        'model = "test-model"\n'
+        "context_limit = 1024\n"
+        "max_concurrency = 1\n"
+        'health_path = "/health"\n'
+        "model_identity = true\n",
+        encoding="utf-8",
+    )
+
+    assert cli.main(["router", "routes", "init", "--config", str(config), "--native"]) == 1
+    assert not state.exists()
+    capsys.readouterr()
+
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--native", "--confirm",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["route_revision"] == 0
+    assert state.exists()
+
+
+def test_router_routes_apply_forwards_confirmation_to_route_client(monkeypatch, capsys):
+    seen = {}
+
+    def request(action, **kwargs):
+        seen.update(action=action, **kwargs)
+        return {"applied": True}
+
+    monkeypatch.setattr(router_manage, "route_update_request", request)
+
+    assert cli.main([
+        "router", "routes", "apply", "--preview-id", "a" * 32,
+        "--router-url", "http://127.0.0.1:18000", "--confirm",
+    ]) == 0
+    assert seen == {
+        "action": "apply",
+        "candidate_bytes": None,
+        "preview_id": "a" * 32,
+        "revision": None,
+        "transaction_id": None,
+        "drain_timeout": None,
+        "router_url": "http://127.0.0.1:18000",
+        "confirm": True,
+    }
+    assert json.loads(capsys.readouterr().out) == {"applied": True}
+
+
 def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(monkeypatch, capsys):
     monkeypatch.setattr(cli.sys, "stdin", io.StringIO())
     monkeypatch.setattr(

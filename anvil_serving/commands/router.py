@@ -298,6 +298,7 @@ def commands() -> CommandNode:
                 children=(
                     _resource_node("init", "Initialize the protected live route authority during managed installation.",
                         "anvil_serving.router_manage", role="router", argv_prefix=("routes", "init"),
+                        forward_confirm_flag=True,
                         options=(_option("--config", summary="Managed router TOML declaring route_state_path.", value_name="PATH"),
                                  _option("--compose", summary="Stopped managed router Compose file for volume-safe initialization.", value_name="PATH"),
                                  _option("--env-file", summary="Selected Compose environment file.", value_name="PATH"),
@@ -313,6 +314,7 @@ def commands() -> CommandNode:
                         mutation="read", docs_anchor="docs/cli/router.md#live-route-updates"),
                     _resource_node("apply", "Apply one content-bound live route preview.",
                         "anvil_serving.router_manage", role="router", argv_prefix=("routes", "apply"),
+                        forward_confirm_flag=True,
                         options=(_option("--preview-id", summary="Opaque preview ID.", value_name="ID"),
                                  _option("--router-url", summary="Private router base URL.", value_name="URL"),
                                  _option("--confirm", summary="Publish the content-bound preview.", requires_confirmation=True)),
