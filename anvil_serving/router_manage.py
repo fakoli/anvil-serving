@@ -2444,7 +2444,7 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
 
     mount = covering(state_target)
     lock_mount = covering(PurePosixPath(str(state_target) + ".lock"))
-    if (mount is None or mount is not lock_mount or mount.get("read_only") is not False
+    if (mount is None or mount is not lock_mount or mount.get("read_only", False) is not False
             or mount.get("type") not in {"bind", "volume"}):
         raise ValueError("router_route_state_mount_unknown")
     image = roster["rendered"]["services"][service].get("image")

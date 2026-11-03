@@ -336,7 +336,7 @@ def test_managed_route_state_initializer_uses_compose_volume_and_container_confi
 
     config = tmp_path / "router.toml"
     config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/route-state.json"\n[router]\n')
-    state_mount = {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router", "read_only": False}
+    state_mount = {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router"}
     config_mount = {"type": "bind", "source": str(config), "target": "/etc/anvil/config.toml", "read_only": True}
     roster = {"rendered": {"services": {"router": {"image": "router:test", "volumes": [config_mount, state_mount]}}}}
     captured = {}
