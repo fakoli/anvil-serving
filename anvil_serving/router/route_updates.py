@@ -37,7 +37,7 @@ _HOT_FIELDS = frozenset({
 })
 _METADATA_KEYS = {
     "fingerprint": {"model_revision", "engine_version", "image_digest", "config_fingerprint"},
-    "capacity": {"gpu_role", "gpu_name", "gpu_memory_total_mib", "image_limit", "video_limit",
+    "capacity": {"gpu_role", "gpu_roles", "gpu_name", "gpu_memory_total_mib", "image_limit", "video_limit",
                  "image_tokens_estimate", "video_tokens_estimate", "kv_cache_capacity_tokens",
                  "scheduler_max_num_seqs", "model_memory_gib", "media_admission_enabled"},
     "capabilities": {"modalities", "thinking", "compat", "images_per_request", "video_per_request"},

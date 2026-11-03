@@ -369,6 +369,36 @@ def test_deep_freeze_detaches_metadata():
     assert config.tier("a").params["capabilities"]["modalities"] == ("text",)
 
 
+def test_capacity_gpu_roles_survives_an_unrelated_hot_update(tmp_path):
+    raw = configuration(extra='params = { capacity = { gpu_roles = ["gpu-a", "gpu-b"] } }')
+    path = tmp_path / "routes.json"
+    updates.initialize_route_state(raw, path)
+    manager = updates.RouteUpdateManager(Runtime(raw), raw, path)
+    try:
+        manager.restore()
+        result = apply(manager, raw.replace(b"max_concurrency = 1", b"max_concurrency = 2", 1))
+        assert result["route_revision"] == 1
+        roles = manager.routing.snapshot.config.tier("a").params["capacity"]["gpu_roles"]
+        assert roles == ("gpu-a", "gpu-b")
+        with pytest.raises(TypeError):
+            manager.routing.snapshot.config.tier("a").params["capacity"]["gpu_roles"] = ()
+        state = json.loads(path.read_text())
+        assert state["projection"] == updates.route_projection(manager.routing.snapshot.config)
+    finally:
+        manager.close()
+
+
+@pytest.mark.parametrize(("extra", "error"), [
+    ('params = { capacity = { unsupported = 1 } }', "route_metadata_invalid"),
+    ('params = { capacity = { gpu_roles = ["gpu-a\\n"] } }', "route_control_character"),
+])
+def test_capacity_metadata_rejects_unknown_keys_and_control_characters_before_hold(manager, extra, error):
+    candidate = configuration(extra=extra).replace(b"max_concurrency = 1", b"max_concurrency = 2", 1)
+    with pytest.raises(updates.RouteUpdateError, match=error):
+        manager.preview(candidate)
+    assert not manager.routing.holds and manager.status()["route_revision"] == 0
+
+
 def test_initialize_reconciles_lost_directory_sync_and_is_exactly_idempotent(tmp_path, monkeypatch):
     original = updates._sync_directory
     calls = []
