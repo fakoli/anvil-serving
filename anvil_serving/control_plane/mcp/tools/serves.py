@@ -457,6 +457,7 @@ def tool_serves_promote(args: dict) -> dict:
     plan_name = _str_arg(args, "plan", required=True)
     rollback = _arg_bool(args.get("rollback"), False, name="rollback")
     resume = _arg_bool(args.get("resume"), False, name="resume")
+    recover_prepared = _str_arg(args, "recover_prepared", "")
     dry_run, confirm, apply_requested = _apply_gate(
         args,
         requires_human=True,
@@ -465,6 +466,13 @@ def tool_serves_promote(args: dict) -> dict:
         ),
     )
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 7200, min_value=1, max_value=14400)
+    if recover_prepared:
+        if not rollback:
+            raise ToolError("bad_recovery", "recover_prepared requires rollback=true")
+        if resume:
+            raise ToolError("bad_recovery", "recover_prepared cannot be combined with resume=true")
+        if not apply_requested:
+            raise ToolError("bad_recovery", "recover_prepared requires an explicit apply request")
     argv = [
         sys.executable,
         "-m",
@@ -477,6 +485,8 @@ def tool_serves_promote(args: dict) -> dict:
     ]
     if rollback:
         argv.append("--rollback")
+    if recover_prepared:
+        argv.extend(["--recover-prepared", recover_prepared])
     if resume:
         argv.append("--resume")
     if not apply_requested:
@@ -803,6 +813,7 @@ FAMILY = ToolFamily(
                     "plan": {"type": "string"},
                     "rollback": {"type": "boolean"},
                     "resume": {"type": "boolean"},
+                    "recover_prepared": {"type": "string", "pattern": "^[0-9a-f]{32}$"},
                     "dry_run": {"type": "boolean"},
                     "confirm": {"type": "boolean"},
                     "human_approved": {"type": "boolean"},
