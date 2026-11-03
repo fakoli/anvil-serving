@@ -1,0 +1,179 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "artifact_sha256": "c5f493adf4d928495021864b26fd7e54daebdea871d6d19e0fd900241031406e",
+              "value": 316.3712999667041,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "artifact_sha256": "0c5d34216cf33645102e154c7079457c118c8c6a3a03166fd6601418039642ba",
+              "value": 325.2966000000015,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "artifact_sha256": "b3106225270161bc5888b037162cedf80ece1dc64e99e65b4c0c6f0fd08b9995",
+              "value": 1113.6585000203922,
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ],
+      "title": "First-token median",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "artifact_sha256": "c5f493adf4d928495021864b26fd7e54daebdea871d6d19e0fd900241031406e",
+              "value": 400.82190005341545,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "artifact_sha256": "0c5d34216cf33645102e154c7079457c118c8c6a3a03166fd6601418039642ba",
+              "value": 645.8848000038415,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "artifact_sha256": "b3106225270161bc5888b037162cedf80ece1dc64e99e65b4c0c6f0fd08b9995",
+              "value": 1169.470300024841,
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ],
+      "title": "End-to-end median",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "milliseconds"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "artifact_sha256": "c5f493adf4d928495021864b26fd7e54daebdea871d6d19e0fd900241031406e",
+              "value": 331.7154307776245,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "artifact_sha256": "0c5d34216cf33645102e154c7079457c118c8c6a3a03166fd6601418039642ba",
+              "value": 87.33085107054491,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "artifact_sha256": "b3106225270161bc5888b037162cedf80ece1dc64e99e65b4c0c6f0fd08b9995",
+              "value": 484.3735704461897,
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ],
+      "title": "Decode median",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "tokens/second"
+    },
+    {
+      "metric": "metrics.ttft_p99_ms",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "artifact_sha256": "c5f493adf4d928495021864b26fd7e54daebdea871d6d19e0fd900241031406e",
+              "value": 331.48029999574646,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "artifact_sha256": "0c5d34216cf33645102e154c7079457c118c8c6a3a03166fd6601418039642ba",
+              "value": 331.1229999526404,
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "artifact_sha256": "b3106225270161bc5888b037162cedf80ece1dc64e99e65b4c0c6f0fd08b9995",
+              "value": 1141.3673000060953,
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ],
+      "title": "First-token p99",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "milliseconds;120 samples;nearest rank"
+    }
+  ],
+  "metric_semantics": {
+    "cache": "unique request prefixes with canaries",
+    "context": "4096 planned; actual usage3609-3687",
+    "identity": "Distinct private checkpoints/runtime profiles; reference and QAT configuredC1; Ignis configured4lanes but issuedC1. Same configured32K limit and16-word target; actual input/output tokenization differs. No isolated causal claim.",
+    "output": "16 exact words; native completion counts28 for Ignis and29 for both NInfer cells.",
+    "p99": "Nearest-rank empirical tail estimate; not an SLO",
+    "reasoning": "disabled"
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Different private checkpoints/runtimes;120 valid requests each;16 words;C1;not a model ranking.",
+  "title": "RTX5090: short-output configuration comparison"
+}

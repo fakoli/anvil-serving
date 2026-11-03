@@ -1,0 +1,47 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-11-03-rtx5090-campaign",
+  "sources": [
+    {
+      "id": "ignis-release",
+      "url": "https://github.com/gpillon/ignis/releases/tag/v0.8.0",
+      "observed_at": "2026-11-03T10:28:26.867072+00:00",
+      "age_class": "current-under-30-days",
+      "evidence_type": "official runtime release",
+      "decision_impact": "Use version 0.8.0 with verified release checksum",
+      "published_or_observed": "2026-10-24T14:14:11Z",
+      "hardware_runtime_relevance": "RTX50 profile available; independently pinned image and measured startup"
+    },
+    {
+      "id": "pinned-runtime-token-count-protocol",
+      "url": "https://github.com/Neroued/ninfer/blob/bace20dc70249eed6402b66d4852c6c3f9612905/src/serve/http_server.cpp",
+      "observed_at": "2026-11-03T11:28:44.485343+00:00",
+      "age_class": "historical-pinned-exact-runtime",
+      "evidence_type": "official immutable source code; API contract, not performance prior",
+      "decision_impact": "Responses input_tokens route exists; explicit generic protocol support can unblock native stability without engine mutation",
+      "published_or_observed": "2026-09-24T04:58:11Z",
+      "hardware_runtime_relevance": "exact source revision used by managed runtime image"
+    },
+    {
+      "id": "ignis-pinned-tokenize-contract",
+      "url": "https://github.com/gpillon/ignis/blob/950ee0d1c2cf6178cd7fec29df3f17c3e127f987/docs/specs/server/10-tokenize-and-count.md",
+      "published_or_observed": "2026-11-03T11:56:10.669987+00:00",
+      "observed_at": "2026-11-03T11:56:10.669987+00:00",
+      "age_class": "exact-pinned-release-contract",
+      "evidence_type": "official pinned API contract and CPU integration tests; not performance prior",
+      "hardware_runtime_relevance": "exact source commit of managed0.8.0runtime; chat counting uses same render path without GPU submission",
+      "decision_impact": "Explicit v1-tokenize protocol can reuse stability gate without model generation during calibration"
+    },
+    {
+      "id": "ninfer-bf16-vision-shape-contract",
+      "url": "https://raw.githubusercontent.com/Neroued/ninfer/bace20dc70249eed6402b66d4852c6c3f9612905/src/ops/linear/bf16/bf16_dispatch.cpp",
+      "published_or_observed": "2026-09-24T04:58:11Z",
+      "observed_at": "2026-11-03T14:49:07.768116+00:00",
+      "age_class": "historical-pinned-contract",
+      "evidence_type": "official pinned source verified against retained Git tree; not measured model behavior",
+      "hardware_runtime_relevance": "Exact runtime commit used by failed vision-enabled profile and passing text-only counterpart",
+      "decision_impact": "Dispatch accepts three BF16 matrix geometries and throws the observed unsupported-shape error for others. Vision binds additional projection/MLP shapes; specific failing tensor not logged. Keep vision incompatible, text-only trial separate. This40-day-old runtime source is an exact contract for the measured image, not a claim about newer releases."
+    }
+  ],
+  "scope": "Public runtime contracts only; exact model-selection research retained privately. Runtime source revisions are public source citations, not model asset fingerprints."
+}

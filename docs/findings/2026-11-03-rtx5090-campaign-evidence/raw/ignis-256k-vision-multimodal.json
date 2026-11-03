@@ -1,0 +1,1231 @@
+{
+  "aggregates": {
+    "case": {
+      "image-chart": {
+        "attempts": 3,
+        "latency_p50_seconds": 0.362545,
+        "latency_p95_seconds": 0.375348,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "image-ocr": {
+        "attempts": 3,
+        "latency_p50_seconds": 0.144961,
+        "latency_p95_seconds": 0.155322,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "image-scene": {
+        "attempts": 3,
+        "latency_p50_seconds": 0.746445,
+        "latency_p95_seconds": 0.879002,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "image-spatial-count": {
+        "attempts": 3,
+        "latency_p50_seconds": 0.118828,
+        "latency_p95_seconds": 0.122761,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "image-ui": {
+        "attempts": 3,
+        "latency_p50_seconds": 0.206296,
+        "latency_p95_seconds": 0.220665,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "multi-image-comparison": {
+        "attempts": 3,
+        "latency_p50_seconds": 0.232644,
+        "latency_p95_seconds": 0.444568,
+        "pass_rate": 1.0,
+        "passed": 3
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 18,
+        "latency_p50_seconds": 0.22413349999999999,
+        "latency_p95_seconds": 0.879002,
+        "pass_rate": 1.0,
+        "passed": 18
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.375348,
+      "usage": {
+        "completion_tokens": 92,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 341
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.362545,
+      "usage": {
+        "completion_tokens": 92,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 341
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 0.362259,
+      "usage": {
+        "completion_tokens": 92,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 341
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.155322,
+      "usage": {
+        "completion_tokens": 20,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 265
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.133132,
+      "usage": {
+        "completion_tokens": 20,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 265
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 0.144961,
+      "usage": {
+        "completion_tokens": 20,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 265
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.879002,
+      "usage": {
+        "completion_tokens": 158,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 407
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.727751,
+      "usage": {
+        "completion_tokens": 158,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 407
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 0.746445,
+      "usage": {
+        "completion_tokens": 158,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 407
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.122761,
+      "usage": {
+        "completion_tokens": 1,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 250
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.118828,
+      "usage": {
+        "completion_tokens": 1,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 250
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 0.106743,
+      "usage": {
+        "completion_tokens": 1,
+        "prompt_tokens": 249,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 250
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.220665,
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 279
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.206296,
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 279
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 0.206136,
+      "usage": {
+        "completion_tokens": 34,
+        "prompt_tokens": 245,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 279
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "[private fingerprint withheld]"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 0.444568,
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 471,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 532
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "[private fingerprint withheld]"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 0.227602,
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 471,
+        "prompt_tokens_details": {
+          "cached_tokens": 467
+        },
+        "total_tokens": 532
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "[private fingerprint withheld]"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "[private fingerprint withheld]"
+        }
+      ],
+      "modality": "image",
+      "output": "[text withheld]",
+      "passed": true,
+      "reasoning": {
+        "chars": 0,
+        "field": null,
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 0.232644,
+      "usage": {
+        "completion_tokens": 61,
+        "prompt_tokens": 471,
+        "prompt_tokens_details": {
+          "cached_tokens": 467
+        },
+        "total_tokens": 532
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "concurrency": 1,
+    "max_images_per_request": 4,
+    "max_tokens": 2048,
+    "max_videos_per_request": 1,
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.0,
+        "requested": 0.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": null,
+        "requested": null,
+        "sent": false
+      }
+    },
+    "thinking_mode": "disabled",
+    "timeout_seconds": 120.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "id": "image-scene",
+        "media": [
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "[private fingerprint withheld]"
+          }
+        ],
+        "modality": "image",
+        "prompt": "[text withheld]",
+        "repetitions": 3,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ocr",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "[private fingerprint withheld]"
+          }
+        ],
+        "modality": "image",
+        "prompt": "[text withheld]",
+        "repetitions": 3,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "id": "image-chart",
+        "media": [
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "[private fingerprint withheld]"
+          }
+        ],
+        "modality": "image",
+        "prompt": "[text withheld]",
+        "repetitions": 3,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ui",
+        "media": [
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "[private fingerprint withheld]"
+          }
+        ],
+        "modality": "image",
+        "prompt": "[text withheld]",
+        "repetitions": 3,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "id": "image-spatial-count",
+        "media": [
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "[private fingerprint withheld]"
+          }
+        ],
+        "modality": "image",
+        "prompt": "[text withheld]",
+        "repetitions": 3,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "id": "multi-image-comparison",
+        "media": [
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "[private fingerprint withheld]"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "[private fingerprint withheld]"
+          }
+        ],
+        "modality": "image",
+        "prompt": "[text withheld]",
+        "repetitions": 3,
+        "sampling": null
+      }
+    ],
+    "path": "[private operator or asset text withheld]",
+    "provenance": {
+      "license": "CC0-1.0",
+      "observed_date": "2026-08-15",
+      "source": "[text withheld]"
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "[private fingerprint withheld]"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-11-03T13:55:06Z",
+  "identity": {
+    "base_url": "[private operator or asset text withheld]",
+    "engine_build_ref": null,
+    "engine_revision": "[private fingerprint withheld]",
+    "hardware": "RTX5090",
+    "model": "[private identity withheld]",
+    "model_revision": "[private identity withheld]",
+    "runtime_image": "anvil-ignis@[private fingerprint withheld]",
+    "served_models": [
+      "[private-model]"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 18,
+  "requests": 18,
+  "run_id": "multimodal-20261103T135500Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-11-03T13:55:00Z"
+}
