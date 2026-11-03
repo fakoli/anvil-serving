@@ -756,8 +756,10 @@ anvil-serving router maintenance --config maintenance.json --preview-out preview
 anvil-serving router maintenance --config maintenance.json --confirm
 ```
 
-Installation prepares the protected declaration and authorization from the
-explicit human decision, final artifact identities and the fresh native preview.
+Installation prepares the protected declaration and phase authorization from
+the operator-approved bounded scope, final artifact identities and the fresh
+native preview. That approval persists across the declared sequence; only the
+machine-bound preview and phase authorization expire and are refreshed.
 The declaration names the exact Compose profile and its SHA-256, the protected
 authorization, and an absent protected receipt destination. Preview does not
 stop or reopen the router. Confirmation requires the exact preview digest and a
@@ -836,8 +838,9 @@ it does not resolve project dotenv or service environment files. The stopped
 owner's native preview binds its actual run, store, anchor, closed generation,
 roster and policy, while host observation binds daemon/start identity and the
 complete mounted-state consumer roster. Confirmation requires the exact fresh
-preview digest and a new explicit human acknowledgement of remote uncertainty.
-Neither a legacy-stop grant nor an earlier readmission grant can authorize it.
+preview digest and a phase authorization bound to that preview. Neither a
+legacy-stop grant nor an earlier readmission grant can authorize it. The
+operator's bounded approval remains effective unless the material scope changes.
 
 When the admitted Compose file requires credential interpolation, this phase's
 maintenance declaration can include an optional closed `environment` object:
@@ -872,7 +875,8 @@ and staged native custody commit establish its immutable death proof. Committed
 accounting and historical gaps are preserved; no migration or old-snapshot
 restore occurs. The intended successor is only an approved intent, not an
 automatic activation: use guarded `router up` separately. It starts CLOSED and
-requires a new successor-readmit preview and separate human acknowledgement.
+requires a new successor-readmit preview and separate phase authorization under
+the same bounded operator approval.
 
 For a successor whose router configuration uses a new read-only bind source,
 pass the completed current-stop receipt to the existing lifecycle command:
@@ -913,7 +917,7 @@ handshake; it does not start, stop, recreate or readmit a container. An exact
 already-finalized successor is an idempotent result. A changed or restarted
 successor, admitted or consumed closure, conflicting record, or mismatched
 transfer remains HOLD. Reopening traffic still requires its own fresh preview
-and human acknowledgement.
+and phase authorization.
 
 If the acknowledged successor fails its offline custody probe before it starts,
 the completed stop receipt also permits one explicit rollback to the exact
@@ -982,7 +986,8 @@ and acknowledged intent. Old runtimes reject this schema; recovery and subsequen
 startup both require the qualified successor. Guarded `router up` consumes the
 ready proof and starts CLOSED. Committed accounting remains intact; unfinished
 local requests retain interrupted/unknown outcomes. Remote work remains UNKNOWN
-and `drained` remains false. Readmission still needs its separate fresh approval.
+and `drained` remains false. Readmission still needs its separate fresh machine
+preview and phase authorization.
 
 ## Live route updates
 
