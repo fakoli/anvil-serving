@@ -306,7 +306,7 @@ def commands() -> CommandNode:
                                  _option("--current-stop-receipt", summary="Completed current-owner stop authorizing this exact stopped successor.", value_name="PATH"),
                                  _option("--native", summary="Initialize only an explicitly host-native state path."),
                                  _option("--confirm", summary="Initialize the protected route state exactly once.", requires_confirmation=True)),
-                        mutation="mutate", execution_runtime_roles=("native",), docs_anchor="docs/cli/router.md#live-route-updates"),
+                        mutation="mutate", execution_runtime_roles=("native", "docker"), docs_anchor="docs/cli/router.md#live-route-updates"),
                     _resource_node("preview", "Validate a bounded candidate route configuration.",
                         "anvil_serving.router_manage", role="router", argv_prefix=("routes", "preview"),
                         options=(_option("--config", summary="Candidate complete router TOML.", value_name="PATH"),

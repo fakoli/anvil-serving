@@ -267,12 +267,41 @@ def test_router_routes_apply_forwards_confirmation_to_route_client(monkeypatch, 
 def test_router_routes_init_forwards_current_stop_receipt_to_managed_initializer(tmp_path, monkeypatch, capsys):
     config = tmp_path / "router.toml"
     config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/protected/routes.json"\n[router]\n')
+    topology = tmp_path / "topology.toml"
+    topology.write_text(
+        "schema_version = 1\n"
+        'id = "router-routes-init-docker"\n'
+        'command_host = "host:primary"\n'
+        'command_runtime = "runtime:primary-native"\n\n'
+        "[[hosts]]\n"
+        'id = "primary"\n'
+        'roles = ["router"]\n'
+        'address = "127.0.0.1"\n'
+        'os = "linux"\n\n'
+        "[[runtimes]]\n"
+        'id = "primary-native"\n'
+        'host = "primary"\n'
+        'role = "native"\n\n'
+        "[[runtimes]]\n"
+        'id = "router-docker"\n'
+        'host = "primary"\n'
+        'role = "docker"\n\n'
+        "[[resources]]\n"
+        'id = "router-service"\n'
+        'role = "router"\n'
+        'host = "primary"\n'
+        'runtime = "router-docker"\n'
+        'endpoint = "http://127.0.0.1:30000"\n'
+        'endpoint_kind = "http"\n',
+        encoding="utf-8",
+    )
     captured = {}
     monkeypatch.setattr(router_manage, "initialize_route_state_managed", lambda *args, **kwargs: captured.update(
         args=args, kwargs=kwargs) or {"initialized": True, "route_revision": 0, "effective_route_sha256": "a" * 64})
     assert cli.main([
         "router", "routes", "init", "--config", str(config), "--compose", str(tmp_path / "compose.yml"),
-        "--current-stop-receipt", str(tmp_path / "receipt.json"), "--confirm",
+        "--current-stop-receipt", str(tmp_path / "receipt.json"), "--topology", str(topology),
+        "--transport", "local", "--confirm",
     ]) == 0
     assert captured["kwargs"]["current_stop_receipt"] == str(tmp_path / "receipt.json")
     assert captured["kwargs"]["env_file"] is None
