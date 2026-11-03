@@ -340,10 +340,14 @@ def test_managed_route_state_initializer_uses_compose_volume_and_container_confi
     config_mount = {"type": "bind", "source": str(config), "target": "/etc/anvil/config.toml", "read_only": True}
     roster = {"rendered": {"services": {"router": {"image": "router:test", "volumes": [config_mount, state_mount]}}}}
     captured = {}
-    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: roster)
+    def roster_run(*args, **kwargs):
+        captured["roster_owner_state_only"] = kwargs.get("_owner_state_only")
+        return roster
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", roster_run)
 
     def run(compose, service, container, code, **kwargs):
-        captured.update(compose=compose, service=service, container=container, code=code)
+        captured.update(compose=compose, service=service, container=container, code=code,
+                        run_owner_state_only=kwargs.get("_owner_state_only"))
         return {"initialized": True, "route_revision": 0, "effective_route_sha256": "a" * 64}
 
     monkeypatch.setattr(router_manage, "_offline_compose_run", run)
@@ -352,8 +356,42 @@ def test_managed_route_state_initializer_uses_compose_volume_and_container_confi
     result = router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"), _run=docker)
     assert result["initialized"] is True
     assert captured["service"] == "router" and captured["container"] == "anvil-router"
+    assert captured["roster_owner_state_only"] is True
+    assert captured["run_owner_state_only"] is True
     assert "/etc/anvil/config.toml" in captured["code"]
     assert "/var/lib/anvil-router/route-state.json" in captured["code"]
+
+
+@pytest.mark.parametrize("lock_mount", [
+    {"type": "volume", "source": "route-lock", "target": "/var/lib/anvil-router/route-state.json.lock", "read_only": False},
+    {"type": "bind", "source": "/synthetic/route-lock", "target": "/var/lib/anvil-router/route-state.json.lock", "read_only": True},
+])
+def test_managed_route_state_initializer_refuses_split_or_readonly_lock_mount(tmp_path, monkeypatch, lock_mount):
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/route-state.json"\n[router]\n')
+    mounts = [
+        {"type": "bind", "source": str(config), "target": router_manage.DEFAULT_INSTALLED_CONFIG, "read_only": True},
+        {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router", "read_only": False},
+        lock_mount,
+    ]
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: {
+        "rendered": {"services": {"router": {"image": "router:test", "volumes": mounts}}}
+    })
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: pytest.fail("must not launch helper"))
+    with pytest.raises(ValueError, match="route_state_mount_unknown"):
+        router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"))
+
+
+def test_managed_offline_migration_limits_roster_to_owner_state(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: None)
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: captured.update(kwargs) or {
+        "schema_version": 4, "migrated": True, "backup_schema_version": 1, "offline": True,
+    })
+    assert router_manage.migrate_router_offline("synthetic.yml", "/var/lib/anvil-serving/router-keys/before.sqlite3") == {
+        "schema_version": 4, "migrated": True, "backup_schema_version": 1, "offline": True,
+    }
+    assert captured["_owner_state_only"] is True
 
 
 def test_managed_route_state_initializer_refuses_uncovered_container_path(tmp_path, monkeypatch):

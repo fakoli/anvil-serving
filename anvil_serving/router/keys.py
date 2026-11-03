@@ -1662,6 +1662,17 @@ def _migrate_offline(config_path, backup_out, *, journal_mode=None, _legacy_rece
     from .usage_store import UsageStore
     from ..serves import _switch_role_lock
     server = load_server_config(resolve_config_path(config_path))
+    if _managed_worker:
+        if not isinstance(server.api_keys_path, str):
+            raise KeyStoreError('managed offline backup must share the credential store parent')
+        backup_path = Path(backup_out)
+        key_store_path = Path(server.api_keys_path)
+        try:
+            same_parent = backup_path.parent.resolve(strict=True) == key_store_path.parent.resolve(strict=True)
+        except OSError:
+            same_parent = False
+        if not backup_path.is_absolute() or '..' in backup_path.parts or not same_parent:
+            raise KeyStoreError('managed offline backup must share the credential store parent')
     if journal_mode not in {None, 'WAL'}:
         raise KeyStoreError('unsupported offline storage policy')
     if journal_mode == 'WAL':

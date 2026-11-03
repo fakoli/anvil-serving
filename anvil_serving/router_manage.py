@@ -1933,6 +1933,10 @@ def _owner_storage_scope(rendered, mounts, config, incumbent, read):
     settings = _parse_server_config(tomllib.loads(raw.decode()), str(source), container_paths=True)
     # The parent includes WAL/SHM, locks, custody sidecars and admission receipts.
     targets = [path(settings.api_keys_path), path(settings.admission_state_path + '.router')]
+    route_targets = set()
+    if settings.route_state_path is not None:
+        route_targets = {path(settings.route_state_path), path(settings.route_state_path + '.lock')}
+        targets.extend(sorted(route_targets))
     declared = [{**m, 'destination': str(path(m['target'])), 'read_only': m.get('read_only', False),
                  'name': rendered.get('volumes', {}).get(m['source'], {}).get('name', '')}
                 for m in mounts]
@@ -1942,9 +1946,15 @@ def _owner_storage_scope(rendered, mounts, config, incumbent, read):
         require(installed['destination'] == DEFAULT_INSTALLED_CONFIG and installed['type'] == 'bind'
                 and installed['read_only'] and installed['source'] == str(source))
     sources, directories = set(), set()
+    route_mount = None
     for target in targets:
         mount = _covering_mount(declared, target.parent)
         require(mount == _covering_mount(declared, target) and not mount['read_only'])
+        if target in route_targets:
+            if route_mount is None:
+                route_mount = mount
+            else:
+                require(mount == route_mount)
         identity = (mount['type'], mount['name'] if mount['type'] == 'volume' else mount['source'])
         require(identity[0] in {'bind', 'volume'} and identity[1])
         if actual is not None:
@@ -1959,7 +1969,10 @@ def _owner_storage_scope(rendered, mounts, config, incumbent, read):
         else:
             physical = path(mount['source'])
         sources.add(identity)
-        directory = physical / target.parent.relative_to(mount['destination'])
+        # A new route-state parent may not exist until route initialization.
+        # Its enclosing writable mount does exist and is the conservative
+        # protected scope; narrower future-path lineage would be unprovable.
+        directory = physical if target in route_targets else physical / target.parent.relative_to(mount['destination'])
         directories.add(str(Path(str(directory)).resolve()))
     import stat
     lineages = [_storage_lineage(directory) for directory in sorted(directories)]
@@ -2355,7 +2368,8 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
     if not state_path:
         raise ValueError("router config does not declare [server].route_state_path")
     state_target = PurePosixPath(state_path)
-    roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file)
+    roster = _offline_compose_roster(compose, service, container, _run=_run, env_file=env_file,
+                                    _owner_state_only=True)
     mounts = roster["rendered"]["services"][service]["volumes"]
     config_mounts = [mount for mount in mounts if mount.get("target") == DEFAULT_INSTALLED_CONFIG]
     if (len(config_mounts) != 1 or config_mounts[0].get("type") != "bind"
@@ -2396,7 +2410,7 @@ def initialize_route_state_managed(config_path, compose, *, service=DEFAULT_SERV
         f"print(json.dumps(initialize_route_state(raw, {state_path!r}), sort_keys=True))"
     )
     receipt = _offline_compose_run(compose, service, container, code, _run=_run,
-                                   env_file=env_file, entrypoint="python")
+                                   env_file=env_file, _owner_state_only=True, entrypoint="python")
     after = _run(["docker", "image", "inspect", "--format", "{{.Id}}", image],
                  capture_output=True, text=True, encoding="utf-8", timeout=10)
     if after.returncode != 0 or (after.stdout or "").strip() != image_id:
@@ -2455,7 +2469,7 @@ def migrate_router_offline(compose, backup_out, *, env_file=None, _run=subproces
     code = ('import json; from anvil_serving.router.keys import _migrate_offline; '
             f'print(json.dumps(_migrate_offline({DEFAULT_INSTALLED_CONFIG!r},{backup_out!r},journal_mode={journal_mode!r},_legacy_receipt={legacy!r},_managed_worker=True),sort_keys=True))')
     result = _offline_compose_run(compose, DEFAULT_SERVICE, DEFAULT_CONTAINER, code, _run=_run,
-                                 env_file=env_file, execution_env=execution_env)
+                                 env_file=env_file, execution_env=execution_env, _owner_state_only=True)
     if maintenance_receipt is not None and _container_incarnation(DEFAULT_CONTAINER,_run=_run,stopped=True) != legacy['stopped']:
         raise ValueError('router_legacy_incarnation_changed')
     if (type(result) is not dict or set(result) != {'schema_version', 'migrated', 'backup_schema_version', 'offline'} | ({'journal_mode', 'checkpoint_frames'} if journal_mode else set()) | ({'legacy_receipt_sha256'} if legacy else set())
