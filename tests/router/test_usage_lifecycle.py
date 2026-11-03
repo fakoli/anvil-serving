@@ -167,6 +167,19 @@ def test_v3_upgrade_refuses_unresolved_legacy_route_association(store):
         assert db.execute("PRAGMA user_version").fetchone()[0] == 3
 
 
+def test_v3_upgrade_preserves_resolved_route_association(store):
+    usage, _, run, scope = store
+    start = start_at(run)
+    assert usage.start(start, authority_scope=scope, route_association=BOUND_ROUTE) == "started"
+    with usage.key_store._connect() as db:
+        db.execute("PRAGMA user_version=3")
+    assert usage.migrate() == {"schema_version": 4, "migrated": True}
+    assert usage.migrate() == {"schema_version": 4, "migrated": False}
+    with usage.key_store._connect() as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert db.execute("SELECT route_association FROM usage_starts").fetchone()[0] == BOUND_ROUTE.to_json()
+
+
 def test_scoped_drain_reader_blocks_ambiguous_chat_but_not_unrelated_nonchat(store):
     usage, _, run, scope = store
     chat = start_at(run)

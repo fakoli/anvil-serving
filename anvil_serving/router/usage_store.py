@@ -1734,11 +1734,12 @@ class UsageStore:
                         for row in unresolved:
                             if row[0] is None or RouteAssociation.from_json(row[0]).route_revision is None:
                                 raise KeyStoreError("accounting migration requires resolved legacy requests")
-                    if version == 1:
-                        from .connect_keys import _create_schema
-                        _create_schema(db)
-                    for _name, statement in _DDL:
-                        db.execute(statement)
+                    else:
+                        if version == 1:
+                            from .connect_keys import _create_schema
+                            _create_schema(db)
+                        for _name, statement in _DDL:
+                            db.execute(statement)
                     _validate_schema(db)
                     db.execute(f"PRAGMA user_version={_VERSION}")
                 epoch_metadata = db.execute("SELECT 1 FROM sqlite_master WHERE name='usage_epoch_metadata'").fetchone()
