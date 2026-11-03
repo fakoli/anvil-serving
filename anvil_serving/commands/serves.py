@@ -136,7 +136,6 @@ def commands() -> CommandNode:
                         "--recover-prepared",
                         summary="With --rollback, recover one exact held route transaction.",
                         value_name="TRANSACTION_ID",
-                        requires_confirmation=True,
                     ),
                     _option(
                         "--derive",

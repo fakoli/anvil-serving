@@ -94,7 +94,7 @@ def test_promotion_recovery_preserves_drain_revision_and_owner_proof(tmp_path, m
         else:
             assert result == 0 and status["state"] == "complete"
             assert status["route_revision"] == (2 if phase == "rollback" else 1)
-            assert lifecycle == []
+            assert lifecycle == (["down"] if phase == "rollback" else [])
             assert verified == [("old-heavy", True)] if phase == "rollback" else verified == [("new-heavy", False)]
             assert status["owner_evidence"]["served_model"] == verified[0][0]
             if phase == "committed":

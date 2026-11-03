@@ -2208,6 +2208,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     hot_expected_revision = None
     hot_completed_status = None
     hot_recovery_only = False
+    hot_prepared_resume = False
     if plan.get("route_update"):
         # The route authority owns the durable hold and complete terminal
         # drain. Do this before model ownership changes; failure intentionally
@@ -2241,6 +2242,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                         or type(authority_revision) is not int):
                     raise ValueError("live route recovery phase is unavailable")
                 hot_recovery_only = phase != "prepared"
+                hot_prepared_resume = phase == "prepared"
                 hot_expected_revision = authority_revision + (phase == "prepared")
             elif (resume and isinstance(status, dict) and status.get("state") == "complete"
                   and status.get("effective_route_sha256") == hot_candidate_sha256
@@ -2306,7 +2308,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     # A resume of the held prepared transaction has already preserved the
     # displaced containers. Repeating their stop is an unnecessary lifecycle
     # mutation and can obscure the first failure's retained evidence.
-    if (not hot_recovery_only and not reuse_target
+    if (not hot_recovery_only and not (hot_prepared_resume and reuse_target and not rollback)
             and cmd_down(serves, stop_names, keep_container=True, _run=_run) != 0):
         return 1
     if reuse_target:
