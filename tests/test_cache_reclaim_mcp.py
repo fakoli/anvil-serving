@@ -76,3 +76,32 @@ def test_serves_promote_captures_same_postcondition_without_new_tool(
     assert "cache reclaim after serves promote: no-operation-growth" in result["data"]["stdout"]
     names = {tool["name"] for tool in mcp.list_tools()}
     assert "cache_reclaim" not in names
+
+
+def test_serves_promote_forwards_transaction_bound_prepared_recovery(tmp_path, monkeypatch):
+    manifest = _manifest(tmp_path)
+    calls = []
+    monkeypatch.setattr(serves_tools, "_run_argv", lambda argv, **_kwargs: calls.append(argv) or {
+        "command": argv, "returncode": 0, "stdout": "", "stderr": "",
+    })
+    transaction_id = "a" * 32
+    result = mcp.call_tool("serves_promote", {
+        "manifest": manifest, "plan": "heavy-v2", "rollback": True,
+        "recover_prepared": transaction_id, "confirm": True,
+        "dry_run": False, "human_approved": True,
+    })
+    assert result["ok"] is True
+    assert calls[0][-3:] == ["--recover-prepared", transaction_id, "--confirm"]
+    schema = next(tool for tool in mcp.list_tools() if tool["name"] == "serves_promote")["inputSchema"]
+    assert schema["properties"]["recover_prepared"].items() >= {
+        "type": "string", "pattern": "^[0-9a-f]{32}$",
+    }.items()
+
+
+def test_serves_promote_refuses_preview_of_prepared_recovery(tmp_path):
+    result = mcp.call_tool("serves_promote", {
+        "manifest": _manifest(tmp_path), "plan": "heavy-v2", "rollback": True,
+        "recover_prepared": "a" * 32,
+    })
+    assert result["ok"] is False
+    assert result["error"]["code"] == "bad_recovery"

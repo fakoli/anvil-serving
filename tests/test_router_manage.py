@@ -1,7 +1,9 @@
 import base64
 import hashlib
+import io
 import json
 import types
+import urllib.error
 
 import pytest
 
@@ -176,6 +178,82 @@ def test_router_parser_does_not_offer_profile_promotion():
     parser = router_manage._build_parser()
     actions = next(item for item in parser._actions if item.dest == "action")
     assert "promote" not in actions.choices
+
+
+def test_route_update_http_error_exposes_only_a_safe_structured_code():
+    body = b'{"error":{"type":"route_drain_timeout","message":"secret response body"}}'
+    stream = io.BytesIO(body)
+
+    def opened(_request, **_kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:18000", 409, "conflict", {}, stream)
+
+    with pytest.raises(router_manage.RouteUpdateError) as raised:
+        router_manage.route_update_request("status", env={"ANVIL_ROUTER_TOKEN": "synthetic"}, _open=opened)
+    assert raised.value.code == "route_update_http_error"
+    assert raised.value.status == 409
+    assert raised.value.remote_code == "route_drain_timeout"
+    assert "secret" not in str(raised.value)
+    assert stream.closed
+
+
+@pytest.mark.parametrize("body", (
+    b'{"error":{"type":"NOT_SAFE","message":"secret"}}',
+    b'{"error":{"type":"route_drain_timeout","type":"other"}}',
+    b'[]',
+    b'{"error":[]}',
+    b'{"error":{"type":"route_drain\\ntimeout"}}',
+    b'{"error":{"type":"' + b"a" * 65 + b'"}}',
+    b"{" + b"x" * (256 * 1024 + 1),
+))
+def test_route_update_http_error_rejects_untrusted_remote_codes(body):
+    def opened(_request, **_kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:18000", 409, "conflict", {}, io.BytesIO(body))
+
+    with pytest.raises(router_manage.RouteUpdateError) as raised:
+        router_manage.route_update_request("status", env={"ANVIL_ROUTER_TOKEN": "synthetic"}, _open=opened)
+    assert raised.value.remote_code is None
+
+
+def test_route_update_http_error_bounds_reads_and_closes_after_a_read_failure():
+    class FailedBody:
+        def __init__(self):
+            self.read_size = None
+            self.closed = False
+
+        def read(self, size):
+            self.read_size = size
+            raise OSError("body unavailable")
+
+        def close(self):
+            self.closed = True
+
+    body = FailedBody()
+
+    def opened(_request, **_kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:18000", 409, "conflict", {}, body)
+
+    with pytest.raises(router_manage.RouteUpdateError) as raised:
+        router_manage.route_update_request("status", env={"ANVIL_ROUTER_TOKEN": "synthetic"}, _open=opened)
+    assert raised.value.remote_code is None
+    assert body.read_size == 256 * 1024 + 1
+    assert body.closed
+
+
+def test_route_update_cli_prints_safe_remote_code_without_response_body(monkeypatch, capsys):
+    monkeypatch.setattr(router_manage, "route_update_request", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        router_manage.RouteUpdateError("route_update_http_error", "secret response body", status=409,
+                                       remote_code="route_drain_timeout")
+    ))
+    assert router_manage.main(["routes", "apply", "--preview-id", "a" * 32,
+                               "--router-url", "http://127.0.0.1:18000", "--confirm"]) == 1
+    output = capsys.readouterr().err
+    assert output == "router route update failed: route_update_http_error:route_drain_timeout\n"
+    assert "secret" not in output
+
+
+def test_route_update_error_constructor_rejects_an_untrusted_remote_code():
+    error = router_manage.RouteUpdateError("route_update_http_error", "local", remote_code="unsafe\\ncode")
+    assert error.remote_code is None
 
 
 def test_install_config_migrates_current_tiers_and_verifies_desired(tmp_path):

@@ -503,6 +503,26 @@ revision without another unload. A completed transaction is rechecked against
 fresh health, qualification, owner evidence and live route identity; it never
 recreates a running model as part of that verification.
 
+If a newly recreated target fails after the route is prepared, the route stays
+held. To restore the original owner, use the explicit, transaction-bound
+recovery form (with the transaction id from the route-update status):
+
+```bash
+anvil-serving serves promote PROMOTION_PLAN --rollback \
+  --recover-prepared TRANSACTION_ID --confirm
+```
+
+This is intentionally neither automatic rollback nor a generic cancellation.
+It first proves that the held transaction still has the expected original
+route revision and rollback projection, then proves that the transaction's
+candidate digest and affected tier scope belong to this promotion plan. While
+the hold remains closed it recreates the original owner, verifies health,
+exact identity, the rollback preflight gates, and a fresh managed-recipe
+monitoring receipt. Only then can it cancel that exact prepared route
+transaction and reopen its scope. A stale, mismatched, changed, or failed
+transaction remains held; `--recover-prepared` cannot be used with `--resume`
+or `--dry-run` and always requires `--rollback`.
+
 Promotion and an explicitly requested rollback also evaluate the enabled machine cache
 policy exactly once after their existing readiness gates. Controller-dispatched serve
 operations inherit the behavior because they execute the same resource-owner CLI; no

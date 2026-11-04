@@ -482,6 +482,14 @@ def _validate_compaction(
     if label == "Pi" and not reserve_declared:
         raise ClientCatalogError("Pi compaction reserveTokens must remain configured")
     if label == "OpenClaw":
+        # OpenClaw 2026.10 removed reserveTokens and reserveTokensFloor. Its
+        # current safeguard schema requires a positive recent-token budget;
+        # retain the legacy form unchanged for existing installed clients.
+        legacy_reserve_schema = reserve_declared or "reserveTokensFloor" in compaction
+        if not legacy_reserve_schema and recent == 0:
+            raise ClientCatalogError(
+                "OpenClaw current compaction keepRecentTokens must be a positive integer"
+            )
         floor = compaction.get("reserveTokensFloor")
         if floor is not None and (
             not isinstance(floor, int)

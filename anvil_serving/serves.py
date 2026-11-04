@@ -1939,6 +1939,181 @@ def _hot_promotion_owner_evidence(plan, target, *, rollback=False):
     }
 
 
+def _refresh_hot_promotion_monitoring(plan, target, *, rollback=False):
+    """Publish a freshly recreated owner's verified monitoring receipt.
+
+    ``serves up --recreate`` intentionally creates a new container
+    incarnation.  A receipt for the displaced incarnation is not transferable,
+    so refresh it only after the lifecycle, health, identity, and preflight
+    gates have all passed.  The subsequent owner-evidence read remains an
+    independent verification; this helper never manufactures a receipt.
+    """
+    from .benchmarking import campaign_identity
+    from . import recipe_monitoring
+
+    activation_path = _hot_promotion_activation_path(plan, rollback=rollback)
+    try:
+        arm = json.loads(campaign_identity._read_bytes(activation_path, 65536))
+        activation = campaign_identity.validate_activation(arm)
+        identity = arm["identity"]
+        registry, registry_sha256 = campaign_identity._load_registry(activation["registry_path"])
+        recipe = serve_recipes.find_recipe(registry, identity["recipe_selector"])
+        recipe_serve = recipe.get("serve") if isinstance(recipe, dict) else None
+        if (not isinstance(identity, dict)
+                or not isinstance(recipe_serve, dict)
+                or recipe_serve.get("port") != target["port"]
+                or activation.get("container") != target["container"]
+                or recipe.get("model") != identity.get("model")
+                or serve_recipes.recipe_digest(recipe) != identity.get("recipe_sha256")):
+            raise ValueError("managed recipe does not match frozen activation")
+        recipe_monitoring.withdraw(
+            port=target["port"], container=target["container"], pending=True,
+        )
+        receipt = recipe_monitoring.publish(
+            recipe, target["container"], registry_digest=registry_sha256,
+        )
+        if not isinstance(receipt, dict) or receipt.get("state") != "active":
+            raise ValueError("monitoring receipt was not published")
+    except Exception as exc:
+        raise ValueError("managed candidate monitoring refresh is unavailable") from exc
+    return receipt
+
+
+def _promotion_preflight_gates(plan, target, manifest_path, *, rollback, _run):
+    """Run the direction-specific independent qualification gates."""
+    label = "rollback" if rollback else "promotion"
+    gates = plan["rollback_gate" if rollback else "gate"]
+    for gate in gates:
+        preflight = [
+            "eval", "preflight", "--tier", target["name"], "--manifest", manifest_path,
+            "--needle-ctx", str(plan["needle_ctx"]), "--tool-batch", str(plan["tool_batch"]),
+            "--checks", str(gate["checks"]), "--thinking-mode", str(gate["thinking_mode"]),
+            "--visible-answer-tokens", str(gate["visible_answer_tokens"]),
+            "--reasoning-headroom-tokens", str(gate["reasoning_headroom_tokens"]),
+            "--reasoning-evidence", str(gate["reasoning_evidence"]),
+        ]
+        if gate.get("reasoning_effort"):
+            preflight.extend(["--reasoning-effort", str(gate["reasoning_effort"])])
+        if gate.get("image_path"):
+            preflight.extend(["--image-path", str(gate["image_path"])])
+        for expectation in gate.get("image_expect", []):
+            preflight.extend(["--image-expect", expectation])
+        for expectation in gate.get("ocr_expect", []):
+            preflight.extend(["--ocr-expect", expectation])
+        if gate.get("video_path"):
+            preflight.extend(["--video-path", str(gate["video_path"])])
+        for expectation in gate.get("video_expect", []):
+            preflight.extend(["--video-expect", expectation])
+        if gate.get("json_out"):
+            preflight.extend(["--json-out", str(gate["json_out"])])
+        if _promotion_cli(preflight, _run=_run) != 0:
+            print("  %s failed: preflight gate %s rejected %s" % (
+                label, gate["name"], target["name"]))
+            return False
+    return True
+
+
+def _recover_prepared_hot_rollback(serves, plan, manifest_path, transaction_id, *,
+                                   _run=subprocess.run, _open=urllib.request.urlopen,
+                                   _sleep=time.sleep):
+    """Explicitly restore the original owner while a failed hot route stays held.
+
+    This is deliberately not a fallback.  The caller must name the durable
+    prepared transaction, and the route is cancelled only after the rollback
+    owner has passed health, identity, qualification, and receipt verification.
+    """
+    from . import router_manage
+    from .router.config import load_bytes as load_router_config_bytes
+    from .router.route_updates import route_digest
+
+    _promotion_lifecycle_configs(plan)
+    target = _exact_serve(serves, plan["rollback"])
+    displaced = _exact_serve(serves, plan["target"])
+    route = plan.get("route_update")
+    if not isinstance(route, dict):
+        print("  prepared recovery refused: plan has no hot route transaction")
+        return 2
+    try:
+        _hot_promotion_activation_path(plan, rollback=True)
+        with open(plan["router_config"], "rb") as source:
+            forward_digest = route_digest(load_router_config_bytes(source.read(router_manage.MAX_ROUTER_CONFIG_BYTES + 1)))
+        with open(plan["rollback_router_config"], "rb") as source:
+            rollback_digest = route_digest(load_router_config_bytes(source.read(router_manage.MAX_ROUTER_CONFIG_BYTES + 1)))
+        route_env = router_manage.route_update_environment(route["router_url"], route["auth_env"])
+        status = router_manage.route_update_request("status", env=route_env, _open=_open)
+        original_revision = status.get("route_revision")
+        required = {
+            "state": "held", "mode": "tier_replacement", "operation_phase": "prepared",
+            "transaction_id": transaction_id, "effective_route_sha256": rollback_digest,
+            "authority_available": True,
+        }
+        if (type(original_revision) is not int
+                or any(status.get(key) != value for key, value in required.items())):
+            raise ValueError("prepared route transaction does not match this rollback plan")
+        held = router_manage.route_update_request(
+            "resume", transaction_id=transaction_id, env=route_env, _open=_open,
+        )
+        if (held.get("candidate_sha256") != forward_digest
+                or held.get("mode") != "tier_replacement"
+                or held.get("tier_ids") != sorted(plan["affected_tiers"])
+                or held.get("transaction_id") != transaction_id
+                or held.get("operation_phase") != "prepared"
+                or held.get("authority_route_revision") != original_revision):
+            raise ValueError("prepared route transaction is not this promotion")
+        current = router_manage.route_update_request("status", env=route_env, _open=_open)
+        if any(current.get(key) != value for key, value in required.items()) or current.get("route_revision") != original_revision:
+            raise ValueError("prepared route transaction changed during recovery validation")
+    except (OSError, ValueError, KeyError):
+        print("  prepared recovery refused: held route authority does not bind this exact transaction")
+        return 2
+
+    # Keep the hold closed while reclaiming the former owner.  If any gate
+    # fails, no route API below can reopen it.
+    if cmd_down(serves, [displaced["name"]], keep_container=True, _run=_run) != 0:
+        return 1
+    if cmd_up(
+        serves, [target["name"]], recreate=True, ledger_serves=serves,
+        _allow_exclusive_target=reservations.is_exclusive(target), _run=_run,
+    ) != 0:
+        return 1
+    if not _await_healthy(target, plan["rollback_startup_timeout"], plan["poll_interval"],
+                          _open=_open, _sleep=_sleep):
+        print("  prepared recovery failed: %s did not become healthy" % target["name"])
+        return 1
+    if not _serve_identity_ready(target, _open=_open):
+        print("  prepared recovery failed: %s did not advertise the exact configured model" % target["name"])
+        return 1
+    if not _promotion_preflight_gates(plan, target, manifest_path, rollback=True, _run=_run):
+        return 1
+    try:
+        _refresh_hot_promotion_monitoring(plan, target, rollback=True)
+        _hot_promotion_owner_evidence(plan, target, rollback=True)
+        cancellation = router_manage.route_update_request(
+            "rollback", revision=original_revision, env=route_env, _open=_open,
+        )
+        if (cancellation.get("candidate_sha256") != rollback_digest
+                or cancellation.get("mode") != "tier_replacement"
+                or cancellation.get("tier_ids") != sorted(plan["affected_tiers"])
+                or cancellation.get("transaction_id") != transaction_id
+                or cancellation.get("action") != "cancel_prepared_update"
+                or cancellation.get("authority_route_revision") != original_revision):
+            raise ValueError("prepared route cancellation does not preserve the original projection")
+        cancelled = router_manage.route_update_request(
+            "apply", preview_id=cancellation["preview_id"], confirm=True, env=route_env, _open=_open,
+        )
+        if (cancelled.get("state") != "cancelled"
+                or cancelled.get("operation_phase") != "cancelled"
+                or cancelled.get("transaction_id") != transaction_id
+                or cancelled.get("route_revision") != original_revision
+                or cancelled.get("effective_route_sha256") != rollback_digest):
+            raise ValueError("prepared route cancellation was not confirmed")
+    except (OSError, ValueError, KeyError):
+        print("  prepared recovery failed: route remains held for inspection")
+        return 1
+    print("  prepared recovery cancelled the held route after exact rollback owner verification")
+    return 0
+
+
 def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                           dry_run=False, require_candidate=True, resume=False,
                           _run=subprocess.run,
@@ -2033,6 +2208,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
     hot_expected_revision = None
     hot_completed_status = None
     hot_recovery_only = False
+    hot_prepared_resume = False
     if plan.get("route_update"):
         # The route authority owns the durable hold and complete terminal
         # drain. Do this before model ownership changes; failure intentionally
@@ -2066,6 +2242,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                         or type(authority_revision) is not int):
                     raise ValueError("live route recovery phase is unavailable")
                 hot_recovery_only = phase != "prepared"
+                hot_prepared_resume = phase == "prepared"
                 hot_expected_revision = authority_revision + (phase == "prepared")
             elif (resume and isinstance(status, dict) and status.get("state") == "complete"
                   and status.get("effective_route_sha256") == hot_candidate_sha256
@@ -2118,10 +2295,6 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
                 print("  %s refused: drain timed out for %s before container mutation" % (label, tier_id))
                 return 2 if _compensate_quiesce(plan, quiesced, _run=_run) else 3
 
-    # Preserve displaced/candidate containers and their logs until the
-    # promotion transaction and its rollback opportunity complete.
-    if not hot_recovery_only and cmd_down(serves, stop_names, keep_container=True, _run=_run) != 0:
-        return 1
     target_state = docker_state(target["container"], _run=_run)
     if hot_recovery_only and target_state != "running":
         print("  %s recovery refused: published owner is not running" % label)
@@ -2132,6 +2305,12 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         and _health(target["port"], target["health"], _open=_open) == 200
         and _serve_identity_ready(target, _open=_open)
     )
+    # A resume of the held prepared transaction has already preserved the
+    # displaced containers. Repeating their stop is an unnecessary lifecycle
+    # mutation and can obscure the first failure's retained evidence.
+    if (not hot_recovery_only and not (hot_prepared_resume and reuse_target and not rollback)
+            and cmd_down(serves, stop_names, keep_container=True, _run=_run) != 0):
+        return 1
     if reuse_target:
         print("  resume: %s is already healthy with exact model identity" % target["name"])
     elif not hot_recovery_only and cmd_up(
@@ -2152,37 +2331,14 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
         print("  %s failed: %s did not advertise the exact configured model" % (
             label, target["name"]))
         return 1
-    for gate in gates:
-        preflight = [
-            "eval", "preflight", "--tier", target["name"], "--manifest", manifest_path,
-            "--needle-ctx", str(plan["needle_ctx"]), "--tool-batch", str(plan["tool_batch"]),
-            "--checks", str(gate["checks"]), "--thinking-mode", str(gate["thinking_mode"]),
-            "--visible-answer-tokens", str(gate["visible_answer_tokens"]),
-            "--reasoning-headroom-tokens", str(gate["reasoning_headroom_tokens"]),
-            "--reasoning-evidence", str(gate["reasoning_evidence"]),
-        ]
-        if gate.get("reasoning_effort"):
-            preflight.extend(["--reasoning-effort", str(gate["reasoning_effort"])])
-        if gate.get("image_path"):
-            preflight.extend(["--image-path", str(gate["image_path"])])
-        for expectation in gate.get("image_expect", []):
-            preflight.extend(["--image-expect", expectation])
-        for expectation in gate.get("ocr_expect", []):
-            preflight.extend(["--ocr-expect", expectation])
-        if gate.get("video_path"):
-            preflight.extend(["--video-path", str(gate["video_path"])])
-        for expectation in gate.get("video_expect", []):
-            preflight.extend(["--video-expect", expectation])
-        if gate.get("json_out"):
-            preflight.extend(["--json-out", str(gate["json_out"])])
-        if _promotion_cli(preflight, _run=_run) != 0:
-            print("  %s failed: preflight gate %s rejected %s" % (
-                label, gate["name"], target["name"]))
-            return 1
+    if not _promotion_preflight_gates(plan, target, manifest_path, rollback=rollback, _run=_run):
+        return 1
     if hot_transaction is not None or hot_completed_status is not None:
         from . import router_manage
         route = plan["route_update"]
         try:
+            if not hot_recovery_only:
+                _refresh_hot_promotion_monitoring(plan, target, rollback=rollback)
             # This is intentionally after load/health/preflight: it binds the
             # freshly observed owner incarnation, rather than the displaced
             # container or a configured model name, to the held transaction.
@@ -2267,7 +2423,7 @@ def _promotion_transition(serves, plan, manifest_path, *, rollback=False,
 
 
 def _cmd_promote_unlocked(serves, promotions, name, manifest_path, *, rollback=False,
-                          resume=False, dry_run=False, _run=subprocess.run,
+                          resume=False, recover_prepared=None, dry_run=False, _run=subprocess.run,
                           _open=urllib.request.urlopen, _sleep=time.sleep):
     """Atomically promote a staged model recipe or restore its complete rollback state."""
     matches = [plan for plan in promotions if plan["name"] == name]
@@ -2284,6 +2440,15 @@ def _cmd_promote_unlocked(serves, promotions, name, manifest_path, *, rollback=F
     except ValueError as exc:
         print("promotion refused: %s" % exc)
         return 1
+    if recover_prepared is not None:
+        if not rollback:
+            print("promotion refused: --recover-prepared requires --rollback")
+            return 1
+        recovery_rc = _recover_prepared_hot_rollback(
+            serves, plan, manifest_path, recover_prepared,
+            _run=_run, _open=_open, _sleep=_sleep,
+        )
+        return 0 if recovery_rc == 0 else 1
     try:
         rc = _promotion_transition(
             serves, plan, manifest_path, rollback=rollback, dry_run=dry_run,
@@ -2785,7 +2950,7 @@ def _write_switch_journal(path, document):
 
 
 def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
-                resume=False, dry_run=False, _run=subprocess.run, _open=urllib.request.urlopen,
+                resume=False, recover_prepared=None, dry_run=False, _run=subprocess.run, _open=urllib.request.urlopen,
                 _sleep=time.sleep):
     """Run the common promotion transaction under the global promotion lock."""
     # Promotion plans may overlap on only some affected tiers. A lock derived
@@ -2803,7 +2968,7 @@ def cmd_promote(serves, promotions, name, manifest_path, *, rollback=False,
         with lock:
             result = _cmd_promote_unlocked(
                 serves, promotions, name, manifest_path,
-                rollback=rollback, resume=resume, dry_run=dry_run,
+                rollback=rollback, resume=resume, recover_prepared=recover_prepared, dry_run=dry_run,
                 _run=_run, _open=_open, _sleep=_sleep,
             )
             if result == 0 and not dry_run:
@@ -7047,6 +7212,10 @@ def _build_action_parser(action):
         p.add_argument("--resume", action="store_true",
                        help="resume an interrupted promotion from an already-running target")
         p.add_argument(
+            "--recover-prepared", metavar="TRANSACTION_ID",
+            help="with --rollback, restore the held route's original owner for this exact prepared transaction",
+        )
+        p.add_argument(
             "--derive", action="store_true",
             help="derive and print a [[promotion]] block from TARGET and "
                  "ROLLBACK instead of executing a plan",
@@ -7064,7 +7233,7 @@ def _build_action_parser(action):
             help="write the derived [[promotion]] block here; refuses to overwrite an existing file",
         )
     else:
-        p.set_defaults(recipe=None, registry=None, rollback=False, resume=False,
+        p.set_defaults(recipe=None, registry=None, rollback=False, resume=False, recover_prepared=None,
                        derive=False, router_config=None, rollback_router_config=None,
                        out=None)
     if action in {"promote", "mode"}:
@@ -7138,6 +7307,7 @@ def main(argv=None):
                 flag for flag, present in (
                     ("--rollback", a.rollback),
                     ("--resume", a.resume),
+                    ("--recover-prepared", a.recover_prepared),
                     ("--dry-run", a.dry_run),
                     ("--skip-preflight-checks", a.skip_preflight_checks),
                 )
@@ -7178,6 +7348,19 @@ def main(argv=None):
                     "serves promote %s requires --derive" % ", ".join(extra),
                     file=sys.stderr,
                 )
+                return 2
+            if a.recover_prepared is not None and not a.rollback:
+                print("serves promote --recover-prepared requires --rollback", file=sys.stderr)
+                return 2
+            if a.recover_prepared is not None and a.resume:
+                print("serves promote --recover-prepared cannot be combined with --resume", file=sys.stderr)
+                return 2
+            if a.recover_prepared is not None and a.dry_run:
+                print("serves promote --recover-prepared cannot be combined with --dry-run", file=sys.stderr)
+                return 2
+            if (a.recover_prepared is not None
+                    and re.fullmatch(r"[0-9a-f]{32}", a.recover_prepared) is None):
+                print("--recover-prepared must be a route transaction id", file=sys.stderr)
                 return 2
 
     # Persistent host policy is validated before any covered operation can
@@ -7688,7 +7871,7 @@ def main(argv=None):
                 return gate_rc
         rc = cmd_promote(
             serves, promotions, a.names[0], os.path.abspath(manifest_path),
-            rollback=a.rollback, resume=a.resume, dry_run=a.dry_run,
+            rollback=a.rollback, resume=a.resume, recover_prepared=a.recover_prepared, dry_run=a.dry_run,
         )
         return _finish_cache_reclaim(
             rc, cache_policy, cache_before, cache_operation, dry_run=a.dry_run,

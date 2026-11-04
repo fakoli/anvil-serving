@@ -181,7 +181,7 @@ def test_v3_upgrade_preserves_resolved_route_association(store):
 
 
 def test_scoped_drain_reader_blocks_ambiguous_chat_but_not_unrelated_nonchat(store):
-    usage, _, run, scope = store
+    usage, owner, run, scope = store
     chat = start_at(run)
     usage.start(chat, authority_scope=scope)
     assert usage.unresolved_route_starts(("route_fixture",), authority_scope=scope) == 1
@@ -189,6 +189,12 @@ def test_scoped_drain_reader_blocks_ambiguous_chat_but_not_unrelated_nonchat(sto
 
     memory = RequestStart(ident(), run, AT, legacy_caller(), "memory", None, attempt_id=ident())
     usage.start(memory, authority_scope=scope)
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=scope) == 0
+
+    other_run = usage.register_run(owner, domain_id="other_domain", configuration_revision="config_fixture", enabled=True)
+    other_scope = replace(scope, domain_id="other_domain", run_ids=(other_run,))
+    usage.start(start_at(other_run), authority_scope=other_scope)
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=other_scope) == 1
     assert usage.unresolved_route_starts(("route_fixture",), authority_scope=scope) == 0
 
 
@@ -208,6 +214,47 @@ def test_scoped_drain_reader_fails_closed_on_invalid_bound_route(store):
                    ('{"route_id":"route_fixture"}', start.request_id))
     with pytest.raises(UsageError, match="accounting_invalid"):
         usage.unresolved_route_starts(("route_fixture",), authority_scope=scope)
+
+
+def test_native_successor_uses_current_coverage_and_retains_predecessor_drain_guard(store, monkeypatch):
+    usage, previous_owner, previous_run, previous_scope = store
+    interrupted = start_at(previous_run)
+    usage.start(interrupted, authority_scope=previous_scope, route_association=BOUND_ROUTE)
+    current_owner = replace(previous_owner, pid=previous_owner.pid + 1, start_ticks=previous_owner.start_ticks + 1)
+    monkeypatch.setattr(ledger, "_linux_owner", lambda *args: (current_owner, ()))
+    monkeypatch.setattr(ledger, "observe_run", lambda owner: "dead" if owner == previous_owner else "live")
+    monkeypatch.setattr(ledger, "_now", lambda: END)
+    assert usage.recover((previous_run,), host_domain_id="host_fixture")["recovered_requests"] == 1
+    retained_terminal = rows(usage, "usage_details")
+    assert rows(usage, "usage_coverage_segments")[0]["end_uncertain"] == 1
+    monkeypatch.setattr(ledger, "_now", lambda: LATER)
+    current_run = usage.register_run(current_owner, domain_id="domain_fixture", configuration_revision="config_fixture", enabled=True)
+    current_scope = usage.managed_owner_scope(current_run, current_owner, domain_id="domain_fixture", configuration_revision="config_fixture")
+    assert current_scope.run_ids == (current_run,)
+    assert current_scope.from_utc == LATER
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=current_scope) == 0
+
+    current_start = replace(start_at(current_run), accepted_at=LATER)
+    assert usage.start(current_start, authority_scope=current_scope, route_association=BOUND_ROUTE) == "started"
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=current_scope) == 1
+    assert usage.unresolved_route_starts(("unrelated_fixture",), authority_scope=current_scope) == 0
+    usage.finalize(terminal(current_start, ended_at=LATER, route=BOUND_ROUTE))
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=current_scope) == 0
+    assert rows(usage, "usage_details")[0] == retained_terminal[0]
+    history = usage.query(ledger.UsageQuery(from_utc=AT, to_utc=LATER), domain_id="domain_fixture", authority_scope=current_scope)
+    assert history["coverage_complete"] is False
+    assert history["records"][0]["accounting_status"] == "finalized"
+
+    # A missing durable terminal must still block the affected tier, even
+    # outside the successor's current-generation accounting authority.
+    with usage.key_store._connect() as db:
+        db.execute("DELETE FROM usage_details WHERE request_id=?", (interrupted.request_id,))
+    assert usage.unresolved_route_starts(("route_fixture",), authority_scope=current_scope) == 1
+    assert usage.unresolved_route_starts(("unrelated_fixture",), authority_scope=current_scope) == 0
+    for uncertain_owner_state in ("unknown", "live"):
+        monkeypatch.setattr(ledger, "observe_run", lambda owner: uncertain_owner_state if owner == previous_owner else "live")
+        with pytest.raises(UsageError):
+            usage.managed_owner_scope(current_run, current_owner, domain_id="domain_fixture", configuration_revision="config_fixture")
 
 
 def test_groups_keep_immutable_actor_binding_end_user_credential_and_effective_grant(store):

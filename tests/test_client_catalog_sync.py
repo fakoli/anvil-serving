@@ -1616,6 +1616,22 @@ def test_openclaw_only_accepts_current_safeguard_schema_without_pi(tmp_path):
     assert rendered["agents"]["defaults"]["compaction"] == payload["agents"]["defaults"]["compaction"]
 
 
+def test_openclaw_current_compaction_requires_positive_recent_budget(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    payload = json.loads(openclaw_path.read_text())
+    payload["agents"]["defaults"]["compaction"] = {
+        "mode": "safeguard",
+        "keepRecentTokens": 0,
+    }
+    openclaw_path.write_text(json.dumps(payload), encoding="utf-8")
+    before = openclaw_path.read_bytes()
+
+    with pytest.raises(ClientCatalogError, match="current compaction keepRecentTokens"):
+        _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))
+
+    assert openclaw_path.read_bytes() == before
+
+
 def test_pi_only_does_not_require_or_restart_openclaw(tmp_path):
     openclaw_path, _, _ = _write_inputs(tmp_path)
     openclaw_path.unlink()
