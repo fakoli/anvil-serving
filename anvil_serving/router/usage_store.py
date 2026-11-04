@@ -917,10 +917,7 @@ class UsageStore:
                 # configuration/uncertain segments cannot confer current write
                 # authority. Historical queries retain their measured rows and
                 # report coverage outside this generation as incomplete.
-                managed = self.owner_config is not None and self.owner_config.router_owner_backend == 'managed-container'
-                scope = AuthorityScope(domain_id, configuration_revision,
-                                       (run_id,) if managed else tuple(r["run_id"] for r in rows),
-                                       current[0]['started_at'] if managed else min(r["started_at"] for r in rows), at)
+                scope = AuthorityScope(domain_id, configuration_revision, (run_id,), current[0]['started_at'], at)
                 _require(self._observed_owner(owner.host_domain_id) == owner)
                 return scope
         except (sqlite3.Error, KeyStoreError, OSError):
@@ -1114,13 +1111,15 @@ class UsageStore:
                 state = self._coverage_state(db, authority_scope)
                 if not state.roster_complete:
                     raise UsageError("accounting_unavailable")
-                placeholders = ",".join("?" for _ in authority_scope.run_ids)
+                # Current-generation coverage does not erase predecessor
+                # starts. The owner has verified the retained roster, but an
+                # unresolved historical chat still protects its selected tier.
                 records = db.execute(
                     "SELECT route_association FROM usage_starts s "
                     "LEFT JOIN usage_details d USING(request_id) "
                     "WHERE d.request_id IS NULL AND s.kind='chat' "
-                    f"AND s.run_id IN ({placeholders}) LIMIT 4097",
-                    authority_scope.run_ids,
+                    "AND s.domain_id=? LIMIT 4097",
+                    (authority_scope.domain_id,),
                 ).fetchall()
                 if len(records) > 4096:
                     raise UsageError("accounting_unavailable")

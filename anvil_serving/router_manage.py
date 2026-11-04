@@ -31,6 +31,7 @@ TRANSITION_PATH = "/v1/admin/transition"
 ROUTE_UPDATE_PATH = "/v1/router/routes"
 MAX_ROUTER_CONFIG_BYTES = 1024 * 1024
 ROUTE_UPDATE_REQUEST_TIMEOUT = 365.0
+_ROUTE_UPDATE_REMOTE_CODE = re.compile(r"[a-z][a-z0-9_]{0,63}\Z")
 MAX_COMPOSE_FILE_BYTES = 2 * 1024 * 1024
 _COMPOSE_ENV_REFERENCE_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)")
 _CREDENTIAL_ENV_NAME_RE = re.compile(
@@ -101,10 +102,34 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 class RouteUpdateError(ValueError):
     """A bounded route-authority failure with machine-readable context."""
 
-    def __init__(self, code, message, *, status=None):
+    def __init__(self, code, message, *, status=None, remote_code=None):
         super().__init__(message)
         self.code = code
         self.status = status
+        self.remote_code = _safe_route_update_remote_code(remote_code)
+
+
+def _safe_route_update_remote_code(value):
+    return value if type(value) is str and _ROUTE_UPDATE_REMOTE_CODE.fullmatch(value) else None
+
+
+def _route_update_remote_code(response):
+    """Return only a bounded structured server code; never disclose its body."""
+    try:
+        raw = response.read(256 * 1024 + 1)
+        if len(raw) > 256 * 1024:
+            return None
+        from .observability.dashboard.contracts import strict_json
+        value = strict_json(raw)
+        code = value.get("error", {}).get("type") if type(value) is dict else None
+        return _safe_route_update_remote_code(code)
+    except Exception:
+        return None
+    finally:
+        try:
+            response.close()
+        except Exception:
+            pass
 
 
 def _safe_router_url(value):
@@ -224,7 +249,7 @@ def route_update_request(action, *, candidate_bytes=None, preview_id=None, revis
             raw = response.read(256 * 1024 + 1)
     except urllib.error.HTTPError as exc:
         raise RouteUpdateError("route_update_http_error", "route update request failed with HTTP %s" % exc.code,
-                               status=exc.code) from None
+                               status=exc.code, remote_code=_route_update_remote_code(exc)) from None
     except Exception as exc:
         raise RouteUpdateError("route_update_transport_error", "route update transport failed (%s)" % type(exc).__name__) from None
     if len(raw) > 256 * 1024:
@@ -1268,7 +1293,11 @@ def main(argv=None):
                 confirm=getattr(args, "confirm", False),
             )
         except (OSError, ValueError) as exc:
-            print("router route update failed: %s" % getattr(exc, "code", str(exc)), file=sys.stderr)
+            code = getattr(exc, "code", str(exc))
+            remote_code = getattr(exc, "remote_code", None)
+            if type(remote_code) is str:
+                code += ":" + remote_code
+            print("router route update failed: %s" % code, file=sys.stderr)
             return 1
         print(json.dumps(result, sort_keys=True))
         return 0
