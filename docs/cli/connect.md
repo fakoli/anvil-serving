@@ -239,6 +239,13 @@ Deletion backs up authentication state before removing it, briefly restarts
 Authelia if active, and retains a protected progress record if interrupted. Retry
 the same deletion to finish; an incomplete deletion stays disabled.
 
+For older pending requests without a username, the worker can recover only an
+already-absent sign-in account with one exact public OIDC subject mapping to the
+authorized principal. It pins that mapping and the original intent in its private
+progress record, backs up the remaining authentication state, and refuses an
+existing or recreated account, ambiguous mapping, or changed native request.
+No new deletion request or direct authority-database repair is needed.
+
 Backups, application data and separately issued API keys are retained; these keys
 have no automatic username association and require separate revocation. An old
 backup can contain a deleted account: review revocations before recovery. Use
