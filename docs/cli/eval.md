@@ -287,7 +287,7 @@ remaining prompt capacity, and effective job deadline. `max` reasoning effort
 is not a numeric reasoning reservation: output tokens include reasoning and
 visible output. Actual prompt fit still requires per-request token counts;
 completion within the deadline requires workload-specific timing evidence.
-Record `finish_reason=length` as output-cap exhaustion alongside the independent
+Record `finish_reason=length` as generation-limit exhaustion alongside the independent
 task grade, not as proof of a coding-quality regression. A changed budget needs
 a separately identified run; do not rewrite historical results or retry until
 a desired grade appears.
