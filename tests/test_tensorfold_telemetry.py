@@ -143,5 +143,21 @@ def test_supported_adapter_preserves_auth_and_explicit_capability_gaps():
     assert result['available_capabilities'] == ['active-streams']
     assert result['missing_capabilities'] == ['full-context-concurrency']
     assert result['telemetry']['streams']['active'] == 4
+    assert result['telemetry']['timing']['histograms'] == parse_metrics(metrics(active=4))['timing']['histograms']
     assert seen == {'accept': 'text/plain', 'auth': 'Bearer secret-token'}
     assert 'secret-token' not in json.dumps(result)
+
+
+def test_tensorfold_histograms_survive_collector_and_cli_json_redaction(monkeypatch, capsys):
+    from anvil_serving.cli import main
+
+    monkeypatch.setattr(collectors, '_urlopen_no_proxy_no_redirect', lambda request, timeout: Response(metrics().encode()))
+    monkeypatch.setenv('ANVIL_HISTOGRAM_TEST_TOKEN', 'opaque-test-secret')
+    assert main(['--json', 'collectors', 'inspect', '--name', 'engine',
+                 '--adapter', 'tensorfold-prometheus-v1', '--endpoint', 'http://127.0.0.1:30000/metrics',
+                 '--capability', 'engine-admission-timing', '--auth-env', 'ANVIL_HISTOGRAM_TEST_TOKEN']) == 0
+    output = capsys.readouterr().out
+    envelope = json.loads(output)
+    result = json.loads(envelope['data'])
+    assert result['telemetry']['timing']['histograms'] == parse_metrics(metrics())['timing']['histograms']
+    assert 'opaque-test-secret' not in output
