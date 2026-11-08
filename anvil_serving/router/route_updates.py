@@ -30,11 +30,13 @@ from .keys import _private_created_descriptor, _secure_database, _secure_directo
 MAX_STATE_BYTES = 1024 * 1024
 PREVIEW_TTL_SECONDS = 300
 MAX_PREVIEWS = 4
-_HOT_FIELDS = frozenset({
+_LEGACY_HOT_FIELDS = frozenset({
     "base_url", "model", "context_limit", "max_output_tokens", "context_admission",
     "max_concurrency", "health_path", "model_identity", "tool_support",
     "engine", "quantization", "params",
 })
+_HOT_FIELDS = _LEGACY_HOT_FIELDS | {"extra_body", "extra_body_defaults"}
+_HOT_REQUEST_SETTINGS = frozenset({"reasoning_effort", "temperature", "top_p"})
 _METADATA_KEYS = {
     "fingerprint": {"model_revision", "engine_version", "image_digest", "config_fingerprint"},
     "capacity": {"gpu_role", "gpu_roles", "gpu_name", "gpu_memory_total_mib", "image_limit", "video_limit",
@@ -94,7 +96,7 @@ def _digest(value):
 
 
 def route_projection(config):
-    return {"model_routes": dict(config.model_routes), "tiers": {
+    return {"schema": "router-route-projection/v2", "model_routes": dict(config.model_routes), "tiers": {
         tier.id: {key: _plain(getattr(tier, key)) for key in sorted(_HOT_FIELDS)}
         for tier in sorted(config.tiers, key=lambda tier: tier.id)
     }}
@@ -158,7 +160,10 @@ def _validate_metadata(tier):
 
 
 def _config_from_projection(base, projection):
-    _require(type(projection) is dict and set(projection) == {"tiers", "model_routes"})
+    _require(type(projection) is dict)
+    legacy = set(projection) == {"tiers", "model_routes"}
+    _require(legacy or set(projection) == {"schema", "tiers", "model_routes"}
+             and projection["schema"] == "router-route-projection/v2")
     _require(type(projection["tiers"]) is dict and set(projection["tiers"]) == {tier.id for tier in base.tiers})
     routes = projection["model_routes"]
     _require(type(routes) is dict and set(routes) == set(base.model_routes)
@@ -167,7 +172,9 @@ def _config_from_projection(base, projection):
     tiers = []
     for tier in base.tiers:
         values = projection["tiers"][tier.id]
-        _require(type(values) is dict and set(values) == _HOT_FIELDS)
+        # Legacy projections inherit these request settings from the exact,
+        # hash-bound boot configuration. Never fill a partially new projection.
+        _require(type(values) is dict and set(values) == (_LEGACY_HOT_FIELDS if legacy else _HOT_FIELDS))
         changed = replace(tier, **values)
         if changed != tier:
             changed = _parse_tier(_tier_document(changed))
@@ -197,13 +204,33 @@ def validate_change(current, candidate, requested_mode=None):
         for field in fields(tier):
             if field.name not in _HOT_FIELDS:
                 _require(getattr(tier, field.name) == getattr(new, field.name), "route_field_restart_required")
+        _validate_metadata(new)
+        for field in ("extra_body", "extra_body_defaults"):
+            old_body, new_body = getattr(tier, field) or {}, getattr(new, field) or {}
+            _require(_encoded({key: value for key, value in old_body.items() if key not in _HOT_REQUEST_SETTINGS})
+                     == _encoded({key: value for key, value in new_body.items() if key not in _HOT_REQUEST_SETTINGS}),
+                     "route_request_setting_restart_required")
+            for key in _HOT_REQUEST_SETTINGS & new_body.keys():
+                value = new_body[key]
+                if key in old_body and type(value) is type(old_body[key]) and value == old_body[key]:
+                    continue
+                if key == "reasoning_effort":
+                    _require(type(value) is str and bool(value.strip()), "route_request_setting_invalid")
+                    supported = (new.params or {}).get("capabilities", {}).get("compat", {}).get("supportedReasoningEfforts")
+                    _require(supported is None or isinstance(supported, (list, tuple))
+                             and all(type(effort) is str and bool(effort.strip()) for effort in supported)
+                             and len(set(supported)) == len(supported) and value in supported,
+                             "route_request_setting_invalid")
+                else:
+                    _require(type(value) in (int, float) and math.isfinite(value)
+                             and (0 <= value <= 2 if key == "temperature" else 0 < value <= 1),
+                             "route_request_setting_invalid")
         old_params, new_params = tier.params or {}, new.params or {}
         _require({key: value for key, value in old_params.items() if key not in _METADATA_KEYS}
                  == {key: value for key, value in new_params.items() if key not in _METADATA_KEYS},
                  "route_metadata_restart_required")
         _require(new.model_identity and bool(new.model) and bool(new.health_path),
                  "route_exact_identity_required")
-        _validate_metadata(new)
         changed_tiers.append(tier.id)
     moved_aliases = sorted(alias for alias in current.model_routes
                            if current.model_routes[alias] != candidate.model_routes[alias])
@@ -338,7 +365,7 @@ def initialize_route_state(config_bytes, state_path):
     path = Path(state_path)
     _require(path.is_absolute(), "route_state_path_invalid")
     _secure_directory(path.parent, create=True)
-    value = {"schema": "router-route-state/v1", "base_config_sha256": hashlib.sha256(config_bytes).hexdigest(),
+    value = {"schema": "router-route-state/v2", "base_config_sha256": hashlib.sha256(config_bytes).hexdigest(),
              "route_revision": 0, "effective_route_sha256": route_digest(config),
              "projection": route_projection(config), "previous": None, "operation": None}
     descriptor = _lock_authority(path)
@@ -396,13 +423,14 @@ class RouteUpdateManager:
     def _validate_state(self, value):
         _require(type(value) is dict and set(value) == {"schema", "base_config_sha256", "route_revision",
                  "effective_route_sha256", "projection", "previous", "operation"})
-        _require(value["schema"] == "router-route-state/v1" and value["base_config_sha256"] == self.base_sha256,
+        _require(value["schema"] in {"router-route-state/v1", "router-route-state/v2"}
+                 and value["base_config_sha256"] == self.base_sha256,
                  "route_base_config_changed")
         _require(type(value["route_revision"]) is int and 0 <= value["route_revision"] < 2**53)
         config = _config_from_projection(self.base, value["projection"])
-        _require(value["effective_route_sha256"] == route_digest(config))
+        _require(value["effective_route_sha256"] == _digest(value["projection"]))
         if value["route_revision"] == 0:
-            _require(value["projection"] == route_projection(self.base) and value["previous"] is None)
+            _require(config == self.base and value["previous"] is None)
         else:
             _require(value["previous"] is not None and value["operation"] is not None)
         previous = value["previous"]
@@ -410,8 +438,8 @@ class RouteUpdateManager:
             _require(type(previous) is dict and set(previous) == {"route_revision", "projection", "effective_route_sha256"})
             _require(type(previous["route_revision"]) is int
                      and previous["route_revision"] == value["route_revision"] - 1)
-            prior = _config_from_projection(self.base, previous["projection"])
-            _require(previous["effective_route_sha256"] == route_digest(prior))
+            _config_from_projection(self.base, previous["projection"])
+            _require(previous["effective_route_sha256"] == _digest(previous["projection"]))
         operation = value["operation"]
         if operation is not None:
             _require(type(operation) is dict and set(operation) == {
@@ -425,7 +453,7 @@ class RouteUpdateManager:
                      and type(operation["publish_pending"]) is bool)
             _require(operation["publish_pending"] == (operation["phase"] == "committed"))
             candidate = _config_from_projection(self.base, operation["candidate_projection"])
-            _require(route_digest(candidate) == operation["candidate_sha256"])
+            _require(_digest(operation["candidate_projection"]) == operation["candidate_sha256"])
             predecessor = config if operation["phase"] in {"prepared", "cancelled"} else (
                 _config_from_projection(self.base, previous["projection"]) if previous else None)
             _require(predecessor is not None)
@@ -440,6 +468,13 @@ class RouteUpdateManager:
             _owner_evidence(operation["owner_evidence"])
             if operation["owner_evidence_required"] and operation["phase"] not in {"prepared", "cancelled"}:
                 _require(operation["owner_evidence"] is not None, "route_owner_evidence_required")
+        if value["schema"] == "router-route-state/v1":
+            projections = [value["projection"]]
+            if previous is not None:
+                projections.append(previous["projection"])
+            if operation is not None:
+                projections.append(operation["candidate_projection"])
+            _require(all("schema" not in projection for projection in projections))
         return value
 
     def restore(self):
@@ -458,7 +493,8 @@ class RouteUpdateManager:
         snapshot = self.routing.active_route_snapshot()
         candidate = _config_from_projection(self.base, self._state["projection"])
         operation = self._state["operation"]
-        if self._state["route_revision"] == 0 and operation is None:
+        if (self._state["route_revision"] == 0 and operation is None
+                and snapshot.effective_route_sha256 == self._state["effective_route_sha256"]):
             return self.status()
         scope = validate_change(snapshot.config, candidate)
         self._require_durable_drain_accounting(
@@ -486,7 +522,8 @@ class RouteUpdateManager:
                 tier_ids=tuple(operation["tier_ids"]), aliases=tuple(operation["aliases"]),
             )
             self._holds[operation["transaction_id"]] = hold
-        if operation and operation["phase"] in {"prepared", "committed"} and operation["mode"] == "tier_replacement":
+        if (operation and operation["phase"] in {"prepared", "committed"}
+                and (operation["mode"] == "tier_replacement" or self._state["schema"] == "router-route-state/v1")):
             return self.status()
         try:
             targets = operation["target_tier_ids"] if operation else scope["target_tier_ids"]
@@ -499,7 +536,8 @@ class RouteUpdateManager:
             if hold is not None:
                 self.routing.open_route_update_hold(hold)
                 self._holds.pop(operation["transaction_id"])
-            if operation and operation["phase"] in {"committed", "readmitted"}:
+            if (operation and operation["phase"] in {"committed", "readmitted"}
+                    and self._state["schema"] == "router-route-state/v2"):
                 updated = _plain(self._state)
                 updated["operation"]["phase"] = "complete"
                 self._persist(updated)
@@ -526,6 +564,7 @@ class RouteUpdateManager:
 
     def _persist(self, value):
         value = _plain(value)
+        value["schema"] = "router-route-state/v2"
         self._validate_state(value)
         self._attempted_state = value
         try:
@@ -570,7 +609,8 @@ class RouteUpdateManager:
             available = False
         _require(available is True, "route_drain_accounting_required", status=503)
 
-    def _preview(self, candidate, scope, *, drain_timeout=30, resume_id=None, owner_evidence=None, rollback=False, cancel=False):
+    def _preview(self, candidate, scope, *, drain_timeout=30, resume_id=None, owner_evidence=None,
+                 rollback=False, cancel=False, retained_projection=None):
         _require(type(drain_timeout) in (int, float) and 0 < drain_timeout <= 300,
                  "route_drain_timeout_invalid", status=400)
         # Refuse before caching a candidate or persisting a prepared operation:
@@ -580,20 +620,24 @@ class RouteUpdateManager:
         self._previews = {key: value for key, value in self._previews.items() if value["expires"] > now}
         _require(len(self._previews) < MAX_PREVIEWS, "route_preview_capacity", status=429)
         snapshot = self.routing.active_route_snapshot()
+        projection = _plain(retained_projection) if retained_projection is not None else route_projection(candidate)
+        _require(_config_from_projection(self.base, projection) == candidate)
+        candidate_digest = _digest(projection)
         identifier = secrets.token_hex(16)
-        entry = {"candidate": candidate, "scope": scope, "expires": now + PREVIEW_TTL_SECONDS,
+        entry = {"candidate": candidate, "candidate_projection": projection, "candidate_sha256": candidate_digest,
+                 "scope": scope, "expires": now + PREVIEW_TTL_SECONDS,
                  "route_revision": snapshot.route_revision, "effective_route_sha256": snapshot.effective_route_sha256,
                  "admission": self.routing.route_admission_fingerprint(), "drain_timeout": drain_timeout,
                  "resume_id": resume_id, "owner_evidence": _owner_evidence(owner_evidence), "rollback": rollback, "cancel": cancel}
-        _require(len(_encoded(route_projection(candidate))) <= MAX_ROUTER_CONFIG_BYTES, "route_candidate_too_large", status=413)
+        _require(len(_encoded(projection)) <= MAX_ROUTER_CONFIG_BYTES, "route_candidate_too_large", status=413)
         # Bound the complete authority before a caller can confirm a hold.
         size_probe = _plain(self._state)
         size_probe.update(route_revision=self._state["route_revision"] + 1,
-                          projection=route_projection(candidate), effective_route_sha256=route_digest(candidate))
+                          projection=projection, effective_route_sha256=candidate_digest)
         size_probe["previous"] = {key: self._state[key] for key in ("route_revision", "projection", "effective_route_sha256")}
         size_probe["operation"] = {**scope, "transaction_id": "0" * 32, "preview_id": identifier,
                                    "phase": "committed", "publish_pending": True,
-                                   "candidate_projection": route_projection(candidate), "candidate_sha256": route_digest(candidate),
+                                   "candidate_projection": projection, "candidate_sha256": candidate_digest,
                                    "drain_timeout": drain_timeout, "actor": "operator",
                                    "owner_evidence_required": resume_id is not None,
                                    "owner_evidence": owner_evidence}
@@ -604,7 +648,7 @@ class RouteUpdateManager:
         self._previews[identifier] = entry
         return {"preview_id": identifier, "expires_in_seconds": PREVIEW_TTL_SECONDS, **scope,
                 "route_revision": snapshot.route_revision, "effective_route_sha256": snapshot.effective_route_sha256,
-                "candidate_sha256": route_digest(candidate), "drain_timeout": drain_timeout,
+                "candidate_sha256": candidate_digest, "drain_timeout": drain_timeout,
                 "transaction_id": resume_id, "readmission_included": scope["mode"] != "noop",
                 "operation_phase": self._state["operation"]["phase"] if resume_id else None,
                 "authority_route_revision": self._state["route_revision"],
@@ -637,7 +681,8 @@ class RouteUpdateManager:
                     and operation is not None and operation["phase"] == "prepared"):
                 candidate = _config_from_projection(self.base, self._state["projection"])
                 scope = {key: operation[key] for key in ("mode", "tier_ids", "aliases", "target_tier_ids")}
-                return self._preview(candidate, scope, resume_id=operation["transaction_id"], cancel=True)
+                return self._preview(candidate, scope, resume_id=operation["transaction_id"], cancel=True,
+                                     retained_projection=self._state["projection"])
             previous = self._state["previous"]
             _require(type(revision) is int and previous is not None and previous["route_revision"] == revision,
                      "route_rollback_not_retained")
@@ -664,7 +709,7 @@ class RouteUpdateManager:
                 _require({evidence["served_model"]} == {candidate.tier(tier_id).model for tier_id in scope["tier_ids"]},
                          "route_owner_evidence_mismatch")
             return self._preview(candidate, scope, drain_timeout=operation["drain_timeout"],
-                                 resume_id=transaction_id, owner_evidence=evidence)
+                                 resume_id=transaction_id, owner_evidence=evidence, retained_projection=projection)
 
     def _hold(self, operation):
         self._require_durable_drain_accounting(operation)
@@ -701,6 +746,8 @@ class RouteUpdateManager:
             if entry["cancel"] or (entry["resume_id"] is not None and not entry["rollback"]
                                     and operation["phase"] in {"complete", "cancelled"}):
                 _require(operation["transaction_id"] == entry["resume_id"], "route_preview_stale")
+                _require(entry["candidate_projection"] == self._state["projection"]
+                         and entry["candidate_sha256"] == self._state["effective_route_sha256"], "route_preview_stale")
                 hold = self._holds.get(operation["transaction_id"])
                 if hold is not None:
                     _require(self.routing.wait_route_update_drain(hold, entry["drain_timeout"]).get("drained") is True,
@@ -723,7 +770,7 @@ class RouteUpdateManager:
                 _require(not self._pending(), "route_update_pending")
                 operation = {**scope, "transaction_id": secrets.token_hex(16), "preview_id": preview_id,
                              "phase": "prepared", "publish_pending": False,
-                             "candidate_projection": route_projection(candidate), "candidate_sha256": route_digest(candidate),
+                             "candidate_projection": entry["candidate_projection"], "candidate_sha256": entry["candidate_sha256"],
                              "drain_timeout": entry["drain_timeout"], "actor": "operator",
                              "owner_evidence_required": prepare_only, "owner_evidence": None}
             else:
@@ -733,8 +780,10 @@ class RouteUpdateManager:
                 operation["owner_evidence"] = entry["owner_evidence"]
                 if entry["rollback"]:
                     operation.update(**scope, phase="prepared", publish_pending=False,
-                                     candidate_projection=route_projection(candidate), candidate_sha256=route_digest(candidate),
+                                     candidate_projection=entry["candidate_projection"], candidate_sha256=entry["candidate_sha256"],
                                      owner_evidence_required=False, owner_evidence=None)
+            _require(operation["candidate_projection"] == entry["candidate_projection"]
+                     and operation["candidate_sha256"] == entry["candidate_sha256"], "route_preview_stale")
             hold = self._holds.get(operation["transaction_id"])
             try:
                 if scope["mode"] == "tier_replacement" and operation["phase"] == "prepared":
@@ -752,13 +801,15 @@ class RouteUpdateManager:
                 current = self.routing.active_route_snapshot()
                 committing = operation["phase"] == "prepared"
                 revision = self._state["route_revision"] + 1 if committing else self._state["route_revision"]
-                runtime = self.routing.prepare_route_runtime(candidate, revision=revision, digest=route_digest(candidate))
+                runtime = self.routing.prepare_route_runtime(candidate, revision=revision,
+                                                             digest=operation["candidate_sha256"])
                 if scope["mode"] == "alias_only":
                     self.routing.probe_route_update_targets(runtime, scope["target_tier_ids"], require_admitting=True)
                 if committing:
                     value = _plain(self._state)
                     value["previous"] = {key: value[key] for key in ("route_revision", "projection", "effective_route_sha256")}
-                    value.update(route_revision=revision, projection=route_projection(candidate), effective_route_sha256=route_digest(candidate))
+                    value.update(route_revision=revision, projection=operation["candidate_projection"],
+                                 effective_route_sha256=operation["candidate_sha256"])
                     operation.update(phase="committed", publish_pending=True)
                     value["operation"] = operation
                     self._persist(value)
