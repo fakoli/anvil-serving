@@ -52,6 +52,14 @@ def _adapter_identity():
             "lint": LINT_CONTRACT}
 
 
+def validate_oracle_receipt_selection(value):
+    if (not isinstance(value, dict) or set(value) != {"receipt_path", "sha256"}
+            or not isinstance(value["receipt_path"], str) or not os.path.isabs(value["receipt_path"])
+            or not re.fullmatch(r"[0-9a-f]{64}", str(value["sha256"]))):
+        _fail("Aider oracle selection requires an absolute receipt path and SHA-256")
+    return dict(value)
+
+
 def _bounded_runner(argv, cwd, timeout):
     from ..transports import _run_bounded_process
     return _run_bounded_process(argv, cwd=cwd, timeout=timeout, max_output_bytes=8 * 1024**2,
@@ -89,6 +97,8 @@ def _cache_target(cache_root, key):
 
 
 def _build_files(context):
+    if context.is_symlink() or not context.is_dir():
+        _fail("Aider build context is absent or invalid")
     files = {}
     for path in sorted(context.rglob("*")):
         if path.is_symlink():
@@ -269,15 +279,15 @@ def _python_environment(assets, cache_root, offline, max_bytes, runner, logs):
         _fail("Aider preparation requires Python 3.12", "aider_python_absent")
     target.mkdir(parents=True)
     try:
-        _checked(runner, (executable, "-I", "-m", "venv", str(target)), logs)
+        _checked(runner, (executable, "-I", "-B", "-m", "venv", str(target)), logs)
         build_source = target / "source"
         _copy_source(_source(cache_root, assets, "aider"), build_source, runner)
         # Install a regular wheel, never an editable source with ambient imports.
-        _checked(runner, ("env", SCM_VERSION_ASSIGNMENT, python, "-I", "-m", "pip", "install", "--no-cache-dir", "--disable-pip-version-check", "--no-input",
+        _checked(runner, ("env", SCM_VERSION_ASSIGNMENT, python, "-I", "-B", "-m", "pip", "install", "--no-cache-dir", "--disable-pip-version-check", "--no-input",
                           str(build_source) + "[dev]"), logs, cwd=str(target))
-        version = _checked(runner, (python, "-I", "-c", "import platform; print(platform.python_version())"), logs)
+        version = _checked(runner, (python, "-I", "-B", "-c", "import platform; print(platform.python_version())"), logs)
         inventory = runtime._normalized_freeze(_checked(runner, (python, "-I", "-B", "-m", "pip", "freeze", "--all"), logs), cache_root=cache_root)
-        installed_version = _checked(runner, (python, "-I", "-c",
+        installed_version = _checked(runner, (python, "-I", "-B", "-c",
             "from importlib.metadata import version; print(version('aider-chat'))"), logs)
         if not version.startswith("3.12.") or not inventory or installed_version != AIDER_SOURCE_VERSION:
             _fail("Aider Python or pinned package version did not verify")
@@ -483,6 +493,15 @@ def validate_aider_environment(environment, *, cache_root, assets):
         _fail("Aider image must be immutable")
     if environment.get("source_hashes") != SOURCE_HASHES:
         _fail("Aider source guards are absent or changed")
+    qualification_fields = {"runtime_adapter", "selected_receipt_sha256", "requalification"}
+    present = qualification_fields & environment.keys()
+    if present:
+        if (present != qualification_fields or environment["runtime_adapter"] != _adapter_identity()
+                or not re.fullmatch(r"[0-9a-f]{64}", str(environment["selected_receipt_sha256"]))):
+            _fail("Aider runtime adapter identity or qualification binding changed")
+        original = {k: v for k, v in environment.items() if k not in qualification_fields}
+        validate_aider_environment({**original, "oracle": environment["requalification"]},
+                                   cache_root=cache_root, assets=assets)
     for name in ("aider", "polyglot-benchmark"):
         _source(cache_root, assets, name)
     rows = environment.get("selection", [])
@@ -503,8 +522,10 @@ def validate_aider_environment(environment, *, cache_root, assets):
     if not isinstance(oracle, dict):
         _fail("invalid oracle receipt")
     results = oracle.get("results", [])
-    if (not isinstance(results, list) or not all(isinstance(r, dict) for r in results) or oracle.get("status") != "passed" or oracle.get("image_id") != environment["image_id"] or
-            len(results) != 6 or {r.get("task_id") for r in results} != {r["task_id"] for r in rows}):
+    if (not isinstance(results, list) or not all(isinstance(r, dict) and isinstance(r.get("task_id"), str)
+            and isinstance(r.get("language"), str) for r in results) or oracle.get("status") != "passed" or oracle.get("image_id") != environment["image_id"] or
+            len(results) != 6 or {(r.get("task_id"), r.get("language")) for r in results} !=
+            {(r["task_id"], r["language"]) for r in rows}):
         _fail("six-language oracle is incomplete")
     for row in results:
         code = row.get("starter_returncode")
@@ -518,7 +539,8 @@ def validate_aider_environment(environment, *, cache_root, assets):
 
 
 def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes,
-                              run_path, ownership_id, run_id, runner=runtime._default_runner):
+                              run_path, ownership_id, run_id, runner=runtime._default_runner,
+                              oracle_receipt=None):
     """Return Python and image receipts only after all six independent oracles."""
     if platform.system().lower() not in {"linux", "darwin"}:
         _fail("Aider execution requires a POSIX container worker")
@@ -526,6 +548,10 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
         runner = _bounded_runner
     logs = []
     receipt_path = Path(run_path) / "aider/preparation/receipt.json"
+    if oracle_receipt is not None:
+        oracle_receipt = validate_oracle_receipt_selection(oracle_receipt)
+        if Path(oracle_receipt["receipt_path"]).resolve().is_relative_to(receipt_path.parent.resolve()):
+            _fail("selected Aider receipt cannot be inside the preparation output")
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
     try:
         roots = verify_aider_sources(cache_root, assets, runner=runner)
@@ -540,6 +566,73 @@ def prepare_aider_environment(*, assets, cache_root, offline, max_download_bytes
         container = runtime.resolve_container_binary()
         if not container:
             _fail("Docker is required for Aider preparation", "container_capability_absent")
+        if oracle_receipt is not None:
+            path = Path(oracle_receipt["receipt_path"])
+            if path.is_symlink() or not path.is_file() or path.stat().st_size > 8 * 1024**2:
+                _fail("selected Aider receipt is invalid")
+            data = path.read_bytes()
+            if hashlib.sha256(data).hexdigest() != oracle_receipt["sha256"]:
+                _fail("selected Aider receipt digest changed")
+            selected = json.loads(data)
+            environment = selected.get("aider_environment") if selected.get("status") == "ready" else None
+            # Run-specific qualification and adapter bindings are renewed below;
+            # the original image, source, inventory, build and oracle remain locked.
+            run_fields = {"reused", "runtime_adapter", "selected_receipt_sha256", "requalification"}
+            if isinstance(environment, dict):
+                prior_run_fields = {"runtime_adapter", "selected_receipt_sha256", "requalification"} & environment.keys()
+                if prior_run_fields:
+                    adapter = environment.get("runtime_adapter")
+                    if (prior_run_fields != {"runtime_adapter", "selected_receipt_sha256", "requalification"}
+                            or not isinstance(adapter, dict) or set(adapter) != {"sha256", "containment_sha256", "lint"}
+                            or not all(re.fullmatch(r"[0-9a-f]{64}", str(adapter[k])) for k in ("sha256", "containment_sha256"))
+                            or not isinstance(adapter["lint"], dict)
+                            or set(adapter["lint"]) != {"command_prefix", "version"}
+                            or not isinstance(adapter["lint"]["command_prefix"], list)
+                            or not all(isinstance(part, str) for part in adapter["lint"]["command_prefix"])
+                            or not isinstance(adapter["lint"]["version"], str)
+                            or not re.fullmatch(r"[0-9a-f]{64}", str(environment["selected_receipt_sha256"]))):
+                        _fail("selected Aider runtime binding is invalid")
+                    previous = {k: v for k, v in environment.items() if k not in run_fields}
+                    validate_aider_environment({**previous, "oracle": environment["requalification"]},
+                                               cache_root=cache_root, assets=assets)
+                environment = {k: v for k, v in environment.items() if k not in run_fields}
+            validate_aider_environment(environment, cache_root=cache_root, assets=assets)
+            old_identity = environment.get("identity", {})
+            expected = {k: v for k, v in identity.items() if k not in {"adapter", "preparer_sha256"}}
+            if (any(old_identity.get(k) != v for k, v in expected.items()) or
+                    environment.get("selection") != rows or
+                    environment.get("cache_key") != "aider-environments/" + _digest(old_identity)):
+                _fail("selected Aider oracle source or identity changed")
+            target = _cache_target(cache_root, environment["cache_key"])
+            lock_path = target / "environment.json"
+            if (target.parent.is_symlink() or target.is_symlink() or lock_path.is_symlink() or not lock_path.is_file() or
+                    lock_path.stat().st_size > 8 * 1024**2):
+                _fail("selected Aider oracle cache receipt is invalid")
+            locked = json.loads(lock_path.read_text())
+            if ({k: v for k, v in locked.items() if k != "reused"} != environment):
+                _fail("selected Aider oracle cache receipt changed")
+            inputs = environment["build_inputs"]
+            if (_build_files(target / "build") != inputs["files"] or
+                    _digest(inputs["files"]) != inputs["sha256"]):
+                _fail("selected Aider oracle build inputs changed")
+            info = json.loads(_checked(runner, (container, "image", "inspect", environment["image_id"]), logs))[0]
+            if info.get("Id") != environment["image_id"] or info.get("Size") != inputs["image_size_bytes"]:
+                _fail("selected Aider oracle image changed")
+            inventory = _image_inventory(environment["image_id"], run_path, ownership_id, run_id, container, runner, logs)
+            if inventory != environment["package_inventory"]:
+                _fail("selected Aider oracle package inventory changed")
+            oracle = _oracle(roots, rows, run_path, ownership_id, run_id, environment["image_id"], container, runner, logs)
+            environment = {**environment, "requalification": oracle, "reused": True,
+                           "selected_receipt_sha256": oracle_receipt["sha256"],
+                           "runtime_adapter": _adapter_identity()}
+            validate_aider_environment(environment, cache_root=cache_root, assets=assets)
+            occupied = (runtime._directory_bytes(str(target)) +
+                        runtime._directory_bytes(str(Path(cache_root) / python["cache_key"])) + inputs["image_size_bytes"])
+            if occupied > max_download_bytes:
+                _fail("Aider preparation exceeded the combined disk bound")
+            atomic_write_json(str(receipt_path), {"status": "ready", "python_environment": python,
+                                                 "aider_environment": environment, "command_logs": logs})
+            return python, environment, logs
         lock_path = target / "environment.json"
         if target.exists():
             try:
@@ -598,6 +691,9 @@ def verify_aider_plan(plan):
             or plan.get("plan_sha256") != _digest({k: v for k, v in plan.items() if k != "plan_sha256"})):
         raise BenchmarkJobError("bad_aider_plan", "Aider plan identity changed")
     python = verify_aider_python_environment(plan.get("python_environment"), cache_root=plan["cache_root"])
+    environment = plan.get("aider_environment", {})
+    if "runtime_adapter" in environment and environment["runtime_adapter"] != _adapter_identity():
+        raise BenchmarkJobError("aider_adapter_mismatch", "Aider containment adapter changed")
     if plan.get("command") != _adapter_command(python, plan["paths"]["plan"]):
         raise BenchmarkJobError("bad_aider_plan", "Aider command does not match its prepared interpreter")
     owned = resolve_owned_run_path(plan["run_root"], ownership_id=plan["ownership_id"], run_id=plan["run_id"])

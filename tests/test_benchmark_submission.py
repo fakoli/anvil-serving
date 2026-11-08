@@ -20,6 +20,21 @@ def _spec(parameters, *, suite="swe"):
     }
 
 
+def test_oracle_selection_is_explicit_and_aider_only():
+    from anvil_serving.benchmarking.submission import validate_submission_spec
+    selection = {"receipt_path": "/fixture/receipt.json", "sha256": "a" * 64}
+    spec = _spec({"aider_oracle": selection}, suite="aider")
+    spec.update(profile="pilot-v2", timeout_s=30)
+    validate_submission_spec(spec)
+    for invalid in ({"receipt_path": "relative", "sha256": "a" * 64},
+                    {"receipt_path": "/fixture/receipt.json", "sha256": "bad"}):
+        spec["parameters"]["aider_oracle"] = invalid
+        with pytest.raises(BenchmarkJobError):
+            validate_submission_spec(spec)
+    with pytest.raises(BenchmarkJobError):
+        validate_submission_spec(_spec({"aider_oracle": selection}))
+
+
 @pytest.mark.parametrize("surface", ["cli", "mcp"])
 def test_cleanup_surface_checks_durable_owner_before_dispatch(monkeypatch, surface):
     from anvil_serving.benchmarking import jobs_cli
