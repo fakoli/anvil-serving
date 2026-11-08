@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -15,7 +16,7 @@ from anvil_serving.propagation_native_acceptance import (
 )
 
 
-def fixture_profile(tmp_path):
+def fixture_profile(tmp_path, *, separate_metadata=False):
     tmp_path.chmod(0o700)
     executable = tmp_path / 'hermes'
     executable.write_text('#!/bin/sh\nexit 1\n')
@@ -32,19 +33,31 @@ def fixture_profile(tmp_path):
         native_runtime=dict(executable=str(executable), fixture_root=str(tmp_path), path=["/usr/bin"]),
         hermes=dict(bin=str(executable), home=str(tmp_path), profile='default'))
     profile = dict(expected_identity_digest='2'*64, targets=[target])
+    if separate_metadata:
+        metadata = tmp_path / 'hermes-metadata'
+        metadata.write_text('#!/bin/sh\nexit 2\n')
+        metadata.chmod(0o500)
+        target['hermes'].update(bin=str(metadata), bin_sha256=hashlib.sha256(metadata.read_bytes()).hexdigest())
+        identity = tmp_path.stat()
+        profile['managed_hermes_home'] = dict(path=str(tmp_path), device=identity.st_dev,
+            inode=identity.st_ino, uid=identity.st_uid)
     deadline = (datetime.now(timezone.utc) + timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%SZ')
     contract = SimpleNamespace(digest='1'*64, value={'deadline_at': deadline})
     return profile, contract
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
-@pytest.mark.parametrize('managed', [False, True])
-def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed):
-    profile, contract = fixture_profile(tmp_path)
+@pytest.mark.parametrize('managed,separate_metadata', [(False, False), (True, False),
+    pytest.param(True, True, marks=pytest.mark.skipif(sys.platform != 'linux', reason='managed home is Linux-only'))])
+def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed, separate_metadata):
+    profile, contract = fixture_profile(tmp_path, separate_metadata=separate_metadata)
     calls, histories = [], {}
     def run(argv, timeout, environment):
         calls.append(argv)
         assert 0 < timeout <= 120
+        assert argv[0] == profile['targets'][0]['native_runtime']['executable']
+        if separate_metadata:
+            assert argv[0] != profile['targets'][0]['hermes']['bin']
         assert argv[1:3] == ('-p', 'default')
         assert '--model' not in argv and '--provider' not in argv
         assert environment['HERMES_HOME'] == str(tmp_path)
@@ -71,7 +84,7 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed)
     lifecycle = NativeFixtureLifecycle(profile, contract, run=run,
         router_base_url='http://127.0.0.1:8000/v1' if managed else None)
     target = profile['targets'][0]
-    validate_native_runtime(target)
+    validate_native_runtime(target, managed_hermes_home=profile.get('managed_hermes_home'))
     assert calls == []
     lifecycle.prepare()
     assert len(calls) == 1
@@ -94,6 +107,38 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed)
     with pytest.raises(NativeAcceptanceError, match='already exists'):
         NativeFixtureLifecycle(profile, contract, run=run).prepare()
     assert len(calls) == 3
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='managed home is Linux-only')
+@pytest.mark.parametrize('tamper', ['undeclared', 'wrong-home', 'wrong-inode', 'missing-metadata-pin',
+    'changed-metadata', 'missing-session-pin', 'changed-session', 'unsafe-metadata'])
+def test_distinct_hermes_executables_require_managed_identity_and_both_pins(tmp_path, tamper):
+    profile, contract = fixture_profile(tmp_path, separate_metadata=True)
+    target, managed = profile['targets'][0], profile['managed_hermes_home']
+    if tamper == 'undeclared':
+        profile.pop('managed_hermes_home')
+    elif tamper == 'wrong-home':
+        managed['path'] = str(tmp_path.parent)
+    elif tamper == 'wrong-inode':
+        managed['inode'] += 1
+    elif tamper == 'missing-metadata-pin':
+        target['hermes'].pop('bin_sha256')
+    elif tamper == 'changed-metadata':
+        target['hermes']['bin_sha256'] = '0' * 64
+    elif tamper == 'missing-session-pin':
+        for item in target['native_sessions']:
+            item['executable_digest'] = None
+    elif tamper == 'changed-session':
+        target['native_sessions'][0]['executable_digest'] = '0' * 64
+    else:
+        Path(target['hermes']['bin']).chmod(0o720)
+    calls = []
+    lifecycle = NativeFixtureLifecycle(profile, contract, run=lambda *args: calls.append(args))
+    with pytest.raises(NativeAcceptanceError):
+        lifecycle.prepare()
+    assert calls == []
+    assert not list(tmp_path.glob('*fixture.json'))
+
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
