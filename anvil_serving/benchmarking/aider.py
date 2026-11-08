@@ -47,6 +47,29 @@ def _request_event_identity(event):
     return logical_request_id, attempt
 
 
+def _response_budget_observations(events, configured_output_cap_tokens=None):
+    """Project response metadata without attributing transport calls to tasks."""
+    cap = configured_output_cap_tokens if type(configured_output_cap_tokens) is int and configured_output_cap_tokens > 0 else None
+    responses = []
+    for event in events:
+        if event.get("event") != "aider_transport_response":
+            continue
+        usage = event.get("usage")
+        usage = usage if isinstance(usage, Mapping) else {}
+        values = {name: usage.get(name) if type(usage.get(name)) is int and 0 <= usage[name] <= 10**12 else None
+                  for name in _AIDER_USAGE_FIELDS}
+        completion, reasoning = values["completion_tokens"], values["reasoning_tokens"]
+        non_reasoning = completion - reasoning if completion is not None and reasoning is not None and reasoning <= completion else None
+        reason = event.get("finish_reason")
+        if reason not in {"stop", "length", "tool_calls", "content_filter", "function_call"}:
+            reason = None
+        responses.append({"finish_reason": reason, "usage": values, "visible_tokens": None,
+                          "non_reasoning_tokens": non_reasoning,
+                          "output_cap_reached": completion >= cap if cap is not None and completion is not None and completion > 0 else None})
+    return {"classification": "budget_exhausted" if any(row["finish_reason"] == "length" for row in responses) else None,
+            "scope": "response_generation_limit", "configured_output_cap_tokens": cap, "responses": responses}
+
+
 def _validate_request_accounting(events, adapter_result):
     """Validate the opt-in request-accounting contract without reclassifying legacy evidence."""
     if not events or any(not isinstance(event, Mapping) for event in events):
@@ -329,6 +352,7 @@ def run_aider_benchmark(plan, *, command_runner=partial(_budget_runner, max_outp
         result["request_observations"] = evidence_file_reference(str(events_path), root=plan["run_path"])
         if request_accounting is not None:
             result["request_accounting"] = request_accounting
+        result["output_budget"] = _response_budget_observations(events, plan["budgets"]["max_completion_tokens"])
         if terminal["budget"]["exhausted"]:
             result["failure"] = {"class": "budget_exhausted", "code": terminal["budget"]["reason"]}
         elif (terminal.get("outcome") != "completed" or terminal.get("plan_sha256") != plan["plan_sha256"]

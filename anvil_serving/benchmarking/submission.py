@@ -26,12 +26,12 @@ _RESERVED_PARAMETERS = {
     "token_buckets", "positions", "repetitions", "output_headroom_tokens",
     "advertised_context", "recovery_result", "session_turns", "instance_ids",
     "paired_image_ids", "paired_image_repo_digests",
-    "server_log",
+    "server_log", "aider_oracle",
     "offline", "client_topology", "model_host_id", "identities",
     "operation", "source_run_id", "prompt_contract",
     "runner", "workload", "concurrency", "request_count", "duration_s", "warmup_requests", "cache_condition",
 }
-_COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities", "budget_mode"})
+_COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities", "budget_mode", "prompt_tokens"})
 _SUITE_PARAMETERS = {
     "context": frozenset({
         "thinking_mode", "reasoning_effort", "temperature", "top_p", "clear_thinking",
@@ -50,7 +50,7 @@ _SUITE_PARAMETERS = {
     }),
     "aider": frozenset({
         "thinking_mode", "reasoning_effort", "temperature", "top_p",
-        "instance_ids",
+        "instance_ids", "aider_oracle",
     }),
     "performance": frozenset({
         "runner", "workload", "concurrency", "request_count", "duration_s", "warmup_requests", "cache_condition",
@@ -86,6 +86,8 @@ def _validate_common_parameters(parameters: Mapping[str, Any]) -> None:
     """Validate parameter fields consumed outside an individual suite runner."""
     if parameters.get("budget_mode", "fixed") not in ("fixed", "deployment"):
         raise BenchmarkJobError("bad_budget_mode", "budget_mode must be fixed or deployment")
+    if "prompt_tokens" in parameters and (type(parameters["prompt_tokens"]) is not int or parameters["prompt_tokens"] < 0):
+        raise BenchmarkJobError("bad_prompt_tokens", "prompt_tokens must be a nonnegative integer")
     if "offline" in parameters and not isinstance(parameters["offline"], bool):
         raise BenchmarkJobError("bad_offline", "offline must be boolean")
     topology = parameters.get("client_topology", "isolated")
@@ -181,9 +183,13 @@ def validate_submission_spec(
         return {"profile": profile["name"], "selection": selection, **binding}
     if suite_name == "aider":
         from .aider import validate_aider_parameters
+        from .aider_prepare import validate_oracle_receipt_selection
+
+        if "aider_oracle" in parameters:
+            validate_oracle_receipt_selection(parameters["aider_oracle"])
 
         selection = validate_aider_parameters(
-            profile, {key: value for key, value in parameters.items() if key in _SUITE_PARAMETERS["aider"]}
+            profile, {key: value for key, value in parameters.items() if key in _SUITE_PARAMETERS["aider"] and key != "aider_oracle"}
         )
         return {"profile": profile["name"], **selection, **binding}
     if suite_name == "swe":

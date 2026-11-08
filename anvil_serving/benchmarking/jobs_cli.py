@@ -69,6 +69,9 @@ def _parser() -> argparse.ArgumentParser:
         prepare.add_argument("--ownership-id", required=True)
         prepare.add_argument("--offline", action="store_true")
         prepare.add_argument("--max-download-bytes", type=int, default=20 * 1024**3)
+        if suite == "aider":
+            prepare.add_argument("--aider-oracle-receipt")
+            prepare.add_argument("--aider-oracle-receipt-sha256")
         prepare.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
         assets = actions.add_parser("assets")
         assets.add_argument("--run-id", required=True)
@@ -344,6 +347,8 @@ def run(argv: list[str]) -> dict:
             cache_root=cache_root,
             offline=args.offline,
             max_download_bytes=args.max_download_bytes,
+            aider_oracle=({"receipt_path": args.aider_oracle_receipt, "sha256": args.aider_oracle_receipt_sha256}
+                          if args.suite == "aider" and (args.aider_oracle_receipt or args.aider_oracle_receipt_sha256) else None),
         )
     if args.action == "preflight":
         return run_benchmark_preflight(

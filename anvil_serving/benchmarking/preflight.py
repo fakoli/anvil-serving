@@ -446,6 +446,9 @@ def run_benchmark_preflight(
             "deployment mode requires a known endpoint output cap equal to the pinned profile budget",
         ))
     maximum_prompt_tokens = None
+    declared_prompt_tokens = parameters.get("prompt_tokens")
+    if declared_prompt_tokens is not None and (type(declared_prompt_tokens) is not int or declared_prompt_tokens < 0):
+        raise BenchmarkJobError("bad_prompt_tokens", "prompt_tokens must be a nonnegative integer")
     if configured_context is not None and declared_output_budget is not None:
         maximum_prompt_tokens = configured_context - declared_output_budget
         checks.append(_check(
@@ -454,6 +457,10 @@ def run_benchmark_preflight(
             f"context_tokens={configured_context} output_tokens={declared_output_budget}; "
             "actual prompts must fit the remaining context at request time",
         ))
+        if declared_prompt_tokens is not None:
+            fits = declared_prompt_tokens <= maximum_prompt_tokens
+            checks.append(_check("declared_prompt_fit", fits, None if fits else "prompt_exceeds_context_headroom",
+                                 "declared prompt plus output cap must fit the configured context"))
     elif budget_mode == "deployment":
         checks.append(_check("generation_context_headroom", False, "unknown_context_headroom",
                              "deployment mode requires a known context and output budget"))
@@ -473,6 +480,9 @@ def run_benchmark_preflight(
     unsupported = []
     if configured_context is None:
         unsupported.append("configured_context")
+    budgets = budget_admission.get("budgets") if budget_admission else None
+    selected_ids = (budget_admission or {}).get("selection", {}).get("instance_ids")
+    required_attempts = 2 * len(selected_ids) if normalized["suite"] == "aider" and selected_ids else None
     artifact = {
         "schema": BENCHMARK_PREFLIGHT_SCHEMA,
         "run_id": normalized["run_id"],
@@ -485,15 +495,27 @@ def run_benchmark_preflight(
             "reasoning_effort": requested_effort,
             "thinking_mode": parameters.get("thinking_mode", "default"),
             "reasoning_tokens_reserved": None,
+            "reasoning_reservation_support": "unsupported_by_harness",
             "output_tokens_include_reasoning": True,
+            "output_cap_tokens_per_response": declared_output_budget,
+            "context_tokens": configured_context,
             "maximum_prompt_tokens": maximum_prompt_tokens,
-            "prompt_fit": "requires_per_request_token_count",
-            "effective_deadline_s": normalized["timeout_s"],
+            "declared_prompt_tokens": declared_prompt_tokens,
+            "prompt_fit": "declared_input_only; actual requests require token counts" if declared_prompt_tokens is not None else "requires_per_request_token_count",
+            "effective_deadline_s": min(normalized["timeout_s"], budgets["deadline_s"]) if budgets else normalized["timeout_s"],
+            "profile_deadline_s": budgets["deadline_s"] if budgets else None,
+            "max_transport_calls": budgets["max_model_calls"] if budgets else None,
+            "max_retries": budgets["max_retries"] if budgets else None,
+            "coding_attempts_per_task": 2 if normalized["suite"] == "aider" else None,
+            "maximum_coding_attempts_for_selection": required_attempts,
             "completion_within_deadline": "unverified; requires workload-specific timing evidence",
         },
         "warnings": [
             "Reasoning effort is not a numeric reasoning-token reservation; output tokens include reasoning and visible output.",
             "A length finish is output-cap exhaustion, not by itself an independently graded solution failure.",
+            "Deadline adequacy is unverified; it may expire before all permitted attempts finish.",
+            *(["Transport-call exhaustion may prevent a later coding attempt; retries and other calls share the limit."]
+              if normalized["suite"] == "aider" else []),
             *(["Fixed-budget diagnostics do not qualify the endpoint's full deployment output allowance."]
               if budget_mode == "fixed" else []),
             *(["Endpoint output allowance is unknown; profile-budget acceptance is not endpoint-budget verification."]

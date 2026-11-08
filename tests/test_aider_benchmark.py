@@ -9,6 +9,23 @@ from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.profiles import load_profile
 
 
+def test_response_budget_observations_keep_oracle_separate_and_unknowns():
+    events = [{"event": "aider_transport_response", "finish_reason": "length", "usage": {
+        "completion_tokens": 16, "reasoning_tokens": 16, "prompt_tokens": 4, "total_tokens": 20}},
+        {"event": "aider_transport_response", "finish_reason": "length", "usage": {
+            "completion_tokens": 3, "reasoning_tokens": 4}},
+        {"event": "aider_transport_response", "finish_reason": "length"}]
+    observed = aider._response_budget_observations(events, 16)
+    assert observed["classification"] == "budget_exhausted"
+    assert observed["scope"] == "response_generation_limit"
+    assert observed["configured_output_cap_tokens"] == 16
+    assert [row["output_cap_reached"] for row in observed["responses"]] == [True, False, None]
+    assert observed["responses"][0]["non_reasoning_tokens"] == 0
+    assert observed["responses"][0]["visible_tokens"] is None
+    assert observed["responses"][1]["non_reasoning_tokens"] is None
+    assert aider._response_budget_observations(events, True)["responses"][0]["output_cap_reached"] is None
+
+
 def accounted_event_stream(*, terminal_status="complete", pending=0):
     schema = aider.AIDER_REQUEST_ACCOUNTING_SCHEMA
     usage = {"prompt_tokens": None, "completion_tokens": None,
@@ -92,6 +109,7 @@ def prepared_plan_inputs(tmp_path, monkeypatch):
 @pytest.mark.parametrize("mode,expected_state,expected_failure", [
     ("legacy_gap", "completed", None),
     ("accounted_complete", "completed", None),
+    ("output_exhausted", "completed", None),
     ("accounted_incomplete", "incomplete", "incomplete_aider_observations"),
 ])
 def test_run_parser_versions_request_accounting_without_changing_native_grade(
@@ -109,7 +127,7 @@ def test_run_parser_versions_request_accounting_without_changing_native_grade(
         results.mkdir(parents=True)
         (results / ".aider.results.json").write_text(json.dumps({
             "model": "openai/" + plan["endpoint"]["model"], "edit_format": "whole",
-            "tests_outcomes": [True]}))
+            "tests_outcomes": [False, False] if mode == "output_exhausted" else [True]}))
         ready = {"schema": "event/v1", "event": "aider_adapter_ready", "seq": 1,
                  "utc_observed_at": "2026-10-25T00:00:00Z",
                  "adapter_sha256": plan["adapter_sha256"], "source_hashes": aider.SOURCE_HASHES}
@@ -125,7 +143,10 @@ def test_run_parser_versions_request_accounting_without_changing_native_grade(
             {"schema": "event/v1", "event": "aider_transport_started", "seq": 4,
              "utc_observed_at": "2026-10-25T00:00:03Z",
              "logical_request_id": "logical-00000002", "attempt": 1}]
-        if mode == "accounted_complete":
+        if mode == "output_exhausted":
+            events[2].update(finish_reason="length", output_truncated=True,
+                             usage={"prompt_tokens": 4, "completion_tokens": 16, "total_tokens": 20, "reasoning_tokens": 16})
+        if mode in {"accounted_complete", "output_exhausted"}:
             events.append({"schema": "event/v1", "event": "aider_transport_error", "seq": 5,
                 "utc_observed_at": "2026-10-25T00:00:04Z",
                 "logical_request_id": "logical-00000002", "attempt": 1,
@@ -134,7 +155,7 @@ def test_run_parser_versions_request_accounting_without_changing_native_grade(
         status = "incomplete" if mode == "accounted_incomplete" else "complete"
         accounting = None if mode == "legacy_gap" else {
             "schema": aider.AIDER_REQUEST_ACCOUNTING_SCHEMA, "status": status, "started": 2,
-            "responses": 1, "errors": int(mode == "accounted_complete"),
+            "responses": 1, "errors": int(mode in {"accounted_complete", "output_exhausted"}),
             "pending": int(mode == "accounted_incomplete")}
         raw = [(json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n").encode()
                for event in events]
@@ -160,8 +181,12 @@ def test_run_parser_versions_request_accounting_without_changing_native_grade(
 
     result = aider.run_aider_benchmark(plan, command_runner=runner)
     assert result["state"] == expected_state
-    assert result["instances"][0]["resolved"] is True
-    assert result["summary"] == {"selected": 1, "graded": 1, "resolved": 1, "resolve_rate": 1.0}
+    resolved = mode != "output_exhausted"
+    assert result["instances"][0]["resolved"] is resolved
+    assert result["summary"] == {"selected": 1, "graded": 1, "resolved": int(resolved), "resolve_rate": float(resolved)}
+    if not resolved:
+        assert result["output_budget"]["classification"] == "budget_exhausted"
+        assert result["quality"]["status"] == "measured"
     assert (result["failure"] or {}).get("code") == expected_failure
     if mode == "accounted_incomplete":
         assert result["quality"] == {"status": "unknown"}

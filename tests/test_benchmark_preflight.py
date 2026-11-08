@@ -194,6 +194,19 @@ def test_invalid_budget_mode_rejected_before_submission_or_endpoint(tmp_path):
                                 opener=lambda *_a, **_kw: pytest.fail("endpoint contacted"))
 
 
+@pytest.mark.parametrize("prompt,passed", [(100, True), (101, False)])
+def test_declared_prompt_headroom_is_checked_at_inclusive_boundary(tmp_path, prompt, passed):
+    spec = _spec(suite="aider", profile="aider-diagnostic-16k-v1", timeout_s=120,
+                 parameters={"model_host_id": "model-host", "prompt_tokens": prompt, "instance_ids": ["go/exercises/practice/example"]})
+    artifact = run_benchmark_preflight(spec, run_root=str(tmp_path), opener=_opener([{
+        "id": "deepseek", "max_output_tokens": 16384, "context_length": 16484}]))
+    assert artifact["passed"] is passed
+    budget = artifact["generation_budget"]
+    assert (budget["maximum_prompt_tokens"], budget["effective_deadline_s"], budget["profile_deadline_s"]) == (100, 120, 600)
+    assert (budget["max_transport_calls"], budget["max_retries"], budget["maximum_coding_attempts_for_selection"]) == (12, 0, 2)
+    assert budget["reasoning_reservation_support"] == "unsupported_by_harness"
+
+
 @pytest.mark.parametrize("context", [0, -1, True, "131072"])
 def test_invalid_advertised_context_is_not_unknown_in_fixed_mode(tmp_path, context):
     artifact = run_benchmark_preflight(

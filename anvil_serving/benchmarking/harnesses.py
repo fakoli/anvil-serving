@@ -418,6 +418,7 @@ def prepare_harness_assets(
     offline: bool = False,
     max_download_bytes: int = 20 * 1024**3,
     runner: CommandRunner = _default_runner,
+    aider_oracle: dict | None = None,
 ) -> dict[str, Any]:
     """Prepare exact profile assets through one bounded, owned product operation."""
     if suite == "swe":
@@ -427,6 +428,11 @@ def prepare_harness_assets(
     validated = validate_profile(profile)
     if suite not in validated["suites"]:
         raise BenchmarkJobError("unknown_suite", "benchmark suite is unknown")
+    if aider_oracle is not None and suite != "aider":
+        raise BenchmarkJobError("bad_parameters", "oracle selection requires Aider")
+    if aider_oracle is not None:
+        from .aider_prepare import validate_oracle_receipt_selection
+        aider_oracle = validate_oracle_receipt_selection(aider_oracle)
     if not isinstance(max_download_bytes, int) or not 1 <= max_download_bytes <= 1024**4:
         raise BenchmarkJobError("bad_download_bound", "max_download_bytes is invalid")
     Path(run_root).mkdir(parents=True, exist_ok=True)
@@ -481,6 +487,7 @@ def prepare_harness_assets(
             assets=assets, cache_root=cache, offline=offline,
             max_download_bytes=max_download_bytes, run_path=run_path,
             ownership_id=ownership_id, run_id=run_id, runner=runner,
+            oracle_receipt=aider_oracle,
         )
         command_logs.extend(logs)
     performance_environments = None
