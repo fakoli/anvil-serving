@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 
 from anvil_serving import transports
 from anvil_serving.operator_output import (
@@ -112,3 +113,35 @@ def test_redaction_removes_common_cloud_credentials_from_keys_and_text():
     assert "secret-value" not in blob
     assert "opaque-token" not in blob
     assert "AKIAABCDEFGHIJKLMNOP" not in blob
+
+
+def _timing_histogram():
+    return {"unit": "seconds", "count": 8, "sum": 0.04, "buckets": {"0.01": 8, "+Inf": 8}}
+
+
+def test_closed_numeric_first_token_histogram_survives_recursive_redaction():
+    payload = {"timing": {"histograms": {"prefill_to_first_token": _timing_histogram()}},
+               "session_token": "opaque-secret"}
+    rendered = redact(redact(payload))
+    assert rendered["timing"]["histograms"]["prefill_to_first_token"] == _timing_histogram()
+    assert rendered["session_token"] == "<redacted>"
+    # Even this narrow exception still runs recursive known-secret redaction.
+    assert redact({"prefill_to_first_token": _timing_histogram()}, secrets=("seconds",))[
+        "prefill_to_first_token"]["unit"] == "<redacted>"
+    assert redact({"session_token": _timing_histogram()})["session_token"] == "<redacted>"
+    assert redact({"prefill_to_first_token_copy": _timing_histogram()})["prefill_to_first_token_copy"] == "<redacted>"
+
+
+@pytest.mark.parametrize("replacement", [
+    "opaque-secret", {"unit": "seconds"},
+    _timing_histogram() | {"unit": "Bearer opaque-secret"},
+    _timing_histogram() | {"token": "opaque-secret"},
+    *[_timing_histogram() | {"count": count} for count in (True, -1, 1.5, 2**53 + 1)],
+    *[_timing_histogram() | {"sum": total} for total in (True, -1, float("inf"), float("nan"), "opaque-secret")],
+    *[_timing_histogram() | {"buckets": buckets} for buckets in (
+        {}, {"0.01": "opaque-secret"}, {"0.01": {"token": "opaque-secret"}},
+        {"session_token": 8}, {"1" * 33: 8}, {str(index): 8 for index in range(65)},
+    )],
+])
+def test_first_token_histogram_exception_rejects_secret_or_malformed_payloads(replacement):
+    assert redact({"prefill_to_first_token": replacement}) == {"prefill_to_first_token": "<redacted>"}
