@@ -513,6 +513,8 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         _phase_matches_intent(phase, intent)
     elif phase["idp_delete"]:
         raise _invalid("Permanent deletion phase is held until its native intent is available.")
+    if "intent_username" not in phase:
+        data = _withdraw_memory_defaults(data, manifest, phase["username"])
     # A legacy Connect-only identity has no supported IdP mapping. It remains
     # disabled at native prepare and can be finalized without touching IdP data.
     if not phase["idp_delete"]:
@@ -542,7 +544,8 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         prior_removed = phase["username"] not in database["users"]
         if "intent_username" in phase and not prior_removed:
             raise _invalid("Legacy deletion account exists again; recovery remains held.")
-        data = _withdraw_memory_defaults(data, manifest, phase["username"])
+        if "intent_username" in phase:
+            data = _withdraw_memory_defaults(data, manifest, phase["username"])
         uid, gid = role_identity(data, "idp")
         preview = _purge_as_idp(Path(data["authelia"]["state_directory"]) / "authelia.sqlite3", phase["username"], phase["subject"],
                                 validate_only=True, uid=uid, gid=gid)
