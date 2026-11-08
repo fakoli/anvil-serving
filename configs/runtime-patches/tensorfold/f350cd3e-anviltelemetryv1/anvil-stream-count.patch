@@ -1,0 +1,100 @@
+diff --git a/zig/src/core/engine_status.zig b/zig/src/core/engine_status.zig
+index e7389dd2..519d48e3 100644
+--- a/zig/src/core/engine_status.zig
++++ b/zig/src/core/engine_status.zig
+@@ -20,6 +20,10 @@ pub const Status = struct {
+     warming: bool = false,
+     /// Live streams written to the caller's buffer: tokens each holds.
+     streams: usize = 0,
++    /// Total started streams in the engine-thread snapshot; null when the backend does not publish it.
++    streams_active: ?usize = null,
++    /// Every active stream was observed and the publication agrees with the current admitted count.
++    streams_complete: bool = false,
+     /// Generated tokens held by live streams, excluding their prompts.
+     generation_tokens: u64 = 0,
+     /// Filling prompts' total tokens and those still to prefill (null: no prompt is going in).
+diff --git a/zig/src/core/lane_host.zig b/zig/src/core/lane_host.zig
+index 5ca02b97..df6b96ce 100644
+--- a/zig/src/core/lane_host.zig
++++ b/zig/src/core/lane_host.zig
+@@ -55,6 +55,8 @@ pub const LaneHost = struct {
+     /// A Metal engine's keepalive target, set by the family that owns the queue; null keeps the ticker off.
+     keepalive_target: ?api.keepalive.Target = null,
+     live_generated: u64 = 0,
++    live_started: usize = 0, // total even when a token-vector allocation fails
++
+     lone: ?api.Lone = null, // the backend's driver for a lone greedy stream; null: every stream in the lane core
+     lone_job: ?*Job = null, // the job that driver holds now
+     cache_status: ?api.Status.PromptCache = null, // published under mutex; HTTP threads never read the store
+diff --git a/zig/src/core/lane_host_status.zig b/zig/src/core/lane_host_status.zig
+index f51ba436..54b6ca5d 100644
+--- a/zig/src/core/lane_host_status.zig
++++ b/zig/src/core/lane_host_status.zig
+@@ -27,6 +27,8 @@ pub fn read(ctx: *anyopaque, out: *api.Status, stream_tokens: []u32) void {
+         .prefill_tokens_per_second = if (now - h.prefill_at <= window_ns) h.prefill_rate else 0,
+         .preemptions = 0,
+         .streams = n,
++        .streams_active = h.live_started,
++        .streams_complete = n == h.live_started and h.live_started == h.admitted.items.len,
+         .generation_tokens = h.live_generated,
+         .prompt_cache = h.cache_status,
+         .kv_parts = h.kv_status,
+@@ -90,8 +92,10 @@ pub fn noteLive(h: *LaneHost) void {
+     if (parts) |x| h.kv_status = x;
+     h.live_tokens.clearRetainingCapacity();
+     h.live_generated = 0;
++    h.live_started = 0;
+     h.cache_status = if (h.cache) |s| .{ .states = s.entries.items.len, .bytes = s.held + s.spare() } else null;
+     for (h.admitted.items) |job| if (job.started) {
++        h.live_started += 1;
+         h.live_tokens.append(h.gpa, @intCast(job.stream.context.items.len)) catch {};
+         h.live_generated += @intCast(job.stream.emitted().len);
+     };
+diff --git a/zig/src/server/metrics.zig b/zig/src/server/metrics.zig
+index 4dc61612..49d63ab7 100644
+--- a/zig/src/server/metrics.zig
++++ b/zig/src/server/metrics.zig
+@@ -169,6 +169,7 @@ pub const Metrics = struct {
+         if (keeps) try gauge(w, "prompt_tokens_cached_total", "counter", "Prompt tokens of finished requests restored from kept prompt states.", snap.cached);
+         try gauge(w, "generation_tokens_total", "counter", "Generated tokens of finished requests.", snap.generation);
+         const live = streams[0..@min(status.streams, streams.len)];
++        try anvilStreams(w, status, live);
+         try family(w, "kv_cache_usage_ratio", "gauge", "Tokens in a stream cache divided by that stream's context window.");
+         try pools(w, "kv_cache_usage_ratio", "pool", live, window);
+         try gauge(w, "mtp_drafted_total", "counter", "Draft tokens verified on finished requests.", snap.drafted);
+@@ -205,6 +206,35 @@ pub const Metrics = struct {
+     }
+ };
+ 
++/// Anvil telemetry ABI v1. Stream indices identify positions only within this publication.
++fn anvilStreams(w: *std.Io.Writer, status: api.Status, streams: []const u32) !void {
++    try w.writeAll("# HELP tensorfold:anvil_contract_info Anvil telemetry contract version.\n# TYPE tensorfold:anvil_contract_info gauge\ntensorfold:anvil_contract_info{version=\"1\"} 1\n");
++    try gauge(w, "anvil_streams_observed", "gauge", "Started streams with context-token observations in this snapshot.", streams.len);
++    try gauge(w, "anvil_streams_complete", "gauge", "One only if every active stream is observed and current request counts agree.", @intFromBool(status.streams_complete and status.streams_active != null and status.streams_active.? == streams.len));
++    if (status.streams_active) |active| try gauge(w, "anvil_streams_active", "gauge", "Started streams in the engine-thread publication; omitted when unavailable.", active);
++    try family(w, "anvil_stream_context_tokens", "gauge", "Context tokens held by each observed stream; indices are local to this snapshot.");
++    for (streams, 0..) |tokens, index| try w.print("{s}anvil_stream_context_tokens{{stream=\"{d}\"}} {d}\n", .{ prefix, index, tokens });
++}
++
++test "Anvil stream ABI preserves idle, C1, C4 and incomplete observations" {
++    const a = std.testing.allocator;
++    for ([_]usize{ 0, 1, 4 }) |count| {
++        var out: std.Io.Writer.Allocating = .init(a);
++        defer out.deinit();
++        const tokens = [_]u32{ 10, 20, 30, 40 };
++        try anvilStreams(&out.writer, .{ .streams_active = count, .streams_complete = true }, tokens[0..count]);
++        try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_complete 1\n") != null);
++    }
++    var out: std.Io.Writer.Allocating = .init(a);
++    defer out.deinit();
++    try anvilStreams(&out.writer, .{ .streams_active = 4, .streams_complete = false }, &.{10});
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_complete 0\n") != null);
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_active 4\n") != null);
++    out.clearRetainingCapacity();
++    try anvilStreams(&out.writer, .{}, &.{});
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_active ") == null);
++}
++
+ /// A sharded KV pool's families (GLM's TF_GLM_KV_SHARD): `kv_shard_*` gauges and counters, then each part's pages.
+ pub fn kvShard(w: *std.Io.Writer, k: api.Status.KvParts) !void {
+     const S = api.Status.KvParts;

@@ -25,7 +25,10 @@ memory_mib = 8192
 
 
 @pytest.mark.parametrize("mode", ["success", "failure", "timeout", "missing-id"])
-def test_build_outcomes_never_operate_a_serve(config, tmp_path, mode):
+@pytest.mark.parametrize("base_image", [None, "example/runtime:qualified@sha256:" + "b" * 64])
+def test_build_outcomes_never_operate_a_serve(config, tmp_path, mode, base_image):
+    if base_image:
+        config.write_text(config.read_text() + f'base_image = "{base_image}"\n')
     calls = []
     def run(argv, **kwargs):
         calls.append(argv)
@@ -39,6 +42,10 @@ def test_build_outcomes_never_operate_a_serve(config, tmp_path, mode):
         assert argv[:3] == ["docker", "buildx", "build"]
         assert "--resource" in argv and "--load" in argv and "--push" not in argv
         assert argv[argv.index("--file") + 1] == "-"
+        if base_image:
+            assert argv[argv.index("--build-arg") + 1] == f"BASE_IMAGE={base_image}"
+        else:
+            assert "--build-arg" not in argv
         assert kwargs["source_bytes"] == (config.parent / "Dockerfile").read_bytes()
         kwargs["log"].write(b"bounded build diagnostics\n")
         if mode == "timeout":
@@ -64,6 +71,42 @@ def test_dry_run_overrides_confirmation(config, tmp_path):
     result = image_build.execute_build(image_build.build_plan("worker", config), confirm=True,
                                       dry_run=True, runner=forbidden, log_dir=tmp_path)
     assert result["dry_run"]
+
+
+@pytest.mark.parametrize("repository", ["example/runtime", "registry.example.test:5000/team/runtime:qualified"])
+def test_digest_pinned_base_is_one_fixed_build_argument(config, tmp_path, repository):
+    base_image = repository + "@sha256:" + "b" * 64
+    config.write_text(config.read_text() + f'base_image = "{base_image}"\n')
+    plan = image_build.build_plan("worker", config)
+    assert plan["base_image"] == base_image
+    assert plan["argv"][-3:] == ["--build-arg", f"BASE_IMAGE={base_image}", str(config.parent)]
+    def forbidden(*args, **kwargs):
+        pytest.fail("preview invoked Docker")
+    result = image_build.execute_build(plan, confirm=True, dry_run=True,
+                                      runner=forbidden, log_dir=tmp_path)
+    assert result["base_image"] == base_image and result["dry_run"]
+
+
+@pytest.mark.parametrize("value", [
+    '"example/runtime:latest"', '"sha256:' + "b" * 64 + '"',
+    '"example/runtime@sha256:' + "b" * 63 + '"',
+    '"example/runtime@sha256:' + "B" * 64 + '"',
+    '"example/runtime@sha512:' + "b" * 64 + '"',
+    '"example/runtime@sha256:' + "b" * 64 + ' --push"',
+    '"example/runtime@sha256:' + "b" * 64 + '\\n--push"', 'false', '42',
+])
+def test_unpinned_or_invalid_base_image_fails_before_build(config, value):
+    config.write_text(config.read_text() + f"base_image = {value}\n")
+    with pytest.raises(image_build.ImageBuildError, match="base_image"):
+        image_build.build_plan("worker", config)
+
+
+def test_build_arguments_remain_closed_and_existing_declarations_unchanged(config):
+    plan = image_build.build_plan("worker", config)
+    assert "base_image" not in plan and "--build-arg" not in plan["argv"]
+    config.write_text(config.read_text() + 'build_args = {OTHER = "value"}\n')
+    with pytest.raises(image_build.ImageBuildError, match="fields"):
+        image_build.build_plan("worker", config)
 
 
 def test_timeout_terminates_child_that_inherits_the_output_pipe(tmp_path):

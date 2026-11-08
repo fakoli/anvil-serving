@@ -1,5 +1,10 @@
 # TensorFold telemetry contract v1
 
+The portable [pinned patch catalog](https://github.com/fakoli/anvil-serving/tree/main/configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1)
+retains the owned series, application order, prerequisites and checks without
+vendoring the upstream codebase. Engine patch availability, installed collector
+support and continuous scrape registration are separate rollout checks.
+
 The `tensorfold-prometheus-v1` collector reads the engine's bounded `/metrics`
 response. Configure it once, then inspect it with the existing collector command:
 
@@ -14,6 +19,8 @@ it sends no inference request and changes no model, admission, route or cache po
 `anvil_serving.tensorfold_telemetry.parse_metrics(raw)` exposes the same parser
 for a content-bound benchmark collector. Missing contracts or inputs remain
 `unavailable`; missing series are never interpreted as zero.
+`parse_request_counts(raw)` validates the unlabeled running/waiting engine gauges
+independently of stream publication, for lifecycle registration and observers.
 
 ## Frozen names and meanings
 
@@ -41,6 +48,10 @@ No request identifiers, prompts or per-request timestamps are exported.
 The unsharded decode allocator supplies global allocation. Existing shard-part
 metrics remain separate and do not imply a complete global pool. Prompt-cache
 bytes/states are never substituted for decode KV pages.
+
+Legacy native preemption counters are outside this ABI. A backend that exports
+a constant zero does not provide a measured absence of preemptions or requeues;
+keep that capability unavailable until its source semantics are qualified.
 
 ## Timing boundaries and bounded histograms
 

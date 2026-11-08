@@ -74,6 +74,29 @@ def test_remote_docker_cannot_attest_local_binding(tmp_path, monkeypatch):
                   _fetch=lambda path: pytest.fail('remote ownership must not be probed'))
 
 
+@pytest.mark.parametrize('valid_contract', [True, False])
+def test_tensorfold_registration_checks_shared_ABI_without_requiring_complete_streams(tmp_path, monkeypatch, valid_contract):
+    from tests.test_tensorfold_telemetry import metrics
+    recipe, row = monitoring_slot(tmp_path, monkeypatch, engine='tensorfold')
+    calls = []
+    def fetch(path):
+        calls.append(path)
+        if path == '/v1/models':
+            return b'{"data":[{"id":"served"}]}'
+        if path == '/metrics':
+            return (metrics(active=1, complete=0) + 'tensorfold:requests_waiting 0\n').encode() if valid_contract else b'tensorfold:requests_running 1\n'
+        assert path == '/health'
+        return b'ok'
+    if valid_contract:
+        result = m.publish(recipe, 'candidate', registry_digest='c' * 64, _fetch=fetch)
+        assert result['metrics_contract'] == 'tensorfold' and result['model'] == 'served'
+    else:
+        with pytest.raises(ValueError, match='TensorFold v1'):
+            m.publish(recipe, 'candidate', registry_digest='c' * 64, _fetch=fetch)
+        assert m.read_json(m.receipt_path())['state'] == 'pending'
+    assert calls == ['/health', '/v1/models', '/metrics']
+
+
 @pytest.mark.parametrize('kind', ['malformed', 'wrong-schema', 'symlink'])
 def test_disabled_monitoring_refuses_unsafe_retained_receipt(tmp_path, monkeypatch, kind):
     recipe, row = monitoring_slot(tmp_path, monkeypatch)

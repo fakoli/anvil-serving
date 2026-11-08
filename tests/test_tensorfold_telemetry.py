@@ -6,7 +6,7 @@ import json
 import pytest
 
 from anvil_serving import collectors
-from anvil_serving.tensorfold_telemetry import BUCKETS, HISTOGRAMS, parse_metrics
+from anvil_serving.tensorfold_telemetry import BUCKETS, HISTOGRAMS, parse_metrics, parse_request_counts
 from tests.conftest import Response
 
 
@@ -116,6 +116,18 @@ def test_duplicate_series_and_oversize_fail_closed():
         parse_metrics(metrics() + 'tensorfold:anvil_streams_active 0\n')
     with pytest.raises(ValueError, match='256 KiB'):
         parse_metrics(' ' * (256 * 1024 + 1))
+
+
+def test_request_gauges_preserve_unavailable_and_reject_ambiguous_counts():
+    raw = 'tensorfold:requests_running 1\ntensorfold:requests_waiting 2\n'
+    assert parse_request_counts(raw) == {'running': 1, 'waiting': 2}
+    for invalid in (raw.replace('requests_waiting 2', 'requests_waiting 2.5'),
+                    raw.replace('requests_waiting 2', 'requests_waiting NaN'),
+                    raw + 'tensorfold:requests_running 0\n',
+                    raw.replace('requests_waiting 2', 'requests_waiting{model="other"} 2'),
+                    'tensorfold:requests_running 1\n'):
+        with pytest.raises(ValueError):
+            parse_request_counts(invalid)
 
 
 def test_supported_adapter_preserves_auth_and_explicit_capability_gaps():
