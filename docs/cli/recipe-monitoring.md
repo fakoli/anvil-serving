@@ -21,7 +21,7 @@ Monitoring is opt-in through `recipe-monitoring.json` in the operator home:
 ```
 
 Engine keys must match the recipe's declared engine. Supported metrics
-contracts are `vllm`, `sglang`, `flare` and `ignis`. An optional
+contracts are `vllm`, `sglang`, `flare`, `ignis` and `tensorfold`. An optional
 `model_api_key_files` object maps port strings to protected absolute key-file
 paths; credentials are never written into the monitoring receipt.
 
@@ -40,3 +40,11 @@ The observer is a separate infrastructure deployment. An active registration
 alone does not prove fresh metrics, complete interval coverage or successful
 benchmark execution. Ignis requires its API UI and metrics options enabled so
 the observer can read `/ui/metrics` on the same API port.
+
+TensorFold publication also requires its version-one `/metrics` ABI to pass the
+shared [telemetry parser](../TENSORFOLD-TELEMETRY.md). Unknown or contradictory
+metrics refuse publication; individual unavailable sections stay unavailable.
+Native `--name` is recognized as the served identity on TensorFold's native and
+Anvil ranks launchers. Registration alone does not install the observer adapter,
+enable Prometheus collection or prove retained telemetry; validate the observer's
+generation-bound discovery and central metrics after its separate rollout.

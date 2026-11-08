@@ -27,7 +27,7 @@ def _series(raw):
         raise ValueError("telemetry must be text bounded to 256 KiB")
     result = {}
     for line in raw.splitlines():
-        if not line.startswith((PREFIX + "anvil_", PREFIX + "kv_cache_usage_", PREFIX + "requests_running")):
+        if not line.startswith((PREFIX + "anvil_", PREFIX + "kv_cache_usage_", PREFIX + "requests_running", PREFIX + "requests_waiting")):
             continue
         match = _LINE.fullmatch(line)
         if match is None:
@@ -204,3 +204,9 @@ def parse_metrics(raw: str) -> dict:
         if result[section]["complete"]:
             result["capabilities"].append(CAPABILITIES[section])
     return result
+
+
+def parse_request_counts(raw: str) -> dict[str, int]:
+    """Validate the two unlabeled engine gauges even during partial stream publication."""
+    series = _series(raw)
+    return {state: _value(series, "requests_" + state) for state in ("running", "waiting")}

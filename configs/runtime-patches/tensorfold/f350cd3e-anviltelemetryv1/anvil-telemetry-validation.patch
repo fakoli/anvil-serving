@@ -1,0 +1,515 @@
+diff --git a/zig/src/core/lane_host.zig b/zig/src/core/lane_host.zig
+index 0f7ad104..2cd70281 100644
+--- a/zig/src/core/lane_host.zig
++++ b/zig/src/core/lane_host.zig
+@@ -205,14 +205,6 @@ pub const LaneHost = struct {
+     }
+ 
+     pub fn emit(job: *Job, event: Event) void {
+-        if (event == .tokens and event.tokens.len > 0 and job.first_token_ns == null) {
+-            const h = job.host;
+-            const now = std.Io.Clock.awake.now(h.io).toNanoseconds();
+-            job.first_token_ns = now;
+-            h.lock();
+-            h.anvil_timing.token(job.prefill_started_ns, now);
+-            h.unlock();
+-        }
+         job.sink.event(job.sink.ctx, job.id, &event);
+     }
+ 
+@@ -363,6 +355,16 @@ pub const LaneHost = struct {
+         return (job.request.max_tokens == 0 and h.info_.warm_turns) or lone.fits(h, job);
+     }
+ 
++    /// The first generated token has committed to the stream, before sibling work or sink delivery.
++    pub fn noteFirstToken(h: *LaneHost, job: *Job) void {
++        if (job.first_token_ns != null) return;
++        const now = std.Io.Clock.awake.now(h.io).toNanoseconds();
++        job.first_token_ns = now;
++        h.lock();
++        h.anvil_timing.token(job.prefill_started_ns, now);
++        h.unlock();
++    }
++
+     /// Record immediately before the backend's first prefill launch, never at stream setup.
+     pub fn notePrefillStart(h: *LaneHost, job: *Job) void {
+         if (job.prefill_started_ns != null) return;
+@@ -383,7 +385,6 @@ pub const LaneHost = struct {
+             h.filling.append(h.gpa, job) catch return h.drop(job, "out of memory");
+             return true;
+         }
+-        h.notePrefillStart(job);
+         h.core.addStreamCommitted(&job.stream, .{ .ptr = job, .call = firstCommitted }) catch |e| return h.failedPass(job, e);
+         h.prefilled(job, began);
+         if (r.embedding != null) return @import("lane_embeddings.zig").complete(h, job);
+@@ -405,7 +406,6 @@ pub const LaneHost = struct {
+         const job = h.filling.items[at];
+         const first = !job.fill_began;
+         job.fill_began = true;
+-        h.notePrefillStart(job);
+         const done = h.core.fillStreamCommitted(&job.stream, first, .{ .ptr = job, .call = firstCommitted }) catch |e| {
+             _ = switch (e) {
+                 error.Cancelled => h.cancel(job),
+@@ -472,7 +472,6 @@ pub const LaneHost = struct {
+     fn warmPass(h: *LaneHost, job: *Job, began: i96) bool {
+         const be = h.core.backend;
+         if (h.cache) |store| if (job.marks.len == 0 and (job.request.untaught or store.rules.lookahead > 0)) return h.cancel(job); // it would keep nothing
+-        h.notePrefillStart(job);
+         be.prefill(&job.stream) catch |e| { // a yield ends it like a cancel: what it prefilled is kept
+             if (e != error.Cancelled and e != error.Yielded) return h.drop(job, h.words(e));
+             be.release(&job.stream);
+diff --git a/zig/src/core/lane_host_admit.zig b/zig/src/core/lane_host_admit.zig
+index 94bae709..67e527c1 100644
+--- a/zig/src/core/lane_host_admit.zig
++++ b/zig/src/core/lane_host_admit.zig
+@@ -92,7 +92,6 @@ pub fn many(h: *LaneHost) bool {
+     var streams: [lanes.Engine.max_together]*lanes.Stream = undefined;
+     for (jobs[0..n], 0..) |job, i| streams[i] = &job.stream;
+     var errs: [lanes.Engine.max_together]?anyerror = undefined;
+-    for (jobs[0..n]) |job| h.notePrefillStart(job);
+     h.core.addStreams(streams[0..n], errs[0..n]);
+     for (jobs[0..n], began[0..n], errs[0..n]) |job, at, err| {
+         if (err) |e| {
+diff --git a/zig/src/core/lane_host_anvil_test.zig b/zig/src/core/lane_host_anvil_test.zig
+new file mode 100644
+index 00000000..60a9d13e
+--- /dev/null
++++ b/zig/src/core/lane_host_anvil_test.zig
+@@ -0,0 +1,205 @@
++//! CPU fake backend exercises the production submit, admission, prefill, token and publication seams.
++const std = @import("std");
++const lanes = @import("lanes");
++const api = @import("engine_api.zig");
++const Host = @import("lane_host.zig").LaneHost;
++const publication = @import("lane_host_status.zig");
++
++fn event(_: *anyopaque, _: api.Id, _: *const api.Event) void {}
++
++test "Anvil production lane host idle C1 C4 timing and stream completeness" {
++    const a = std.testing.allocator;
++    for ([_]u32{ 0, 1, 4 }) |count| {
++        var cfg = try lanes.Config.init(a, .{ .exact_width = 8, .gpu_tokens = true, .hidden_rows = true }, 8, 7);
++        defer cfg.deinit(a);
++        var target: lanes.fake.Fake = .{ .gpa = a };
++        defer target.deinit();
++        var clock: lanes.fake.FixedClock = .{};
++        var core = lanes.Engine.init(a, &cfg, target.backend(), clock.clock());
++        defer core.deinit();
++        var host = Host.init(a, std.testing.io, &core, .{ .lanes = 4 });
++        defer host.stop();
++        var sink_context: u8 = 0;
++        const request: api.Request = .{ .prompt = &.{ 3, 1, 4, 1, 5, 9 }, .max_tokens = 32 };
++        const engine = host.engine();
++        for (0..count) |index| try engine.submit(index, &request, .{ .ctx = &sink_context, .event = event });
++        while (host.queued.items.len > 0) _ = host.admitOne();
++        publication.noteLive(&host);
++        var status: api.Status = .{};
++        var streams: [4]u32 = undefined;
++        engine.status(&status, &streams);
++        try std.testing.expectEqual(@as(usize, count), status.streams_active.?);
++        try std.testing.expectEqual(@as(usize, count), status.streams);
++        try std.testing.expect(status.streams_complete);
++        const timing = status.anvil_timing.?;
++        try std.testing.expectEqual(@as(u64, count), timing.arrivals);
++        try std.testing.expectEqual(@as(u64, count), timing.admissions);
++        try std.testing.expectEqual(@as(u64, count), timing.prefill_started);
++        try std.testing.expectEqual(@as(u64, count), timing.first_tokens);
++        try std.testing.expectEqual(@as(u64, count), timing.arrival_to_admission.n);
++        try std.testing.expectEqual(@as(u64, count), timing.admission_to_prefill.n);
++        try std.testing.expectEqual(@as(u64, count), timing.prefill_to_first_token.n);
++        if (count == 4) {
++            engine.status(&status, streams[0..1]);
++            try std.testing.expect(!status.streams_complete);
++            try std.testing.expectEqual(@as(usize, 4), status.streams_active.?);
++            try std.testing.expectEqual(@as(usize, 1), status.streams);
++        }
++        if (count > 0) {
++            host.lock();
++            host.admitted.items[0].noteAdmission(); // a retry must not count first admission twice
++            host.unlock();
++            host.notePrefillStart(host.admitted.items[0]);
++            try std.testing.expectEqual(timing.admissions, host.anvil_timing.admissions);
++            try std.testing.expectEqual(timing.prefill_started, host.anvil_timing.prefill_started);
++        }
++        while (host.admitted.items.len > 0) _ = host.drop(host.admitted.items[0], "test completion");
++        publication.noteLive(&host);
++        engine.status(&status, &streams);
++        try std.testing.expectEqual(@as(usize, 0), status.streams_active.?);
++        try std.testing.expect(status.streams_complete);
++        try engine.submit(100, &request, .{ .ctx = &sink_context, .event = event });
++        const cancelled = host.queued.orderedRemove(0);
++        host.finish(cancelled, .cancelled, "before admission");
++        try std.testing.expectEqual(@as(u64, count + 1), host.anvil_timing.arrivals);
++        try std.testing.expectEqual(@as(u64, count), host.anvil_timing.admissions);
++        try std.testing.expectEqual(@as(u64, count), host.anvil_timing.first_tokens);
++    }
++}
++
++test "Anvil first-token commitment precedes a delayed sibling draw and batched sink delivery" {
++    const a = std.testing.allocator;
++    const Target = struct {
++        fake: lanes.fake.Fake = .{ .gpa = a },
++        table: lanes.backend.Backend.VTable = undefined,
++        host: *Host = undefined,
++        draws: usize = 0,
++        emitted: usize = 0,
++        observed_commit_before_sibling: bool = false,
++        fn first(ptr: *anyopaque, stream: *lanes.Stream, position: u64) !u64 {
++            const fake: *lanes.fake.Fake = @ptrCast(@alignCast(ptr));
++            const t: *@This() = @fieldParentPtr("fake", fake);
++            t.draws += 1;
++            if (t.draws == 2) {
++                t.observed_commit_before_sibling = t.host.anvil_timing.first_tokens == 1 and t.emitted == 0;
++                try std.Io.sleep(std.testing.io, .fromMilliseconds(20), .awake);
++            }
++            return t.fake.batched().vtable.first(ptr, stream, position);
++        }
++        fn sink(ptr: *anyopaque, _: api.Id, ev: *const api.Event) void {
++            const t: *@This() = @ptrCast(@alignCast(ptr));
++            if (ev.* == .tokens) t.emitted += ev.tokens.len;
++        }
++    };
++    var target: Target = .{};
++    defer target.fake.deinit();
++    target.table = target.fake.batched().vtable.*;
++    target.table.first = Target.first;
++    var cfg = try lanes.Config.init(a, .{ .exact_width = 8, .gpu_tokens = true, .hidden_rows = true }, 8, 7);
++    defer cfg.deinit(a);
++    var clock: lanes.fake.FixedClock = .{};
++    var core = lanes.Engine.init(a, &cfg, .{ .ptr = &target.fake, .vtable = &target.table }, clock.clock());
++    defer core.deinit();
++    var host = Host.init(a, std.testing.io, &core, .{ .lanes = 4 });
++    target.host = &host;
++    defer host.stop();
++    const request: api.Request = .{ .prompt = &.{ 3, 1, 4, 1, 5, 9 }, .max_tokens = 32 };
++    const engine = host.engine();
++    for (0..4) |index| try engine.submit(index, &request, .{ .ctx = &target, .event = Target.sink });
++    try std.testing.expect(host.admitOne());
++    try std.testing.expectEqual(@as(usize, 1), target.fake.many_passes);
++    try std.testing.expect(target.observed_commit_before_sibling);
++    try std.testing.expectEqual(@as(u64, 4), host.anvil_timing.first_tokens);
++    while (host.admitted.items.len > 0) _ = host.drop(host.admitted.items[0], "test completion");
++}
++
++test "Anvil refused batch timestamps each serial prefill only when its backend starts" {
++    const a = std.testing.allocator;
++    const Target = struct {
++        fake: lanes.fake.Fake = .{ .gpa = a },
++        table: lanes.backend.Backend.VTable = undefined,
++        host: *Host = undefined,
++        calls: usize = 0,
++        correctly_ordered: bool = true,
++        fn many(_: *anyopaque, _: []const *lanes.Stream) !bool { return false; }
++        fn prefill(ptr: *anyopaque, stream: *lanes.Stream) !void {
++            const fake: *lanes.fake.Fake = @ptrCast(@alignCast(ptr));
++            const t: *@This() = @fieldParentPtr("fake", fake);
++            t.calls += 1;
++            t.correctly_ordered = t.correctly_ordered and t.host.anvil_timing.prefill_started == t.calls;
++            if (t.calls == 2) try std.Io.sleep(std.testing.io, .fromMilliseconds(20), .awake);
++            return t.fake.backend().vtable.prefill(ptr, stream);
++        }
++    };
++    var target: Target = .{};
++    defer target.fake.deinit();
++    target.table = target.fake.batched().vtable.*;
++    target.table.prefill_many = Target.many;
++    target.table.prefill = Target.prefill;
++    var cfg = try lanes.Config.init(a, .{ .exact_width = 8, .gpu_tokens = true, .hidden_rows = true }, 8, 7);
++    defer cfg.deinit(a);
++    var clock: lanes.fake.FixedClock = .{};
++    var core = lanes.Engine.init(a, &cfg, .{ .ptr = &target.fake, .vtable = &target.table }, clock.clock());
++    defer core.deinit();
++    var host = Host.init(a, std.testing.io, &core, .{ .lanes = 4 });
++    target.host = &host;
++    defer host.stop();
++    var sink_context: u8 = 0;
++    const request: api.Request = .{ .prompt = &.{ 3, 1, 4, 1, 5, 9 }, .max_tokens = 32 };
++    for (0..4) |index| try host.engine().submit(index, &request, .{ .ctx = &sink_context, .event = event });
++    try std.testing.expect(host.admitOne());
++    try std.testing.expectEqual(@as(usize, 4), target.calls);
++    try std.testing.expect(target.correctly_ordered);
++    try std.testing.expectEqual(@as(u64, 4), host.anvil_timing.admission_to_prefill.n);
++    while (host.admitted.items.len > 0) _ = host.drop(host.admitted.items[0], "test completion");
++}
++
++test "Anvil fully restored prompt final passes mark actual dispatch without early serial siblings" {
++    const a = std.testing.allocator;
++    const Watch = struct {
++        begun: usize = 0,
++        calls: usize = 0,
++        correct: bool = true,
++        fn start(ptr: *anyopaque) void {
++            const w: *@This() = @ptrCast(@alignCast(ptr));
++            w.begun += 1;
++        }
++        fn finals(ptr: *anyopaque, streams: []const *lanes.Stream) !void {
++            const w: *@This() = @ptrCast(@alignCast(ptr));
++            w.correct = w.correct and w.begun == streams.len;
++        }
++        fn finish(ptr: *anyopaque, _: *lanes.Stream) !void {
++            const w: *@This() = @ptrCast(@alignCast(ptr));
++            w.calls += 1;
++            w.correct = w.correct and w.begun == w.calls;
++            return error.EndTestBeforeDraw;
++        }
++    };
++    var cfg = try lanes.Config.init(a, .{ .exact_width = 8, .hidden_rows = true }, 8, 7);
++    defer cfg.deinit(a);
++    cfg.replay_runs = true;
++    var watch: Watch = .{};
++    var target: lanes.fake.Fake = .{ .gpa = a };
++    defer target.deinit();
++    var table = target.backend().vtable.*;
++    table.finals = Watch.finals;
++    table.finish = Watch.finish;
++    var clock: lanes.fake.FixedClock = .{};
++    var core = lanes.Engine.init(a, &cfg, .{ .ptr = &watch, .vtable = &table }, clock.clock());
++    defer core.deinit();
++    var first = try lanes.Stream.init(a, .{ .id = "first", .prompt = &.{ 1, 2 }, .max_new = 4 });
++    defer first.deinit(a);
++    var second = try lanes.Stream.init(a, .{ .id = "second", .prompt = &.{ 1, 2 }, .max_new = 4 });
++    defer second.deinit(a);
++    first.prefill_start_observer = .{ .ptr = &watch, .call = Watch.start };
++    second.prefill_start_observer = .{ .ptr = &watch, .call = Watch.start };
++    try core.prepareFinals(&.{ &first, &second });
++    try std.testing.expect(watch.correct);
++    watch = .{};
++    first.prefill_start_observer = .{ .ptr = &watch, .call = Watch.start };
++    second.prefill_start_observer = .{ .ptr = &watch, .call = Watch.start };
++    var errs: [2]?anyerror = undefined;
++    _ = try core.finishStreams(&.{ &first, &second }, &errs);
++    try std.testing.expect(watch.correct);
++    try std.testing.expectEqual(@as(usize, 2), watch.calls);
++}
+diff --git a/zig/src/core/lane_host_tests.zig b/zig/src/core/lane_host_tests.zig
+index 804d14cc..50f2926d 100644
+--- a/zig/src/core/lane_host_tests.zig
++++ b/zig/src/core/lane_host_tests.zig
+@@ -26,3 +26,5 @@ test {
+     _ = @import("memory_pressure_test.zig");
+     _ = @import("lane_host_pressure_test.zig");
+ }
++
++test { _ = @import("lane_host_anvil_test.zig"); }
+diff --git a/zig/src/core/lane_rounds.zig b/zig/src/core/lane_rounds.zig
+index 0a0cd5a3..86b8a43d 100644
+--- a/zig/src/core/lane_rounds.zig
++++ b/zig/src/core/lane_rounds.zig
+@@ -131,7 +131,6 @@ fn round(h: *LaneHost, rd: Rounds) bool {
+                 jobs[n] = job;
+                 n += 1;
+             }
+-            for (jobs[0..n]) |job| h.notePrefillStart(job);
+             if (n > 0) h.core.pieces(list[0..n]) catch |e| {
+                 for (jobs[0..n], 0..) |job, i| {
+                     const seen = for (jobs[0..i]) |previous| {
+@@ -146,7 +145,6 @@ fn round(h: *LaneHost, rd: Rounds) bool {
+         did = true;
+         const job: *Job = @ptrFromInt(piece.key);
+         if (job.stream.finished) continue;
+-        h.notePrefillStart(job);
+         h.core.piece(&job.stream, piece.start, piece.end, piece.save) catch |e| {
+             dropPiece(h, job, h.words(e));
+         };
+diff --git a/zig/src/core/lane_stream.zig b/zig/src/core/lane_stream.zig
+index cb2b881b..0435ab73 100644
+--- a/zig/src/core/lane_stream.zig
++++ b/zig/src/core/lane_stream.zig
+@@ -78,8 +78,20 @@ pub fn open(h: *LaneHost, job: *Job) bool {
+         if (reply_grammar) |g| g.deinit(h.gpa);
+         return !h.drop(job, "out of memory");
+     };
++    job.stream.prefill_start_observer = .{ .ptr = job, .call = prefillStart };
++    job.stream.first_token_observer = .{ .ptr = job, .call = firstToken };
+     job.started = true;
+     job.fill_on.store(true, .release); // status readers count the fill from here until the pass reports
+     job.began = std.Io.Clock.awake.now(h.io).toNanoseconds();
+     return true;
+ }
++
++fn prefillStart(ptr: *anyopaque) void {
++    const job: *Job = @ptrCast(@alignCast(ptr));
++    job.host.notePrefillStart(job);
++}
++
++fn firstToken(ptr: *anyopaque) void {
++    const job: *Job = @ptrCast(@alignCast(ptr));
++    job.host.noteFirstToken(job);
++}
+diff --git a/zig/src/core/lanes/anvil_telemetry.zig b/zig/src/core/lanes/anvil_telemetry.zig
+index cf8ec0eb..1b0fadd8 100644
+--- a/zig/src/core/lanes/anvil_telemetry.zig
++++ b/zig/src/core/lanes/anvil_telemetry.zig
+@@ -94,7 +94,7 @@ test "Anvil timing idle C1 C4 and cancellation preserve bounded boundary populat
+             t.token(60_000_000, 160_000_000);
+         }
+     }
+-    t.arrivals += 1; // cancelled before admission: no made-up boundary
++    t.arrivals += 1; // cancelled after admission, before prefill: no made-up later boundary
+     t.admit(0, 1_000_000_000);
+     try std.testing.expectEqual(@as(u64, 6), t.arrival_to_admission.n);
+     try std.testing.expectEqual(@as(u64, 5), t.admission_to_prefill.n);
+diff --git a/zig/src/core/lanes/backend.zig b/zig/src/core/lanes/backend.zig
+index 30264371..be370a32 100644
+--- a/zig/src/core/lanes/backend.zig
++++ b/zig/src/core/lanes/backend.zig
+@@ -159,6 +159,7 @@ pub const Backend = struct {
+     }
+ 
+     pub fn prefill(b: Backend, s: *Stream) !void {
++        s.notePrefillStart();
+         return b.vtable.prefill(b.ptr, s);
+     }
+     pub fn first(b: Backend, s: *Stream, position: u64) !u64 {
+diff --git a/zig/src/core/lanes/fake.zig b/zig/src/core/lanes/fake.zig
+index 418329b8..6f9b90bb 100644
+--- a/zig/src/core/lanes/fake.zig
++++ b/zig/src/core/lanes/fake.zig
+@@ -281,6 +281,7 @@ pub const Fake = struct {
+         const x = self(ptr);
+         if (x.refuse_sampled and s.sampling != null) return error.SamplingRefused;
+         if (x.memory_lanes) |n| if (!x.lanes.contains(s) and x.lanes.count() >= n) return error.LaneMemory;
++        s.notePrefillStart();
+         const got = try x.newLane(s);
+         if (got.found_existing) freeLane(x.gpa, got.value_ptr);
+         got.value_ptr.* = .{};
+@@ -299,6 +300,7 @@ pub const Fake = struct {
+         const x = self(ptr);
+         if (x.refuse_sampled and s.sampling != null) return error.SamplingRefused;
+         if (x.memory_lanes) |n| if (!x.lanes.contains(s) and x.lanes.count() >= n) return error.LaneMemory;
++        s.notePrefillStart();
+         const got = try x.newLane(s);
+         if (got.found_existing and !got.value_ptr.filling) freeLane(x.gpa, got.value_ptr);
+         if (!got.found_existing or !got.value_ptr.filling) got.value_ptr.* = .{ .filling = true };
+diff --git a/zig/src/core/lanes/open.zig b/zig/src/core/lanes/open.zig
+index 4c4cb585..94d9c1ad 100644
+--- a/zig/src/core/lanes/open.zig
++++ b/zig/src/core/lanes/open.zig
+@@ -153,6 +153,7 @@ pub fn fillStreamCommitted(e: *Engine, s: *Stream, first: bool, hook: ?be.Commit
+     _ = e.arena.reset(.retain_capacity);
+     if (first) try trail.event(e, &.{ f("ev", str("add")), f("stream", str(s.id)) });
+     const chunk = e.backend.vtable.prefill_step orelse return error.NoPrefillSteps;
++    s.notePrefillStart();
+     const done = chunk(e.backend.ptr, s) catch |err| {
+         if (err == error.Cancelled) e.backend.release(s); // the host finishes a cancelled stream without the core
+         return err;
+diff --git a/zig/src/core/lanes/pieces.zig b/zig/src/core/lanes/pieces.zig
+index 72210cc1..b2360352 100644
+--- a/zig/src/core/lanes/pieces.zig
++++ b/zig/src/core/lanes/pieces.zig
+@@ -23,12 +23,16 @@ pub fn beginStream(e: *Engine, s: *Stream) !be.Backend.Begun {
+ /// Prompt rows [start, end) of a begun stream (`save`: the prompt's snapshot right after them).
+ pub fn piece(e: *Engine, s: *Stream, start: u64, end: u64, save: bool) !void {
+     const run = e.backend.vtable.piece orelse return error.NoPieces;
++    s.notePrefillStart();
+     return run(e.backend.ptr, s, start, end, save);
+ }
+ 
+ /// A round's pieces of several streams in one backend call (Config.piece_runs, Backend.pieces); else one at a time.
+ pub fn pieces(e: *Engine, list: []const be.Backend.Piece) !void {
+-    if (e.cfg.piece_runs) if (e.backend.vtable.pieces) |run| return run(e.backend.ptr, list);
++    if (e.cfg.piece_runs) if (e.backend.vtable.pieces) |run| {
++        for (list) |p| p.stream.notePrefillStart();
++        return run(e.backend.ptr, list);
++    };
+     for (list) |p| try piece(e, p.stream, p.start, p.end, p.save);
+ }
+ 
+@@ -36,12 +40,14 @@ pub fn pieces(e: *Engine, list: []const be.Backend.Piece) !void {
+ pub fn prepareFinals(e: *Engine, streams: []const *Stream) !void {
+     if (!e.cfg.replay_runs or streams.len < 2) return;
+     const run = e.backend.vtable.finals orelse return;
++    for (streams) |s| s.notePrefillStart();
+     return run(e.backend.ptr, streams);
+ }
+ 
+ /// A begun stream's prompt is in: first token and drafts; a failure is the host's to discard (Cancelled: released).
+ pub fn finishStream(e: *Engine, s: *Stream) !void {
+     _ = e.arena.reset(.retain_capacity);
++    s.notePrefillStart(); // a fully restored prompt still computes its final row
+     // Config.join_tail: the last token waits for the next round (a forced or budget-cut first token keeps its row)
+     if (e.cfg.join_tail and e.cfg.family_mtp and s.drafts and s.prompt_len > 0 and s.force.items.len == 0 and !s.cutsNext()) {
+         if (e.backend.vtable.join) |join| {
+@@ -65,6 +71,7 @@ pub fn finishStreams(e: *Engine, streams: []const *Stream, errs: []?anyerror) !u
+         const can = e.cfg.join_tail and e.cfg.family_mtp and s.drafts and s.prompt_len > 0 and s.force.items.len == 0 and !s.cutsNext();
+         const join = if (can) e.backend.vtable.join else null;
+         if (join) |j| {
++            s.notePrefillStart();
+             const ok = j(e.backend.ptr, s) catch |x| {
+                 err.* = released(e, s, x);
+                 continue;
+@@ -79,6 +86,7 @@ pub fn finishStreams(e: *Engine, streams: []const *Stream, errs: []?anyerror) !u
+             }
+         } else {
+             const fin = e.backend.vtable.finish orelse return error.NoPieces;
++            s.notePrefillStart();
+             fin(e.backend.ptr, s) catch |x| {
+                 err.* = released(e, s, x);
+                 continue;
+diff --git a/zig/src/core/lanes/stream.zig b/zig/src/core/lanes/stream.zig
+index c3e22e78..eef24c28 100644
+--- a/zig/src/core/lanes/stream.zig
++++ b/zig/src/core/lanes/stream.zig
+@@ -146,7 +146,13 @@ pub const Spec = struct {
+     key: []const u32 = &.{}, // the prompt as the cache matches it (image rows by their image); empty: the prompt
+ };
+ 
++pub const BoundaryObserver = struct { ptr: *anyopaque, call: *const fn (*anyopaque) void };
++
+ pub const Stream = struct {
++    /// Optional observer called once immediately before the backend's first prompt computation.
++    prefill_start_observer: ?BoundaryObserver = null,
++    first_token_observer: ?BoundaryObserver = null,
++
+     embedding: ?@import("embedding.zig").Batch = null,
+     id: []const u8,
+     prompt_len: usize,
+@@ -236,6 +242,12 @@ pub const Stream = struct {
+     granted: ?u32 = null,
+     copy_width: ?u32 = null,
+ 
++    pub fn notePrefillStart(s: *Stream) void {
++        const observer = s.prefill_start_observer orelse return;
++        s.prefill_start_observer = null;
++        observer.call(observer.ptr);
++    }
++
+     pub fn init(gpa: Allocator, spec: Spec) !Stream {
+         var s: Stream = .{
+             .id = spec.id,
+@@ -453,6 +465,10 @@ pub const Stream = struct {
+                 }
+             }
+             s.context.appendAssumeCapacity(t);
++            if (s.first_token_observer) |observer| {
++                s.first_token_observer = null;
++                observer.call(observer.ptr);
++            }
+             if (rows.len > 0) s.rows.appendAssumeCapacity(rows[i]);
+             landed += 1;
+             if (@as(i64, t) == s.think_end) {
+diff --git a/zig/src/families/glm/cuda_lanes.zig b/zig/src/families/glm/cuda_lanes.zig
+index feef97f2..8ded0158 100644
+--- a/zig/src/families/glm/cuda_lanes.zig
++++ b/zig/src/families/glm/cuda_lanes.zig
+@@ -253,6 +253,7 @@ pub const Lanes = struct {
+     }
+ 
+     fn many(self: *Lanes, ss: []const *lanes.Stream, parts: []const engine.Prompt, firsts: []u32) !void {
++        for (ss) |s| s.notePrefillStart();
+         try self.x.prefillMany(parts, firsts);
+         for (ss, firsts) |s, t| self.lanes.getPtr(s).?.first = self.take(t);
+     }
+diff --git a/zig/src/server/metrics.zig b/zig/src/server/metrics.zig
+index cf8bf168..8c906253 100644
+--- a/zig/src/server/metrics.zig
++++ b/zig/src/server/metrics.zig
+@@ -386,7 +386,7 @@ fn scraped(body: []const u8, head: []const u8) !u64 {
+ }
+ 
+ fn pools(w: *std.Io.Writer, name: []const u8, label: []const u8, lengths: []const u32, window: u32) !void {
+-    if (lengths.len == 0) return w.print("{s}{s}{{{s}=\"0\"}} 0\n", .{ prefix, name, label });
++    if (lengths.len == 0) return; // absent streams are not synthetic zero-occupancy streams
+     for (lengths, 0..) |n, i| {
+         const ratio: f64 = if (window == 0) 0 else @min(1.0, @as(f64, @floatFromInt(n)) / @as(f64, @floatFromInt(window)));
+         var buf: [40]u8 = undefined;

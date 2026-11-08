@@ -114,6 +114,21 @@ def test_recipe_discovery_served_identity_preserves_precedence_and_fallback(toke
     assert inventory["containers"][0]["served_identity"] == expected
 
 
+@pytest.mark.parametrize("executable,tokens,expected", [
+    ("/usr/local/bin/anvil-tensorfold-ranks", ["--name", "served-tensorfold"], "served-tensorfold"),
+    ("/opt/bin/tensorfold-native", ["--name=served-tensorfold"], "served-tensorfold"),
+    ("/opt/bin/other-server", ["--name", "unrelated-name"], "org/model"),
+    ("tensorfold-native", ["--name=other", "--model-id=explicit"], "explicit"),
+    ("tensorfold-native", ["--name="], "org/model"),
+])
+def test_tensorfold_served_name_is_bound_to_its_actual_launcher(executable, tokens, expected):
+    row = _row("candidate")
+    row["Args"] = tokens
+    row["Config"]["Entrypoint"] = [executable]
+    discovered = serve_recipes.discover_recipe_containers(_run=_DiscoveryRun([row]))
+    assert discovered["containers"][0]["served_identity"] == expected
+
+
 def test_recipe_load_labels_canonical_recipe_and_registry_digests() -> None:
     recipe = {
         "model": "org/model",
