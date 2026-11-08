@@ -512,7 +512,7 @@ def run_benchmark_preflight(
         },
         "warnings": [
             "Reasoning effort is not a numeric reasoning-token reservation; output tokens include reasoning and visible output.",
-            "A length finish is output-cap exhaustion, not by itself an independently graded solution failure.",
+            "A length finish is generation-limit exhaustion; reported usage determines whether the output cap was reached, separately from the independent task grade.",
             "Deadline adequacy is unverified; it may expire before all permitted attempts finish.",
             *(["Transport-call exhaustion may prevent a later coding attempt; retries and other calls share the limit."]
               if normalized["suite"] == "aider" else []),
