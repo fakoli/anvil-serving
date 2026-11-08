@@ -526,6 +526,10 @@ deadline at 60 seconds, and redacts bearer-token values. Missing capabilities
 or invalid responses produce a degraded result; collectors never mutate the
 services they observe.
 
+The `tensorfold-prometheus-v1` adapter reads stream completeness, logical decode
+KV pages and engine admission histograms. Its conservative concurrency estimate
+requires explicit policy inputs; see the [versioned telemetry contract](../TENSORFOLD-TELEMETRY.md).
+
 ## Edge
 
 The edge owns only the Tailscale Serve mounts declared by Anvil. Resolve the
