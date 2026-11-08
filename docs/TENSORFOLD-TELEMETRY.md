@@ -58,6 +58,11 @@ Counts cannot increase along the request path. Complete timing requires each
 histogram count to equal its ending boundary count; missed preceding boundaries
 remain explicit incomplete timing rather than being silently excluded.
 
+The population includes background engine jobs, such as automatic next-turn
+warm prefills. The ABI does not split foreground and background jobs; reconcile
+these counts with HTTP responses only when the job populations are independently
+known. A background prefill can reach admission without generating a first token.
+
 Arrival is engine submission after HTTP handling/tokenization. Admission is the
 first successful engine admission. Prefill starts at the first actual prefill
 launch, including the corresponding cached path. First token is the first
