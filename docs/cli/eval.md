@@ -267,6 +267,31 @@ examples are in [Context, agentic, and SWE benchmark jobs](../benchmarks/context
 
 ## Benchmark evidence
 
+For durable benchmark jobs, put `"budget_mode": "deployment"` in the saved
+specification's `parameters` when qualifying the deployed output allowance,
+then run the usual `eval benchmark aider preflight --spec job.json` (or the
+selected suite's preflight). The worker repeats this shared gate before
+inference. Deployment mode rejects an unknown endpoint output cap, a profile
+completion cap that differs from it, or unknown context headroom. It never
+raises or clamps the pinned profile's budget automatically.
+
+The default `"budget_mode": "fixed"` preserves historical profiles and labels
+them `fixed_budget_diagnostic`; a 16K diagnostic against a 32K endpoint does not
+qualify the endpoint's full output allowance. Both modes reject output budgets
+that leave no prompt context and unsupported reasoning efforts when the
+selected model advertises its supported efforts. Missing reasoning metadata is
+not proof that the server honors the requested effort.
+
+Preflight records reasoning effort separately from the total output cap,
+remaining prompt capacity, and effective job deadline. `max` reasoning effort
+is not a numeric reasoning reservation: output tokens include reasoning and
+visible output. Actual prompt fit still requires per-request token counts;
+completion within the deadline requires workload-specific timing evidence.
+Record `finish_reason=length` as output-cap exhaustion alongside the independent
+task grade, not as proof of a coding-quality regression. A changed budget needs
+a separately identified run; do not rewrite historical results or retry until
+a desired grade appears.
+
 Run preflight before a benchmark and retain artifact identity, endpoint, served model, hardware,
 engine, quantization, context, concurrency, failures, and caveats. Evaluation never changes a
 capability alias or serve automatically.

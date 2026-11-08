@@ -31,7 +31,7 @@ _RESERVED_PARAMETERS = {
     "operation", "source_run_id", "prompt_contract",
     "runner", "workload", "concurrency", "request_count", "duration_s", "warmup_requests", "cache_condition",
 }
-_COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities"})
+_COMMON_PARAMETERS = frozenset({"offline", "client_topology", "model_host_id", "identities", "budget_mode"})
 _SUITE_PARAMETERS = {
     "context": frozenset({
         "thinking_mode", "reasoning_effort", "temperature", "top_p", "clear_thinking",
@@ -84,6 +84,8 @@ def _validate_suite_parameters(suite: str, parameters: Mapping[str, Any]) -> Non
 
 def _validate_common_parameters(parameters: Mapping[str, Any]) -> None:
     """Validate parameter fields consumed outside an individual suite runner."""
+    if parameters.get("budget_mode", "fixed") not in ("fixed", "deployment"):
+        raise BenchmarkJobError("bad_budget_mode", "budget_mode must be fixed or deployment")
     if "offline" in parameters and not isinstance(parameters["offline"], bool):
         raise BenchmarkJobError("bad_offline", "offline must be boolean")
     topology = parameters.get("client_topology", "isolated")

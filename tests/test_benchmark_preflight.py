@@ -148,3 +148,58 @@ def test_context_preflight_uses_selected_output_headroom(tmp_path):
         "status": "within_limit",
     }
     assert artifact["passed"] is True
+
+
+@pytest.mark.parametrize("mode,output_cap,context,effort,passed,error", [
+    ("fixed", 32768, 131072, "max", True, None),
+    ("deployment", 32768, 131072, "max", False, "deployment_output_budget_mismatch"),
+    ("deployment", None, 131072, "max", False, "deployment_output_budget_mismatch"),
+    ("deployment", 16384, 131072, "max", True, None),
+    ("deployment", 16384, None, "max", False, "unknown_context_headroom"),
+    ("fixed", 16384, 16384, "max", False, "output_budget_exhausts_context"),
+    ("fixed", 16384, 131072, "medium", False, "unsupported_endpoint_reasoning_effort"),
+])
+def test_generation_budget_distinguishes_diagnostics_from_deployment(
+        tmp_path, mode, output_cap, context, effort, passed, error):
+    spec = _spec(suite="aider", profile="aider-diagnostic-16k-v1", parameters={
+        "model_host_id": "model-host", "budget_mode": mode, "reasoning_effort": effort,
+    })
+    artifact = run_benchmark_preflight(spec, run_root=str(tmp_path), opener=_opener([{
+        "id": "deepseek", "max_output_tokens": output_cap, "context_length": context,
+        "reasoning": {"supported_efforts": ["max", "high", "low"]},
+    }]))
+    assert artifact["passed"] is passed
+    if error:
+        assert error in {item["code"] for item in artifact["checks"]}
+        from anvil_serving.benchmarking.preflight import require_benchmark_preflight
+        with pytest.raises(BenchmarkJobError, match="preflight"):
+            require_benchmark_preflight(artifact)
+    budget = artifact["generation_budget"]
+    assert budget["mode"] == mode
+    assert budget["reasoning_effort"] == effort
+    assert budget["reasoning_tokens_reserved"] is None
+    assert budget["effective_deadline_s"] == 600
+    assert budget["maximum_prompt_tokens"] == (context - 16384 if context else None)
+    assert artifact["budget_admission"]["budgets"]["max_completion_tokens"] == 16384
+    assert artifact["warnings"]
+
+
+def test_invalid_budget_mode_rejected_before_submission_or_endpoint(tmp_path):
+    from anvil_serving.benchmarking.submission import validate_submission_spec
+    spec = _spec(suite="aider", profile="aider-diagnostic-16k-v1", parameters={"budget_mode": "auto"})
+    with pytest.raises(BenchmarkJobError, match="budget_mode"):
+        validate_submission_spec(spec)
+    with pytest.raises(BenchmarkJobError, match="budget_mode"):
+        run_benchmark_preflight(spec, run_root=str(tmp_path),
+                                opener=lambda *_a, **_kw: pytest.fail("endpoint contacted"))
+
+
+@pytest.mark.parametrize("context", [0, -1, True, "131072"])
+def test_invalid_advertised_context_is_not_unknown_in_fixed_mode(tmp_path, context):
+    artifact = run_benchmark_preflight(
+        _spec(suite="aider", profile="aider-diagnostic-16k-v1"), run_root=str(tmp_path),
+        opener=_opener([{"id": "deepseek", "max_model_len": 131072,
+                         "meta": {"context_length": context}}]),
+    )
+    assert artifact["passed"] is False
+    assert "invalid_endpoint_context" in {item["code"] for item in artifact["checks"]}

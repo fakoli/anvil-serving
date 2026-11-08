@@ -157,15 +157,12 @@ def _endpoint_models(
             "model_mismatch", "requested routed model is absent from endpoint identity"
         )
     metadata = selected.get("meta") if isinstance(selected.get("meta"), Mapping) else {}
-    context = next(
-        (
-            source.get(field)
-            for source in (selected, metadata)
-            for field in ("max_model_len", "context_length", "max_context_length", "n_ctx")
-            if isinstance(source.get(field), int)
-        ),
-        None,
-    )
+    context_limits = [source[field] for source in (selected, metadata)
+                      for field in ("max_model_len", "context_length", "max_context_length", "n_ctx")
+                      if source.get(field) is not None]
+    if any(type(limit) is not int or limit <= 0 for limit in context_limits):
+        raise BenchmarkJobError("invalid_endpoint_context", "advertised context limits must be positive integers")
+    context = min(context_limits) if context_limits else None
     output_cap_status = "unknown"
     output_cap = None
     if "max_output_tokens" in selected and selected["max_output_tokens"] is not None:
@@ -259,6 +256,9 @@ def run_benchmark_preflight(
             required["min_free_disk_bytes"], budget_admission["budgets"]["min_free_disk_bytes"]
         )
     parameters = normalized.get("parameters", {})
+    budget_mode = parameters.get("budget_mode", "fixed")
+    if budget_mode not in ("fixed", "deployment"):
+        raise BenchmarkJobError("bad_budget_mode", "budget_mode must be fixed or deployment")
     declared_model_host = parameters.get("model_host_id")
     if required["model_host_id"] is None and isinstance(declared_model_host, str):
         required["model_host_id"] = declared_model_host.strip() or None
@@ -436,6 +436,40 @@ def run_benchmark_preflight(
                     f"declared_output_tokens={declared_output_budget} router_max_output_tokens={output_cap}",
                 )
             )
+    # An admitted small profile is a fixed-budget diagnostic, not qualification
+    # of the endpoint's full output allowance. Never silently raise or clamp it.
+    if budget_mode == "deployment":
+        matches = (output_cap_status == "advertised" and declared_output_budget == output_cap)
+        checks.append(_check(
+            "deployment_output_budget", matches,
+            None if matches else "deployment_output_budget_mismatch",
+            "deployment mode requires a known endpoint output cap equal to the pinned profile budget",
+        ))
+    maximum_prompt_tokens = None
+    if configured_context is not None and declared_output_budget is not None:
+        maximum_prompt_tokens = configured_context - declared_output_budget
+        checks.append(_check(
+            "generation_context_headroom", maximum_prompt_tokens > 0,
+            None if maximum_prompt_tokens > 0 else "output_budget_exhausts_context",
+            f"context_tokens={configured_context} output_tokens={declared_output_budget}; "
+            "actual prompts must fit the remaining context at request time",
+        ))
+    elif budget_mode == "deployment":
+        checks.append(_check("generation_context_headroom", False, "unknown_context_headroom",
+                             "deployment mode requires a known context and output budget"))
+    selected = next((item for item in served_models if item.get("id") == normalized["endpoint"]["model"]
+                     or isinstance(item.get("aliases"), list)
+                     and normalized["endpoint"]["model"] in item["aliases"]), {})
+    reasoning = selected.get("reasoning")
+    supported_efforts = reasoning.get("supported_efforts") if isinstance(reasoning, Mapping) else None
+    requested_effort = parameters.get("reasoning_effort")
+    if requested_effort is not None and supported_efforts is not None:
+        valid_efforts = (isinstance(supported_efforts, list) and bool(supported_efforts)
+                         and all(isinstance(effort, str) for effort in supported_efforts))
+        matches = valid_efforts and requested_effort in supported_efforts
+        checks.append(_check("reasoning_effort", matches,
+                             None if matches else "unsupported_endpoint_reasoning_effort",
+                             "requested reasoning effort must be advertised by the selected endpoint"))
     unsupported = []
     if configured_context is None:
         unsupported.append("configured_context")
@@ -445,6 +479,26 @@ def run_benchmark_preflight(
         "created_at": utc_now(),
         "passed": all(item["passed"] for item in checks),
         "requirements": required,
+        "generation_budget": {
+            "mode": budget_mode,
+            "scope": "fixed_budget_diagnostic" if budget_mode == "fixed" else "deployment_output_allowance",
+            "reasoning_effort": requested_effort,
+            "thinking_mode": parameters.get("thinking_mode", "default"),
+            "reasoning_tokens_reserved": None,
+            "output_tokens_include_reasoning": True,
+            "maximum_prompt_tokens": maximum_prompt_tokens,
+            "prompt_fit": "requires_per_request_token_count",
+            "effective_deadline_s": normalized["timeout_s"],
+            "completion_within_deadline": "unverified; requires workload-specific timing evidence",
+        },
+        "warnings": [
+            "Reasoning effort is not a numeric reasoning-token reservation; output tokens include reasoning and visible output.",
+            "A length finish is output-cap exhaustion, not by itself an independently graded solution failure.",
+            *(["Fixed-budget diagnostics do not qualify the endpoint's full deployment output allowance."]
+              if budget_mode == "fixed" else []),
+            *(["Endpoint output allowance is unknown; profile-budget acceptance is not endpoint-budget verification."]
+              if output_cap_status != "advertised" else []),
+        ],
         "observed": {
             "endpoint": {
                 "base_url": normalized["endpoint"]["base_url"],
