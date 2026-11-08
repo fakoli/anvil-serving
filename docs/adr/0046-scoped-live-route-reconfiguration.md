@@ -68,3 +68,30 @@ authorizes model lifecycle, qualification or promotion.
   watcher, automatic rollback, fallback selection or automatic promotion.
 - Source verification uses synthetic serves and fault injection. Installation
   and live continuity acceptance require a separate managed deployment.
+
+## Addendum — 2026-11-08: scoped direct-tier request settings and authority v2
+
+The existing preview/apply authority also governs a deliberately narrow class
+of direct-tier request-setting updates. Only `reasoning_effort`, `temperature`,
+and `top_p` in the tier's `extra_body` and defaults are eligible. The mutation
+validator rejects every other key change. Hard overrides retain priority over
+caller values; soft defaults yield to caller values. Thus a hard
+`reasoning_effort = "medium"` may be moved to a soft
+`reasoning_effort = "max"` default through the existing preview/apply and
+affected-scope drain transaction, without a model restart.
+
+The route authority projection is versioned. A restored legacy state loads into
+the runtime while retaining its original pinned boot bytes, revision, and
+effective-route hash; restore does not rewrite its authority. The first
+confirmed new route mutation writes the v2 envelope and emits a v2 projection.
+A legacy pending transaction requires explicit resume and is not implicitly
+migrated; its resume or cancellation retains the legacy projection and hash
+exactly. An old router binary cannot recover a state after the v2 write.
+Recovery is fix-forward on a v2-capable router image, never replacement with a
+legacy projection.
+
+The initial software upgrade that supplies v2 is a managed router restart with
+unchanged boot TOML. After that one-time upgrade, the allowlisted settings
+changes are hot route transactions. This addendum does not widen hot mutation
+to model lifecycle, route backends, aliases, listeners, authentication,
+protocol adapters, or any unlisted request setting.

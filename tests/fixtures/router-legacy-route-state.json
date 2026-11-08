@@ -1,0 +1,903 @@
+{
+  "base_config": "[server]\nauth_env = \"ROUTER_TOKEN\"\n[router.model_routes]\n\"llm.primary\" = \"a\"\n\"llm.anchor_a\" = \"a\"\n\"llm.anchor_b\" = \"b\"\n[[router.tiers]]\nid = \"a\"\nbase_url = \"http://127.0.0.1:30001/v1\"\ndialect = \"openai\"\nprivacy = \"local\"\ntool_support = true\nauth_env = \"MODEL_TOKEN\"\nmodel = \"model-a\"\ncontext_limit = 8192\nmax_concurrency = 1\nhealth_path = \"/health\"\nmodel_identity = true\nextra_body = { reasoning_effort = \"medium\" }\nextra_body_defaults = { temperature = 1.0, top_p = 0.95 }\n[[router.tiers]]\nid = \"b\"\nbase_url = \"http://127.0.0.1:30002/v1\"\ndialect = \"openai\"\nprivacy = \"local\"\ntool_support = true\nauth_env = \"MODEL_TOKEN\"\nmodel = \"model-b\"\ncontext_limit = 4096\nhealth_path = \"/health\"\nmodel_identity = true\n",
+  "producer_commit": "7f71b8cbe9be886ee4c58f70262ce74b950f475d",
+  "states": {
+    "alias_committed": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "9961c598ebd0f03f7c05b69381201d59835a0a51bdda221441d689b76ed54cc5",
+      "operation": {
+        "actor": "operator",
+        "aliases": [
+          "llm.primary"
+        ],
+        "candidate_projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "b"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "third",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "candidate_sha256": "9961c598ebd0f03f7c05b69381201d59835a0a51bdda221441d689b76ed54cc5",
+        "drain_timeout": 30,
+        "mode": "alias_only",
+        "owner_evidence": null,
+        "owner_evidence_required": false,
+        "phase": "committed",
+        "preview_id": "6694200d83b4f596a23e92b69f2fcf59",
+        "publish_pending": true,
+        "target_tier_ids": [
+          "b"
+        ],
+        "tier_ids": [],
+        "transaction_id": "742d16a4df0d96a63a2f9374e3a42160"
+      },
+      "previous": {
+        "effective_route_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+        "projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "third",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "route_revision": 3
+      },
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "b"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "third",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 4,
+      "schema": "router-route-state/v1"
+    },
+    "alias_prepared": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+      "operation": {
+        "actor": "operator",
+        "aliases": [
+          "llm.primary"
+        ],
+        "candidate_projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "b"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "third",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "candidate_sha256": "9961c598ebd0f03f7c05b69381201d59835a0a51bdda221441d689b76ed54cc5",
+        "drain_timeout": 30,
+        "mode": "alias_only",
+        "owner_evidence": null,
+        "owner_evidence_required": false,
+        "phase": "prepared",
+        "preview_id": "6694200d83b4f596a23e92b69f2fcf59",
+        "publish_pending": false,
+        "target_tier_ids": [
+          "b"
+        ],
+        "tier_ids": [],
+        "transaction_id": "742d16a4df0d96a63a2f9374e3a42160"
+      },
+      "previous": {
+        "effective_route_sha256": "3fbc40ea1f5f635467615c1a9673772058af294b4f56ca14c0880bd6245d5904",
+        "projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "second",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "route_revision": 2
+      },
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "a"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "third",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 3,
+      "schema": "router-route-state/v1"
+    },
+    "committed": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "f83958927b59d28633c2064c1f5ae71cc2968b1e419c8fb0e0709d2081266924",
+      "operation": {
+        "actor": "operator",
+        "aliases": [
+          "llm.anchor_a",
+          "llm.primary"
+        ],
+        "candidate_projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "fourth",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "candidate_sha256": "f83958927b59d28633c2064c1f5ae71cc2968b1e419c8fb0e0709d2081266924",
+        "drain_timeout": 30,
+        "mode": "tier_replacement",
+        "owner_evidence": null,
+        "owner_evidence_required": false,
+        "phase": "committed",
+        "preview_id": "6694200d83b4f596a23e92b69f2fcf59",
+        "publish_pending": true,
+        "target_tier_ids": [
+          "a"
+        ],
+        "tier_ids": [
+          "a"
+        ],
+        "transaction_id": "742d16a4df0d96a63a2f9374e3a42160"
+      },
+      "previous": {
+        "effective_route_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+        "projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "third",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "route_revision": 3
+      },
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "a"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "fourth",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 4,
+      "schema": "router-route-state/v1"
+    },
+    "complete": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+      "operation": {
+        "actor": "operator",
+        "aliases": [
+          "llm.anchor_a",
+          "llm.primary"
+        ],
+        "candidate_projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "third",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "candidate_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+        "drain_timeout": 30,
+        "mode": "tier_replacement",
+        "owner_evidence": null,
+        "owner_evidence_required": false,
+        "phase": "complete",
+        "preview_id": "9024b2bd17430737dd0b3b72a6e2150d",
+        "publish_pending": false,
+        "target_tier_ids": [
+          "a"
+        ],
+        "tier_ids": [
+          "a"
+        ],
+        "transaction_id": "c5b89108df16c3fabdd543fb51b495aa"
+      },
+      "previous": {
+        "effective_route_sha256": "3fbc40ea1f5f635467615c1a9673772058af294b4f56ca14c0880bd6245d5904",
+        "projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "second",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "route_revision": 2
+      },
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "a"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "third",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 3,
+      "schema": "router-route-state/v1"
+    },
+    "prepared": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+      "operation": {
+        "actor": "operator",
+        "aliases": [
+          "llm.anchor_a",
+          "llm.primary"
+        ],
+        "candidate_projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "fourth",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "candidate_sha256": "f83958927b59d28633c2064c1f5ae71cc2968b1e419c8fb0e0709d2081266924",
+        "drain_timeout": 30,
+        "mode": "tier_replacement",
+        "owner_evidence": null,
+        "owner_evidence_required": true,
+        "phase": "prepared",
+        "preview_id": "6694200d83b4f596a23e92b69f2fcf59",
+        "publish_pending": false,
+        "target_tier_ids": [
+          "a"
+        ],
+        "tier_ids": [
+          "a"
+        ],
+        "transaction_id": "742d16a4df0d96a63a2f9374e3a42160"
+      },
+      "previous": {
+        "effective_route_sha256": "3fbc40ea1f5f635467615c1a9673772058af294b4f56ca14c0880bd6245d5904",
+        "projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "second",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "route_revision": 2
+      },
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "a"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "third",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 3,
+      "schema": "router-route-state/v1"
+    },
+    "readmitted": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "f83958927b59d28633c2064c1f5ae71cc2968b1e419c8fb0e0709d2081266924",
+      "operation": {
+        "actor": "operator",
+        "aliases": [
+          "llm.anchor_a",
+          "llm.primary"
+        ],
+        "candidate_projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "fourth",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "candidate_sha256": "f83958927b59d28633c2064c1f5ae71cc2968b1e419c8fb0e0709d2081266924",
+        "drain_timeout": 30,
+        "mode": "tier_replacement",
+        "owner_evidence": null,
+        "owner_evidence_required": false,
+        "phase": "readmitted",
+        "preview_id": "6694200d83b4f596a23e92b69f2fcf59",
+        "publish_pending": false,
+        "target_tier_ids": [
+          "a"
+        ],
+        "tier_ids": [
+          "a"
+        ],
+        "transaction_id": "742d16a4df0d96a63a2f9374e3a42160"
+      },
+      "previous": {
+        "effective_route_sha256": "b4cf49b5ab4c959c4da765cb47688ecb56a3fb4acc7a6dc995edb757d0fd5a42",
+        "projection": {
+          "model_routes": {
+            "llm.anchor_a": "a",
+            "llm.anchor_b": "b",
+            "llm.primary": "a"
+          },
+          "tiers": {
+            "a": {
+              "base_url": "http://127.0.0.1:30001/v1",
+              "context_admission": "estimate",
+              "context_limit": 8192,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": 1,
+              "max_output_tokens": null,
+              "model": "third",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            },
+            "b": {
+              "base_url": "http://127.0.0.1:30002/v1",
+              "context_admission": "estimate",
+              "context_limit": 4096,
+              "engine": null,
+              "health_path": "/health",
+              "max_concurrency": null,
+              "max_output_tokens": null,
+              "model": "model-b",
+              "model_identity": true,
+              "params": null,
+              "quantization": null,
+              "tool_support": true
+            }
+          }
+        },
+        "route_revision": 3
+      },
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "a"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "fourth",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 4,
+      "schema": "router-route-state/v1"
+    },
+    "revision_zero": {
+      "base_config_sha256": "8ab239db3422545b7dfbeb8fe7452a6304cbce53bef4dfca3e1dc8da3f59ef00",
+      "effective_route_sha256": "f7bbd904f2844e55f34444a87505f8600264d1f595925f8d2b0a60c87055f9da",
+      "operation": null,
+      "previous": null,
+      "projection": {
+        "model_routes": {
+          "llm.anchor_a": "a",
+          "llm.anchor_b": "b",
+          "llm.primary": "a"
+        },
+        "tiers": {
+          "a": {
+            "base_url": "http://127.0.0.1:30001/v1",
+            "context_admission": "estimate",
+            "context_limit": 8192,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": 1,
+            "max_output_tokens": null,
+            "model": "model-a",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          },
+          "b": {
+            "base_url": "http://127.0.0.1:30002/v1",
+            "context_admission": "estimate",
+            "context_limit": 4096,
+            "engine": null,
+            "health_path": "/health",
+            "max_concurrency": null,
+            "max_output_tokens": null,
+            "model": "model-b",
+            "model_identity": true,
+            "params": null,
+            "quantization": null,
+            "tool_support": true
+          }
+        }
+      },
+      "route_revision": 0,
+      "schema": "router-route-state/v1"
+    }
+  }
+}

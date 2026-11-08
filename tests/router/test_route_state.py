@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 import threading
 from types import SimpleNamespace
 
@@ -653,3 +654,140 @@ def test_close_keeps_authority_lock_until_inflight_mutation_finishes(manager, mo
         assert successor.status()["route_revision"] == 1
     finally:
         successor.close()
+
+
+@pytest.fixture
+def legacy_authority(tmp_path):
+    fixture = json.loads((Path(__file__).parents[1] / "fixtures/router-legacy-route-state.json").read_text())
+    def restore(phase):
+        raw = fixture["base_config"].encode()
+        state = fixture["states"][phase]
+        path = tmp_path / "legacy.json"
+        path.write_text(json.dumps(state))
+        path.chmod(0o600)
+        manager = updates.RouteUpdateManager(Runtime(raw), raw, path)
+        return manager, raw, state
+    return restore
+
+
+@pytest.mark.parametrize("phase", ["revision_zero", "complete", "prepared", "committed", "readmitted",
+                                   "alias_prepared", "alias_committed"])
+def test_legacy_restore_and_resume_preserve_frozen_projection_identity(legacy_authority, phase):
+    manager, raw, state = legacy_authority(phase)
+    original = manager.path.read_bytes()
+    try:
+        manager.restore()
+        assert manager.path.read_bytes() == original
+        assert manager.routing.snapshot.route_revision == state["route_revision"]
+        assert manager.routing.snapshot.effective_route_sha256 == state["effective_route_sha256"]
+        assert manager.routing.snapshot.config.tier("a").extra_body == {"reasoning_effort": "medium"}
+        if phase not in {"revision_zero", "complete"}:
+            evidence = {"source": "campaign_activation/v1", "binding_sha256": "a" * 64,
+                        "container_id": "b" * 64, "served_model": "fourth"}
+            if phase.startswith("alias_"):
+                evidence = None
+                assert manager.routing.holds
+            preview = manager.resume(state["operation"]["transaction_id"], owner_evidence=evidence)
+            assert preview["candidate_sha256"] == state["operation"]["candidate_sha256"]
+            result = manager.apply(preview["preview_id"], confirm=True)
+            assert result["route_revision"] == 4
+            assert result["effective_route_sha256"] == state["operation"]["candidate_sha256"]
+    finally:
+        manager.close()
+
+
+def test_hot_reasoning_override_removal_preserves_caller_choice_and_restart(legacy_authority):
+    from anvil_serving.router.backends.relay import RelayBackend
+    manager, raw, original = legacy_authority("complete")
+    try:
+        manager.restore()
+        old_backend = RelayBackend(manager.routing.snapshot.config.tier("a"))
+        candidate = raw.replace(b'reasoning_effort = "medium"', b'').replace(
+            b'temperature = 1.0, top_p = 0.95', b'temperature = 0.6, top_p = 0.95, reasoning_effort = "max"')
+        result = apply(manager, candidate)
+        assert result["route_revision"] == 4
+        backend = RelayBackend(manager.routing.snapshot.config.tier("a"))
+        assert backend._apply_tier_extra_body({}) == {"reasoning_effort": "max", "temperature": 0.6, "top_p": 0.95}
+        assert backend._apply_tier_extra_body({"reasoning_effort": "low"})["reasoning_effort"] == "low"
+        assert old_backend._apply_tier_extra_body({"reasoning_effort": "low"})["reasoning_effort"] == "medium"
+        state = json.loads(manager.path.read_text())
+        assert state["schema"] == "router-route-state/v2"
+        assert state["projection"]["schema"] == "router-route-projection/v2"
+        assert state["previous"]["projection"] == original["projection"]
+        assert state["previous"]["effective_route_sha256"] == original["effective_route_sha256"]
+    finally:
+        manager.close()
+    restored = updates.RouteUpdateManager(Runtime(raw), raw, manager.path)
+    try:
+        restored.restore()
+        assert restored.status()["effective_route_sha256"] == result["effective_route_sha256"]
+        assert restored.routing.snapshot.config.tier("a").extra_body_defaults["reasoning_effort"] == "max"
+        preview = restored.rollback(3)
+        assert restored.apply(preview["preview_id"], confirm=True)["route_revision"] == 5
+        assert restored.routing.snapshot.config.tier("a").extra_body["reasoning_effort"] == "medium"
+    finally:
+        restored.close()
+
+
+@pytest.mark.parametrize("field", ["extra_body", "extra_body_defaults"])
+def test_hot_request_settings_cannot_change_identity_or_protocol(manager, field):
+    for entry in ['model = "other"', 'messages = []', 'stream = false', 'chat_template_kwargs = {}']:
+        with pytest.raises(updates.RouteUpdateError, match="request_setting_restart_required"):
+            manager.preview(configuration(extra=f'{field} = {{ {entry} }}'))
+    assert not manager._previews and not manager.routing.holds
+    assert manager.status()["route_revision"] == 0
+
+
+@pytest.mark.parametrize("entry", ['reasoning_effort = "max\\r\\n"', 'temperature = nan', 'top_p = inf',
+                                   'reasoning_effort = { bad = true }', 'temperature = "hot"',
+                                   'temperature = true', 'temperature = 2.1', 'top_p = -1', 'top_p = 0'])
+def test_hot_request_settings_reject_control_characters_and_nonfinite_values(manager, entry):
+    for field in ("extra_body", "extra_body_defaults"):
+        with pytest.raises(updates.RouteUpdateError, match="route_control_character|route_.*invalid"):
+            manager.preview(configuration(extra=f'{field} = {{ {entry} }}'))
+    assert not manager._previews and not manager.routing.holds
+
+
+def test_hot_reasoning_setting_must_match_declared_supported_efforts(manager):
+    candidate = configuration(extra='extra_body_defaults = { reasoning_effort = "medium" }\n'
+        'params = { capabilities = { compat = { supportedReasoningEfforts = ["max", "high", "low"] } } }')
+    with pytest.raises(updates.RouteUpdateError, match="route_request_setting_invalid"):
+        manager.preview(candidate)
+    assert not manager._previews and not manager.routing.holds
+
+
+@pytest.mark.parametrize("supported", ['3', '"max"', '{ max = true }', '["max", "max"]', '["", "max"]'])
+def test_hot_reasoning_setting_rejects_malformed_effort_metadata(manager, supported):
+    candidate = configuration(extra='extra_body_defaults = { reasoning_effort = "max" }\n'
+        f'params = {{ capabilities = {{ compat = {{ supportedReasoningEfforts = {supported} }} }} }}')
+    with pytest.raises(updates.RouteUpdateError, match="route_request_setting_invalid"):
+        manager.preview(candidate)
+    assert not manager._previews and not manager.routing.holds
+
+
+def test_nonfinite_unlisted_body_value_is_a_controlled_refusal(manager):
+    with pytest.raises(updates.RouteUpdateError, match="route_metadata_invalid"):
+        manager.preview(configuration(extra='extra_body = { custom = { nested = nan } }'))
+    assert not manager._previews and not manager.routing.holds
+
+
+@pytest.mark.parametrize("fault", ["legacy_with_new_projection", "unmarked_body", "partial_body", "unknown_schema"])
+def test_mixed_projection_formats_fail_closed_without_rewrite(legacy_authority, fault):
+    manager, raw, state = legacy_authority("revision_zero")
+    if fault == "legacy_with_new_projection":
+        state["projection"] = updates.route_projection(load_bytes(raw))
+    elif fault == "unmarked_body":
+        state["projection"]["tiers"]["a"]["extra_body"] = {}
+    else:
+        state["schema"] = "router-route-state/v2"
+        state["projection"] = updates.route_projection(load_bytes(raw))
+        if fault == "partial_body":
+            del state["projection"]["tiers"]["a"]["extra_body_defaults"]
+        else:
+            state["projection"]["schema"] = "unknown"
+    state["effective_route_sha256"] = updates._digest(state["projection"])
+    manager.path.write_text(json.dumps(state))
+    original = manager.path.read_bytes()
+    with pytest.raises(updates.RouteUpdateError, match="state_unavailable"):
+        manager.restore()
+    assert manager.path.read_bytes() == original and not manager.routing.events

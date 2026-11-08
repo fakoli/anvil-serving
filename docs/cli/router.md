@@ -1024,6 +1024,47 @@ changed boot bytes against an existing route authority. Restart-only configurati
 evolution requires a separately initialized authority for the new boot config;
 initialization never overwrites an existing revision history.
 
+### Scoped direct-tier request settings
+
+The existing `router routes preview` and `router routes apply` flow may update a
+declared direct tier's `extra_body` and defaults without a model restart, but
+only for these request-setting keys: `reasoning_effort`, `temperature`, and
+`top_p`. No other `extra_body` or default key is hot-mutable. The preview names
+the candidate tier, model, and context, and rejects additions, removals, or
+changes outside that allowlist.
+
+Changed values are validated: `temperature` must be finite and in `[0, 2]`,
+`top_p` must be finite and in `(0, 1]`, and `reasoning_effort` must be a
+non-empty string that matches the tier's declared `supportedReasoningEfforts`
+when that declaration is present. This setting does not grant an engine budget
+or a numeric reasoning-token cap.
+
+Request-setting precedence remains explicit: a hard tier override wins over a
+caller value; a soft default yields to a caller value. Consequently, moving a
+hard `reasoning_effort = "medium"` override to a soft
+`reasoning_effort = "max"` default is a supported scoped route change. It uses
+the same preview/apply and affected-scope drain contract as other route updates;
+it does not restart the router or any model service. Unlisted request-body and
+default-setting changes remain restart-only; existing alias and tier-replacement
+route contracts are not broadened by this setting scope.
+
+### Route authority state compatibility
+
+Restoring a legacy authority preserves its pinned boot TOML bytes, revision,
+and effective-route hash unchanged. Restore loads the legacy runtime state but
+does not rewrite its authority. The first confirmed new route mutation writes
+the v2 authority envelope and emits a v2 projection; a legacy resume or cancel
+retains the legacy projection and hash exactly. A legacy pending transaction is
+never silently converted or rewritten: a legacy readmitted or alias-pending
+state requires an explicit fresh resume before a new mutation.
+
+After that first v2 write, an older router binary cannot recover the authority.
+Fix forward with a router image that understands v2; do not replace the state
+with a legacy projection. The one-time router software upgrade that introduces
+v2 requires a managed router restart with unchanged boot TOML. Once that
+upgrade is complete, the allowlisted direct-tier request-setting updates above
+remain hot operations through preview/apply and their scoped drain.
+
 For the reference managed container, set the state path under its existing
 `/var/lib/anvil-router` durable volume, then use the `routes init --compose`
 command while the declared router service is stopped. When an acknowledged
