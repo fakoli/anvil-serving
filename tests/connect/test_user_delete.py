@@ -74,15 +74,20 @@ def assert_locked(state: dict) -> None:
     assert state["value"]
 
 
-def test_phase_precedes_idp_user_replacement_and_retry_survives_completed_purge(tmp_path, monkeypatch):
+@pytest.mark.parametrize("legacy_username, recreated", ((False, False), (True, False), (True, True)))
+def test_phase_precedes_idp_user_replacement_and_retry_survives_completed_purge(tmp_path, monkeypatch, legacy_username, recreated):
     phase_root = tmp_path / "phases"
     phase_root.mkdir(mode=0o700)
     request_id = _request()
     phase = _phase(request_id)
+    if legacy_username:
+        phase["intent_username"] = ""
     path = user_delete._write_phase(phase_root, phase)
     users_file = tmp_path / "users.yml"
     raw = json.dumps({"users": {"owner": {"displayname": "Owner", "password": _HASH,
                                              "email": "owner@example.test", "groups": []}}}).encode()
+    if legacy_username and not recreated:
+        raw = b'{"users": {}}'
     users_file.write_bytes(raw)
     users_file.chmod(0o600)
     data = {"config_root": str(tmp_path / "rendered"), "components": {"authelia": str(tmp_path / "authelia")},
@@ -108,7 +113,9 @@ def test_phase_precedes_idp_user_replacement_and_retry_survives_completed_purge(
     monkeypatch.setattr(users, "_read_users", lambda *_: (raw, users_file.stat()))
     monkeypatch.setattr(manage, "_safe_authelia_users_file", lambda *_args, **_kwargs: users_file)
     monkeypatch.setattr(user_delete, "role_identity", lambda *_: (1001, 1001))
-    monkeypatch.setattr(__import__("anvil_serving.connect.user_backup", fromlist=["snapshot"]), "snapshot", lambda *_args, **_kwargs: {"ok": True})
+    snapshots = []
+    monkeypatch.setattr(__import__("anvil_serving.connect.user_backup", fromlist=["snapshot"]), "snapshot",
+                        lambda *_args, **_kwargs: snapshots.append(True) or {"ok": True})
 
     def replace(_path, _raw, _info):
         assert path.exists(), "phase must be durable before IdP data mutation"
@@ -127,20 +134,28 @@ def test_phase_precedes_idp_user_replacement_and_retry_survives_completed_purge(
     monkeypatch.setattr(user_delete, "_purge_as_idp", purge)
     monkeypatch.setattr(user_delete, "_human_response", lambda *_args: {"operation": "human-delete-finalize"})
 
-    result = user_delete._run_phase(data, "manifest", path, phase, None, tmp_path, intent=_intent(request_id))
+    intent = _intent(request_id, username="" if legacy_username else "owner")
+    if recreated:
+        data["memory"] = {"default_banks": {"owner": "personal"}, "shared_banks": {"owner": ["shared"]}}
+        monkeypatch.setattr(manage, "_write_atomic", lambda *_a, **_k: pytest.fail("must not mutate memory defaults on refusal"))
+        with pytest.raises(manage.ManageError, match="forward recovery"):
+            user_delete._run_phase(data, "manifest", path, phase, None, tmp_path, intent=intent)
+        assert not state["replaced"] and state["purges"] == [] and snapshots == [] and path.exists() and state["active"]
+        return
+    result = user_delete._run_phase(data, "manifest", path, phase, None, tmp_path, intent=intent)
 
-    assert result["finalized"] and state["replaced"] and state["purges"] == [True, False] and state["active"]
-    assert not path.exists()
+    assert result["finalized"] and state["replaced"] is (not legacy_username) and state["purges"] == [True, False] and state["active"]
+    assert not path.exists() and snapshots == [True]
 
 
-def test_mapped_subject_refuses_username_or_principal_mismatch(monkeypatch):
+def test_mapped_identity_refuses_username_or_principal_mismatch(monkeypatch):
     issuer = "https://auth.example.test"
     principal = users._principal(issuer, _SUBJECT)
     monkeypatch.setattr(users, "_oidc_identifiers", lambda *_args, **_kwargs: [
         {"service": "openid", "sector_id": "", "username": "other", "identifier": _SUBJECT},
     ])
     with pytest.raises(UsageError):
-        user_delete._mapped_subject({"gateway": {"oidc": {"issuer": issuer}}}, Path("/unused"), principal, "owner", None)
+        user_delete._mapped_identity({"gateway": {"oidc": {"issuer": issuer}}}, Path("/unused"), principal, "owner", None)
 
 
 def test_native_read_request_omits_legacy_issuer(tmp_path, monkeypatch):
@@ -321,12 +336,88 @@ def test_omitted_legacy_username_decodes_and_preserves_mapping_fence(monkeypatch
     assert human["username"] == ""
     data = {"gateway": {"oidc": {"issuer": "https://auth.example.test"}}}
     monkeypatch.setattr(users, "_oidc_identifiers", lambda *a, **kw: [])
-    assert user_delete._mapped_subject(data, None, wire["principal"], decoded["username"], None) == ""
+    assert user_delete._mapped_identity(data, None, wire["principal"], decoded["username"], None) == ("", "")
     monkeypatch.setattr(users, "_principal", lambda *a: wire["principal"])
     monkeypatch.setattr(users, "_oidc_identifiers", lambda *a, **kw: [
         {"service": "openid", "sector_id": "", "identifier": "subject", "username": "owner"}])
-    with pytest.raises(UsageError, match="incomplete"):
-        user_delete._mapped_subject(data, None, wire["principal"], decoded["username"], None)
+    assert user_delete._mapped_identity(data, None, wire["principal"], decoded["username"], None) == ("owner", "subject")
     for invalid in (None, 1, [], {}):
         with pytest.raises(UsageError):
             user_delete._deletion({**wire, "username": invalid})
+
+
+@pytest.mark.parametrize("named", (False, True))
+def test_new_phase_pins_unique_subject_and_original_intent_username(tmp_path, monkeypatch, named):
+    issuer = "https://auth.example.test"
+    intent = _intent(_request(), username="owner" if named else "")
+    intent["principal"] = users._principal(issuer, _SUBJECT)
+    original = dict(intent)
+    data = {"config_root": str(tmp_path), "gateway": {"oidc": {"issuer": issuer}}}
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_a, **_k: [
+        {"service": "openid", "sector_id": "", "username": "owner", "identifier": _SUBJECT}])
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (True, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (b'{"users":{}}', None))
+    phase = user_delete._new_phase(data, "manifest", intent, None)
+    assert phase["username"] == "owner" and phase["subject"] == _SUBJECT
+    assert ("intent_username" in phase) is (not named)
+    assert intent == original
+    root = tmp_path / "phases"
+    root.mkdir(mode=0o700)
+    path = user_delete._write_phase(root, phase)
+    retained = user_delete._read_phase(path)
+    user_delete._phase_matches_intent(retained, intent)
+    for key, value in (("username", "other"), ("principal", _principal()),
+                       ("request_id", _request()), ("generation", 3), ("complete", True)):
+        with pytest.raises(UsageError):
+            user_delete._phase_matches_intent(retained, {**intent, key: value})
+    if not named:
+        with pytest.raises(UsageError):
+            user_delete._phase_matches_intent(retained, {**intent, "username": "owner"})
+    # Mapping is gone after purge: retry still binds the original native intent.
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_a, **_k: pytest.fail("must not remap retained phase"))
+    user_delete._phase_matches_intent(user_delete._read_phase(path), intent)
+
+
+@pytest.mark.parametrize("case", ("duplicate_subject", "multiple_public_subjects", "wrong_sector", "wrong_issuer"))
+def test_legacy_mapping_never_guesses_an_ambiguous_or_different_identity(monkeypatch, case):
+    issuer = "https://auth.example.test"
+    row = {"service": "openid", "sector_id": "", "username": "owner", "identifier": _SUBJECT}
+    records = [row]
+    if case == "duplicate_subject":
+        records.append({**row, "username": "other"})
+    elif case == "multiple_public_subjects":
+        records.append({**row, "identifier": "22222222-2222-4222-8222-222222222222"})
+    elif case == "wrong_sector":
+        records = [{**row, "sector_id": "private-client"}]
+    else:
+        issuer = "https://other.example.test"
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_a, **_k: records)
+    data = {"gateway": {"oidc": {"issuer": issuer}}}
+    principal = users._principal("https://auth.example.test", _SUBJECT)
+    if case in {"wrong_sector", "wrong_issuer"}:
+        assert user_delete._mapped_identity(data, None, principal, "", None) == ("", "")
+    else:
+        with pytest.raises(UsageError):
+            user_delete._mapped_identity(data, None, principal, "", None)
+
+
+@pytest.mark.parametrize("change", ({"intent_username": "other"}, {"intent_username": None},
+                                    {"intent_username": "", "idp_delete": False, "subject": ""}))
+def test_recovered_phase_rejects_invalid_original_metadata(change):
+    with pytest.raises(UsageError):
+        user_delete._phase({**_phase(_request()), **change})
+
+
+def test_legacy_metadata_does_not_authorize_deleting_an_existing_account(tmp_path, monkeypatch):
+    issuer = "https://auth.example.test"
+    intent = _intent(_request(), username="")
+    intent["principal"] = users._principal(issuer, _SUBJECT)
+    data = {"config_root": str(tmp_path), "gateway": {"oidc": {"issuer": issuer}}}
+    monkeypatch.setattr(users, "_oidc_identifiers", lambda *_a, **_k: [
+        {"service": "openid", "sector_id": "", "username": "owner", "identifier": _SUBJECT}])
+    monkeypatch.setattr(manage, "_unit_state", lambda *_: (True, "enabled"))
+    monkeypatch.setattr(users, "_read_users", lambda *_: (b'{"users":{"owner":{}}}', None))
+    monkeypatch.setattr(users, "_database", lambda *_: {"users": {"owner": {}}})
+    with pytest.raises(UsageError, match="still exists"):
+        user_delete._new_phase(data, "manifest", intent, None)
+    assert list(tmp_path.iterdir()) == []
