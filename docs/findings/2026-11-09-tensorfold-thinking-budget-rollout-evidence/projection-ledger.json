@@ -1,0 +1,184 @@
+{
+  "schema": "anvil-serving.public-evidence-projections/v1",
+  "sources": [
+    {
+      "source_label": "inputs/plan.json",
+      "original_bytes": 5088,
+      "original_sha256": "7fac2c4d2a8b0d9acaa102f32f85c40e1fdd10eb60b47cee3181613b043e7aad"
+    },
+    {
+      "source_label": "inputs/aider-diagnostic-16k-v1.json",
+      "original_bytes": 1325,
+      "original_sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+      "profile_content_sha256": "59cf12be50467c04b43d6830e268b9f788e631fcb4230414c648a8480d1ab309",
+      "projection": "byte-identical; profile content identity is distinct from literal-file digest"
+    },
+    {
+      "source_label": "router-preflight.json",
+      "original_bytes": 8842,
+      "original_sha256": "34d59a7231d69b876f3052a44dd13af39a1649f02083975211dd9ec8504b7ea1"
+    },
+    {
+      "source_label": "jobs/max-budget-1/artifact.json",
+      "original_bytes": 5043,
+      "original_sha256": "7681c1b4bbb9330b6dfe75ac407950d435a3c10fdbcb99e97ec8c1a61ad82748",
+      "projected_bytes": 5047,
+      "projected_sha256": "99ccf39ed8f8f54884bbf4ed764ba0c186b0928d7cce462dc40f06c5595bb25c"
+    },
+    {
+      "source_label": "jobs/max-budget-1/aider/result.json",
+      "original_bytes": 75247,
+      "original_sha256": "15ca0293433a6a2f9da4054eced4cd4dba348e6a5b39599a211ebeda189d71ff",
+      "projected_bytes": 6302,
+      "projected_sha256": "0fe18036ba3f313b68a9026235c625ca461fcfa004b24778ae3af36ce8b3e24c"
+    },
+    {
+      "source_label": "jobs/max-budget-1/aider/adapter-result.json",
+      "original_bytes": 767,
+      "original_sha256": "67fcc7109a48e8c8fb42c470e7e8253106f7c3bade84c140089522cb6c6cc718",
+      "projected_bytes": 767,
+      "projected_sha256": "67fcc7109a48e8c8fb42c470e7e8253106f7c3bade84c140089522cb6c6cc718"
+    },
+    {
+      "source_label": "jobs/max-budget-1/aider/requests.jsonl",
+      "original_bytes": 5529,
+      "original_sha256": "83f065fa95e1e48c346f99cf5f863c35a05967a6096fab42a1ec7b1b5d134caf",
+      "projected_bytes": 5934,
+      "projected_sha256": "8d9e39417cbb94e9a12438ca245cebff17dbab4171ecb2988a8ab56ea49c194c"
+    },
+    {
+      "source_label": "jobs/max-budget-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "original_bytes": 1094,
+      "original_sha256": "bb5ff438e83c3798138fb325c162ea34c5fb758d97445bf00ba92e5edc0bd4ff",
+      "projected_bytes": 813,
+      "projected_sha256": "13f32794fab8b3026f7adb65e037dc4003abe6115b3609c40901e470e8fbfc9d"
+    },
+    {
+      "source_label": "jobs/low-unset/artifact.json",
+      "original_bytes": 5037,
+      "original_sha256": "ad4902dd9d3e815079b5809d5ff78b4a5c36974225d82834c9b2661d49997d37",
+      "projected_bytes": 5041,
+      "projected_sha256": "26a506c9c0d890d33a39c7d2214f4d3a7ca740f7ef66576a64218165238159ca"
+    },
+    {
+      "source_label": "jobs/low-unset/aider/result.json",
+      "original_bytes": 26510,
+      "original_sha256": "1330cf7c6efbe29c69ee9f3d89e97ec64c7ef96bb77b5a9ff51677e71f66e2d5",
+      "projected_bytes": 6246,
+      "projected_sha256": "2add60c868a83f9ec93e2618949ea7b72dffeeca7b9130408b8010f60753e7ba"
+    },
+    {
+      "source_label": "jobs/low-unset/aider/adapter-result.json",
+      "original_bytes": 766,
+      "original_sha256": "5de80303cb0ed487e5e32f4e32a2e5132987c4156bc3eb90e6dd9b12b7b462e2",
+      "projected_bytes": 766,
+      "projected_sha256": "5de80303cb0ed487e5e32f4e32a2e5132987c4156bc3eb90e6dd9b12b7b462e2"
+    },
+    {
+      "source_label": "jobs/low-unset/aider/requests.jsonl",
+      "original_bytes": 5394,
+      "original_sha256": "2b48e9a850f6dee5967f5d33dc69ba1e897217dc9011960c851fe6d66f75977e",
+      "projected_bytes": 5791,
+      "projected_sha256": "dde3c84615cdb93305ddcbe6eb9fa162cc2c22f394c2ec4576be1f09fc567bf2"
+    },
+    {
+      "source_label": "jobs/low-unset/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "original_bytes": 1091,
+      "original_sha256": "5a60049bfa6780273ab5cd07cd8ea964f594826371a8a0f79b822963d3b16544",
+      "projected_bytes": 813,
+      "projected_sha256": "84d30480294ad0bf45184e4ea36cb52b927715186b082cb2e2a154606fa23161"
+    },
+    {
+      "source_label": "jobs/max-budget-2/artifact.json",
+      "original_bytes": 5043,
+      "original_sha256": "c66b7da85bbea2dfccdf3ef5b474a1a50ab4a0fc1311035279bbb369464ba429",
+      "projected_bytes": 5047,
+      "projected_sha256": "2a6e7f05af7bdaac397142adc990aa81a7addfb9eaaaaa56e6323a444ab6cc02"
+    },
+    {
+      "source_label": "jobs/max-budget-2/aider/result.json",
+      "original_bytes": 76903,
+      "original_sha256": "b4e0f6ff9fa40afd9a8459a2aaa718252443f4b6318f3cb683de81c519bf6942",
+      "projected_bytes": 5681,
+      "projected_sha256": "aa508bda1edc437a8e007ef14d63bad17f9d708db9324bf7af5658eac947bb56"
+    },
+    {
+      "source_label": "jobs/max-budget-2/aider/adapter-result.json",
+      "original_bytes": 767,
+      "original_sha256": "7728dd38b200218eabd370d9886e609c89a9de83f182aa2651d8a69bcd2fcd09",
+      "projected_bytes": 767,
+      "projected_sha256": "7728dd38b200218eabd370d9886e609c89a9de83f182aa2651d8a69bcd2fcd09"
+    },
+    {
+      "source_label": "jobs/max-budget-2/aider/requests.jsonl",
+      "original_bytes": 4332,
+      "original_sha256": "cdc4f61785592496a1e66fb75ff556df29b029283e254596104c4eb6f26754af",
+      "projected_bytes": 4655,
+      "projected_sha256": "92d731570786d170250c21f585f195eceb55dc28a8f412acc4301ab5ff88bfdb"
+    },
+    {
+      "source_label": "jobs/max-budget-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "original_bytes": 1088,
+      "original_sha256": "9c46af74881609cac44dcdbb131a696d32211d085482b9a7a04ea5cda3bb37fd",
+      "projected_bytes": 807,
+      "projected_sha256": "f7b510bea3df210532a99ce84b44aedd24acc8ca8756f437eb41224669ebb691"
+    },
+    {
+      "source_label": "inputs/max-budget-1.json",
+      "original_bytes": 1118,
+      "original_sha256": "7bd36175d76b0c388b2df54c7c4fb3c9e3acc636b9fe6255c3b016c7a4167252"
+    },
+    {
+      "source_label": "inputs/low-unset.json",
+      "original_bytes": 1079,
+      "original_sha256": "c2b362ba4b192ddbbc83cf5a63b07878b61d7368c42270919c22f2527471dc81"
+    },
+    {
+      "source_label": "inputs/max-budget-2.json",
+      "original_bytes": 1118,
+      "original_sha256": "9dde76b7da2dfcced20ca0441106a8a9a509b58217ca97ed72df0556666227a6"
+    },
+    {
+      "source_label": "counter-reconciliation.json",
+      "original_bytes": 1198,
+      "original_sha256": "83ee33ba26ac84dff446aa94e7cc2344ac0d8df2c20d5e5cb9eb0fb6567084e2"
+    },
+    {
+      "source_label": "preservation-final.json",
+      "original_bytes": 559,
+      "original_sha256": "c7bc97d0c9491da4f407176c2723c6f5d97ea71742705d1c0b04aa4c235df916"
+    },
+    {
+      "source_label": "quality-results.json",
+      "original_bytes": 19111,
+      "original_sha256": "94351a1736822552c5eed53529541e7db414e03d15dcb8c340ad8986b37f4b01"
+    },
+    {
+      "source_label": "reviews/boundary.md",
+      "original_bytes": 6339,
+      "original_sha256": "3d42415278a6d8d4d81bedec4ad6e6f2205be1de1b8f6b3f2db477c30c5dcd8a"
+    },
+    {
+      "source_label": "reviews/final-runtime.md",
+      "original_bytes": 8979,
+      "original_sha256": "98f101f5387198926e4ac8f6f0a4c9f5e38c68cea9ee60e80cb6085c7c4a3fb5"
+    },
+    {
+      "source_label": "snapshots/after-validation.json",
+      "original_bytes": 12881,
+      "original_sha256": "0a3717e89bddba21fee8cec383ef17cbab952232fb63973d1341dad686fe9e0c"
+    }
+  ],
+  "rules": [
+    "Original frozen plan controls, order, budgets and source binding retained; operator custody prose, receipt path and baseline path replaced with public equivalents.",
+    "Profile copied byte-identically; declared normalized content hash and literal JSON byte hash are separately labeled.",
+    "Native preflight/v2 schema, pass/fail verdicts, request usage, finish metadata and measured counts retained; endpoint replaced with synthetic loopback and all model response/validator prose omitted.",
+    "Native job/adapter/result/event/grader structures and all grade/accounting/usage values retained. Endpoint/host/absolute paths and execution commands are synthetic or omitted; stdout/stderr/response prose are omitted. Embedded native hashes still identify original private stage bytes; this ledger and the final artifact manifest identify each public projection.",
+    "Authoritative nested streaming usage reports30 reasoning tokens although the convenience field remains null. All seven raw preflight usage records are complete; Go totals remain a separate population and null is not zero."
+  ],
+  "limitations": [
+    "Private process/store/route/source files are not part of the public bundle; raw private hashes bind their provenance without publishing operator identity.",
+    "Ten owned Go responses form a separate population from seven router preflight observations; historical effort-control jobs are not pooled.",
+    "The standalone CLI cannot inspect an outer benchmark-result envelope. Existing product APIs validated embedded native evidence and original stage hashes; no outer-CLI pass is claimed."
+  ]
+}

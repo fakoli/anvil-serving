@@ -1,0 +1,55 @@
+{
+  "schema": "anvil-serving.public-software-rollout-observation/v1",
+  "observed_at": "2026-11-09T22:16:22.541039+00:00",
+  "source": "source-delivery.json",
+  "local_cli": {
+    "installed": true,
+    "wheel_sha256": "d34825a38967de332b9c173bd58ace17fe48a774e9690b141eb6b1dd9bbf1335",
+    "managed_repeat_changes": 0
+  },
+  "router": {
+    "image_digest": "sha256:3fb7a08b71c529ad9141a45f96e215acc6cdcda442a8e2e08a4b0991cd56c3d3",
+    "state": "admitting",
+    "generation": 20,
+    "cutover_pending": false
+  },
+  "preservation": {
+    "model_process_and_artifact_identity_unchanged": true,
+    "route_and_base_configuration_unchanged": true,
+    "global_context_output_reasoning_and_cache_policy_unchanged": true,
+    "controller_unchanged": true
+  },
+  "containment": {
+    "effective_limit_bytes": 51539607552,
+    "effective_swap_limit_bytes": 0,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    }
+  },
+  "maintenance": {
+    "remote_memory_terminal": "UNKNOWN",
+    "drained": false,
+    "outcome": "acknowledged_interruption"
+  },
+  "runtime_quality_status": "complete; current Max 1/2 jobs, current Low 1/1, one unique task",
+  "remote_controller_numeric_budget_support": "unsupported; activation-observer migration deferred",
+  "private_projection_provenance": [
+    {
+      "label": "pre-rollout-snapshot",
+      "sha256": "05f97ee826bbf2c666a852442324f2efb743cac89185c3d329d1df5df645904d",
+      "bytes": 12917
+    },
+    {
+      "label": "post-cutover-snapshot",
+      "sha256": "1d7c973a53492af47ac6ff75cf00315f40dc11efe78a61bec738c41d41e13dc7",
+      "bytes": 12880
+    }
+  ],
+  "projection_boundary": "Operator process IDs, route/config hashes, endpoints, mounts, paths and credentials are withheld. Published source/artifact hashes and selected preservation/resource observations remain explicit; runtime task evidence is separate.",
+  "final_preservation": "preservation.json"
+}

@@ -1,0 +1,268 @@
+{
+  "base_url": "http://127.0.0.1:30000/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "tools",
+    "streaming-tools",
+    "tool-result"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "content_chars": 285,
+      "content_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 2887,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 723,
+      "seconds": 3.397,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 801,
+        "completion_tokens_details": {
+          "reasoning_tokens": 723
+        },
+        "prompt_tokens": 28,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 829
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "content_chars": 31,
+      "content_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 202,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 47,
+      "seconds": 0.417,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 57,
+        "completion_tokens_details": {
+          "reasoning_tokens": 47
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 87
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 70,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 18,
+      "request_controls": {
+        "tool_choice": "auto"
+      },
+      "request_index": 1,
+      "seconds": 1.783,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 30,
+        "completion_tokens_details": {
+          "reasoning_tokens": 18
+        },
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 4997
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 163,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 37,
+      "request_controls": {
+        "tool_choice": "auto"
+      },
+      "request_index": 0,
+      "seconds": 1.859,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 49,
+        "completion_tokens_details": {
+          "reasoning_tokens": 37
+        },
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4096
+        },
+        "total_tokens": 5016
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "content_truncated": false,
+      "event_count": 13,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 123,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "request_controls": {
+        "tool_choice": "auto"
+      },
+      "seconds": 0.31,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 42,
+        "completion_tokens_details": {
+          "reasoning_tokens": 30
+        },
+        "prompt_tokens": 166,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 208
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 105,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 25,
+      "request_controls": {
+        "tool_choice": "auto"
+      },
+      "seconds": 0.293,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 37,
+        "completion_tokens_details": {
+          "reasoning_tokens": 25
+        },
+        "prompt_tokens": 166,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 203
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "content_chars": 11,
+      "content_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 238,
+      "reasoning_excerpt": "[Model response prose omitted; original private bytes remain hash-bound.]",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 62,
+      "request_controls": {
+        "tool_choice": null
+      },
+      "seconds": 0.431,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 69,
+        "completion_tokens_details": {
+          "reasoning_tokens": 62
+        },
+        "prompt_tokens": 70,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 139
+      },
+      "validation_detail": "tool result retained"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "[Validator prose omitted; boolean verdict and per-response metadata retained.]",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "[Validator prose omitted; boolean verdict and per-response metadata retained.]",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "[Validator prose omitted; boolean verdict and per-response metadata retained.]",
+      "name": "shared-prefix tool batch x2",
+      "passed": true
+    },
+    {
+      "detail": "[Validator prose omitted; boolean verdict and per-response metadata retained.]",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "[Validator prose omitted; boolean verdict and per-response metadata retained.]",
+      "name": "tool-result continuation",
+      "passed": true
+    }
+  ],
+  "sampling": {
+    "temperature": 0.6
+  },
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "tool_choice": {
+    "mode": "auto",
+    "oracle_revision": "tool-call/v2-exact-weather",
+    "raw_sse_capture": "unsupported",
+    "transport_capture": "disabled"
+  },
+  "video_expect": [],
+  "video_input": null
+}

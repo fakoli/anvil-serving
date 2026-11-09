@@ -2,14 +2,19 @@
 
 **Date:** 2026-11-09
 
+The original effort-control matrix below is preserved. A separate
+[source and rollout follow-up](#source-and-rollout-follow-up-2026-11-09)
+records the later status of the numeric control; it does not revise those
+historical outcomes.
+
 **Scope:** A focused investigation of the selected Go `alphametics` task on
 the pinned TensorFold GLM EXL3 configuration. The initial plan changes only
 request-local reasoning effort within the same 16,384-token response cap.
 
 **Decision:** Focused `quality` evidence, `no-promotion`. Low passed both
 selected-task repetitions; Max failed both after spending the shared response
-allowance in reported reasoning. The numeric-control patch remains a source
-proposal, separate from deployed behavior.
+allowance in reported reasoning. During this original matrix, the
+numeric-control patch was a source proposal, separate from deployed behavior.
 
 <!-- benchmark-result-card/v1 -->
 ## Result card
@@ -126,7 +131,7 @@ adds typed `thinking_budget_tokens` in the benchmark controls, maps it to the
 existing wire field and preserves that field through the relay. It does not
 require an engine patch or change route selection.
 
-That proposal is not installed, deployed or an arm in this effort matrix.
+That proposal was not installed, deployed or an arm in this effort matrix.
 A forced boundary still needs its own executable quality check: it does not
 guarantee a useful answer, and the counted closing sequence means reported
 reasoning tokens need not equal the requested budget exactly. The separate
@@ -198,3 +203,89 @@ No broad Go score, model ranking, throughput claim, numeric-budget deployment
 or serving change follows from this plan. Original evidence is preserved;
 unsafe identity, resource, OOM, admission or infrastructure failures stop
 submissions. Ordinary independent coding failures remain in the frozen sample.
+
+## Source and rollout follow-up, 2026-11-09
+
+[PR #751](https://github.com/fakoli/anvil-serving/pull/751) merged at
+`0f55c039bc5661e51421d0b65c51186155abffa7`. Its tree exactly matches the
+independently reviewed source candidate. The optional Aider control
+`thinking_budget_tokens` maps to native `thinking_budget`; same-dialect
+OpenAI relay preserves the validated integer. Disabled reasoning, unsupported
+dialect translation and insufficient known total-cap headroom fail before
+transport. Omitting the control preserves the existing request shape.
+
+The pinned TensorFold engine already implements the native control; no new
+engine patch is needed. This source merge does not change the selected model,
+route defaults, context or cache policy, and does not establish endpoint
+enforcement, an answer-token reserve or coding quality.
+
+The verified local CLI and router now run the merged code. The separate
+[software observation](2026-11-09-tensorfold-thinking-budget-rollout-evidence/deployment.json)
+binds the wheel/router image hashes and records preserved model, route,
+defaults and cache policy, with zero observed OOM. These installation facts
+are separate from the frozen three-job runtime check below.
+A separate [router regression preflight](2026-11-09-tensorfold-thinking-budget-rollout-evidence/router-preflight.json)
+passed five check groups with seven response observations; its at-most-nine
+calls are distinct from the Go jobs' 36-call ceiling. The combined limit is
+45 transports, with no extra quality control or retry-until-pass.
+The follow-up uses the later sharded-KV `a3f640bf...` engine image, while the
+original effort matrix used disk-only `8f5604d1...`; see the separate
+[configuration](2026-11-09-tensorfold-thinking-budget-rollout-evidence/configuration.json).
+There is no contemporaneous unbounded-Max arm in the fixed follow-up. Its
+grades qualify the current control/task path and cannot establish a causal
+quality or performance gain over the historical Max failures.
+
+| Frozen follow-up | Independent contained Go attempts | Owned HTTP responses |
+|---|---|---|
+| Max/8192, first job | Failed, then passed; task resolved on attempt 2 | Four HTTP 200/`stop`; coding responses reported reasoning 8193 with completion 9942/9836 |
+| Low/unset | Failed, then passed; task resolved on attempt 2 | Four HTTP 200/`stop`; coding responses reported reasoning 6/21 with completion 951/836 |
+| Max/8192, second job | Both failed; task unresolved | Two HTTP 200/`length`; each completion 16384, reasoning 8193 and derived non-reasoning 8191 |
+
+Current Max passed **1/2 jobs** and current Low **1/1**, all on one unique task.
+Both successful jobs retained a failed first coding attempt. All ten responses
+are fully accounted with zero pending/error transports. Their native usage
+totals are prompt 31,652, completion 56,581 and reported reasoning 33,839 tokens.
+The third job exhausted each per-response allowance while its 600-second,
+12-call whole-job budget remained available; no whole-job budget exhausted in
+any case. The fixed plan ended after these three jobs with no adaptive retry.
+[Native observations](2026-11-09-tensorfold-thinking-budget-rollout-evidence/case-diagnostics.json)
+and the [separate summary](2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+retain the failures and denominators.
+
+The second Max job applied no edit: its final source hash still matches the
+starter. Pinned Aider catches `FinishReasonLength` and returns before applying
+an incomplete reply, then independently tests that unchanged starter. Its
+exhausted-context counter does not demonstrate exhaustion of the configured
+327680-token model context.
+
+Each Max coding response reported 8193 reasoning tokens for the requested
+8192 budget, then emitted non-reasoning output. This matches the existing
+engine's forced-close accounting: its budget targets reply positions and its
+reported reasoning includes the closing marker. The relevant budget/stream/
+reply code is unchanged between the historical and current engine trees.
+This is source-backed functional enforcement evidence. No native per-request
+forced-close flag or raw token IDs were retained, so it is not a directly
+instrumented trigger or an exact reasoning-token ceiling. Logical response
+IDs and source-backed purpose attribution are retained separately; the
+metadata events do not label request purpose. Non-reasoning counts are derived
+by subtraction and do not measure visible answer tokens.
+
+The second Max failure shows that bounded thinking still permits the answer
+region to consume the remaining shared allowance and fail the independent
+task. An 8192 budget is not established as a reliable fix or default, and this
+result does not prove an engine quota bug. A future answer-cap/reasoning-policy
+proposal needs its own frozen, contemporaneous controls and independent grades.
+No such extra case or global-policy change follows from this check.
+The remote controller is explicitly deferred because its
+activation-observer profile needs a separately qualified current-route
+migration. Local deployment must not be represented as remote-controller
+numeric-budget support. Final independent review accepted owned worker/
+environment closure and incumbent/route/store/controller preservation. The
+seven preflight observations have complete nested usage: 10,394 prompt,
+1,085 completion and 942 reasoning tokens. The streaming convenience field
+is null while its authoritative nested usage reports 30 reasoning tokens;
+null is not filled with zero. These remain separate from the Go totals.
+Global engine counters also include user traffic.
+The request-local control is
+only partially remedied end to end while that exposed controller path remains
+unsupported.

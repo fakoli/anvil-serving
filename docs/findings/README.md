@@ -1,5 +1,14 @@
 # Findings index
 
+**2026-11-09 numeric-control rollout follow-up:**
+[merged local CLI/router control](2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+has source-backed boundary evidence, with a separate one-task check retaining
+Max/8192 at 1/2 jobs and Low/unset at 1/1. The second Max job failed twice at
+the total response cap; 8192 is not a reliable fix/default. A newer sharded-KV
+baseline prevents causal comparison with the preserved historical matrix.
+Remote-controller admission remains deferred.
+[Evidence](2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
 **2026-11-09 TensorFold reasoning investigation:**
 [bounded Max/Low Go controls](2026-11-09-tensorfold-reasoning-budget.md)
 separate prompt effort from a hard thinking-token allocation under the same

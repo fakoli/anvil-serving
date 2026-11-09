@@ -1,0 +1,291 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-09-tensorfold-thinking-budget-rollout",
+    "capability": "request-local numeric thinking control and focused Go quality",
+    "repository_revision": "0f55c039bc5661e51421d0b65c51186155abffa7",
+    "dirty_state": "installed reviewed wheel/router from identical clean merged tree; publication is a separate change",
+    "started_at": "2026-11-09T21:47:56.874968+00:00",
+    "completed_at": "2026-11-09T22:35:37.071220+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.swe-agent-observation/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "cbaf509abcf9aa49ca04c7584f8a74562fe6c18ae19de261f6c94417eb4911ea",
+          "bytes": 1662
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "9a6e470bb6bdadda30e2a7f22106b81058b7a648550455c42fee8bdcd2e8bd93",
+          "bytes": 240
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "inputs/aider-diagnostic-16k-v1.json",
+          "sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+          "bytes": 1325
+        },
+        {
+          "path": "configuration.json",
+          "sha256": "ef2323eef945e4fac0a20c6a0ca4e32fbdb99393508a27145cac5caba206d60c",
+          "bytes": 3354
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "inputs/plan.json",
+          "sha256": "3bd7084b806e9cd4bd28b5b305c886bebdd578af6968fd0c121175b95e4a7270",
+          "bytes": 4954
+        },
+        {
+          "path": "inputs/max-budget-1.json",
+          "sha256": "86039388dfcbd5662726ea38d1911239bf584aa454e04588cb6688ce26e3e984",
+          "bytes": 1023
+        },
+        {
+          "path": "inputs/low-unset.json",
+          "sha256": "35872b12377827b887ee200254cb1f7e2326065aae489a0cd1b7cf10d0d22716",
+          "bytes": 984
+        },
+        {
+          "path": "inputs/max-budget-2.json",
+          "sha256": "b1870f298c7ca8ee419b5baa95206373eb9c7cbbe5add4174a7aad91b2735ce5",
+          "bytes": 1023
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "ef2323eef945e4fac0a20c6a0ca4e32fbdb99393508a27145cac5caba206d60c",
+          "bytes": 3354
+        },
+        {
+          "path": "source-delivery.json",
+          "sha256": "06ed6ecd2e0c18f305e80f112136678d21ee89bdf3b5a56a5019310274826569",
+          "bytes": 570
+        },
+        {
+          "path": "deployment.json",
+          "sha256": "ae2213576f8dbe60285916c2333deb70a8b71325e94d6f375a1082e9ce411d17",
+          "bytes": 1981
+        },
+        {
+          "path": "boundary.json",
+          "sha256": "1527e818c07d7edf573f6b01550411ee4bc376f0fdb7a135d1ad8281b14a9e74",
+          "bytes": 1158
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "bddbdfc482647cf357d649d29bf6f1abfa022c27d88e3d827845f63636f82ccd",
+          "bytes": 9105
+        },
+        {
+          "path": "native-evidence-validation.json",
+          "sha256": "e3bc0d708305e4daf39a03b1db88799ccdfadb24817462768c59e771dec37666",
+          "bytes": 1822
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "jobs/low-unset/aider/adapter-result.json",
+          "sha256": "5de80303cb0ed487e5e32f4e32a2e5132987c4156bc3eb90e6dd9b12b7b462e2",
+          "bytes": 766
+        },
+        {
+          "path": "jobs/low-unset/aider/requests.jsonl",
+          "sha256": "dde3c84615cdb93305ddcbe6eb9fa162cc2c22f394c2ec4576be1f09fc567bf2",
+          "bytes": 5791
+        },
+        {
+          "path": "jobs/low-unset/aider/result.json",
+          "sha256": "2add60c868a83f9ec93e2618949ea7b72dffeeca7b9130408b8010f60753e7ba",
+          "bytes": 6246
+        },
+        {
+          "path": "jobs/low-unset/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "84d30480294ad0bf45184e4ea36cb52b927715186b082cb2e2a154606fa23161",
+          "bytes": 813
+        },
+        {
+          "path": "jobs/low-unset/artifact.json",
+          "sha256": "26a506c9c0d890d33a39c7d2214f4d3a7ca740f7ef66576a64218165238159ca",
+          "bytes": 5041
+        },
+        {
+          "path": "jobs/max-budget-1/aider/adapter-result.json",
+          "sha256": "67fcc7109a48e8c8fb42c470e7e8253106f7c3bade84c140089522cb6c6cc718",
+          "bytes": 767
+        },
+        {
+          "path": "jobs/max-budget-1/aider/requests.jsonl",
+          "sha256": "8d9e39417cbb94e9a12438ca245cebff17dbab4171ecb2988a8ab56ea49c194c",
+          "bytes": 5934
+        },
+        {
+          "path": "jobs/max-budget-1/aider/result.json",
+          "sha256": "0fe18036ba3f313b68a9026235c625ca461fcfa004b24778ae3af36ce8b3e24c",
+          "bytes": 6302
+        },
+        {
+          "path": "jobs/max-budget-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "13f32794fab8b3026f7adb65e037dc4003abe6115b3609c40901e470e8fbfc9d",
+          "bytes": 813
+        },
+        {
+          "path": "jobs/max-budget-1/artifact.json",
+          "sha256": "99ccf39ed8f8f54884bbf4ed764ba0c186b0928d7cce462dc40f06c5595bb25c",
+          "bytes": 5047
+        },
+        {
+          "path": "jobs/max-budget-2/aider/adapter-result.json",
+          "sha256": "7728dd38b200218eabd370d9886e609c89a9de83f182aa2651d8a69bcd2fcd09",
+          "bytes": 767
+        },
+        {
+          "path": "jobs/max-budget-2/aider/requests.jsonl",
+          "sha256": "92d731570786d170250c21f585f195eceb55dc28a8f412acc4301ab5ff88bfdb",
+          "bytes": 4655
+        },
+        {
+          "path": "jobs/max-budget-2/aider/result.json",
+          "sha256": "aa508bda1edc437a8e007ef14d63bad17f9d708db9324bf7af5658eac947bb56",
+          "bytes": 5681
+        },
+        {
+          "path": "jobs/max-budget-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "f7b510bea3df210532a99ce84b44aedd24acc8ca8756f437eb41224669ebb691",
+          "bytes": 807
+        },
+        {
+          "path": "jobs/max-budget-2/artifact.json",
+          "sha256": "2a6e7f05af7bdaac397142adc990aa81a7addfb9eaaaaa56e6323a444ab6cc02",
+          "bytes": 5047
+        },
+        {
+          "path": "router-preflight.json",
+          "sha256": "ab9343ebf6d9e762b5cf5912a8e36fee92994b9e5f681842b075523ef0e3285e",
+          "bytes": 7947
+        },
+        {
+          "path": "completion-proofs.json",
+          "sha256": "8742b74bf3822426aa58f844196a1e9529e0d4971faa1d1779f6c3f5113892bc",
+          "bytes": 1125
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "432c0e22a3ef4d2e74dd5e9a726a7efa5721237ee5d31c76000f30ae26d7bfd1",
+          "bytes": 1095
+        },
+        {
+          "path": "independent-review.md",
+          "sha256": "691e70ab6298f2a143e6b3ffc3ad102a24153d5fb48328556bec50834b4bdadb",
+          "bytes": 1046
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "56313410a58e3958855be78cd1adbbf950ffa4f134da0f68aef7361e944826a3",
+          "bytes": 2088
+        },
+        {
+          "path": "preservation.json",
+          "sha256": "c7bc97d0c9491da4f407176c2723c6f5d97ea71742705d1c0b04aa4c235df916",
+          "bytes": 559
+        },
+        {
+          "path": "counter-reconciliation.json",
+          "sha256": "83ee33ba26ac84dff446aa94e7cc2344ac0d8df2c20d5e5cb9eb0fb6567084e2",
+          "bytes": 1198
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "61db9d241a735be79ba0cc74cf48c036fc38311abf296f5671bfa116d4dd36b0",
+          "bytes": 5748
+        },
+        {
+          "path": "case-diagnostics.json",
+          "sha256": "b4bc9a04213d4d7a9b363a1bb64131abc5059069ae72b8697f9df54a32020cfe",
+          "bytes": 13490
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-publication copy was requested."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

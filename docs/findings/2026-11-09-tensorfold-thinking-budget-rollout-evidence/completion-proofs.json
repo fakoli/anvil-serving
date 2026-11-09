@@ -1,0 +1,40 @@
+{
+  "schema": "anvil-serving.public-owned-job-completion/v1",
+  "jobs": [
+    {
+      "case": "max-budget-1",
+      "transport_started": 4,
+      "responses": 4,
+      "http_errors": 0,
+      "pending": 0,
+      "worker_group_active": 0,
+      "strict_python_sha256": "f7112105d6365d197c0a7db4efeaccd8a39aa079068f147fab983fb03b4513b1",
+      "process_returncode": 0,
+      "resolved": 1
+    },
+    {
+      "case": "low-unset",
+      "transport_started": 4,
+      "responses": 4,
+      "http_errors": 0,
+      "pending": 0,
+      "worker_group_active": 0,
+      "strict_python_sha256": "f7112105d6365d197c0a7db4efeaccd8a39aa079068f147fab983fb03b4513b1",
+      "process_returncode": 0,
+      "resolved": 1
+    },
+    {
+      "case": "max-budget-2",
+      "transport_started": 2,
+      "responses": 2,
+      "http_errors": 0,
+      "pending": 0,
+      "worker_group_active": 0,
+      "strict_python_sha256": "f7112105d6365d197c0a7db4efeaccd8a39aa079068f147fab983fb03b4513b1",
+      "process_returncode": 0,
+      "resolved": 0
+    }
+  ],
+  "all_workers_and_groups_stopped": true,
+  "strict_python_environment_preserved": true
+}

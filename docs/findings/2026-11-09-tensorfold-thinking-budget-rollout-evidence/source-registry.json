@@ -1,0 +1,5 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [],
+  "basis": "Local merged source, frozen controls, native job/grader/transport data and independent pinned-engine/custody review; no external performance prior."
+}

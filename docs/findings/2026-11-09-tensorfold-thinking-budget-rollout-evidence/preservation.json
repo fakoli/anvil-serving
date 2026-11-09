@@ -1,0 +1,13 @@
+{
+  "model_incarnation_recipe_registry_GPU_and_limits_preserved": true,
+  "route_base_effective_revision_preserved": true,
+  "controller_incarnation_preserved": true,
+  "protected_store_binding_preserved": true,
+  "legacy_uncertainty_preserved": true,
+  "owner_roster_changed_for_new_PID_namespace_and_start": true,
+  "native_OOM_high_max_event_deltas": 0,
+  "owner_admitting": true,
+  "frozen_inputs_unchanged": true,
+  "host_RAM_and_effective_swap_limits_verified_unchanged": true,
+  "router_and_native_advertised_model_metadata_verified_unchanged": true
+}
