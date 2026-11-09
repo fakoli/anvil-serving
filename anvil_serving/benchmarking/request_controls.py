@@ -69,6 +69,7 @@ def resolve_job_request_controls(
         try:
             result["thinking_budget_tokens"] = validate_thinking_budget_tokens(
                 controls["thinking_budget_tokens"], max_output_tokens=max_completion_tokens,
+                reasoning_effort=reasoning_effort,
             )
         except ValueError as exc:
             raise BenchmarkJobError("bad_thinking_budget", str(exc)) from exc

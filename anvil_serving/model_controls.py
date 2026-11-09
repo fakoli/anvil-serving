@@ -5,12 +5,15 @@ REASONING_EFFORT_CHOICES = (
 )
 
 
-def validate_thinking_budget_tokens(value, *, max_output_tokens):
+def validate_thinking_budget_tokens(value, *, max_output_tokens,
+                                    reasoning_effort=None, thinking_enabled=None):
     """Require an explicit positive thinking ceiling below the whole-output cap."""
     if type(value) is not int or value <= 0:
         raise ValueError("thinking budget must be a positive integer token count")
     if type(max_output_tokens) is not int or max_output_tokens <= value:
         raise ValueError("thinking budget requires an explicit larger output-token cap")
+    if reasoning_effort == "none" or thinking_enabled is False:
+        raise ValueError("thinking budget requires enabled thinking")
     return value
 
 

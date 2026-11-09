@@ -88,9 +88,13 @@ _ANTHROPIC_VERSION = "2023-06-01"
 _DEFAULT_MAX_TOKENS = 1024
 
 
-def _validate_relay_thinking_budget_tokens(value: Any, max_output_tokens: Any) -> int:
+def _validate_relay_thinking_budget(body: Mapping[str, Any], max_output_tokens: Any) -> int:
+    template_controls = body.get("chat_template_kwargs")
     try:
-        return validate_thinking_budget_tokens(value, max_output_tokens=max_output_tokens)
+        return validate_thinking_budget_tokens(body.get("thinking_budget"), max_output_tokens=max_output_tokens,
+            reasoning_effort=body.get("reasoning_effort"),
+            thinking_enabled=template_controls.get("enable_thinking")
+                if isinstance(template_controls, Mapping) else None)
     except ValueError as exc:
         raise BackendClientError(400, "invalid_request_error", str(exc)) from exc
 
@@ -1333,7 +1337,7 @@ class RelayBackend:
         self._apply_tier_extra_body(body)
         if "thinking_budget" in raw:
             # Operator overrides keep precedence, but cannot erase output headroom.
-            _validate_relay_thinking_budget_tokens(body.get("thinking_budget"), body.get("max_tokens"))
+            _validate_relay_thinking_budget(body, body.get("max_tokens"))
         if self._tier.strip_reasoning_history and isinstance(body.get("messages"), list):
             messages = []
             for message in body["messages"]:
@@ -1359,7 +1363,7 @@ class RelayBackend:
                 raise BackendClientError(
                     400, "invalid_request_error", "cross-dialect thinking budgets are unsupported",
                 )
-            _validate_relay_thinking_budget_tokens(raw["thinking_budget"], request.max_tokens)
+            _validate_relay_thinking_budget(raw, request.max_tokens)
         if has_video_artifacts(raw) and request.dialect != self._tier.dialect:
             raise BackendClientError(
                 400,

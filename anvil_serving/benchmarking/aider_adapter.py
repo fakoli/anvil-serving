@@ -213,7 +213,8 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
     guard = AiderTransportGuard(client, model_class, budget, recorder)
     if "thinking_budget_tokens" in controls:
         validate_thinking_budget_tokens(controls["thinking_budget_tokens"],
-            max_output_tokens=budget.configured["max_completion_tokens"])
+            max_output_tokens=budget.configured["max_completion_tokens"],
+            reasoning_effort=controls.get("reasoning_effort"))
     target = urlsplit(endpoint["base_url"] + "/chat/completions")
 
     def completion(self, *args, **kwargs):
@@ -245,6 +246,16 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
                     or body.get("max_tokens") != budget.configured["max_completion_tokens"]):
                 raise BudgetStopped("unexpected Aider endpoint, alias, or token cap")
             expected = request_body_controls(controls)
+            if "thinking_budget_tokens" in controls:
+                template_controls = body.get("chat_template_kwargs")
+                try:
+                    validate_thinking_budget_tokens(body.get("thinking_budget"),
+                        max_output_tokens=budget.configured["max_completion_tokens"],
+                        reasoning_effort=body.get("reasoning_effort"),
+                        thinking_enabled=template_controls.get("enable_thinking")
+                            if isinstance(template_controls, dict) else None)
+                except ValueError as exc:
+                    raise BudgetStopped("Aider thinking budget was not preserved") from exc
             if any(body.get(key) != value for key, value in expected.items()):
                 raise BudgetStopped("Aider request controls were not preserved")
             budget.before_send(request, context, self, kwargs)

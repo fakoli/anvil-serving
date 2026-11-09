@@ -47,7 +47,7 @@ def test_aider_budget_survives_admission_worker_plan_and_wire_guard(tmp_path, mo
         controls=plan["request_controls"], budget=budget, recorder=recorder)
     body = {"model": "llm.primary", "max_tokens": plan["budgets"]["max_completion_tokens"], **controls}
     try:
-        with pytest.raises(aider_adapter.BudgetStopped, match="controls"):
+        with pytest.raises(aider_adapter.BudgetStopped, match="preserved"):
             Model().send_completion({key: value for key, value in body.items() if key != "thinking_budget"})
         assert not sent
         Model().send_completion(body)
@@ -85,10 +85,44 @@ def test_preflight_records_request_without_claiming_engine_enforcement(tmp_path)
 def test_other_suites_reject_an_unimplemented_control(suite):
     job = spec()
     job.update(suite=suite)
-    job["parameters"]["thinking_budget_tokens"] = 512
+    job["parameters"] = {"thinking_budget_tokens": 512}
     with pytest.raises(BenchmarkJobError) as error:
         validate_submission_spec(job)
     assert error.value.code == "suite_incompatible_parameter"
+    assert error.value.details["parameters"] == ["thinking_budget_tokens"]
+
+
+def test_explicitly_disabled_reasoning_cannot_request_a_thinking_budget():
+    job = spec()
+    job["parameters"].update(reasoning_effort="none", thinking_budget_tokens=512)
+    with pytest.raises(BenchmarkJobError):
+        validate_submission_spec(job)
+    request = OpenAIDialect().parse_request({"model": "llm.primary",
+        "messages": [{"role": "user", "content": "Solve the task."}],
+        "max_tokens": 16, "thinking_budget": 4, "reasoning_effort": "none"})
+    with pytest.raises(BackendClientError):
+        RelayBackend(make_tier("openai"), env={"EXAMPLE_KEY": "fixture"})._build_body(request)
+
+
+@pytest.mark.parametrize("wire_override", [{"thinking_budget": True}, {"thinking_budget": 1.0},
+    {"reasoning_effort": "none"}, {"chat_template_kwargs": {"enable_thinking": False}}])
+def test_wire_guard_rejects_invalid_thinking_controls_before_transport(tmp_path, wire_override):
+    controls = resolve_job_request_controls({"thinking_budget_tokens": 1}, max_completion_tokens=8)
+    Model, Client, sent = offline_model_client()
+    recorder = aider_adapter.EventRecorder(tmp_path / "events.jsonl")
+    budget = aider_adapter.SuiteBudget({"max_model_calls": 2, "max_completion_tokens": 8,
+        "deadline_s": 60, "max_retries": 0, "min_free_disk_bytes": 0}, recorder)
+    restore = aider_adapter.install_transport_guard(Client, Model,
+        endpoint={"base_url": "http://127.0.0.1:8000/v1", "model": "llm.primary"},
+        controls=controls, budget=budget, recorder=recorder)
+    try:
+        with pytest.raises(aider_adapter.BudgetStopped):
+            Model().send_completion({"model": "llm.primary", "max_tokens": 8,
+                                    "thinking_budget": 1, **wire_override})
+        assert not sent and budget.model_calls == 0
+    finally:
+        restore()
+        recorder.close(outcome="failed")
 
 
 def test_router_preserves_validated_budget_and_explicit_tier_precedence():
@@ -103,6 +137,10 @@ def test_router_preserves_validated_budget_and_explicit_tier_precedence():
     invalid = RelayBackend(replace(tier, extra_body={"max_tokens": 4}), env={"EXAMPLE_KEY": "fixture"})
     with pytest.raises(BackendClientError):
         invalid._build_body(request)
+    disabled = RelayBackend(replace(tier, extra_body={"chat_template_kwargs": {"enable_thinking": False}}),
+        env={"EXAMPLE_KEY": "fixture"})
+    with pytest.raises(BackendClientError):
+        disabled._build_body(request)
 
 
 @pytest.mark.parametrize("budget,cap,dialect", [(True, 16, "openai"), (None, 16, "openai"),
