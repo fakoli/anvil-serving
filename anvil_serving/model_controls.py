@@ -1,8 +1,17 @@
-"""Shared model-family reasoning-control validation for eval commands."""
+"""Shared reasoning-control validation for evaluation and relay requests."""
 
 REASONING_EFFORT_CHOICES = (
     "none", "minimal", "low", "medium", "high", "max", "xhigh",
 )
+
+
+def validate_thinking_budget_tokens(value, *, max_output_tokens):
+    """Require an explicit positive thinking ceiling below the whole-output cap."""
+    if type(value) is not int or value <= 0:
+        raise ValueError("thinking budget must be a positive integer token count")
+    if type(max_output_tokens) is not int or max_output_tokens <= value:
+        raise ValueError("thinking budget requires an explicit larger output-token cap")
+    return value
 
 
 def validate_reasoning_control(model, *, thinking_mode, no_thinking,

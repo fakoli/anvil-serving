@@ -209,7 +209,7 @@ def _run_suite(
             run_root=store.run_root, cache_root=cache_root,
             ownership_id=spec["ownership_id"], run_id=spec["run_id"],
             request_controls={key: parameters[key] for key in (
-                "thinking_mode", "reasoning_effort", "temperature", "top_p"
+                "thinking_mode", "reasoning_effort", "temperature", "top_p", "thinking_budget_tokens"
             ) if key in parameters}, timeout_s=spec["timeout_s"],
         )
         return run_aider_benchmark(plan)

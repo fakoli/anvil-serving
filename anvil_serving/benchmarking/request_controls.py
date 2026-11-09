@@ -7,16 +7,18 @@ from typing import Any
 
 from .evaluation import normalize_sampling
 from .jobs import BenchmarkJobError
-from ..model_controls import REASONING_EFFORT_CHOICES
+from ..model_controls import REASONING_EFFORT_CHOICES, validate_thinking_budget_tokens
 
 
 JOB_REQUEST_CONTROL_KEYS = frozenset({
     "thinking_mode", "reasoning_effort", "temperature", "top_p",
-    "force_nonempty_content",
+    "force_nonempty_content", "thinking_budget_tokens",
 })
 
 
-def resolve_job_request_controls(value: Mapping[str, Any] | None) -> dict[str, Any]:
+def resolve_job_request_controls(
+    value: Mapping[str, Any] | None, *, max_completion_tokens: int | None = None,
+) -> dict[str, Any]:
     """Validate the small benchmark control allowlist and form request kwargs."""
     controls = dict(value or {})
     if set(controls) - JOB_REQUEST_CONTROL_KEYS:
@@ -61,6 +63,15 @@ def resolve_job_request_controls(value: Mapping[str, Any] | None) -> dict[str, A
         "reasoning_effort": reasoning_effort,
         "chat_template_kwargs": chat_template_kwargs,
     }
+    if "thinking_budget_tokens" in controls:
+        if thinking_mode == "disabled":
+            raise BenchmarkJobError("conflicting_reasoning_controls", "thinking budget requires thinking")
+        try:
+            result["thinking_budget_tokens"] = validate_thinking_budget_tokens(
+                controls["thinking_budget_tokens"], max_output_tokens=max_completion_tokens,
+            )
+        except ValueError as exc:
+            raise BenchmarkJobError("bad_thinking_budget", str(exc)) from exc
     if force_nonempty_content is not None:
         result["force_nonempty_content"] = force_nonempty_content
     if "temperature" in controls or "top_p" in controls:

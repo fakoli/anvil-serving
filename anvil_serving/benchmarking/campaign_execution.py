@@ -147,7 +147,7 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     if spec['suite'] == 'aider':
         from .aider import build_aider_run_plan
         plan = build_aider_run_plan(profile, assets, **common, instance_ids=params.get('instance_ids'),
-            request_controls={k: params[k] for k in ('thinking_mode', 'reasoning_effort', 'temperature', 'top_p') if k in params})
+            request_controls={k: params[k] for k in ('thinking_mode', 'reasoning_effort', 'temperature', 'top_p', 'thinking_budget_tokens') if k in params})
     elif spec['suite'] == 'performance':
         from .performance import build_performance_run_plan
         from .submission import _SUITE_PARAMETERS

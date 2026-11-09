@@ -21,7 +21,7 @@ from .swe_logs import validate_server_log_selector
 
 
 _RESERVED_PARAMETERS = {
-    "thinking_mode", "reasoning_effort", "temperature", "top_p",
+    "thinking_mode", "reasoning_effort", "temperature", "top_p", "thinking_budget_tokens",
     "clear_thinking", "force_nonempty_content", "case_ids", "case_limit",
     "token_buckets", "positions", "repetitions", "output_headroom_tokens",
     "advertised_context", "recovery_result", "session_turns", "instance_ids",
@@ -49,7 +49,7 @@ _SUITE_PARAMETERS = {
         "operation", "source_run_id", "prompt_contract",
     }),
     "aider": frozenset({
-        "thinking_mode", "reasoning_effort", "temperature", "top_p",
+        "thinking_mode", "reasoning_effort", "temperature", "top_p", "thinking_budget_tokens",
         "instance_ids", "aider_oracle",
     }),
     "performance": frozenset({
