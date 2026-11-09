@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-09 TensorFold reasoning investigation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Pinned GLM EXL3 TensorFold, TP2, FP8 paged KV, DFlash2; configured 327,680 context/C4; one owned C1 task at a time, fixed 16K response cap, Max/Low/Low/Max order | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online Aider/Polyglot and contained Go tests on native Linux | Focused `quality`, `no-promotion`; Low passed 2/2 on its first test, while Max resolved 0/2 after all-reasoning response-cap exhaustion. Eight complete responses. New disk-cache/process/48-GiB baseline; user traffic could coexist. No numeric-budget deployment, broad Go score or performance comparison. | [Dossier](models/glm53-flash.md#tensorfold-reasoning-controls-2026-11-09) · [Finding](../findings/2026-11-09-tensorfold-reasoning-budget.md) |
+
 ## 2026-11-08 TensorFold Go validation
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

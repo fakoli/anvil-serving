@@ -1,5 +1,13 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-09 TensorFold reasoning controls:** the dual-card GLM EXL3
+[quality investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
+keeps the response cap at 16K while changing request-local Max/Low effort.
+Both Low repetitions passed their first contained Go test; both Max
+repetitions failed after response-cap starvation. The newer disk-cache/process baseline
+and coexisting user traffic preclude a historical or isolated performance
+comparison. No deployment or global model-policy change follows.
+
 **2026-11-08 TensorFold Go validation:** the dual-card GLM EXL3 lane passed
 the selected Go task on its first 32K attempt, while both 16K attempts failed
 after length-finished responses. Two targeted profile checks on one task

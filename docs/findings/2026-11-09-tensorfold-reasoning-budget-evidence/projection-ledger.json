@@ -1,0 +1,432 @@
+{
+  "schema": "anvil-serving.sanitized-public-projection-ledger/v1",
+  "transformation": "Keep selected native schemas and structured outcomes. Replace listed private paths/host/process/GPU identities and deployed router port; omit process text containing model prose. Preserve original native reference hashes, which bind private originals rather than implying a complete public custody graph.",
+  "files": [
+    {
+      "path": "jobs/max-1/artifact.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-1/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "759fc6892dbd70dbcdebbc89900990bed3e0720b55a66d4af59eb2a62a8007d0",
+      "original_private_bytes": 5005,
+      "published_sha256": "cf039d73ce28fa21f785612252d7de4c966de51c269ea1a44edd837e23f6a79e",
+      "published_bytes": 5009,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.identities.hardware.id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    },
+    {
+      "path": "jobs/max-1/aider/result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-1/aider/result.json",
+      "native_schema": "anvil-serving.aider-run/v1",
+      "original_private_sha256": "8d580b3ace577f48186cab0f37715f6a62ddc731bf594c426044ae92bc086860",
+      "original_private_bytes": 75373,
+      "published_sha256": "892b1d990bc7c7ea77d4d5db55b952a87c45d0486b7ffd9389dd4d07d4d71d47",
+      "published_bytes": 5845,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.instances[0].native.path",
+        "$.stage.command[0]",
+        "$.stage.command[5]",
+        "$.stage.command[7]",
+        "$.stage.stdout"
+      ]
+    },
+    {
+      "path": "jobs/max-1/aider/requests.jsonl",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-1/aider/requests.jsonl",
+      "native_schema": [
+        "anvil-serving.swe-agent-observation/v1"
+      ],
+      "original_private_sha256": "8efd7d3027eea0b70228c365c6ff1b3bc1956284bf1bb03d35e72a6447980785",
+      "original_private_bytes": 4274,
+      "published_sha256": "8efd7d3027eea0b70228c365c6ff1b3bc1956284bf1bb03d35e72a6447980785",
+      "published_bytes": 4274,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/max-1/aider/adapter-result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-1/aider/adapter-result.json",
+      "native_schema": "anvil-serving.aider-adapter-result/v1",
+      "original_private_sha256": "58dd0275528ab0d365cfcf23ed8f72b3ec7f753a6fee4a95cef3bce2f6ec2b93",
+      "original_private_bytes": 767,
+      "published_sha256": "58dd0275528ab0d365cfcf23ed8f72b3ec7f753a6fee4a95cef3bce2f6ec2b93",
+      "published_bytes": 767,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/max-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "native_schema": null,
+      "original_private_sha256": "f38530fbb9af2882be827017f5ce37eb7760a97c73ccbac26991b4198d61d115",
+      "original_private_bytes": 1069,
+      "published_sha256": "e2ed009f2554092cf29c5e7b56f288f0ccb26c2ee90bf16acb1bb509595d7bc2",
+      "published_bytes": 807,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.testdir"
+      ]
+    },
+    {
+      "path": "jobs/low-1/artifact.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-1/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "3bedad778a7c1ae126c072acaf7ef31924b5b66e60063009c3329e80d4e2d244",
+      "original_private_bytes": 5005,
+      "published_sha256": "c874c5e05a883d5f58f661689fa114f5bf92db788f584c289e58cca286ffe808",
+      "published_bytes": 5009,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.identities.hardware.id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    },
+    {
+      "path": "jobs/low-1/aider/result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-1/aider/result.json",
+      "native_schema": "anvil-serving.aider-run/v1",
+      "original_private_sha256": "1799456443c54db6eb13b293bf6f465153f710d748dab16a4d50bc228c373caa",
+      "original_private_bytes": 20883,
+      "published_sha256": "568b3ca680880ecdb8bba36dd5f4ca6b3fcd52cdf41694fd15b5dcff287864b8",
+      "published_bytes": 5818,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.instances[0].native.path",
+        "$.stage.command[0]",
+        "$.stage.command[5]",
+        "$.stage.command[7]",
+        "$.stage.stdout"
+      ]
+    },
+    {
+      "path": "jobs/low-1/aider/requests.jsonl",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-1/aider/requests.jsonl",
+      "native_schema": [
+        "anvil-serving.swe-agent-observation/v1"
+      ],
+      "original_private_sha256": "f76ef095c428fd82b4353bae89f423f131478854541ee9c7b9d1351ce932edbf",
+      "original_private_bytes": 3633,
+      "published_sha256": "f76ef095c428fd82b4353bae89f423f131478854541ee9c7b9d1351ce932edbf",
+      "published_bytes": 3633,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/low-1/aider/adapter-result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-1/aider/adapter-result.json",
+      "native_schema": "anvil-serving.aider-adapter-result/v1",
+      "original_private_sha256": "de76c22870a8a533ad51fd7e30397424d6574766b92aa74ec9f9659cc6d037a7",
+      "original_private_bytes": 766,
+      "published_sha256": "de76c22870a8a533ad51fd7e30397424d6574766b92aa74ec9f9659cc6d037a7",
+      "published_bytes": 766,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/low-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "native_schema": null,
+      "original_private_sha256": "b00808a85fab5b9e5783f07c91e38c557a532ebb848611114fee44bce6821f37",
+      "original_private_bytes": 927,
+      "published_sha256": "f459d27b9b9c6f232535af2957756b21a4f8c595d72b84efe4000e8d4b150f11",
+      "published_bytes": 689,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.testdir"
+      ]
+    },
+    {
+      "path": "jobs/low-2/artifact.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-2/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "22fc852272773b66d12cb83e68bf29c38b2dae93331614be779ca39802a409c6",
+      "original_private_bytes": 5005,
+      "published_sha256": "62473af6bb1711f4da1507d75075e2f7b3cc6d86e6b1d4684bb002067b843062",
+      "published_bytes": 5009,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.identities.hardware.id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    },
+    {
+      "path": "jobs/low-2/aider/result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-2/aider/result.json",
+      "native_schema": "anvil-serving.aider-run/v1",
+      "original_private_sha256": "defed561494cc81a4f80a7a343bd877c06928f91e54e65301857db30e84fd0f1",
+      "original_private_bytes": 16936,
+      "published_sha256": "23cad04d7c8806ca7794f1969deea3d7a5a6faa7b123f579a38e8a0d67d7777c",
+      "published_bytes": 5814,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.instances[0].native.path",
+        "$.stage.command[0]",
+        "$.stage.command[5]",
+        "$.stage.command[7]",
+        "$.stage.stdout"
+      ]
+    },
+    {
+      "path": "jobs/low-2/aider/requests.jsonl",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-2/aider/requests.jsonl",
+      "native_schema": [
+        "anvil-serving.swe-agent-observation/v1"
+      ],
+      "original_private_sha256": "b4b241672d6c7162069e61d54702625a79ab07a56bc3ab1a23d9c3ab9cef644a",
+      "original_private_bytes": 3630,
+      "published_sha256": "b4b241672d6c7162069e61d54702625a79ab07a56bc3ab1a23d9c3ab9cef644a",
+      "published_bytes": 3630,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/low-2/aider/adapter-result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-2/aider/adapter-result.json",
+      "native_schema": "anvil-serving.aider-adapter-result/v1",
+      "original_private_sha256": "676fcf57441a5fa6c3666ecf7aec03573ed94b64b09fbca56a09a1f90c0055b9",
+      "original_private_bytes": 765,
+      "published_sha256": "676fcf57441a5fa6c3666ecf7aec03573ed94b64b09fbca56a09a1f90c0055b9",
+      "published_bytes": 765,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/low-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-low-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "native_schema": null,
+      "original_private_sha256": "9348b01315726a6c4e4153a7474adfc48076133e22a388cc0731726ea3578ff5",
+      "original_private_bytes": 927,
+      "published_sha256": "d1555c934d9f70ebad27ffed44f82d6c71ba11e737a17c0023ccadcd858ee09e",
+      "published_bytes": 689,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.testdir"
+      ]
+    },
+    {
+      "path": "jobs/max-2/artifact.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-2/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "1cd94cb6880e7d2d36acc3f97a93ad0be680026a205ac44ac3a0f77b088a38d4",
+      "original_private_bytes": 5005,
+      "published_sha256": "27faa59f969603a59c65d1ef22cbcb10fd23e37451c5e10457d5cbfc6a7812b7",
+      "published_bytes": 5009,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.identities.hardware.id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    },
+    {
+      "path": "jobs/max-2/aider/result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-2/aider/result.json",
+      "native_schema": "anvil-serving.aider-run/v1",
+      "original_private_sha256": "03c46486a318ae7051c453b38f651dff89ba7009e1b601b428d954671b5a302e",
+      "original_private_bytes": 76075,
+      "published_sha256": "cab953ea275dac66309c026ae330f0df1ab3e91acf2ffca130179e3703fcf4af",
+      "published_bytes": 5845,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.instances[0].native.path",
+        "$.stage.command[0]",
+        "$.stage.command[5]",
+        "$.stage.command[7]",
+        "$.stage.stdout"
+      ]
+    },
+    {
+      "path": "jobs/max-2/aider/requests.jsonl",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-2/aider/requests.jsonl",
+      "native_schema": [
+        "anvil-serving.swe-agent-observation/v1"
+      ],
+      "original_private_sha256": "c5aa5a51f886f53c27175c52f2ee7667ccc3782bbb5d60bbecd12a54b474dc06",
+      "original_private_bytes": 4273,
+      "published_sha256": "c5aa5a51f886f53c27175c52f2ee7667ccc3782bbb5d60bbecd12a54b474dc06",
+      "published_bytes": 4273,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/max-2/aider/adapter-result.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-2/aider/adapter-result.json",
+      "native_schema": "anvil-serving.aider-adapter-result/v1",
+      "original_private_sha256": "0d51c21088085e56e97858ba646b6b11f189638f33f252149edd6e570ef023cc",
+      "original_private_bytes": 767,
+      "published_sha256": "0d51c21088085e56e97858ba646b6b11f189638f33f252149edd6e570ef023cc",
+      "published_bytes": 767,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "jobs/max-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "source_id": "runs/tensorfold-reasoning-20261109/tensorfold-reasoning-20261109-max-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "native_schema": null,
+      "original_private_sha256": "568cb7dba9fbc24966ed8a5e484700266776ecdec4d8825f1871187c679f7388",
+      "original_private_bytes": 1068,
+      "published_sha256": "762d86de837f6f1d99278d7acf782b6e0c2686aac66737abd2a7a1737cfc79e0",
+      "published_bytes": 806,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.testdir"
+      ]
+    },
+    {
+      "path": "inputs/plan.json",
+      "source_id": "inputs/plan.json",
+      "native_schema": "anvil-serving.focused-quality-plan/v1",
+      "original_private_sha256": "3ce9397affb1a8a978b9916f90b9afb2007f5eab4b43b7aee6cee7def8827148",
+      "original_private_bytes": 4120,
+      "published_sha256": "eac09f7e2fa7254d98311f6532f38b8294c520fa4c6e51425ee8dd69dc343c76",
+      "published_bytes": 4022,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.oracle.receipt_path"
+      ]
+    },
+    {
+      "path": "inputs-v2/plan.json",
+      "source_id": "inputs-v2/plan.json",
+      "native_schema": "anvil-serving.focused-quality-plan/v1",
+      "original_private_sha256": "8a2ae915ac15a755324429e50c334e13fa98070fd5e0618c192699f877958292",
+      "original_private_bytes": 5092,
+      "published_sha256": "8ab4f855a573bfca338896ea23d981af4cc02eef3e8d377b0f24e8c268372475",
+      "published_bytes": 4994,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.oracle.receipt_path"
+      ]
+    },
+    {
+      "path": "inputs/source.json",
+      "source_id": "inputs/source.json",
+      "native_schema": null,
+      "original_private_sha256": "686de3dd5986059c90cb7c3ffd8d22dff8de10d6aa7b8683dc9789d3962d98ca",
+      "original_private_bytes": 748,
+      "published_sha256": "b229bbe406e58017f79351667b444c3a9a7e816e3fa95de5a5d749ecc67ad3bb",
+      "published_bytes": 715,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.executing_cli_prefix"
+      ]
+    },
+    {
+      "path": "inputs/aider-diagnostic-16k-v1.json",
+      "source_id": "inputs/aider-diagnostic-16k-v1.json",
+      "native_schema": "anvil-serving.benchmark-profile/v2",
+      "original_private_sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+      "original_private_bytes": 1325,
+      "published_sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+      "published_bytes": 1325,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "qualification/loaded-template-summary.json",
+      "source_id": "qualification/loaded-template-summary.json",
+      "native_schema": null,
+      "original_private_sha256": "967a563ff33fb908d66db3b7086289f525fc2217a69907f5f15fdc8e00b1a006",
+      "original_private_bytes": 773,
+      "published_sha256": "967a563ff33fb908d66db3b7086289f525fc2217a69907f5f15fdc8e00b1a006",
+      "published_bytes": 773,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "qualification/harness-tests.json",
+      "source_id": "qualification/harness-tests.json",
+      "native_schema": "anvil-serving.test-run/v1",
+      "original_private_sha256": "2998cb126b8301afaf5cd0a69c27a82907a978393549ad64d857ef2b872c255e",
+      "original_private_bytes": 1384,
+      "published_sha256": "019ff694ef2eb69f1ba99982fde7a44bdba82277455e0f5e0baf110016fe9b6c",
+      "published_bytes": 1245,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.base_temp",
+        "$.command[0]",
+        "$.command[10]",
+        "$.cwd",
+        "$.interpreter"
+      ]
+    },
+    {
+      "path": "inputs/specs/low-1.json",
+      "source_id": "inputs/specs/low-1.json",
+      "native_schema": "anvil-serving.benchmark-job-spec/v1",
+      "original_private_sha256": "97a4447eb4346e13dfee2276e2016096c47ded945a3acf1917e72bd906a73505",
+      "original_private_bytes": 1063,
+      "published_sha256": "de72fac6734264ceb80829dc55e2c135283678976cbfbe4016178aa380ad09db",
+      "published_bytes": 968,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.parameters.model_host_id",
+        "$.parameters.aider_oracle.receipt_path",
+        "$.worker.id"
+      ]
+    },
+    {
+      "path": "inputs/specs/low-2.json",
+      "source_id": "inputs/specs/low-2.json",
+      "native_schema": "anvil-serving.benchmark-job-spec/v1",
+      "original_private_sha256": "a10336e87898ff4bed7a178523955d1d625397c82d77af63d716264183efe340",
+      "original_private_bytes": 1063,
+      "published_sha256": "8b2524d81ec612d79c2e5e1784112828b9093515bfa3538738672bba2822da2d",
+      "published_bytes": 968,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.parameters.model_host_id",
+        "$.parameters.aider_oracle.receipt_path",
+        "$.worker.id"
+      ]
+    },
+    {
+      "path": "inputs/specs/max-1.json",
+      "source_id": "inputs/specs/max-1.json",
+      "native_schema": "anvil-serving.benchmark-job-spec/v1",
+      "original_private_sha256": "4148c0fe6036e387c2cf3eb1eb77b59e8a556a720b658d2a866d7e1069f99b1a",
+      "original_private_bytes": 1063,
+      "published_sha256": "52a110ed20ec3cfb07a8fa9c2661514829a1425dafd6285c958b243f89b82f41",
+      "published_bytes": 968,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.parameters.model_host_id",
+        "$.parameters.aider_oracle.receipt_path",
+        "$.worker.id"
+      ]
+    },
+    {
+      "path": "inputs/specs/max-2.json",
+      "source_id": "inputs/specs/max-2.json",
+      "native_schema": "anvil-serving.benchmark-job-spec/v1",
+      "original_private_sha256": "04956c4c80513d38764b81b8d9ae166fcb0fd10368023576448469e84832e86e",
+      "original_private_bytes": 1063,
+      "published_sha256": "f835e7f790a831f945d5ce4c91e51e9196a62f77d3f0c3fa42aa43a932e3bedd",
+      "published_bytes": 968,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.parameters.model_host_id",
+        "$.parameters.aider_oracle.receipt_path",
+        "$.worker.id"
+      ]
+    }
+  ]
+}
