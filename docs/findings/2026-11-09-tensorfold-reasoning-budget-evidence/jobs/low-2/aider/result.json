@@ -1,0 +1,177 @@
+{
+  "budget": {
+    "configured": {
+      "deadline_s": 600,
+      "max_completion_tokens": 16384,
+      "max_model_calls": 12,
+      "max_retries": 0,
+      "min_free_disk_bytes": 21474836480
+    },
+    "elapsed_s": 9.567558,
+    "exhausted": false,
+    "model_calls": 2,
+    "reason": null
+  },
+  "endpoint": {
+    "auth_env": "ANVIL_ROUTER_TOKEN",
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "llm.primary"
+  },
+  "execution_contract": {
+    "attempts": 2,
+    "cpp_header_lint": "pinned basic_lint with C++ grammar for admitted cpp solution .h files; other paths unchanged; local correction, not official leaderboard equivalence",
+    "edit_format": "whole",
+    "lint": "pinned upstream flake8_lint in prepared image via python3 -I, not host Python",
+    "prompt": "unchanged pinned upstream instructions and test feedback",
+    "test_timeout_s": 180
+  },
+  "failure": null,
+  "instances": [
+    {
+      "artifact_id": "68a6ed0e3075f2dcd929984b6bdafa76c9b76ef7a0e024f98de176ea22107198",
+      "first_attempt_passed": true,
+      "instance_id": "go/exercises/practice/alphametics",
+      "native": {
+        "path": "<private-path>",
+        "sha256": "9348b01315726a6c4e4153a7474adfc48076133e22a388cc0731726ea3578ff5"
+      },
+      "resolved": true,
+      "second_attempt_passed": null
+    }
+  ],
+  "output_budget": {
+    "classification": null,
+    "configured_output_cap_tokens": 16384,
+    "responses": [
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 614,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 620,
+          "prompt_tokens": 1133,
+          "reasoning_tokens": 6,
+          "total_tokens": 1753
+        },
+        "visible_tokens": null
+      },
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 249,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 254,
+          "prompt_tokens": 1293,
+          "reasoning_tokens": 5,
+          "total_tokens": 1547
+        },
+        "visible_tokens": null
+      }
+    ],
+    "scope": "response_generation_limit"
+  },
+  "plan_sha256": "ad001b3d4e4512913e4a888417df85fbedd2b597e4e80ef4e6ee89554e3a37f7",
+  "profile": "aider-diagnostic-16k-v1",
+  "promotion": {
+    "authorized": false
+  },
+  "quality": {
+    "oracle_image_id": "sha256:174d85341f24c4c6d3f41793a3a92d2d3626a86e8797151db5dcab8696645b58",
+    "status": "measured"
+  },
+  "request_accounting": {
+    "errors": 0,
+    "pending": 0,
+    "responses": 2,
+    "schema": "anvil-serving.aider-request-accounting/v1",
+    "started": 2,
+    "status": "complete"
+  },
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": "low",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.6,
+        "requested": 0.6,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "request_observations": {
+    "bytes": 3630,
+    "path": "aider/requests.jsonl",
+    "sha256": "b4b241672d6c7162069e61d54702625a79ab07a56bc3ab1a23d9c3ab9cef644a"
+  },
+  "run_id": "tensorfold-reasoning-20261109-low-2",
+  "schema": "anvil-serving.aider-run/v1",
+  "selection": {
+    "excluded": [
+      "cpp/exercises/practice/all-your-base",
+      "java/exercises/practice/affine-cipher",
+      "javascript/exercises/practice/affine-cipher",
+      "python/exercises/practice/affine-cipher",
+      "rust/exercises/practice/accumulate"
+    ],
+    "files": {
+      "go/exercises/practice/alphametics": {
+        ".docs/instructions.append.md": "185a46ef90d3e98fff3e551f9af3ddb8cc4ad4781b04f662b6ef0e73403e041f",
+        ".docs/instructions.md": "5344503af3de77f6a97dfa495e723f0053dc824f712819f8dbcfab3ef147ae13",
+        ".meta/config.json": "273b5b9d421cb5dfcbb359a535aca36e3b52c5902b58b8ec4255de58a05f9038",
+        ".meta/example.go": "c238e965240fe0637ecfe2f3ab9d46a75a79f57659bf3a50817d901f8bf2adeb",
+        ".meta/gen.go": "d3b47ddeefc07e5bdfecee2fdac3516489feb2f68196008601dc80fb6b2d1130",
+        ".meta/tests.toml": "deed16f879de7e9e5425c38871eca465e408847c71e5370e9cb5a86022fb6e79",
+        "alphametics.go": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+        "alphametics_test.go": "eb22bd718a4fafc450ea9701ec2f81e7f6dafbfe48d4b8cbe66650248836657f",
+        "cases_test.go": "b3ed6e9601014a28a9ba2abe9472fb7bd985d5f44cf4375a411ed1fbd36ebf49",
+        "go.mod": "77917406d81852eb56b58e8d8846a595f9cf1ca87533f939c6cd1eb6fdce3596"
+      }
+    },
+    "instance_ids": [
+      "go/exercises/practice/alphametics"
+    ],
+    "sha256": "ba94468a48155f8049bbcd42d819104cff2e1791eb582d55c029db2c0b1bc57c"
+  },
+  "stage": {
+    "clock": {
+      "duration": "monotonic",
+      "duration_resolution_s": 1e-09,
+      "synchronized": null,
+      "wall": "UTC system clock",
+      "wall_precision_s": 1e-06,
+      "wall_resolution_s": 1e-09
+    },
+    "command": [
+      "<private-path>",
+      "-I",
+      "-B",
+      "-c",
+      "import runpy,sys;sys.path.insert(0,sys.argv.pop(1));runpy.run_module('anvil_serving.benchmarking.aider_adapter',run_name='__main__')",
+      "<private-path>",
+      "--plan",
+      "<private-path>"
+    ],
+    "duration_s": 13.845035,
+    "ended_at": "2026-11-09T17:12:35.113122Z",
+    "output_timing": "buffered; individual stdout/stderr event times unknown",
+    "output_truncated": false,
+    "returncode": 0,
+    "started_at": "2026-11-09T17:12:21.268025Z",
+    "stderr": "Warning: Input is not a terminal (fd=0).\n",
+    "stdout": "[Process text omitted from public projection; original private bytes remain hash-bound.]"
+  },
+  "state": "completed",
+  "suite": "aider",
+  "summary": {
+    "graded": 1,
+    "resolve_rate": 1.0,
+    "resolved": 1,
+    "selected": 1
+  }
+}

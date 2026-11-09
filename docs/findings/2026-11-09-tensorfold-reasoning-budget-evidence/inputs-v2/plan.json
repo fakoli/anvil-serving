@@ -1,0 +1,91 @@
+{
+  "schema": "anvil-serving.focused-quality-plan/v1",
+  "created_at": "2026-11-09T16:52:22.277904+00:00",
+  "frozen_before_requests": true,
+  "scope": "Diagnose prolonged Go reasoning by changing ONLY per-request effort, within the same16K total response budget. No performance or deployment qualification.",
+  "ranked_objectives": [
+    "Explain budget starvation with exact request/template/engine semantics",
+    "Measure whether lower effort produces executable Go under unchanged16K output and600s bounds",
+    "Prepare a focused patch only where the real request path lacks supported control"
+  ],
+  "order": [
+    "max-1",
+    "low-1",
+    "low-2",
+    "max-2"
+  ],
+  "hypotheses": [
+    {
+      "id": "H1",
+      "claim": "max effort and no hard thinking budget permit late thinking termination",
+      "prediction": "low effort uses fewer reasoning tokens and produces answer/test outcomes within16K more often across these counterbalanced repeats"
+    },
+    {
+      "id": "H2",
+      "claim": "temperature0.6 contributes to unusually long reasoning for this task",
+      "prediction": "if H1 control does not give adequate answers, two separately frozen temperature1.0/max probes change only temperature and may reduce cap hits"
+    },
+    {
+      "id": "H3",
+      "claim": "template/stop/parser or drafting path loses the thinking boundary",
+      "prediction": "loaded-template metadata mismatch or invalid separation on normally terminated replies would support this; current17-tokenLow/High/Max metadata and historical32K split are counterevidence"
+    }
+  ],
+  "controls": {
+    "task": "go/exercises/practice/alphametics",
+    "profile": "aider-diagnostic-16k-v1",
+    "profile_sha256": "59cf12be50467c04b43d6830e268b9f788e631fcb4230414c648a8480d1ab309",
+    "output_cap_tokens_per_response": 16384,
+    "output_cap_includes_reasoning": true,
+    "thinking_budget_tokens": null,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "thinking_mode": "default",
+    "concurrency": 1,
+    "max_coding_attempts": 2,
+    "max_transport_calls_per_job": 12,
+    "retries": 0,
+    "deadline_seconds_per_job": 600,
+    "cache": "Preserve current disk-cache policy; state uncontrolled; no resets",
+    "seed": "unsupported by current router; no seeded-equivalence claim"
+  },
+  "oracle": {
+    "receipt_path": "<private-path>",
+    "sha256": "7054074e8d74b4754965ad759b6e74e4fa07fafd674a4241217fd75a5f97f9f2"
+  },
+  "authority": {
+    "live_defaults": "preserve",
+    "model_image_route_lifecycle_changes": false,
+    "diagnostic_request_controls": [
+      "reasoning_effort",
+      "temperature only if declared followup condition"
+    ],
+    "engine_or_router_patch_deployment": "not authorized by this plan; prepare source proposal and review only"
+  },
+  "baseline": "qualification/before-current.json",
+  "loaded_template_proof": "qualification/loaded-template-summary.json",
+  "current_serve_differs_from_historical": "new disk-cache container/same image,48GiB cgroup; observations do not rewrite older same-task evidence",
+  "custody": "Fresh exact managed identity/route before/after; one owned job at a time. Before submit native waiting0/running<=2; configuredC4 preserved. Successful complete accounting plus workerexit gates owned completion, while background requests may continue. No managedcampaign custody or performance attribution.",
+  "gates": {
+    "unsafe_infrastructure_oom_admission_identity_failure": "stop submissions; diagnose without rollback",
+    "ordinary_coding_failure": "retain and continue frozen safe controls",
+    "unchanged_retry_until_pass": false
+  },
+  "budgets": {
+    "initial_jobs": 4,
+    "maximum_jobs_including_conditionally_frozen_followups": 6,
+    "suite_seconds_per_job": 600,
+    "initial_transport_call_ceiling": 48,
+    "maximum_transport_call_ceiling": 72,
+    "completion_reserve": "Independent reviews, code tests, evidence and source delivery. No live candidate/router cutover."
+  },
+  "followup_gate": "Temperature followups only if effort controls still leave selected task unresolved or do not reduce reasoning starvation; freeze exact specs and review before dispatch. No broad sweep.",
+  "amendment": {
+    "created_at": "2026-11-09T17:02:23.394707+00:00",
+    "reason": "Live user traffic is active and must be preserved; no diagnostic model request has been submitted. Quality-only owned C1 work may coexist under existing admission instead of waiting for global idle.",
+    "parent_plan_sha256": "3ce9397affb1a8a978b9916f90b9afb2007f5eab4b43b7aee6cee7def8827148",
+    "changing_controls": false,
+    "background_traffic": "Retain all existing requests; start only with native waiting0 and at most2running under configuredC4. No quiesce/cancel/restart or route/settings/cache change.",
+    "owned_completion": "Require successful terminal response accounting and exited worker. Observe globalrunning/waiting; do not claim globalidle or exclusive counter attribution. An unfinished/error transport blocks followon jobs."
+  }
+}

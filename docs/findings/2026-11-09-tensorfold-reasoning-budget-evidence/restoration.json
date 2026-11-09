@@ -1,0 +1,72 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "mode": "observation-only; serving defaults were preserved, no restoration action required",
+  "before_observed_at": "2026-11-09T16:49:40.558779+00:00",
+  "after_observed_at": "2026-11-09T17:19:00.594452+00:00",
+  "identity_fields_equal": {
+    "container_id": true,
+    "started_at": true,
+    "image_digest": true,
+    "gpu_selection": true,
+    "recipe_digest": true,
+    "registry_digest": true,
+    "served_identity": true,
+    "bound_port": true,
+    "bound_endpoints": true
+  },
+  "route_equal": true,
+  "owned_completion": {
+    "all_four_workers_exited": true,
+    "complete_successful_transport_accounting": true,
+    "pending_or_error_transports": 0
+  },
+  "final_native_snapshot": {
+    "running": 0,
+    "waiting": 0,
+    "interpretation": "A snapshot observation, not a guarantee that background traffic never occurred."
+  },
+  "cgroup": {
+    "effective_limit_bytes": 51539607552,
+    "events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "oom_killed": false
+  },
+  "preserved": [
+    "model/revision",
+    "runtime image and process generation/start",
+    "GPU selection",
+    "recipe/registry/route",
+    "context and output/reasoning defaults",
+    "RAM and conversation-disk cache policy",
+    "installed CLI and router bytes"
+  ],
+  "source_commitments": [
+    {
+      "source_id": "qualification/before-current.json",
+      "sha256": "b7246fe4553733859677a517486c0108032f97acc39fac82bf5fccc6d9e2de04",
+      "bytes": 60183
+    },
+    {
+      "source_id": "qualification/final.json",
+      "sha256": "29cca38b10001f6f2479467b5b3306743bc6fb7c868700ef713b24c62ed0077d",
+      "bytes": 60184
+    },
+    {
+      "source_id": "qualification/final-managed-status.json",
+      "sha256": "d069f8a0bbd5eed7b4a5a2eaf24c0f52bbdcd4ba7be5555da74cdbca3664d767",
+      "bytes": 1496
+    },
+    {
+      "source_id": "qualification/final-independent-review.md",
+      "sha256": "078b070d5bf18e33c3fb04e75c5ed2e9500bbc9a7ed18f9b9d8b661b4b94cc5c",
+      "bytes": 7658
+    }
+  ],
+  "boundary": "Quality-only owned completion and exact current-baseline checks; no global quiescence, exclusive attribution, performance or numeric-control deployment qualification."
+}

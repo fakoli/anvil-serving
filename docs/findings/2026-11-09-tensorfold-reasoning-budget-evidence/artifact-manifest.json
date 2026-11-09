@@ -1,0 +1,324 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-09-tensorfold-reasoning-budget",
+    "capability": "targeted Go reasoning-control investigation",
+    "repository_revision": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "dirty_state": "clean executing source; proposed patch and publication are separate changes",
+    "started_at": "2026-11-09T16:49:40.558779+00:00",
+    "completed_at": "2026-11-09T17:19:00.594452+00:00",
+    "evidence_labels": [
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "93bbea5238b2a022a4e056445bcc6525257e89477ff01b12531cff2a7de18b03",
+          "bytes": 3379
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "923a65122dad06ce4ce084472ebd573d3e72a5b8794c95f96eb27bfe3975774d",
+          "bytes": 260
+        },
+        {
+          "path": "inputs/source.json",
+          "sha256": "b229bbe406e58017f79351667b444c3a9a7e816e3fa95de5a5d749ecc67ad3bb",
+          "bytes": 715
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "inputs/aider-diagnostic-16k-v1.json",
+          "sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+          "bytes": 1325
+        },
+        {
+          "path": "configuration.json",
+          "sha256": "5ae80fe9e346aed70e90b30224535662bdacead22db4dd3d3c62734e6474f918",
+          "bytes": 2816
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "inputs-v2/plan.json",
+          "sha256": "8ab4f855a573bfca338896ea23d981af4cc02eef3e8d377b0f24e8c268372475",
+          "bytes": 4994
+        },
+        {
+          "path": "inputs/plan.json",
+          "sha256": "eac09f7e2fa7254d98311f6532f38b8294c520fa4c6e51425ee8dd69dc343c76",
+          "bytes": 4022
+        },
+        {
+          "path": "inputs/specs/low-1.json",
+          "sha256": "de72fac6734264ceb80829dc55e2c135283678976cbfbe4016178aa380ad09db",
+          "bytes": 968
+        },
+        {
+          "path": "inputs/specs/low-2.json",
+          "sha256": "8b2524d81ec612d79c2e5e1784112828b9093515bfa3538738672bba2822da2d",
+          "bytes": 968
+        },
+        {
+          "path": "inputs/specs/max-1.json",
+          "sha256": "52a110ed20ec3cfb07a8fa9c2661514829a1425dafd6285c958b243f89b82f41",
+          "bytes": 968
+        },
+        {
+          "path": "inputs/specs/max-2.json",
+          "sha256": "f835e7f790a831f945d5ce4c91e51e9196a62f77d3f0c3fa42aa43a932e3bedd",
+          "bytes": 968
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "5ae80fe9e346aed70e90b30224535662bdacead22db4dd3d3c62734e6474f918",
+          "bytes": 2816
+        },
+        {
+          "path": "request-path-audit.json",
+          "sha256": "ea8179871355134880220c20a5dc92ec023ebbf413636e980252b3a70b3c3203",
+          "bytes": 3881
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "0a2ee8ea14e570c645a6894ad6757b0379703bb8bc7705c0c4876a08e7b892d0",
+          "bytes": 19196
+        },
+        {
+          "path": "inputs/source.json",
+          "sha256": "b229bbe406e58017f79351667b444c3a9a7e816e3fa95de5a5d749ecc67ad3bb",
+          "bytes": 715
+        },
+        {
+          "path": "qualification/loaded-template-summary.json",
+          "sha256": "967a563ff33fb908d66db3b7086289f525fc2217a69907f5f15fdc8e00b1a006",
+          "bytes": 773
+        },
+        {
+          "path": "qualification/harness-tests.json",
+          "sha256": "019ff694ef2eb69f1ba99982fde7a44bdba82277455e0f5e0baf110016fe9b6c",
+          "bytes": 1245
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "jobs/low-1/aider/adapter-result.json",
+          "sha256": "de76c22870a8a533ad51fd7e30397424d6574766b92aa74ec9f9659cc6d037a7",
+          "bytes": 766
+        },
+        {
+          "path": "jobs/low-1/aider/requests.jsonl",
+          "sha256": "f76ef095c428fd82b4353bae89f423f131478854541ee9c7b9d1351ce932edbf",
+          "bytes": 3633
+        },
+        {
+          "path": "jobs/low-1/aider/result.json",
+          "sha256": "568b3ca680880ecdb8bba36dd5f4ca6b3fcd52cdf41694fd15b5dcff287864b8",
+          "bytes": 5818
+        },
+        {
+          "path": "jobs/low-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "f459d27b9b9c6f232535af2957756b21a4f8c595d72b84efe4000e8d4b150f11",
+          "bytes": 689
+        },
+        {
+          "path": "jobs/low-1/artifact.json",
+          "sha256": "c874c5e05a883d5f58f661689fa114f5bf92db788f584c289e58cca286ffe808",
+          "bytes": 5009
+        },
+        {
+          "path": "jobs/low-2/aider/adapter-result.json",
+          "sha256": "676fcf57441a5fa6c3666ecf7aec03573ed94b64b09fbca56a09a1f90c0055b9",
+          "bytes": 765
+        },
+        {
+          "path": "jobs/low-2/aider/requests.jsonl",
+          "sha256": "b4b241672d6c7162069e61d54702625a79ab07a56bc3ab1a23d9c3ab9cef644a",
+          "bytes": 3630
+        },
+        {
+          "path": "jobs/low-2/aider/result.json",
+          "sha256": "23cad04d7c8806ca7794f1969deea3d7a5a6faa7b123f579a38e8a0d67d7777c",
+          "bytes": 5814
+        },
+        {
+          "path": "jobs/low-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "d1555c934d9f70ebad27ffed44f82d6c71ba11e737a17c0023ccadcd858ee09e",
+          "bytes": 689
+        },
+        {
+          "path": "jobs/low-2/artifact.json",
+          "sha256": "62473af6bb1711f4da1507d75075e2f7b3cc6d86e6b1d4684bb002067b843062",
+          "bytes": 5009
+        },
+        {
+          "path": "jobs/max-1/aider/adapter-result.json",
+          "sha256": "58dd0275528ab0d365cfcf23ed8f72b3ec7f753a6fee4a95cef3bce2f6ec2b93",
+          "bytes": 767
+        },
+        {
+          "path": "jobs/max-1/aider/requests.jsonl",
+          "sha256": "8efd7d3027eea0b70228c365c6ff1b3bc1956284bf1bb03d35e72a6447980785",
+          "bytes": 4274
+        },
+        {
+          "path": "jobs/max-1/aider/result.json",
+          "sha256": "892b1d990bc7c7ea77d4d5db55b952a87c45d0486b7ffd9389dd4d07d4d71d47",
+          "bytes": 5845
+        },
+        {
+          "path": "jobs/max-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "e2ed009f2554092cf29c5e7b56f288f0ccb26c2ee90bf16acb1bb509595d7bc2",
+          "bytes": 807
+        },
+        {
+          "path": "jobs/max-1/artifact.json",
+          "sha256": "cf039d73ce28fa21f785612252d7de4c966de51c269ea1a44edd837e23f6a79e",
+          "bytes": 5009
+        },
+        {
+          "path": "jobs/max-2/aider/adapter-result.json",
+          "sha256": "0d51c21088085e56e97858ba646b6b11f189638f33f252149edd6e570ef023cc",
+          "bytes": 767
+        },
+        {
+          "path": "jobs/max-2/aider/requests.jsonl",
+          "sha256": "c5aa5a51f886f53c27175c52f2ee7667ccc3782bbb5d60bbecd12a54b474dc06",
+          "bytes": 4273
+        },
+        {
+          "path": "jobs/max-2/aider/result.json",
+          "sha256": "cab953ea275dac66309c026ae330f0df1ab3e91acf2ffca130179e3703fcf4af",
+          "bytes": 5845
+        },
+        {
+          "path": "jobs/max-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "762d86de837f6f1d99278d7acf782b6e0c2686aac66737abd2a7a1737cfc79e0",
+          "bytes": 806
+        },
+        {
+          "path": "jobs/max-2/artifact.json",
+          "sha256": "27faa59f969603a59c65d1ef22cbcb10fd23e37451c5e10457d5cbfc6a7812b7",
+          "bytes": 5009
+        },
+        {
+          "path": "native-evidence-validation.json",
+          "sha256": "ecfe05b6452676fdc6965af431389df6b1cd054e5476acfb6a54bb1ef11c49ea",
+          "bytes": 1335
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "7f2b9d7cba419403adad06a6b421e99e2ea9099948f866792b37639f4616b29f",
+          "bytes": 2026
+        },
+        {
+          "path": "independent-review.md",
+          "sha256": "2bf10bb6d332174c4e3f36b49e5984552a207c5286820a40f5e4b77f2564fe4d",
+          "bytes": 7874
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "13d32db723b08d1b0aaa6bae73150f897e2dbe9bc196c3adf49dc3251a3925cf",
+          "bytes": 2304
+        },
+        {
+          "path": "counter-reconciliation.json",
+          "sha256": "296d7993cd01826715cea2086fe0f9f1be9d565d3806e84621e1952073c04c3e",
+          "bytes": 966
+        },
+        {
+          "path": "frozen-comparison-integrity.json",
+          "sha256": "a164f24976f996e94146310e14e6388c59e82c0d8dbff7f1def36bb01cac9efc",
+          "bytes": 67
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "c28dd6438313f497d8b6cc444148f6856fb7eb9a318f051ab02702f194cce659",
+          "bytes": 3732
+        },
+        {
+          "path": "case-diagnostics.json",
+          "sha256": "6bae206db96be3ab82f82866e5a410e9619d57265ded57e081bec95eb8179f1f",
+          "bytes": 8086
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social publication copy was requested for this focused investigation."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}
