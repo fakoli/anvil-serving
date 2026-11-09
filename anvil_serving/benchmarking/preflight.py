@@ -550,6 +550,16 @@ def run_benchmark_preflight(
     }
     if budget_admission is not None:
         artifact["budget_admission"] = budget_admission
+        requested_thinking_budget = budget_admission.get("request_controls", {}).get("thinking_budget_tokens")
+        if requested_thinking_budget is not None:
+            artifact["generation_budget"]["thinking_limit"] = {
+                "requested_tokens": requested_thinking_budget, "wire_field": "thinking_budget",
+                "endpoint_enforcement": "unverified", "answer_tokens_reserved": None,
+            }
+            artifact["warnings"].append(
+                "Requested thinking-budget enforcement requires endpoint qualification; "
+                "metadata preflight does not verify its token counting or forced-close behavior."
+            )
     return artifact
 
 

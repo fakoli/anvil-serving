@@ -142,7 +142,7 @@ def validate_aider_parameters(profile, parameters):
     validated = validate_profile(profile)
     if "aider" not in validated["suites"] or not isinstance(parameters, Mapping):
         raise BenchmarkJobError("bad_aider_parameters", "Aider parameters require an Aider suite")
-    if set(parameters) - {"instance_ids", "thinking_mode", "reasoning_effort", "temperature", "top_p"}:
+    if set(parameters) - {"instance_ids", "thinking_mode", "reasoning_effort", "temperature", "top_p", "thinking_budget_tokens"}:
         raise BenchmarkJobError("bad_aider_parameters", "unsupported Aider parameters")
     ids = parameters.get("instance_ids")
     if ids is not None:
@@ -155,7 +155,8 @@ def validate_aider_parameters(profile, parameters):
         except ValueError as exc:
             raise BenchmarkJobError("bad_aider_selection", "invalid Aider task selection") from exc
     return {"selection": {"instance_ids": ids}, "request_controls": resolve_job_request_controls(
-        {key: value for key, value in parameters.items() if key != "instance_ids"})}
+        {key: value for key, value in parameters.items() if key != "instance_ids"},
+        max_completion_tokens=validated["suites"]["aider"]["max_completion_tokens"])}
 
 
 def _source_root(cache, asset, revision):
@@ -221,7 +222,8 @@ def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_
     plan = {"schema": AIDER_PLAN_SCHEMA, "ownership_id": ownership_id, "run_id": run_id,
             "run_root": real_path(run_root), "run_path": run_path, "cache_root": cache,
             "profile": profile["name"], "profile_sha256": profile["content_sha256"],
-            "endpoint": target, "request_controls": resolve_job_request_controls(request_controls),
+            "endpoint": target, "request_controls": resolve_job_request_controls(
+                request_controls, max_completion_tokens=budgets["max_completion_tokens"]),
             "budgets": budgets, "timeout_s": timeout, "paths": paths,
             "execution_contract": {"edit_format": "whole", "attempts": 2, "test_timeout_s": 180,
                 "lint": "pinned upstream flake8_lint in prepared image via python3 -I, not host Python",
