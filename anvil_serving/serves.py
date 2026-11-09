@@ -211,7 +211,7 @@ _ENGINE_ALIASES = {
 # no OpenAI-compatible surface at all. "q36" is the dedicated q36 CUDA engine;
 # it exposes an OpenAI-compatible chat surface but is not vLLM/llama.cpp.
 _ENGINES = {
-    "vllm", "sglang", "llamacpp", "q36", "ninfer",
+    "vllm", "sglang", "llamacpp", "q36", "ninfer", "tensorfold",
     "audio", "embedding", "reranker", "image", "mlx-lm", "mlx-vlm", "none",
 }
 # ADR-0017 GPU residency reservations: the residency vocabulary for a serve's
@@ -4796,7 +4796,7 @@ def _created_argv(container, _run=subprocess.run):
 
 def _model_from_argv(tokens):
     """Best-effort served-model identifier from a container's created argv: the
-    value of --served-model-name (preferred) else --model / --model-path. Handles
+    value of --served-model-name (preferred), TensorFold's --name, or a model path. Handles
     both `--flag value` and `--flag=value`. None if neither flag is present.
     """
     def _value(flags):
@@ -4807,7 +4807,7 @@ def _model_from_argv(tokens):
                 if tok.startswith(fl + "="):
                     return tok.split("=", 1)[1]
         return None
-    return _value(_SERVED_NAME_FLAGS) or _value(_MODEL_PATH_FLAGS)
+    return _value(_SERVED_NAME_FLAGS) or _value(("--name",)) or _value(_MODEL_PATH_FLAGS)
 
 
 def _served_model(container, _run=subprocess.run):
@@ -6793,7 +6793,7 @@ def probe_serve(
             "endpoint": endpoint,
             "devices": len(devices) if isinstance(devices, list) else 0,
         }
-    if not image_path and engine in {"vllm", "sglang", "q36", "ninfer"}:
+    if not image_path and engine in {"vllm", "sglang", "q36", "ninfer", "tensorfold"}:
         endpoint = base + "/v1/chat/completions"
         payload = {
             "model": model,
@@ -6822,7 +6822,7 @@ def probe_serve(
             "finish_reason": finish_reason,
             "incomplete": incomplete,
         }
-    if image_path and engine in {"vllm", "sglang", "q36", "ninfer"}:
+    if image_path and engine in {"vllm", "sglang", "q36", "ninfer", "tensorfold"}:
         resolved = os.path.abspath(os.path.expanduser(image_path))
         size = os.path.getsize(resolved)
         if size > 20 * 1024 * 1024:
