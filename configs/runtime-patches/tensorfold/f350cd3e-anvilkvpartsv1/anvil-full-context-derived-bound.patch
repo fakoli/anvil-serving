@@ -1,0 +1,100 @@
+diff --git a/zig/src/core/engine_status.zig b/zig/src/core/engine_status.zig
+index b48790d7..56d12237 100644
+--- a/zig/src/core/engine_status.zig
++++ b/zig/src/core/engine_status.zig
+@@ -37,6 +37,7 @@ pub const Status = struct {
+     /// A backend whose KV pool is sharded over its ranks (GLM's TF_GLM_KV_SHARD): its parts' pages and counters,
+     /// /health's `kv_shard` and /metrics' `tensorfold:kv_shard_*`; null: none.
+     kv_parts: ?KvParts = null,
++    full_context_inputs: ?@import("lanes").anvil_telemetry.FullContextInputs = null,
+     anvil_timing: ?@import("lanes").anvil_telemetry.Timing = null,
+     kv_allocation: ?@import("lanes").anvil_telemetry.KvAllocation = null,
+ 
+diff --git a/zig/src/core/lanes/anvil_telemetry.zig b/zig/src/core/lanes/anvil_telemetry.zig
+index 51ad1172..cf8ec0eb 100644
+--- a/zig/src/core/lanes/anvil_telemetry.zig
++++ b/zig/src/core/lanes/anvil_telemetry.zig
+@@ -105,3 +105,47 @@ test "Anvil timing idle C1 C4 and cancellation preserve bounded boundary populat
+     try std.testing.expectEqual(@as(u64, 1), h.counts[buckets.len]);
+     try std.testing.expectEqual(@as(f64, 301), h.total);
+ }
++
++/// A conservative bound on additional fully reserved contexts in one logical pool.
++pub const FullContextInputs = struct {
++    kv: KvAllocation,
++    requested_context_tokens: u64,
++    per_request_reserve_tokens: ?u64 = null,
++    reserve_pages: ?u64 = null,
++    admission_limit: ?u64 = null,
++    active_requests: ?u64 = null,
++    full_context_reservation: bool = false,
++    partitions: u64 = 1,
++};
++pub fn fullContextBound(inputs: FullContextInputs) ?u64 {
++    if (!inputs.kv.valid() or !inputs.full_context_reservation or inputs.partitions != 1 or inputs.requested_context_tokens == 0) return null;
++    const per_request = inputs.per_request_reserve_tokens orelse return null;
++    const reserve = inputs.reserve_pages orelse return null;
++    const limit = inputs.admission_limit orelse return null;
++    const active = inputs.active_requests orelse return null;
++    if (active > limit) return null;
++    const tokens = std.math.add(u64, inputs.requested_context_tokens, per_request) catch return null;
++    const rounded = std.math.add(u64, tokens, inputs.kv.page_size_tokens - 1) catch return null;
++    const pages = rounded / inputs.kv.page_size_tokens;
++    const available = inputs.kv.free_pages - inputs.kv.reserved_pages -| reserve;
++    return @min(limit - active, available / pages);
++}
++
++test "Anvil additional full-context bound requires every policy input and rounds conservatively" {
++    var inputs: FullContextInputs = .{
++        .kv = .{ .allocated_pages = 2, .free_pages = 18, .total_pages = 20, .reserved_pages = 2, .page_size_tokens = 512 },
++        .requested_context_tokens = 1024,
++    };
++    try std.testing.expectEqual(@as(?u64, null), fullContextBound(inputs));
++    inputs.full_context_reservation = true;
++    inputs.per_request_reserve_tokens = 1;
++    inputs.reserve_pages = 1;
++    inputs.admission_limit = 8;
++    inputs.active_requests = 1;
++    try std.testing.expectEqual(@as(?u64, 5), fullContextBound(inputs)); // 15 free / ceil(1025/512)
++    inputs.partitions = 2;
++    try std.testing.expectEqual(@as(?u64, null), fullContextBound(inputs));
++    inputs.partitions = 1;
++    inputs.reserve_pages = 100;
++    try std.testing.expectEqual(@as(?u64, 0), fullContextBound(inputs));
++}
+diff --git a/zig/src/server/metrics.zig b/zig/src/server/metrics.zig
+index 2e816173..cf8bf168 100644
+--- a/zig/src/server/metrics.zig
++++ b/zig/src/server/metrics.zig
+@@ -149,6 +149,7 @@ pub const Metrics = struct {
+         const live = streams[0..@min(status.streams, streams.len)];
+         try anvilStreams(w, status, live);
+         try anvilKv(w, status.kv_allocation);
++        try anvilFullContextBound(w, status.full_context_inputs);
+         if (status.anvil_timing) |timing| try anvilTiming(w, timing);
+         try family(w, "kv_cache_usage_ratio", "gauge", "Tokens in a stream cache divided by that stream's context window.");
+         try pools(w, "kv_cache_usage_ratio", "pool", live, window);
+@@ -215,6 +216,23 @@ test "Anvil stream ABI preserves idle, C1, C4 and incomplete observations" {
+     try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_active ") == null);
+ }
+ 
++fn anvilFullContextBound(w: *std.Io.Writer, inputs: ?api.anvil_telemetry.FullContextInputs) !void {
++    const bound = if (inputs) |i| api.anvil_telemetry.fullContextBound(i) else null;
++    try gauge(w, "anvil_full_context_bound_available", "gauge", "One only when every KV and admission-policy input supports a conservative additional-context bound.", @intFromBool(bound != null));
++    if (bound == null) {
++        try w.writeAll("# TYPE tensorfold:anvil_full_context_bound_info gauge\ntensorfold:anvil_full_context_bound_info{reason=\"missing_admission_policy_inputs\"} 1\n");
++        return;
++    }
++    const i = inputs.?;
++    try w.writeAll("# TYPE tensorfold:anvil_full_context_bound_info gauge\ntensorfold:anvil_full_context_bound_info{semantics=\"additional_full_context_requests\",policy=\"full_context_reservation\",formula_version=\"1\"} 1\n");
++    try gauge(w, "anvil_full_context_bound", "gauge", "Conservative additional full-context requests from current free pages and admission slots.", bound.?);
++    try gauge(w, "anvil_full_context_requested_tokens", "gauge", "Requested context tokens for this derivation.", i.requested_context_tokens);
++    try gauge(w, "anvil_full_context_per_request_reserve_tokens", "gauge", "Extra verification and scratch token positions per request.", i.per_request_reserve_tokens.?);
++    try gauge(w, "anvil_full_context_reserve_pages", "gauge", "Policy pages withheld from further admission.", i.reserve_pages.?);
++    try gauge(w, "anvil_full_context_admission_limit", "gauge", "Policy request admission limit.", i.admission_limit.?);
++    try gauge(w, "anvil_full_context_active_requests", "gauge", "Requests already consuming admission slots.", i.active_requests.?);
++}
++
+ fn anvilTiming(w: *std.Io.Writer, t: api.anvil_telemetry.Timing) !void {
+     try histogram(w, "anvil_arrival_to_admission_seconds", "Engine submit to first admission seconds; recorded at admission.", t.arrival_to_admission);
+     try histogram(w, "anvil_admission_to_prefill_seconds", "First admission to first prefill launch seconds; recorded at prefill start.", t.admission_to_prefill);
