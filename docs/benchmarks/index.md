@@ -7,6 +7,19 @@ from a numeric thinking limit. The two reviewed Low repetitions passed their
 first contained tests; proposed forwarding support is not deployed or
 measured here. No broad Go or performance claim follows.
 
+**2026-11-09 source and rollout follow-up:** merged request-local
+[thinking-budget support](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+is deployed in the local CLI/router. A separate three-job check on one Go task
+retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset passed 1/1 at a
+16,384 response cap. The second Max job failed both coding attempts at that
+cap; 8,192 is not established as a reliable fix or default. Its sharded-KV
+runtime differs from the original disk-only matrix, with no contemporary
+unbounded-Max control or causal quality/speed claim. Remote-controller
+numeric admission remains unsupported (B10 partial); no global model-policy
+change or promotion follows.
+[Summary](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+· [Evidence index](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
 **2026-11-08 TensorFold Go validation:** the
 [focused quality check](../findings/2026-11-08-tensorfold-go-validation.md)
 records a passing first attempt at 32K and length-finished failures at 16K on

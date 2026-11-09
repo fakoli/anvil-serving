@@ -1,0 +1,168 @@
+{
+  "created_at": "2026-11-09T22:29:33.190274Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "ANVIL_ROUTER_TOKEN",
+      "base_url": "http://127.0.0.1:30000/v1",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-11-09T22:29:33.190205Z",
+    "started_at": "2026-11-09T22:28:20.916539Z",
+    "submitted_at": "2026-11-09T21:48:55.191635+00:00",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-11-09T22:29:33.177503Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "Aider Polyglot",
+          "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "free_disk_bytes": 610344906752,
+          "harness_assets": [],
+          "id": "Primary Node",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "aider": {
+            "revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+            "source": "https://github.com/Aider-AI/aider"
+          },
+          "polyglot-benchmark": {
+            "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f",
+            "source": "https://github.com/paraemsi/polyglot-benchmark"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "alias": "llm.primary"
+        },
+        "runtime": {
+          "reason": "not exposed by router preflight",
+          "status": "unavailable"
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "tensorfold-thinking-budget-20261109",
+        "profile": "aider-diagnostic-16k-v1",
+        "run_id": "tensorfold-thinking-budget-20261109-low-unset",
+        "spec_sha256": "d977c3e9f0a3de33fe70b729e5eda3c3dbcaffd8037a74ffbdf09b64195e145c",
+        "suite": "aider"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 792,
+              "path": "evidence/0-admission.json",
+              "sha256": "d00f3bfca5f65ec2169c64d56acaafa455320330f8366a632c407de459fdd5a8"
+            }
+          ],
+          "name": "admission",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 569712,
+              "path": "evidence/0-assets.json",
+              "sha256": "2117cddf7c787a5d23166471f508d5cf425775d67e3324b57eeb406341d518c1"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 4705,
+              "path": "evidence/0-preflight.json",
+              "sha256": "55886548bed0ee20c3f854f2dc2565bf8ae6c83d9367e9700470aa552582f790"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 2,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 1881,
+              "path": "evidence/0-aider-retention.json",
+              "sha256": "4ed4ccd4daa1cc3d8fe5910689668adb03dd2fdfc35b3ebc71d75cb83f39e67e"
+            }
+          ],
+          "name": "aider_retention",
+          "sequence": 3,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 28243,
+              "path": "evidence/0-aider.json",
+              "sha256": "041d28abe845eb25c2d353a83e7cbafa31cc71e9d9ba27c5d67277427df55f1f"
+            }
+          ],
+          "name": "aider",
+          "sequence": 4,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "tensorfold-thinking-budget-20261109",
+    "profile": "aider-diagnostic-16k-v1",
+    "run_id": "tensorfold-thinking-budget-20261109-low-unset",
+    "spec_sha256": "d977c3e9f0a3de33fe70b729e5eda3c3dbcaffd8037a74ffbdf09b64195e145c",
+    "suite": "aider"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

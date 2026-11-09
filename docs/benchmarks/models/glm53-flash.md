@@ -73,6 +73,17 @@ under a fixed 16K response cap. Two Low repetitions passed their first
 contained tests. The separate source proposal is not deployed; this does
 not revise global model policy or establish a broad coding score.
 
+**2026-11-09 request-control rollout follow-up:** merged support is deployed
+in the local CLI/router. The separate three-job Go check retains Max/8,192
+at 1/2 jobs and Low/unset at 1/1, with ten responses; the second Max job
+failed both coding attempts at the 16,384 response cap. The remaining answer
+region and quality gap means 8,192 is not established as a reliable fix or
+default. Changed KV runtime and no contemporary unbounded-Max control prevent
+causal quality/speed claims. Remote-controller numeric admission remains
+unsupported (B10 partial), with observer migration deferred. No global
+controls or promotion changed.
+[Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09).
+
 **2026-11-08 TensorFold quality diagnostic:** the separate pinned EXL3
 TensorFold lane passed the selected Go task at 32K and failed at 16K after
 response-length limits. This is one task checked once per profile, not a broad
@@ -456,6 +467,33 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
   patch deployment, broad Go score, global-policy or performance claim.
 - **Evidence:** [Finding](../../findings/2026-11-09-tensorfold-reasoning-budget.md).
 
+### TensorFold request-control rollout, 2026-11-09
+
+- **Status:** Local CLI/router deployed from merged source; source-backed
+  `functional` control evidence and focused `quality`, `no-promotion`.
+- **Measured:** Three C1 jobs on one Go task at a 16,384 response cap, in
+  Max/8,192, Low/unset, Max/8,192 order: Max passed 1/2 jobs and Low 1/1.
+  First Max and Low each passed their second coding attempt after a failed
+  first attempt, with four HTTP 200/`stop` responses per job. Second Max
+  failed both attempts with two HTTP 200/`length` responses; each reported
+  16,384 completion and 8,193 reasoning tokens, leaving 8,191 derived
+  non-reasoning tokens. Whole-job time/call budgets did not expire.
+- **Control boundary:** Each Max primary response reported 8,193 reasoning
+  tokens for the 8,192 request, consistent with the source's forced
+  newline/closing-marker transition. Native trigger flags and raw token IDs
+  were not retained; these observations do not directly instrument the trigger
+  or prove an exact reasoning-token ceiling.
+- **Limits:** Sharded-KV runtime differs from the original disk-only
+  eight-response matrix; no contemporary unbounded-Max control or causal
+  quality/speed claim. The answer-region response-cap and quality gap remains
+  open; 8,192 is not established as a reliable fix or default. B10 remains
+  partial: remote-controller numeric admission is unsupported and observer
+  migration is deferred. No global controls, cache policy, fleet acceptance
+  or promotion changed.
+- **Evidence:** [Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09),
+  [summary](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+  and [evidence index](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
 ### TensorFold Go diagnostic, 2026-11-08
 
 - **Status:** Focused `quality`, `no-promotion`; review dated 2026-11-08.
@@ -692,6 +730,12 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-11-09 — [Request-control rollout follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09):
+  merged local CLI/router deployment; separate ten-response Go check,
+  Max/8,192 1/2 and Low/unset 1/1 jobs. Response-cap/quality and remote
+  controller gaps remain; no reliable budget default, causal quality/speed
+  claim or promotion.
 
 - 2026-11-09 — [TensorFold reasoning controls](../../findings/2026-11-09-tensorfold-reasoning-budget.md):
   fixed 16K Max/Low task diagnostics and audited request-control proposal;

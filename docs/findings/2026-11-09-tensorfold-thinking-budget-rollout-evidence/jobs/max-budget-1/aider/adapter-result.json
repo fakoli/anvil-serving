@@ -1,0 +1,28 @@
+{
+  "adapter_sha256": "74117c123b06986c29c76e475b067982158027cec0745fb45c8e7329a28b71bd",
+  "budget": {
+    "configured": {
+      "deadline_s": 600,
+      "max_completion_tokens": 16384,
+      "max_model_calls": 12,
+      "max_retries": 0,
+      "min_free_disk_bytes": 21474836480
+    },
+    "elapsed_s": 103.072385,
+    "exhausted": false,
+    "model_calls": 4,
+    "reason": null
+  },
+  "events_complete": true,
+  "outcome": "completed",
+  "plan_sha256": "e32784e3bef9e0e09745226997fc22bbc6e4cbabe5bb5313b12b47da02472111",
+  "request_accounting": {
+    "errors": 0,
+    "pending": 0,
+    "responses": 4,
+    "schema": "anvil-serving.aider-request-accounting/v1",
+    "started": 4,
+    "status": "complete"
+  },
+  "schema": "anvil-serving.aider-adapter-result/v1"
+}

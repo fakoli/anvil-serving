@@ -8,6 +8,20 @@ repetitions failed after response-cap starvation. The newer disk-cache/process b
 and coexisting user traffic preclude a historical or isolated performance
 comparison. No deployment or global model-policy change follows.
 
+**2026-11-09 request-control rollout follow-up:** merged support is deployed
+in the local CLI/router. The separate dual-card C1 check on one Go task
+retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset 1/1 at a 16,384
+response cap. Second Max failed both attempts at that cap without exhausting
+whole-job time/call budgets; 8,192 is not established as a reliable fix or
+default. Sharded-KV runtime differs from the original disk-only matrix, with
+no contemporary unbounded-Max control or causal quality/speed claim. B10
+remains partial: remote-controller numeric admission is unsupported and
+observer migration is deferred. No hardware-capacity or promotion claim
+follows.
+[Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+· [Summary](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+· [Evidence index](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
 **2026-11-08 TensorFold Go validation:** the dual-card GLM EXL3 lane passed
 the selected Go task on its first 32K attempt, while both 16K attempts failed
 after length-finished responses. Two targeted profile checks on one task

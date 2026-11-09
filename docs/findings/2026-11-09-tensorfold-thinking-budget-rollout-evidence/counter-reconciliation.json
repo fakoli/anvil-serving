@@ -1,0 +1,31 @@
+{
+  "schema": "anvil-serving.nonexclusive-counter-reconciliation/v1",
+  "engine_counters_before": {
+    "tensorfold:prompt_tokens_total": 655977.0,
+    "tensorfold:generation_tokens_total": 184943.0,
+    "tensorfold:request_latency_seconds_count": 87.0
+  },
+  "engine_counters_after": {
+    "tensorfold:prompt_tokens_total": 775306.0,
+    "tensorfold:generation_tokens_total": 286979.0,
+    "tensorfold:request_latency_seconds_count": 111.0
+  },
+  "engine_delta": {
+    "tensorfold:prompt_tokens_total": 119329.0,
+    "tensorfold:generation_tokens_total": 102036.0,
+    "tensorfold:request_latency_seconds_count": 24.0
+  },
+  "owned_Go_tokens_complete": {
+    "prompt_tokens": 31652,
+    "completion_tokens": 56581,
+    "reasoning_tokens": 33839,
+    "total_tokens": 88233,
+    "derived_non_reasoning_tokens": 22742
+  },
+  "owned_Go_response_count": 10,
+  "owned_preflight_observations": 7,
+  "preflight_usage_complete": true,
+  "attribution": "Background traffic was present (running1 before finaljob). Engine deltas include background and preflight traffic. No exclusive attribution or observer/performance overhead claim.",
+  "terminal_owned_transports": true,
+  "worker_groups_stopped": true
+}

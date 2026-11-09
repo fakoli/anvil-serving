@@ -1,0 +1,35 @@
+{
+  "method": "Existing product APIs validate the exact embedded benchmark-evidence/v1 and all original stage-file hashes; outer benchmark-result/v1 envelopes remain retained. Public projections validate schema/publishability without claiming private stage files are included. The standalone CLI does not recognize an outer benchmark-result envelope.",
+  "results": [
+    {
+      "case": "max-budget-1",
+      "source_artifact_sha256": "7681c1b4bbb9330b6dfe75ac407950d435a3c10fdbcb99e97ec8c1a61ad82748",
+      "public_artifact_sha256": "99ccf39ed8f8f54884bbf4ed764ba0c186b0928d7cce462dc40f06c5595bb25c",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "original_stage_hashes_verified": true,
+      "projected_native_shape_and_publishability_verified": true,
+      "summary_validation_errors": []
+    },
+    {
+      "case": "low-unset",
+      "source_artifact_sha256": "ad4902dd9d3e815079b5809d5ff78b4a5c36974225d82834c9b2661d49997d37",
+      "public_artifact_sha256": "26a506c9c0d890d33a39c7d2214f4d3a7ca740f7ef66576a64218165238159ca",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "original_stage_hashes_verified": true,
+      "projected_native_shape_and_publishability_verified": true,
+      "summary_validation_errors": []
+    },
+    {
+      "case": "max-budget-2",
+      "source_artifact_sha256": "c66b7da85bbea2dfccdf3ef5b474a1a50ab4a0fc1311035279bbb369464ba429",
+      "public_artifact_sha256": "2a6e7f05af7bdaac397142adc990aa81a7addfb9eaaaaa56e6323a444ab6cc02",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "original_stage_hashes_verified": true,
+      "projected_native_shape_and_publishability_verified": true,
+      "summary_validation_errors": []
+    }
+  ]
+}

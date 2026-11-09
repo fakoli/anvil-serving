@@ -1,0 +1,35 @@
+{
+  "testdir": "<private-path>",
+  "testcase": "alphametics",
+  "model": "openai/llm.primary",
+  "edit_format": "whole",
+  "tests_outcomes": [
+    false,
+    true
+  ],
+  "cost": 0.0,
+  "duration": 91.33424973487854,
+  "test_timeouts": 0,
+  "commit_hash": "5dc9490",
+  "num_error_outputs": 0,
+  "num_user_asks": 0,
+  "num_exhausted_context_windows": 0,
+  "num_malformed_responses": 0,
+  "syntax_errors": 0,
+  "indentation_errors": 0,
+  "lazy_comments": 0,
+  "reasoning_effort": null,
+  "prompt_tokens": 6998,
+  "completion_tokens": 19778,
+  "thinking_tokens": null,
+  "chat_hashes": [
+    [
+      "3222460ec6f3d525d557051780c23e88a2e57b91",
+      "1501e7c5df049c33db6f58f69cf2d34010fa0d0a"
+    ],
+    [
+      "3222460ec6f3d525d557051780c23e88a2e57b91",
+      "9255b8477e2dda492cb1e7df66615af52151a8f3"
+    ]
+  ]
+}

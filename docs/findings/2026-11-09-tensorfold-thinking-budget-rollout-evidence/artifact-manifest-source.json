@@ -1,0 +1,137 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-11-09-tensorfold-thinking-budget-rollout",
+    "capability": "request-local numeric thinking control and focused Go quality",
+    "repository_revision": "0f55c039bc5661e51421d0b65c51186155abffa7",
+    "dirty_state": "installed reviewed wheel/router from identical clean merged tree; publication is a separate change",
+    "started_at": "2026-11-09T21:47:56.874968+00:00",
+    "completed_at": "2026-11-09T22:35:37.071220+00:00",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.swe-agent-observation/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "inputs/aider-diagnostic-16k-v1.json",
+        "configuration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "inputs/plan.json",
+        "inputs/max-budget-1.json",
+        "inputs/low-unset.json",
+        "inputs/max-budget-2.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "source-delivery.json",
+        "deployment.json",
+        "boundary.json",
+        "projection-ledger.json",
+        "native-evidence-validation.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "jobs/low-unset/aider/adapter-result.json",
+        "jobs/low-unset/aider/requests.jsonl",
+        "jobs/low-unset/aider/result.json",
+        "jobs/low-unset/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/low-unset/artifact.json",
+        "jobs/max-budget-1/aider/adapter-result.json",
+        "jobs/max-budget-1/aider/requests.jsonl",
+        "jobs/max-budget-1/aider/result.json",
+        "jobs/max-budget-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/max-budget-1/artifact.json",
+        "jobs/max-budget-2/aider/adapter-result.json",
+        "jobs/max-budget-2/aider/requests.jsonl",
+        "jobs/max-budget-2/aider/result.json",
+        "jobs/max-budget-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/max-budget-2/artifact.json",
+        "router-preflight.json",
+        "completion-proofs.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "independent-review.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "preservation.json",
+        "counter-reconciliation.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "case-diagnostics.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-publication copy was requested."
+    }
+  ]
+}
