@@ -1,0 +1,101 @@
+{
+  "schema": "anvil-serving.focused-quality-plan/v1",
+  "created_at": "2026-11-08T23:50:27.552868+00:00",
+  "frozen_before_requests": true,
+  "scope": "Two single-task C1 routed Go/Aider diagnostics; performance measurement and model promotion are outside scope.",
+  "owner": "tensorfold-go-validation-20261108",
+  "order": [
+    16384,
+    32768
+  ],
+  "cells": [
+    {
+      "id": "go-16384",
+      "run_id": "tensorfold-go-validation-20261108-16384-r2",
+      "spec_path": "inputs-r2/go-16384-spec.json",
+      "spec_sha256": "e2215b630bcd12647737e78ca66a1bd518b8f2c23e0b347162b0a1301d607886",
+      "profile": "aider-diagnostic-16k-v1",
+      "profile_sha256": "59cf12be50467c04b43d6830e268b9f788e631fcb4230414c648a8480d1ab309",
+      "output_cap_tokens_per_response_including_reasoning": 16384
+    },
+    {
+      "id": "go-32768",
+      "run_id": "tensorfold-go-validation-20261108-32768-r2",
+      "spec_path": "inputs-r2/go-32768-spec.json",
+      "spec_sha256": "a29af99b71d5f875c81639dc5187205ed8f6589a4cc075fae97d61feed02a4be",
+      "profile": "aider-diagnostic-32k-v1",
+      "profile_sha256": "cfa62a675f71534ab08827eeb722f1c4d9f244b45b919ea040b4ad9249fb2961",
+      "output_cap_tokens_per_response_including_reasoning": 32768
+    }
+  ],
+  "route": {
+    "alias": "llm.primary",
+    "revision": "<private-route-identity>",
+    "sha256": "<private-route-identity>",
+    "historical_path_difference": "Historical Go jobs used direct backend; these jobs use the existing authenticated router under host policy. No matched performance comparison."
+  },
+  "controls": {
+    "concurrency": 1,
+    "task": "go/exercises/practice/alphametics",
+    "attempts_per_task": 2,
+    "transport_calls_per_job": 12,
+    "retries": 0,
+    "deadline_seconds_per_job": 600,
+    "reasoning_effort": "max",
+    "reasoning_reservation_tokens": null,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "thinking_mode": "default",
+    "cache_policy": "preserved; uncontrolled warm state; no reset"
+  },
+  "oracle": {
+    "source_receipt_sha256": "7054074e8d74b4754965ad759b6e74e4fa07fafd674a4241217fd75a5f97f9f2",
+    "image_id": "sha256:174d85341f24c4c6d3f41793a3a92d2d3626a86e8797151db5dcab8696645b58",
+    "inventory_sha256": "c166d23dc49fdbaedf677a98f49ef91de969a1bd659424cc8c774e1238ea4b9c",
+    "preparation": "offline; independently requalify six starter/reference oracles, no build/pull/retag",
+    "receipt_custody": "Pre-dispatch receipt bytes retained in inputs/prepared-oracle-<cap>.json; native job preparation paths may be rewritten by managed worker requalification. Both retained separately."
+  },
+  "continuation_policy": {
+    "ordinary_quality_miss": "retain and proceed to next preplanned diagnostic",
+    "infrastructure_identity_oom_admission_failure": "stop; no rollback or model/route modification",
+    "retry_after_failure": false
+  },
+  "custody": {
+    "managed_command": "eval benchmark aider submit --spec PATH --confirm --detach",
+    "campaign_activation_custody": false,
+    "per_job": "fresh exact managed engine and route checks; owned worker terminal/exit and fresh engine running/waiting zero before next job",
+    "safety_samples": "bounded read-only metrics and managed status; no isolated throughput/counter attribution claims because live user traffic may coexist"
+  },
+  "classification": {
+    "raw_independent_grade": "unchanged oracle grade",
+    "generation_limit": "finish length classified separately with usage and cap_reached",
+    "visible_tokens": "unknown unless independently available; completion minus reasoning is derived non_reasoning"
+  },
+  "forbidden_changes": [
+    "model",
+    "route",
+    "context",
+    "output/reasoning defaults",
+    "cache policy",
+    "Hermes",
+    "secondary",
+    "R27",
+    "fleet acceptance",
+    "restart",
+    "rollback",
+    "promotion"
+  ],
+  "maximum_jobs": 2,
+  "maximum_suite_seconds": 1200,
+  "maximum_transport_calls": 24,
+  "amendment": {
+    "created_at": "2026-11-08T23:50:27.552840+00:00",
+    "reason": "First submitted job failed in offline asset preparation because standalone prepare and worker requalification used same owned run path. No model transport events and unchanged engine request count294. Worker exited.",
+    "remedy": "Fresh execution IDs suffixed-r2, no standalone preparation into those directories. Existing successful pre-dispatch oracle snapshots remain evidence; workers perform their own offline requalification.",
+    "source_change": false,
+    "budgets_unchanged": true,
+    "supersedes_plan_sha256": "46d6f4fc0b4372108a511a47f54083bb92d3067520d726cb09cdb7c63d7db5ea",
+    "setup_failure_retained": true,
+    "maximum_submissions_including_setup_failure": 3
+  }
+}

@@ -1,5 +1,12 @@
 # Benchmarks
 
+**2026-11-08 TensorFold Go validation:** the
+[focused quality check](../findings/2026-11-08-tensorfold-go-validation.md)
+records a passing first attempt at 32K and length-finished failures at 16K on
+one selected Go task. It establishes no broad coding score, performance
+comparison, causal cap benefit or promotion.
+[GLM dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08).
+
 **2026-11-03 RTX5090 research update:** the
 [candidate campaign](../findings/2026-11-03-rtx5090-campaign.md) records bounded
 coding and synthetic capability results without changing any deployment decision.

@@ -1,5 +1,12 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-08 TensorFold Go validation:** the dual-card GLM EXL3 lane passed
+the selected Go task on its first 32K attempt, while both 16K attempts failed
+after length-finished responses. Two targeted profile checks on one task
+provide `quality` evidence, with no hardware-capacity, performance or promotion
+claim. [Finding](../../findings/2026-11-08-tensorfold-go-validation.md) ·
+[Evidence index](../../findings/2026-11-08-tensorfold-go-validation-evidence/README.md).
+
 **2026-11-01 Swift TP1 qualification accepted:** one RTX PRO 6000 Blackwell Max-Q
 measured the final TP1 capacity population (10 cells, 72 requests), resource
 window, and final functional/quality evidence. C2 is the selected interactive
