@@ -92,6 +92,27 @@ def test_missing_policy_pool_and_timing_inputs_remain_unavailable():
     assert parse_metrics(partial)['timing']['reason'] == 'incomplete_timing_boundaries'
 
 
+def test_partitioned_census_preserves_capacity_and_temporary_twin_subset():
+    raw = metrics().replace('anvil_kv_pool_partitions 1', 'anvil_kv_pool_partitions 2')
+    assert parse_metrics(raw)['kv']['status'] == 'unavailable'
+    raw += 'tensorfold:anvil_kv_temporary_twin_pages 4\n'
+    result = parse_metrics(raw)
+    assert result['kv'] == dict(status='measured', complete=True, scope='global_logical_decode_kv_pool',
+                               partitions=2, allocated_pages=10, free_pages=90, total_pages=100,
+                               reserved_pages=8, page_size_tokens=128, temporary_twin_pages=4)
+    assert result['full_context_bound']['reason'] == 'partitioned_admission_policy_unqualified'
+    assert 'global-kv-allocation' in result['capabilities']
+    assert 'full-context-concurrency' not in result['capabilities']
+    assert parse_metrics(metrics())['kv']['temporary_twin_pages'] == 0
+    assert parse_metrics(metrics() + 'tensorfold:anvil_kv_temporary_twin_pages 1\n')['kv']['temporary_twin_pages'] == 1
+    assert parse_metrics(raw.replace('anvil_kv_pool_partitions 2', 'anvil_kv_pool_partitions 3'))['kv']['status'] == 'unavailable'
+    for replacement in ('11', '-1', '1.5', '9007199254740993'):
+        with pytest.raises(ValueError):
+            parse_metrics(raw.replace('anvil_kv_temporary_twin_pages 4', 'anvil_kv_temporary_twin_pages ' + replacement))
+    with pytest.raises(ValueError, match='pool partitioning'):
+        parse_metrics(raw.replace('anvil_full_context_bound_available 0', 'anvil_full_context_bound_available 1'))
+
+
 @pytest.mark.parametrize('replacement', [
     ('anvil_streams_observed 1', 'anvil_streams_observed 2'),
     ('requests_running 1', 'requests_running 0'),

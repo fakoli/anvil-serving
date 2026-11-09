@@ -1,0 +1,5 @@
+**
+!*.patch
+!manifest.toml
+!CONTRACT.md
+!apply-anvil-patches.sh

@@ -1,6 +1,6 @@
 # TensorFold telemetry contract v1
 
-The portable [pinned patch catalog](https://github.com/fakoli/anvil-serving/tree/main/configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1)
+The portable [partition-aware patch catalog](https://github.com/fakoli/anvil-serving/tree/main/configs/runtime-patches/tensorfold/f350cd3e-anvilkvpartsv1)
 retains the owned series, application order, prerequisites and checks without
 vendoring the upstream codebase. Engine patch availability, installed collector
 support and continuous scrape registration are separate rollout checks.
@@ -39,15 +39,22 @@ No request identifiers, prompts or per-request timestamps are exported.
 | `kv_cache_usage_ratio{pool="N"}` | Existing per-stream context occupancy ratio; its `kv_cache_usage_perc{stream="N"}` alias must agree. It is not global allocation. |
 | `anvil_kv_allocation_available` | One only when the entire supported decode allocator is observed. |
 | `anvil_kv_pool_info{scope="global_logical_decode_kv_pool"}` | Logical decode pool scope; TP rank copies are not summed. |
-| `anvil_kv_pool_partitions` | Must equal one for complete global allocation; partial or unsupported partitions remain unavailable. |
+| `anvil_kv_pool_partitions` | One unsharded pool or two leader-owned sharded pools. Partial or unsupported partitions remain unavailable. |
 | `anvil_kv_allocated_pages`, `anvil_kv_free_pages`, `anvil_kv_total_pages` | Physically mapped logical pages, unmapped pages and pool capacity; allocated + free = total. Allocated includes retained allocator ownership. |
 | `anvil_kv_reserved_pages` | Promised but unmapped pages, a subset of free pages. |
 | `anvil_kv_page_size_tokens` | Positive logical tokens per page. |
+| `anvil_kv_temporary_twin_pages` | Temporary prompt-fill twin pages already included in allocated pages. Required with two partitions; legacy single-pool samples may omit it, meaning zero. |
 | `anvil_full_context_bound_available` | One only when every derivation input and the admission policy is known; zero is unavailable, not a zero-request bound. |
 
-The unsharded decode allocator supplies global allocation. Existing shard-part
-metrics remain separate and do not imply a complete global pool. Prompt-cache
-bytes/states are never substituted for decode KV pages.
+The engine publishes one coherent census of each unique leader-owned pool.
+Follower TP replicas are counted once. Temporary twins consume allocator
+capacity and do not increase unique prompt-context tokens. The collector checks
+allocated + free = total, reserved <= free and twins <= allocated. Current
+single-pool producers emit zero twins; the additive field is validated as an
+allocated subset independently of partition count. Existing shard-part diagnostics alone do not establish this complete census. Prompt-cache
+bytes/states are never substituted for decode KV pages. The original
+[single-pool catalog](https://github.com/fakoli/anvil-serving/tree/main/configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1)
+and its qualification remain historical; legacy producers remain supported.
 
 Legacy native preemption counters are outside this ABI. A backend that exports
 a constant zero does not provide a measured absence of preemptions or requeues;
@@ -103,6 +110,9 @@ and these exact inputs: `anvil_full_context_requested_tokens` (positive),
 Active requests cannot exceed the admission limit. Reserve tokens include any
 required verification/scratch window; assuming that window is zero is forbidden.
 The collector recomputes the formula and rejects disagreement.
+Partitioned pools retain measured allocation, but their full-context estimate
+remains unavailable until their admission policy is separately qualified.
+A partitioned producer claiming the version-one bound is rejected.
 
 Until the runtime can prove all policy inputs, it exports availability zero and
 `anvil_full_context_bound_info{reason="missing_admission_policy_inputs"} 1`.
