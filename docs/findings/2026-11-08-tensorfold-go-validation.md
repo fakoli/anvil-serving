@@ -21,7 +21,7 @@ checks passed; this is one unique Go task, not a representative coding score.
 |---|---|
 | Model | `Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold@76c0b5173166d2795dd48860f45d8224817f894c` |
 | Hardware | Two RTX PRO 6000 Blackwell Max-Q 96 GB GPUs; co-resident harness and contained test execution on native Linux |
-| Runtime | TensorFold base `f350cd3ea253a042e205746928271f9d8f71a82d`, the author's unchanged 101-patch series, followed by the five ordered [Anvil telemetry patches](../../configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1/README.md); final source tree `e7acc47a4a42ba8ac5fbaf74fff20ed4e7856c17` |
+| Runtime | TensorFold base `f350cd3ea253a042e205746928271f9d8f71a82d`, the author's unchanged 101-patch series, followed by the five ordered [Anvil telemetry patches](https://github.com/fakoli/anvil-serving/blob/8c8ffa146e0e9cd1cc73e08be0db5c9c38be9e8f/configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1/README.md); final source tree `e7acc47a4a42ba8ac5fbaf74fff20ed4e7856c17` |
 | Image | `sha256:8f5604d13d319adac8dc708b2e8bf8ce54096e181313a2a8de83cbfdd2902b06` |
 | Recipe | Existing managed EXL3 4-bpw, dense-q8/BF16-head, TP2, FP8 paged-KV and 4-bit DFlash2 recipe; serving defaults preserved |
 | Measurement path | Routed online through `llm.primary`; cache policy preserved, warm state uncontrolled |
