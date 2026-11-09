@@ -1,5 +1,12 @@
 # Findings index
 
+**2026-11-09 TensorFold reasoning investigation:**
+[bounded Max/Low Go controls](2026-11-09-tensorfold-reasoning-budget.md)
+separate prompt effort from a hard thinking-token allocation under the same
+16K response cap. The two reviewed Low repetitions passed their first
+contained tests. The source-control proposal remains separate from deployed
+behavior; this supplies no broad Go score, performance ranking or promotion.
+
 **2026-11-08 TensorFold Go validation:** the pinned GLM EXL3 configuration
 passed one of two bounded profile checks on the same Go task: first-attempt
 success at 32K, two length-finished failures at 16K. This is targeted quality

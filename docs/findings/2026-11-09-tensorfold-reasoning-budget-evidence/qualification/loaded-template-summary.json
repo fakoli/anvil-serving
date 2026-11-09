@@ -1,0 +1,20 @@
+[
+  {
+    "effort": "low",
+    "count": 17,
+    "rendered_prompt": "[gMASK]<sop><|system|>Reasoning Effort: Low<|user|>Bounded template verification.<|assistant|><think>",
+    "sha256": "033cbbce71d2c656e0690139d9c1ab8b2aae0a525f3e72fec067b29bdb09cf3e"
+  },
+  {
+    "effort": "high",
+    "count": 17,
+    "rendered_prompt": "[gMASK]<sop><|system|>Reasoning Effort: High<|user|>Bounded template verification.<|assistant|><think>",
+    "sha256": "64da6edf9f438088d6c7941cf38ac91cf55b7b651ff6ee84aedff4ee3615fa57"
+  },
+  {
+    "effort": "max",
+    "count": 17,
+    "rendered_prompt": "[gMASK]<sop><|system|>Reasoning Effort: Max<|user|>Bounded template verification.<|assistant|><think>",
+    "sha256": "453bd4c262aa0a458eb31eb163907b75a990a74461b1741f27ba256475885644"
+  }
+]

@@ -1,5 +1,12 @@
 # Benchmarks
 
+**2026-11-09 TensorFold reasoning investigation:** the
+[Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
+retain the same 16K total response budget and separate effort instructions
+from a numeric thinking limit. The two reviewed Low repetitions passed their
+first contained tests; proposed forwarding support is not deployed or
+measured here. No broad Go or performance claim follows.
+
 **2026-11-08 TensorFold Go validation:** the
 [focused quality check](../findings/2026-11-08-tensorfold-go-validation.md)
 records a passing first attempt at 32K and length-finished failures at 16K on

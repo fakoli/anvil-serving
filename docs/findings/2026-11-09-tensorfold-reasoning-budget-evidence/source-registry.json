@@ -1,0 +1,5 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [],
+  "basis": "Local pinned source, actual loaded-template metadata, frozen plans, native job events/grades and independent owner/custody verification; no external performance prior."
+}

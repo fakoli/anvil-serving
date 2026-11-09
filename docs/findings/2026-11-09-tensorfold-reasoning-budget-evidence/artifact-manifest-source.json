@@ -1,0 +1,142 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-11-09-tensorfold-reasoning-budget",
+    "capability": "targeted Go reasoning-control investigation",
+    "repository_revision": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "dirty_state": "clean executing source; proposed patch and publication are separate changes",
+    "started_at": "2026-11-09T16:49:40.558779+00:00",
+    "completed_at": "2026-11-09T17:19:00.594452+00:00",
+    "evidence_labels": [
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "inputs/source.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "inputs/aider-diagnostic-16k-v1.json",
+        "configuration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "inputs-v2/plan.json",
+        "inputs/plan.json",
+        "inputs/specs/low-1.json",
+        "inputs/specs/low-2.json",
+        "inputs/specs/max-1.json",
+        "inputs/specs/max-2.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "request-path-audit.json",
+        "projection-ledger.json",
+        "inputs/source.json",
+        "qualification/loaded-template-summary.json",
+        "qualification/harness-tests.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "jobs/low-1/aider/adapter-result.json",
+        "jobs/low-1/aider/requests.jsonl",
+        "jobs/low-1/aider/result.json",
+        "jobs/low-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/low-1/artifact.json",
+        "jobs/low-2/aider/adapter-result.json",
+        "jobs/low-2/aider/requests.jsonl",
+        "jobs/low-2/aider/result.json",
+        "jobs/low-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/low-2/artifact.json",
+        "jobs/max-1/aider/adapter-result.json",
+        "jobs/max-1/aider/requests.jsonl",
+        "jobs/max-1/aider/result.json",
+        "jobs/max-1/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/max-1/artifact.json",
+        "jobs/max-2/aider/adapter-result.json",
+        "jobs/max-2/aider/requests.jsonl",
+        "jobs/max-2/aider/result.json",
+        "jobs/max-2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "jobs/max-2/artifact.json",
+        "native-evidence-validation.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "independent-review.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "counter-reconciliation.json",
+        "frozen-comparison-integrity.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "case-diagnostics.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social publication copy was requested for this focused investigation."
+    }
+  ]
+}
