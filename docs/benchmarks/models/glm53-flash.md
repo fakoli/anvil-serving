@@ -66,6 +66,13 @@ so four full 327K windows are unsupported. See the
 
 ## Current status and review date
 
+**2026-11-09 TensorFold reasoning controls:** the focused
+[Max/Low investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
+separates effort instructions from numeric thinking limits on one Go task
+under a fixed 16K response cap. Two Low repetitions passed their first
+contained tests. The separate source proposal is not deployed; this does
+not revise global model policy or establish a broad coding score.
+
 **2026-11-08 TensorFold quality diagnostic:** the separate pinned EXL3
 TensorFold lane passed the selected Go task at 32K and failed at 16K after
 response-length limits. This is one task checked once per profile, not a broad
@@ -437,6 +444,18 @@ full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
 
+### TensorFold reasoning controls, 2026-11-09
+
+- **Status:** Closed focused `quality` investigation, `no-promotion`.
+- **Measured:** Two Low repetitions passed the selected Go task on their first
+  contained test, after first responses with 25 and 6 reported reasoning tokens.
+  Both Max repetitions failed both tests after all-reasoning, length-finished
+  16K responses. Eight transport responses have complete accounting.
+- **Limits:** One deliberately selected task, two planned repetitions per
+  effort, uncontrolled cache and possible user traffic. No numeric-budget
+  patch deployment, broad Go score, global-policy or performance claim.
+- **Evidence:** [Finding](../../findings/2026-11-09-tensorfold-reasoning-budget.md).
+
 ### TensorFold Go diagnostic, 2026-11-08
 
 - **Status:** Focused `quality`, `no-promotion`; review dated 2026-11-08.
@@ -673,6 +692,10 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-11-09 — [TensorFold reasoning controls](../../findings/2026-11-09-tensorfold-reasoning-budget.md):
+  fixed 16K Max/Low task diagnostics and audited request-control proposal;
+  source support, deployed behavior and independent grades remain separate.
 
 - 2026-11-08 — [TensorFold Go validation](../../findings/2026-11-08-tensorfold-go-validation.md):
   first-attempt pass at 32K, two length-finished failures at 16K on one task;

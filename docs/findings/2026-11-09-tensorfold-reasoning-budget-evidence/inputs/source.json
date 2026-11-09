@@ -1,0 +1,11 @@
+{
+  "executing_cli_prefix": "<private-path>",
+  "executing_source": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+  "files": {
+    "anvil_serving/benchmarking/aider.py": "3c6213bc5bd5f5a4c7600a6015866131a06793aa2e3652ee115f091ef322cf31",
+    "anvil_serving/benchmarking/aider_adapter.py": "9e8eda03d94a7bb71cff9fa039f1e8f0ed655901dc3b4ad9a98005346a3c8683",
+    "anvil_serving/benchmarking/aider_prepare.py": "b4d2c65122e05ea652609a35904b0f6cbbc1222496f4c786d218bd25019ee0f9",
+    "anvil_serving/benchmarking/request_controls.py": "f0661095960c699d669454cf948bd2408d6203938766679b95ce7f146584c781",
+    "anvil_serving/router/backends/relay.py": "6d683f7d07b78de4700d6a99626898e6d9c0379482f040c93489cdca745bfb29"
+  }
+}

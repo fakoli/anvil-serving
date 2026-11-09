@@ -1,0 +1,124 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-09-tensorfold-reasoning-budget",
+  "complete": true,
+  "scope": "focused quality and request-control investigation; not a serving comparison",
+  "identity": {
+    "configuration": "configuration.json",
+    "source_and_projections": "projection-ledger.json"
+  },
+  "workload": {
+    "task": "go/exercises/practice/alphametics",
+    "unique_tasks": 1,
+    "profile_checks": 4,
+    "concurrency": 1,
+    "completion_cap_tokens_including_reasoning": 16384,
+    "effort_order": [
+      "max",
+      "low",
+      "low",
+      "max"
+    ]
+  },
+  "measurement": {
+    "path": "routed-online",
+    "warm_cold_state": "uncontrolled; existing RAM and conversation-disk policy preserved",
+    "sample_count": 4,
+    "statistics": []
+  },
+  "results_by_effort": {
+    "max": {
+      "selected": 2,
+      "resolved": 0
+    },
+    "low": {
+      "selected": 2,
+      "resolved": 2
+    }
+  },
+  "transport_totals": {
+    "responses": 8,
+    "prompt_tokens": 10456,
+    "completion_tokens": 67687,
+    "reasoning_tokens": 65577
+  },
+  "gates": [
+    {
+      "name": "four frozen jobs independently graded",
+      "passed": true
+    },
+    {
+      "name": "Low selected-task repetition one and two",
+      "passed": true
+    },
+    {
+      "name": "Max selected-task repetition one and two",
+      "passed": false
+    },
+    {
+      "name": "owned accounting/worker closure, exact current baseline and cgroup custody",
+      "passed": true
+    }
+  ],
+  "headline_results": [
+    {
+      "metric": "Low first-attempt task passes",
+      "value": 2,
+      "denominator": 2
+    },
+    {
+      "metric": "Max task passes",
+      "value": 0,
+      "denominator": 2
+    },
+    {
+      "metric": "complete HTTP responses",
+      "value": 8,
+      "denominator": 8
+    },
+    {
+      "metric": "Low first-response reasoning tokens",
+      "value": [
+        25,
+        6
+      ]
+    },
+    {
+      "metric": "Max first-response reasoning tokens",
+      "value": [
+        16384,
+        16384
+      ]
+    }
+  ],
+  "mechanism": "Effort is a prompt instruction rather than a hard thinking allocation. Both channels consume the shared response cap, with no positive native numeric thinking limit configured. Local effort controls support task-specific thinking starvation; exact semantic-loop causes remain unproven.",
+  "failures": [
+    "Both Max repetitions failed both contained tests after length-finished all-reasoning responses."
+  ],
+  "limitations": [
+    "One task with two stochastic repetitions per effort; no broad quality or global reasoning-policy recommendation.",
+    "Background user traffic allowed; no exclusive engine-counter or performance claim.",
+    "Current disk-cache/process/memory baseline differs from historical November8 evidence.",
+    "Visible token counts unknown; derived non-reasoning is subtraction only.",
+    "Complete model prose and raw token IDs were not retained for a semantic-loop claim.",
+    "Proposed numeric thinking-budget control is source-only; no deployment or forced-budget coding test.",
+    "Temperature follow-ups not run because both Low controls resolved the selected task; temperature effect remains unmeasured."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Review the source-only thinking-budget proposal separately. Any deployment and forced-budget qualification require their own explicit scope and custody."
+  },
+  "evidence": [
+    "case-diagnostics.json",
+    "request-path-audit.json",
+    "independent-review.md",
+    "restoration.json"
+  ],
+  "comparison_evidence": null
+}
