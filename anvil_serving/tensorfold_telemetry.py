@@ -112,15 +112,18 @@ def _kv(series):
     if _value(series, "anvil_kv_pool_info", {"scope": "global_logical_decode_kv_pool"}) != 1:
         raise ValueError("invalid global KV pool scope")
     partitions = _value(series, "anvil_kv_pool_partitions")
-    if partitions != 1:
+    if partitions not in (1, 2):
         raise _Unavailable("unsupported_global_kv_pool_partitioning")
     values = {name: _value(series, "anvil_kv_" + name) for name in
               ("allocated_pages", "free_pages", "total_pages", "reserved_pages", "page_size_tokens")}
+    twins = (_value(series, "anvil_kv_temporary_twin_pages")
+             if partitions > 1 or "anvil_kv_temporary_twin_pages" in series else 0)
     if (values["allocated_pages"] + values["free_pages"] != values["total_pages"]
+            or twins > values["allocated_pages"]
             or values["reserved_pages"] > values["free_pages"] or values["page_size_tokens"] <= 0):
         raise ValueError("inconsistent global decode KV allocation")
     return {"status": "measured", "complete": True, "scope": "global_logical_decode_kv_pool",
-            "partitions": partitions, **values}
+            "partitions": partitions, "temporary_twin_pages": twins, **values}
 
 
 def _histogram(series, stage):
@@ -163,7 +166,12 @@ def _timing(series):
 
 
 def _bound(series, kv):
-    if not _flag(series, "anvil_full_context_bound_available"):
+    available = _flag(series, "anvil_full_context_bound_available")
+    if kv.get("partitions", 1) > 1:
+        if available:
+            raise ValueError("unsupported full-context bound policy or pool partitioning")
+        raise _Unavailable("partitioned_admission_policy_unqualified")
+    if not available:
         raise _Unavailable("missing_admission_policy_inputs")
     if kv["status"] != "measured":
         raise _Unavailable("global_decode_kv_unavailable")
