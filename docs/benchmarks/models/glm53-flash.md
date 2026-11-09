@@ -66,6 +66,13 @@ so four full 327K windows are unsupported. See the
 
 ## Current status and review date
 
+**2026-11-08 TensorFold quality diagnostic:** the separate pinned EXL3
+TensorFold lane passed the selected Go task at 32K and failed at 16K after
+response-length limits. This is one task checked once per profile, not a broad
+Go score, cap-effect experiment or performance comparison. No live assignment
+or historical promotion is changed by this record.
+[Finding](../../findings/2026-11-08-tensorfold-go-validation.md).
+
 **2026-10-25 Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) closed six completed measurements with one passing and five failing task grades; two supported cells remained unstarted and four reasoning controls were blocked. Raw grades remain separate from lifecycle and measurement eligibility. The mixed Rust result establishes no causal benefit from the larger cap. Diagnostic only; no Ignis run, broad model ranking or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
 
 **2026-10-25 R12/R13 successor:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four cancelled grades remain unknown. The candidate was never measured. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. This does not change the incumbent assignment or establish a comparative ranking. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
@@ -283,6 +290,13 @@ No new promotion occurred. See the
 
 ## Immutable identity
 
+The 2026-11-08 TensorFold diagnostic is a separate recipe family:
+`Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold@76c0b5173166d2795dd48860f45d8224817f894c`,
+TensorFold base `f350cd3ea253a042e205746928271f9d8f71a82d` plus the unchanged
+101 author patches and five ordered Anvil telemetry patches. Its runtime
+image is `sha256:8f5604d13d319adac8dc708b2e8bf8ce54096e181313a2a8de83cbfdd2902b06`.
+[Configuration and reconstruction boundary](../../findings/2026-11-08-tensorfold-go-validation-evidence/configuration.json).
+
 The current FP4 recipe pins
 `nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`
 and `ghcr.io/local-inference-lab/vllm:release-10152026` image digest
@@ -422,6 +436,20 @@ graphs, so increasing concurrency requires a managed candidate load and the
 full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
+
+### TensorFold Go diagnostic, 2026-11-08
+
+- **Status:** Focused `quality`, `no-promotion`; review dated 2026-11-08.
+- **Measured:** Two C1 profile checks on one Go task: first-attempt success
+  at 32K, two failed contained tests after length-finished 16K responses.
+  Four starts and four responses have complete transport accounting.
+- **Limits:** One stochastic task/profile execution each, uncontrolled cache,
+  no performance or causal cap-benefit claim. An earlier asset-preparation
+  failure is retained separately from grades; repeated preparation remains
+  an open harness defect.
+- **Evidence:** [Finding](../../findings/2026-11-08-tensorfold-go-validation.md),
+  [native observations](../../findings/2026-11-08-tensorfold-go-validation-evidence/case-diagnostics.json)
+  and [evidence index](../../findings/2026-11-08-tensorfold-go-validation-evidence/README.md).
 
 ### Actual-GPU reasoning-marker trace, 2026-10-26
 
@@ -645,6 +673,10 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-11-08 — [TensorFold Go validation](../../findings/2026-11-08-tensorfold-go-validation.md):
+  first-attempt pass at 32K, two length-finished failures at 16K on one task;
+  targeted quality only, no promotion or performance comparison.
 
 - 2026-10-26 — [Reasoning-close GPU marker trace](../../findings/2026-10-26-marker-gpu-trace.md): one exact-answer response had a single boundary close with matching two-rank budget-store observations, but 76 trace tokens versus 75 API tokens kept the frozen analyzer `unknown`; no second close reproduced. Operational restoration passed, functional JSON acceptance incomplete. No promotion.
 

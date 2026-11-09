@@ -1,0 +1,103 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-08-tensorfold-go-validation",
+  "complete": true,
+  "scope": "focused quality check; not a serving comparison",
+  "identity": {
+    "configuration": "configuration.json",
+    "executing_source_commit": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "source_dirty": false
+  },
+  "workload": {
+    "task": "go/exercises/practice/alphametics",
+    "unique_tasks": 1,
+    "profile_checks": 2,
+    "concurrency": 1,
+    "caps_tokens_per_response_including_reasoning": [
+      16384,
+      32768
+    ]
+  },
+  "measurement": {
+    "path": "routed-online",
+    "warm_cold_state": "uncontrolled; existing cache policy preserved",
+    "sample_count": 2,
+    "statistics": []
+  },
+  "gates": [
+    {
+      "name": "two planned quality jobs reached independent grades",
+      "passed": true
+    },
+    {
+      "name": "Go16 independent coding grade",
+      "passed": false
+    },
+    {
+      "name": "Go32 independent coding grade",
+      "passed": true
+    },
+    {
+      "name": "final exact operational identity and zero running/waiting",
+      "passed": true
+    }
+  ],
+  "headline_results": [
+    {
+      "metric": "passing_profile_checks",
+      "value": 1,
+      "denominator": 2
+    },
+    {
+      "metric": "unique_tasks",
+      "value": 1
+    },
+    {
+      "metric": "transport_responses",
+      "value": 4,
+      "denominator": 4
+    },
+    {
+      "metric": "length_finished_responses",
+      "value": 2,
+      "denominator": 4
+    }
+  ],
+  "failures": [
+    {
+      "kind": "quality",
+      "profile": "16K",
+      "reason": "Both contained tests failed after length-finished responses; completion usage entirely reported as reasoning."
+    },
+    {
+      "kind": "pre-model setup",
+      "reason": "Same-ID standalone preparation plus ordinary submission collided at an existing starter directory. Failed setup is retained separately and defect remains open."
+    }
+  ],
+  "limitations": [
+    "One deliberately selected stochastic task/profile execution each; no general Go score or causal response-cap benefit.",
+    "Historical direct endpoint checks differ from this routed path.",
+    "Visible-token counts unknown; non-reasoning subtraction is derived.",
+    "Complete transport accounting is distinct from native Aider per-task usage fields.",
+    "Ordinary jobs have explicit owner readbacks; no campaign activation custody or traffic-isolation claim.",
+    "Process text capture is truncated; complete model prose is not claimed.",
+    "No performance comparison, observer-overhead measurement or additional metric-family qualification."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Retain these bounded results; independently scope any repeatability or additional task coverage."
+  },
+  "evidence": [
+    "case-diagnostics.json",
+    "projection-ledger.json",
+    "independent-review.md",
+    "restoration.json"
+  ],
+  "comparison_evidence": null
+}

@@ -1,5 +1,12 @@
 # Findings index
 
+**2026-11-08 TensorFold Go validation:** the pinned GLM EXL3 configuration
+passed one of two bounded profile checks on the same Go task: first-attempt
+success at 32K, two length-finished failures at 16K. This is targeted quality
+evidence, not a broad Go score, causal cap benefit or performance comparison.
+[Finding](2026-11-08-tensorfold-go-validation.md) ·
+[Evidence index](2026-11-08-tensorfold-go-validation-evidence/README.md).
+
 **2026-11-03 RTX5090 candidate campaign:** three families reached123/123 on selected
 coding configurations; private reference114/123. Different capabilities, seven task
 types repeated three times, no equivalent replacement or promotion.

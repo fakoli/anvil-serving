@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-08 TensorFold Go validation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM-5.3-Flash EXL3 4-bpw on pinned TensorFold with the ordered telemetry series; TP2, FP8 paged KV, DFlash2, configured 327,680 context/C4; requested C1 | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online Aider/Polyglot and contained Go tests on one native Linux owner | `quality`, `no-promotion`: one of two profile checks passed on one unique task, first attempt at 32K; both 16K attempts failed after response-length limits. Four complete transport responses; one earlier setup failure excluded from model grades. No broad Go score, causal cap benefit or performance ranking. | [Dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08) · [Finding](../findings/2026-11-08-tensorfold-go-validation.md) · [Evidence index](../findings/2026-11-08-tensorfold-go-validation-evidence/README.md) |
+
 ## 2026-11-03 RTX5090 candidate campaign
 
 | Configuration | Measured GPU / path | PRO relationship | Evidence labels | Decision labels | Evidence |

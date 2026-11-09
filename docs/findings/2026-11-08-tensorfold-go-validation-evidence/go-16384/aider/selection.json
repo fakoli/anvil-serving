@@ -1,0 +1,27 @@
+{
+  "excluded": [
+    "cpp/exercises/practice/all-your-base",
+    "java/exercises/practice/affine-cipher",
+    "javascript/exercises/practice/affine-cipher",
+    "python/exercises/practice/affine-cipher",
+    "rust/exercises/practice/accumulate"
+  ],
+  "files": {
+    "go/exercises/practice/alphametics": {
+      ".docs/instructions.append.md": "185a46ef90d3e98fff3e551f9af3ddb8cc4ad4781b04f662b6ef0e73403e041f",
+      ".docs/instructions.md": "5344503af3de77f6a97dfa495e723f0053dc824f712819f8dbcfab3ef147ae13",
+      ".meta/config.json": "273b5b9d421cb5dfcbb359a535aca36e3b52c5902b58b8ec4255de58a05f9038",
+      ".meta/example.go": "c238e965240fe0637ecfe2f3ab9d46a75a79f57659bf3a50817d901f8bf2adeb",
+      ".meta/gen.go": "d3b47ddeefc07e5bdfecee2fdac3516489feb2f68196008601dc80fb6b2d1130",
+      ".meta/tests.toml": "deed16f879de7e9e5425c38871eca465e408847c71e5370e9cb5a86022fb6e79",
+      "alphametics.go": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+      "alphametics_test.go": "eb22bd718a4fafc450ea9701ec2f81e7f6dafbfe48d4b8cbe66650248836657f",
+      "cases_test.go": "b3ed6e9601014a28a9ba2abe9472fb7bd985d5f44cf4375a411ed1fbd36ebf49",
+      "go.mod": "77917406d81852eb56b58e8d8846a595f9cf1ca87533f939c6cd1eb6fdce3596"
+    }
+  },
+  "instance_ids": [
+    "go/exercises/practice/alphametics"
+  ],
+  "sha256": "ba94468a48155f8049bbcd42d819104cff2e1791eb582d55c029db2c0b1bc57c"
+}

@@ -1,0 +1,68 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "mode": "observation-only; no serving mutation required restoration",
+  "before_observed_at": "2026-11-08T23:43:47.812644+00:00",
+  "after_observed_at": "2026-11-08T23:59:36.564004+00:00",
+  "identity_fields_equal": {
+    "container_id": true,
+    "started_at": true,
+    "image_digest": true,
+    "gpu_selection": true,
+    "recipe_digest": true,
+    "registry_digest": true,
+    "served_identity": true,
+    "bound_port": true,
+    "bound_endpoints": true
+  },
+  "route_equal": true,
+  "selected_tier": {
+    "state": "admitting",
+    "ready": true,
+    "active_requests": 0,
+    "draining": false
+  },
+  "final_engine": {
+    "running": 0,
+    "waiting": 0
+  },
+  "quality_workers_exited": true,
+  "initial_setup_worker_exited": "independently verified absent in final review",
+  "preserved": [
+    "model and weight revision",
+    "runtime image/container generation/start",
+    "recipe/registry identity",
+    "route",
+    "context",
+    "output/reasoning defaults",
+    "cache policy"
+  ],
+  "cache_occupancy": "natural state changes occurred; policy preserved; warm condition uncontrolled",
+  "source_commitments": [
+    {
+      "source_id": "qualification/before.json",
+      "sha256": "19d85cd940b7dd1d62ba2d2f644076c4c6b7f45e11943542fb9937268afd051f",
+      "bytes": 60178
+    },
+    {
+      "source_id": "qualification/final.json",
+      "sha256": "1b8fdb3fceb6e7bd1b0f0fbeab49bc4b34f92f243e876006a1da09fd7d2fd568",
+      "bytes": 60148
+    },
+    {
+      "source_id": "qualification/final-managed-status-corrected.json",
+      "sha256": "0477093037f7005d877e7ef7da5747388494b7758902c7a18390dff5ae71b680",
+      "bytes": 1494
+    },
+    {
+      "source_id": "qualification/quality-results.json",
+      "sha256": "770e15c87c9d4bd1c0c02d8ecdcb4d6d6aaadcacd17f6403439050bf67546060",
+      "bytes": 4745
+    },
+    {
+      "source_id": "qualification/final-independent-review.md",
+      "sha256": "8cf7f2c634eb819394440d3a678964a27254dfde3c2c110d3f085122fe8579dc",
+      "bytes": 5790
+    }
+  ],
+  "public_boundary": "Exact operational values remain private. These equality and drain observations do not imply campaign activation custody, traffic isolation, throughput or broad qualification."
+}
