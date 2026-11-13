@@ -1,0 +1,65 @@
+{
+  "schema": "operator-workflow/v1",
+  "observed_date": "2026-11-13",
+  "scope": "focused same-model runtime feature qualification; no speed or full-context concurrency claim",
+  "source_commit": "34280094d73c8a3c06fa6a88589400e7218eb12d",
+  "candidate_image": "sha256:2824d665f9334db0fe9868706cd26dc7bd2604974625a2602c74c78cf90b5886",
+  "candidate_registry_sha256": "fa9a7625ca1f88b735d9af0f48ec44ffc3690223dc59a3fdb5c470ae3aa9fef4",
+  "candidate_port": 30001,
+  "baseline_container_id": "8f82d202b4e8a6ae2fb5936c55bc762e7044199591309edca0ee15b5783e6446",
+  "baseline_image": "sha256:a3f640bf24ade689f926f54dd32cfbd752da70845f18cf1d12adf0c176617a36",
+  "baseline_registry_sha256": "2ab2f8493389414304c354666916cec261b506b536756fef0d0897bd7e270307",
+  "restoration_manifest_sha256": "ed4bbe5c8c1d73588ce103bdbe228c61e87a7ba585672966b412cdc6d1321b4b",
+  "limits": {
+    "container_ram_mib": 49152,
+    "effective_swap_mib": 0,
+    "host_reserve_mib": 16384,
+    "context": 327680,
+    "parallel": 4,
+    "max_tokens": 32768,
+    "request_timeout_seconds": 180
+  },
+  "sequence": [
+    "record host memory and router/native idle; quiesce/drain primary-local",
+    "retain exact baseline container, verify stopped restoration preview",
+    "load candidate through recipe; inspect health/build identity/startup",
+    "smoke/json/20 tools/tool continuation/streaming/image; C4 exact canaries under telemetry sampler",
+    "cold and warm synthetic 19k/99k retrieval; long structured map",
+    "prompt/reply logprobs combined TP2 and exact repeat; no-tool history streamed/whole",
+    "managed restart candidate and first-inference cache recovery",
+    "unload candidate; restore exact baseline, readmit and routed preflight; no alias or policy edit"
+  ],
+  "stop_rules": [
+    "startup/resource/identity/counter inconsistency: preserve error/logs then restore baseline",
+    "quality failure: stop broad campaign, retain actual response and independent mismatch",
+    "no silent retry or alternative model"
+  ],
+  "metrics_coverage": {
+    "performance": "not comparable; intentionally not scored",
+    "C4": "quality canaries plus sampled occupancy/memory/partition accounting",
+    "KV_pool_reply_cap": "CPU edge cases; deployed pool exceeds request context, clipping incidence not forced",
+    "tool_guard": "host parser adversarial tests plus live synthetic history; emission of rejected markup is not guaranteed",
+    "EOS": "startup token validation plus bounded nonrepeated outputs; model emission not guaranteed",
+    "cache": "fresh candidate volume and same-volume restart"
+  },
+  "promotion": false,
+  "files": {
+    "check_mia_delta.py": "f534d04df129942ec1758738fe5ffbd6408166403d43b252dea49f07a75b18ce",
+    "capture_memory.py": "a65eb616b6d175b893e8b96ce4b57928f43dc5380baf365c139302915899cef2",
+    "cache_checks.py": "5e3c662494d05b3f52fe24ad11fda5b6afaca357f9eead5b6d8d72d5e1f09d7f",
+    "cache-fixtures.json": "fd4302d1e32faf936d7f115c78bd3148b16d0e0d2354d32f149a4f0560968e0a",
+    "request-1000.json": "400116fe0470c06a4b2c3805fd33bf2c1ea27bc4ca8c5ba89119d7463c5108c2",
+    "request-5000.json": "3ff6fa7fd962018f0679429e30ecf2ee53debe0be65215180f5bb6bf48d3357c",
+    "request-long-map.json": "7e9263f2f71c95ff41f81beafe2d2074580acb46c02eaf6e72daabecaf50adba",
+    "sample_metrics.py": "318b92db5057b5d9dd2f883f32e5c56619f4005b7397352db802cfca29a8b8db",
+    "check_candidate.py": "d3792b099850f17835fa2e7010966a229b76f2636217e99c4adc6535fc1f440e"
+  },
+  "supersedes": "qualification-plan-r2.json",
+  "execution_pythonpath": "/operator/redacted",
+  "review_resolution": {
+    "candidate_custody": "managed exact image/recipe/port/container checks added before and after delta tests",
+    "guard": "history regression smoke only; host parser tests cover rejection/hiding",
+    "raw_response": "explicitly unvalidated until success receipt; failed exit retained; no overwrite/retry"
+  },
+  "launcher": "python -m anvil_serving.cli with frozen worktree PYTHONPATH"
+}

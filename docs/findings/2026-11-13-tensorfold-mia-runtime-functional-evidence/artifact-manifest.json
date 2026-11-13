@@ -1,0 +1,411 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-13-tensorfold-mia-runtime-functional",
+    "capability": "text and image",
+    "repository_revision": "8fe1767257f26495cb0ce8e65511c33717fb80cc",
+    "dirty_state": "product source clean at qualification; fixtures outside checkout",
+    "observed_date": "2026-11-13",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "qualified-runtime-candidate"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.benchmark/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "8dcb3b947db375a01c2244593cbf3a3fe5004371a6ef198f06ab77bd2b0e24a3",
+          "bytes": 934
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "d858897c667c932460b9b3af407218874c14891cac46d185499e99df6f972bdc",
+          "bytes": 1153
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "ead853d3aa68e9a01c1834997a2a6b9fd7ea9160eecbefe69d00938a2134e00b",
+          "bytes": 1169
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "qualification-plan-r3.json",
+          "sha256": "8286a8cfcabf344a8df237d9024fa3b5ddd2460279c58405bd06e545260742ca",
+          "bytes": 3977
+        },
+        {
+          "path": "qualification-plan-r5.json",
+          "sha256": "8c78c93a450e9b2ab53e3c674be4329ce131636d962a56e5cd2a603b9086ebb2",
+          "bytes": 4560
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "bc44a519056445acb2da95bc48eea13f73cb0903f969724f1ab4714a0356f956",
+          "bytes": 412
+        },
+        {
+          "path": "dispatch-packet.md",
+          "sha256": "3e63e471cca5e465352c56d91fe4eae02dabd5df2cfc5c425eb2d3177d9fd07d",
+          "bytes": 379
+        },
+        {
+          "path": "artifact-source.json",
+          "sha256": "873d67bdbba12dc17ad64c84f5070e7f8240e6e3539e511380a63b89979de99c",
+          "bytes": 4674
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/source-validation-final.json",
+          "sha256": "9e6e46bb9be58a1c5b450721d9288efc25253231a2ed742628edc0deaeae553d",
+          "bytes": 456
+        },
+        {
+          "path": "raw/candidate-v1-models.json",
+          "sha256": "b931192c6df743a77268395b3063fc862725dc3a240e5a067e4c368634cde678",
+          "bytes": 1228
+        },
+        {
+          "path": "raw/extended-custody-before.json",
+          "sha256": "9ea06c6cc5b4bde9784d94dca0b43f1f86144ca1dcb36f133d1f9d42c1f22f84",
+          "bytes": 2141
+        },
+        {
+          "path": "raw/extended-custody-after.json",
+          "sha256": "6139bc9ece2e66d784cc0e145b2c5aba33a9f2f53af26265cb45ff6ceb1d16fb",
+          "bytes": 2141
+        },
+        {
+          "path": "raw/image-inspect-labels.json",
+          "sha256": "519b0ef0e0ca148d556a93cb07ed45f4cc543a1e1d964c7bbd58900c18a04a99",
+          "bytes": 1520
+        },
+        {
+          "path": "raw/build-result.json",
+          "sha256": "705e69f86b15fa0b7c52fe9d268cc2c902d3e3722702bab8e310cfc43e302c3d",
+          "bytes": 1972
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "raw/build-result.json",
+          "sha256": "705e69f86b15fa0b7c52fe9d268cc2c902d3e3722702bab8e310cfc43e302c3d",
+          "bytes": 1972
+        },
+        {
+          "path": "raw/candidate-c4.json",
+          "sha256": "d966ce6880077fda81d0a7d60c84454b5c4ece98f6554ac23180f39f56684c28",
+          "bytes": 14360
+        },
+        {
+          "path": "raw/candidate-cache-cold.json",
+          "sha256": "4aaf899b77f925a5a0dea3eb5338fa09a2549a205b619cade19a0748a5ffff98",
+          "bytes": 2510
+        },
+        {
+          "path": "raw/candidate-cache-restarted.json",
+          "sha256": "fed8916b0859fe390ba3325c1a823cbf4b03780ff4587b994e6e77ae5b576a70",
+          "bytes": 2519
+        },
+        {
+          "path": "raw/candidate-cache-warm.json",
+          "sha256": "a8a1a32dd086483a4e9f92b1c62797e2adb1a1f4a017a7d27e05c34215da95ce",
+          "bytes": 2513
+        },
+        {
+          "path": "raw/candidate-image.json",
+          "sha256": "c49a8302f7c6879a76edf82f3f9ec732162e8d074834a358ba6bb8e6e0cf5c18",
+          "bytes": 2958
+        },
+        {
+          "path": "raw/candidate-long-map.json",
+          "sha256": "0f607223974a72058f41925eb7c61b633daa90ea4c3c9820f37cb19cadc459b0",
+          "bytes": 5747
+        },
+        {
+          "path": "raw/candidate-preflight.json",
+          "sha256": "47ce9ba980e23421cc8343573b78e6b95c88298c842b0af81a937e07f747494e",
+          "bytes": 15239
+        },
+        {
+          "path": "raw/candidate-samples.json",
+          "sha256": "bdddc53f01145f8e4a12af101b8917199d9233189b3c5b620c288d88674dc66e",
+          "bytes": 717199
+        },
+        {
+          "path": "raw/candidate-smoke.json",
+          "sha256": "84e6766f73300dfbaef15460129e253f8c07aa04594a656346cb19971680597a",
+          "bytes": 1862
+        },
+        {
+          "path": "raw/candidate-v1-models.json",
+          "sha256": "b931192c6df743a77268395b3063fc862725dc3a240e5a067e4c368634cde678",
+          "bytes": 1228
+        },
+        {
+          "path": "raw/extended-baseline-chat-completions-stream.json",
+          "sha256": "eeda2fa1a5af330976055f4f338fafba7c7bc110423db9afaf541da28b8e89c0",
+          "bytes": 3028
+        },
+        {
+          "path": "raw/extended-baseline-chat-completions-whole.json",
+          "sha256": "cb493db88b0ca3f838b46ada9e66f00a88033aaad30ab6afd6be038f8ba305c0",
+          "bytes": 1963
+        },
+        {
+          "path": "raw/extended-baseline-messages-stream.json",
+          "sha256": "23f42ba8e76c5928868f5fdbb5c439c98bacc99b38efd560f2e2e21a4a575271",
+          "bytes": 2082
+        },
+        {
+          "path": "raw/extended-baseline-messages-whole.json",
+          "sha256": "8f4ac017490e77749a4cb2d49edeada3572628ab7d278e06579c87199c557774",
+          "bytes": 850
+        },
+        {
+          "path": "raw/extended-baseline-scores128.json",
+          "sha256": "952af4b7b0e41ae0d9ec45b87c819eb83c49bcd5d246aa859dfca8cfcaf4a57d",
+          "bytes": 493
+        },
+        {
+          "path": "raw/extended-candidate-chat-completions-stream.json",
+          "sha256": "c2fd043de501735931b53afe44b49bab9e9f68e2ab4803864fd0b842c45f2fc1",
+          "bytes": 3042
+        },
+        {
+          "path": "raw/extended-candidate-chat-completions-whole.json",
+          "sha256": "d597f2600b12ea08ebe95311147f33195cc95169c41635d00c2123887f9dae63",
+          "bytes": 1949
+        },
+        {
+          "path": "raw/extended-candidate-ids129-refused.json",
+          "sha256": "efb20f3d4e9f5fce7c5e6fce0a40e0bdf0089462345f13fa65edeae8f720aa94",
+          "bytes": 895
+        },
+        {
+          "path": "raw/extended-candidate-messages-stream.json",
+          "sha256": "816584e7ce6a991532417e39cea1f8f5411fc4515f926155698955dcd3206dac",
+          "bytes": 2082
+        },
+        {
+          "path": "raw/extended-candidate-messages-whole.json",
+          "sha256": "ef3ef486ee26355f6c379bb5e78d6fd2238a44b1c9b4f4937061649e2ad23325",
+          "bytes": 1244
+        },
+        {
+          "path": "raw/extended-candidate-post-wave-plain.json",
+          "sha256": "ed3126287924fcb2161d3bef14f5db615b62501dbf3601bfe8658034257aa191",
+          "bytes": 1337
+        },
+        {
+          "path": "raw/extended-candidate-result.json",
+          "sha256": "6b560cc1159ac95845537955015927d08ce914bf6512bebf15155b5f40c2cb4f",
+          "bytes": 349
+        },
+        {
+          "path": "raw/extended-candidate-scores128-control.json",
+          "sha256": "d02811ba90dc253f17eaee28fe5d87dad70a8ae0ef5eba20ae345cd01b5a9eb1",
+          "bytes": 38849
+        },
+        {
+          "path": "raw/extended-candidate-scores128-extras.json",
+          "sha256": "43f30117777928f797b50db4a5b6c255f4116257f62bebfb97252e11ffb2b527",
+          "bytes": 39496
+        },
+        {
+          "path": "raw/extended-candidate-scores128-repeat.json",
+          "sha256": "b5e56a9ea03e6b4e036ce2ef25cb7212752d69af0d1f8b76a8bf631ce2321917",
+          "bytes": 39426
+        },
+        {
+          "path": "raw/extended-candidate-scores128.json",
+          "sha256": "281bd0a639db9ad8abb0e1b53cb01d19e6899fb1fda1575c2c1c236fc476b94e",
+          "bytes": 39428
+        },
+        {
+          "path": "raw/extended-candidate-scores129-refused.json",
+          "sha256": "530ee97cb9c6fde855f08fd6542b357c17621e098bebd1d080a63abab5f87837",
+          "bytes": 494
+        },
+        {
+          "path": "raw/extended-candidate-wave-0.json",
+          "sha256": "74b2a43a2cb840b8e3f96b34e682a8b64576bc61fe3853358c4c241566287ab7",
+          "bytes": 39424
+        },
+        {
+          "path": "raw/extended-candidate-wave-1.json",
+          "sha256": "7062e43a62742b7097a2525da52862846a361e5589f1f51388ccf41640dc0a00",
+          "bytes": 39426
+        },
+        {
+          "path": "raw/extended-candidate-wave-plain.json",
+          "sha256": "22aa578122968961e9d172866b4c0ec35ff2d745514c1cab2b39f5cb8a1711bb",
+          "bytes": 1263
+        },
+        {
+          "path": "raw/extended-custody-after.json",
+          "sha256": "6139bc9ece2e66d784cc0e145b2c5aba33a9f2f53af26265cb45ff6ceb1d16fb",
+          "bytes": 2141
+        },
+        {
+          "path": "raw/extended-custody-before.json",
+          "sha256": "9ea06c6cc5b4bde9784d94dca0b43f1f86144ca1dcb36f133d1f9d42c1f22f84",
+          "bytes": 2141
+        },
+        {
+          "path": "raw/extended-health.json",
+          "sha256": "19d83284e7aa6a0b050db881ba08a8a5462be84b7189df0dfcb95f02d9ecd3de",
+          "bytes": 799
+        },
+        {
+          "path": "raw/extended-oracle-selfcheck.json",
+          "sha256": "cffc21cdb3c4d29cfc921d43fef2970ff58a71cb8fd328f340c50e944ce50d52",
+          "bytes": 193
+        },
+        {
+          "path": "raw/image-inspect-labels.json",
+          "sha256": "519b0ef0e0ca148d556a93cb07ed45f4cc543a1e1d964c7bbd58900c18a04a99",
+          "bytes": 1520
+        },
+        {
+          "path": "raw/logprobs-first.json",
+          "sha256": "f475ed8a25b04ca5f24632908b0f710bdf531ca222f7134bcd24a809de880901",
+          "bytes": 3681
+        },
+        {
+          "path": "raw/logprobs-repeat.json",
+          "sha256": "0e862493f49384aaf14b986284ef088c4e2ac24aa7c00ed68833b4e2735e4605",
+          "bytes": 3682
+        },
+        {
+          "path": "raw/mia-delta-result.json",
+          "sha256": "56def3e27a1d16e62bc4785322c6191432cff6384d511e9b65639c27a9bf96bf",
+          "bytes": 251
+        },
+        {
+          "path": "raw/readmit-restore.json",
+          "sha256": "7357022befd06d9b60735655cbbda822f864d49477857016919d47a592f6c5bc",
+          "bytes": 1040
+        },
+        {
+          "path": "raw/restore-prometheus.json",
+          "sha256": "2bb890d4b0831397ca990deb4150ce895a8a9b6b14d3118ed96fae80b173831b",
+          "bytes": 497
+        },
+        {
+          "path": "raw/restore-result.json",
+          "sha256": "db8df012423d74440200159b86c90afa6625679744ceddf5af698f3929666d48",
+          "bytes": 1068
+        },
+        {
+          "path": "raw/restore-routed-smoke.json",
+          "sha256": "e5d76c4af26b1a514036b0a7ab3dc5882b95750cab6f65b45ae4cf2ad8f4954b",
+          "bytes": 378
+        },
+        {
+          "path": "raw/tool-guard-false.json",
+          "sha256": "3b64f4772f99718513fc4d0f9e3472c719a3747b31948b422fd2307a87be97eb",
+          "bytes": 1863
+        },
+        {
+          "path": "raw/tool-guard-true.json",
+          "sha256": "abaa7d6d9ff06c293b26ac699c14c445f2da598792fe6af5c2c18dcf95537c89",
+          "bytes": 8617
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "36fe102fb0763e1a61d4566a9e0e1ab8936513b419409c663463491e8417a781",
+          "bytes": 806
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "3fcfafecfdf0e65d3fb0b7165f0388755367cceedeb4450ee8c7af4e194dc5c7",
+          "bytes": 881
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "fd68f1119ec9d7609346f5c0b104f367f67935953adac34e59f14988cc742dae",
+          "bytes": 1240
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "de474804de33b4c2c0d06a5baf7b3dcb8db16a27be4dabd125df8b53b3bc0b7c",
+          "bytes": 2288
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social copy requested; dated finding supplies narrative."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-source.json"
+}

@@ -1,5 +1,9 @@
 # Benchmark results
 
+## 2026-11-13 — Mia TensorFold functional update
+
+The [same-model runtime check](findings/2026-11-13-tensorfold-mia-runtime-functional.md) reproduces and fixes a truncated Messages tool-call HTTP 500, expands prompt scoring from 20 to 128 alternatives, and passes tools/image/C4/cache regressions. This is a functional comparison, with no speed ranking or full-window concurrency claim.
+
 ## 2026-11-03 — RTX5090 coding and Ignis budget follow-up
 
 The [campaign](findings/2026-11-03-rtx5090-campaign.md) publishes three candidate

@@ -1,0 +1,1 @@
+{"logprobs128":"passed, repeat exact, 129 refused","tool_transport":[{"route":"chat/completions","stream":false,"status":200,"validated":true},{"route":"chat/completions","stream":true,"status":200,"validated":true},{"route":"messages","stream":false,"status":200,"validated":true},{"route":"messages","stream":true,"status":200,"validated":true}]}

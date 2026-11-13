@@ -1,5 +1,7 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-13 Mia TensorFold functional checks:** two96GiB Max-Q cards at300W passed the [runtime delta](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md): truncated Messages500 fixed,128-entry prompt scoring, tools/image, C4 canaries and cache restart.1164 coherent telemetry samples observed four active streams; this is not a speed or simultaneous-full-window capacity measurement.
+
 **2026-11-09 TensorFold reasoning controls:** the dual-card GLM EXL3
 [quality investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
 keeps the response cap at 16K while changing request-local Max/Low effort.
@@ -160,8 +162,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-26 (actual-CUDA marker/sampling gates on one card and one synchronized diagnostic C1 request on the pair). **Evidence
-interpretation reviewed:** 2026-10-26.
+history. **Last locally measured:** 2026-11-13 (dual-card focused runtime functional and telemetry checks; no new speed ranking). **Evidence
+interpretation reviewed:** 2026-11-13.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).

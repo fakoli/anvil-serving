@@ -73,6 +73,7 @@ nav:
   - Benchmarks & evidence:
       - Start here: benchmarks/index.md
       - Latest qualification: findings/2026-09-19-glm53-apc-promotion.md
+      - Mia runtime functional validation: findings/2026-11-13-tensorfold-mia-runtime-functional.md
       - Choose and compare:
           - Find a measured recipe: benchmarks/recipe-results.md
           - Compare models: benchmarks/comparison.md

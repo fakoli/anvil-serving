@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-13 Mia TensorFold runtime
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Mia fc1ee3a,110 author +6 owned patches; GLM EXL3 TP2, FP8 sharded KV, DFlash2; configured327680/C4 | Two RTX PRO6000 Blackwell Max-Q96GiB,300W; direct native HTTP and rollback routed smoke | Functional candidate accepted: Messages cut-call500 fixed;128 prompt alternatives/requested IDs pass; tools/image/C4/cache regressions pass. No matched speed or full-window C4 claim. | [Dossier](models/glm53-flash.md#mia-runtime-update-2026-11-13) · [Finding](../findings/2026-11-13-tensorfold-mia-runtime-functional.md) |
+
 ## 2026-11-09 TensorFold reasoning investigation
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |
