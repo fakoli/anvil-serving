@@ -458,12 +458,16 @@ Both service choosers hide the app from nonoperators. The general access editor
 omits it; use the existing managed `operators-ensure-resource` administrative
 operation to add its grant to configured operators. Changed operators must sign
 in to Connect again; an already-converged request preserves their sessions.
+The operator allowlist is startup configuration; grant changes increment the
+affected human's generation and invalidate their existing Connect sessions.
 
 Omitting the setting or using `false` preserves ordinary browser access.
 Malformed values, API resources, and an enabled restriction without configured
 browser administration are refused. Keep the origin private, retain its native
 Host/Origin checks, and publish the app through the existing managed connector
 and TLS edge. A tile opens the application normally; it does not embed a frame.
+This restriction covers the declared browser resource; separately declared API
+aliases and direct origin access require their own protection.
 
 ### Application roles owned by Connect
 

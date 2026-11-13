@@ -28,12 +28,13 @@ func TestOperatorApplicationBlocksDirectRequestsBeforeOrigin(t *testing.T) {
 	declaration := operatorDeclaration()
 	for _, operator := range []bool{false, true} {
 		t.Run(map[bool]string{false: "nonoperator-with-app-admin-grant", true: "operator"}[operator], func(t *testing.T) {
-			authority := newBrowserAuthorityStub()
+			authority := &portalStub{browserAuthorityStub: newBrowserAuthorityStub(), human: session.Human{Generation: 1, Resources: []string{"admin-app"}}}
 			authority.admitted.Resource, authority.admitted.Host = "admin-app", "admin-app.example.test"
 			authority.admitted.ApplicationRole = "admin"
 			if operator {
 				authority.admitted.Principal = declaration.BrowserAdministration.Operators[0]
 			}
+			authority.human.ID = authority.admitted.Principal
 			dispatches := 0
 			browser, err := NewBrowser(declaration, authority, func(w http.ResponseWriter, r *http.Request, resource config.Resource, admitted session.Admission) {
 				dispatches++
@@ -54,6 +55,8 @@ func TestOperatorApplicationBlocksDirectRequestsBeforeOrigin(t *testing.T) {
 				}
 				if cookie != "" {
 					r.AddCookie(&http.Cookie{Name: BrowserSessionCookie, Value: cookie})
+				} else {
+					r.Header.Set("Authorization", "Bearer api-key-cannot-authorize-browser")
 				}
 				r.Header.Set("X-Forwarded-User", "operator")
 				if upgrade {
@@ -85,6 +88,15 @@ func TestOperatorApplicationBlocksDirectRequestsBeforeOrigin(t *testing.T) {
 			before := dispatches
 			if request("GET", "/api/projects", "", "", false).Code != http.StatusUnauthorized || request("POST", "/api/projects", "https://foreign.example.test", "opaque-session", false).Code != http.StatusForbidden {
 				t.Fatal("anonymous or cross-origin request admitted")
+			}
+			if operator {
+				// Portal-only identity remains valid after losing an app grant;
+				// the normal authority Check must still refuse origin dispatch.
+				authority.portalOnly = true
+				if request("GET", "/api/projects", "", "opaque-session", false).Code != http.StatusUnauthorized || dispatches != before {
+					t.Fatal("configured operator bypassed the normal resource grant")
+				}
+				authority.portalOnly = false
 			}
 			authority.revoked.Store(true)
 			if request("GET", "/api/projects", "", "opaque-session", false).Code != http.StatusUnauthorized || dispatches != before || !operator && dispatches != 0 {
