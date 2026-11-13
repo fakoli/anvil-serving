@@ -137,6 +137,16 @@ process status is not application readiness. Gateway service certificates are
 currently renewed by a supervised process restart before 24-hour expiry, not by
 zero-downtime certificate rotation.
 
+On Linux gateway startup, exact owned `admin.sock` and declared `ingress.sock`
+crash leftovers can be recovered after exclusive authority-store ownership is
+acquired. Both names are checked before recovery. Only a stable, single-link
+socket with the declared owner, group and mode that returns `ECONNREFUSED` is
+moved into a fresh owner-private `refused-sockets-*` directory on the same mount.
+Active listeners, unknown liveness, symlinks, other file types and custody drift
+remain refusals. Recovery never overwrites another listener or deletes retained
+evidence. This also runs during autonomous supervised restarts; ordinary socket
+listener helpers still refuse existing names. See [ADR-0047](adr/0047-gateway-socket-recovery.md).
+
 ## Cloudflare edge publishing
 
 The public side of a Connect deployment is one Cloudflare tunnel plus one DNS

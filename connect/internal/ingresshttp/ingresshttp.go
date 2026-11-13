@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/fakoli/anvil-serving/connect/internal/socketrecovery"
 	"golang.org/x/sys/unix"
 )
 
@@ -147,9 +148,14 @@ func matchesCurrentDirectory(policy Policy, expected unix.Stat_t) bool {
 	return current.stat.Dev == expected.Dev && current.stat.Ino == expected.Ino
 }
 
-// Listen creates ingress.sock in the policy directory. It never removes an
-// existing entry, and accepts only the exact configured edge UID.
-func Listen(policy Policy) (net.Listener, error) {
+// Prepared retains verified ingress custody without binding or changing files.
+// Only gateway startup uses recovery, after taking its authority-store lock.
+type Prepared struct {
+	policy    Policy
+	directory *retainedDirectory
+}
+
+func Prepare(policy Policy) (*Prepared, error) {
 	if runtime.GOOS != "linux" || policy.Validate() != nil || uint32(os.Geteuid()) != policy.GatewayUID {
 		return nil, ErrIngress
 	}
@@ -157,6 +163,55 @@ func Listen(policy Policy) (net.Listener, error) {
 	if err != nil {
 		return nil, ErrIngress
 	}
+	return &Prepared{policy: policy, directory: directory}, nil
+}
+
+func (p *Prepared) Close() error {
+	if p == nil || p.directory == nil {
+		return nil
+	}
+	err := p.directory.Close()
+	p.directory = nil
+	return err
+}
+
+func (p *Prepared) InspectRefusedSocket() (*socketrecovery.Refused, error) {
+	if p == nil || p.directory == nil || !matchesCurrentDirectory(p.policy, p.directory.stat) {
+		return nil, ErrIngress
+	}
+	path, err := pinnedSocketPath(p.directory.fd)
+	if err != nil {
+		return nil, ErrIngress
+	}
+	return socketrecovery.Inspect(path, p.policy.GatewayUID, p.policy.GroupID, 0660)
+}
+
+func (p *Prepared) RecoverRefusedSocket(candidate *socketrecovery.Refused) error {
+	if p == nil || p.directory == nil || !matchesCurrentDirectory(p.policy, p.directory.stat) {
+		return ErrIngress
+	}
+	return candidate.Quarantine()
+}
+
+// Listen creates ingress.sock in the policy directory. It never removes an
+// existing entry, and accepts only the exact configured edge UID.
+func Listen(policy Policy) (net.Listener, error) {
+	prepared, err := Prepare(policy)
+	if err != nil {
+		return nil, err
+	}
+	defer prepared.Close()
+	return prepared.Listen()
+}
+
+// Listen transfers the prepared descriptor into a listener on success. Existing
+// entries still refuse; recovery is an explicit, separately locked caller step.
+func (p *Prepared) Listen() (net.Listener, error) {
+	if p == nil || p.directory == nil || !matchesCurrentDirectory(p.policy, p.directory.stat) {
+		return nil, ErrIngress
+	}
+	directory, policy := p.directory, p.policy
+	p.directory = nil
 	fail := func(listener *net.UnixListener, socket unix.Stat_t) (net.Listener, error) {
 		if listener != nil {
 			listener.SetUnlinkOnClose(false)
