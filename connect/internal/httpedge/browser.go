@@ -71,6 +71,7 @@ type Browser struct {
 	administration *AccessAdministration
 	dispatch       BrowserDispatch
 	dedicatedHome  bool
+	operators      map[string]bool
 }
 
 func NewBrowser(declaration config.Gateway, authority BrowserAuthority, dispatch BrowserDispatch) (*Browser, error) {
@@ -96,6 +97,12 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 	}
 	b := &Browser{authority: authority, resources: map[string]browserResource{}, slots: make(chan struct{}, declaration.MaxConcurrent), identities: map[string]*browseridentity.Signer{}, devices: devices, dispatch: dispatch}
 	b.dedicatedHome = declaration.PortalHost != ""
+	if settings := declaration.BrowserAdministration; settings != nil {
+		b.operators = make(map[string]bool, len(settings.Operators))
+		for _, operator := range settings.Operators {
+			b.operators[operator] = true
+		}
+	}
 	b.control = make(chan struct{}, min(8, declaration.MaxConcurrent))
 	b.logoutSlots = make(chan struct{}, min(8, declaration.MaxConcurrent))
 	b.deviceSlots = make(chan struct{}, min(8, declaration.MaxConcurrent))
@@ -113,6 +120,10 @@ func newBrowser(declaration config.Gateway, authority BrowserAuthority, identiti
 		if resource.DisplayName != nil {
 			name := *resource.DisplayName
 			resource.DisplayName = &name
+		}
+		if resource.OperatorOnly != nil {
+			restricted := *resource.OperatorOnly
+			resource.OperatorOnly = &restricted
 		}
 		if resource.Rule.NativeAuth == "signed-identity" {
 			signer := identities[resource.Rule.ID]
@@ -434,6 +445,10 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if admitted.Resource != resource.declaration.Rule.ID || admitted.Host != r.Host || admitted.SessionID == "" || admitted.Principal == "" || admitted.ExpiresAt.IsZero() {
 		browserFailure(w, http.StatusUnauthorized)
+		return
+	}
+	if !b.permitsResource(resource.declaration, admitted.Principal) {
+		browserFailure(w, http.StatusForbidden)
 		return
 	}
 	if r.ContentLength > resource.declaration.Rule.Limits.RequestBytes {
@@ -765,9 +780,13 @@ func (b *Browser) deviceRoute(w http.ResponseWriter, r *http.Request, resource b
 	}
 }
 
+func (b *Browser) permitsResource(resource config.Resource, principal string) bool {
+	return !resource.RequiresOperator() || b.operators[principal]
+}
+
 func (b *Browser) browserAdmission(r *http.Request, resource browserResource, cookies browserCookies) (session.Admission, bool) {
 	admitted, err := b.authority.Authenticate(cookies.session, r.Host)
-	if err != nil || admitted.Resource != resource.declaration.Rule.ID || admitted.Host != r.Host || admitted.SessionID == "" || admitted.Principal == "" || admitted.ExpiresAt.IsZero() || b.authority.Check(admitted) != nil {
+	if err != nil || admitted.Resource != resource.declaration.Rule.ID || admitted.Host != r.Host || admitted.SessionID == "" || admitted.Principal == "" || admitted.ExpiresAt.IsZero() || !b.permitsResource(resource.declaration, admitted.Principal) || b.authority.Check(admitted) != nil {
 		return session.Admission{}, false
 	}
 	return admitted, true

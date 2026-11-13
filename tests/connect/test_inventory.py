@@ -43,6 +43,11 @@ def test_resources_allowlist_omits_api_and_secret_references(monkeypatch):
     assert "PRIVATE_SENTINEL" not in json.dumps(result.data)
     assert result.data["read_only"] is True
 
+    data["gateway"]["gateway"]["resources"][0]["operator_only"] = True
+    restricted = dispatch(["resources"])
+    assert restricted.data["resources"][1]["operator_only"] is True
+    assert "operator_only" not in restricted.data["resources"][0]
+
 
 def test_product_discovery_is_read_only_and_machine_readable(environment, capsys):
     for args in (["list"], ["show", "owner"]):
