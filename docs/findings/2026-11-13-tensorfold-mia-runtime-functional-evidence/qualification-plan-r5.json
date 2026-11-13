@@ -6,7 +6,7 @@
   "candidate_image": "sha256:2824d665f9334db0fe9868706cd26dc7bd2604974625a2602c74c78cf90b5886",
   "candidate_registry_sha256": "fa9a7625ca1f88b735d9af0f48ec44ffc3690223dc59a3fdb5c470ae3aa9fef4",
   "candidate_port": 30001,
-  "baseline_container_id": "8f82d202b4e8a6ae2fb5936c55bc762e7044199591309edca0ee15b5783e6446",
+  "baseline_container_id": "baseline-incarnation",
   "baseline_image": "sha256:a3f640bf24ade689f926f54dd32cfbd752da70845f18cf1d12adf0c176617a36",
   "baseline_registry_sha256": "2ab2f8493389414304c354666916cec261b506b536756fef0d0897bd7e270307",
   "restoration_manifest_sha256": "ed4bbe5c8c1d73588ce103bdbe228c61e87a7ba585672966b412cdc6d1321b4b",

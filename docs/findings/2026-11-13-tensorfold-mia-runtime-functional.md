@@ -31,7 +31,7 @@ Four concurrent exact canaries passed. The telemetry window retained1164 coheren
 
 Exact retrieval passed at19456 and99284 prompt tokens. The first99K request already reused18432 tokens, so it is not a fully cold measurement. Warm requests reused18432/98304 tokens; after managed recreation, the same-volume first retrievals reused those prefixes and returned correct values. A384-entry structured map also passed.
 
-The previous container was restored with its exact image and identity, monitoring was rebound to its new start time, and authenticated routed RESTORE_OK passed. The later delta window reused the accepted candidate. [Restoration evidence](2026-11-13-tensorfold-mia-runtime-functional-evidence/restoration.json) distinguishes this rehearsal from the current isolated candidate state.
+The previous container was restored with its exact image and identity, monitoring was rebound to its new start time, and authenticated routed RESTORE_OK passed. The later delta window reused the accepted candidate. [Restoration evidence](2026-11-13-tensorfold-mia-runtime-functional-evidence/restoration.json) distinguishes this rehearsal from the isolated candidate state recorded when the qualification packet was finalized.
 
 ## Freshness and boundaries
 

@@ -1,1 +1,1 @@
-{"passed":true,"container_id":"606fb9743dbd55477b8daebd55bff3e3a587c2dcfa2098d0c62792a61497ad9a","tool_guard":"history regression smoke; rejection activation not proven","logprobs":"shape and repeat determinism only; numerical fidelity not measured"}
+{"passed":true,"container_id":"candidate-first-incarnation","tool_guard":"history regression smoke; rejection activation not proven","logprobs":"shape and repeat determinism only; numerical fidelity not measured"}
