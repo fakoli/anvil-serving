@@ -841,6 +841,12 @@ remain separate from generated service configuration.
 Public reverse tunnels open connections on demand. Zero idle registrations are
 reported as idle, not a failed tunnel, and do not trigger a connector restart on
 an unchanged apply. Status does not replace an authenticated application request.
+
+A `tunnel_disconnected` event can also mean that the caller or an intermediary
+canceled an idle pending handshake before HTTP 101. It does not prove prior
+establishment or origin readiness. Intermediary reconnects remain visible;
+backend failures and authority cancellation with a live caller continue to
+report establishment failure.
 The reverse TCP backend waits for demand before completing its HTTP upgrade.
 Pending handshakes retain lease, capacity, cancellation and absolute lifetime
 limits; the 45-second read idle limit starts after the verified upgrade.
