@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -126,6 +127,52 @@ func TestPendingHandshakeRetainsCapacityAndAuthorityBounds(t *testing.T) {
 			}
 			if len(gate.routes["router"].slots) != 0 {
 				t.Fatal("pending handshake leaked admission slots")
+			}
+			wantReason := "tunnel_establishment_failed"
+			if disposition == "cancel" {
+				wantReason = "tunnel_disconnected"
+			}
+			events := gate.Events.Snapshot()
+			if len(events) != 3 {
+				t.Fatal("pending outcomes missing", events)
+			}
+			for _, event := range events {
+				if event.Reason != wantReason {
+					t.Fatal("caller disconnect and authority failure conflated", event)
+				}
+			}
+		})
+	}
+}
+
+type cancelOnErrorWriter struct {
+	*httptest.ResponseRecorder
+	cancel context.CancelFunc
+}
+
+func (w cancelOnErrorWriter) WriteHeader(status int) {
+	w.cancel()
+	w.ResponseRecorder.WriteHeader(status)
+}
+
+func TestBackendFailureRemainsFailureWhenCallerDisconnectsAfterError(t *testing.T) {
+	for _, lateCancellation := range []bool{false, true} {
+		t.Run(fmt.Sprint(lateCancellation), func(t *testing.T) {
+			gate, _, token := gateFixture(t)
+			gate.transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
+				return nil, errors.New("synthetic backend dial failure")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recorder := httptest.NewRecorder()
+			var writer http.ResponseWriter = recorder
+			if lateCancellation {
+				writer = cancelOnErrorWriter{recorder, cancel}
+			}
+			gate.ServeHTTP(writer, entryRequest(token, "tunnel.example.test").WithContext(ctx))
+			events := gate.Events.Snapshot()
+			if recorder.Code != http.StatusBadGateway || len(events) != 1 || events[0].Reason != "tunnel_establishment_failed" {
+				t.Fatal("genuine backend failure was hidden", recorder.Code, events)
 			}
 		})
 	}
@@ -269,6 +316,9 @@ func TestLocalAdmissionDeadlineAndEntryCancellation(t *testing.T) {
 	local.ServeHTTP(w, entryRequest(token, "local-http.example.test"))
 	if w.Code != 502 || time.Since(began) > 4*time.Second || calls.Load() != 1 {
 		t.Fatal("local establishment not bounded", w.Code, time.Since(began))
+	}
+	if events := gate.Events.Snapshot(); len(events) != 1 || events[0].Reason != "tunnel_establishment_failed" {
+		t.Fatal("local admission timeout was mislabeled as caller disconnect", events)
 	}
 }
 

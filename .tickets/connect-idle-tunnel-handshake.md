@@ -24,3 +24,17 @@ then verifies streaming and revocation. Its predecessor reproduces the original
 
 These are source and isolated transport checks. Installed deployment and
 authenticated browser acceptance require separate verification.
+
+Follow-up: an intermediary can cancel an idle pending request before HTTP 101.
+The gate now reports a matching original-caller cancellation as
+`tunnel_disconnected`, preserving the observation without claiming a backend
+establishment failure or a previously established tunnel. Classification is
+captured before writing an error response, so a later caller disconnect cannot
+hide a backend failure. Lease expiry, revocation and local admission timeout
+with a live caller remain failures. Simultaneous cancellation cannot uniquely
+identify which actor initiated it; no causal attribution is inferred.
+
+This corrects event meaning; it does not eliminate intermediary reconnects or
+change authentication, deadlines or transport behavior. Pending cancellation,
+authority failure and genuine backend failure followed by caller cancellation
+have focused regression coverage.

@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -171,7 +172,15 @@ func New(host string, declaration config.Gateway, leases *Leases, backends map[s
 				}
 				return nil
 			},
-			ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) { gateFailure(w, http.StatusBadGateway) },
+			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+				if attempt, ok := r.Context().Value(attemptKey{}).(*upgradeAttempt); ok {
+					// Snapshot before writing 502: a caller leaving after a real
+					// backend failure must not relabel that failure as a disconnect.
+					callerError := attempt.callerContext.Err()
+					attempt.callerCanceled = callerError != nil && errors.Is(err, callerError)
+				}
+				gateFailure(w, http.StatusBadGateway)
+			},
 		}
 		resource.Rule.Methods = append([]string(nil), resource.Rule.Methods...)
 		resource.Rule.ExternalRedirects = append([]string(nil), resource.Rule.ExternalRedirects...)
@@ -261,10 +270,12 @@ func (g *Gate) Registrations() map[string]map[string]int {
 
 type attemptKey struct{}
 type upgradeAttempt struct {
-	timer         *time.Timer
-	established   atomic.Bool
-	onEstablished func()
-	backend       *pendingTunnelConn
+	timer          *time.Timer
+	established    atomic.Bool
+	onEstablished  func()
+	backend        *pendingTunnelConn
+	callerContext  context.Context
+	callerCanceled bool
 }
 
 // Only this reverse-tunnel handshake may wait without a socket idle deadline.
@@ -331,7 +342,7 @@ func (g *Gate) serveEntry(w http.ResponseWriter, r *http.Request, host, path str
 	defer cancel()
 	// Local admission gets three seconds for the entire backend dial/TLS/101,
 	// not three seconds per stage. Stop the timer only after verified upgrade.
-	attempt := &upgradeAttempt{}
+	attempt := &upgradeAttempt{callerContext: r.Context()}
 	attempt.onEstablished = func() {
 		g.registrationsMu.Lock()
 		if g.registrations == nil {
@@ -356,7 +367,7 @@ func (g *Gate) serveEntry(w http.ResponseWriter, r *http.Request, host, path str
 	// ReverseProxy owns the raw upgraded bytes. Do not reframe them with a
 	// WebSocket library: the pinned tunnel may use unmasked client frames.
 	route.proxy.ServeHTTP(relay.Writer(w, ctx, 45*time.Second), r.Clone(ctx))
-	if attempt.established.Load() {
+	if attempt.established.Load() || attempt.callerCanceled {
 		g.Events.Record(path, admission.Resource, "tunnel_disconnected")
 	} else {
 		g.Events.Record(path, admission.Resource, "tunnel_establishment_failed")
