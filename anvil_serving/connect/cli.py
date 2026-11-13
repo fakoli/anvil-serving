@@ -44,22 +44,24 @@ def _users_parser(actions) -> None:
         "sha256": {"help": "Independently retained archive checksum.", "required": True},
         "destination": {"help": "Fresh private recovery directory; never activates accounts.", "required": True},
         "include-gateway": {"action": "store_true", "help": "Also retain gateway authority after the authentication snapshot."},
+        "scheduled": {"action": "store_true", "help": "Run the verified installed authentication and gateway backup worker now."},
     }
     for operation, (summary, names) in USER_OPERATIONS.items():
         leaf = operations.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
         leaf.set_defaults(username=None, manifest=None, email=None, role=None, grant=None,
-                          output=None, input=None, sha256=None, destination=None, include_gateway=False)
+                          output=None, input=None, sha256=None, destination=None, include_gateway=False, scheduled=False)
         if operation not in {"list", "backup", "sync-operators", "sync-roles", "schedule", "deletion-schedule", "process-deletions", "restore", "configure-memory"}:
             leaf.add_argument("username", help="Exact local username.")
         if operation != "restore":
             leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
+        backup_modes = leaf.add_mutually_exclusive_group() if operation == "backup" else None
         for name in names:
             kwargs = {"action": _Once, **options[name]}
             if name == "input" and operation == "configure-memory":
                 kwargs["help"] = "Protected memory installation JSON outside Git."
             if name == "grant" and operation == "access":
                 kwargs["required"] = True
-            leaf.add_argument("--" + name, **kwargs)
+            (backup_modes if name in {"include-gateway", "scheduled"} else leaf).add_argument("--" + name, **kwargs)
         if operation not in {"list", "show"}:
             leaf.add_argument("--dry-run", action="store_true", help="Preview only, even with --confirm.")
             leaf.add_argument("--confirm", action="store_true", help="Apply; omission previews the operation.")
@@ -240,7 +242,7 @@ def _legacy_user_options(argv: list[str]) -> list[str]:
     if len(argv) < 2 or argv[0] != "users" or not argv[1].startswith("-"):
         return argv
     value_options = {"--manifest", "--email", "--role", "--grant", "--output", "--input", "--sha256", "--destination"}
-    switches = {"--confirm", "--dry-run", "--include-gateway"}
+    switches = {"--confirm", "--dry-run", "--include-gateway", "--scheduled"}
     index = 1
     while index < len(argv) and argv[index].startswith("-"):
         flag, inline, _ = argv[index].partition("=")
@@ -301,6 +303,9 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
             if args.operation in {"list", "show"}:
                 from .inventory import accounts
                 result = accounts(args.manifest or DEFAULT_MANIFEST, args.username)
+            elif args.operation == "backup" and args.scheduled:
+                from .user_schedule import run_backup
+                result = run_backup(args.manifest or DEFAULT_MANIFEST, apply=apply)
             elif args.operation == "configure-memory":
                 from .user_memory import configure
                 result = configure(args.manifest or DEFAULT_MANIFEST, args.input, apply=apply)

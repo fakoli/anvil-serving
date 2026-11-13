@@ -365,6 +365,22 @@ sequential Authelia and gateway snapshots. The timer catches up after downtime.
 It does not send email notifications.
 An existing unrelated unit with the same name is refused.
 
+Run the installed full backup worker immediately with:
+
+```sh
+sudo anvil-connect-ctl users backup --scheduled
+sudo anvil-connect-ctl users backup --scheduled --confirm
+```
+
+The first command previews the operation. The confirmed command verifies the
+selected immutable manager, default manifest and exact installed worker before
+starting it. The worker already includes the gateway snapshot; `--scheduled`
+cannot be combined with `--include-gateway`. Success requires a new worker
+invocation with a successful exit, not an earlier stored result. A timeout or
+uncertain result does not stop or retry the worker: inspect its state and retained
+backup receipts before trying again. The operation briefly interrupts
+authentication and gateway connections, as the nightly backup does.
+
 To enable permanent deletion from the browser, install the verified manager and
 its fixed worker first:
 
@@ -825,6 +841,9 @@ remain separate from generated service configuration.
 Public reverse tunnels open connections on demand. Zero idle registrations are
 reported as idle, not a failed tunnel, and do not trigger a connector restart on
 an unchanged apply. Status does not replace an authenticated application request.
+The reverse TCP backend waits for demand before completing its HTTP upgrade.
+Pending handshakes retain lease, capacity, cancellation and absolute lifetime
+limits; the 45-second read idle limit starts after the verified upgrade.
 
 `connect status` reports bounded owned service metadata. `--service` narrows it.
 A process reported as running is not a claim that its origin is ready.
@@ -847,6 +866,10 @@ narrows the checks. Diagnostics exclude secret file contents and request bodies.
 `connect logs --service SERVICE --tail 100` returns bounded service event metadata.
 The maximum tail is 200. Credential-bearing raw process logs are not a public
 diagnostic contract.
+Native events project only required journal fields and return at most the last
+64 rows from the current service invocation, within the existing output byte
+limit. This is a bounded observation, not complete history. Native event results
+and generic log availability are reported independently.
 
 ## Init
 

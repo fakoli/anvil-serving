@@ -20,6 +20,10 @@ import (
 )
 
 func gateFixture(t *testing.T) (*Gate, *authority, string) {
+	return gateFixtureWithPendingBackend(t, nil)
+}
+
+func gateFixtureWithPendingBackend(t *testing.T, pending func(*http.Request)) (*Gate, *authority, string) {
 	t.Helper()
 	ca := testpki.New(t)
 	a := &authority{}
@@ -38,6 +42,10 @@ func gateFixture(t *testing.T) (*Gate, *authority, string) {
 	backend := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != BackendPeer || r.Header.Get("Authorization") != "Bearer "+strings.Repeat("b", 64) || len(r.TLS.VerifiedChains) == 0 {
 			t.Error("backend authority changed")
+		}
+		if pending != nil {
+			pending(r)
+			return
 		}
 		conn, _, err := w.(http.Hijacker).Hijack()
 		if err != nil {
@@ -60,6 +68,67 @@ func gateFixture(t *testing.T) (*Gate, *authority, string) {
 	gate.transport.DialContext = backendListener.DialContext
 	t.Cleanup(gate.Close)
 	return gate, a, token
+}
+
+func TestPendingHandshakeRetainsCapacityAndAuthorityBounds(t *testing.T) {
+	for _, disposition := range []string{"revoke", "expire", "cancel"} {
+		t.Run(disposition, func(t *testing.T) {
+			entered := make(chan struct{}, 3)
+			gate, authority, token := gateFixtureWithPendingBackend(t, func(r *http.Request) {
+				entered <- struct{}{}
+				<-r.Context().Done()
+			})
+			began := time.Now()
+			var elapsed atomic.Int64
+			gate.leases.now = func() time.Time { return began.Add(time.Duration(elapsed.Load())) }
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			finished := make(chan int, 3)
+			for range 3 {
+				go func() {
+					w := httptest.NewRecorder()
+					gate.ServeHTTP(w, entryRequest(token, "tunnel.example.test").WithContext(ctx))
+					finished <- w.Code
+				}()
+			}
+			for range 3 {
+				select {
+				case <-entered:
+				case <-time.After(time.Second):
+					t.Fatal("pending backend was not reached")
+				}
+			}
+			if gate.Registrations()["public"]["router"] != 0 {
+				t.Fatal("pending handshake reported established")
+			}
+			full := httptest.NewRecorder()
+			gate.ServeHTTP(full, entryRequest(token, "tunnel.example.test"))
+			if full.Code != http.StatusTooManyRequests {
+				t.Fatal("pending handshakes escaped shared capacity", full.Code)
+			}
+			switch disposition {
+			case "revoke":
+				authority.revoked.Store(true)
+			case "expire":
+				elapsed.Store(int64(TransportLeaseLifetime + time.Second))
+			case "cancel":
+				cancel()
+			}
+			for range 3 {
+				select {
+				case code := <-finished:
+					if code != http.StatusBadGateway {
+						t.Fatal("pending handshake cancellation changed", code)
+					}
+				case <-time.After(time.Second):
+					t.Fatal("pending handshake outlived authority or caller")
+				}
+			}
+			if len(gate.routes["router"].slots) != 0 {
+				t.Fatal("pending handshake leaked admission slots")
+			}
+		})
+	}
 }
 
 func entryRequest(token, host string) *http.Request {

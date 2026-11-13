@@ -107,6 +107,16 @@ func gateCertFiles(t *testing.T, dir, name string, certificate tls.Certificate) 
 }
 
 func TestManagedTunnelGateOwnsAndRevokesRawStream(t *testing.T) {
+	testManagedTunnelGateOwnsAndRevokesRawStream(t, 0)
+}
+
+func TestManagedTunnelGateIdlePendingHandshake(t *testing.T) {
+	// The pinned backend sends 101 only after demand. Cross both historical
+	// handshake deadlines (40-second headers and 45-second socket reads).
+	testManagedTunnelGateOwnsAndRevokesRawStream(t, 46*time.Second)
+}
+
+func testManagedTunnelGateOwnsAndRevokesRawStream(t *testing.T, idle time.Duration) {
 	stopped := make(chan struct{})
 	native := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(stopped)
@@ -206,6 +216,14 @@ func TestManagedTunnelGateOwnsAndRevokesRawStream(t *testing.T) {
 	awaitManaged(t, g.Resources[0].TunnelAddress, server)
 	// This fixture qualifies the transport gate. The ordinary API lab separately
 	// requires the inner mTLS and native-token adapter at this reverse endpoint.
+	if idle > 0 {
+		<-time.After(idle)
+		for _, event := range gate.Events.Snapshot() {
+			if event.Reason == "tunnel_establishment_failed" {
+				t.Fatal("idle pending handshake failed before application demand")
+			}
+		}
+	}
 	httpClient := &http.Client{Timeout: 4 * time.Second}
 	response, err := httpClient.Get("http://" + g.Resources[0].TunnelAddress + "/v1/events")
 	if err != nil {

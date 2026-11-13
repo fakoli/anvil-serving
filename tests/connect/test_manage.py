@@ -771,6 +771,8 @@ def test_bounded_events_are_closed_invocation_scoped_and_not_readiness(tmp_path,
             if argv[1:3] == ("show", "--property=InvocationID"):
                 return manage.RunResult(0, f"InvocationID={invocation}\n".encode())
             if argv[0] == "/usr/bin/journalctl" and argv[-1].startswith("_SYSTEMD_INVOCATION_ID="):
+                if "--output-fields=MESSAGE,_SYSTEMD_INVOCATION_ID,_SYSTEMD_UNIT" not in argv:
+                    return manage.RunResult(1, output_limited=True)
                 return manage.RunResult(0, b"\n".join(json.dumps({"_SYSTEMD_UNIT": unit, "_SYSTEMD_INVOCATION_ID": invocation, **row}).encode() for row in rows))
             return super().__call__(argv, timeout, identity)
 
@@ -784,6 +786,27 @@ def test_bounded_events_are_closed_invocation_scoped_and_not_readiness(tmp_path,
     rows[:] = rows[:1]
     observed = manage.status(manifest, target, runner=runner)["targets"][0]["tunnel"]
     assert observed["state"] == observed["readiness"] == "unknown"
+
+
+def test_native_events_project_large_journal_metadata_within_output_bound():
+    unit, invocation = "anvil-connect-gateway.service", "a" * 32
+
+    def runner(argv, timeout, identity):
+        if argv[0] == "/usr/bin/systemctl":
+            return manage.RunResult(0, f"InvocationID={invocation}\n".encode())
+        count = int(next(value.split("=", 1)[1] for value in argv if value.startswith("--lines=")))
+        row = {"MESSAGE": "connect_event path=public resource=dashboard reason=tunnel_establishment_failed",
+               "_SYSTEMD_UNIT": unit, "_SYSTEMD_INVOCATION_ID": invocation,
+               "__CURSOR": "a" * 400}
+        if "--output-fields=MESSAGE,_SYSTEMD_INVOCATION_ID,_SYSTEMD_UNIT" not in argv:
+            row["UNRELATED_METADATA"] = "x" * 4096
+        output = (json.dumps(row).encode() + b"\n") * count
+        return manage.RunResult(0, output, output_limited=len(output) > manage._MAX_OUTPUT)
+
+    observed = manage._native_events(runner, unit, tail=200)
+    assert len(observed) == 64
+    assert all(event == {"path": "public", "resource": "dashboard", "reason": "tunnel_establishment_failed"}
+               for event in observed)
 
 
 def test_status_has_one_aggregate_observation_deadline(tmp_path, monkeypatch):

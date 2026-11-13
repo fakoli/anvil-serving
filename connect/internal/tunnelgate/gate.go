@@ -89,7 +89,9 @@ func New(host string, declaration config.Gateway, leases *Leases, backends map[s
 	g.transport = &http.Transport{
 		Proxy: nil, DisableKeepAlives: true, DisableCompression: true,
 		MaxConnsPerHost: maximum, MaxResponseHeaderBytes: 8192,
-		TLSHandshakeTimeout: 5 * time.Second, ResponseHeaderTimeout: 40 * time.Second,
+		// Reverse TCP waits for application demand before sending HTTP 101.
+		// The authenticated request lifetime and lease watcher bound that wait.
+		TLSHandshakeTimeout: 5 * time.Second,
 		TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS13, RootCAs: roots.Clone(), ServerName: BackendPeer, Certificates: []tls.Certificate{certificate}, VerifyConnection: func(state tls.ConnectionState) error {
 			if len(state.VerifiedChains) == 0 || len(state.PeerCertificates) == 0 || !relay.ExactPeerName(state.PeerCertificates[0], BackendPeer) {
 				return ErrDenied
@@ -111,7 +113,13 @@ func New(host string, declaration config.Gateway, leases *Leases, backends map[s
 		if err != nil {
 			return nil, err
 		}
-		return relay.WrapConn(conn, 45*time.Second), nil
+		attempt, ok := ctx.Value(attemptKey{}).(*upgradeAttempt)
+		if !ok {
+			conn.Close()
+			return nil, ErrDenied
+		}
+		attempt.backend = &pendingTunnelConn{Conn: relay.WrapConn(conn, 45*time.Second), raw: conn}
+		return attempt.backend, nil
 	}
 	tokens := map[string]bool{}
 	for _, resource := range declaration.Resources {
@@ -151,6 +159,12 @@ func New(host string, declaration config.Gateway, leases *Leases, backends map[s
 				if attempt, ok := r.Request.Context().Value(attemptKey{}).(*upgradeAttempt); ok {
 					if (attempt.timer != nil && !attempt.timer.Stop()) || r.Request.Context().Err() != nil {
 						return ErrDenied
+					}
+					// Also bound a read already waiting when the upgrade completes.
+					if attempt.backend != nil {
+						if err := attempt.backend.completeUpgrade(); err != nil {
+							return err
+						}
 					}
 					attempt.established.Store(true)
 					attempt.onEstablished()
@@ -250,6 +264,41 @@ type upgradeAttempt struct {
 	timer         *time.Timer
 	established   atomic.Bool
 	onEstablished func()
+	backend       *pendingTunnelConn
+}
+
+// Only this reverse-tunnel handshake may wait without a socket idle deadline.
+// serveEntry still owns its lease, absolute lifetime, cancellation and slots;
+// TLS and writes remain bounded, and verified upgrades use normal relay limits.
+type pendingTunnelConn struct {
+	net.Conn
+	raw         net.Conn
+	mu          sync.Mutex
+	established bool
+}
+
+func (c *pendingTunnelConn) Read(buffer []byte) (int, error) {
+	c.mu.Lock()
+	deadline := time.Time{}
+	if c.established {
+		deadline = time.Now().Add(45 * time.Second)
+	}
+	err := c.raw.SetReadDeadline(deadline)
+	c.mu.Unlock()
+	if err != nil {
+		return 0, err
+	}
+	return c.raw.Read(buffer)
+}
+
+func (c *pendingTunnelConn) completeUpgrade() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err := c.raw.SetReadDeadline(time.Now().Add(45 * time.Second)); err != nil {
+		return err
+	}
+	c.established = true
+	return nil
 }
 
 func (g *Gate) serveEntry(w http.ResponseWriter, r *http.Request, host, path string) {
