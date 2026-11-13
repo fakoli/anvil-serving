@@ -209,6 +209,13 @@ for the new host are published with `connect edge-apply`.
 
 ## Recovery
 
+Additional confidential OIDC clients may declare `token_endpoint_auth_method`
+as `client_secret_basic` or `client_secret_post` to match their native client.
+The default remains `client_secret_post`. Public clients retain PKCE with
+`none` authentication and cannot set this confidential-client field. This
+selection changes client authentication only; it preserves browser grants,
+MFA policy, exact callback validation, and the PKCE requirement.
+
 Stop the gateway before `connect backup`. It takes a consistent read-only logical
 snapshot under the database lock and includes the two private CA bundles. Unknown
 database namespaces are rejected; the 1 MiB archive bound is enforced without
