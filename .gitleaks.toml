@@ -190,3 +190,99 @@ condition = "AND"
 regexTarget = "match"
 paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-fix-evidence/review/decode-warmup-audit-review\.md$''']
 regexes = ['''^token each, approximately8k/16k/29k $''']
+
+# Exact token-sequence and tokenizer fingerprints from the frozen Mia captures.
+# Match the field and digest; an adjacent credential is never excepted.
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 1"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-v1\-models\.json$''',
+]
+regexes = ['''^tokenizer_sha256":"19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 2"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-long\-map\.json$''',
+]
+regexes = ['''^token_sha256":"dc95ab1e0677d339c9433307b1f44b54931a184fa2f4780f7089cbb658196ef0"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 3"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-baseline\-chat\-completions\-whole\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-chat\-completions\-whole\.json$''',
+]
+regexes = ['''^token_sha256":"b9007ab6c4290f557ff88be8f8ce743a2f3d8576bf5ff1d91f9bd710cabcbe1e"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 4"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-cold\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-restarted\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-warm\.json$''',
+]
+regexes = ['''^token_sha256":"979ef32ec0990990af7845af90f5a140ba8f1e8c2416651a6bd4b8ec9d3fd826"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 5"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-cold\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-restarted\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-warm\.json$''',
+]
+regexes = ['''^token_sha256":"c9af562caf1dc18fe2e2d60db189058eee84fd5811b09cc8c0ed7858bf97e67a"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 6"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\-control\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\-extras\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\-repeat\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-wave\-0\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-wave\-1\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-wave\-plain\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/logprobs\-first\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/logprobs\-repeat\.json$''',
+]
+regexes = ['''^token_sha256":"a094669ab5ded1a54b55bfbbc495ccdc73ef5f4fbf86f711c6bab63421760014"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 7"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-post\-wave\-plain\.json$''',
+]
+regexes = ['''^token_sha256":"2e91c4d977c1f294c8ce772a3e28d635d75a0afe7752ea15c8d1d72cc3f20690"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 8"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/tool\-guard\-false\.json$''',
+]
+regexes = ['''^token_sha256":"a18e0299cbe3ff5bd42d4585f2d205e41e4aece0e16206eeb552e81deeb54915"$''']

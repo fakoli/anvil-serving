@@ -1,0 +1,1 @@
+{"id":"chatcmpl-c6a1a920fdcd4e74a3bd97c8","object":"chat.completion","created":1794571416,"model":"llm.primary","choices":[{"index":0,"message":{"role":"assistant","content":"RESTORE_OK"},"finish_reason":"stop"}],"usage":{"prompt_tokens":12,"completion_tokens":4,"total_tokens":16,"prompt_tokens_details":{"cached_tokens":0},"completion_tokens_details":{"reasoning_tokens":0}}}

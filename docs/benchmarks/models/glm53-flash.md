@@ -1,5 +1,9 @@
 # GLM-5.3-Flash
 
+## Mia runtime update — 2026-11-13
+
+The same-model Mia fc1ee3a runtime passed focused functional qualification on dual RTX PRO6000 Max-Q. The exact matched truncated Messages request changed from HTTP500 to200, and prompt scoring increased from a20 cap to128 with distinct requested-ID, repeat and concurrent checks. Tools, image, C4 canaries and19K/99K retrieval/cache restart passed. This updates runtime evidence, not broad model quality or performance rankings. [Finding and immutable identity](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md). Operational fleet closure remains separate.
+
 **2026-10-26 reasoning-close GPU marker trace:** the [bounded actual-GPU diagnostic](../../findings/2026-10-26-marker-gpu-trace.md) returned one exact-answer C1 response with a single close at index 64. Both TP ranks observed its budget store, but the worker trace contained one token after the 75-token API response, so the frozen analyzer remained `unknown`. No second close reproduced and no end-to-end resolution is established. Exact operational restoration passed; strict JSON functional acceptance remained incomplete. No promotion; Ignis held. [Summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
 
 **2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
@@ -149,7 +153,7 @@ it cannot turn these acceptance gates into capacity or speed evidence.
       memory reached 0.87 GiB. Strict controlled output failed both recipes.
       No new SWE/endurance/MTP-off or four simultaneous full-window result.
       The older native workflow still blocks full fleet convergence.
-    - **Review dates:** evidence cutoff and dossier review 2026-10-17;
+    - **Review dates:** historical promotion evidence cutoff 2026-10-17; dossier functional-evidence review 2026-11-13;
       historical R19/r11 and earlier quality evidence remain separately dated.
 
 ### Review narrative

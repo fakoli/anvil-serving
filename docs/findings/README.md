@@ -1,5 +1,7 @@
 # Findings index
 
+**2026-11-13 Mia TensorFold runtime:** [functional validation](2026-11-13-tensorfold-mia-runtime-functional.md) reproduces and fixes a truncated-tool Messages HTTP500, validates128-entry prompt scoring, and preserves tools/image/C4/cache behavior. No speed claim; fleet rollout closure remains separate.
+
 **2026-11-09 numeric-control rollout follow-up:**
 [merged local CLI/router control](2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
 has source-backed boundary evidence, with a separate one-task check retaining
