@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -13,6 +14,8 @@ from anvil_serving.operator_output import UsageError
 
 @pytest.fixture
 def installed_worker(tmp_path, monkeypatch):
+    if sys.platform != "linux":
+        pytest.skip("local Linux account administration")
     prefix = tmp_path / "custom-installation"
     release_name = "releases/0.2.0-" + "a" * 12
     release = prefix / release_name
