@@ -68,6 +68,7 @@ nav:
       - Private networking with Tailscale: TAILSCALE-NETWORKING.md
       - Anvil Connect: CONNECT-OVERVIEW.md
       - Application access with Anvil Connect: ANVIL-CONNECT.md
+      - Password setup and reset link lifetime: CONNECT-RESET-LINK-LIFETIME.md
       - Product map and journeys: PRODUCT-FAMILIES.md
       - Discover the product from the CLI: cli/product.md
   - Benchmarks & evidence:

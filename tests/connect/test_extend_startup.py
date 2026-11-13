@@ -2,7 +2,11 @@
 import pytest
 
 from anvil_serving.connect import extend as extension
-from tests.connect.test_extend import environment, runner, enrollment_log
+from tests.connect.test_extend import (
+    environment as environment,
+    runner as runner,
+    enrollment_log as enrollment_log,
+)
 
 
 @pytest.mark.parametrize('provider_available', [True, False])
