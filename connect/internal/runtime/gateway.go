@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/fakoli/anvil-serving/connect/internal/privatefiles"
 	"github.com/fakoli/anvil-serving/connect/internal/relay"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
+	"github.com/fakoli/anvil-serving/connect/internal/socketrecovery"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 	"github.com/fakoli/anvil-serving/connect/internal/transport"
 	"github.com/fakoli/anvil-serving/connect/internal/tunnelgate"
@@ -131,16 +133,12 @@ func StartGateway(parent context.Context, declaration GatewayConfig, secrets Sec
 	if parent == nil || parent.Err() != nil || declaration.Validate() != nil || declaration.Ingress == nil || secrets == nil {
 		return nil, ErrConfiguration
 	}
-	listener, err := ingresshttp.Listen(*declaration.Ingress)
+	prepared, err := ingresshttp.Prepare(*declaration.Ingress)
 	if err != nil && declaration.LocalTunnel == nil {
 		return nil, ErrUnavailable
 	}
-	defer func() {
-		if result != nil && listener != nil {
-			_ = listener.Close()
-		}
-	}()
-	return composeGateway(parent, declaration, secrets, listener)
+	defer prepared.Close()
+	return composeGateway(parent, declaration, secrets, prepared)
 }
 
 // ComposeGatewayForProtocolFixture assembles trusted, same-UID protocol tests.
@@ -154,7 +152,7 @@ func ComposeGatewayForProtocolFixture(parent context.Context, declaration Gatewa
 	return composeGateway(parent, declaration, secrets, nil)
 }
 
-func composeGateway(parent context.Context, declaration GatewayConfig, secrets SecretSource, ingressListener net.Listener) (_ *Gateway, result error) {
+func composeGateway(parent context.Context, declaration GatewayConfig, secrets SecretSource, prepared *ingresshttp.Prepared) (_ *Gateway, result error) {
 	if parent == nil || parent.Err() != nil || declaration.Validate() != nil || secrets == nil {
 		return nil, ErrConfiguration
 	}
@@ -183,6 +181,44 @@ func composeGateway(parent context.Context, declaration GatewayConfig, secrets S
 		return nil, ErrUnavailable
 	}
 	g.cleanup = append(g.cleanup, func() { _ = state.Close() })
+	var ingressListener net.Listener
+	if declaration.Ingress != nil {
+		// The writable authority handle holds the exclusive gateway lock until
+		// cleanup has closed every listener. Never recover in the generic Listen
+		// functions or before store.Open: a second startup must not displace one.
+		pin, err := directory.PinPath("admin.sock")
+		if err != nil {
+			return nil, ErrUnavailable
+		}
+		defer pin.Close()
+		adminSocket, err := socketrecovery.Inspect(pin.Path(), uint32(os.Geteuid()), uint32(os.Getegid()), 0600)
+		if err != nil {
+			return nil, ErrUnavailable
+		}
+		publicSocket, publicError := prepared.InspectRefusedSocket()
+		if publicError != nil && declaration.LocalTunnel == nil {
+			return nil, ErrUnavailable
+		}
+		// Preflight both names before changing either. An unavailable public
+		// entry remains isolated from the explicitly declared local sibling.
+		if adminSocket.Quarantine() != nil {
+			return nil, ErrUnavailable
+		}
+		if publicError == nil {
+			publicError = prepared.RecoverRefusedSocket(publicSocket)
+			if publicError == nil {
+				ingressListener, publicError = prepared.Listen()
+			}
+		}
+		if publicError != nil && declaration.LocalTunnel == nil {
+			return nil, ErrUnavailable
+		}
+		if ingressListener != nil {
+			// Retain immediately: every later authority/tunnel failure must close
+			// this listener before state.Close releases exclusive ownership.
+			g.cleanup = append(g.cleanup, func() { _ = ingressListener.Close() })
+		}
+	}
 	var apiRules, browserRules []config.Rule
 	var resourceIDs []string
 	profiles := map[string]string{}

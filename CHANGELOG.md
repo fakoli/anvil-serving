@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Native Connect gateway restarts preserve exact refused Unix socket leftovers
+  under exclusive authority ownership before rebinding, while refusing active
+  listeners, unsafe custody and unknown liveness.
+
 ### Added
 
 - Media artifact inspection returns authenticated download URLs and native MP4
