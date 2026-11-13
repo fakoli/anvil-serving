@@ -1,0 +1,309 @@
+diff --git a/zig/build/glm_family_host.zig b/zig/build/glm_family_host.zig
+index f8cab27..78e121b 100644
+--- a/zig/build/glm_family_host.zig
++++ b/zig/build/glm_family_host.zig
+@@ -3,6 +3,8 @@ const std = @import("std");
+ 
+ pub fn steps(b: *std.Build, cuda: *std.Build.Module, glm: *std.Build.Module, mods: anytype, step: *std.Build.Step) void {
+     const host = b.graph.host;
++    const telemetry = b.addRunArtifact(b.addTest(.{ .root_module = glm, .filters = &.{"Anvil"} }));
++    b.step("test-glm-kv-telemetry-host", "Real GLM KV reader mode and census guards without devices").dependOn(&telemetry.step);
+     const startup = b.createModule(.{ .root_source_file = b.path("zig/src/families/glm/cuda_start_test.zig"), .target = host, .optimize = .debug });
+     const startup_run = b.addRunArtifact(b.addTest(.{ .root_module = startup }));
+     b.step("test-glm-startup-host", "Page refusals propagate through rank liveness before engine construction").dependOn(&startup_run.step);
+diff --git a/zig/src/core/lane_host_anvil_test.zig b/zig/src/core/lane_host_anvil_test.zig
+index 60a9d13..d2a368f 100644
+--- a/zig/src/core/lane_host_anvil_test.zig
++++ b/zig/src/core/lane_host_anvil_test.zig
+@@ -7,6 +7,11 @@ const publication = @import("lane_host_status.zig");
+ 
+ fn event(_: *anyopaque, _: api.Id, _: *const api.Event) void {}
+ 
++fn allocationRead(ctx: *anyopaque) ?lanes.anvil_telemetry.KvAllocation {
++    const value: *lanes.anvil_telemetry.KvAllocation = @ptrCast(@alignCast(ctx));
++    return if (value.valid()) value.* else null;
++}
++
+ test "Anvil production lane host idle C1 C4 timing and stream completeness" {
+     const a = std.testing.allocator;
+     for ([_]u32{ 0, 1, 4 }) |count| {
+@@ -19,6 +24,10 @@ test "Anvil production lane host idle C1 C4 timing and stream completeness" {
+         defer core.deinit();
+         var host = Host.init(a, std.testing.io, &core, .{ .lanes = 4 });
+         defer host.stop();
++        var allocation: lanes.anvil_telemetry.KvAllocation = .{ .allocated_pages = count * 2,
++            .free_pages = 40 - count * 2, .total_pages = 40, .reserved_pages = 2,
++            .page_size_tokens = 512, .partitions = 2, .temporary_twin_pages = count };
++        host.kv_allocation = .{ .ctx = &allocation, .read = allocationRead };
+         var sink_context: u8 = 0;
+         const request: api.Request = .{ .prompt = &.{ 3, 1, 4, 1, 5, 9 }, .max_tokens = 32 };
+         const engine = host.engine();
+@@ -31,6 +40,7 @@ test "Anvil production lane host idle C1 C4 timing and stream completeness" {
+         try std.testing.expectEqual(@as(usize, count), status.streams_active.?);
+         try std.testing.expectEqual(@as(usize, count), status.streams);
+         try std.testing.expect(status.streams_complete);
++        try std.testing.expectEqual(allocation, status.kv_allocation.?);
+         const timing = status.anvil_timing.?;
+         try std.testing.expectEqual(@as(u64, count), timing.arrivals);
+         try std.testing.expectEqual(@as(u64, count), timing.admissions);
+@@ -54,10 +64,18 @@ test "Anvil production lane host idle C1 C4 timing and stream completeness" {
+             try std.testing.expectEqual(timing.prefill_started, host.anvil_timing.prefill_started);
+         }
+         while (host.admitted.items.len > 0) _ = host.drop(host.admitted.items[0], "test completion");
++        allocation.allocated_pages = 0;
++        allocation.free_pages = 40;
++        allocation.temporary_twin_pages = 0;
+         publication.noteLive(&host);
+         engine.status(&status, &streams);
+         try std.testing.expectEqual(@as(usize, 0), status.streams_active.?);
+         try std.testing.expect(status.streams_complete);
++        try std.testing.expectEqual(allocation, status.kv_allocation.?);
++        allocation.temporary_twin_pages = 1; // malformed source is unavailable, never a zero-size pool
++        publication.noteLive(&host);
++        engine.status(&status, &streams);
++        try std.testing.expect(status.kv_allocation == null);
+         try engine.submit(100, &request, .{ .ctx = &sink_context, .event = event });
+         const cancelled = host.queued.orderedRemove(0);
+         host.finish(cancelled, .cancelled, "before admission");
+diff --git a/zig/src/core/lanes/anvil_telemetry.zig b/zig/src/core/lanes/anvil_telemetry.zig
+index 1b0fadd..41ce6db 100644
+--- a/zig/src/core/lanes/anvil_telemetry.zig
++++ b/zig/src/core/lanes/anvil_telemetry.zig
+@@ -6,12 +6,50 @@ pub const KvAllocation = struct {
+     total_pages: u64,
+     reserved_pages: u64,
+     page_size_tokens: u64,
++    partitions: u64 = 1,
++    temporary_twin_pages: u64 = 0,
+ 
+     pub fn valid(k: KvAllocation) bool {
+-        return k.page_size_tokens > 0 and k.allocated_pages <= k.total_pages and
++        return k.page_size_tokens > 0 and k.partitions >= 1 and k.partitions <= 2 and
++            k.allocated_pages <= k.total_pages and k.temporary_twin_pages <= k.allocated_pages and
+             k.free_pages == k.total_pages - k.allocated_pages and k.reserved_pages <= k.free_pages;
+     }
+ };
++
++/// Unique leader-owned pools, never tensor-parallel copies. Twins already occupy allocated pages.
++pub fn combinePartitions(parts: []const KvAllocation) ?KvAllocation {
++    if (parts.len == 0 or parts.len > 2) return null;
++    var result: KvAllocation = .{ .allocated_pages = 0, .free_pages = 0, .total_pages = 0,
++        .reserved_pages = 0, .page_size_tokens = parts[0].page_size_tokens, .partitions = parts.len };
++    for (parts) |part| {
++        if (!part.valid() or part.partitions != 1 or part.page_size_tokens != result.page_size_tokens) return null;
++        inline for (.{ "allocated_pages", "free_pages", "total_pages", "reserved_pages", "temporary_twin_pages" }) |field| {
++            @field(result, field) = std.math.add(u64, @field(result, field), @field(part, field)) catch return null;
++        }
++    }
++    return if (result.valid()) result else null;
++}
++
++test "Anvil partition census preserves promises twins and checked sums" {
++    var parts = [_]KvAllocation{
++        .{ .allocated_pages = 5, .free_pages = 15, .total_pages = 20, .reserved_pages = 3, .page_size_tokens = 512 },
++        .{ .allocated_pages = 4, .free_pages = 16, .total_pages = 20, .reserved_pages = 2, .page_size_tokens = 512, .temporary_twin_pages = 4 },
++    };
++    const result = combinePartitions(&parts).?;
++    try std.testing.expectEqual(@as(u64, 2), result.partitions);
++    try std.testing.expectEqual(@as(u64, 9), result.allocated_pages);
++    try std.testing.expectEqual(@as(u64, 31), result.free_pages);
++    try std.testing.expectEqual(@as(u64, 5), result.reserved_pages);
++    try std.testing.expectEqual(@as(u64, 4), result.temporary_twin_pages);
++    parts[1].temporary_twin_pages = 5;
++    try std.testing.expect(combinePartitions(&parts) == null);
++    parts[1].temporary_twin_pages = 0;
++    parts[1].page_size_tokens = 256;
++    try std.testing.expect(combinePartitions(&parts) == null);
++    parts[1] = .{ .allocated_pages = 0, .free_pages = std.math.maxInt(u64), .total_pages = std.math.maxInt(u64), .reserved_pages = 0, .page_size_tokens = 512 };
++    try std.testing.expect(combinePartitions(&parts) == null);
++    try std.testing.expect(combinePartitions(&.{}) == null);
++}
+ pub const KvSource = struct {
+     ctx: *anyopaque,
+     read: *const fn (*anyopaque) ?KvAllocation,
+@@ -118,7 +156,7 @@ pub const FullContextInputs = struct {
+     partitions: u64 = 1,
+ };
+ pub fn fullContextBound(inputs: FullContextInputs) ?u64 {
+-    if (!inputs.kv.valid() or !inputs.full_context_reservation or inputs.partitions != 1 or inputs.requested_context_tokens == 0) return null;
++    if (!inputs.kv.valid() or !inputs.full_context_reservation or inputs.partitions != 1 or inputs.kv.partitions != 1 or inputs.requested_context_tokens == 0) return null;
+     const per_request = inputs.per_request_reserve_tokens orelse return null;
+     const reserve = inputs.reserve_pages orelse return null;
+     const limit = inputs.admission_limit orelse return null;
+@@ -146,6 +184,9 @@ test "Anvil additional full-context bound requires every policy input and rounds
+     inputs.partitions = 2;
+     try std.testing.expectEqual(@as(?u64, null), fullContextBound(inputs));
+     inputs.partitions = 1;
++    inputs.kv.partitions = 2;
++    try std.testing.expectEqual(@as(?u64, null), fullContextBound(inputs));
++    inputs.kv.partitions = 1;
+     inputs.reserve_pages = 100;
+     try std.testing.expectEqual(@as(?u64, 0), fullContextBound(inputs));
+ }
+diff --git a/zig/src/families/glm/cuda_kv_shard.zig b/zig/src/families/glm/cuda_kv_shard.zig
+index 9b3707f..53eae56 100644
+--- a/zig/src/families/glm/cuda_kv_shard.zig
++++ b/zig/src/families/glm/cuda_kv_shard.zig
+@@ -8,6 +8,7 @@ const std = @import("std");
+ const builtin = @import("builtin");
+ const kv = @import("core").kv_pool;
+ const kv_parts = @import("lanes").kv_parts;
++const anvil_telemetry = @import("lanes").anvil_telemetry;
+ 
+ /// Whether this build runs sharding's device paths (owner-computed attention, twins, carries: cuda_kv_shard_attn,
+ /// cuda_kv_shard_keep). Without them TF_GLM_KV_SHARD=1 is refused at start, after the ranks agree on it.
+@@ -392,6 +393,25 @@ pub const Parts = struct {
+         return h.final();
+     }
+ 
++    /// One coherent census on rank zero's engine thread, including unmapped promises and temporary twins.
++    pub fn allocation(p: *const Parts) ?anvil_telemetry.KvAllocation {
++        if (!p.leader or p.h == 0) return null;
++        var parts: [2]anvil_telemetry.KvAllocation = undefined;
++        for (&p.pools, 0..) |*pool, index| {
++            const census = pool.census();
++            if (census.total != p.h or census.free > census.total or census.promised > census.free) return null;
++            parts[index] = .{ .allocated_pages = census.total - census.free, .free_pages = census.free,
++                .total_pages = census.total, .reserved_pages = census.promised, .page_size_tokens = page_rows };
++        }
++        for (p.slots) |slot| {
++            if (!slot.used) continue;
++            if (slot.part >= parts.len) return null;
++            const other = &parts[1 - slot.part];
++            other.temporary_twin_pages = std.math.add(u64, other.temporary_twin_pages, slot.twin.items.len) catch return null;
++        }
++        return anvil_telemetry.combinePartitions(&parts);
++    }
++
+     /// The /health and /metrics view: rank 0's parts and counters (`pages_tokens`: positions a page).
+     pub fn stats(p: *const Parts, out: *kv_parts.Stats) void {
+         out.* = .{ .parts = 2, .part_pages = p.h, .page_tokens = page_rows };
+@@ -539,6 +559,36 @@ test "kv shard: a begin's ids lie in one part and its twin's in the other" {
+     try std.testing.expectError(error.KvShardPlacement, placement(8, &.{}, &.{}));
+ }
+ 
++test "Anvil shard allocation counts leader pools promises twins and release once" {
++    var parts = try Parts.init(std.testing.allocator, 20, 4096, 4, true);
++    defer parts.deinit();
++    const idle = parts.allocation().?;
++    try std.testing.expectEqual(@as(u64, 40), idle.total_pages);
++    try std.testing.expectEqual(@as(u64, 2), idle.partitions);
++    try std.testing.expectEqual(@as(u64, 0), idle.allocated_pages);
++    var promised: kv.Lease = .{};
++    defer promised.ids.deinit(std.testing.allocator);
++    try parts.pools[0].promise(&promised, 3);
++    try std.testing.expectEqual(@as(u64, 40), parts.allocation().?.free_pages);
++    try std.testing.expectEqual(@as(u64, 3), parts.allocation().?.reserved_pages);
++    parts.pools[0].finish(&promised);
++    try parts.open(0, 0, 5, 5);
++    const filling = parts.allocation().?;
++    try std.testing.expectEqual(@as(u64, 10), filling.allocated_pages);
++    try std.testing.expectEqual(@as(u64, 5), filling.temporary_twin_pages);
++    try std.testing.expect(parts.giveBack(0));
++    try std.testing.expectEqual(@as(u64, 5), parts.allocation().?.allocated_pages);
++    try std.testing.expectEqual(@as(u64, 0), parts.allocation().?.temporary_twin_pages);
++    parts.close(0);
++    try std.testing.expectEqual(idle, parts.allocation().?);
++    parts.leader = false;
++    try std.testing.expect(parts.allocation() == null);
++    parts.leader = true;
++    parts.h += 1;
++    try std.testing.expect(parts.allocation() == null);
++    parts.h -= 1;
++}
++
+ test "kv shard: parts place home first, then fewer live streams, then more free pages; a twin is all or none" {
+     const gpa = std.testing.allocator;
+     var p = try Parts.init(gpa, 8, 4096, 4, true);
+diff --git a/zig/src/families/glm/cuda_native.zig b/zig/src/families/glm/cuda_native.zig
+index 7b04afb..6ee660c 100644
+--- a/zig/src/families/glm/cuda_native.zig
++++ b/zig/src/families/glm/cuda_native.zig
+@@ -342,7 +342,7 @@ fn finishRank(a: OpenArgs) !Loaded {
+         .vision = own.e.images,
+         .layout = own.layout,
+         .engine_paged = set.pages,
+-        .kv_allocation = if (set.pages and !set.kv_shard.on) .{ .ctx = own, .read = readKvAllocation } else null,
++        .kv_allocation = if (set.pages) .{ .ctx = own, .read = readKvAllocation } else null,
+         .kv_parts = if (set.kv_shard.on) .{ .ctx = own, .read = readKvParts } else null,
+         .checkpoint_digest = own.e.checkpoint_digest,
+     };
+@@ -352,7 +352,12 @@ fn finishRank(a: OpenArgs) !Loaded {
+ fn readKvAllocation(ctx: *anyopaque) ?lanes.anvil_telemetry.KvAllocation {
+     const own: *Owned = @ptrCast(@alignCast(ctx));
+     const p = own.e.pages orelse return null;
+-    if (!p.leader or p.shard != null) return null;
++    if (!p.leader) return null;
++    if (own.e.settings.kv_shard.on != (p.shard != null)) return null;
++    if (p.shard) |partitioned| {
++        if (p.layout.page_tokens != @import("cuda_kv_shard.zig").page_rows) return null;
++        return partitioned.parts.allocation();
++    }
+     const census = p.pool.census();
+     return .{ .allocated_pages = census.total - census.free, .free_pages = census.free,
+         .total_pages = census.total, .reserved_pages = census.promised, .page_size_tokens = p.layout.page_tokens };
+@@ -366,6 +371,37 @@ fn readKvParts(ctx: *anyopaque, out: *lanes.kv_parts.Stats) void {
+     pages_mod.Pages.readStats(p, out);
+ }
+ 
++test "Anvil native KV reader refuses both mode mismatches before reporting allocation" {
++    var page_pool: pages_mod.Pages = undefined;
++    page_pool.leader = true;
++    page_pool.layout = .{ .fixed_bytes = 0, .token_bytes = 1, .page_tokens = 512, .snap_bytes = 0 };
++    page_pool.pool = try kv.Pool.init(std.testing.allocator, 40, 512);
++    defer page_pool.pool.deinit();
++    page_pool.shard = null;
++    var target: engine.Engine = undefined;
++    target.pages = &page_pool;
++    target.settings.kv_shard = .{};
++    var owner: Owned = undefined;
++    owner.e = &target;
++    try std.testing.expectEqual(@as(u64, 1), readKvAllocation(&owner).?.partitions);
++    target.settings.kv_shard.on = true;
++    try std.testing.expect(readKvAllocation(&owner) == null);
++    var partitioned: pages_mod.Shard = undefined;
++    partitioned.parts = try @import("cuda_kv_shard.zig").Parts.init(std.testing.allocator, 20, 512, 4, true);
++    defer partitioned.parts.deinit();
++    page_pool.shard = &partitioned;
++    target.settings.kv_shard.on = false;
++    try std.testing.expect(readKvAllocation(&owner) == null);
++    target.settings.kv_shard.on = true;
++    try std.testing.expectEqual(@as(u64, 2), readKvAllocation(&owner).?.partitions);
++    try std.testing.expectEqual(@as(u64, 40), readKvAllocation(&owner).?.total_pages);
++    page_pool.layout.page_tokens = 256;
++    try std.testing.expect(readKvAllocation(&owner) == null);
++    page_pool.layout.page_tokens = 512;
++    page_pool.leader = false;
++    try std.testing.expect(readKvAllocation(&owner) == null);
++}
++
+ // Each rank keeps a copy under rank 0's id, in the room rank 0 admitted by (the smallest over the ranks).
+ 
+ /// The rounded pages for a committed prefix, including the head's possible verify window.
+diff --git a/zig/src/server/metrics.zig b/zig/src/server/metrics.zig
+index 8c90625..576096a 100644
+--- a/zig/src/server/metrics.zig
++++ b/zig/src/server/metrics.zig
+@@ -248,8 +248,8 @@ fn anvilKv(w: *std.Io.Writer, allocation: ?api.anvil_telemetry.KvAllocation) !vo
+     if (!available) return;
+     const k = allocation.?;
+     try w.writeAll("# TYPE tensorfold:anvil_kv_pool_info gauge\ntensorfold:anvil_kv_pool_info{scope=\"global_logical_decode_kv_pool\"} 1\n");
+-    try gauge(w, "anvil_kv_pool_partitions", "gauge", "Independent admission partitions in this logical pool.", 1);
+-    inline for (@typeInfo(api.anvil_telemetry.KvAllocation).@"struct".field_names) |name| {
++    try gauge(w, "anvil_kv_pool_partitions", "gauge", "Independent admission partitions in this logical pool.", k.partitions);
++    inline for (.{ "allocated_pages", "free_pages", "total_pages", "reserved_pages", "page_size_tokens", "temporary_twin_pages" }) |name| {
+         try gauge(w, "anvil_kv_" ++ name, "gauge", "Logical decode-KV allocation; pages or token positions as named.", @field(k, name));
+     }
+ }
+@@ -263,6 +263,11 @@ test "Anvil KV missing and invalid allocation never becomes zero capacity" {
+     out.clearRetainingCapacity();
+     try anvilKv(&out.writer, .{ .allocated_pages = 2, .free_pages = 8, .total_pages = 10, .reserved_pages = 3, .page_size_tokens = 512 });
+     try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_kv_page_size_tokens 512\n") != null);
++    out.clearRetainingCapacity();
++    try anvilKv(&out.writer, .{ .allocated_pages = 9, .free_pages = 31, .total_pages = 40, .reserved_pages = 5, .page_size_tokens = 512, .partitions = 2, .temporary_twin_pages = 4 });
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_kv_pool_partitions 2\n") != null);
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_kv_temporary_twin_pages 4\n") != null);
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_kv_partitions ") == null);
+ }
+ 
+ /// A sharded KV pool's families (GLM's TF_GLM_KV_SHARD): `kv_shard_*` gauges and counters, then each part's pages.
