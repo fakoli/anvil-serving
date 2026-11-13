@@ -33,6 +33,8 @@ copyable `resource:member` / `resource:admin` values. Use these exact IDs with
 `users create --grant` or `users access --grant`; application names need not match
 resource IDs. API resources are excluded because browser grants do not authorize
 API access. Passthrough applications retain their own internal permissions.
+Resources reporting `operator_only: true` additionally require the configured
+Connect operator identity; an application `admin` grant alone is insufficient.
 
 The command defaults to `/etc/anvil-connect/deployment.json`, accepts `--manifest`,
 and works identically as `anvil-serving connect resources`. It reads only the
@@ -444,6 +446,28 @@ invalidates previous sessions. Passthrough applications without an explicit appl
 a separate Pi deployment without a Connect identity adapter, still manage their own roles;
 their editor says that explicitly and their tiles omit the role badge. Merely storing a role label does not
 grant or restrict an action inside such an application.
+
+### Applications restricted to Connect operators
+
+Set `operator_only: true` on a gateway browser resource, beside `display_name`
+and `rule`, to restrict the application to the existing
+`browser_administration.operators` allowlist. The operator must still hold its
+normal explicit resource grant. Nonoperators cannot reach the origin, including
+through a direct URL or upgraded connection, even with an accidental app grant.
+Both service choosers hide the app from nonoperators. The general access editor
+omits it; use the existing managed `operators-ensure-resource` administrative
+operation to add its grant to configured operators. Changed operators must sign
+in to Connect again; an already-converged request preserves their sessions.
+The operator allowlist is startup configuration; grant changes increment the
+affected human's generation and invalidate their existing Connect sessions.
+
+Omitting the setting or using `false` preserves ordinary browser access.
+Malformed values, API resources, and an enabled restriction without configured
+browser administration are refused. Keep the origin private, retain its native
+Host/Origin checks, and publish the app through the existing managed connector
+and TLS edge. A tile opens the application normally; it does not embed a frame.
+This restriction covers the declared browser resource; separately declared API
+aliases and direct origin access require their own protection.
 
 ### Application roles owned by Connect
 

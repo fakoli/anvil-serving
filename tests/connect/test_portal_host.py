@@ -28,3 +28,27 @@ def test_router_keys_render_and_separate_permission_boundary():
         changed = router_keys_manifest()
         del changed["gateway"]["gateway"][field]
         with pytest.raises(ManifestError): validate_manifest(changed)
+
+
+def test_operator_application_policy_preserves_connector_and_requires_authority():
+    value = router_keys_manifest()
+    gateway = value["gateway"]["gateway"]
+    resource = gateway["resources"][0]
+    resource["operator_only"] = True
+    rendered = render(value)["files"]
+    assert json.loads(rendered["gateway.json"])["gateway"]["resources"][0]["operator_only"] is True
+    assert "operator_only" not in rendered["connectors/dashboard.json"]
+    del gateway["router_keys"]
+    del gateway["browser_administration"]
+    with pytest.raises(ManifestError, match="operator_only requires"):
+        validate_manifest(value)
+    resource["operator_only"] = False
+    validate_manifest(value)
+    for invalid in (None, "true", 1, [], {}):
+        resource["operator_only"] = invalid
+        with pytest.raises(ManifestError):
+            validate_manifest(value)
+    del resource["operator_only"]
+    gateway["resources"][1]["operator_only"] = False
+    with pytest.raises(ManifestError, match="browser resource"):
+        validate_manifest(value)

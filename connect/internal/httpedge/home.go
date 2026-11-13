@@ -44,6 +44,10 @@ func NewHome(declaration config.Gateway, authority homeAuthority) (*Home, error)
 	h := &Home{host: declaration.PortalHost, authority: authority, control: make(chan struct{}, min(8, declaration.MaxConcurrent)), logout: make(chan struct{}, min(8, declaration.MaxConcurrent))}
 	for _, resource := range declaration.Resources {
 		if resource.Rule.Access == "browser" {
+			if resource.OperatorOnly != nil {
+				restricted := *resource.OperatorOnly
+				resource.OperatorOnly = &restricted
+			}
 			h.resources = append(h.resources, resource)
 		}
 	}
@@ -202,7 +206,7 @@ func (h *Home) data(w http.ResponseWriter, r *http.Request, cookies browserCooki
 	}
 	services := []portalService{}
 	for _, item := range h.resources {
-		if !granted[item.Rule.ID] {
+		if !granted[item.Rule.ID] || item.RequiresOperator() && !h.operators[admitted.Principal] {
 			continue
 		}
 		service := portalService{ID: item.Rule.ID, URL: "https://" + item.Rule.Host + item.Rule.PathPrefix, Role: human.ApplicationRoles[item.Rule.ID], ManagedRole: item.ManagesApplicationRole()}

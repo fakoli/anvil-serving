@@ -709,8 +709,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         item_path = f"$.gateway.gateway.resources[{index}]"
         identity_fields = {"identity_key_env", "identity_key_id"}
         identity_present = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
-        display_present = {"display_name"} if isinstance(resource_raw, dict) and "display_name" in resource_raw else set()
-        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | identity_present | display_present)
+        optional_fields = {"display_name", "operator_only"}.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
+        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | identity_present | optional_fields)
         resource = {
             "connector": _ident(item["connector"], item_path + ".connector"),
             "tunnel_address": _loopback(item["tunnel_address"], item_path + ".tunnel_address"),
@@ -720,6 +720,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             if resource["rule"]["access"] != "browser":
                 raise _error(item_path + ".display_name", "requires browser access")
             resource["display_name"] = _display_name(item["display_name"], item_path + ".display_name")
+        if "operator_only" in item:
+            if type(item["operator_only"]) is not bool or resource["rule"]["access"] != "browser":
+                raise _error(item_path + ".operator_only", "requires a boolean on a browser resource")
+            resource["operator_only"] = item["operator_only"]
         if resource["rule"]["native_auth"] == "signed-identity":
             if identity_present != identity_fields:
                 raise _error(item_path, "signed-identity requires identity_key_env and identity_key_id")
@@ -800,6 +804,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             if type(raw_admin["user_deletion"]) is not bool:
                 raise _error("$.gateway.gateway.browser_administration.user_deletion", "must be boolean")
             browser_administration["user_deletion"] = raw_admin["user_deletion"]
+    if any(resource.get("operator_only", False) for resource in resources) and browser_administration is None:
+        raise _error("$.gateway.gateway.resources", "operator_only requires browser_administration operators")
     gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
     if "portal_host" in embedded:
         gateway_embedded["portal_host"] = _host(embedded["portal_host"], "$.gateway.gateway.portal_host")
