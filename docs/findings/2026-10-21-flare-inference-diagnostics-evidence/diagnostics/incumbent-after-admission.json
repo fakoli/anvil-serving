@@ -1,0 +1,11 @@
+{
+  "at": 1792651262.9205668,
+  "before_after_control": true,
+  "bound_seconds": 2700,
+  "outage_ended": true,
+  "workload": "original frozen C1/C4 prime plus3reps; no retries or replacement",
+  "counter_reconciliation": "compare every native completed/prompt/generated delta to client totals; any other traffic makes that block non-comparable",
+  "monitoring": "fresh restored generation;20/20 live checks passed",
+  "protected_hash_exception": "recipe-monitoring.json intentionally gained protected key-file reference during authorized integration; current bytes match authenticated-recipe-monitoring.json;6discovery files/router/topology match original",
+  "failure_policy": "original reasoning-only length exhaustion exception retained; other operational failures stop arm"
+}

@@ -1,0 +1,198 @@
+{
+  "schema": "anvil-serving.reasoning-runtime-inspection/v1",
+  "identity": {
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "state": "running",
+    "running": true,
+    "health": null,
+    "host_memory": {
+      "limit_bytes": 55834574848,
+      "ram_plus_swap_limit_bytes": 55834574849,
+      "oom_killed": false,
+      "exit_code": 0,
+      "current_bytes": 25273712640,
+      "peak_bytes": 35379359744,
+      "events": {
+        "low": 0,
+        "high": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_kill": 0,
+        "oom_group_kill": 0
+      },
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0
+    },
+    "containment_error": null
+  },
+  "launch": {
+    "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "started_at": "2026-10-26T05:05:40.128813372Z",
+    "running": true,
+    "command_sha256": "00dda05b0fed3df771a324bc6c5e16eeacb358ce06a376f930f969c5fae7f81d",
+    "entrypoint_sha256": "ae8a7ccee10b493bede97aae9d230c562a193c687fac03f5808a23074ea67a60",
+    "mounts_sha256": "ef9bac739b828b5e4924fba9fad62bf97623fd0979426d89bbdde96a9741174e",
+    "reasoning_parser": "glm45",
+    "speculative_tokens": 3
+  },
+  "capture": {
+    "artifacts": [
+      {
+        "file": "vllm/sampling_params.py",
+        "bytes": 56186,
+        "sha256": "f21efc98bf8ce8aab88eb67adb4207285e509a167d976e14d3e2e8282e024bea"
+      },
+      {
+        "file": "vllm/config/reasoning.py",
+        "bytes": 5168,
+        "sha256": "2c4f7bdee48a9fb3d93787c4c32361c2411417cce452cfde86808d8759977861"
+      },
+      {
+        "file": "vllm/entrypoints/openai/chat_completion/protocol.py",
+        "bytes": 50183,
+        "sha256": "0d85d431a4ccb56cbe45665aaa040578d707cc8c728408a72a68666ec085cab2"
+      },
+      {
+        "file": "vllm/entrypoints/openai/chat_completion/serving.py",
+        "bytes": 56242,
+        "sha256": "ea1f76074a9587c8054f54d30a6ba748b6a5fc4d90dd82c801504505c1da1f92"
+      },
+      {
+        "file": "vllm/v1/worker/gpu/sample/thinking_budget.py",
+        "bytes": 14998,
+        "sha256": "020513e1d3406f367de6ad995a95055008fd0c28f2873647e8283c9870e22404"
+      },
+      {
+        "file": "vllm/v1/worker/gpu/sample/sampler.py",
+        "bytes": 13754,
+        "sha256": "832c9945d201a1e730ff9b4b52076aa83bd4a5064e1e4cfea952cf84d4a8d1f0"
+      },
+      {
+        "file": "vllm/v1/worker/gpu/spec_decode/rejection_sampler.py",
+        "bytes": 12345,
+        "sha256": "030db5bfca162cc1f305112f299de5d6d61c59d3ed0807fee46575441ca4086d"
+      },
+      {
+        "file": "vllm/v1/sample/ops/topk_topp_triton.py",
+        "bytes": 71061,
+        "sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2"
+      },
+      {
+        "file": "vllm/tokenizers/registry.py",
+        "bytes": 12111,
+        "sha256": "077f11649db9c6e086eeb60f9dd81ed5667cadd83a29e66a0870c1ed5b1680a5"
+      },
+      {
+        "file": "vllm/tokenizers/fastokens.py",
+        "bytes": 1388,
+        "sha256": "365b0c86e837ee07e8067e64e43c66891a377ab7962796bbbbe87131513a7fc4"
+      },
+      {
+        "file": "vllm/tokenizers/hf.py",
+        "bytes": 8372,
+        "sha256": "fa96702c3b78dea6c70e90d3eaa6054315b953aec647a7ad1ac389931fdba85d"
+      },
+      {
+        "file": "vllm/reasoning/__init__.py",
+        "bytes": 4377,
+        "sha256": "db21c175b232d8a51f28325e0e50663527f62e4679470bf436fd3df6349401bc"
+      },
+      {
+        "file": "vllm/reasoning/abs_reasoning_parsers.py",
+        "bytes": 12903,
+        "sha256": "8370b7f76cb597b01a76b3842d345c5b387f86aca631dcd5897af27a4e6ebcba"
+      },
+      {
+        "file": "vllm/reasoning/glm47_moe_reasoning_parser.py",
+        "bytes": 236,
+        "sha256": "f1124342a23bb4c00754fc5117dc46115adff4b8cfbdc3d3e748ebe95883bdbb"
+      },
+      {
+        "file": "vllm/parser/glm47_moe.py",
+        "bytes": 9871,
+        "sha256": "18c6710da4456be28c685202664f32d30eabdeda9c79b4e622df0f32a32da657"
+      },
+      {
+        "file": "vllm/parser/engine/registered_adapters.py",
+        "bytes": 2238,
+        "sha256": "b85b0f370a7c66b4d886401cfb752e14d5605ff826a27faada827dd56c00fedf"
+      },
+      {
+        "file": "vllm/parser/engine/adapters.py",
+        "bytes": 9812,
+        "sha256": "beb7d4df5452e5bd67143f4e95777fb6cbb7cff49077887be1d02b20d7860600"
+      },
+      {
+        "file": "vllm/parser/engine/parser_engine.py",
+        "bytes": 47510,
+        "sha256": "c277dac977c6ba3d817e2f444521991bb9f46a658243a3e629081bf1168d7999"
+      },
+      {
+        "file": "vllm/parser/engine/streaming_parser_engine.py",
+        "bytes": 23426,
+        "sha256": "685dae3eb741acd6eef58297da5145f2aa74fdfe721f16fedc209f56dc0ce680"
+      },
+      {
+        "file": "vllm/parser/engine/parser_engine_config.py",
+        "bytes": 4813,
+        "sha256": "a2da63ae56698232bc9dde54ed0eb9e0ee5f15e6b51aa16d26912c01dd6a8878"
+      },
+      {
+        "file": "runtime-template",
+        "bytes": 11390,
+        "sha256": "b5bbea09a508f00213386271fae738fb6373bf396e0cc19baaa9675a10952bb0"
+      },
+      {
+        "file": "tokenizer.json",
+        "bytes": 20217442,
+        "sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d"
+      },
+      {
+        "file": "tokenizer_config.json",
+        "bytes": 761,
+        "sha256": "98b1271574f41abf89427ae2dda030d94dc9478f0edc5a8bd240db213c6fd5fc"
+      }
+    ],
+    "markers": {
+      "start": [
+        154841
+      ],
+      "end": [
+        154842
+      ],
+      "forced_end": [
+        154842
+      ]
+    },
+    "tokenizer_method": "fastokens.patch_transformers + AutoTokenizer local_files_only; add_special_tokens=False",
+    "package_version": "0.1.dev21830+g8244d1c44.cu134"
+  },
+  "resources": {
+    "observed_at_unix": 1792991652.1361957,
+    "host_memory": {
+      "MemTotal_bytes": 134164500480,
+      "MemFree_bytes": 11516633088,
+      "MemAvailable_bytes": 71288827904,
+      "Cached_bytes": 57173438464,
+      "SwapTotal_bytes": 8589930496,
+      "SwapFree_bytes": 3257430016,
+      "Shmem_bytes": 10344112128,
+      "SReclaimable_bytes": 12864454656,
+      "SUnreclaim_bytes": 4746915840
+    },
+    "memory_pressure": "some avg10=0.00 avg60=0.00 avg300=0.00 total=173969247\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=173405319\n",
+    "swap_io": {
+      "pswpin": 1748616,
+      "pswpout": 5425606,
+      "oom_kill": 3
+    },
+    "engine": {
+      "running": 0.0,
+      "waiting": 0.0
+    }
+  },
+  "runtime_patch": null,
+  "source_parity": "requires_comparison_with_pinned_source",
+  "inference_requests": 0
+}

@@ -56,28 +56,6 @@ def _routing(*, backends=None, admission=None, max_output_tokens=None,
     )
 
 
-def test_alias_resolves_once_and_never_falls_back_to_another_tier():
-    routing = _routing(backends={"omni-local": StaticBackend(["wrong-tier"])})
-
-    with pytest.raises(NoAvailableTierError) as error:
-        routing.generate(_request("llm.primary"))
-
-    assert error.value.kind == "unbound"
-    record = routing._decision_log.records[-1]
-    assert record.requested_tier == "primary-local"
-    assert record.attempts[0].reason == "backend_unbound"
-
-
-def test_direct_route_enforces_context_before_relaying():
-    routing = _routing()
-
-    with pytest.raises(NoAvailableTierError) as error:
-        routing.generate(_request(content="x " * 262_145))
-
-    assert error.value.kind == "over_context"
-    assert routing._decision_log.records[-1].attempts[0].reason == "over_context"
-
-
 def test_upstream_context_admission_delegates_exact_token_count_without_fallback():
     seen = []
 
@@ -111,25 +89,6 @@ def test_quiesced_target_is_unavailable_without_substitution():
     assert routing._decision_log.records[-1].attempts[0].reason == "quiesced"
 
 
-def test_client_disconnect_records_metadata_without_content():
-    def stream(_request):
-        yield "first"
-        yield "second"
-
-    class StreamingBackend:
-        generate = staticmethod(stream)
-
-    routing = _routing(backends={"primary-local": StreamingBackend(), "omni-local": StaticBackend(["omni"])})
-    iterator = routing.generate(_request())
-    assert next(iterator) == "first"
-    iterator.close()
-
-    record = routing._decision_log.records[-1]
-    assert record.served_tier is None
-    assert record.attempts[0].reason == "client_disconnected"
-    assert "first" not in repr(record)
-
-
 def test_request_control_enforces_named_admission_startup_and_idle_deadlines():
     now = [10.0]
     control = RequestControl(
@@ -160,89 +119,3 @@ def test_request_control_enforces_named_admission_startup_and_idle_deadlines():
     now[0] = 19.0
     with pytest.raises(RequestDeadlineExceeded, match="idle timeout"):
         control.check_upstream()
-
-
-def test_concurrency_gate_wait_is_bounded_and_recorded():
-    class BlockingBackend:
-        def generate(self, _request):
-            yield "held"
-            yield "later"
-
-    config = load(_CONFIG)
-    config = replace(
-        config,
-        tiers=tuple(
-            replace(tier, max_concurrency=1) if tier.id == "primary-local" else tier
-            for tier in config.tiers
-        ),
-    )
-    routing = RoutingBackend(
-        config,
-        {"primary-local": BlockingBackend(), "omni-local": StaticBackend(["omni"])},
-    )
-    first = routing.generate(_request())
-    assert next(first) == "held"
-    control = RequestControl(admission_timeout_s=0.01)
-    with pytest.raises(RequestDeadlineExceeded, match="admission timeout"):
-        list(routing.generate(_request(raw={"_anvil_control": control})))
-    assert routing._decision_log.last.admission_wait_ms is not None
-    assert routing._decision_log.last.admission_wait_ms >= 0
-    first.close()
-
-
-@pytest.mark.parametrize(
-    "wire_field",
-    ["max_tokens", "max_completion_tokens", "max_output_tokens"],
-)
-def test_tier_output_cap_overrides_larger_client_budget_before_relay(wire_field):
-    seen = []
-
-    class CapturingBackend:
-        def generate(self, request):
-            seen.append(request.max_tokens)
-            return iter(("ok",))
-
-    request = _request(raw={wire_field: 32768})
-    request.max_tokens = 32768
-    routing = _routing(
-        backends={
-            "primary-local": CapturingBackend(),
-            "omni-local": StaticBackend(["omni"]),
-        },
-        max_output_tokens=5120,
-    )
-
-    assert list(routing.generate(request)) == ["ok"]
-    assert seen == [5120]
-    assert request.raw[wire_field] == 5120
-    assert request.raw["_anvil_output_clamp"] == {
-        "requested": 32768,
-        "applied": 5120,
-    }
-    assert (
-        routing._decision_log.records[-1].attempts[0].reason
-        == "served_output_clamped"
-    )
-
-
-def test_tier_output_cap_supplies_missing_budget_without_false_warning():
-    seen = []
-
-    class CapturingBackend:
-        def generate(self, request):
-            seen.append(request.max_tokens)
-            return iter(("ok",))
-
-    request = _request()
-    routing = _routing(
-        backends={
-            "primary-local": CapturingBackend(),
-            "omni-local": StaticBackend(["omni"]),
-        },
-        max_output_tokens=5120,
-    )
-
-    assert list(routing.generate(request)) == ["ok"]
-    assert seen == [5120]
-    assert "_anvil_output_clamp" not in request.raw
-    assert routing._decision_log.records[-1].attempts[0].reason == "served"

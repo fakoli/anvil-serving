@@ -1,0 +1,99 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "status": "operationally-restored",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": ["protected incumbent and router snapshots retained by the campaign owner"]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "exact incumbent recipe, image, model revision, served identity, and two-GPU order",
+      "candidate absent from running managed recipes",
+      "router custody before/restored objects byte-identical",
+      "primary route ready, readmitted, and admitting with zero active requests",
+      "routed smoke passed after supported credential resolution",
+      "engine idle after smoke",
+      "candidate/restored cgroup OOM counters zero and sampled host OOM counter unchanged"
+    ]
+  },
+  "differences": [
+    "The incumbent container is a fresh managed incarnation after reload; its declared recipe/image/model/GPU-order identity matches the captured baseline.",
+    "Mounted router configuration bytes were not inspected. No configuration write occurred; byte parity is claimed only for the bounded router custody objects."
+  ],
+  "post_run_checks": [
+    {
+      "check": "first routed smoke invocation",
+      "status": "rejected-locally-zero-requests",
+      "detail": "Explicit auth environment variable was absent; no model request was sent."
+    },
+    {
+      "check": "supported-resolver routed smoke",
+      "status": "passed",
+      "detail": "One native preflight smoke observation passed after managed readmission."
+    },
+    {
+      "check": "engine drain",
+      "status": "passed",
+      "detail": "Engine idle after the routed smoke."
+    }
+  ],
+  "phase_two": {
+    "status": "operationally-restored",
+    "identity_fields_match": true,
+    "compared_fields": [
+      "model",
+      "revision",
+      "image_digest",
+      "recipe_digest",
+      "registry_digest",
+      "gpu_selection",
+      "bound_endpoints",
+      "served_identity"
+    ],
+    "candidate_removed": true,
+    "router_custody_unchanged": true,
+    "mounted_router_config_bytes": "not independently inspected; no writes attempted",
+    "router_readmitted": true,
+    "routed_smoke_passed": true,
+    "engine_idle_after_smoke": true,
+    "container_oom_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "quality_scope": "one routed smoke; no full quality or strict-JSON claim",
+    "load_elapsed_seconds": 484.83903074264526,
+    "load_duration_boundary": "Operational restoration duration only; not a model or engine performance metric.",
+    "private_evidence_hashes": {
+      "result": "53261439dd831130287b13212873adddb485a38a43606e6d0c2d8ca08bce51b5",
+      "restoration": "3a4c81fad580587221899dd88c6239a224cd31d8db511a7d4b7af5c88e6116e7",
+      "recipes_restored": "bc0a1f27f4fbd62673940b030244c8e443303688da9cd8a5d52f8b3c85d9764e",
+      "router_restored": "9afdc3a57cbb7e3ac34d741151c10f6332785b149794f3b96b1e3fd3d0983734",
+      "router_readmit": "07d8b0585bca6ec96357be6080f1f9d41f76a2bb2cfab563e96710a2da11a56c",
+      "restoration_smoke_native": "4e233b34fe6830773a02b95883aa4ce59bfe7474e038b4523a3257ae8fac0e94",
+      "resources_restored_after_smoke": "394e45584e8d37d333b85fbaa5e9498472c8c8e6d995749830699d503d130e77",
+      "incumbent_restored_status": "2fb29d81e7356865af5428cd29debcb2acc843160ca0a80f2329da289300c467"
+    }
+  },
+  "verified": true,
+  "not_applicable_reason": null,
+  "load_elapsed_seconds": 486.4399914741516,
+  "load_duration_boundary": "Operational restoration duration only; not a model or engine performance metric.",
+  "private_evidence_hashes": {
+    "result": "48aaee4919e04fd66a155e89efbb920478a171c8d476a93a1b0fb5aad91a7eab",
+    "router_before_and_restored_custody": "9afdc3a57cbb7e3ac34d741151c10f6332785b149794f3b96b1e3fd3d0983734",
+    "recipes_running_restored": "9c13c9f753854afb71592bd0bfd170173b3f502169fd64f072acb9b28f78c06f",
+    "incumbent_restored_status": "5ab596db0fcc148849b24f9e0440e650fa2e28005d0047c4c94c9ddf422d1349",
+    "router_readmit": "07d8b0585bca6ec96357be6080f1f9d41f76a2bb2cfab563e96710a2da11a56c",
+    "first_smoke_local_refusal": "540e5d66e89527daa578a4bdf4d0263620ef858cc5e36464141fb36836f38103",
+    "restoration_smoke_native_r2": "ca1517a15259ee3fb0db28ff3cfa346bbfb64e10f9f9c880c7ba7117ccff1f05",
+    "resources_restored_after_smoke": "4c97f071277f74d76a833f7a0da10cc88dd9e091f92c9f111812997dc83fade9"
+  },
+  "publication_block": "Independent exact-head review remains required before publication."
+}

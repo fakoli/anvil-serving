@@ -1,6 +1,7 @@
 """Deterministic, secret-free render planning for managed Anvil Connect services."""
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -285,6 +286,7 @@ def _authelia(manifest: dict[str, Any]) -> str:
         "authentication_backend:", "  file:", f"    path: {_quote(auth['users_file'])}",
         "access_control:", "  default_policy: two_factor",
         "identity_validation:", "  reset_password:", "    jwt_secret: |-", f"      {{{{- fileContent {_template_quote(auth['identity_validation_secret_file'])} | nindent 6 }}}}",
+        *([f"    jwt_lifespan: '{auth['reset_link_lifespan_seconds']} seconds'"] if "reset_link_lifespan_seconds" in auth else []),
         *notifier,
         "session:", "  secret: |-", f"    {{{{- fileContent {_template_quote(auth['session_secret_file'])} | nindent 4 }}}}",
         "  cookies:", f"    - domain: {_quote(auth['host'])}", f"      authelia_url: {_quote('https://' + auth['host'])}",
@@ -301,14 +303,23 @@ def _authelia(manifest: dict[str, Any]) -> str:
         lines.insert(lines.index("authentication_backend:"), f"  asset_path: {_quote(auth['asset_path'])}")
     lines.extend(f"          - {_quote(callback)}" for callback in callbacks)
     for client in auth.get("additional_oidc_clients", []):
+        public = client.get("public", False)
         lines.extend([
             f"      - client_id: {_quote(client['client_id'])}", f"        client_name: {_quote(client['client_name'])}",
-            "        client_secret: |-", f"          {{{{- fileContent {_template_quote(client['client_secret_file'])} | nindent 10 }}}}",
-            "        consent_mode: implicit", "        public: false", "        require_pkce: true", "        pkce_challenge_method: S256",
+            *([] if public else [
+                "        client_secret: |-", f"          {{{{- fileContent {_template_quote(client['client_secret_file'])} | nindent 10 }}}}",
+            ]),
+            "        consent_mode: explicit" if public else "        consent_mode: implicit",
+            "        public: true" if public else "        public: false",
+            *(["        authorization_policy: two_factor"] if public else []),
+            "        require_pkce: true", "        pkce_challenge_method: S256",
             "        response_types:", "          - code", "        grant_types:", "          - authorization_code", "        scopes:",
             "          - openid", "          - email", "          - profile", "        id_token_signed_response_alg: RS256",
-            "        token_endpoint_auth_method: client_secret_post", "        redirect_uris:",
+            "        token_endpoint_auth_method: none" if public else "        token_endpoint_auth_method: " + client.get("token_endpoint_auth_method", "client_secret_post"),
+            "        redirect_uris:",
         ])
+        if client["groups_scope"]:
+            lines.insert(len(lines) - 3, "          - groups")
         lines.extend(f"          - {_quote(redirect)}" for redirect in client["redirect_uris"])
     if "webauthn" in auth:
         webauthn = auth["webauthn"]
@@ -356,8 +367,14 @@ def _isolated_unit(description: str, command: list[str], identity: tuple[int, in
 
 
 def _render(data: dict[str, Any]) -> dict[str, Any]:
-    generation = hashlib.sha256(canonical_manifest(data)).hexdigest()
-    gateway = data["gateway"]
+    # Account-bank settings are consumed by the user manager, not service files.
+    # Preserve the running authority generation when installing those settings.
+    generation = hashlib.sha256(canonical_manifest({key: value for key, value in data.items() if key != "memory"})).hexdigest()
+    gateway = copy.deepcopy(data["gateway"])
+    externally_managed = {binding["resource"] for binding in data.get("application_role_bindings", [])}
+    for resource in gateway["gateway"]["resources"]:
+        if resource["rule"]["id"] in externally_managed:
+            resource["role_management"] = "external"
     if "service_identities" not in data:
         files: dict[str, str] = {
             "gateway.json": _json(gateway),

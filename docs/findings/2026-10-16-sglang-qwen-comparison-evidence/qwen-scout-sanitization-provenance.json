@@ -1,0 +1,28 @@
+{
+  "control_values_retained": [
+    "enabled",
+    "omitted; pinned template native default xhigh",
+    "none",
+    "promotion boundary"
+  ],
+  "leaf_transforms": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "container_id": "empty string",
+    "history_and_tool_arrays": "original list length and item shapes retained; confidential strings replaced",
+    "nested_tool_argument_string_leaves": "empty string; mapping/list shape and non-string scalar values retained",
+    "private_paths": "empty string",
+    "raw_text_fields": "empty string",
+    "request_ids": "redacted:sha256 of original request identifier",
+    "response_bearing_detail_fields": "empty string",
+    "runtime_alias": "qwen38-nvidia-fp4-local-scout",
+    "stage_command_strings": "empty string; original list length retained",
+    "stage_stdout_stderr": "empty string",
+    "trajectory_paths": "empty string"
+  },
+  "network_policy": "Task-container network isolation is retained as none.",
+  "private_originals": "Retained outside this repository; source SHA-256 values are in qwen-scout-source-ledger.json.",
+  "projection_contract": "Each native projection preserves original mapping/list paths, list lengths, and scalar JSON types. Raw model output, prompt, reasoning, tool arguments, commands, response-bearing details, private endpoint, path, host, GPU UUID, and container identity are removed or replaced with public-safe aliases.",
+  "schema": "anvil-serving.sanitized-evidence-provenance/v1",
+  "scope": "Qwen scout projections listed in qwen-scout-source-ledger.json",
+  "status": "terminal scout projection; includes Qwen terminal SWE. Final restoration and publication remain separate"
+}

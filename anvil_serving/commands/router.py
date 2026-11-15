@@ -11,6 +11,19 @@ def commands() -> CommandNode:
         "router",
         "Manage the deployed router and its lifecycle.",
         children=(
+            _node("startup-abort", "Abort one never-admitted failed startup while preserving retained accounting.",
+                handler=_handler("anvil_serving.router_startup_abort", attribute="dispatch", argv_prefix=(), forward_confirm_flag=True),
+                mutation_class="mutate", execution_policy="offline",
+                options=(_option("--config", summary="Protected exact failed-startup declaration.", value_name="PATH"),
+                         _option("--preview-out", summary="Protected native preview output.", value_name="PATH"),
+                         _option("--confirm", summary="Apply the previewed startup abort.", requires_confirmation=True)),
+                docs_anchor="docs/cli/router.md#failed-startup-recovery"),
+            _node("recovery-status", "Inspect protected custody sidecars without authorizing recovery.",
+                handler=_handler("anvil_serving.router_recovery_status", attribute="dispatch", argv_prefix=()),
+                mutation_class="read", execution_policy="offline",
+                options=(_option("--container", summary="Exact deployed router container.", value_name="NAME"),
+                         _option("--ledger", summary="Correlate usage metadata with an isolated native reader.")),
+                docs_anchor="docs/cli/router.md#recovery-diagnostics"),
             _resource_node(
                 "export-config",
                 "Export the verified, secret-free configuration mounted by the running router.",
@@ -18,21 +31,47 @@ def commands() -> CommandNode:
                 role="router",
                 argv_prefix=(),
                 handler_attribute="dispatch",
+                remote_operation=_remote("router_config_export", allowed=("container", "expected_sha256", "out")),
                 execution_runtime_roles=("native",),
                 options=(
                     _option("--container", summary="Exact running router container.", value_name="NAME"),
                     _option("--expected-sha256", summary="Required exact source and mounted-file SHA-256.", value_name="SHA256"),
+                    _option("--out", summary="New protected runtime snapshot output; suppresses configuration content.", value_name="PATH"),
                 ),
                 docs_anchor="docs/cli/router.md#export-installed-configuration",
             ),
+            _node(
+                "clients", "Preview, enroll and read back managed caller bindings without changing providers.",
+                children=tuple(_node(
+                    action, summary,
+                    handler=_handler("anvil_serving.client_identity", attribute="dispatch", argv_prefix=(action,),
+                                     forward_confirm_flag=action == "install"),
+                    mutation_class="mutate" if action == "install" else "read", execution_policy="offline",
+                    options=(_option("--config", summary="Managed client declaration; defaults beside router config.", value_name="PATH"),
+                             _option("--compose", summary="Protected offline client worker Compose profile.", value_name="PATH"))
+                    + ((_option("--dry-run", summary="Preview only."),
+                        _option("--confirm", summary="Enroll and install feature bindings.", requires_confirmation=True)) if action == "install" else ()),
+                    docs_anchor="docs/cli/router.md#managed-client-attribution",
+                ) for action, summary in (("preview", "Preview declared recipients and owner changes."),
+                                           ("install", "Enroll owned keys and install protected feature bindings."),
+                                           ("readback", "Independently read installed feature bindings and current key owners."))),
+            ),
+            _node("maintenance", "Preview or execute one protected acknowledged router maintenance operation.",
+                handler=_handler("anvil_serving.router.maintenance",attribute="dispatch",argv_prefix=(),forward_confirm_flag=True),
+                mutation_class="mutate",execution_policy="offline",
+                options=(_option("--config",summary="Protected exact maintenance phase declaration.",value_name="PATH"),
+                         _option("--preview-out",summary="Absent protected native preview file.",value_name="PATH"),
+                         _option("--confirm",summary="Apply only the previewed one-time acknowledgement.",requires_confirmation=True)),
+                docs_anchor="docs/cli/router.md#acknowledged-router-maintenance"),
             _node(
                 "keys",
                 "Manage local device API keys and inspect bounded access history.",
                 children=tuple(
                     _node(
                         action, summary,
-                        handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,)),
-                        mutation_class="mutate" if action in {"init", "create", "revoke"} else "read",
+                        handler=_handler("anvil_serving.router.keys", attribute="dispatch", argv_prefix=(action,),
+                                         forward_confirm_flag=action in {"migrate", "create"}),
+                        mutation_class="mutate" if action in {"init", "create", "revoke", "bind", "backup", "restore", "migrate"} else "read",
                         options=(
                             _option("--config", summary="Router config declaring server.api_keys_path.", value_name="PATH"),
                             _option("--container", summary="Run storage operations as the verified router container user; secret output stays on this host.", value_name="NAME"),
@@ -41,7 +80,19 @@ def commands() -> CommandNode:
                     )
                     for action, summary, options in (
                         ("init", "Initialize protected device-key storage without changing the master key.", ()),
+                        ("migrate", "Migrate first-bootstrap accounting offline with an absent protected backup.", (
+                            _option("--backup-out", summary="Absent protected rollback snapshot (required).", value_name="PATH"),
+                            _option("--offline", summary="Require exclusive offline custody; producer maintenance hold is separate."),
+                            _option("--confirm", summary="Permit snapshot and explicit schema migration.", requires_confirmation=True),
+                            _option("--compose", summary="Selected stopped router Compose service; uses mounted config and durable backup path.", value_name="PATH"),
+                            _option("--env-file", summary="Explicit dedicated Compose environment file.", value_name="PATH"),
+                            _option("--journal-mode", summary="Explicit offline WAL conversion; requires the fixed native SQLite runtime.", value_name="WAL"),
+                            _option("--maintenance-receipt", summary="Protected exact legacy-stop receipt to retain unknown pre-accounting coverage.", value_name="PATH"),
+                        )),
                         ("create", "Create a scoped device key and save its secret once to a protected file.", (
+                            _option("--compose", summary="Selected bounded offline native issuance worker.", value_name="PATH"),
+                            _option("--offline", summary="Issue under exclusive producer/writer custody in the stopped native store."),
+                            _option("--confirm", summary="Confirm offline unique-key issuance.", requires_confirmation=True),
                             _option("--name", summary="Device label (required).", value_name="NAME"),
                             _option("--model", summary="Allowed alias or purpose-model name; repeat for multiple grants (required).", value_name="MODEL"),
                             _option("--path", summary="Allowed inference endpoint; repeat for multiple grants (required).", value_name="PATH"),
@@ -53,12 +104,49 @@ def commands() -> CommandNode:
                         ("revoke", "Revoke a device key for subsequent requests.", (
                             _option("--key-id", summary="Device key ID to revoke (required).", value_name="ID"),
                         )),
+                        ("bind", "Bind an ordinary key to an operator-controlled owner with revision CAS.", (
+                            _option("--key-id", summary="Ordinary key ID (required).", value_name="ID"),
+                            _option("--kind", summary="human or service (required).", value_name="KIND"),
+                            _option("--owner-id", summary="Trusted opaque owner ID (required).", value_name="ID"),
+                            _option("--expected-revision", summary="Current binding revision; zero for unbound (required).", value_name="COUNT"),
+                            _option("--dry-run", summary="Validate without changing binding."),
+                        )),
+                        ("backup", "Take a consistent protected key/accounting snapshot.", (
+                            _option("--out", summary="Absent protected destination (required).", value_name="PATH"),
+                        )),
+                        ("restore", "Restore a protected snapshot to an absent destination without activation.", (
+                            _option("--snapshot", summary="Protected source snapshot (required).", value_name="PATH"),
+                            _option("--out", summary="Absent protected destination (required).", value_name="PATH"),
+                        )),
                         ("usage", "Read bounded key access history.", (
                             _option("--key-id", summary="Filter history to one key ID; _legacy selects the master.", value_name="ID"),
                             _option("--limit", summary="Maximum recent request records (default 50).", value_name="COUNT"),
                         )),
                     )
                 ),
+            ),
+            _node(
+                "usage", "Read protected exact retained or active caller accounting.",
+                children=tuple(_node(
+                    action, summary,
+                    handler=_handler("anvil_serving.router_diagnostics", attribute="dispatch_usage", argv_prefix=(action,)),
+                    options=tuple(_option(name, summary=help, value_name=value) for name, help, value in (
+                        ("--config", "Saved router-diagnostics.toml; defaults to operator home.", "PATH"),
+                        ("--router-url", "Router HTTP(S) origin.", "URL"),
+                        ("--auth-env", "Process variable containing scoped operator credential.", "NAME"),
+                        ("--timeout", "Socket timeout, at most30 seconds.", "SECONDS"),
+                        ("--filters", "JSON array of unique typed dimension/value pairs.", "JSON"),
+                        ("--limit", "Bounded record/group limit.", "COUNT"),
+                    )) + (() if action == "active" else tuple(_option(name, summary=help, value_name=value) for name, help, value in (
+                        ("--granularity", "detail, daily or cumulative (default detail).", "CLASS"),
+                        ("--from-utc", "Inclusive UTC Z start bound.", "TIME"),
+                        ("--to-utc", "Exclusive UTC Z end bound.", "TIME"),
+                        ("--group-by", "JSON array of unique dimensions.", "JSON"),
+                        ("--cursor", "Opaque retained-query cursor.", "CURSOR"),
+                        ("--require-complete", "Refuse incomplete coverage.", None),
+                    ))),
+                    docs_anchor="docs/cli/router.md#caller-accounting",
+                ) for action, summary in (("active", "Read owned active samples."), ("recent", "Read last24h retained detail."), ("query", "Read exact supported retained history."))),
             ),
             _node(
                 "workloads",
@@ -125,6 +213,9 @@ def commands() -> CommandNode:
                         "--env-file", summary="Router Compose environment file.", value_name="PATH"
                     ),
                     _option("--recreate", summary="Force-recreate only the router service."),
+                    _option("--startup-abort-config", summary="Exact completed failed-startup recovery declaration.", value_name="PATH"),
+                    _option("--current-stop-receipt", summary="Completed current-owner stop authorizing this exact closed successor.", value_name="PATH"),
+                    _option("--rollback-current-stop", summary="Select only the exact predecessor bound by the completed stop receipt."),
                 ),
                 mutation="mutate",
                 remote_operation=_remote(
@@ -202,6 +293,49 @@ def commands() -> CommandNode:
                 ),
                 mutation="mutate",
             ),
+            _node(
+                "routes", "Preview and apply scoped live route updates without restarting the router.",
+                children=(
+                    _resource_node("init", "Initialize the protected live route authority during managed installation.",
+                        "anvil_serving.router_manage", role="router", argv_prefix=("routes", "init"),
+                        forward_confirm_flag=True,
+                        options=(_option("--config", summary="Managed router TOML declaring route_state_path.", value_name="PATH"),
+                                 _option("--compose", summary="Stopped managed router Compose file for volume-safe initialization.", value_name="PATH"),
+                                 _option("--env-file", summary="Selected Compose environment file.", value_name="PATH"),
+                                 _option("--container", summary="Declared managed router container name.", value_name="NAME"),
+                                 _option("--current-stop-receipt", summary="Completed current-owner stop authorizing this exact stopped successor.", value_name="PATH"),
+                                 _option("--native", summary="Initialize only an explicitly host-native state path."),
+                                 _option("--confirm", summary="Initialize the protected route state exactly once.", requires_confirmation=True)),
+                        mutation="mutate", execution_runtime_roles=("native", "docker"), docs_anchor="docs/cli/router.md#live-route-updates"),
+                    _resource_node("preview", "Validate a bounded candidate route configuration.",
+                        "anvil_serving.router_manage", role="router", argv_prefix=("routes", "preview"),
+                        options=(_option("--config", summary="Candidate complete router TOML.", value_name="PATH"),
+                                 _option("--router-url", summary="Private router base URL.", value_name="URL"),
+                                 _option("--drain-timeout", summary="Bounded destructive drain timeout.", value_name="SECONDS")),
+                        mutation="read", docs_anchor="docs/cli/router.md#live-route-updates"),
+                    _resource_node("apply", "Apply one content-bound live route preview.",
+                        "anvil_serving.router_manage", role="router", argv_prefix=("routes", "apply"),
+                        forward_confirm_flag=True,
+                        options=(_option("--preview-id", summary="Opaque preview ID.", value_name="ID"),
+                                 _option("--router-url", summary="Private router base URL.", value_name="URL"),
+                                 _option("--confirm", summary="Publish the content-bound preview.", requires_confirmation=True)),
+                        mutation="mutate", docs_anchor="docs/cli/router.md#live-route-updates"),
+                    _resource_node("status", "Show durable live route transaction state.",
+                        "anvil_serving.router_manage", role="router", argv_prefix=("routes", "status"),
+                        options=(_option("--router-url", summary="Private router base URL.", value_name="URL"),),
+                        docs_anchor="docs/cli/router.md#live-route-updates"),
+                    _resource_node("rollback", "Preview rollback to one retained route revision.",
+                        "anvil_serving.router_manage", role="router", argv_prefix=("routes", "rollback"),
+                        options=(_option("--revision", summary="Retained route revision.", value_name="NUMBER"),
+                                 _option("--router-url", summary="Private router base URL.", value_name="URL")),
+                        mutation="read", docs_anchor="docs/cli/router.md#live-route-updates"),
+                    _resource_node("resume", "Preview recovery of a held route transaction.",
+                        "anvil_serving.router_manage", role="router", argv_prefix=("routes", "resume"),
+                        options=(_option("--transaction-id", summary="Held transaction ID.", value_name="ID"),
+                                 _option("--router-url", summary="Private router base URL.", value_name="URL")),
+                        mutation="read", docs_anchor="docs/cli/router.md#live-route-updates"),
+                ),
+            ),
             _resource_node(
                 "endpoint",
                 "Show the router listen address and this node's Tailscale DNS name.",
@@ -256,6 +390,8 @@ def commands() -> CommandNode:
                 "anvil_serving.router_manage",
                 role="router",
                 options=(
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Optional tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -263,7 +399,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "status"),),
-                    allowed=("tier", "member", "router_url"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url"),
                 ),
             ),
             _resource_node(
@@ -273,6 +409,8 @@ def commands() -> CommandNode:
                 role="router",
                 options=CONFIRM_OPTIONS
                 + (
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -281,7 +419,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "quiesce"),),
-                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(
@@ -290,6 +428,8 @@ def commands() -> CommandNode:
                 "anvil_serving.router_manage",
                 role="router",
                 options=(
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -298,7 +438,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "drain"),),
-                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(
@@ -308,6 +448,8 @@ def commands() -> CommandNode:
                 role="router",
                 options=CONFIRM_OPTIONS
                 + (
+                    _option("--scope", summary="tier or whole router.", value_name="SCOPE"),
+                    _option("--barrier-token", summary="Owned whole-router barrier token.", value_name="TOKEN"),
                     _option("--tier", summary="Tier id.", value_name="ID"),
                     _option("--member", summary="Optional declared replica member; requires --tier.", value_name="ID"),
                     _option("--router-url", summary="Private router base URL.", value_name="URL"),
@@ -316,7 +458,7 @@ def commands() -> CommandNode:
                 remote_operation=_remote(
                     "router_transition",
                     fixed=(("action", "readmit"),),
-                    allowed=("tier", "member", "router_url", "timeout", "dry_run"),
+                    allowed=("tier", "member", "scope", "barrier_token", "router_url", "timeout", "dry_run"),
                 ),
             ),
             _resource_node(

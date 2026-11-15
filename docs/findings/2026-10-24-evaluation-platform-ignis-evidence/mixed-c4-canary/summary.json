@@ -1,0 +1,143 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "mixed-c4-diagnostic",
+  "complete": false,
+  "scope": "One incumbent-only mixed-C4 measurement-closure diagnostic; excluded from full comparison populations.",
+  "source": {
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+    "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430"
+  },
+  "native_report": "campaign-report.json",
+  "task_mapping": [
+    {
+      "cell": "cell-1",
+      "task": "tool-recovery (synthetic error result)",
+      "passed": true,
+      "measurement_complete": true
+    },
+    {
+      "cell": "cell-2",
+      "task": "debug-loop-v2 (synthetic tool results)",
+      "passed": true,
+      "measurement_complete": true
+    },
+    {
+      "cell": "cell-3",
+      "task": "cpp/exercises/practice/all-your-base",
+      "passed": true,
+      "measurement_complete": true
+    },
+    {
+      "cell": "cell-4",
+      "task": "go/exercises/practice/alphametics",
+      "passed": false,
+      "measurement_complete": true
+    }
+  ],
+  "counts": {
+    "planned": 4,
+    "submitted": 4,
+    "completed": 4,
+    "graded": 4,
+    "task_passed": 3,
+    "task_failed": 1,
+    "measurement_complete": 4,
+    "telemetry_rows": 60
+  },
+  "configured": {
+    "concurrency": 4,
+    "repeats": 1,
+    "arms": 1,
+    "total_budget_s": 900,
+    "drain_reserve_s": 120,
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "reasoning_effort": "max",
+    "thinking_mode": "default",
+    "cache": "uncontrolled",
+    "native_max_steps": 24,
+    "native_max_completion_tokens": 8192,
+    "aider_max_completion_tokens": 16384,
+    "aider_max_transport_attempts": 12,
+    "aider_retries": 0,
+    "aider_upstream_edit_test_attempts": 2
+  },
+  "closure_observation": {
+    "native_status": "closed",
+    "drain": "verified",
+    "planes": [
+      "engine",
+      "gpu",
+      "host",
+      "cgroup"
+    ],
+    "terminal_complete": true,
+    "source_sample_counts": {
+      "engine": 21,
+      "gpu": 22,
+      "host": 60,
+      "cgroup": 60
+    },
+    "independent_terminal_review": {
+      "status": "GO for repaired four-child mixed-C4 closure only",
+      "reviewer": "independent Sol/high",
+      "original_private_review_sha256": "49ee302e52c48f473b7ccd7c7df58b36752d26b0f8d066f9caf2198f8e33f8bb",
+      "original_private_review_bytes": 8673,
+      "earlier_GO_version_original_sha256": "7cc37b12955a5acc5ceacca3f281aede12b48d32e734acac383a0b82bae4effc",
+      "version_delta": "Final review adds full-chain audit binding; earlier GO provenance retained.",
+      "original_private_full_chain_audit_sha256": "63bbeb423295a78bdcdf64106ae881c27120dc91e5d07be791146c2109d6ffad",
+      "public_full_chain_audit": "full-chain-audit.json",
+      "bound_reference_count": 41,
+      "source_python_file_count": 447,
+      "source_and_reference_reads_unchanged_twice": true,
+      "model_quality_ranking": false,
+      "publication_approval": false,
+      "promotion_authorized": false
+    }
+  },
+  "timing": {
+    "active_wall_seconds": 308.53438065899536,
+    "child_active_wall_seconds": 292.2098744949326,
+    "known_active_wall_seconds": 308.53438065899536,
+    "observed_job_overlap": 4,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 0,
+    "unknown_intervals": 0
+  },
+  "limitations": [
+    "Four-task diagnostic only; three passes are not a model-quality ranking or full96-cell result.",
+    "Go alphametics remains failed after [false,false]; C++ native oracle outcomes [false,true]. No first-attempt root cause is assigned by this packet.",
+    "Native debug/tool results are synthetic; Aider contained tests supply the executable coding oracle.",
+    "Native request overlap remains unknown; process overlap4 does not prove four simultaneous model requests. No throughput, TTFT, speedup or percentile claims.",
+    "Telemetry60 poll rows include repeated source observations: engine21 and GPU22 distinct source samples. Memory allocated does not prove compute.",
+    "Go grader token totals are0 as emitted; not proof of zero generation. Two exhausted-context warnings do not replace exact finish-reason evidence.",
+    "Aider process retained display prefixes are truncated; this is not the hard output-overflow failure from earlier canaries. Raw prompts/reasoning/output remain private.",
+    "Native hashes inside sanitized objects bind private originals, never these projected bytes; original hashes and public file hashes are separate in projection-ledger.json.",
+    "This compact packet is not the full transitive private evidence graph. Independent native-chain acceptance is recorded in terminal-review.json/full-chain-audit.json; publication acceptance remains pending.",
+    "No candidate run, model swap, alias activation, promotion or prior R7 rehabilitation. Whole-experiment publication size approval is separate."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Independent public-packet review; any fresh full campaign has its own preparation/freeze/admission gates. No comparison or promotion accepted."
+  },
+  "request_accounting": {
+    "scope": "Aider children only",
+    "transport_starts": 6,
+    "observed_http_response_events": 5,
+    "cpp_starts": 4,
+    "cpp_http_response_events": 3,
+    "go_starts": 2,
+    "go_http_response_events": 2,
+    "usage_totals_claimed": false,
+    "basis": "terminal-review.json and full-chain-audit.json; raw request events remain private",
+    "limit": "Six attempts do not mean six successful responses or complete usage accounting."
+  }
+}

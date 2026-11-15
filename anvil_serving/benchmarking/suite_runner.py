@@ -7,7 +7,14 @@ import json
 import math
 from typing import Any, Callable, Mapping
 
-from .agentic import _tool_call_matches, build_agentic_scenario, score_agentic_trace
+from .agentic import (
+    AGENTIC_ORACLE_REVISION,
+    DEBUG_LOOP_V2_CASE,
+    DEBUG_LOOP_V2_ORACLE_REVISION,
+    _tool_call_matches,
+    build_agentic_scenario,
+    score_agentic_trace,
+)
 from .evaluation import normalize_sampling, request_sampling_kwargs
 from .context import (
     NATIVE_CONTEXT_CASES,
@@ -16,12 +23,15 @@ from .context import (
     summarize_context_degradation,
 )
 from .jobs import BenchmarkJobError
+from .budgets import BudgetExhausted, NativeBudget
+from .profiles import suite_budgets
 from .requests import (
     VISIBLE_CONTENT_CAPTURE_LIMIT,
     post_chat,
     resolve_api_key,
     response_observation,
 )
+from .request_controls import resolve_job_request_controls
 from ..model_controls import REASONING_EFFORT_CHOICES
 
 
@@ -153,6 +163,14 @@ def _context_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) 
         raise BenchmarkJobError(
             "bad_context_headroom", "context output_headroom_tokens must be from 1 through 65536"
         )
+    if "budgets" in suite and (
+        not set(cases) <= set(suite["cases"])
+        or not set(buckets) <= set(suite["token_buckets"])
+        or not set(positions) <= set(suite["positions"])
+        or repetitions > suite["repetitions"]
+        or headroom > suite["budgets"]["max_completion_tokens"]
+    ):
+        raise BenchmarkJobError("profile_budget_exceeded", "context selection widens the v2 profile matrix or budget")
     advertised = parameters.get("advertised_context")
     if advertised is not None:
         if (
@@ -237,6 +255,51 @@ def _context_request_controls(parameters: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _validate_case_limit(parameters: Mapping[str, Any], *, suite: str) -> int | None:
+    case_limit = parameters.get("case_limit")
+    if case_limit is not None and (
+        not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
+    ):
+        raise BenchmarkJobError("bad_case_limit", f"{suite} case_limit must be positive")
+    return case_limit
+
+
+def _agentic_selection(suite: Mapping[str, Any], parameters: Mapping[str, Any]) -> dict[str, Any]:
+    available_cases = list(suite["cases"])
+    case_ids = parameters.get("case_ids")
+    if case_ids is not None:
+        if (
+            not isinstance(case_ids, list)
+            or not case_ids
+            or any(not isinstance(item, str) or not item for item in case_ids)
+            or len(set(case_ids)) != len(case_ids)
+        ):
+            raise BenchmarkJobError(
+                "bad_agentic_case_ids",
+                "agentic case_ids must be a non-empty list of unique strings",
+            )
+        unknown = set(case_ids).difference(available_cases)
+        if DEBUG_LOOP_V2_CASE in unknown and "debug-loop" in available_cases:
+            unknown.remove(DEBUG_LOOP_V2_CASE)
+        if unknown:
+            raise BenchmarkJobError(
+                "unknown_agentic_case_id",
+                "agentic case_ids must be present in the pinned profile",
+            )
+        selected_cases = list(case_ids)
+    else:
+        selected_cases = available_cases
+    recovery_result = parameters.get("recovery_result", "error")
+    session_turns = parameters.get("session_turns", 12)
+    # Reuse the scenario constructor's typed validation for its two inputs.
+    build_agentic_scenario(selected_cases[0], recovery_result=recovery_result, session_turns=session_turns)
+    return {
+        "case_ids": selected_cases,
+        "recovery_result": recovery_result,
+        "session_turns": session_turns,
+    }
+
+
 def _bounded_context_capture(response: Mapping[str, Any]) -> dict[str, Any]:
     observation = response_observation(response)
     message = _message(response)
@@ -281,17 +344,35 @@ def run_context_suite(
         if value is not None
     }
     request_kwargs.update(request_sampling_kwargs(request_controls["sampling"]))
-    counter, calibration = _calibrated_counter(
-        endpoint=endpoint, key=key, caller=lambda *args, **kwargs: caller(
-            *args, **kwargs, **request_kwargs
-        ), timeout=timeout
-    )
-    selection = _context_selection(suite, parameters)
-    case_limit = parameters.get("case_limit")
-    if case_limit is not None and (
-        not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
-    ):
-        raise BenchmarkJobError("bad_case_limit", "context case_limit must be positive")
+    limits = suite_budgets(profile, "context")
+    selection = _context_selection(suite, parameters) if limits else None
+    budget = NativeBudget(limits, caller, timeout_s=spec["timeout_s"]) if limits else None
+    if budget:
+        caller = budget
+    calibration = None
+    try:
+        counter, calibration = _calibrated_counter(
+            endpoint=endpoint, key=key, caller=lambda *args, **kwargs: caller(
+                *args, **kwargs, **request_kwargs
+            ), timeout=timeout
+        )
+    except Exception as exc:
+        if budget is None:
+            raise
+        return budget.finish({
+            "schema": "anvil-serving.context-suite-run/v1",
+            "state": "incomplete", "passed": False, "truncated": True,
+            "calibration": calibration, "observations": [], "curve": None,
+            "request_ids": [], "request_controls": request_controls,
+            "failure": {
+                "class": "infrastructure_failure",
+                "code": exc.code if isinstance(exc, BenchmarkJobError) else "endpoint_error",
+                "message": str(exc)[:1024],
+            },
+        })
+    if selection is None:
+        selection = _context_selection(suite, parameters)
+    case_limit = _validate_case_limit(parameters, suite="context")
     observations = []
     request_ids = []
     attempted = 0
@@ -299,6 +380,8 @@ def run_context_suite(
         for case_type in selection["case_ids"]:
             for position in selection["positions"]:
                 for repetition in range(selection["repetitions"]):
+                    if budget and budget.exhaustion_reason:
+                        break
                     if case_limit is not None and attempted >= case_limit:
                         break
                     case, expected = build_native_context_case(
@@ -309,7 +392,6 @@ def run_context_suite(
                         token_counter=counter,
                         seed=17,
                     )
-                    attempted += 1
                     try:
                         result = caller(
                             endpoint["base_url"],
@@ -351,32 +433,41 @@ def run_context_suite(
                         if result.get("request_id"):
                             request_ids.append(result["request_id"])
                     except Exception as exc:  # retained per sample; lower evidence survives
+                        if budget and isinstance(exc, BudgetExhausted):
+                            break  # No transport attempt: omit this case from the curve.
                         scored = score_context_response(
                             case,
                             expected,
                             "",
-                            failure={"code": type(exc).__name__, "message": str(exc)[:1024]},
+                            failure={
+                                "code": (
+                                    exc.code if budget and isinstance(exc, BenchmarkJobError)
+                                    else type(exc).__name__
+                                ),
+                                "message": str(exc)[:1024],
+                            },
                         )
+                    attempted += 1
                     scored["answer_sha256"] = expected["answer_sha256"]
                     observations.append(scored)
-                if case_limit is not None and attempted >= case_limit:
+                if (budget and budget.exhaustion_reason) or (case_limit is not None and attempted >= case_limit):
                     break
-            if case_limit is not None and attempted >= case_limit:
+            if (budget and budget.exhaustion_reason) or (case_limit is not None and attempted >= case_limit):
                 break
-        if case_limit is not None and attempted >= case_limit:
+        if (budget and budget.exhaustion_reason) or (case_limit is not None and attempted >= case_limit):
             break
-    if not observations:
+    if not observations and not (budget and budget.exhaustion_reason):
         raise BenchmarkJobError("no_context_cases", "profile selected no executable context cases")
     attempted_buckets = {item["requested_tokens"] for item in observations}
     scoring = dict(suite["scoring"])
-    if scoring["baseline_bucket"] not in attempted_buckets:
+    if attempted_buckets and scoring["baseline_bucket"] not in attempted_buckets:
         scoring["baseline_bucket"] = min(attempted_buckets)
     curve = summarize_context_degradation(
         observations,
         scoring=scoring,
         advertised_context=parameters.get("advertised_context"),
-    )
-    return {
+    ) if observations else None
+    result = {
         "schema": "anvil-serving.context-suite-run/v1",
         "calibration": calibration,
         "selection": selection,
@@ -386,6 +477,7 @@ def run_context_suite(
         "curve": curve,
         "passed": all(item["passed"] for item in observations),
     }
+    return budget.finish(result) if budget else result
 
 
 def _normalized_tool_calls(message: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -447,7 +539,7 @@ def _fixture_result(
         2: {"status": "edited"},
         3: {"status": "passed", "marker": "TESTS-PASS"},
     }
-    if scenario.get("scenario_type") == "debug-loop" and call_index in debug:
+    if scenario.get("scenario_type") in {"debug-loop", DEBUG_LOOP_V2_CASE} and call_index in debug:
         return debug[call_index]
     return {"error": "unexpected deterministic tool call"}
 
@@ -678,54 +770,23 @@ def run_agentic_suite(
     key = resolve_api_key(endpoint.get("auth_env"))
     parameters = spec.get("parameters", {})
     sampling = _sampling_request_controls(parameters)
+    request_controls = resolve_job_request_controls({
+        key: parameters[key] for key in (
+            "thinking_mode", "reasoning_effort", "temperature", "top_p",
+            "force_nonempty_content",
+        ) if key in parameters
+    })
     sampling_kwargs = request_sampling_kwargs(sampling)
-    thinking_mode = parameters.get("thinking_mode", "default")
-    if thinking_mode not in {"default", "enabled", "disabled"}:
-        raise BenchmarkJobError(
-            "bad_thinking_mode", "thinking_mode must be default, enabled, or disabled"
-        )
-    reasoning_effort = parameters.get("reasoning_effort")
-    if reasoning_effort is not None and reasoning_effort not in REASONING_EFFORT_CHOICES:
-        raise BenchmarkJobError(
-            "bad_reasoning_effort", "reasoning_effort is not supported by the harness"
-        )
-    if reasoning_effort is not None and thinking_mode != "default":
-        raise BenchmarkJobError(
-            "conflicting_reasoning_controls",
-            "reasoning_effort and thinking_mode cannot both be explicit",
-        )
-    chat_template_kwargs = (
-        {"enable_thinking": True}
-        if thinking_mode == "enabled"
-        else {"enable_thinking": False} if thinking_mode == "disabled" else None
-    )
-    case_limit = parameters.get("case_limit")
-    if case_limit is not None and (
-        not isinstance(case_limit, int) or isinstance(case_limit, bool) or case_limit < 1
-    ):
-        raise BenchmarkJobError("bad_case_limit", "agentic case_limit must be positive")
-    case_ids = parameters.get("case_ids")
-    if case_ids is not None:
-        if (
-            not isinstance(case_ids, list)
-            or not case_ids
-            or any(not isinstance(item, str) or not item for item in case_ids)
-            or len(set(case_ids)) != len(case_ids)
-        ):
-            raise BenchmarkJobError(
-                "bad_agentic_case_ids",
-                "agentic case_ids must be a non-empty list of unique strings",
-            )
-        unknown = set(case_ids).difference(suite["cases"])
-        if unknown:
-            raise BenchmarkJobError(
-                "unknown_agentic_case_id",
-                "agentic case_ids must be present in the pinned profile",
-            )
-        selected_cases = case_ids
-    else:
-        selected_cases = suite["cases"]
-    recovery_result = parameters.get("recovery_result", "error")
+    reasoning_effort = request_controls["reasoning_effort"]
+    chat_template_kwargs = request_controls["chat_template_kwargs"]
+    case_limit = _validate_case_limit(parameters, suite="agentic")
+    selection = _agentic_selection(suite, parameters)
+    selected_cases = selection["case_ids"]
+    recovery_result = selection["recovery_result"]
+    limits = suite_budgets(profile, "agentic")
+    budget = NativeBudget(limits, caller, timeout_s=spec["timeout_s"]) if limits else None
+    if budget:
+        caller = budget
     observations = []
     request_ids = []
     for case_type in selected_cases:
@@ -733,8 +794,9 @@ def run_agentic_suite(
             scenario, expected = build_agentic_scenario(
                 case_type,
                 recovery_result=recovery_result,
-                session_turns=parameters.get("session_turns", 12),
+                session_turns=selection["session_turns"],
             )
+            calls_before = budget.model_calls if budget else None
             observation, ids = _run_agentic_case(
                 scenario,
                 expected,
@@ -748,31 +810,44 @@ def run_agentic_suite(
                 reasoning_effort=reasoning_effort,
                 sampling_kwargs=sampling_kwargs,
             )
+            if budget and budget.exhaustion_reason and budget.model_calls == calls_before:
+                break  # This case never started; previously sent turns remain observations.
             observation["repetition"] = repetition
             observations.append(observation)
             request_ids.extend(ids)
-            if case_limit is not None and len(observations) >= case_limit:
+            if (budget and budget.exhaustion_reason) or (case_limit is not None and len(observations) >= case_limit):
                 break
-        if case_limit is not None and len(observations) >= case_limit:
+        if (budget and budget.exhaustion_reason) or (case_limit is not None and len(observations) >= case_limit):
             break
-    if not observations:
+    if not observations and not (budget and budget.exhaustion_reason):
         raise BenchmarkJobError("no_agentic_cases", "profile selected no agentic scenarios")
     passed = sum(item["passed"] for item in observations)
-    return {
+    pass_rate = passed / len(observations) if observations else None
+    result = {
         "schema": "anvil-serving.agentic-suite-run/v1",
         "request_ids": sorted(set(request_ids)),
         "observations": observations,
         "summary": {
             "attempted": len(observations),
             "passed": passed,
-            "pass_rate": passed / len(observations),
+            "pass_rate": pass_rate,
             "required_pass_rate": suite["scoring"]["pass_rate_floor"],
         },
-        "request_controls": {
-            "thinking_mode": thinking_mode,
-            "chat_template_kwargs": chat_template_kwargs,
-            "reasoning_effort": reasoning_effort,
-            "sampling": sampling,
-        },
-        "passed": passed / len(observations) >= suite["scoring"]["pass_rate_floor"],
+        "request_controls": {**request_controls, "sampling": sampling},
+        "passed": pass_rate is not None and pass_rate >= suite["scoring"]["pass_rate_floor"],
     }
+    if DEBUG_LOOP_V2_CASE in selected_cases:
+        result["scenario_contracts"] = [
+            {
+                "scenario_id": case_id,
+                "oracle_revision": (
+                    DEBUG_LOOP_V2_ORACLE_REVISION
+                    if case_id == DEBUG_LOOP_V2_CASE
+                    else AGENTIC_ORACLE_REVISION
+                ),
+                **({"replaces": "debug-loop"} if case_id == DEBUG_LOOP_V2_CASE else {}),
+            }
+            for case_id in selected_cases
+            if case_id in {"debug-loop", DEBUG_LOOP_V2_CASE}
+        ]
+    return budget.finish(result) if budget else result

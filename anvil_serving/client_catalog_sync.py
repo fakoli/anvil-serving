@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,6 +32,7 @@ DEFAULT_PI_SETTINGS = "~/.pi/agent/settings.json"
 DEFAULT_STATE = "~/.anvil-serving/state/client-catalog.json"
 DEFAULT_BACKUP_ROOT = "~/.anvil-serving/backups/client-catalog"
 DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+_ROUTE_SNAPSHOT_RETRIES = 3
 PI_ALIASES = ("llm.primary", "llm.secondary", "vision.general", "vision.ocr")
 OPENCLAW_EXCLUDED_ALIASES = frozenset({"llm.auxiliary"})
 COMPACTION_EXCLUDED_ALIASES = frozenset({"llm.voice"})
@@ -49,6 +51,7 @@ HERMES_MEDIA_TOOLS = (
     "media_workflow_list",
     "media_workflow_show",
     "media_workflow_validate",
+    "media_workflow_prepare",
     "media_workflow_run",
     "media_job_status",
     "media_job_cancel",
@@ -242,23 +245,30 @@ def fetch_client_catalog(
         raise ClientCatalogError("required router credential environment variable is unset")
     if not isinstance(timeout_seconds, int) or isinstance(timeout_seconds, bool) or timeout_seconds < 1:
         raise ClientCatalogError("timeout_seconds must be a positive integer")
-    status = _fetch_json(
-        base_url,
-        "/router/status",
-        token=token,
-        timeout_seconds=timeout_seconds,
-        max_bytes=max_response_bytes,
-        opener=opener,
-    )
-    capabilities = _fetch_json(
-        base_url,
-        "/models/capabilities",
-        token=token,
-        timeout_seconds=timeout_seconds,
-        max_bytes=max_response_bytes,
-        opener=opener,
-    )
+    # Existing metadata endpoints are independently captured. Refuse to write
+    # a mixed catalog if a live-route publication lands between these requests.
+    status = capabilities = None
+    for _attempt in range(_ROUTE_SNAPSHOT_RETRIES):
+        status = _fetch_json(base_url, "/router/status", token=token,
+                            timeout_seconds=timeout_seconds, max_bytes=max_response_bytes, opener=opener)
+        capabilities = _fetch_json(base_url, "/models/capabilities", token=token,
+                                  timeout_seconds=timeout_seconds, max_bytes=max_response_bytes, opener=opener)
+        status_has_route = "route_revision" in status or "effective_route_sha256" in status
+        capability_has_route = "route_revision" in capabilities or "effective_route_sha256" in capabilities
+        if not status_has_route and not capability_has_route:
+            # Older routers have no hot overlay. Their immutable boot config is
+            # the only available snapshot fence during a rolling upgrade.
+            status["route_revision"] = capabilities["route_revision"] = 0
+            status["effective_route_sha256"] = capabilities["effective_route_sha256"] = status.get("config_sha256")
+            break
+        if (status.get("route_revision") == capabilities.get("route_revision")
+                and status.get("effective_route_sha256") == capabilities.get("effective_route_sha256")):
+            break
+    else:
+        raise ClientCatalogError("router route snapshot changed while reading catalog")
     config_sha256 = status.get("config_sha256")
+    route_revision = status.get("route_revision")
+    effective_route_sha256 = status.get("effective_route_sha256")
     aliases = status.get("model_aliases")
     if (
         not isinstance(config_sha256, str)
@@ -268,6 +278,10 @@ def fetch_client_catalog(
         raise ClientCatalogError("router status has no valid config_sha256")
     if not isinstance(aliases, list) or any(not isinstance(alias, str) for alias in aliases):
         raise ClientCatalogError("router status has no valid model_aliases list")
+    if (type(route_revision) is not int or route_revision < 0
+            or not isinstance(effective_route_sha256, str) or len(effective_route_sha256) != 64
+            or any(character not in "0123456789abcdef" for character in effective_route_sha256)):
+        raise ClientCatalogError("router status has no valid live route revision")
     if len(set(aliases)) != len(aliases):
         raise ClientCatalogError("router status contains duplicate model aliases")
     rows = capabilities.get("data")
@@ -281,6 +295,15 @@ def fetch_client_catalog(
         context = row.get("context_limit_tokens")
         limits = row.get("limits")
         output = limits.get("max_output_tokens") if isinstance(limits, dict) else None
+        # ``video_per_request`` is validated now but not yet consumed by any
+        # client renderer (Pi has no video input-limit field); carried so a
+        # future client can adopt it without a second router change.
+        images_per_request = (
+            limits.get("images_per_request") if isinstance(limits, dict) else None
+        )
+        video_per_request = (
+            limits.get("video_per_request") if isinstance(limits, dict) else None
+        )
         if (
             not isinstance(context, int)
             or isinstance(context, bool)
@@ -293,6 +316,16 @@ def fetch_client_catalog(
             raise ClientCatalogError(
                 "every routed tier must declare valid context_limit_tokens and max_output_tokens"
             )
+        if (
+            images_per_request is not None
+            and (isinstance(images_per_request, bool) or not isinstance(images_per_request, int) or images_per_request < 0)
+        ):
+            raise ClientCatalogError("router capability row has an invalid images_per_request limit")
+        if (
+            video_per_request is not None
+            and (isinstance(video_per_request, bool) or not isinstance(video_per_request, int) or video_per_request < 0)
+        ):
+            raise ClientCatalogError("router capability row has an invalid video_per_request limit")
         modalities = row.get("modalities")
         if not isinstance(modalities, list) or any(not isinstance(item, str) for item in modalities):
             raise ClientCatalogError("router capability row has invalid modalities")
@@ -314,6 +347,8 @@ def fetch_client_catalog(
                 "input": inputs,
                 "reasoning": reasoning,
                 "compat": compat,
+                "images_per_request": images_per_request,
+                "video_per_request": video_per_request,
             }
     if set(models) != set(aliases):
         raise ClientCatalogError(
@@ -321,12 +356,28 @@ def fetch_client_catalog(
         )
     return {
         "config_sha256": config_sha256,
+        "route_revision": route_revision,
+        "effective_route_sha256": effective_route_sha256,
         "package_version": status.get("package_version"),
         "models": {alias: models[alias] for alias in sorted(models)},
     }
 
 
-def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str) -> dict:
+def _catalog_fence(catalog: Mapping) -> tuple[str, int | None, str | None]:
+    """The immutable live route identity carried through client journals."""
+    return (catalog["config_sha256"], catalog.get("route_revision"),
+            catalog.get("effective_route_sha256"))
+
+
+def _prior_catalog_fence(state: Mapping, key: str, config_sha256: str):
+    """Read an old marker as a boot-only route fence during rolling upgrade."""
+    value = state.get(key)
+    if isinstance(value, list) and len(value) == 3:
+        return tuple(value)
+    return (config_sha256, 0, config_sha256)
+
+
+def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str, pi: bool = False) -> dict:
     result = dict(existing) if isinstance(existing, Mapping) else {}
     result.update({
         "id": model["id"],
@@ -336,12 +387,64 @@ def _managed_model(existing: Mapping | None, model: Mapping, *, name_prefix: str
         "contextWindow": model["context_window"],
         "maxTokens": model["max_output_tokens"],
     })
+    # The gateway exposes the OpenAI reasoning contract regardless of its
+    # upstream. Retained model-specific template switches can disable parsing.
+    compat = dict(result.get("compat", {})) if isinstance(result.get("compat"), Mapping) else {}
+    if not pi:
+        compat["thinkingFormat"] = "openai"
     efforts = _supported_reasoning_efforts(model)
     if efforts:
-        compat = dict(result.get("compat", {})) if isinstance(result.get("compat"), Mapping) else {}
         compat["supportedReasoningEfforts"] = list(efforts)
+    if compat:
         result["compat"] = compat
+    if pi:
+        # ``inputLimits`` is a Pi model-config concept; OpenClaw rows keep
+        # their own schema and never receive it.
+        _sync_pi_image_limit(result, model)
     return result
+
+
+def _sync_pi_image_limit(result: dict, model: Mapping) -> None:
+    """Keep ``inputLimits.images.maxPerRequest`` managed from the router limit.
+
+    The router declares ``images_per_request`` per tier; Pi's model config
+    accepts positive values as ``inputLimits.images.maxPerRequest``. Zero
+    removes the image input modality because Pi requires numeric caps >= 1.
+    Positive limits merge into user-set ``inputLimits``; zero or an absent
+    declaration removes only the managed cap, preserving sibling fields.
+    """
+    limit = model.get("images_per_request")
+    declared = (
+        isinstance(limit, int) and not isinstance(limit, bool) and limit >= 0
+    )
+    input_limits = result.get("inputLimits")
+    if not isinstance(input_limits, Mapping):
+        input_limits = {}
+    if declared and limit == 0:
+        result["input"] = [value for value in result["input"] if value != "image"]
+    if declared and limit > 0:
+        images = input_limits.get("images")
+        if not isinstance(images, Mapping):
+            images = {}
+        images = dict(images)
+        images["maxPerRequest"] = limit
+        input_limits = dict(input_limits)
+        input_limits["images"] = images
+        result["inputLimits"] = input_limits
+        return
+    # Zero or undeclared: drop the managed cap, preserve all sibling fields.
+    images = input_limits.get("images")
+    if isinstance(images, Mapping) and "maxPerRequest" in images:
+        images = {key: value for key, value in images.items() if key != "maxPerRequest"}
+        input_limits = dict(input_limits)
+        if images:
+            input_limits["images"] = images
+        else:
+            input_limits.pop("images", None)
+        if input_limits:
+            result["inputLimits"] = input_limits
+        else:
+            result.pop("inputLimits", None)
 
 
 def _models_by_id(value) -> dict[str, Mapping]:  # noqa: ANN001
@@ -379,6 +482,14 @@ def _validate_compaction(
     if label == "Pi" and not reserve_declared:
         raise ClientCatalogError("Pi compaction reserveTokens must remain configured")
     if label == "OpenClaw":
+        # OpenClaw 2026.10 removed reserveTokens and reserveTokensFloor. Its
+        # current safeguard schema requires a positive recent-token budget;
+        # retain the legacy form unchanged for existing installed clients.
+        legacy_reserve_schema = reserve_declared or "reserveTokensFloor" in compaction
+        if not legacy_reserve_schema and recent == 0:
+            raise ClientCatalogError(
+                "OpenClaw current compaction keepRecentTokens must be a positive integer"
+            )
         floor = compaction.get("reserveTokensFloor")
         if floor is not None and (
             not isinstance(floor, int)
@@ -590,7 +701,7 @@ def _render_pi_documents(
     old_pi_models = _models_by_id(pi_provider.get("models"))
     rendered_rows = []
     for alias in pi_aliases:
-        row = _managed_model(old_pi_models.get(alias), models[alias], name_prefix="Anvil")
+        row = _managed_model(old_pi_models.get(alias), models[alias], name_prefix="Anvil", pi=True)
         efforts = _supported_reasoning_efforts(models[alias])
         if efforts:
             row["thinkingLevelMap"] = _pi_thinking_level_map(models[alias])
@@ -824,13 +935,24 @@ def _read_text_file(path: Path) -> str:
         raise ClientCatalogError("client config is not valid UTF-8 text: %s" % path) from exc
 
 
-def _openclaw_secret_env_name(openclaw: Mapping) -> str:
+def _openclaw_secret_env_name(openclaw: Mapping) -> str | None:
+    """Return an env name, or preserve a declared file reference without resolving it."""
     provider = (
         openclaw.get("models", {})
         .get("providers", {})
         .get("anvil")
     )
     api_key = provider.get("apiKey") if isinstance(provider, Mapping) else None
+    if (isinstance(api_key, Mapping) and set(api_key) == {"source", "provider", "id"}
+            and api_key.get("source") == "file"
+            and all(isinstance(api_key.get(key), str) and api_key[key] for key in ("provider", "id"))):
+        secrets = openclaw.get("secrets")
+        providers = secrets.get("providers") if isinstance(secrets, Mapping) else None
+        file_provider = providers.get(api_key["provider"]) if isinstance(providers, Mapping) else None
+        if (isinstance(file_provider, Mapping) and file_provider.get("source") == "file"
+                and file_provider.get("mode") == "singleValue" and api_key["id"] == "value"
+                and isinstance(file_provider.get("path"), str) and file_provider["path"]):
+            return None
     if isinstance(api_key, Mapping) and api_key.get("source") == "env":
         return _environment_reference(api_key.get("id"))
     if isinstance(api_key, str):
@@ -840,7 +962,7 @@ def _openclaw_secret_env_name(openclaw: Mapping) -> str:
         if reference.startswith("$"):
             return _environment_reference(reference[1:])
     raise ClientCatalogError(
-        "OpenClaw Anvil apiKey must remain an environment SecretRef"
+        "OpenClaw Anvil apiKey must remain an environment SecretRef or a declared file SecretRef"
     )
 
 
@@ -1208,18 +1330,54 @@ def _read_hermes_profile(
     *,
     timeout_seconds: int,
     run,
+    snapshot: bool = False,
 ) -> dict:
-    result = {}
-    for key in HERMES_PROFILE_KEYS:
-        result[key] = _read_hermes_profile_key(
-            hermes_bin,
-            profile,
-            key,
-            timeout_seconds=timeout_seconds,
-            run=run,
-            required=key in {"model", "compression", "providers"},
-        )
-    return result
+    if snapshot:
+        completed = _run_hermes(hermes_bin, profile,
+            ["config", "get", "--catalog-snapshot"],
+            timeout_seconds=timeout_seconds, run=run)
+        def unique(pairs):
+            value = dict(pairs)
+            if len(value) != len(pairs):
+                raise ValueError("duplicate snapshot field")
+            return value
+        try:
+            if (completed.returncode or not isinstance(completed.stdout, str)
+                    or len(completed.stdout) > DEFAULT_MAX_RESPONSE_BYTES
+                    or len(completed.stdout.encode("utf-8")) > DEFAULT_MAX_RESPONSE_BYTES):
+                raise ValueError("snapshot unavailable")
+            value = json.loads(completed.stdout, object_pairs_hook=unique)
+            values, missing = value["values"], value["missing"]
+            if (set(value) != {"schema", "values", "missing"}
+                    or value["schema"] != "hermes-catalog-snapshot/v1"
+                    or not isinstance(values, dict) or not isinstance(missing, list)
+                    or any(not isinstance(key, str) for key in missing)
+                    or len(set(missing)) != len(missing)
+                    or set(values) & set(missing)
+                    or set(values) | set(missing) != set(HERMES_PROFILE_KEYS)
+                    or set(missing) & {"model", "compression", "providers"}):
+                raise ValueError("snapshot shape differs")
+        except (ValueError, TypeError, KeyError, UnicodeError):
+            raise ClientCatalogError("Hermes profile %s native snapshot failed" % profile) from None
+        return {key: values.get(key) for key in HERMES_PROFILE_KEYS}
+    executor = ThreadPoolExecutor(max_workers=3)
+    try:
+        futures = {
+            key: executor.submit(
+                _read_hermes_profile_key,
+                hermes_bin,
+                profile,
+                key,
+                timeout_seconds=timeout_seconds,
+                run=run,
+                required=key in {"model", "compression", "providers"},
+            )
+            for key in HERMES_PROFILE_KEYS
+        }
+        return {key: future.result() for key, future in futures.items()}
+    finally:
+        # Keep scratch homes and owner fences alive until every running read exits.
+        executor.shutdown(wait=True, cancel_futures=True)
 
 
 def _hermes_ratio(value, *, label: str) -> float:  # noqa: ANN001
@@ -1453,6 +1611,7 @@ def plan_hermes_profiles(
     hermes_profiles: str,
     timeout_seconds: int,
     run=subprocess.run,
+    snapshot: bool = False,
 ) -> tuple[list[dict], dict[str, Path]]:
     configs = _discover_hermes_profile_configs(hermes_home, hermes_profiles)
     rows = []
@@ -1462,6 +1621,7 @@ def plan_hermes_profiles(
             profile,
             timeout_seconds=timeout_seconds,
             run=run,
+            snapshot=snapshot,
         )
         rows.append(render_hermes_profile_plan(catalog, current, profile=profile))
     return rows, configs
@@ -1520,7 +1680,7 @@ def _apply_hermes_profile_plans(
                 )
 
 
-def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run):
+def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, timeout_seconds, run, snapshot=False):
     """Read and render Hermes only from journal bytes in a disposable home."""
     try:
         import yaml
@@ -1648,7 +1808,7 @@ def _render_fenced_hermes_profiles(configs, originals, catalog, *, hermes_bin, t
                 raise ClientCatalogError("Hermes scratch config failed validation")
         verified, discovered = plan_hermes_profiles(catalog, hermes_bin=hermes_bin,
             hermes_home=str(root), hermes_profiles=selected, timeout_seconds=timeout_seconds,
-            run=scratch_run)
+            run=scratch_run, snapshot=snapshot)
         observed_fields = ("profile", "managed", "provider", "model", "context_window",
                            "max_output_tokens", "compression", "vision_model",
                            "vision_context_window")
@@ -1786,6 +1946,8 @@ def _summary(
     models = catalog["models"]
     return {
         "config_sha256": catalog["config_sha256"],
+        "route_revision": catalog.get("route_revision"),
+        "effective_route_sha256": catalog.get("effective_route_sha256"),
         "package_version": catalog.get("package_version"),
         "clients": list(clients),
         "client_excluded_aliases": dict(exclusions or {}),
@@ -2331,14 +2493,26 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                               environ: Mapping[str, str], fence, grant,
                               canonical_contract: bytes, dry_run: bool = True,
                               opener=None, hermes_run=subprocess.run,
+                              hermes_snapshot: bool = False,
+                              hermes_run_thread_safe: bool = False,
                               read_only: str | None = None,
                               completed_job: tuple[str, str] | None = None) -> list[dict]:
-    """Reconcile distinct installations in one owner reservation."""
+    """Reconcile distinct installations in one owner reservation.
+
+    ``hermes_snapshot`` requires an explicitly qualified native launcher that
+    supplies the fixed six-field snapshot protocol. Failure never downgrades
+    that selected reader to separate queries. Its pre-apply inspection overlaps
+    at most three independent targets, including their native config checks.
+    Held-file I/O and all mutation paths stay serial. Caller-owned transports
+    stay serial unless their native runner explicitly opts into thread safety.
+    """
     from .control_plane.propagation import MAX_TARGETS, parse_contract
 
     if (type(targets) is not tuple or not targets or len(targets) > MAX_TARGETS
             or any(type(target) is not NativeCatalogTarget for target in targets)
-            or type(dry_run) is not bool or fence.owner.resource_id != "client-catalog"
+            or type(dry_run) is not bool or type(hermes_snapshot) is not bool
+            or type(hermes_run_thread_safe) is not bool
+            or fence.owner.resource_id != "client-catalog"
             or read_only not in {None, "inspect", "completed"}
             or read_only is not None and not dry_run
             or read_only == "completed" and (type(completed_job) is not tuple
@@ -2381,9 +2555,31 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
         context = (fence.preview(grant, canonical_contract=canonical_contract, target_paths=paths)
                    if dry_run else fence.transaction(grant, canonical_contract=canonical_contract,
                                                      target_paths=paths))
-    results = []
     with context as journal:
-        for target in targets:
+        parallel = (read_only == "inspect" and hermes_snapshot
+                    and opener is None and len(targets) > 1
+                    and (hermes_run is subprocess.run or hermes_run_thread_safe))
+        if parallel:
+            from threading import Lock
+            from types import SimpleNamespace
+
+            # Keep the held-directory cache on one serialized I/O path while
+            # independent scratch homes run their native checks concurrently.
+            source = journal
+            read_lock = Lock()
+
+            def read(path):
+                with read_lock:
+                    return source.read(path)
+
+            def mode(path):
+                with read_lock:
+                    return source.files.mode(path)
+
+            journal = SimpleNamespace(read=read, files=SimpleNamespace(mode=mode),
+                                      catalog_digest=source.catalog_digest)
+
+        def reconcile(target):
             result = _sync_clients(
                 base_url=base_url, clients=target.client,
                 openclaw_config=target.openclaw_config or DEFAULT_OPENCLAW_CONFIG,
@@ -2402,9 +2598,21 @@ def sync_client_catalog_batch(*, targets: tuple[NativeCatalogTarget, ...],
                     {target.hermes_profile: Path(target.hermes_config)}
                     if target.client == "hermes" else None),
                 hermes_run=hermes_run,
+                hermes_snapshot=hermes_snapshot,
                 dry_run=dry_run, confirm=not dry_run, opener=opener,
                 journal=_ScopedCatalogJournal(journal, target.target_id))
-            results.append({"target_id": target.target_id, "result": result})
+            return {"target_id": target.target_id, "result": result}
+
+        if parallel:
+            executor = ThreadPoolExecutor(max_workers=3)
+            try:
+                results = list(executor.map(reconcile, targets))
+            finally:
+                # Every running native command must finish cleanup before the
+                # owner closes its held directories or releases the fence.
+                executor.shutdown(wait=True, cancel_futures=True)
+        else:
+            results = [reconcile(target) for target in targets]
     return results
 
 
@@ -2553,6 +2761,7 @@ def _sync_clients(
     refresh_openclaw_service: Callable[[], int] | None = None,
     restart_hermes: Callable[[], int] | None = None,
     hermes_run=subprocess.run,
+    hermes_snapshot: bool = False,
     journal=None,
     expected_hermes_configs=None,
 ) -> dict:
@@ -2626,27 +2835,28 @@ def _sync_clients(
         desired["openclaw"] = _json_bytes(
             _render_openclaw_document(catalog, current_openclaw, align_compaction_reserve=align_compaction_reserve, exclude_aliases=openclaw_exclude_aliases, allow_aliases=openclaw_allow_aliases)
         )
-        paths["openclaw_env"] = paths["openclaw"].parent / ".env"
-        desired["openclaw_env"] = _render_openclaw_state_env(
-            read_text("openclaw_env", required=False),
-            name=openclaw_secret_env_name,
-            value=environ[api_key_env],
-        )
-        paths["openclaw_service_env"] = (
-            paths["openclaw"].parent
-            / "service-env"
-            / "ai.openclaw.gateway.env"
-        )
-        openclaw_service_tracking = paths["openclaw_service_env"].exists()
-        if openclaw_service_tracking:
-            openclaw_service_env_matches = (
-                _dotenv_assignment_value(
-                    read_text("openclaw_service_env", required=False),
-                    name=openclaw_secret_env_name,
-                    label="OpenClaw generated service env",
-                )
-                == environ[api_key_env]
+        if openclaw_secret_env_name is not None:
+            paths["openclaw_env"] = paths["openclaw"].parent / ".env"
+            desired["openclaw_env"] = _render_openclaw_state_env(
+                read_text("openclaw_env", required=False),
+                name=openclaw_secret_env_name,
+                value=environ[api_key_env],
             )
+            paths["openclaw_service_env"] = (
+                paths["openclaw"].parent
+                / "service-env"
+                / "ai.openclaw.gateway.env"
+            )
+            openclaw_service_tracking = paths["openclaw_service_env"].exists()
+            if openclaw_service_tracking:
+                openclaw_service_env_matches = (
+                    _dotenv_assignment_value(
+                        read_text("openclaw_service_env", required=False),
+                        name=openclaw_secret_env_name,
+                        label="OpenClaw generated service env",
+                    )
+                    == environ[api_key_env]
+                )
     if "hermes" in selected_clients:
         if hermes_profiles:
             if journal is not None:
@@ -2658,7 +2868,7 @@ def _sync_clients(
                 originals = {profile: before_images["hermes:" + profile] for profile in pinned_configs}
                 hermes_rows, rendered = _render_fenced_hermes_profiles(
                     pinned_configs, originals, catalog, hermes_bin=hermes_bin,
-                    timeout_seconds=timeout_seconds, run=hermes_run)
+                    timeout_seconds=timeout_seconds, run=hermes_run, snapshot=hermes_snapshot)
                 if any(journal.read(path) != originals[profile] for profile, path in pinned_configs.items()):
                     raise ClientCatalogError("Hermes profile changed during preview")
                 if _discover_hermes_profile_configs(hermes_home, hermes_profiles) != pinned_configs:
@@ -2717,8 +2927,8 @@ def _sync_clients(
     openclaw_service_marker_pending = (
         "openclaw" in selected_clients
         and openclaw_service_tracking
-        and prior_state.get("openclaw_service_restarted_sha256")
-        != catalog["config_sha256"]
+        and _prior_catalog_fence(prior_state, "openclaw_service_route_fence", catalog["config_sha256"])
+        != _catalog_fence(catalog)
     )
     openclaw_policy_changed = (
         "openclaw" in selected_clients
@@ -2731,7 +2941,8 @@ def _sync_clients(
         "openclaw" in selected_clients
         and restart_openclaw_on_change
         and (
-            prior_state.get("openclaw_restarted_sha256") != catalog["config_sha256"]
+            _prior_catalog_fence(prior_state, "openclaw_route_fence", catalog["config_sha256"])
+            != _catalog_fence(catalog)
             or "openclaw_env" in changed
             or "openclaw" in changed
             or openclaw_policy_changed
@@ -2752,8 +2963,13 @@ def _sync_clients(
             timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
             opener=opener,
         )
-        if current.get("config_sha256") != expected_config_sha256:
-            raise ClientCatalogError("router configuration changed before client reconciliation")
+        if "route_revision" not in current and "effective_route_sha256" not in current:
+            current["route_revision"] = 0
+            current["effective_route_sha256"] = current.get("config_sha256")
+        if (current.get("config_sha256") != expected_config_sha256
+                or current.get("route_revision") != catalog.get("route_revision")
+                or current.get("effective_route_sha256") != catalog.get("effective_route_sha256")):
+            raise ClientCatalogError("router configuration changed during client reconciliation")
     if dry_run or not confirm:
         summary = _summary(
             catalog,
@@ -2772,6 +2988,8 @@ def _sync_clients(
             summary["state_converged"] = (
                 prior_state_exists
                 and prior_state.get("config_sha256") == catalog["config_sha256"]
+                and _prior_catalog_fence(prior_state, "route_fence", catalog["config_sha256"])
+                == _catalog_fence(catalog)
                 and prior_exclusions == {**prior_exclusions, **exclusions}
                 and ("openclaw" not in selected_clients
                      or prior_state.get("openclaw_allowed_aliases") == list(additions))
@@ -2884,6 +3102,9 @@ def _sync_clients(
                             for profile, path in hermes_configs.items()})
     state = {
         "config_sha256": catalog["config_sha256"],
+        "route_revision": catalog.get("route_revision"),
+        "effective_route_sha256": catalog.get("effective_route_sha256"),
+        "route_fence": list(_catalog_fence(catalog)),
         "client_excluded_aliases": {**prior_exclusions, **exclusions},
         "openclaw_allowed_aliases": (
             list(additions) if "openclaw" in selected_clients
@@ -2894,6 +3115,8 @@ def _sync_clients(
         "openclaw_service_restarted_sha256": prior_state.get(
             "openclaw_service_restarted_sha256"
         ),
+        "openclaw_route_fence": prior_state.get("openclaw_route_fence"),
+        "openclaw_service_route_fence": prior_state.get("openclaw_service_route_fence"),
     }
 
     if "openclaw" in changed or openclaw_policy_changed:
@@ -2978,16 +3201,24 @@ def _sync_clients(
         restarted = True
         state["openclaw_restarted_sha256"] = catalog["config_sha256"]
         state["openclaw_service_restarted_sha256"] = catalog["config_sha256"]
+        state["openclaw_route_fence"] = list(_catalog_fence(catalog))
+        state["openclaw_service_route_fence"] = list(_catalog_fence(catalog))
     if expected_config_sha256 is not None:
         try:
-            current = _fetch_json(
-                _safe_base_url(base_url), "/router/status", token=environ[api_key_env],
-                timeout_seconds=timeout_seconds, max_bytes=DEFAULT_MAX_RESPONSE_BYTES,
-                opener=opener,
+            # A base config hash remains stable across a hot alias/tier
+            # publication.  Re-read the coupled status/capabilities snapshot
+            # and compare its complete fence before claiming this write
+            # converged.
+            current = fetch_client_catalog(
+                base_url=base_url, api_key_env=api_key_env,
+                timeout_seconds=timeout_seconds,
+                max_response_bytes=DEFAULT_MAX_RESPONSE_BYTES,
+                environ=environ, opener=opener,
             )
-            if current.get("config_sha256") != expected_config_sha256:
+            if (current.get("config_sha256") != expected_config_sha256
+                    or _catalog_fence(current) != _catalog_fence(catalog)):
                 raise ClientCatalogError("router configuration changed during client reconciliation")
-        except Exception:
+        except Exception as exc:
             # A fenced run records uncertainty and never overwrites concurrent
             # state merely to make bookkeeping look rolled back.
             if journal is not None:
@@ -2995,7 +3226,9 @@ def _sync_clients(
                     journal.mark_uncertain(effect)
                 raise ClientCatalogError("client catalog sync requires fenced recovery") from None
             restore_prior_state()
-            raise
+            if isinstance(exc, ClientCatalogError) and str(exc) == "router configuration changed during client reconciliation":
+                raise
+            raise ClientCatalogError("router configuration changed during client reconciliation") from exc
     state_bytes = _json_bytes(state)
     if journal is not None:
         if hermes_profiles and "hermes" in selected_clients and _discover_hermes_profile_configs(hermes_home, hermes_profiles) != expected_hermes_configs:

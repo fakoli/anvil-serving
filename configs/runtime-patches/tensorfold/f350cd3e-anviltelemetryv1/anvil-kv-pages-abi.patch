@@ -1,0 +1,210 @@
+diff --git a/zig/src/core/engine_api.zig b/zig/src/core/engine_api.zig
+index 0f090521..8003f24a 100644
+--- a/zig/src/core/engine_api.zig
++++ b/zig/src/core/engine_api.zig
+@@ -2,6 +2,7 @@
+ const std = @import("std");
+ const lanes = @import("lanes");
+ const Allocator = std.mem.Allocator;
++pub const anvil_telemetry = lanes.anvil_telemetry;
+ pub const tfvideo = @import("tfvideo.zig");
+ pub const DraftSources = @import("draft_sources.zig").Sources;
+ /// The server's name for one request, unique while the process lives.
+diff --git a/zig/src/core/engine_status.zig b/zig/src/core/engine_status.zig
+index 519d48e3..ffc9aacc 100644
+--- a/zig/src/core/engine_status.zig
++++ b/zig/src/core/engine_status.zig
+@@ -37,6 +37,7 @@ pub const Status = struct {
+     /// A backend whose KV pool is sharded over its ranks (GLM's TF_GLM_KV_SHARD): its parts' pages and counters,
+     /// /health's `kv_shard` and /metrics' `tensorfold:kv_shard_*`; null: none.
+     kv_parts: ?KvParts = null,
++    kv_allocation: ?@import("lanes").anvil_telemetry.KvAllocation = null,
+ 
+     pub const PromptCache = struct { states: u64 = 0, bytes: u64 = 0 };
+     pub const KvParts = @import("lanes").kv_parts.Stats;
+diff --git a/zig/src/core/lane_host.zig b/zig/src/core/lane_host.zig
+index df6b96ce..58393b41 100644
+--- a/zig/src/core/lane_host.zig
++++ b/zig/src/core/lane_host.zig
+@@ -61,6 +61,8 @@ pub const LaneHost = struct {
+     lone_job: ?*Job = null, // the job that driver holds now
+     cache_status: ?api.Status.PromptCache = null, // published under mutex; HTTP threads never read the store
+     kv_parts: ?lanes.kv_parts.Source = null, // a sharded backend's KV parts, read on the engine thread at each noteLive
++    kv_allocation: ?lanes.anvil_telemetry.KvSource = null,
++    kv_allocation_status: ?lanes.anvil_telemetry.KvAllocation = null,
+     kv_status: ?api.Status.KvParts = null, // ...and published under mutex for status readers
+     cache: ?*pc.Store = null, // kept prompt states (engine thread only); the backend restores and saves them
+     recall: ?*lanes.recall_store.Store = null, // Recall's record: drafts from earlier requests (lane_host_recall.zig)
+diff --git a/zig/src/core/lane_host_status.zig b/zig/src/core/lane_host_status.zig
+index 54b6ca5d..7fc1ad5e 100644
+--- a/zig/src/core/lane_host_status.zig
++++ b/zig/src/core/lane_host_status.zig
+@@ -32,6 +32,7 @@ pub fn read(ctx: *anyopaque, out: *api.Status, stream_tokens: []u32) void {
+         .generation_tokens = h.live_generated,
+         .prompt_cache = h.cache_status,
+         .kv_parts = h.kv_status,
++        .kv_allocation = h.kv_allocation_status,
+     };
+     fillTotals(h, out);
+ }
+@@ -87,8 +88,10 @@ pub fn noteLive(h: *LaneHost) void {
+         parts = .{};
+         src.read(src.ctx, &parts.?);
+     }
++    const allocation = if (h.kv_allocation) |src| src.read(src.ctx) else null;
+     h.mutex.lockUncancelable(h.io);
+     defer h.mutex.unlock(h.io);
++    h.kv_allocation_status = allocation;
+     if (parts) |x| h.kv_status = x;
+     h.live_tokens.clearRetainingCapacity();
+     h.live_generated = 0;
+diff --git a/zig/src/core/lanes/anvil_telemetry.zig b/zig/src/core/lanes/anvil_telemetry.zig
+new file mode 100644
+index 00000000..2758515f
+--- /dev/null
++++ b/zig/src/core/lanes/anvil_telemetry.zig
+@@ -0,0 +1,29 @@
++//! Anvil telemetry ABI v1: logical decode-KV pages, never prompt-cache byte budgets.
++const std = @import("std");
++pub const KvAllocation = struct {
++    allocated_pages: u64,
++    free_pages: u64,
++    total_pages: u64,
++    reserved_pages: u64,
++    page_size_tokens: u64,
++
++    pub fn valid(k: KvAllocation) bool {
++        return k.page_size_tokens > 0 and k.allocated_pages <= k.total_pages and
++            k.free_pages == k.total_pages - k.allocated_pages and k.reserved_pages <= k.free_pages;
++    }
++};
++pub const KvSource = struct {
++    ctx: *anyopaque,
++    read: *const fn (*anyopaque) ?KvAllocation,
++};
++
++test "global decode KV validates pages and promises, not prompt-cache bytes" {
++    const k: KvAllocation = .{ .allocated_pages = 2, .free_pages = 8, .total_pages = 10, .reserved_pages = 3, .page_size_tokens = 512 };
++    try std.testing.expect(k.valid());
++    var bad = k;
++    bad.reserved_pages = 9;
++    try std.testing.expect(!bad.valid());
++    bad = k;
++    bad.free_pages = 10;
++    try std.testing.expect(!bad.valid());
++}
+diff --git a/zig/src/core/lanes/lanes.zig b/zig/src/core/lanes/lanes.zig
+index 770aa36b..9025ae18 100644
+--- a/zig/src/core/lanes/lanes.zig
++++ b/zig/src/core/lanes/lanes.zig
+@@ -74,3 +74,5 @@ test {
+ 
+ pub const learned_disk = @import("learned_disk.zig");
+ pub const learned_dirs = @import("learned_dirs.zig");
++
++pub const anvil_telemetry = @import("anvil_telemetry.zig");
+diff --git a/zig/src/families/glm/cuda_native.zig b/zig/src/families/glm/cuda_native.zig
+index 5fb9eeb1..67a5e1f6 100644
+--- a/zig/src/families/glm/cuda_native.zig
++++ b/zig/src/families/glm/cuda_native.zig
+@@ -70,6 +70,7 @@ pub const Loaded = struct {
+     vision: ?*images_mod.Images = null, // rank 0's tower for the server's image offer
+     layout: ?kv.Layout = null, // every stream's memory as one pool of KV pages (null: a window each, by TF_KV_PAGES)
+     engine_paged: bool = false, // with a layout, the engine's own sequence takes pages too: the plan sets a window aside
++    kv_allocation: ?lanes.anvil_telemetry.KvSource = null,
+     kv_parts: ?lanes.kv_parts.Source = null, // TF_GLM_KV_SHARD: the pool's parts and counters for /health and /metrics
+ };
+ 
+@@ -340,10 +341,21 @@ fn finishRank(a: OpenArgs) !Loaded {
+         .vision = own.e.images,
+         .layout = own.layout,
+         .engine_paged = set.pages,
++        .kv_allocation = if (set.pages and !set.kv_shard.on) .{ .ctx = own, .read = readKvAllocation } else null,
+         .kv_parts = if (set.kv_shard.on) .{ .ctx = own, .read = readKvParts } else null,
+     };
+ }
+ 
++/// Read the leader's logical page census on its engine thread; replicas are not summed.
++fn readKvAllocation(ctx: *anyopaque) ?lanes.anvil_telemetry.KvAllocation {
++    const own: *Owned = @ptrCast(@alignCast(ctx));
++    const p = own.e.pages orelse return null;
++    if (!p.leader or p.shard != null) return null;
++    const census = p.pool.census();
++    return .{ .allocated_pages = census.total - census.free, .free_pages = census.free,
++        .total_pages = census.total, .reserved_pages = census.promised, .page_size_tokens = p.layout.page_tokens };
++}
++
+ /// /health and /metrics' KV parts (TF_GLM_KV_SHARD): rank 0's pool, on its engine thread (none before the attach).
+ fn readKvParts(ctx: *anyopaque, out: *lanes.kv_parts.Stats) void {
+     const own: *Owned = @ptrCast(@alignCast(ctx));
+diff --git a/zig/src/native/cuda.zig b/zig/src/native/cuda.zig
+index c8f07354..7c739bee 100644
+--- a/zig/src/native/cuda.zig
++++ b/zig/src/native/cuda.zig
+@@ -77,6 +77,7 @@ pub const Host = struct {
+     store: ?*api.prompt_cache.Store = null, // kept Nemotron states; null when the budget is 0
+     warm_quiet: u64 = 0, // ns a warm pass waits for other work before its first chunk: the family's `warm_quiet`
+     learn: ?api.Learner = null, // the family's Sliding Weights learner (--slide), called with the context current
++    kv_allocation: ?lanes.anvil_telemetry.KvSource = null,
+     kv_parts: ?lanes.kv_parts.Source = null, // the family's KV parts (GLM's TF_GLM_KV_SHARD), for /health and /metrics
+     slide: ?*anyopaque = null, // that learner's adapter, freed by slide_free before the family
+     slide_free: ?*const fn (Allocator, *anyopaque) void = null,
+@@ -133,6 +134,7 @@ pub const Host = struct {
+         h.host.health = @import("cuda_readiness.zig").source(h);
+         h.host.cache = h.store;
+         h.host.kv_parts = h.kv_parts;
++        h.host.kv_allocation = h.kv_allocation;
+         h.host.warm_quiet = if (info.warm_turns) h.warm_quiet else 0;
+         if (h.lone != null) h.host.lone = .{ .ctx = h, .run = loneRun, .sampled = true, .logprobs = h.inner.vtable.first_row != null, .structures = h.inner.vtable.first_masked != null, .min_budget = nemotron.native.lone_min_budget, .resumes = true };
+         if (h.learn != null) h.host.learner = h.learner();
+@@ -409,7 +411,7 @@ fn openWith(comptime F: type, a: Allocator, gpa: Allocator, io: std.Io, o: api.O
+     };
+     const h = try gpa.create(Host);
+     errdefer gpa.destroy(h);
+-    h.* = .{ .gpa = gpa, .gpu = g, .family = loaded.ctx, .release = loaded.deinit, .inner = served.backend, .served = served, .vtable = undefined, .cfg = undefined, .clock = undefined, .core = undefined, .host = undefined, .lone = if (@hasField(L, "lone")) loaded.lone else null, .kv_parts = if (@hasField(L, "kv_parts")) loaded.kv_parts else null };
++    h.* = .{ .gpa = gpa, .gpu = g, .family = loaded.ctx, .release = loaded.deinit, .inner = served.backend, .served = served, .vtable = undefined, .cfg = undefined, .clock = undefined, .core = undefined, .host = undefined, .lone = if (@hasField(L, "lone")) loaded.lone else null, .kv_parts = if (@hasField(L, "kv_parts")) loaded.kv_parts else null, .kv_allocation = if (@hasField(L, "kv_allocation")) loaded.kv_allocation else null };
+     h.readiness(F);
+     const held = served.stream_bytes * (streams -| free);
+     const kept = kv_pages.kept(F, loaded, paged, o, room, held, host_budget, host_cache);
+diff --git a/zig/src/server/metrics.zig b/zig/src/server/metrics.zig
+index 49d63ab7..1346f7dc 100644
+--- a/zig/src/server/metrics.zig
++++ b/zig/src/server/metrics.zig
+@@ -170,6 +170,7 @@ pub const Metrics = struct {
+         try gauge(w, "generation_tokens_total", "counter", "Generated tokens of finished requests.", snap.generation);
+         const live = streams[0..@min(status.streams, streams.len)];
+         try anvilStreams(w, status, live);
++        try anvilKv(w, status.kv_allocation);
+         try family(w, "kv_cache_usage_ratio", "gauge", "Tokens in a stream cache divided by that stream's context window.");
+         try pools(w, "kv_cache_usage_ratio", "pool", live, window);
+         try gauge(w, "mtp_drafted_total", "counter", "Draft tokens verified on finished requests.", snap.drafted);
+@@ -235,6 +236,29 @@ test "Anvil stream ABI preserves idle, C1, C4 and incomplete observations" {
+     try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_active ") == null);
+ }
+ 
++fn anvilKv(w: *std.Io.Writer, allocation: ?api.anvil_telemetry.KvAllocation) !void {
++    const available = if (allocation) |k| k.valid() else false;
++    try gauge(w, "anvil_kv_allocation_available", "gauge", "One only when complete logical decode-KV page allocation is available.", @intFromBool(available));
++    if (!available) return;
++    const k = allocation.?;
++    try w.writeAll("# TYPE tensorfold:anvil_kv_pool_info gauge\ntensorfold:anvil_kv_pool_info{scope=\"global_logical_decode_kv_pool\"} 1\n");
++    try gauge(w, "anvil_kv_pool_partitions", "gauge", "Independent admission partitions in this logical pool.", 1);
++    inline for (@typeInfo(api.anvil_telemetry.KvAllocation).@"struct".field_names) |name| {
++        try gauge(w, "anvil_kv_" ++ name, "gauge", "Logical decode-KV allocation; pages or token positions as named.", @field(k, name));
++    }
++}
++
++test "Anvil KV missing and invalid allocation never becomes zero capacity" {
++    var out: std.Io.Writer.Allocating = .init(std.testing.allocator);
++    defer out.deinit();
++    try anvilKv(&out.writer, null);
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_kv_allocation_available 0\n") != null);
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "anvil_kv_total_pages ") == null);
++    out.clearRetainingCapacity();
++    try anvilKv(&out.writer, .{ .allocated_pages = 2, .free_pages = 8, .total_pages = 10, .reserved_pages = 3, .page_size_tokens = 512 });
++    try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_kv_page_size_tokens 512\n") != null);
++}
++
+ /// A sharded KV pool's families (GLM's TF_GLM_KV_SHARD): `kv_shard_*` gauges and counters, then each part's pages.
+ pub fn kvShard(w: *std.Io.Writer, k: api.Status.KvParts) !void {
+     const S = api.Status.KvParts;

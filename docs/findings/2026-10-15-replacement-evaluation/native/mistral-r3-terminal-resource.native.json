@@ -1,0 +1,42 @@
+{
+  "schema": "replacement-candidate-terminal/v1",
+  "observed_at": "2026-10-15T19:22:39.882471+00:00",
+  "candidate": "mistral35-fp8kv-tp2-c4-262k-r3",
+  "promoted": false,
+  "disposition": "do_not_promote",
+  "gate": "oracle8-agentic-reliability/v1",
+  "required_aggregate": {
+    "passed": 54,
+    "attempted": 54
+  },
+  "round1": {
+    "passed": 17,
+    "attempted": 18,
+    "failures": [
+      {
+        "scenario_id": "parallel-tools",
+        "repetition": 0,
+        "failure": {
+          "code": "tool_batch_mismatch",
+          "message": "tool calls do not match the required sequential or parallel turn grouping"
+        },
+        "failure_class": "protocol_failure",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "a.py"
+            },
+            "name": "read_file"
+          }
+        ],
+        "visible_answer": ""
+      }
+    ]
+  },
+  "remaining_rounds": "pruned after first campaign-gate failure",
+  "swe_context_vision_capacity_heldout": "not run after mandatory gate failure",
+  "context_role_gap": "262144 native does not meet retained327680 default role; no approved tradeoff",
+  "protocol": "4 core checks,23 observations passed;20/20 tool calls",
+  "resource": "4798MiB free each observed during protocol workload; no host OOM or containment error",
+  "restoration": "candidate removed; original GLM remains retained stopped pending DeepSeek runtime test"
+}

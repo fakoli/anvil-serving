@@ -1,0 +1,9 @@
+schema = "anvil-serving.image-builds/v1"
+[builds.flare-cache-counters]
+context = "OPERATOR_PATH_84c2c7da3a49/cache-counters-v1"
+dockerfile = "Dockerfile"
+image = "anvil-flare-cache-counters:47581cca-v1"
+cpus = 2
+memory_mib = 8192
+platform = "linux/amd64"
+timeout_seconds = 1200

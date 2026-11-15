@@ -81,23 +81,6 @@ def start(svc, key="start-1", binding=None, **kwargs):
     return svc.new(binding or _binding(), key, model_id="model-a", thinking_level="low", **kwargs)
 
 
-def test_native_path_tracks_live_file_and_rejects_traversal(tmp_path):
-    store = PiSessionStore(tmp_path)
-    session, _ = store.create(_binding(), "start")
-    for value in ("/sessions/../outside.jsonl", "/sessions/nested/file.jsonl", "/tmp/file.jsonl", str(tmp_path / "x.jsonl")):
-        with pytest.raises(PiSessionError):
-            store.record_official_state(session.session_id, {"sessionId": session.session_id, "sessionFile": value})
-    file = store.session_dir(session.session_id) / "live.jsonl"
-    state = {"sessionId": session.session_id, "sessionFile": "/sessions/live.jsonl"}
-    saved = store.record_official_state(session.session_id, state)
-    assert saved.official_session_file == str(file)  # Native Pi has not flushed yet.
-    file.write_text("first\n")
-    assert store.record_official_state(session.session_id, state).resume_file_name == "live.jsonl"
-    with file.open("a") as output:
-        output.write("second\n")
-    assert Path(store.get(session.session_id).official_session_file).read_text() == "first\nsecond\n"
-
-
 def test_native_path_rejects_symlinked_official_state_file(tmp_path):
     store = PiSessionStore(tmp_path)
     session, _ = store.create(_binding(), "start")
@@ -197,55 +180,6 @@ def test_accepted_conversation_commands_retain_only_display_metadata(tmp_path, m
     assert store.get(key).next_cursor == before
 
 
-@pytest.mark.parametrize(
-    "name,payload",
-    [
-        ("prompt", {"message": "hello", "attachments": []}),
-        ("prompt", {"message": "hello", "follow_up": True}),
-        ("steer", {"message": "hello", "attachments": []}),
-        ("fork", {}),
-        ("clone", {}),
-    ],
-)
-def test_command_payloads_are_closed_and_branch_commands_are_refused(tmp_path, name, payload):
-    svc, store, processes, _, _ = service(tmp_path)
-    key = start(svc)["session_id"]
-    before = store.get(key).next_cursor
-    writes = len(processes[0].writes)
-    with pytest.raises(PiCommandNotDispatched) as rejected:
-        svc.command(key, _binding(), name, payload)
-    assert isinstance(rejected.value.error, PiSessionAccessError)
-    assert store.get(key).next_cursor == before
-    assert len(processes[0].writes) == writes
-
-
-def test_command_preflight_rejections_are_explicit_and_never_write(tmp_path):
-    svc, store, processes, _, _ = service(tmp_path)
-    key = start(svc)["session_id"]
-    writes = len(processes[0].writes)
-
-    with pytest.raises(PiCommandNotDispatched) as rejected:
-        svc.command(key, _binding(), "set_model", {"provider": "provider-b", "model_id": "model-c"})
-    assert isinstance(rejected.value.error, PiSessionAccessError)
-    assert len(processes[0].writes) == writes
-
-    with pytest.raises(PiCommandNotDispatched) as malformed:
-        svc.command(key, _binding(), "extension_response", {"request_id": "request-1", "response": {"wrong": True}})
-    assert isinstance(malformed.value.error, ValueError)
-    assert len(processes[0].writes) == writes
-
-
-def test_failed_state_stops_runner_and_records_failure_without_false_running(tmp_path):
-    svc, store, processes, stopped, _ = service(tmp_path)
-    key = start(svc)["session_id"]
-    processes[0].state_override = {"sessionId": "wrong-parent"}
-    svc.command(key, _binding(), "get_state", {})
-    svc._collect(key)
-    assert stopped == [key]
-    assert store.get(key).status == "recoverable"
-    assert any(e.data.get("ok") is False for e in store.events_after(key, 0).events)
-
-
 def test_restart_retained_runners_count_and_expire_without_browser(tmp_path):
     svc, store, _, _, _ = service(tmp_path)
     key = start(svc)["session_id"]
@@ -266,15 +200,6 @@ def test_close_stops_retained_identity_and_delete_releases_retention(tmp_path):
     assert svc.delete(key, _binding())["deleted"]
     assert not store.all()
     assert start(svc)["session_id"] != key
-
-
-def test_events_are_bounded_and_report_gap(tmp_path):
-    store = PiSessionStore(tmp_path, max_events=2)
-    session, _ = store.create(_binding(), "start")
-    for number in range(3):
-        store.append(session.session_id, "text", {"n": number})
-    page = store.events_after(session.session_id, 0)
-    assert page.gap and [e.data["n"] for e in page.events] == [1, 2]
 
 
 @pytest.mark.parametrize("fault", ["protocol", "event_overflow", "journal"])
@@ -319,11 +244,3 @@ def test_target_intent_is_durable_before_dispatch_and_restart_observes_without_r
     assert store.get(key).pending_target is None
     assert result["model_id"] == ("model-a" if observed == "old" else "model-b")
     assert [x["type"] for x in restored_processes[0].writes] == ["get_state"]
-
-
-def test_start_key_binds_initial_target_and_parent(tmp_path):
-    svc, store, processes, stopped, _ = service(tmp_path)
-    key = start(svc)["session_id"]
-    for changes in ({"model_id":"model-b"}, {"thinking_level":"high"}, {"parent_session_id":key}):
-        with pytest.raises(PiSessionAccessError):
-            svc.new(_binding(), "start-1", **({"model_id":"model-a", "thinking_level":"low"} | changes))

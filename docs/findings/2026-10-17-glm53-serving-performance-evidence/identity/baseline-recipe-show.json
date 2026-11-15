@@ -1,0 +1,27 @@
+{
+  "command": "models recipes show brandonmusic/GLM-5.3-Flash-tr3-4bpw --registry [PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "model:  brandonmusic/GLM-5.3-Flash-tr3-4bpw\nstatus: experimental\nsource: 2026-09-23 DCP1 qualification; immutable deployment artifact. Activation is separately gated.\n\nreproducible docker run:\n  docker run -d --memory 55834574848 --memory-swap 55835623424 --gpus all --label io.anvil-serving.managed-by=models-recipes --label io.anvil-serving.recipe.model=brandonmusic/GLM-5.3-Flash-tr3-4bpw --label io.anvil-serving.recipe.digest=54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b --label io.anvil-serving.recipe.native-kv-offload=false --label io.anvil-serving.recipe.revision=a5fee929cf4888b1824323e33e8a19b60129e025 -e HF_HUB_OFFLINE=1 -e CUDA_VISIBLE_DEVICES=0,1 -e CUDA_DEVICE_ORDER=PCI_BUS_ID -e VLLM_ENGINE_READY_TIMEOUT_S=3600 -e VLLM_B12X_GLM_NOPE_NVFP4=1 -e VLLM_EXL3_PREFILL_BLOCK_M=128 -e VLLM_EXL3_PREFILL_TRELLIS=1 -e B12X_GL53_ROUTE128_WIDE=1 -e B12X_GL53_ROUTE128_HYBRID_TAIL=1 -e VLLM_USE_B12X_DCP_A2A=1 -e VLLM_ENABLE_PCIE_ALLREDUCE=1 -e VLLM_PCIE_ALLREDUCE_BACKEND=cpp -e VLLM_B12X_MLA_CKV_GATHER=0 -e KV_FP8_ROPE=0 -e OMP_NUM_THREADS=2 -e NCCL_IB_DISABLE=1 -e NCCL_P2P_LEVEL=4 -e NCCL_PROTO=LL,LL128,Simple -v /data/models/glm53-flash-exl3-4bpw-a5fee92:/root/.cache/huggingface --mount type=volume,source=glm53-exl3-v84-fp8-cache,target=/root/.cache -p 127.0.0.1:31841:31841 --ipc host --shm-size 32gb --ulimit memlock=-1 --entrypoint bash verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692 -lc 'test \"$(cat /sys/fs/cgroup/memory.max)\" = 55834574848 && test \"$(cat /sys/fs/cgroup/memory.swap.max)\" = 1048576 || { echo containment-failed >&2; exit 78; }; echo containment-passed; test \"$(sha256sum /root/.cache/huggingface/MANIFEST.json | cut -d '\"'\"' '\"'\"' -f1)\" = 45d35f1f3aa00203471362b999dde0108307c7913f359b2127b767a52b0e9be1 && exec vllm serve \"$@\"' glm53-v84-fp8-control /root/.cache/huggingface --served-model-name glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec --host 100.64.0.10 --port 31841 --chat-template /opt/glm53/chat_template.multimodal.jinja --limit-mm-per-prompt '{\"image\":8,\"video\":0}' --tensor-parallel-size 2 --enable-expert-parallel --decode-context-parallel-size 1 --dcp-comm-backend a2a --dtype bfloat16 --load-format safetensors --moe-backend b12x --attention-backend FLASHINFER_MLA_SPARSE_SM120 --kv-cache-dtype fp8_ds_mla --max-model-len 327680 --max-num-batched-tokens 2048 --max-num-seqs 4 --gpu-memory-utilization 0.970 --enable-chunked-prefill --enable-prefix-caching --generation-config /root/.cache/huggingface --reasoning-parser glm45 --reasoning-config '{}' --tool-call-parser glm47 --enable-auto-tool-choice --disable-custom-all-reduce\n\nfit:\n  suited: qualification, coding-agent, tool-use, reasoning, text\n  rationale: Isolate the reproduced cross-rank DCP top-k merge fault by changing DCP2 to DCP1. Retain uniform K4 EXL3, FP8 MLA KV, APC, C4 and no speculation. Expect lower KV capacity; require measured startup capacity and repeated correctness before any wider claim.\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

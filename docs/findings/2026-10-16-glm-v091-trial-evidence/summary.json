@@ -1,0 +1,127 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-16-glm-v091-trial",
+  "complete": true,
+  "publication_review_pending": false,
+  "identity": {
+    "candidate": "glm53-v091-tp2-327k-c4-vision8-nospec-r2",
+    "model": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "runtime": "v0.9.1",
+    "image_digest": "sha256:a9e985c09885710601b32ac86e81256aa1279b542caa345233ce331a816d7e07",
+    "source_revision": "4c8b73ed0e09c70f3b4015a675cc243c4d86949a",
+    "hardware": "two RTX PRO 6000 Blackwell Max-Q GPUs",
+    "quantization": "EXL3 4 bpw",
+    "kv_dtype": "FP8 DS-MLA",
+    "configured_context_tokens": 327680,
+    "configured_concurrency": 4,
+    "gpu_memory_utilization": 0.94
+  },
+  "workload": {
+    "reasoning_mode": "default with max effort",
+    "oracle": "three strict 18-case rounds",
+    "coding": "pinned five-case SWE suite; four resolved cases required",
+    "vision": "18 image cases",
+    "context": "retrieval and tool-context probes"
+  },
+  "gates": [
+    {
+      "name": "native preflight",
+      "status": "passed",
+      "result": "6/6"
+    },
+    {
+      "name": "Oracle",
+      "status": "passed",
+      "result": "54/54"
+    },
+    {
+      "name": "vision",
+      "status": "passed",
+      "result": "18/18"
+    },
+    {
+      "name": "context",
+      "status": "passed",
+      "actual_prompt_tokens": [
+        216307,
+        110760
+      ]
+    },
+    {
+      "name": "GPU reserve",
+      "status": "passed",
+      "minimum_free_mib_per_gpu": [
+        4789,
+        5583
+      ],
+      "required_free_mib": 4096,
+      "sampling_ms": 200,
+      "oom_events": 0
+    },
+    {
+      "name": "coding",
+      "status": "failed",
+      "resolved": 3,
+      "attempted": 5,
+      "required_resolved": 4
+    }
+  ],
+  "not_run": [
+    "capacity and stability: blocked by the failed coding gate",
+    "DFlash trial: blocked by the failed coding gate",
+    "performance comparison: no eligible matched population"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "rejected",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "reason": "The exact R2 profile did not meet the declared coding replacement gate. This is not a model-family or runtime defect claim."
+  },
+  "matched_incumbent_control": {
+    "preflight": "direct 6/6; routed 6/6",
+    "oracle": "54/54",
+    "vision": "18/18",
+    "context_actual_prompt_tokens": [
+      216307,
+      110760
+    ],
+    "coding": {
+      "resolved": 3,
+      "attempted": 5,
+      "required_resolved": 4,
+      "same_resolved_instances_as_r2": true
+    },
+    "reserve": {
+      "minimum_free_mib_per_gpu": [
+        1725,
+        1745
+      ],
+      "historical_waiver": true,
+      "challenger_gate_assessment": "not-applicable",
+      "oom_events": 0
+    }
+  },
+  "limitations": [
+    "The configured 327680-token C4 profile is not a simultaneous full-window proof.",
+    "200 ms sampling cannot establish behavior between samples.",
+    "The five-case coding suite is a bounded quality sample, not a general model-family verdict.",
+    "Matching resolved counts do not establish equivalent grader failure mechanisms, causal behavior, or performance."
+  ],
+  "coding_failure_detail": {
+    "django": "Both fail Unicode JSON display",
+    "pylint": {
+      "candidate_failed": 2,
+      "candidate_passed": 18,
+      "original_failed": 1,
+      "original_passed": 19,
+      "scope": "One exact suite execution per profile; no causal or general quality claim"
+    }
+  }
+}

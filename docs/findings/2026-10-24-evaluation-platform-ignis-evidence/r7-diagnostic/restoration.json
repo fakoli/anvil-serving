@@ -1,0 +1,30 @@
+{
+  "candidate_loaded": false,
+  "cleanup_at_report_cutoff": "Two Aider watchdog exits were still pending bounded verification; contained records had been removed. Cancellation command exit 0 is not full cleanup or restoration acceptance.",
+  "evaluation_alias_activated": false,
+  "full_restoration_acceptance": "not established by this packet",
+  "incumbent_unloaded": false,
+  "model_mutation_occurred": false,
+  "retained_postcancel_observation": {
+    "incumbent_container_unchanged": true,
+    "incumbent_oom_kill_events": 0,
+    "incumbent_oom_killed": false,
+    "incumbent_running": true,
+    "router_configuration_unchanged": true,
+    "router_generation": 29,
+    "router_local_counts": {
+      "audio": 0,
+      "chat": 0,
+      "delivery": 0,
+      "internal": 0,
+      "maintenance": 0,
+      "media": 0,
+      "memory": 0,
+      "purpose": 0
+    },
+    "router_state": "admitting"
+  },
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "scope": "Derivative of retained post-cancellation status, not a fresh live query. Local zero counts are a sparse later observation, not proof of no compute or repair of campaign interval custody.",
+  "verified": false
+}

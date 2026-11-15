@@ -77,28 +77,34 @@ def principal_checker(url, secret):
     return check
 
 
-def migrate(store):
-    """Atomic additive migration. Old routers reject v2 instead of ignoring owners."""
-    with store._connect() as db:
-        db.execute("BEGIN IMMEDIATE")
-        version = db.execute("PRAGMA user_version").fetchone()[0]
-        if version == 1:
-            db.execute("""CREATE TABLE connect_accounts (
+def _create_schema(db):
+    """Individual DDL for the caller's existing migration transaction."""
+    db.execute("""CREATE TABLE connect_accounts (
                 owner TEXT PRIMARY KEY, generation TEXT NOT NULL, epoch TEXT NOT NULL,
                 revision INTEGER NOT NULL, status TEXT NOT NULL, models TEXT NOT NULL,
                 paths TEXT NOT NULL, rpm INTEGER NOT NULL, expires_days INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL, actor TEXT NOT NULL)""")
-            db.execute("""CREATE TABLE connect_key_owners (
+    db.execute("""CREATE TABLE connect_key_owners (
                 key_id TEXT PRIMARY KEY, owner TEXT NOT NULL, generation TEXT NOT NULL,
                 epoch TEXT NOT NULL, revision INTEGER NOT NULL)""")
-            db.execute("CREATE INDEX connect_owner_keys ON connect_key_owners(owner)")
-            db.execute("CREATE TABLE connect_sequence (revision INTEGER NOT NULL)")
-            db.execute("INSERT INTO connect_sequence VALUES (0)")
+    db.execute("CREATE INDEX connect_owner_keys ON connect_key_owners(owner)")
+    db.execute("CREATE TABLE connect_sequence (revision INTEGER NOT NULL)")
+    db.execute("INSERT INTO connect_sequence VALUES (0)")
+
+
+def migrate(store):
+    """Atomic additive migration; never downgrade a newer accounting store."""
+    with store._write() as db:
+        db.execute("BEGIN IMMEDIATE")
+        version = db.execute("PRAGMA user_version").fetchone()[0]
+        if version == 1:
+            _create_schema(db)
             db.execute("PRAGMA user_version=2")
-        elif version != 2:
+            version = 2
+        elif version not in (2, 3, 4):
             raise KeyStoreError("credential store format is unsupported")
         db.execute("COMMIT")
-    store.version = 2
+    store.version = version
 
 
 def _next_revision(db):
@@ -117,7 +123,7 @@ def _account(db, owner):
         return None
     account = dict(zip(("owner", "generation", "epoch", "revision", "status", "models", "paths", "rpm", "expires_days", "updated_at", "actor"), row))
     identity(account["owner"], account["generation"], account["epoch"])
-    if account["status"] not in {"pending", "approved", "denied"} or type(account["revision"]) is not int or account["revision"] < 1:
+    if account["status"] not in {"pending", "approved", "denied"} or type(account["revision"]) is not int or not 1 <= account["revision"] < 2**53:
         raise KeyStoreError("invalid Connect access policy")
     try:
         account["models"], account["paths"] = json.loads(account["models"]), json.loads(account["paths"])
@@ -133,6 +139,9 @@ def _account(db, owner):
 
 def _approved(db, binding):
     owner, generation, epoch, revision = binding
+    identity(owner, generation, epoch)
+    if type(revision) is not int or not 1 <= revision < 2**53:
+        raise Denied("invalid Connect access revision")
     account = _account(db, owner)
     if account is None or account["status"] != "approved" or (account["generation"], account["epoch"], account["revision"]) != (generation, epoch, revision):
         raise Denied("router access is not approved")
@@ -149,23 +158,27 @@ def authorize_creation(db, binding, models, paths, rpm, days):
         raise Denied("account key limit reached")
 
 
+def owned_account(db, key_id):
+    """Read the complete binding and approved policy in the held transaction."""
+    row = db.execute("SELECT owner,generation,epoch,revision FROM connect_key_owners WHERE key_id=?", (key_id,)).fetchone()
+    return (None, None) if row is None else (row, _approved(db, row))
+
+
 def owned_binding(store, key_id):
     try:
         with store._connect() as db:
-            row = db.execute("SELECT owner,generation,epoch,revision FROM connect_key_owners WHERE key_id=?", (key_id,)).fetchone()
+            row, _account = owned_account(db, key_id)
             if row is None:
                 return None
-            _approved(db, row)
         return row[:3]
     except sqlite3.Error:
         raise KeyStoreError("Connect key ownership unavailable") from None
 
 
 def admit_owner(db, key_id, now):
-    row = db.execute("SELECT owner,generation,epoch,revision FROM connect_key_owners WHERE key_id=?", (key_id,)).fetchone()
+    row, account = owned_account(db, key_id)
     if row is None:
         return 0
-    account = _approved(db, row)
     rpm = account["rpm"]
     bucket_id = "connect:" + row[0]
     bucket = db.execute("SELECT tokens,updated_at FROM buckets WHERE key_id=?", (bucket_id,)).fetchone()
@@ -181,6 +194,61 @@ def admit_owner(db, key_id, now):
     return retry
 
 
+def provision_memory_key(store, actor, *, secret, expected_key_id=None, apply=False):
+    """Native administrator onboarding; never exposed by the browser broker.
+
+    Bank authorization remains in the user policy, keyed by the same principal.
+    Existing approvals are preserved; denial or incompatible limits require an
+    explicit policy decision instead of silently revoking the user's keys.
+    """
+    actor = identity(*actor)
+    if store.owner_check is None or not store.owner_check(*actor):
+        raise Denied("Connect account is unavailable")
+    models, paths = store._grants(["memory.user"], ["/v1/memory", "/v1/memory/mcp"])
+    with store._ownership():
+        import hashlib
+        if type(secret) is not str or not re.fullmatch(r"ask_[A-Za-z0-9_-]{43}", secret):
+            raise Denied("invalid protected onboarding credential")
+        principal = store.authenticate(secret)
+        if principal is not None:
+            if (principal.owner != actor or principal.models != models or principal.paths != paths
+                    or expected_key_id not in (None, principal.key_id)):
+                raise Denied("saved memory key has different ownership or grants")
+            metadata = next(key for key in store.list_keys() if key["key_id"] == principal.key_id)
+            return {**metadata, "created": False}
+        if expected_key_id is not None:
+            raise Denied("completed memory key is absent; restore the matching store or explicitly recover its receipt")
+        with store._connect() as db:
+            if db.execute("SELECT 1 FROM keys WHERE token_hash=?", (hashlib.sha256(secret.encode()).digest(),)).fetchone():
+                raise Denied("saved memory key is no longer valid")
+            old = _account(db, actor[0])
+        if old is not None and old["status"] == "denied":
+            raise Denied("router access was denied; explicit approval is required")
+        current = old if old and (old["generation"], old["epoch"]) == actor[1:] else None
+        if current and current["status"] != "approved":
+            raise Denied("existing router request requires explicit approval")
+        if current and current["status"] == "approved":
+            if not set(models).issubset(current["models"]) or not set(paths).issubset(current["paths"]):
+                raise Denied("existing router approval does not include user memory")
+        if not apply:
+            return {"created": False, "would_create": True}
+        if current is None:
+            with store._write() as db:
+                db.execute("BEGIN IMMEDIATE")
+                if _account(db, actor[0]) != old:
+                    raise Denied("router approval changed during onboarding")
+                if old is None and db.execute("SELECT COUNT(*) FROM connect_accounts").fetchone()[0] >= 256:
+                    raise Denied("access request capacity reached")
+                revision = _next_revision(db)
+                db.execute("INSERT INTO connect_accounts VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(owner) DO UPDATE SET generation=excluded.generation,epoch=excluded.epoch,revision=excluded.revision,status=excluded.status,models=excluded.models,paths=excluded.paths,rpm=excluded.rpm,expires_days=excluded.expires_days,updated_at=excluded.updated_at,actor=excluded.actor",
+                    (*actor, revision, "approved", json.dumps(models), json.dumps(paths), 60, 90, int(time.time()), "native-admin"))
+                db.execute("COMMIT")
+            current = {"revision": revision, "rpm": 60, "expires_days": 90}
+        metadata, _ = store.create("User memory", list(models), list(paths), min(60, current["rpm"]),
+            min(90, current["expires_days"]), owner=(*actor, current["revision"]), _secret=secret)
+        return {**metadata, "created": True}
+
+
 class ConnectKeys:
     def __init__(self, store, models):
         self.store, self.models = store, sorted(set(models))
@@ -190,6 +258,10 @@ class ConnectKeys:
 
     def dispatch(self, value):
         """Called only after the front door authenticates the dedicated broker."""
+        with self.store._ownership():
+            return self._dispatch(value)
+
+    def _dispatch(self, value):
         if not isinstance(value, dict) or set(value) != {"principal", "generation", "epoch", "administrator", "operation"}:
             raise Denied("invalid Connect request")
         actor = identity(value["principal"], value["generation"], value["epoch"])
@@ -202,7 +274,7 @@ class ConnectKeys:
         if action == "view" and set(operation) == {"action"}:
             return self.view(actor, admin)
         if action == "request" and set(operation) == {"action"}:
-            with self.store._connect() as db:
+            with self.store._write() as db:
                 db.execute("BEGIN IMMEDIATE")
                 old = _account(db, actor[0])
                 if old is None and db.execute("SELECT COUNT(*) FROM connect_accounts").fetchone()[0] >= 256:
@@ -219,7 +291,7 @@ class ConnectKeys:
             metadata, secret = self.store.create(operation["name"], operation["models"], operation["paths"], operation["rpm"], operation["expires_days"], owner=(*actor, operation["revision"]))
             return {"key": metadata, "secret": secret}
         if action == "revoke" and set(operation) == {"action", "key_id"} and isinstance(operation["key_id"], str):
-            with self.store._connect() as db:
+            with self.store._write() as db:
                 result = db.execute("UPDATE keys SET revoked_at=COALESCE(revoked_at,?) WHERE key_id=? AND key_id IN (SELECT key_id FROM connect_key_owners WHERE owner=?)", (int(time.time()), operation["key_id"], actor[0]))
             if result.rowcount != 1:
                 raise Denied("key unavailable")
@@ -245,7 +317,7 @@ class ConnectKeys:
             account = _account(db, owner)
         if account is None or not self.store.owner_check(owner, account["generation"], account["epoch"]):
             raise Denied("account changed; request access again")
-        with self.store._connect() as db:
+        with self.store._write() as db:
             db.execute("BEGIN IMMEDIATE")
             result = db.execute("UPDATE connect_accounts SET revision=?,status=?,models=?,paths=?,rpm=?,expires_days=?,updated_at=?,actor=? WHERE owner=? AND revision=?", (_next_revision(db), status, json.dumps(models), json.dumps(paths), rpm, days, int(time.time()), actor[0], owner, revision))
             if result.rowcount != 1:
@@ -263,7 +335,7 @@ class ConnectKeys:
             account = _account(db, owner)
         if account is None or (account["status"] != "denied" and self.store.owner_check(owner, account["generation"], account["epoch"])):
             raise Denied("remove access before removing this record")
-        with self.store._connect() as db:
+        with self.store._write() as db:
             db.execute("BEGIN IMMEDIATE")
             if db.execute("DELETE FROM connect_accounts WHERE owner=? AND revision=?", (owner, revision)).rowcount != 1:
                 raise Denied("account changed; refresh before removing")

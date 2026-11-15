@@ -1,0 +1,16 @@
+{
+  "schema": "sampling-source-freeze/v1",
+  "source_head": "3fa3d856ba3f5a797a661a50a468fdee481f58ab",
+  "candidate_image": "sha256:67f0d352dc21a068fb310d2c4b06a08f66b7a798775f6f82c850cc0616eb20fc",
+  "tests_passed_before_run": 247,
+  "files": {
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/Dockerfile": "7167e1c346db3daaa9904d88cfe39180599045c506046aa0a4d56627f8bbad21",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/launch.py": "24203cc50619e0b4116be44cecb14d800f6b2845298f998e1384c6adeb369cd1",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/split-topp.patch": "c30ca1225f4a3b36b1e015738d9cf34129b1876851122d9da1abea1e5097fc7c",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/trace.patch": "64aebd4552feb10b1a3120a521d9ff7df0ed199e7ebf376ee253b0c1aa3996a8",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/README.md": "4ea5cc4aa7330236b645ce3c8489525a0685fbef20168b56135b996d1bec9733",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/kernel_regression.py": "9798b88ceaa95aba5d122bda7349c71469d8b6c395b588677a1e166e59fe69c1",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/reference.py": "e0a1dfe2f7f5aea547d38c60b69f03349bd14f3a0f64b25e5f836e3740f5f60f"
+  }
+}

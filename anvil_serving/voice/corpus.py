@@ -189,12 +189,14 @@ def validate_corpus(
     manifest_path: os.PathLike[str] | str,
     *,
     expected_cases: int | None = None,
+    reject_duplicate_audio: bool = False,
 ) -> dict:
     manifest = Path(manifest_path).resolve()
     if not manifest.is_file():
         raise CorpusError("corpus manifest not found: %s" % manifest)
     cases: list[CorpusCase] = []
     seen: set[str] = set()
+    seen_audio: set[str] = set()
     try:
         lines = manifest.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError) as exc:
@@ -209,7 +211,10 @@ def validate_corpus(
         case = _case_from_object(manifest, line_number, obj)
         if case.id in seen:
             raise CorpusError("duplicate corpus id on line %d: %s" % (line_number, case.id))
+        if reject_duplicate_audio and case.sha256 in seen_audio:
+            raise CorpusError("duplicate audio SHA-256 on line %d" % line_number)
         seen.add(case.id)
+        seen_audio.add(case.sha256)
         cases.append(case)
     if not cases:
         raise CorpusError("corpus manifest contains no cases")
@@ -354,8 +359,25 @@ def prepare_corpus(
     synthesize: Callable[[str], bytes],
     transcode_flac: Callable[[Path, Path], None],
     download_dir: os.PathLike[str] | str | None = None,
+    human_cases_per_split: int = 12,
+    synthetic_cases: int = 6,
+    exclude_manifest: os.PathLike[str] | str | None = None,
 ) -> dict:
-    """Build the fixed 24-human/6-synthetic English corpus transactionally."""
+    """Build a deterministic English corpus; default is 24 human/6 synthetic."""
+    if type(human_cases_per_split) is not int or not 3 <= human_cases_per_split <= 300 or human_cases_per_split % 3:
+        raise CorpusError("human cases per split must be a multiple of 3 from 3 through 300")
+    if type(synthetic_cases) is not int or not 0 <= synthetic_cases <= len(SYNTHETIC_PHRASES):
+        raise CorpusError("synthetic cases must be an integer from 0 through 6")
+    expected_cases = len(LIBRISPEECH_ARCHIVES) * human_cases_per_split + synthetic_cases
+    strict_holdout = human_cases_per_split != 12 or synthetic_cases != 6 or exclude_manifest is not None
+    exclusion = validate_corpus(exclude_manifest) if exclude_manifest is not None else None
+    excluded_cases = exclusion["cases"] if exclusion else []
+    excluded_ids = {case.id for case in excluded_cases}
+    excluded_sources = {case.source_identity for case in excluded_cases}
+    excluded_hashes = {case.sha256 for case in excluded_cases}
+    for index, (category, _phrase) in enumerate(SYNTHETIC_PHRASES[:synthetic_cases], start=1):
+        if "kokoro-agent-%02d-%s" % (index, category) in excluded_ids:
+            raise CorpusError("requested synthetic cases overlap exclusion manifest; use --synthetic-cases 0 for human holdouts")
     output = Path(output_dir).resolve()
     if output.exists():
         raise CorpusError("output directory already exists: %s" % output)
@@ -369,6 +391,9 @@ def prepare_corpus(
         audio_root.mkdir()
         cases: list[CorpusCase] = []
         archive_identities: dict[str, dict[str, str]] = {}
+        selected_sources = []
+        bucket_counts = {}
+        excluded_by_split = {}
         for split, url in LIBRISPEECH_ARCHIVES.items():
             filename = os.path.basename(url)
             archive = downloads / filename
@@ -387,14 +412,37 @@ def prepare_corpus(
             extract_root.mkdir()
             _safe_extract(archive, extract_root)
             source_root = extract_root / "LibriSpeech" / split
-            chosen = select_librispeech_cases(list(_transcripts(source_root)))
+            source_records = list(_transcripts(source_root))
+            eligible = [
+                record for record in source_records
+                if "librispeech-%s-%s" % (split, record[0]) not in excluded_ids
+                and "%s#%s/%s" % (LIBRISPEECH_SOURCE_URL, split, record[0]) not in excluded_sources
+            ]
+            excluded_by_split[split] = len(source_records) - len(eligible)
+            chosen = select_librispeech_cases(eligible, count=human_cases_per_split)
+            bucket_counts[split] = {
+                bucket: sum(_duration_bucket(record[3]) == bucket for record in chosen)
+                for bucket in ("short", "medium", "long")
+            }
             split_out = audio_root / split
             split_out.mkdir()
-            for utterance_id, reference, source_audio, _duration in chosen:
+            for utterance_id, reference, source_audio, duration in chosen:
                 destination = split_out / ("%s.wav" % utterance_id)
                 transcode_flac(source_audio, destination)
                 audio_metadata(destination)
                 relative = destination.relative_to(stage).as_posix()
+                normalized_hash = sha256_file(destination)
+                if normalized_hash in excluded_hashes:
+                    raise CorpusError("prepared audio overlaps exclusion manifest by SHA-256")
+                source_identity = "%s#%s/%s" % (LIBRISPEECH_SOURCE_URL, split, utterance_id)
+                selected_sources.append({
+                    "id": "librispeech-%s-%s" % (split, utterance_id),
+                    "source_identity": source_identity,
+                    "source_audio_sha256": sha256_file(source_audio),
+                    "normalized_audio_sha256": normalized_hash,
+                    "source_duration_seconds": round(duration, 6),
+                    "duration_bucket": _duration_bucket(duration),
+                })
                 cases.append(
                     CorpusCase(
                         CORPUS_SCHEMA_VERSION,
@@ -403,9 +451,9 @@ def prepare_corpus(
                         reference,
                         "librispeech-%s" % split,
                         "en",
-                        "%s#%s/%s" % (LIBRISPEECH_SOURCE_URL, split, utterance_id),
+                        source_identity,
                         LIBRISPEECH_LICENSE,
-                        sha256_file(destination),
+                        normalized_hash,
                     )
                 )
             archive_identities[split] = {
@@ -415,8 +463,9 @@ def prepare_corpus(
             }
 
         synthetic_out = audio_root / "kokoro-agent"
-        synthetic_out.mkdir()
-        for index, (category, phrase) in enumerate(SYNTHETIC_PHRASES, start=1):
+        if synthetic_cases:
+            synthetic_out.mkdir()
+        for index, (category, phrase) in enumerate(SYNTHETIC_PHRASES[:synthetic_cases], start=1):
             pcm = synthesize(phrase)
             if not isinstance(pcm, bytes) or not pcm:
                 raise CorpusError("Kokoro returned no PCM for synthetic case %s" % category)
@@ -441,10 +490,20 @@ def prepare_corpus(
         _write_manifest(manifest, cases)
         provenance = {
             "schema_version": CORPUS_SCHEMA_VERSION,
-            "selection": "4 short, 4 medium, and 4 long utterances per LibriSpeech split; "
-            "speaker-diverse deterministic ordering",
+            "selection": "%d short, %d medium, and %d long utterances per LibriSpeech split; speaker-diverse deterministic ordering"
+            % ((human_cases_per_split // 3,) * 3),
+            "selection_counts": {"human_cases_per_split": human_cases_per_split,
+                                 "synthetic_cases": synthetic_cases, "expected_cases": expected_cases},
+            "duration_bucket_counts": bucket_counts,
+            "selected_sources": selected_sources,
+            "exclusion": {
+                "manifest_sha256": exclusion["manifest_sha256"], "case_count": exclusion["case_count"],
+                "excluded_case_ids": sorted(excluded_ids), "excluded_source_identities": sorted(excluded_sources),
+                "excluded_audio_sha256": sorted(excluded_hashes), "excluded_records_per_split": excluded_by_split,
+                "method": "exclude exact corpus IDs and LibriSpeech source identities before selection; reject normalized audio hash overlap",
+            } if exclusion else None,
             "archives": archive_identities,
-            "synthetic_generator": "Kokoro through configured OpenAI-compatible TTS endpoint",
+            "synthetic_generator": "Kokoro through configured OpenAI-compatible TTS endpoint" if synthetic_cases else None,
             "audio_normalization": "selected LibriSpeech FLAC decoded to 16-kHz mono WAV",
         }
         (stage / "provenance.json").write_text(
@@ -452,7 +511,8 @@ def prepare_corpus(
             encoding="utf-8",
             newline="\n",
         )
-        validation = validate_corpus(manifest, expected_cases=30)
+        validation = validate_corpus(manifest, expected_cases=expected_cases, reject_duplicate_audio=strict_holdout)
+        validation["provenance_sha256"] = sha256_file(stage / "provenance.json")
         os.replace(stage, output)
         stage = None
         validation["manifest"] = str(output / "manifest.jsonl")

@@ -1,0 +1,60 @@
+{
+  "schema": "anvil-serving.restoration-verification/v1",
+  "verified": true,
+  "checked_at_utc": "2026-10-17T02:57:49.872039+00:00",
+  "checks": [
+    "exact-original-container-model-runtime",
+    "only-original-recipe-running",
+    "healthy-split-ownership",
+    "no-oom-or-shared-memory-residue",
+    "direct-preflight-and-https-262k-identity",
+    "all-five-checksum-offload-settings-restored",
+    "steam-closed"
+  ],
+  "evidence": [
+    {
+      "path": "final-restored-start.json",
+      "sha256": "f27568ffc71441751335edfc2a1418687352d940d42fe822b1a3f23a107e32f1"
+    },
+    {
+      "path": "final-restored-serve-status.json",
+      "sha256": "3851ad419901c47cca405602aa9e90f94ef6a34bfd2e7d9bff7f41edece93ae5"
+    },
+    {
+      "path": "final-restored-container-status.json",
+      "sha256": "8649dea6a1b5dc18d9dccc6b9f8748d990dea7ab55b39fb3ce575ac04bd3e304"
+    },
+    {
+      "path": "final-restored-mode.json",
+      "sha256": "ef37123f1cdaa85b35bbc3cddde2d6f2a71faf975b8593f1ddfd29c99974c0be"
+    },
+    {
+      "path": "final-restored-recipes.json",
+      "sha256": "e597b8f2d47b1d27617748b9aa4188d2346c330cfd2779be8bd37712041dbb9a"
+    },
+    {
+      "path": "final-restored-memory.json",
+      "sha256": "db8c849ce909df236413d451a365806aaf16919984a2eb099753c4f579870245"
+    },
+    {
+      "path": "final-restored-shared-memory.json",
+      "sha256": "e1f9e2ea2fc85a3d28cced7c13fbc9669af8534efe483e91b689ee133c05f2e1"
+    },
+    {
+      "path": "final-restored-preflight.json",
+      "sha256": "3b464312c8beff609714f54e9bc54ff9d4446dff0042b53f9fcd56704e31c8a1"
+    },
+    {
+      "path": "final-restored-edge-models.json",
+      "sha256": "f929fe9284b63a5895e16fa58f8187716ab3cf6c5e15c44ef3e84aaf98915d68"
+    },
+    {
+      "path": "final-restored-network-offload.json",
+      "sha256": "02df9ca2fe49fc3835b4fda81811cefccc20ed75dfa422da04f56fed0a049ec0"
+    },
+    {
+      "path": "final-steam-after-shutdown.json",
+      "sha256": "6dcd4aaff07ff4523982ffea7641db6a5faa01f007061e18ee8c4e69b5aa7c30"
+    }
+  ]
+}

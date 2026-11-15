@@ -25,7 +25,27 @@ def commands() -> CommandNode:
                 "Pull a model artifact.",
                 "anvil_serving.models",
                 role="model-catalog",
-                options=CONFIRM_OPTIONS,
+                handler_attribute="pull_result",
+                argv_prefix=("pull",),
+                options=CONFIRM_OPTIONS + (
+                    _option("--native-stage", summary="Stage one public LFS file with Windows curl.exe, verify SHA256, then import into Docker.", value_name="DIR"),
+                    _option("--cache-dir", summary="Native HF home or direct hub cache; no Docker.", value_name="PATH"),
+                    _option("--hf-executable", summary="Use this installed native hf executable.", value_name="PATH"),
+                    _option("--evidence-out", summary="Retain a native pull JSON receipt outside the hub cache.", value_name="FILE"),
+                    _option("--revision", summary="Exact 40 lowercase hex commit for native; Docker revision or tag.", value_name="REVISION"),
+                    _option("--include", summary="Select one file glob; native refuses undeclared snapshot extras.", value_name="GLOB"),
+                    _option("--exclude", summary="Exclude one file glob.", value_name="GLOB"),
+                    _option("--token-env", summary="Read the HF token by environment variable name.", value_name="ENV"),
+                    _option("--token-file", summary="Dotenv fallback for the named token.", value_name="PATH"),
+                    _option("--no-token", summary="Disable inherited and saved HF tokens."),
+                    _option("--headroom-gib", summary="Keep this much free storage after acquisition.", value_name="GIB"),
+                    _option("--xet", summary="Native-only Xet transport with owned cache-local scratch."),
+                    _option("--volume", summary="Docker cache volume; incompatible with native cache.", value_name="VOLUME"),
+                    _option("--image", summary="Docker image containing hf; incompatible with native cache.", value_name="IMAGE"),
+                    _option("--expected-bytes", summary="Docker storage estimate override; native uses verified inventory.", value_name="BYTES"),
+                    _option("--memory-mib", summary="Docker memory ceiling; requires --memory-swap-mib.", value_name="MIB"),
+                    _option("--memory-swap-mib", summary="Docker memory-plus-swap ceiling; requires --memory-mib.", value_name="MIB"),
+                ),
                 mutation="mutate",
                 docs_anchor="docs/cli/models.md#artifact-pull",
             ),
@@ -40,6 +60,37 @@ def commands() -> CommandNode:
                 "recipes",
                 "Manage recorded serve recipes.",
                 children=(
+                    _resource_node(
+                        "monitor-sync",
+                        "Register one verified running recipe with the local observer. "
+                        "MODEL is a required positional recipe selector.",
+                        "anvil_serving.recipe_monitoring",
+                        role="model-serve",
+                        execution_host_os=("linux",),
+                        argv_prefix=(),
+                        options=CONFIRM_OPTIONS + (
+                            _option("--container", summary="Exact running container name.", value_name="NAME"),
+                            _option("--registry", summary="Exact recipe registry.", value_name="PATH"),
+                        ),
+                        mutation="mutate",
+                        docs_anchor="docs/cli/recipe-monitoring.md",
+                        forward_confirm_flag=True,
+                    ),
+                    _resource_node(
+                        "trace-artifacts",
+                        "Inspect or export a stopped recipe's diagnostic traces.",
+                        "anvil_serving.recipe_trace",
+                        role="model-serve",
+                        execution_host_os=("linux",),
+                        argv_prefix=(),
+                        options=(
+                            _option("--container", summary="Exact recipe container name.", value_name="NAME"),
+                            _option("--retained-volume", summary="Read a declared trace volume only after all containers detach."),
+                            _option("--registry", summary="Exact recipe registry.", value_name="PATH"),
+                            _option("--output", summary="New export directory; omit for metadata inventory.", value_name="PATH"),
+                        ),
+                        docs_anchor="docs/cli/recipe-traces.md",
+                    ),
                     _resource_node(
                         "list",
                         "List recorded serve recipes.",
@@ -94,6 +145,22 @@ def commands() -> CommandNode:
                         mutation="mutate",
                         argv_prefix=("recipe", "delete"),
                         docs_anchor="docs/cli/models.md#create-update-or-delete-a-recipe",
+                    ),
+                    _resource_node(
+                        "prepare",
+                        "Download and verify the pinned Flare package without starting a serve.",
+                        "anvil_serving.models",
+                        role="model-serve",
+                        options=CONFIRM_OPTIONS + (
+                            _option("--registry", summary="Serve-recipe registry containing the pinned candidate.", value_name="PATH"),
+                            _option("--publisher-keys", summary="Optional public Flare profile; its exact namespace and fingerprint must match the recipe pins.", value_name="PATH"),
+                        ),
+                        mutation="mutate",
+                        execution_host_os=("linux",),
+                        execution_runtime_roles=("docker",),
+                        argv_prefix=("recipe", "prepare"),
+                        forward_confirm_flag=True,
+                        docs_anchor="docs/cli/models.md#prepare-a-flare-package",
                     ),
                     _resource_node(
                         "load",
@@ -161,6 +228,27 @@ def commands() -> CommandNode:
                 "Manage model cache storage.",
                 children=(
                     _resource_node(
+                        "discard",
+                        "Preview or discard one entirely retired model cache.",
+                        "anvil_serving.model_cache_discard",
+                        role="model-catalog",
+                        execution_runtime_roles=("native",),
+                        execution_host_os=("linux",),
+                        argv_prefix=(),
+                        options=CONFIRM_OPTIONS + (
+                            _option("--cache-dir", summary="Entire retired native model directory.", value_name="PATH"),
+                            _option("--volume", summary="Entire retired local Docker cache volume.", value_name="NAME"),
+                            _option("--config-home", summary="Complete authoritative operator home.", value_name="PATH"),
+                            _option("--expected-fingerprint", summary="Fingerprint from the reviewed preview.", value_name="SHA256"),
+                            _option("--non-model-root-view", summary="Full ID of an audited read-only root observer.", value_name="ID"),
+                            _option("--writers-quiesced", summary="Attest that external cache writers are stopped."),
+                            _option("--inventory-reviewed", summary="Attest that every inventoried asset is retired."),
+                        ),
+                        mutation="mutate",
+                        forward_confirm_flag=True,
+                        docs_anchor="docs/cli/models.md#whole-cache-discard",
+                    ),
+                    _resource_node(
                         "inventory",
                         "Inspect Docker or native Hugging Face model-cache storage.",
                         "anvil_serving.models",
@@ -184,14 +272,37 @@ def commands() -> CommandNode:
                     ),
                     _resource_node(
                         "remove",
-                        "Remove one Docker revision or preview native-cache removal.",
+                        "Preview Docker revisions or remove a guarded native-cache revision or dedicated volume.",
                         "anvil_serving.models",
                         role="model-catalog",
-                        options=CONFIRM_OPTIONS,
+                        options=CONFIRM_OPTIONS + (
+                            _option(
+                                "--discard-volume",
+                                summary="Discard an unreferenced Docker cache dedicated to the exact model revision.",
+                            ),
+                            _option(
+                                "--expected-volume-fingerprint",
+                                summary="Require the dedicated cache identity returned by preview.",
+                                value_name="SHA256",
+                            ),
+                            _option(
+                                "--writers-quiesced",
+                                summary="Attest that external writers to the dedicated cache have stopped.",
+                            ),
+                            _option(
+                                "--auxiliary-caches-reviewed",
+                                summary="Confirm review of the previewed generated auxiliary caches before volume disposal.",
+                            ),
+                            _option(
+                                "--non-model-root-view",
+                                summary=("Declare an exact non-model read-only root-view container; "
+                                         "repeat for each declaration; guarded cleanup validates mount and GPU fields."),
+                                value_name="CONTAINER_ID",
+                            ),
+                        ),
                         mutation="mutate",
-                        # The legacy leaf distinguishes a native --confirm
-                        # refusal from a dry-run plan, so restore the token
-                        # consumed by the shared confirmation dispatcher.
+                        # The legacy leaf owns its Docker/native confirmation
+                        # guards, so restore the shared dispatcher token.
                         forward_confirm_flag=True,
                         docs_anchor="docs/cli/models.md#cache-remove",
                     ),

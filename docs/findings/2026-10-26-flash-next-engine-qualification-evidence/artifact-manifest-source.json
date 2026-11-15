@@ -1,0 +1,138 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Final human index and request-to-evidence coverage.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "No external prior was used; empty source registry retained.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "No complete sanitized suite/corpus workload manifests are retained as public artifacts; bounded outcomes and denominators remain in the finding.",
+      "role": "workload-manifest",
+      "status": "missing"
+    },
+    {
+      "files": [],
+      "reason": "Frozen per-suite run plans are not retained as public artifacts; the campaign did not produce a controlled serving comparison.",
+      "role": "run-plan",
+      "status": "missing"
+    },
+    {
+      "files": [
+        "ignis-context-benchmark-result.json",
+        "vllm-context-benchmark-result.json",
+        "flare-context-benchmark-result.json"
+      ],
+      "reason": "Native context results retain model, runtime, recipe, and context identities.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "ignis-agentic-campaign-report.json",
+        "ignis-aider-campaign-report-a.json",
+        "ignis-aider-campaign-report-b.json",
+        "ignis-swe-benchmark-result.json",
+        "ignis-swe-official-grader-summary.json",
+        "vllm-agentic-campaign-report.json",
+        "vllm-aider-campaign-report-a.json",
+        "vllm-aider-campaign-report-b.json",
+        "vllm-swe-benchmark-result.json",
+        "vllm-swe-official-grader-summary.json",
+        "flare-agentic-campaign-report.json",
+        "flare-aider-campaign-report-a.json",
+        "flare-aider-campaign-report-b.json",
+        "flare-swe-benchmark-result.json",
+        "flare-swe-official-grader-summary.json",
+        "ignis-context-benchmark-result.json",
+        "vllm-context-benchmark-result.json",
+        "flare-context-benchmark-result.json",
+        "vllm-serving-c1-native-capacity-result.json",
+        "flare-serving-c1-native-capacity-result.json"
+      ],
+      "reason": "Sanitized native campaign reports and native capacity records, including failed and incomplete outcomes.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "flare-c1-offline-reconciliation.md",
+        "campaign-state.json"
+      ],
+      "reason": "Final campaign state, failure reconciliation, router attribution caveat, and restoration friction are retained.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "final-restoration-evidence.json",
+        "glm-restoration-direct-preflight.json",
+        "glm-restoration-routed-preflight.json"
+      ],
+      "reason": "Exact route/cap and incumbent restoration with local post-run checks; runtime-image difference and scope limits explicit.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Final no-promotion decision and qualification limits derived from retained evidence.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Final derivative copy and claim ledger.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "campaign": {
+    "capability": "local-model-quality-and-context",
+    "completed_at": "2026-10-26T18:50:20Z",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "final public-safe evidence assembled in an uncommitted worktree",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "historical-invalid"
+    ],
+    "id": "2026-10-26-flash-next-engine-qualification",
+    "promotion_authorized": false,
+    "repository_revision": "mixed source: a5ccb7454ad49f47e5a953b130696fff69cdb829 applies to vLLM and Flare only; Ignis Git revision unknown, retained source-content SHA-256 daf9d724d6513c488667740e0e4db2ecc5e4ec6fad58b6fb2cac1694e101f83a",
+    "started_at": null
+  },
+  "closed_inventory": true,
+  "legacy_plaintext_files": [],
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark/v1",
+    "official-grader/schema_version-2",
+    "preflight/v2",
+    "anvil-serving.benchmark-restoration-evidence/v1"
+  ],
+  "output": "artifact-manifest.json",
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": null
+}

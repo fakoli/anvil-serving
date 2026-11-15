@@ -1,0 +1,47 @@
+{
+  "artifacts": [
+    {
+      "bytes": 495559,
+      "path": "aider/plan.json",
+      "sha256": "adf7870c6c0a54a426545f96fd4bcbdaecf25455caf18944cd061b2967df935d"
+    },
+    {
+      "bytes": 1405,
+      "path": "aider/selection.json",
+      "sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade"
+    },
+    {
+      "bytes": 76593,
+      "path": "aider/result.json",
+      "sha256": "19a1c98f2d0808c98e11fb4cd5b5337e3a8842ad75535c8b9298af3a0ef55004"
+    },
+    {
+      "bytes": 71433,
+      "path": "aider/process.json",
+      "sha256": "a9342f17b0c47f881ddb5b77fbb1b02224c7ea4c6cebf6b4a23efd9c6b959d49"
+    },
+    {
+      "bytes": 4274,
+      "path": "aider/requests.jsonl",
+      "sha256": "ee45884c0b2b4c61d3e8941d1606615fdd0328d8cf71c049b5edbb476cbfca4f"
+    },
+    {
+      "bytes": 767,
+      "path": "aider/adapter-result.json",
+      "sha256": "329298ef27652fbe2744fcb26cdb11b6fb892cd44f07f111e34198db6d0e0845"
+    },
+    {
+      "bytes": 1071,
+      "path": "aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "sha256": "46e52e1e2e0f857b90205e0e8a2fa1c5221aa4dc6e780a066fb0e6c2aef9e583"
+    },
+    {
+      "bytes": 6978,
+      "path": "aider/results/go/exercises/practice/alphametics/.aider.chat.history.md",
+      "sha256": "a26522be4007b8453432da02033f289c0ee4e34286820bec9ed0822cdb054d97"
+    }
+  ],
+  "missing": [],
+  "schema": "anvil-serving.aider-retention/v1",
+  "state": "retained"
+}

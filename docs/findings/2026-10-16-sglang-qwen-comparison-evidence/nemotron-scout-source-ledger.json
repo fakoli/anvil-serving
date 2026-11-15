@@ -1,0 +1,243 @@
+{
+  "artifacts": [
+    {
+      "native_schema": "preflight/v2",
+      "preserved_metric_paths": [
+        "passed",
+        "checks",
+        "results",
+        "observations[].usage",
+        "observations[].seconds"
+      ],
+      "private_source_bytes": 22694,
+      "private_source_label": "retained-nemotron-scout-artifact",
+      "private_source_sha256": "cc6f28f3b4b0646691ebde48656bbb2f03efcdc60825a068c54f0440de6a9b08",
+      "public_bytes": 16516,
+      "public_path": "native/nemotron-scout-r2-preflight.json",
+      "public_sha256": "4ffce9683e81f34b4104a3d4d394384f63920ae8f37505ff0903ef79b8d8db54",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "preflight/v2",
+      "preserved_metric_paths": [
+        "passed",
+        "checks",
+        "results",
+        "observations[].usage",
+        "observations[].seconds"
+      ],
+      "private_source_bytes": 2955,
+      "private_source_label": "retained-nemotron-scout-artifact",
+      "private_source_sha256": "c70733b96922c1733c3c8702ccbc89b81d1ca3bb5f834947dee218affc7ac0a9",
+      "public_bytes": 2249,
+      "public_path": "native/nemotron-scout-r2-context-c1.json",
+      "public_sha256": "d0cb519471992486a6771f11a8549fd707e42171c48f3615758b3eee8f152d6a",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.benchmark/v1",
+      "preserved_metric_paths": [
+        "completed",
+        "failed",
+        "requests",
+        "responses_received",
+        "performance_eligible",
+        "failures",
+        "request_timings",
+        "metrics"
+      ],
+      "private_source_bytes": 20673,
+      "private_source_label": "retained-nemotron-scout-artifact",
+      "private_source_sha256": "f313ee4c8b3ea7aee66d507f2a22239de6c174c506b43d00fb59877adaa80be2",
+      "public_bytes": 20657,
+      "public_path": "native/nemotron-scout-r2-capacity-c1-r1.json",
+      "public_sha256": "6847121ac1cf0882ac7ff364074ac9bf7435ce10d2811b8ac7c60b877a70fcda",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "multimodal-benchmark-evidence/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "requests",
+        "passed_attempts",
+        "failed_attempts",
+        "aggregates",
+        "attempts[].usage",
+        "attempts[].seconds"
+      ],
+      "private_source_bytes": 40569,
+      "private_source_label": "retained-nemotron-scout-artifact",
+      "private_source_sha256": "47c61df8ff664eadd5547d9b82b1694e29a131b2cd70d5007320379519640e5b",
+      "public_bytes": 38643,
+      "public_path": "native/nemotron-scout-r2-vision18-c1.json",
+      "public_sha256": "84b071d547ef86915f9aa9fab09b20691be3ec7d7d66b8efef41aa19b6bb8845",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while confidential string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].passed",
+        "observations[].failure_class",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256",
+        "request_controls"
+      ],
+      "private_source_bytes": 42180,
+      "private_source_label": "retained-nemotron-oracle-native-artifact",
+      "private_source_sha256": "4bd07e42e75caeb8a396d27f5783ef4de9ce6e993996080a322a0d3fa7c03cd9",
+      "public_bytes": 39644,
+      "public_path": "native/nemotron-scout-r2-oracle8-r1.json",
+      "public_sha256": "247242a9c55fb4b5094b0b60f334c21b741fda3aa0a4e0aae4a889b0119f5578",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while raw answers and nested tool-argument string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].passed",
+        "observations[].failure_class",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256",
+        "request_controls"
+      ],
+      "private_source_bytes": 36871,
+      "private_source_label": "retained-nemotron-oracle-native-artifact",
+      "private_source_sha256": "7bf875947c7d86746d3f10caf5a6ba95b1356c62236879ab329e0616f7155400",
+      "public_bytes": 34477,
+      "public_path": "native/nemotron-scout-r2-oracle8-r2.json",
+      "public_sha256": "299aa7015fdbb5fecf50ccf2349bbb76423ed831f9ab690e031ae099ee71fb14",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while raw answers and nested tool-argument string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].passed",
+        "observations[].failure_class",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256",
+        "request_controls"
+      ],
+      "private_source_bytes": 39603,
+      "private_source_label": "retained-nemotron-oracle-native-artifact",
+      "private_source_sha256": "47846c9d46ffa6335cbf02b09431b5df0822a22ba7d8bca160f686491cebeb7a",
+      "public_bytes": 36636,
+      "public_path": "native/nemotron-scout-r2-oracle8-r3.json",
+      "public_sha256": "72c4dcf68b1381898ca8389fe72f4519ce81b6c9a8f30e312b57593b814d6e34",
+      "sanitization": "schema-preserving recursive projection; mapping/list paths, list lengths, and scalar JSON types retained while raw answers and nested tool-argument string leaves are replaced"
+    },
+    {
+      "native_schema": "anvil-serving.swe-run/v1",
+      "preserved_metric_paths": [
+        "state",
+        "failure",
+        "summary.attempted",
+        "summary.graded",
+        "summary.resolved",
+        "summary.resolve_rate",
+        "official_grader_complete",
+        "instances[].exit_status",
+        "instances[].failure_class",
+        "instances[].grader.completed",
+        "instances[].grader.resolved",
+        "request_controls",
+        "task_container_network",
+        "promotion"
+      ],
+      "private_source_bytes": 39828,
+      "private_source_label": "retained-nemotron-terminal-swe-native-evidence",
+      "private_source_sha256": "743896096cae0c9fedf69373cb5b771c066bdd613451aff379f7069f2b5400b2",
+      "public_bytes": 34622,
+      "public_path": "native/nemotron-scout-r2-swe5.json",
+      "public_sha256": "822de323ccf3a893d23e132922b2346c36fc37eb944678bad6dd66d734bf30b2",
+      "sanitization": "schema-preserving recursive projection; raw trajectories, prompts, code patches, commands, stdout/stderr, endpoint identity, and model text are removed"
+    },
+    {
+      "native_schema": "campaign-final-resource-summary/v1",
+      "preserved_metric_paths": [
+        "gpu_samples.samples_per_gpu",
+        "gpu_samples.minimum_free_mib_per_gpu",
+        "gpu_samples.minimum_required_free_mib",
+        "gpu_samples.floor_passed",
+        "host_memory.peak_gib",
+        "host_memory.effective_swap_limit_bytes",
+        "host_memory.events_max",
+        "host_memory.oom",
+        "host_memory.oom_kill",
+        "host_memory.oom_group_kill",
+        "host_memory.not_oom_killed",
+        "candidate_lifecycle.managed_unload_completed"
+      ],
+      "private_source_label": "retained-nemotron-final-status-and-gpu-summary",
+      "private_source_sha256": "aa96f902dbb1f400fff5f55fe86747425a63c87401c456279713e89c458c89b1",
+      "public_path": "native/nemotron-scout-r2-final-resource-summary.json",
+      "sanitization": "public-safe derived summary of retained final status and GPU sample records; no topology or container identity retained"
+    }
+  ],
+  "configuration_inputs": [
+    {
+      "fields": [
+        "model_repository",
+        "model_revision",
+        "runtime_image",
+        "context_tokens",
+        "tensor_parallelism",
+        "concurrency",
+        "configured_resource_policy",
+        "quantization"
+      ],
+      "private_source_label": "executed-nemotron-r2-recipe",
+      "private_source_sha256": "162062435c7cb79379771fa6f99797bb36c5ca2f217ac42f1b5fb39a4e604b89"
+    },
+    {
+      "fields": [
+        "native_request_policy",
+        "BF16 KV startup observation",
+        "float16 Mamba SSM",
+        "no speculative decoding"
+      ],
+      "private_source_label": "retained-nemotron-runtime-policy-binding",
+      "private_source_sha256": "6084487b0a5a1ef49aa873bf9f7f7fa8e0bb1cbe75da1a469ec982babf75db82"
+    },
+    {
+      "fields": [
+        "engine_revision"
+      ],
+      "private_source_label": "retained-nemotron-runtime-source-revision",
+      "private_source_sha256": "88786d46e811ab31e1b9fcc0900a393a423dc35e24eb84bbbb4311bbb822b6db"
+    },
+    {
+      "fields": [
+        "runtime_template_sha256"
+      ],
+      "private_source_label": "retained-nemotron-runtime-template",
+      "private_source_sha256": "ff0f588ecc76ffa00676387567964a9bbe657b471d0803ac0d6ba39adf18b524"
+    },
+    {
+      "fields": [
+        "executed model revision",
+        "runtime image",
+        "zero effective swap"
+      ],
+      "private_source_label": "retained-nemotron-ready-status",
+      "private_source_sha256": "d7674c8c1147ec5fde9c5d0e76dfb7acd387aa8528128cc1e8e54253605d331d"
+    },
+    {
+      "fields": [
+        "oracle campaign gate disposition",
+        "unit-scope schema ambiguity caveat"
+      ],
+      "private_source_label": "retained-nemotron-oracle-r1-diagnosis",
+      "private_source_sha256": "83eea07c46908cf97ef4f8a41e0382c7c44ca7bf70ae593c5f66bee611ffcf9a"
+    }
+  ],
+  "schema": "anvil-serving.public-evidence-source-ledger/v1",
+  "status": "terminal scout record; Nemotron C1 preflight, context, strict capacity failure, vision, three Oracle projections, and terminal SWE are retained. C4, stability, qualification, and promotion remain deliberate stops."
+}

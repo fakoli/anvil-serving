@@ -1,0 +1,88 @@
+{
+  "campaign_id": "glm-sampling-fix-20261025-r1",
+  "notice": "Original-private hashes bind retained source receipts; public hashes bind sanitized derivatives, not the original bytes.",
+  "projections": [
+    {
+      "original_private_sha256": "98a1f7f55173c77e9ffb4cacf6d600876dbcdec9c0a4052cc4a2561ecd34398d",
+      "public_file": "kernel-log-excerpt.json",
+      "public_sha256": "0b638a210cc3b74da5fe6da742767095f4fd4c5661f0801996ac2aa1647d5af3",
+      "redactions": [
+        "Omitted command, topology, paths, process PID and deprecation warnings; reduced traceback to the failure site. Numeric trace fields otherwise unchanged."
+      ],
+      "source_id": "candidate-startup-logs-r2.json"
+    },
+    {
+      "original_private_sha256": "a6c843a960e809f0350379303a533b037d332e8ca186de3d073f9d4e89b15dec",
+      "public_file": "candidate-status.json",
+      "public_sha256": "bd7761e0f28dce228fc2abd05ab7326e7b80aa25077c114b980f3d85ec203840",
+      "redactions": [
+        "Omitted container name/ID, command and operator topology."
+      ],
+      "source_id": "candidate-failed-status.json"
+    },
+    {
+      "original_private_sha256": "884d324dbd0dc219adf0e00d7e4e698ff045278ba425b5734b0746d68c822521",
+      "public_file": "build.json",
+      "public_sha256": "352b799309c2bfa81d4f81b6702c9a7a5b48f9c3d2593f75cfd06779b9b491ac",
+      "redactions": [
+        "Omitted local image alias, argv, build context/log paths and topology. Build duration is not inference performance."
+      ],
+      "source_id": "build-result.json"
+    },
+    {
+      "original_private_sha256": "c9cca9e63759e7926b05a82b22eeb1ff394cf2a06416857aac4edf56644d8a70",
+      "public_file": "plan.json",
+      "public_sha256": "f14172b7239fef1682d291ba57bd1ea78fc92906a63edd1c488c429791b84a32",
+      "redactions": [
+        "No private identity values were present. Preserved historical pretrial status preparing and all stop conditions."
+      ],
+      "source_id": "experiment-plan.json"
+    },
+    {
+      "original_private_sha256": "646e4cf25fe265dbb539e73e8e18e99e3894c035eb8bcdfecc6e4d656f38cfa9",
+      "public_file": "source-freeze.json",
+      "public_sha256": "f6df4f566896740cd130d7350b25414157f98f99e71560bd1be15e2e15e5e638",
+      "redactions": [
+        "Retained only the executable probe and derived-image artifact pins relevant to this trial."
+      ],
+      "source_id": "source-freeze.json"
+    },
+    {
+      "original_private_sha256": "b93e27d9951f44d29799352137f7b551a054d4a61c9870556ddbda041165bdd1",
+      "public_file": "identity.json",
+      "public_sha256": "e7af55668fca6f1899d20b8f610c26a1f5e32f1faf9a6a79346416e1ffbb7ba9",
+      "redactions": [
+        "Synthetic host/served labels; omitted container ID and selected environment. Candidate/build pins are corroborated separately by build.json and source-freeze.json."
+      ],
+      "source_id": "runtime-before-swap.json"
+    },
+    {
+      "original_private_sha256": "92a6c25d5ad6d86ae81da01458f798d1000918166f5fc234b86637faeb13c457",
+      "public_file": "closure.json",
+      "public_sha256": "9faa0d048e553b978dfbebf8023d5981f2780e8bc706f39eedcc3f13b650db45",
+      "redactions": [
+        "No private identity values present; preserved native closure values with canonical JSON formatting."
+      ],
+      "source_id": "closure.json",
+      "supporting_private_receipts": [
+        {
+          "original_private_sha256": "de2cd2b5d59e4557be973256c1939cf106538e022fe7950bfd775933d468a877",
+          "source_id": "runtime-restored.json"
+        },
+        {
+          "original_private_sha256": "66657f39935646011467d9f238197750a62be9fbefb4bbdd106bdda2981b18af",
+          "source_id": "router-restored.json"
+        },
+        {
+          "original_private_sha256": "37aa0ff2e3a34a0c8b3077bd5b7197cf09a9ada45930f351173197cf00ba26c6",
+          "source_id": "mode-enter.json"
+        },
+        {
+          "original_private_sha256": "1abcd9e3ca41742f776a2d86a95ab984135a2a64fd46107b741b596e3c075f7f",
+          "source_id": "mode-restored.json"
+        }
+      ]
+    }
+  ],
+  "schema": "anvil-serving.public-projection-ledger/v1"
+}

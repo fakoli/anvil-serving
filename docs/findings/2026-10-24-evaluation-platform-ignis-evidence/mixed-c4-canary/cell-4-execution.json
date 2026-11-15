@@ -1,0 +1,94 @@
+{
+  "activation": {
+    "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+    "container_id": "container-1",
+    "generation": "generation-1",
+    "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+    "served_model": "incumbent-model",
+    "started_at": "2026-10-24T05:24:53.460914102Z",
+    "status": "verified"
+  },
+  "active_seconds": 305.7910472890362,
+  "batch_closure": {
+    "bytes": 5733,
+    "path": "closures/batch-1.json",
+    "sha256": "06e0eaf7af4c8f89b847a0a005b7a91060503b080b7ea8c4de8def8101fde843"
+  },
+  "boot_id": "boot-1",
+  "campaign": {
+    "arm_id": "incumbent",
+    "batch_id": "batch-1",
+    "campaign_id": "mixed-c4-diagnostic",
+    "cell_id": "cell-4",
+    "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe"
+  },
+  "clients_stopped": true,
+  "clients_stopped_wall": 1792907940.8130598,
+  "closed_at": "2026-10-25T05:59:36.262672Z",
+  "closed_monotonic": 1274035.982891108,
+  "drain": {
+    "collector_sha256": "423232d675791ea53fbfa50bfe08bb1a1c5cf64f87f43ee2b67387a1394eb3c6",
+    "freshness_wait_s": 35,
+    "identity_contract": "generation-bound-observer/v1",
+    "sample": {
+      "observed_monotonic": 1274035.775411549,
+      "running_metric": 0.0,
+      "source_timestamp_seconds": 1792907965.3038607,
+      "waiting_metric": 0.0
+    },
+    "status": "verified"
+  },
+  "ready_at": "2026-10-25T05:54:42.866111Z",
+  "schema": "anvil-serving.campaign-execution/v1",
+  "spec_sha256": "55217056af386b63b912c6c9a8b9b5375bc864b5f59f6984dcef34265f71e04e",
+  "started_at": "2026-10-25T05:54:46.451373Z",
+  "started_monotonic": 1273746.171609225,
+  "status": "closed",
+  "telemetry_coverage": {
+    "cgroup": {
+      "closed_monotonic": 1274051.9415053362,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 5.578168236417696,
+      "reset_segments": 0,
+      "sample_count": 60,
+      "started_monotonic": 1273743.2156503352,
+      "status": "measured"
+    },
+    "engine": {
+      "closed_monotonic": 1274040.3251792768,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 16.642545354785398,
+      "reset_segments": 0,
+      "sample_count": 21,
+      "started_monotonic": 1273728.6238717276,
+      "status": "measured"
+    },
+    "gpu": {
+      "closed_monotonic": 1274049.7202202077,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 15.000000261701643,
+      "reset_segments": 0,
+      "sample_count": 22,
+      "started_monotonic": 1273734.720220254,
+      "status": "measured"
+    },
+    "host": {
+      "closed_monotonic": 1274051.7975317182,
+      "complete": true,
+      "failures": 0,
+      "max_gap_s": 5.526578747201711,
+      "reset_segments": 0,
+      "sample_count": 60,
+      "started_monotonic": 1273743.053130846,
+      "status": "measured"
+    }
+  },
+  "telemetry_terminal": {
+    "bytes": 2367,
+    "path": "telemetry/batch-1/terminal.json",
+    "sha256": "829b0ea69f7957e924a81937c915bfd5e989e731849d64310ae25a72dde1d258"
+  }
+}

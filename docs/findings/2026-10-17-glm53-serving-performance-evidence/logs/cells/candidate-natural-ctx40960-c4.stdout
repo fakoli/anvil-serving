@@ -1,0 +1,16 @@
+BENCH http://127.0.0.1:31843/v1 model=glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2  n=8 concurrency=4 mixed max_tokens=16384 cache=unique canaries=True response_words=0 max_model_len=327680(ctx<=310272) reasoning_effort=max
+------------------------------------------------------------
+completed:        8/8 in 41.4s
+client overlap:   4 observed peak / 4 requested
+TTFO  p50/p95:    17.09s / 19.23s (reasoning or visible)
+TTFT  mean/p50/p95/p99 (descriptive only; N<100): 17.13s / 18.60s / 22.19s / 22.19s
+E2E   mean/p50/p95/p99 (descriptive only; N<100): 17.60s / 18.89s / 22.47s / 22.47s
+GEN   p50/p95:    2.81s / 4.06s
+prefill mean/p50/p95/p99: 2897 / 1784 / 8673 / 8673 effective input tok/s
+decode mean/p50/p95/p99: 119.4 / 110.3 / 190.4 / 190.4 tok/s per request
+completion tokens mean/p50/p95/p99: 326.5 / 297 / 453 / 453
+throughput:       63 output tok/s (aggregate)
+prefix-cache hit: 0.0% avg cached prompt tokens (KEY KPI)
+------------------------------------------------------------
+Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.
+wrote JSON summary: [PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/candidate/candidate-natural-ctx40960-c4.json

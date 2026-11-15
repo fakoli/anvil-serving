@@ -1,0 +1,107 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-21-flare-glm53-optimization",
+  "status": "verified",
+  "mutation_required": true,
+  "verified": true,
+  "verified_at": "2026-10-21T15:07:41.133975+00:00",
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      {
+        "path": "diagnostics/start-router.json",
+        "sha256": "f8ba58a27556add5a313785c3f5e11d856c140e5e50441999ee50b2a74cc16f6"
+      }
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      {
+        "path": "diagnostics/restoration-candidate-unload.json",
+        "sha256": "e9bd5a2372bf39a7d2153ba44343cb169f3408e169599216c8d2576376030ec3",
+        "original_execution_sha256": "18bc8dc13262407ec0eb9a79bd1227365764a4a710d3ca779a87e0b66f3896e2"
+      },
+      {
+        "path": "diagnostics/restoration-apply_argv.json",
+        "sha256": "235a81cbc16ac6d66b83449e3fdcc19415874b8df269f19e065a4392eece340b",
+        "original_execution_sha256": "78c89e828d119fec23f53abacf0a5bcf392989ae7bca34c690db81bd8d7b28c7"
+      },
+      {
+        "path": "diagnostics/restoration-incumbent-identity.json",
+        "sha256": "b6ea921c38662e9af06f543a32477888844cdbf408f085b74f2ef92dfb1794c2",
+        "original_execution_sha256": "befba4e8a7f1f1a51c0451943ea83b2ac62ba3e50d24033a0b920e315b523dc4"
+      },
+      {
+        "path": "diagnostics/restoration-incumbent-preflight-native.json.gz",
+        "sha256": "0241e08ac6ef299a1edd372c8f7c855cc9788bc6a3068df9bcf31db970b501bd",
+        "original_execution_sha256": "6e2d1fd86af001eac249703f38fc51c2cb31c30d6f6a40a0cd2c67903b817157"
+      },
+      {
+        "path": "diagnostics/restoration-routed-preflight-native.json",
+        "sha256": "1b1f331199be512f12de0f1ae878629e93831d062fc548fcee722966c24f8984"
+      },
+      {
+        "path": "diagnostics/restoration-candidate-absence.json",
+        "sha256": "753d62deb20eea2d83dee4564821a2133d6e3905846b7ef3f58ce80506edd8b5",
+        "original_execution_sha256": "fce97e9384181bf9b5622d62f0cd2f7046c53f902d2eb955cc2abe5f2f36fa3b"
+      },
+      {
+        "path": "diagnostics/restoration-router-readmit.json",
+        "sha256": "07d8b0585bca6ec96357be6080f1f9d41f76a2bb2cfab563e96710a2da11a56c"
+      },
+      {
+        "path": "diagnostics/restoration-final-primary-router.json",
+        "sha256": "f8ba58a27556add5a313785c3f5e11d856c140e5e50441999ee50b2a74cc16f6"
+      },
+      {
+        "path": "diagnostics/restoration-final-serves.json",
+        "sha256": "25e3d1fbcc44b59fbf3e20125bc5d34fcea6cae4ec5b39df67814fb94adbffa9",
+        "original_execution_sha256": "a9077fa2b74f043623ff84e623dc9ba47cfe944ff6c9fe886fbed904f8562c04"
+      },
+      {
+        "path": "diagnostics/restoration-final-gpus.json",
+        "sha256": "af4f92a0c87d64a63bf34460228a6985f45addd7b238f8f82df0626d02e064b1",
+        "original_execution_sha256": "0d520731554304c52ab2b53f2cc22657cd161106c9c4cad9c0d0b3cf7f8d8046"
+      },
+      {
+        "path": "diagnostics/protected-manifest-verification.json",
+        "sha256": "8bb9855630365affc8fc462b31ed52e50f1845babd5ace402dbfe861adece397",
+        "original_execution_sha256": "7881db0b9b3a75243356f7634f936ca0b876e97782258196187e1e7843a978fa"
+      }
+    ]
+  },
+  "differences": [],
+  "post_run_checks": [
+    {
+      "name": "exact retained incumbent container and image",
+      "passed": true
+    },
+    {
+      "name": "direct preflight",
+      "passed": true,
+      "checks": 7
+    },
+    {
+      "name": "authenticated routed preflight",
+      "passed": true,
+      "checks": 7
+    },
+    {
+      "name": "primary identity ready and admitting",
+      "passed": true
+    },
+    {
+      "name": "candidate absent",
+      "passed": true
+    },
+    {
+      "name": "protected manifest bytes",
+      "passed": true,
+      "matched": 14,
+      "total": 14
+    }
+  ],
+  "scope_note": "Primary serving restoration only. Unfiltered final router status also reported secondary-node unavailable; that remote tier was outside this campaign and its prior state was not established. No fleet-health claim.",
+  "not_applicable_reason": null
+}

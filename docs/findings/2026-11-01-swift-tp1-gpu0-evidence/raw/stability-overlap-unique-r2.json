@@ -1,0 +1,443 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-02T02:11:02.506322+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:06:51.288064+00:00",
+      "phase": "start",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:06:51.348809+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:08:09.252171+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:08:09.301909+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:09:34.220477+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:09:34.274312+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:11:02.499464+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    }
+  ],
+  "overlap_contract": "contender-stream-active/v1",
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "active_overlap_output_at": 513104.90275288,
+      "anchor": {
+        "end": 513171.958228867,
+        "expected_values": [
+          "VALUE_8c935202cf1d",
+          "VALUE_fa9f93146e73",
+          "VALUE_21b910d994d8"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:08:09.193130+00:00",
+        "first_output": 513102.832337286,
+        "last_output": 513171.957984414,
+        "partial_visible": "\n\n**KEY_0 = VALUE_8c935202cf1d**\n**KEY_1 = VALUE_fa9f93146e73**\n**KEY_2 = VALUE_21b910d994d8**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\n**Implementation:** Define a clear component hierarchy using a base class or trait pattern. Each component exposes a well-defined interface (constructor, lifecycle methods, and operational methods). Use dependency injection to wire components together rather than hard-coding references.\n\n```python\nfrom abc import ABC, abstractmethod\nfrom typing import Any, Dict\n\nclass SoftwareComponent(ABC):\n    def __init__(self, config: Dict[str, Any]):\n        self.config = config\n        self._state = \"initialized\"\n\n    @abstractmethod\n    def execute(self, input_data: Any) -> Any:\n        pass\n\n    def teardown(self):\n        self._state = \"terminated\"\n```\n\n**Example:** A `DataProcessor` component that transforms raw records into structured output, receiving its configuration (batch size, encoding) at construction time.\n\n**Edge Cases:** Components constructed with empty config dictionaries; components instantiated but never executed; components whose dependencies fail during initialization.\n\n**Tests:** Verify that the base class cannot be instantiated directly. Test that `teardown()` transitions state correctly. Assert that missing abstract method implementations raise `TypeError` at class definition time.\n\n---\n\n## 2. Dependency Injection and Wiring\n\n**Implementation:** Create a `ComponentRegistry` that maps component names to factory functions. Components request dependencies by name rather than importing them directly. This decouples components and makes them independently testable.\n\n```python\nclass ComponentRegistry:\n    def __init__(self):\n        self._factories: Dict[str, callable] = {}\n\n    def register(self, name: str, factory: callable):\n        self._factories[name] = factory\n\n    def resolve(self, name: str, config: Dict = None) -> SoftwareComponent:\n        if name not in self._factories:\n            raise ComponentResolutionError(name)\n        return self._factories[name](config or {})\n```\n\n**Example:** Register a `Logger` component, a `Cache` component, and a `DataService` component. The `DataService` receives `Logger` and `Cache` instances via the registry.\n\n**Edge Cases:** Circular dependencies (A depends on B, B depends on A); resolving a component that was never registered; registering the same name twice (overwrite vs. error policy).\n\n**Tests:** Unit test registration and resolution. Test that resolving an unregistered name raises `ComponentResolutionError`. Test circular dependency detection (should raise or deadlock with a timeout).\n\n---\n\n## 3. Component Lifecycle Management\n\n**Implementation:** Define an explicit state machine: `CREATED \u2192 INITIALIZED \u2192 RUNNING \u2192 PAUSED \u2192 TERMINATED`. Guard transitions with a `_transition(new_state)` method that validates allowed transitions and rejects invalid ones.\n\n```python\nVALID_TRANSITIONS = {\n    \"created\": [\"initialized\"],\n    \"initialized\": [\"running\", \"terminated\"],\n    \"running\": [\"paused\", \"terminated\"],\n    \"paused\": [\"running\", \"terminated\"],\n    \"terminated\": []\n}\n\ndef _transition(self, new_state: str):\n    if new_state not in VALID_TRANSITIONS.get(self._state, []):\n        raise InvalidStateTransition(self._state, new_state)\n    self._state = new_state\n```\n\n**Example:** A `WorkerComponent` that starts in `CREATED`, calls `init()` to reach `INITIALIZED`, then `start()` to enter `RUNNING`. Calling `start()` twice raises an exception.\n\n**Edge Cases:** Attempting to pause a component that was never started; calling `teardown()` from any state; concurrent state transitions from multiple threads.\n\n**Tests:** Parametrize tests over all valid and invalid state transitions. Use a thread pool to test concurrent `start()` calls. Assert that `teardown()` is idempotent.\n\n---\n\n## 4. Configuration Loading and Validation\n\n**Implementation:** Load configuration from YAML/JSON files or environment variables. Validate against a schema (e.g., using `jsonschema` or a custom validator). Provide sensible defaults for missing optional fields.\n\n```python\nimport json\nfrom pathlib import Path\n\ndef load_config(path: str) -> Dict:\n    raw = json.loads(Path(path).read_text())\n    schema = {\n        \"type\": \"object\",\n        \"required\": [\"name\", \"version\"],\n        \"properties\": {\n            \"name\": {\"type\": \"string\"},\n            \"version\": {\"type\": \"string\", \"pattern\": \"^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$\"},\n            \"timeout_ms\": {\"type\": \"integer\", \"minimum\": 1, \"default\": 5000}\n        }\n    }\n    validate(raw, schema)\n    raw.setdefault(\"timeout_ms\", 5000)\n    return raw\n```\n\n**Example:** A component expects `{\"name\": \"etl\", \"version\": \"1.2.3\", \"batch_size\": 100}`. If `batch_size` is absent, default to 50.\n\n**Edge Cases:** Malformed JSON; version string not matching semver; `timeout_ms` set to 0 or negative; nested config objects with missing sub-keys.\n\n**Tests:** Test valid configs, missing optional fields, invalid types, out-of-range values. Use `pytest.raises` for schema violations. Test file-not-found scenarios.\n\n---\n\n## 5. Synchronous Execution Model\n\n**Implementation:** The `execute()` method processes input and returns output in a single call stack. Use a timeout mechanism (e.g., `signal.alarm` on Unix or a watchdog thread) to prevent indefinite blocking.\n\n```python\nimport signal\n\nclass TimeoutHandler:\n    def __init__(self, seconds: int):\n        self.seconds = seconds\n\n    def __enter__(self):\n        signal.signal(signal.SIGALRM, self._handle_timeout)\n        signal.alarm(self.seconds)\n\n    def __exit__(self, *args):\n        signal.alarm(0)\n\n    def _handle_timeout(self, signum, frame):\n        raise ComponentTimeoutError(\"Execution exceeded time limit\")\n```\n\n**Example:** A `StringTransformer` component that uppercases input. `execute(\"hello\")` returns `\"HELLO\"` synchronously.\n\n**Edge Cases:** Input is `None`; input is an extremely large string (memory pressure); the component is called while in `PAUSED` state.\n\n**Tests:** Test normal execution, `None` input, empty string input. Simulate a long-running operation and verify timeout fires. Test that execution in `PAUSED` state raises an error.\n\n---\n\n## 6. Asynchronous Execution Model\n\n**Implementation:** Provide an `async_execute()` coroutine for I/O-bound components. Use `asyncio` with a task group to manage concurrent sub-operations. Ensure proper cancellation propagation.\n\n```python\nimport asyncio\n\nasync def async_execute(self, input_data: Any) -> Any:\n    if self._state != \"running\":\n        raise InvalidStateTransition(self._state, \"running\")\n    try:\n        result = await self._do_work(input_data)\n        return result\n    except asyncio.CancelledError:\n        self._cleanup()\n        raise\n```\n\n**Example:** A `HttpFetcher` component that downloads 10 URLs concurrently using `asyncio.gather`.\n\n**Edge Cases:** Cancellation during a network call; one of 10 concurrent tasks raises an exception while others succeed; calling `async_execute` from a synchronous context.\n\n**Tests:** Use `pytest-asyncio`. Test normal completion, cancellation, partial failure (one URL 404s). Verify that `CancelledError` is not swallowed.\n\n---\n\n## 7. Error Handling and Exception Propagation\n\n**Implementation:** Define a component-specific exception hierarchy. Catch expected exceptions at the component boundary, log them, and re-raise as domain-specific exceptions. Never let raw `Exception` bubble to the caller.\n\n```python\nclass ComponentError(Exception):\n    \"\"\"Base for all component errors.\"\"\"\n\nclass ComponentTimeoutError(ComponentError):\n    pass\n\nclass ComponentDependencyError(ComponentError):\n    def __init__(self, dep_name: str, original: Exception):\n        self.dep_name = dep_name\n        self.original = original\n        super().__init__(f\"Dependency '{dep_name}' failed: {original}\")\n```\n\n**Example:** A `PaymentProcessor` catches `CardExpired` from a payment gateway and re-raises as `PaymentDeclinedError` with a user-friendly message.\n\n**Edge Cases:** Nested exceptions (exception within an exception handler); exceptions during `teardown()`; exceptions that carry non-",
+        "prompt_sha256": "423f906eaea587eb0d230817cf409d99921efacc807f7e1fb3dda62ca36751b9",
+        "prompt_tokens_tokenized": 32619,
+        "request_id": null,
+        "response_headers_at": 513102.832269473,
+        "result": {
+          "content_chunks": 1370,
+          "e2e": 77.69750885502435,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 58,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.571740309009328,
+          "ttft": 13.194300541013945,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32619,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 202,
+            "total_tokens": 36715
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_8c935202cf1d**\n**KEY_1 = VALUE_fa9f93146e73**\n**KEY_2 = VALUE_21b910d994d8**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\n**Implementation:** Define a clear component hierarchy using a base class or trait pattern. Each component exposes a well-defined interface (constructor, lifecycle methods, and operational methods). Use dependency injection to wire components together rather than hard-coding references.\n\n```python\nfrom abc import ABC, abstractmethod\nfrom typing import Any, Dict\n\nclass SoftwareComponent(ABC):\n    def __init__(self, config: Dict[str, Any]):\n        self.config = config\n        self._state = \"initialized\"\n\n    @abstractmethod\n    def execute(self, input_data: Any) -> Any:\n        pass\n\n    def teardown(self):\n        self._state = \"terminated\"\n```\n\n**Example:** A `DataProcessor` component that transforms raw records into structured output, receiving its configuration (batch size, encoding) at construction time.\n\n**Edge Cases:** Components constructed with empty config dictionaries; components instantiated but never executed; components whose dependencies fail during initialization.\n\n**Tests:** Verify that the base class cannot be instantiated directly. Test that `teardown()` transitions state correctly. Assert that missing abstract method implementations raise `TypeError` at class definition time.\n\n---\n\n## 2. Dependency Injection and Wiring\n\n**Implementation:** Create a `ComponentRegistry` that maps component names to factory functions. Components request dependencies by name rather than importing them directly. This decouples components and makes them independently testable.\n\n```python\nclass ComponentRegistry:\n    def __init__(self):\n        self._factories: Dict[str, callable] = {}\n\n    def register(self, name: str, factory: callable):\n        self._factories[name] = factory\n\n    def resolve(self, name: str, config: Dict = None) -> SoftwareComponent:\n        if name not in self._factories:\n            raise ComponentResolutionError(name)\n        return self._factories[name](config or {})\n```\n\n**Example:** Register a `Logger` component, a `Cache` component, and a `DataService` component. The `DataService` receives `Logger` and `Cache` instances via the registry.\n\n**Edge Cases:** Circular dependencies (A depends on B, B depends on A); resolving a component that was never registered; registering the same name twice (overwrite vs. error policy).\n\n**Tests:** Unit test registration and resolution. Test that resolving an unregistered name raises `ComponentResolutionError`. Test circular dependency detection (should raise or deadlock with a timeout).\n\n---\n\n## 3. Component Lifecycle Management\n\n**Implementation:** Define an explicit state machine: `CREATED \u2192 INITIALIZED \u2192 RUNNING \u2192 PAUSED \u2192 TERMINATED`. Guard transitions with a `_transition(new_state)` method that validates allowed transitions and rejects invalid ones.\n\n```python\nVALID_TRANSITIONS = {\n    \"created\": [\"initialized\"],\n    \"initialized\": [\"running\", \"terminated\"],\n    \"running\": [\"paused\", \"terminated\"],\n    \"paused\": [\"running\", \"terminated\"],\n    \"terminated\": []\n}\n\ndef _transition(self, new_state: str):\n    if new_state not in VALID_TRANSITIONS.get(self._state, []):\n        raise InvalidStateTransition(self._state, new_state)\n    self._state = new_state\n```\n\n**Example:** A `WorkerComponent` that starts in `CREATED`, calls `init()` to reach `INITIALIZED`, then `start()` to enter `RUNNING`. Calling `start()` twice raises an exception.\n\n**Edge Cases:** Attempting to pause a component that was never started; calling `teardown()` from any state; concurrent state transitions from multiple threads.\n\n**Tests:** Parametrize tests over all valid and invalid state transitions. Use a thread pool to test concurrent `start()` calls. Assert that `teardown()` is idempotent.\n\n---\n\n## 4. Configuration Loading and Validation\n\n**Implementation:** Load configuration from YAML/JSON files or environment variables. Validate against a schema (e.g., using `jsonschema` or a custom validator). Provide sensible defaults for missing optional fields.\n\n```python\nimport json\nfrom pathlib import Path\n\ndef load_config(path: str) -> Dict:\n    raw = json.loads(Path(path).read_text())\n    schema = {\n        \"type\": \"object\",\n        \"required\": [\"name\", \"version\"],\n        \"properties\": {\n            \"name\": {\"type\": \"string\"},\n            \"version\": {\"type\": \"string\", \"pattern\": \"^\\\\d+\\\\.\\\\d+\\\\.\\\\d+$\"},\n            \"timeout_ms\": {\"type\": \"integer\", \"minimum\": 1, \"default\": 5000}\n        }\n    }\n    validate(raw, schema)\n    raw.setdefault(\"timeout_ms\", 5000)\n    return raw\n```\n\n**Example:** A component expects `{\"name\": \"etl\", \"version\": \"1.2.3\", \"batch_size\": 100}`. If `batch_size` is absent, default to 50.\n\n**Edge Cases:** Malformed JSON; version string not matching semver; `timeout_ms` set to 0 or negative; nested config objects with missing sub-keys.\n\n**Tests:** Test valid configs, missing optional fields, invalid types, out-of-range values. Use `pytest.raises` for schema violations. Test file-not-found scenarios.\n\n---\n\n## 5. Synchronous Execution Model\n\n**Implementation:** The `execute()` method processes input and returns output in a single call stack. Use a timeout mechanism (e.g., `signal.alarm` on Unix or a watchdog thread) to prevent indefinite blocking.\n\n```python\nimport signal\n\nclass TimeoutHandler:\n    def __init__(self, seconds: int):\n        self.seconds = seconds\n\n    def __enter__(self):\n        signal.signal(signal.SIGALRM, self._handle_timeout)\n        signal.alarm(self.seconds)\n\n    def __exit__(self, *args):\n        signal.alarm(0)\n\n    def _handle_timeout(self, signum, frame):\n        raise ComponentTimeoutError(\"Execution exceeded time limit\")\n```\n\n**Example:** A `StringTransformer` component that uppercases input. `execute(\"hello\")` returns `\"HELLO\"` synchronously.\n\n**Edge Cases:** Input is `None`; input is an extremely large string (memory pressure); the component is called while in `PAUSED` state.\n\n**Tests:** Test normal execution, `None` input, empty string input. Simulate a long-running operation and verify timeout fires. Test that execution in `PAUSED` state raises an error.\n\n---\n\n## 6. Asynchronous Execution Model\n\n**Implementation:** Provide an `async_execute()` coroutine for I/O-bound components. Use `asyncio` with a task group to manage concurrent sub-operations. Ensure proper cancellation propagation.\n\n```python\nimport asyncio\n\nasync def async_execute(self, input_data: Any) -> Any:\n    if self._state != \"running\":\n        raise InvalidStateTransition(self._state, \"running\")\n    try:\n        result = await self._do_work(input_data)\n        return result\n    except asyncio.CancelledError:\n        self._cleanup()\n        raise\n```\n\n**Example:** A `HttpFetcher` component that downloads 10 URLs concurrently using `asyncio.gather`.\n\n**Edge Cases:** Cancellation during a network call; one of 10 concurrent tasks raises an exception while others succeed; calling `async_execute` from a synchronous context.\n\n**Tests:** Use `pytest-asyncio`. Test normal completion, cancellation, partial failure (one URL 404s). Verify that `CancelledError` is not swallowed.\n\n---\n\n## 7. Error Handling and Exception Propagation\n\n**Implementation:** Define a component-specific exception hierarchy. Catch expected exceptions at the component boundary, log them, and re-raise as domain-specific exceptions. Never let raw `Exception` bubble to the caller.\n\n```python\nclass ComponentError(Exception):\n    \"\"\"Base for all component errors.\"\"\"\n\nclass ComponentTimeoutError(ComponentError):\n    pass\n\nclass ComponentDependencyError(ComponentError):\n    def __init__(self, dep_name: str, original: Exception):\n        self.dep_name = dep_name\n        self.original = original\n        super().__init__(f\"Dependency '{dep_name}' failed: {original}\")\n```\n\n**Example:** A `PaymentProcessor` catches `CardExpired` from a payment gateway and re-raises as `PaymentDeclinedError` with a user-friendly message.\n\n**Edge Cases:** Nested exceptions (exception within an exception handler); exceptions during `teardown()`; exceptions that carry non-",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 513094.247192542,
+        "started_at": "2026-11-02T02:06:51.482081+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 513106.713067373,
+        "expected_values": [
+          "VALUE_e992d351b24e",
+          "VALUE_f4a260054ad4",
+          "VALUE_021b0b70dc46"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:07:03.947969+00:00",
+        "first_output": 513104.856573673,
+        "last_output": 513106.712847804,
+        "partial_visible": "\n\nKEY_0 = VALUE_e992d351b24e\nKEY_1 = VALUE_f4a260054ad4\nKEY_2 = VALUE_021b0b70dc46",
+        "prompt_sha256": "e3d2bc8a4711b6ca1054670ae5133fc8d6a3591b76b0e0467373aec38e12d783",
+        "prompt_tokens_tokenized": 8193,
+        "request_id": null,
+        "response_headers_at": 513104.856513154,
+        "result": {
+          "content_chunks": 14,
+          "e2e": 3.8739583689603023,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 148,
+          "output_token_source": "usage",
+          "reasoning_chunks": 26,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 2.0174940699944273,
+          "ttft": 3.2533685109810904,
+          "usage": {
+            "completion_tokens": 148,
+            "prompt_tokens": 8193,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 94,
+            "total_tokens": 8341
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_e992d351b24e\nKEY_1 = VALUE_f4a260054ad4\nKEY_2 = VALUE_021b0b70dc46",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 513102.835895589,
+        "started_at": "2026-11-02T02:07:00.070784+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 513183.251774057,
+      "anchor": {
+        "end": 513256.926736638,
+        "expected_values": [
+          "VALUE_787bb9a70f2a",
+          "VALUE_e228dbb0bff0",
+          "VALUE_ad34c321db45"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:09:34.161638+00:00",
+        "first_output": 513181.169016427,
+        "last_output": 513256.926514825,
+        "partial_visible": "\n\n**KEY_0 = VALUE_787bb9a70f2a**\n**KEY_1 = VALUE_e228dbb0bff0**\n**KEY_2 = VALUE_ad34c321db45**\n\n---\n\n# Engineering Guide: Implementing and Testing Ordinary Software Components\n\n## 1. Introduction and Scope\n\nThis guide provides a comprehensive reference for designing, implementing, and testing ordinary software components. \"Ordinary\" here refers to self-contained modules\u2014utilities, services, data processors, and domain objects\u2014that form the building blocks of larger systems. Each section below addresses a specific aspect of the component lifecycle, from initial design through production monitoring. The guide assumes a polyglot environment but emphasizes language-agnostic patterns, with concrete examples in Python, TypeScript, and Go where helpful.\n\n## 2. Component Identification and Boundaries\n\nBefore writing any code, define the component's boundary. A component should have a single, clearly stated responsibility. Use the **Interface Segregation Principle**: if a client must depend on methods it does not use, the component is too broad.\n\n**Example (Python):**\n```python\nclass EmailComponent:\n    def compose(self, to: str, subject: str, body: str) -> str: ...\n    def validate_address(self, addr: str) -> bool: ...\n    def queue(self, message: str) -> None: ...\n```\n\n**Edge case:** A \"utility\" class that grows to 20 methods across unrelated domains signals a boundary violation. Refactor by splitting into `EmailComposer`, `AddressValidator`, and `MessageQueue`.\n\n**Test strategy:** Write a boundary test that asserts the component exposes no more than the documented public API. In Python, use `dir()` assertions; in Go, use a linter rule that flags exported identifiers not listed in the component's doc comment.\n\n## 3. Dependency Injection and Inversion of Control\n\nOrdinary components should receive their dependencies explicitly rather than constructing them internally. This makes unit testing trivial and allows swapping implementations.\n\n**Example (TypeScript):**\n```typescript\ninterface Clock { now(): number; }\ninterface Logger { info(msg: string): void; }\n\nclass OrderProcessor {\n  constructor(private clock: Clock, private logger: Logger) {}\n  process(order: Order): Result {\n    this.logger.info(`Processing order ${order.id} at ${this.clock.now()}`);\n    // ...\n  }\n}\n```\n\n**Edge case:** A dependency that is only needed in one method (e.g., a `MetricsExporter`) should be injected at the method level, not the constructor level, to avoid forcing all callers to provide it.\n\n**Test strategy:** Create a `FakeClock` returning a fixed timestamp and a `CollectingLogger` that stores messages in an array. Assert that `OrderProcessor` produces identical output given the same fake inputs, proving determinism.\n\n## 4. State Management and Immutability\n\nPrefer immutable value objects for inputs and outputs. Mutable state should be confined to a single, well-defined location within the component.\n\n**Example (Go):**\n```go\ntype Config struct {\n    Timeout  time.Duration\n    Retries  int\n    Endpoint string\n}\n\ntype Service struct {\n    cfg Config\n    mu  sync.Mutex\n    // mutable state below the line\n    activeRequests int\n}\n```\n\n**Edge case:** A component that accepts a mutable slice or map as a parameter must either copy it immediately or document that it takes ownership. Failure to do so leads to subtle race conditions when the caller mutates the original.\n\n**Test strategy:** After passing a slice to the component, mutate the original slice and verify the component's behavior is unchanged. In Go, use `go test -race` to detect concurrent access bugs.\n\n## 5. Error Handling and Propagation\n\nDefine a component-specific error hierarchy. Every error should carry enough context for the caller to decide on recovery without inspecting internal state.\n\n**Example (Python):**\n```python\nclass ComponentError(Exception):\n    \"\"\"Base for all errors raised by this component.\"\"\"\n\nclass ValidationFailed(ComponentError):\n    def __init__(self, field: str, reason: str):\n        self.field, self.reason = field, reason\n        super().__init__(f\"{field}: {reason}\")\n\nclass UpstreamTimeout(ComponentError):\n    def __init__(self, url: str, elapsed: float):\n        self.url, self.elapsed = url, elapsed\n        super().__init__(f\"Timeout after {elapsed}s calling {url}\")\n```\n\n**Edge case:** Wrapping a lower-level exception in a domain-specific error must preserve the original traceback (`raise ... from e` in Python) so production logs remain debuggable.\n\n**Test strategy:** For every public method, write a test that triggers each documented error type and asserts the exception class, message content, and (where applicable) structured attributes like `field` or `elapsed`.\n\n## 6. Input Validation and Defensive Programming\n\nValidate all inputs at the component boundary. Fail fast with a precise error. Do not validate internally on every call if the data is known to be well-formed\u2014validate once at the edge.\n\n**Example (TypeScript):**\n```typescript\nfunction parseId(raw: string): bigint {\n  if (!/^\\d{1,20}$/.test(raw)) {\n    throw new ValidationFailed(\"id\", `expected 1-20 digit number, got \"${raw}\"`);\n  }\n  return BigInt(raw);\n}\n```\n\n**Edge case:** Unicode homoglyphs, leading zeros, negative numbers represented as strings, and values that exceed `Number.MAX_SAFE_INTEGER` in JavaScript are all classic validation pitfalls.\n\n**Test strategy:** Build a property-based test (Hypothesis in Python, fast-check in TS) that generates random strings and asserts either successful parse with round-trip equality or a `ValidationFailed` exception\u2014never an unhandled crash.\n\n## 7. Configuration Management\n\nExternalize all tunable values. Support a layered configuration system: defaults \u2192 environment variables \u2192 config file \u2192 programmatic overrides.\n\n**Example (Go):**\n```go\ntype Config struct {\n    WorkerCount int    `yaml:\"worker_count\" env:\"WORKER_COUNT\" default:\"4\"`\n    LogLevel    string `yaml:\"log_level\" env:\"LOG_LEVEL\" default:\"info\"`\n}\n\nfunc LoadConfig(path string) (*Config, error) {\n    var cfg Config\n    // 1. set defaults\n    // 2. load YAML\n    // 3. overlay env vars\n    // 4. validate\n    return &cfg, nil\n}\n```\n\n**Edge case:** A config value that is valid in isolation but invalid in combination (e.g., `timeout_ms < retry_delay_ms`) requires cross-field validation after all layers are merged.\n\n**Test strategy:** Table-driven tests that supply a matrix of layer combinations and assert the final resolved values. Include a test for an invalid combination to verify the cross-field check fires.\n\n## 8. Logging and Observability\n\nEvery component should emit structured logs at appropriate levels (DEBUG, INFO, WARN, ERROR) and expose metrics (counters, gauges, histograms). Never log sensitive data.\n\n**Example (Python with structlog):**\n```python\nimport structlog\nlog = structlog.get_logger()\n\ndef handle_payment(payment: Payment) -> Result:\n    log.info(\"payment.received\", id=payment.id, amount=payment.amount, currency=payment.ccy)\n    try:\n        result = charge(payment)\n        log.info(\"payment.succeeded\", id=payment.id)\n        return result\n    except ChargeDeclined as e:\n        log.warning(\"payment.declined\", id=payment.id, reason=e.reason)\n        raise\n```\n\n**Edge case:** High-throughput paths (millions of calls/sec) must avoid allocating log messages at DEBUG level when DEBUG is disabled. Use lazy evaluation: `log.debug(\"detail\", data=repr_obj)` only if the logger is enabled.\n\n**Test strategy:** Capture log output using an in-memory handler. Assert that the expected events fired with the correct key-value pairs. Verify that no log line contains a credit-card number or password (regex scan in CI).\n\n## 9. Concurrency and Thread Safety\n\nDocument whether a component is thread-safe. If it is not, make it stateless or require the caller to serialize access.\n\n**Example (Go):**\n```go\n// Counter is NOT thread-safe. Use SyncCounter for concurrent access.\ntype Counter struct {\n    n int\n}\n\n// SyncCounter is safe for concurrent use.\ntype SyncCounter struct {\n    mu sync.Mutex\n    n  int\n}\n```\n\n**Edge case:** A component that is \"safe for sequential use\" but not \"safe for concurrent use\" must not be shared across goro",
+        "prompt_sha256": "be7b6552c9def8972f3e496bd4bf0ad62fada14ef5bb0e11df2d794910e0b326",
+        "prompt_tokens_tokenized": 32626,
+        "request_id": null,
+        "response_headers_at": 513181.168960882,
+        "result": {
+          "content_chunks": 1458,
+          "e2e": 84.70933398301713,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 48,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.951718758034986,
+          "ttft": 13.239538886002265,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32626,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 174,
+            "total_tokens": 36722
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_787bb9a70f2a**\n**KEY_1 = VALUE_e228dbb0bff0**\n**KEY_2 = VALUE_ad34c321db45**\n\n---\n\n# Engineering Guide: Implementing and Testing Ordinary Software Components\n\n## 1. Introduction and Scope\n\nThis guide provides a comprehensive reference for designing, implementing, and testing ordinary software components. \"Ordinary\" here refers to self-contained modules\u2014utilities, services, data processors, and domain objects\u2014that form the building blocks of larger systems. Each section below addresses a specific aspect of the component lifecycle, from initial design through production monitoring. The guide assumes a polyglot environment but emphasizes language-agnostic patterns, with concrete examples in Python, TypeScript, and Go where helpful.\n\n## 2. Component Identification and Boundaries\n\nBefore writing any code, define the component's boundary. A component should have a single, clearly stated responsibility. Use the **Interface Segregation Principle**: if a client must depend on methods it does not use, the component is too broad.\n\n**Example (Python):**\n```python\nclass EmailComponent:\n    def compose(self, to: str, subject: str, body: str) -> str: ...\n    def validate_address(self, addr: str) -> bool: ...\n    def queue(self, message: str) -> None: ...\n```\n\n**Edge case:** A \"utility\" class that grows to 20 methods across unrelated domains signals a boundary violation. Refactor by splitting into `EmailComposer`, `AddressValidator`, and `MessageQueue`.\n\n**Test strategy:** Write a boundary test that asserts the component exposes no more than the documented public API. In Python, use `dir()` assertions; in Go, use a linter rule that flags exported identifiers not listed in the component's doc comment.\n\n## 3. Dependency Injection and Inversion of Control\n\nOrdinary components should receive their dependencies explicitly rather than constructing them internally. This makes unit testing trivial and allows swapping implementations.\n\n**Example (TypeScript):**\n```typescript\ninterface Clock { now(): number; }\ninterface Logger { info(msg: string): void; }\n\nclass OrderProcessor {\n  constructor(private clock: Clock, private logger: Logger) {}\n  process(order: Order): Result {\n    this.logger.info(`Processing order ${order.id} at ${this.clock.now()}`);\n    // ...\n  }\n}\n```\n\n**Edge case:** A dependency that is only needed in one method (e.g., a `MetricsExporter`) should be injected at the method level, not the constructor level, to avoid forcing all callers to provide it.\n\n**Test strategy:** Create a `FakeClock` returning a fixed timestamp and a `CollectingLogger` that stores messages in an array. Assert that `OrderProcessor` produces identical output given the same fake inputs, proving determinism.\n\n## 4. State Management and Immutability\n\nPrefer immutable value objects for inputs and outputs. Mutable state should be confined to a single, well-defined location within the component.\n\n**Example (Go):**\n```go\ntype Config struct {\n    Timeout  time.Duration\n    Retries  int\n    Endpoint string\n}\n\ntype Service struct {\n    cfg Config\n    mu  sync.Mutex\n    // mutable state below the line\n    activeRequests int\n}\n```\n\n**Edge case:** A component that accepts a mutable slice or map as a parameter must either copy it immediately or document that it takes ownership. Failure to do so leads to subtle race conditions when the caller mutates the original.\n\n**Test strategy:** After passing a slice to the component, mutate the original slice and verify the component's behavior is unchanged. In Go, use `go test -race` to detect concurrent access bugs.\n\n## 5. Error Handling and Propagation\n\nDefine a component-specific error hierarchy. Every error should carry enough context for the caller to decide on recovery without inspecting internal state.\n\n**Example (Python):**\n```python\nclass ComponentError(Exception):\n    \"\"\"Base for all errors raised by this component.\"\"\"\n\nclass ValidationFailed(ComponentError):\n    def __init__(self, field: str, reason: str):\n        self.field, self.reason = field, reason\n        super().__init__(f\"{field}: {reason}\")\n\nclass UpstreamTimeout(ComponentError):\n    def __init__(self, url: str, elapsed: float):\n        self.url, self.elapsed = url, elapsed\n        super().__init__(f\"Timeout after {elapsed}s calling {url}\")\n```\n\n**Edge case:** Wrapping a lower-level exception in a domain-specific error must preserve the original traceback (`raise ... from e` in Python) so production logs remain debuggable.\n\n**Test strategy:** For every public method, write a test that triggers each documented error type and asserts the exception class, message content, and (where applicable) structured attributes like `field` or `elapsed`.\n\n## 6. Input Validation and Defensive Programming\n\nValidate all inputs at the component boundary. Fail fast with a precise error. Do not validate internally on every call if the data is known to be well-formed\u2014validate once at the edge.\n\n**Example (TypeScript):**\n```typescript\nfunction parseId(raw: string): bigint {\n  if (!/^\\d{1,20}$/.test(raw)) {\n    throw new ValidationFailed(\"id\", `expected 1-20 digit number, got \"${raw}\"`);\n  }\n  return BigInt(raw);\n}\n```\n\n**Edge case:** Unicode homoglyphs, leading zeros, negative numbers represented as strings, and values that exceed `Number.MAX_SAFE_INTEGER` in JavaScript are all classic validation pitfalls.\n\n**Test strategy:** Build a property-based test (Hypothesis in Python, fast-check in TS) that generates random strings and asserts either successful parse with round-trip equality or a `ValidationFailed` exception\u2014never an unhandled crash.\n\n## 7. Configuration Management\n\nExternalize all tunable values. Support a layered configuration system: defaults \u2192 environment variables \u2192 config file \u2192 programmatic overrides.\n\n**Example (Go):**\n```go\ntype Config struct {\n    WorkerCount int    `yaml:\"worker_count\" env:\"WORKER_COUNT\" default:\"4\"`\n    LogLevel    string `yaml:\"log_level\" env:\"LOG_LEVEL\" default:\"info\"`\n}\n\nfunc LoadConfig(path string) (*Config, error) {\n    var cfg Config\n    // 1. set defaults\n    // 2. load YAML\n    // 3. overlay env vars\n    // 4. validate\n    return &cfg, nil\n}\n```\n\n**Edge case:** A config value that is valid in isolation but invalid in combination (e.g., `timeout_ms < retry_delay_ms`) requires cross-field validation after all layers are merged.\n\n**Test strategy:** Table-driven tests that supply a matrix of layer combinations and assert the final resolved values. Include a test for an invalid combination to verify the cross-field check fires.\n\n## 8. Logging and Observability\n\nEvery component should emit structured logs at appropriate levels (DEBUG, INFO, WARN, ERROR) and expose metrics (counters, gauges, histograms). Never log sensitive data.\n\n**Example (Python with structlog):**\n```python\nimport structlog\nlog = structlog.get_logger()\n\ndef handle_payment(payment: Payment) -> Result:\n    log.info(\"payment.received\", id=payment.id, amount=payment.amount, currency=payment.ccy)\n    try:\n        result = charge(payment)\n        log.info(\"payment.succeeded\", id=payment.id)\n        return result\n    except ChargeDeclined as e:\n        log.warning(\"payment.declined\", id=payment.id, reason=e.reason)\n        raise\n```\n\n**Edge case:** High-throughput paths (millions of calls/sec) must avoid allocating log messages at DEBUG level when DEBUG is disabled. Use lazy evaluation: `log.debug(\"detail\", data=repr_obj)` only if the logger is enabled.\n\n**Test strategy:** Capture log output using an in-memory handler. Assert that the expected events fired with the correct key-value pairs. Verify that no log line contains a credit-card number or password (regex scan in CI).\n\n## 9. Concurrency and Thread Safety\n\nDocument whether a component is thread-safe. If it is not, make it stateless or require the caller to serialize access.\n\n**Example (Go):**\n```go\n// Counter is NOT thread-safe. Use SyncCounter for concurrent access.\ntype Counter struct {\n    n int\n}\n\n// SyncCounter is safe for concurrent use.\ntype SyncCounter struct {\n    mu sync.Mutex\n    n  int\n}\n```\n\n**Edge case:** A component that is \"safe for sequential use\" but not \"safe for concurrent use\" must not be shared across goro",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 513172.203920706,
+        "started_at": "2026-11-02T02:08:09.438810+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 513185.309096419,
+        "expected_values": [
+          "VALUE_c747f28470c9",
+          "VALUE_4b7ea54e8bf0",
+          "VALUE_cadb6229449c"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:08:22.543997+00:00",
+        "first_output": 513183.202918818,
+        "last_output": 513185.308995551,
+        "partial_visible": "\n\nKEY_0 = VALUE_c747f28470c9\nKEY_1 = VALUE_4b7ea54e8bf0\nKEY_2 = VALUE_cadb6229449c",
+        "prompt_sha256": "dee78bc9d4bed8f7e0e56c1e7dd17e187f732b2b27a68b2b4bfa7a9e5cafe1ae",
+        "prompt_tokens_tokenized": 8191,
+        "request_id": null,
+        "response_headers_at": 513183.202867784,
+        "result": {
+          "content_chunks": 14,
+          "e2e": 4.122530190041289,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 156,
+          "output_token_source": "usage",
+          "reasoning_chunks": 29,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 2.016370823024772,
+          "ttft": 3.4696834190399386,
+          "usage": {
+            "completion_tokens": 156,
+            "prompt_tokens": 8191,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 104,
+            "total_tokens": 8347
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_c747f28470c9\nKEY_1 = VALUE_4b7ea54e8bf0\nKEY_2 = VALUE_cadb6229449c",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 513181.182961943,
+        "started_at": "2026-11-02T02:08:18.417846+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 513268.468362215,
+      "anchor": {
+        "end": 513345.201851262,
+        "expected_values": [
+          "VALUE_812201ead79d",
+          "VALUE_b25f085dea45",
+          "VALUE_6d4f8f3b5d51"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:11:02.436752+00:00",
+        "first_output": 513266.336728704,
+        "last_output": 513345.201711196,
+        "partial_visible": "\n\n**KEY_0 = VALUE_812201ead79d**\n**KEY_1 = VALUE_b25f085dea45**\n**KEY_2 = VALUE_6d4f8f3b5d51**\n\n---\n\n# Engineering Guide: Implementing and Testing Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nA well-structured software component follows the Single Responsibility Principle, encapsulating one distinct unit of behavior. The architecture should separate concerns into layers: interface (public API), core logic (business rules), and adapters (I/O, storage, networking).\n\n**Implementation:** Define a base interface with method signatures, then implement concrete classes that fulfill those contracts. Use dependency injection to wire components together at composition time.\n\n**Example:**\n```python\nclass DataProcessor(ABC):\n    @abstractmethod\n    def process(self, input_data: bytes) -> bytes: ...\n\nclass CSVTransformer(DataProcessor):\n    def process(self, input_data: bytes) -> bytes:\n        # parse, transform, serialize\n        ...\n```\n\n**Edge Cases:** A component receiving `None` where bytes are expected; circular dependencies between components; a component instantiated before its dependencies are ready.\n\n**Tests:** Verify the interface is implemented correctly using a contract test. Assert that `CSVTransformer().process(b'')` returns `b''` without raising. Use a dependency-injection container test to confirm all wiring resolves without cycles.\n\n## 2. Interface Design and Contract Definition\n\nThe public interface is the component's contract. It must be minimal, stable, and self-documenting. Every method should have a clear pre-condition, post-condition, and error specification.\n\n**Implementation:** Use type hints, docstrings with `Raises` sections, and interface segregation (small, focused interfaces over one large one).\n\n**Example:**\n```python\ndef fetch_record(id: str, timeout: float = 5.0) -> Record:\n    \"\"\"Fetch a record by ID.\n    Raises:\n        NotFoundError: if no record matches `id`.\n        TimeoutError: if the backend does not respond within `timeout` seconds.\n    \"\"\"\n```\n\n**Edge Cases:** `timeout` set to 0 or negative; `id` containing null bytes; concurrent calls to the same `id` during a write.\n\n**Tests:** Unit-test each raised exception path. Use a mock backend that returns after `timeout + 0.1` to verify `TimeoutError`. Pass `id=\"\"` and assert a validation error is raised before any I/O.\n\n## 3. State Management and Lifecycle\n\nComponents may be stateless (pure functions) or stateful (holding configuration, caches, connections). Lifecycle states: *initialized \u2192 ready \u2192 active \u2192 draining \u2192 destroyed*.\n\n**Implementation:** Use an explicit state machine. Guard every public method with a state check. Provide `start()`, `stop()`, and `destroy()` hooks.\n\n**Example:**\n```python\nclass ConnectionPool:\n    def __init__(self, max_size: int):\n        self._state = State.INITIALIZED\n        self._pool: deque[Connection] = deque()\n\n    def start(self):\n        if self._state != State.INITIALIZED:\n            raise LifecycleError(\"Cannot start from state \" + self._state.name)\n        self._state = State.READY\n```\n\n**Edge Cases:** Calling `stop()` while a request is in-flight; calling `start()` twice; garbage collection of a component mid-operation.\n\n**Tests:** Write a state-transition matrix test that iterates every valid and invalid transition. Use a thread to issue a long-running request, then call `stop()` and verify the request completes gracefully (draining) before destruction.\n\n## 4. Configuration and Parameterization\n\nComponents must be configurable without code changes. Support layered configuration: defaults \u2192 file \u2192 environment variables \u2192 programmatic overrides.\n\n**Implementation:** Use a `Config` dataclass with `from_env()` and `from_file()` class methods. Validate all values at construction time (fail-fast).\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass StorageConfig:\n    endpoint: str\n    bucket: str\n    max_retries: int = 3\n\n    def __post_init__(self):\n        if self.max_retries < 0:\n            raise ConfigError(\"max_retries must be >= 0\")\n```\n\n**Edge Cases:** Missing required environment variable; integer overflow in a numeric field; a path string with trailing slashes vs. without.\n\n**Tests:** Parametrize tests over valid/invalid config combinations. Assert that constructing `StorageConfig(endpoint=\"\", bucket=\"b\")` raises. Verify that env vars with whitespace are trimmed.\n\n## 5. Error Handling and Exception Hierarchy\n\nDefine a component-specific exception hierarchy rooted at a base `ComponentError`. Distinguish between *expected* errors (not-found, validation) and *unexpected* errors (internal, I/O).\n\n**Implementation:**\n```python\nclass ComponentError(Exception): ...\nclass ValidationError(ComponentError): ...\nclass NotFoundError(ComponentError): ...\nclass TransientError(ComponentError): ...\n```\n\n**Example:** Catch `TransientError` in a retry loop; let `ValidationError` propagate immediately.\n\n**Edge Cases:** An exception raised inside a `finally` block masking the original; an exception with no message; chained exceptions where the root cause is buried.\n\n**Tests:** Assert that `ValidationError` is a subclass of `ComponentError`. Use `pytest.raises` with `match=` to verify error messages. Test that a `finally`-block exception does not silently swallow the primary exception.\n\n## 6. Concurrency and Thread Safety\n\nComponents shared across threads must be thread-safe. Identify shared mutable state and protect it with locks, atomic operations, or message passing.\n\n**Implementation:** Use `threading.RLock` for internal state. For high-throughput paths, prefer `queue.Queue` or `asyncio` primitives over raw locks.\n\n**Example:**\n```python\nclass Counter:\n    def __init__(self):\n        self._lock = threading.Lock()\n        self._value = 0\n\n    def increment(self):\n        with self._lock:\n            self._value += 1\n```\n\n**Edge Cases:** Deadlock from nested lock acquisition; a reader seeing a torn read on a multi-word field; lock starvation under extreme contention.\n\n**Tests:** Run 100 threads \u00d7 10 000 increments and assert the final value is exactly 1 000 000. Use a deadlock detector (e.g., `threading.settrace` or a timeout) to catch circular waits.\n\n## 7. Caching Strategies\n\nCaches reduce latency and external call volume. Choose between in-memory (LRU, TTL), distributed (Redis), and disk-based (SQLite, file) caches based on size and consistency requirements.\n\n**Implementation:** Wrap the underlying data source with a cache layer. Key the cache by a hash of the query parameters. Invalidate on writes.\n\n**Example:**\n```python\nfrom functools import lru_cache\n\n@lru_cache(maxsize=1024)\ndef get_user(user_id: int) -> User:\n    return db.query_user(user_id)\n```\n\n**Edge Cases:** Cache stampede (thousands of concurrent misses for the same key); unbounded cache growth causing OOM; stale data after a write.\n\n**Tests:** Populate the cache, mutate the source, and verify the stale entry is returned until explicit invalidation. Simulate a stampede with 100 concurrent requests for a cold key and assert only one backend call is made (use a semaphore in the mock).\n\n## 8. Logging and Observability\n\nEvery component should emit structured logs at appropriate levels (DEBUG, INFO, WARNING, ERROR, CRITICAL) and expose metrics (counters, gauges, histograms) for external monitoring.\n\n**Implementation:** Use a structured logger (JSON or key-value). Include correlation IDs. Emit metrics via a `Metrics` interface so the transport (Prometheus, Datadog) is swappable.\n\n**Example:**\n```python\nlogger = structlog.get_logger(\"storage.uploader\")\nlogger.info(\"upload_complete\", file_id=fid, bytes=n, duration_ms=dt)\nmetrics.histogram(\"upload_duration_ms\").observe(dt)\n```\n\n**Edge Cases:** Logging sensitive data (passwords, tokens) by accident; log volume exploding under an error storm (log flooding); metric names with characters invalid for the backend.\n\n**Tests:** Capture log output with a test handler and assert that no field named `password` appears. Simulate 10 000 errors and verify a rate-limiter caps the log rate. Validate metric names against the backend's regex.\n\n## 9. Dependency Injection and Testability\n\nComponents should receive their ",
+        "prompt_sha256": "bfd9ff5d1a9b45ce523f182ff76fd08d2977c5d2447d5c6a823713f808e4fabe",
+        "prompt_tokens_tokenized": 32626,
+        "request_id": null,
+        "response_headers_at": 513266.336672908,
+        "result": {
+          "content_chunks": 1501,
+          "e2e": 88.01526379497955,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 53,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 9.150186259998009,
+          "ttft": 13.785039715992752,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32626,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 182,
+            "total_tokens": 36722
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_812201ead79d**\n**KEY_1 = VALUE_b25f085dea45**\n**KEY_2 = VALUE_6d4f8f3b5d51**\n\n---\n\n# Engineering Guide: Implementing and Testing Ordinary Software Components\n\n## 1. Component Architecture Overview\n\nA well-structured software component follows the Single Responsibility Principle, encapsulating one distinct unit of behavior. The architecture should separate concerns into layers: interface (public API), core logic (business rules), and adapters (I/O, storage, networking).\n\n**Implementation:** Define a base interface with method signatures, then implement concrete classes that fulfill those contracts. Use dependency injection to wire components together at composition time.\n\n**Example:**\n```python\nclass DataProcessor(ABC):\n    @abstractmethod\n    def process(self, input_data: bytes) -> bytes: ...\n\nclass CSVTransformer(DataProcessor):\n    def process(self, input_data: bytes) -> bytes:\n        # parse, transform, serialize\n        ...\n```\n\n**Edge Cases:** A component receiving `None` where bytes are expected; circular dependencies between components; a component instantiated before its dependencies are ready.\n\n**Tests:** Verify the interface is implemented correctly using a contract test. Assert that `CSVTransformer().process(b'')` returns `b''` without raising. Use a dependency-injection container test to confirm all wiring resolves without cycles.\n\n## 2. Interface Design and Contract Definition\n\nThe public interface is the component's contract. It must be minimal, stable, and self-documenting. Every method should have a clear pre-condition, post-condition, and error specification.\n\n**Implementation:** Use type hints, docstrings with `Raises` sections, and interface segregation (small, focused interfaces over one large one).\n\n**Example:**\n```python\ndef fetch_record(id: str, timeout: float = 5.0) -> Record:\n    \"\"\"Fetch a record by ID.\n    Raises:\n        NotFoundError: if no record matches `id`.\n        TimeoutError: if the backend does not respond within `timeout` seconds.\n    \"\"\"\n```\n\n**Edge Cases:** `timeout` set to 0 or negative; `id` containing null bytes; concurrent calls to the same `id` during a write.\n\n**Tests:** Unit-test each raised exception path. Use a mock backend that returns after `timeout + 0.1` to verify `TimeoutError`. Pass `id=\"\"` and assert a validation error is raised before any I/O.\n\n## 3. State Management and Lifecycle\n\nComponents may be stateless (pure functions) or stateful (holding configuration, caches, connections). Lifecycle states: *initialized \u2192 ready \u2192 active \u2192 draining \u2192 destroyed*.\n\n**Implementation:** Use an explicit state machine. Guard every public method with a state check. Provide `start()`, `stop()`, and `destroy()` hooks.\n\n**Example:**\n```python\nclass ConnectionPool:\n    def __init__(self, max_size: int):\n        self._state = State.INITIALIZED\n        self._pool: deque[Connection] = deque()\n\n    def start(self):\n        if self._state != State.INITIALIZED:\n            raise LifecycleError(\"Cannot start from state \" + self._state.name)\n        self._state = State.READY\n```\n\n**Edge Cases:** Calling `stop()` while a request is in-flight; calling `start()` twice; garbage collection of a component mid-operation.\n\n**Tests:** Write a state-transition matrix test that iterates every valid and invalid transition. Use a thread to issue a long-running request, then call `stop()` and verify the request completes gracefully (draining) before destruction.\n\n## 4. Configuration and Parameterization\n\nComponents must be configurable without code changes. Support layered configuration: defaults \u2192 file \u2192 environment variables \u2192 programmatic overrides.\n\n**Implementation:** Use a `Config` dataclass with `from_env()` and `from_file()` class methods. Validate all values at construction time (fail-fast).\n\n**Example:**\n```python\n@dataclass(frozen=True)\nclass StorageConfig:\n    endpoint: str\n    bucket: str\n    max_retries: int = 3\n\n    def __post_init__(self):\n        if self.max_retries < 0:\n            raise ConfigError(\"max_retries must be >= 0\")\n```\n\n**Edge Cases:** Missing required environment variable; integer overflow in a numeric field; a path string with trailing slashes vs. without.\n\n**Tests:** Parametrize tests over valid/invalid config combinations. Assert that constructing `StorageConfig(endpoint=\"\", bucket=\"b\")` raises. Verify that env vars with whitespace are trimmed.\n\n## 5. Error Handling and Exception Hierarchy\n\nDefine a component-specific exception hierarchy rooted at a base `ComponentError`. Distinguish between *expected* errors (not-found, validation) and *unexpected* errors (internal, I/O).\n\n**Implementation:**\n```python\nclass ComponentError(Exception): ...\nclass ValidationError(ComponentError): ...\nclass NotFoundError(ComponentError): ...\nclass TransientError(ComponentError): ...\n```\n\n**Example:** Catch `TransientError` in a retry loop; let `ValidationError` propagate immediately.\n\n**Edge Cases:** An exception raised inside a `finally` block masking the original; an exception with no message; chained exceptions where the root cause is buried.\n\n**Tests:** Assert that `ValidationError` is a subclass of `ComponentError`. Use `pytest.raises` with `match=` to verify error messages. Test that a `finally`-block exception does not silently swallow the primary exception.\n\n## 6. Concurrency and Thread Safety\n\nComponents shared across threads must be thread-safe. Identify shared mutable state and protect it with locks, atomic operations, or message passing.\n\n**Implementation:** Use `threading.RLock` for internal state. For high-throughput paths, prefer `queue.Queue` or `asyncio` primitives over raw locks.\n\n**Example:**\n```python\nclass Counter:\n    def __init__(self):\n        self._lock = threading.Lock()\n        self._value = 0\n\n    def increment(self):\n        with self._lock:\n            self._value += 1\n```\n\n**Edge Cases:** Deadlock from nested lock acquisition; a reader seeing a torn read on a multi-word field; lock starvation under extreme contention.\n\n**Tests:** Run 100 threads \u00d7 10 000 increments and assert the final value is exactly 1 000 000. Use a deadlock detector (e.g., `threading.settrace` or a timeout) to catch circular waits.\n\n## 7. Caching Strategies\n\nCaches reduce latency and external call volume. Choose between in-memory (LRU, TTL), distributed (Redis), and disk-based (SQLite, file) caches based on size and consistency requirements.\n\n**Implementation:** Wrap the underlying data source with a cache layer. Key the cache by a hash of the query parameters. Invalidate on writes.\n\n**Example:**\n```python\nfrom functools import lru_cache\n\n@lru_cache(maxsize=1024)\ndef get_user(user_id: int) -> User:\n    return db.query_user(user_id)\n```\n\n**Edge Cases:** Cache stampede (thousands of concurrent misses for the same key); unbounded cache growth causing OOM; stale data after a write.\n\n**Tests:** Populate the cache, mutate the source, and verify the stale entry is returned until explicit invalidation. Simulate a stampede with 100 concurrent requests for a cold key and assert only one backend call is made (use a semaphore in the mock).\n\n## 8. Logging and Observability\n\nEvery component should emit structured logs at appropriate levels (DEBUG, INFO, WARNING, ERROR, CRITICAL) and expose metrics (counters, gauges, histograms) for external monitoring.\n\n**Implementation:** Use a structured logger (JSON or key-value). Include correlation IDs. Emit metrics via a `Metrics` interface so the transport (Prometheus, Datadog) is swappable.\n\n**Example:**\n```python\nlogger = structlog.get_logger(\"storage.uploader\")\nlogger.info(\"upload_complete\", file_id=fid, bytes=n, duration_ms=dt)\nmetrics.histogram(\"upload_duration_ms\").observe(dt)\n```\n\n**Edge Cases:** Logging sensitive data (passwords, tokens) by accident; log volume exploding under an error storm (log flooding); metric names with characters invalid for the backend.\n\n**Tests:** Capture log output with a test handler and assert that no field named `password` appears. Simulate 10 000 errors and verify a rate-limiter caps the log rate. Validate metric names against the backend's regex.\n\n## 9. Dependency Injection and Testability\n\nComponents should receive their ",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 513257.172543772,
+        "started_at": "2026-11-02T02:09:34.407430+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 513270.425943875,
+        "expected_values": [
+          "VALUE_2064a05ed3f9",
+          "VALUE_e78f7c8cb9a4",
+          "VALUE_b64ecd28dcbd"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:09:47.660845+00:00",
+        "first_output": 513268.418628598,
+        "last_output": 513270.425851547,
+        "partial_visible": "\n\nKEY_0 = VALUE_2064a05ed3f9\nKEY_1 = VALUE_e78f7c8cb9a4\nKEY_2 = VALUE_b64ecd28dcbd",
+        "prompt_sha256": "3f06b0016ec220f55db4f5f102dc1d241b75c8e7a59a44c08909cdb5f2133f91",
+        "prompt_tokens_tokenized": 8189,
+        "request_id": null,
+        "response_headers_at": 513268.418563075,
+        "result": {
+          "content_chunks": 13,
+          "e2e": 4.07280898099998,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 145,
+          "output_token_source": "usage",
+          "reasoning_chunks": 27,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 2.0655123809701763,
+          "ttft": 3.4536110739572905,
+          "usage": {
+            "completion_tokens": 145,
+            "prompt_tokens": 8189,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 95,
+            "total_tokens": 8334
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_2064a05ed3f9\nKEY_1 = VALUE_e78f7c8cb9a4\nKEY_2 = VALUE_b64ecd28dcbd",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 513266.349301909,
+        "started_at": "2026-11-02T02:09:43.584185+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 32768,
+    "base_url": "[LOOPBACK_ENDPOINT]",
+    "configuration": {
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "label": "Swift BF16 GPU0 262K MTP3 r4 final activation",
+      "model_revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "recipe_sha256": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_sha256": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2"
+    },
+    "contender_max_tokens": 2048,
+    "contender_tokens": 8192,
+    "context_limit": 262144,
+    "managed_container": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "mode": "overlap",
+    "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "prefix_mode": "unique",
+    "reasoning_effort": "medium",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 300,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "d753c4ebd1dc5c46765afdd095b1337fb597e06b9b204c80efe425234f610ca9",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T02:06:51.166161+00:00",
+  "status": "completed"
+}

@@ -1,0 +1,92 @@
+{
+  "schema": "sampling-reference-result/v1",
+  "source_commit": "3fa3d856ba3f5a797a661a50a468fdee481f58ab",
+  "raw_sha256": "7f02535c536ff093e319bf53481131023f9272fbb4dbee79fc8eb0caea33db39",
+  "forced_cases_passed": 8,
+  "forced_rows": 272,
+  "ordinary_cases": 8,
+  "ordinary_rows": 272,
+  "ordinary_gate_passed_rows": 271,
+  "ordinary_version_identical_rows": 271,
+  "baseline_exact_reference_rows": 36,
+  "patched_exact_reference_rows": 35,
+  "holdout_rows": 136,
+  "holdout_version_identical_rows": 136,
+  "difference": {
+    "baseline": {
+      "boundary": {
+        "logit": -0.6419956088066101,
+        "probability": 2.0450994609581097e-06,
+        "token": 139002
+      },
+      "exact": true,
+      "extra_count": 0,
+      "extra_mass": 0.0,
+      "kept_count": 114428,
+      "missing_count": 0,
+      "missing_mass": 0.0,
+      "prefix_holes": 0,
+      "reference_difference": {
+        "count": 0,
+        "first32": [],
+        "sha256_u32be": null
+      },
+      "remove_lowest_mass": 0.9499981153085724,
+      "retained_mass": 0.9500001604080334
+    },
+    "failed_checks": ["patched_difference_not_worse"],
+    "input_sha256_f32be": "88e40489e8feec7f87475207b33646354bdb8a32b3c58f54356434d023b8f995",
+    "invalid_output_counts": [0, 0],
+    "passed": false,
+    "patched": {
+      "boundary": {
+        "logit": -0.6420466899871826,
+        "probability": 2.0449949975313364e-06,
+        "token": 30317
+      },
+      "exact": false,
+      "extra_count": 1,
+      "extra_mass": 2.0449949975313364e-06,
+      "kept_count": 114429,
+      "missing_count": 0,
+      "missing_mass": 0.0,
+      "prefix_holes": 0,
+      "reference_difference": {
+        "count": 1,
+        "first32": [30317],
+        "sha256_u32be": null
+      },
+      "remove_lowest_mass": 0.9500001604080334,
+      "retained_mass": 0.9500022054030309
+    },
+    "reference": {
+      "boundary": {
+        "logit": -0.6419956088066101,
+        "probability": 2.0450994609581097e-06,
+        "token": 139002
+      },
+      "kept_count": 114428,
+      "remove_lowest_mass": 0.9499981153085724,
+      "retained_mass": 0.9500001604080334
+    },
+    "row": 31,
+    "rows": 64,
+    "seed": 58231,
+    "top_p": 0.949999988079071,
+    "version_difference": {
+      "count": 1,
+      "first32": [30317],
+      "sha256_u32be": null
+    },
+    "vocabulary": 154856
+  },
+  "peak_tensor_bytes": 170521600,
+  "gate": "failed",
+  "candidate_weight_load": false,
+  "candidate_inference_requests": 0,
+  "reasoning_limit_probe": "not run because frozen strict local gate failed",
+  "restoration": "in progress",
+  "interpretation": "All forced cases pass and outputs preserve original values. One ordinary extra tail token is within the predeclared count envelope derived from upstream tests but fails the local no-worse policy. This does not show that the upstream test suite passed. No end-to-end claim; no performance comparison.",
+  "promoted": false,
+  "ignis": "hold"
+}

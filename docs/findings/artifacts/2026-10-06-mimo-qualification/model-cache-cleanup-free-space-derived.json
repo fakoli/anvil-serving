@@ -1,0 +1,16 @@
+{
+  "cache_bytes_remaining": 1479895970020,
+  "derived_from": "campaign/model-cache-cleanup-terminal-tool-output.json",
+  "exit_codes": [
+    0,
+    0
+  ],
+  "free_after_bytes": 871557632000,
+  "free_before_bytes": 589477679104,
+  "free_space_delta_bytes": 282079952896,
+  "live_unchanged": true,
+  "note": "Derived from the native terminal receipt; excludes unrelated inventory rows.",
+  "running": true,
+  "schema": "anvil-serving.model-cache-cleanup-free-space/v1",
+  "source_sha256": "b58c541c56c8c7cc7c8bc94791d4459a7ce919feefef2dd9a6a56da5a6e59e5e"
+}

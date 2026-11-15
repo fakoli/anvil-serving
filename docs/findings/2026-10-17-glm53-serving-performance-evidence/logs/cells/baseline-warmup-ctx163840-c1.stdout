@@ -1,0 +1,16 @@
+BENCH http://127.0.0.1:31841/v1 model=glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec  n=1 concurrency=1 mixed max_tokens=16384 cache=unique canaries=True response_words=0 max_model_len=327680(ctx<=310272) reasoning_effort=max
+------------------------------------------------------------
+completed:        1/1 in 27.9s
+client overlap:   1 observed peak / 1 requested
+TTFO  p50/p95:    25.03s / 25.03s (reasoning or visible)
+TTFT  mean/p50/p95/p99 (descriptive only; N<100): 27.21s / 27.21s / 27.21s / 27.21s
+E2E   mean/p50/p95/p99 (descriptive only; N<100): 27.88s / 27.88s / 27.88s / 27.88s
+GEN   p50/p95:    2.85s / 2.85s
+prefill mean/p50/p95/p99: 5367 / 5367 / 5367 / 5367 effective input tok/s
+decode mean/p50/p95/p99: 77.8 / 77.8 / 77.8 / 77.8 tok/s per request
+completion tokens mean/p50/p95/p99: 223.0 / 223 / 223 / 223
+throughput:       8 output tok/s (aggregate)
+prefix-cache hit: endpoint did not return prompt_tokens_details.cached_tokens
+------------------------------------------------------------
+Tip: run once cold, then immediately again -- TTFT should drop sharply on the 2nd run if prefix cache works.
+wrote JSON summary: [PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/baseline/baseline-warmup-ctx163840-c1.json

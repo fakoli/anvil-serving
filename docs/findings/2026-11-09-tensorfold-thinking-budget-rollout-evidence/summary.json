@@ -1,0 +1,186 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-09-tensorfold-thinking-budget-rollout",
+  "complete": true,
+  "scope": "Focused local request-control functional and one-task quality check; not a serving comparison.",
+  "identity": {
+    "configuration": "configuration.json",
+    "source": "source-delivery.json",
+    "deployment": "deployment.json",
+    "source_and_projections": "projection-ledger.json"
+  },
+  "workload": {
+    "task": "go/exercises/practice/alphametics",
+    "unique_tasks": 1,
+    "jobs": 3,
+    "coding_attempts": 6,
+    "concurrency": 1,
+    "completion_cap_tokens_including_reasoning": 16384,
+    "order": [
+      "max-budget-1",
+      "low-unset",
+      "max-budget-2"
+    ]
+  },
+  "measurement": {
+    "path": "routed-online",
+    "warm_cold_state": "uncontrolled; sharded-KV/cache policy preserved; user traffic coexisted",
+    "sample_count": 3,
+    "statistics": []
+  },
+  "results_by_control": {
+    "max_budget_8192": {
+      "selected": 2,
+      "resolved": 1
+    },
+    "low_unset": {
+      "selected": 1,
+      "resolved": 1
+    }
+  },
+  "transport_totals": {
+    "responses": 10,
+    "prompt_tokens": 31652,
+    "completion_tokens": 56581,
+    "reasoning_tokens": 33839
+  },
+  "preflight": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "smoke (short coding)",
+        "passed": true
+      },
+      {
+        "name": "structured JSON",
+        "passed": true
+      },
+      {
+        "name": "shared-prefix tool batch x2",
+        "passed": true
+      },
+      {
+        "name": "streaming tool call",
+        "passed": true
+      },
+      {
+        "name": "tool-result continuation",
+        "passed": true
+      }
+    ],
+    "observations": 7,
+    "usage_complete": true,
+    "call_ceiling": 9,
+    "usage_projection_note": "Streaming convenience reasoning_tokens is null, but authoritative nested usage reports30; null is not zero or missing raw usage.",
+    "transport_totals": {
+      "prompt_tokens": 10394,
+      "completion_tokens": 1085,
+      "reasoning_tokens": 942
+    }
+  },
+  "limits": {
+    "job_calls_actual": 10,
+    "job_call_ceiling": 36,
+    "preflight_calls_observed": 7,
+    "combined_generation_calls_observed": 17,
+    "combined_call_ceiling": 45
+  },
+  "boundary": {
+    "schema": "anvil-serving.source-backed-thinking-boundary/v1",
+    "classification": "source-backed functional enforcement; not directly instrumented trigger evidence",
+    "requested_reply_position_budget": 8192,
+    "matching_reported_reasoning_tokens": 8193,
+    "matching_coding_responses": 4,
+    "reported_reasoning_includes_closing_delimiter": true,
+    "native_trigger_flag_retained": false,
+    "raw_token_ids_retained": false,
+    "exact_reasoning_token_ceiling_claimed": false,
+    "visible_answer_reserve_guaranteed": false,
+    "historical_engine_tree": "e7acc47a4a42ba8ac5fbaf74fff20ed4e7856c17",
+    "current_engine_tree": "1c7fffb5975b3cc2e4a6c57b05b37f9c04e04cf6",
+    "byte_identical_relevant_files": [
+      "core/lanes/stream.zig",
+      "core/lanes/engine.zig",
+      "server/server.zig",
+      "server/reply_text.zig",
+      "server/openai.zig",
+      "server/chat.zig"
+    ],
+    "interpretation": "The request reaches the native reply-position cutoff and close sequence. Inclusive reasoning accounting matches the observed offset; no tokenizer probe or direct trigger event was retained. Total-cap exhaustion can still prevent a completed answer and code application."
+  },
+  "gates": [
+    {
+      "name": "local typed path and source-backed functional boundary",
+      "passed": true
+    },
+    {
+      "name": "first Max task grade",
+      "passed": true
+    },
+    {
+      "name": "Low-unset task grade",
+      "passed": true
+    },
+    {
+      "name": "second Max task grade",
+      "passed": false
+    },
+    {
+      "name": "owned terminal/custody/preservation",
+      "passed": true
+    }
+  ],
+  "headline_results": [
+    {
+      "metric": "current Max/8192 task passes",
+      "value": 1,
+      "denominator": 2
+    },
+    {
+      "metric": "current Low/unset task passes",
+      "value": 1,
+      "denominator": 1
+    },
+    {
+      "metric": "owned Go HTTP200 responses",
+      "value": 10,
+      "denominator": 10
+    },
+    {
+      "metric": "first-attempt task passes",
+      "value": 0,
+      "denominator": 3
+    }
+  ],
+  "failures": [
+    "Max2 failed both contained tests after two length stops at 16384 completion, 8193 reasoning and 8191 derived non-reasoning tokens. Pinned Aider returned before edit application; the starter remained unchanged."
+  ],
+  "limitations": [
+    "One unique task; Max quality is mixed and 8192 is not a reliable fix/default.",
+    "Different engine from historical disk-only matrix; no contemporaneous unbounded-Max arm or causal quality/performance comparison.",
+    "Visible tokens unknown; non-reasoning is subtraction.",
+    "No native trigger flag/token IDs/exact reasoning ceiling or guaranteed answer reserve.",
+    "Remote-controller admission unsupported; activation-observer migration deferred.",
+    "Global counters include user/preflight traffic, not exclusive attribution or overhead evidence.",
+    "Full 17-family coverage/full-context bound/reboot/fleet acceptance remain unqualified."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Separate approved answer-policy qualification and deferred controller observer migration."
+  },
+  "evidence": [
+    "case-diagnostics.json",
+    "boundary.json",
+    "native-evidence-validation.json",
+    "independent-review.md",
+    "restoration.json"
+  ],
+  "comparison_evidence": null
+}

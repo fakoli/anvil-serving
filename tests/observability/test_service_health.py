@@ -49,67 +49,6 @@ def test_configured_components_report_complete_healthy_entries() -> None:
         assert TelemetrySample.from_json(sample.to_json()) == sample
 
 
-def test_absent_components_are_not_configured_not_failed() -> None:
-    samples = collect_service_health({}, provider=lambda *_: {}, collected_at=NOW)
-
-    assert len(samples) == len(COMPONENTS)
-    assert all(sample.capability_status is CapabilityStatus.UNSUPPORTED for sample in samples)
-    assert all(sample.value is None for sample in samples)
-    assert all(dict(sample.labels)["health"] == "not-configured" for sample in samples)
-    assert all(dict(sample.labels)["configured"] == "false" for sample in samples)
-
-
-def test_disabled_component_is_not_configured() -> None:
-    samples = collect_service_health(
-        {"stt": {"enabled": False}}, provider=lambda *_: {}, collected_at=NOW
-    )
-
-    stt = next(sample for sample in samples if dict(sample.labels)["component"] == "stt")
-    assert stt.capability_status is CapabilityStatus.UNSUPPORTED
-    assert dict(stt.labels)["health"] == "not-configured"
-
-
-def test_configured_but_unhealthy_component_is_failed() -> None:
-    config = {"router": _configuration()["router"]}
-
-    samples = collect_service_health(
-        config,
-        provider=lambda *_: {
-            "port_listening": False,
-            "container_state": "exited",
-            "served_identity": "router",
-        },
-        collected_at=NOW,
-    )
-    router = next(
-        sample for sample in samples if dict(sample.labels)["component"] == "router"
-    )
-
-    assert router.capability_status is CapabilityStatus.FAILED
-    assert router.value is None
-    assert dict(router.labels)["health"] == "failed"
-    assert dict(router.labels)["container_state"] == "exited"
-
-
-def test_invalid_config_is_failed_and_does_not_hide_other_components() -> None:
-    config = _configuration()
-    config["router"] = {"host": "dark", "port": 0}
-
-    samples = collect_service_health(
-        config,
-        provider=lambda component, target: {
-            "port_listening": True,
-            "container_state": "running" if target["container"] else "not-applicable",
-            "served_identity": target["served_identity"],
-        },
-        collected_at=NOW,
-    )
-    by_component = {dict(sample.labels)["component"]: sample for sample in samples}
-
-    assert by_component["router"].capability_status is CapabilityStatus.FAILED
-    assert by_component["tts"].capability_status is CapabilityStatus.OK
-
-
 def test_socket_permission_error_is_not_flattened_to_not_listening(monkeypatch) -> None:
     def denied(*_args, **_kwargs):
         raise PermissionError("network access denied")

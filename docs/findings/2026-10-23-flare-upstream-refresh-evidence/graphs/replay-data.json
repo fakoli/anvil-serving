@@ -1,0 +1,51 @@
+{
+  "charts": [
+    {
+      "metric": "per-point exact paths",
+      "series": [
+        {
+          "label": "Current upstream + compatibility, 25%",
+          "points": [
+            {
+              "artifact": "summary.json",
+              "artifact_sha256": "f5d4f885ff0d0892eb9c8e62b97c8de76b0ff0732210c2be09e9d971d7ca38de",
+              "metric": "cells.01-fixed1.median_ttft_ms",
+              "sample_count": 52,
+              "value": 449.9329205,
+              "x": "Repetition 1"
+            },
+            {
+              "artifact": "summary.json",
+              "artifact_sha256": "f5d4f885ff0d0892eb9c8e62b97c8de76b0ff0732210c2be09e9d971d7ca38de",
+              "metric": "cells.02-fixed1.median_ttft_ms",
+              "sample_count": 52,
+              "value": 452.902749,
+              "x": "Repetition 2"
+            },
+            {
+              "artifact": "summary.json",
+              "artifact_sha256": "f5d4f885ff0d0892eb9c8e62b97c8de76b0ff0732210c2be09e9d971d7ca38de",
+              "metric": "cells.03-fixed1.median_ttft_ms",
+              "sample_count": 52,
+              "value": 460.2504025,
+              "x": "Repetition 3"
+            }
+          ]
+        }
+      ],
+      "title": "Client first-generated-token latency",
+      "x_label": "Fresh incarnation",
+      "y_label": "Median TTFT (ms)"
+    }
+  ],
+  "metric_semantics": {
+    "comparison": "Repetitions, not a two-arm improvement; protected warm lanes excluded.",
+    "qualification": "False; full speculative work unknown, historical sampled-output equality gate remains failed.",
+    "timing": "Client time to first generated-token event, milliseconds; median within each complete replay population."
+  },
+  "native_source_schema": "flare-upstream-refresh-decision/v1",
+  "renderer_sha256": "cec5191bc630a6e776259370aad57dfb616c0b429e177c59aea91b9ec2625b63",
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Same configuration, three fresh incarnations; 52 one-token requests each. Diagnostic only.",
+  "title": "Current compatible Flare baseline: reverse replay"
+}

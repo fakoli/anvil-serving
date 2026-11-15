@@ -1,0 +1,86 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-19-ignis-072",
+  "complete": false,
+  "identity": {
+    "model": "qwen3.8-flash-next",
+    "runtime": "Ignis 0.7.2",
+    "repository_revision": "803e44e2809fa0f9ced0480083008e89a79838d7"
+  },
+  "workload": {
+    "scope": "focused functional, timeout, and five-task SWE qualification; not a serving comparison"
+  },
+  "measurement": {
+    "path": "raw/preflight-c1.json",
+    "warm_cold_state": "Recently read/downloaded artifacts; no cold-load result",
+    "sample_count": null,
+    "statistics": []
+  },
+  "gates": [
+    {
+      "name": "bounded functional",
+      "status": "observed",
+      "evidence": [
+        "raw/preflight-c1.json",
+        "raw/preflight-c8.json"
+      ]
+    },
+    {
+      "name": "SWE quality",
+      "status": "incomplete",
+      "evidence": [
+        "raw/swe-r2/artifact.json",
+        "raw/swe-quality-review.json"
+      ]
+    },
+    {
+      "name": "incumbent restoration",
+      "status": "passed",
+      "evidence": [
+        "restoration.json"
+      ]
+    }
+  ],
+  "headline_results": [
+    "C1 5/5 and C8 8/8 bounded functional observations",
+    "SWE: attempted 5, graded 1, resolved 0; not a fully graded score",
+    "incumbent direct and routed preflights each passed 5 checks"
+  ],
+  "failures": [
+    "Initial SWE environment dependency mismatch",
+    "Four corrected SWE tasks exhausted the 60-step budget with empty submissions",
+    "Corrected native result is incomplete with one unresolved official grade"
+  ],
+  "limitations": [
+    "No matched performance comparison",
+    "No production 2400-second timeout expiry",
+    "No full 131072-token context claim",
+    "JSON_OBJECT unsupported; vision disabled",
+    "109 focused source tests passed; full suite stopped at a Connect fixture error after857passes and5skips"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "A separately scoped, fully graded quality evaluation is required before reconsideration."
+  },
+  "evidence": [
+    "raw/deadline-correlation.json",
+    "raw/protected-original-and-public-copy-hashes.json"
+  ],
+  "metrics_coverage": {
+    "profile": "focused-quality-smoke/v1",
+    "status": "partial",
+    "frozen_plan": null,
+    "required_cells": [],
+    "cells": {},
+    "missing_required_metrics": []
+  },
+  "comparison_evidence": null,
+  "campaign_closed": true
+}

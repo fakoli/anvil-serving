@@ -1,0 +1,80 @@
+{
+  "advisory_priors": [
+    "The original phase-one attempts remain excluded and immutable; their relocation manifest preserves native output, telemetry, projections, receipts, and cell logs.",
+    "The original absolute request cutoff and restoration reserve remain authoritative.",
+    "This review does not approve promotion or infer a winner."
+  ],
+  "artifacts": {
+    "findings_summary": {
+      "blocking_findings": [],
+      "confirmed_fixes": [
+        {
+          "axis": "unreadable or tampered state",
+          "classification": "refuted",
+          "evidence": "telemetry/run_cell.py:33-37 and 138-150 hard-fail a changed plan, non-frozen row, escaped output path, changed collector, or existing attempt"
+        },
+        {
+          "axis": "malformed or boundary input",
+          "classification": "refuted",
+          "evidence": "telemetry/run_cell.py:40-67 binds the native benchmark/v1 artifact to the frozen model, engine, URL, GPU, context, concurrency, request count, seed, context/output bounds, cache namespace, canary, output policy, protocol, workload, sampling, and population"
+        },
+        {
+          "axis": "resource exhaustion or missing bounds",
+          "classification": "refuted for the frozen capacity CLI path",
+          "evidence": "telemetry/run_cell.py:70-81 and 203-236 enforce telemetry cadence, request cutoff, outer timeout, owned CLI termination, and bounded upstream drain; the capacity CLI uses in-process threads rather than child jobs"
+        },
+        {
+          "axis": "state drift across process and config seams",
+          "classification": "refuted subject to the reviewed per-arm identity receipt",
+          "evidence": "telemetry/run_cell.py:155-177 and 239-280 check managed status identity on every slow sample, engine process continuity, exact request/token counter deltas, OOM deltas, and in-window telemetry"
+        }
+      ],
+      "fixture_assessment": "The five-test offline fixture enters run_cell, uses a preserved real benchmark/v1 artifact, observes engine and all three slow probes in the process window, reconciles counters, terminates on collector failure and timeout, refuses overwrite, and rejects native and plan drift.",
+      "missing_tests": [],
+      "residual_risk": "The runner treats the operator-supplied identity receipt as authority for image and container identity. Before each arm, an independently recorded managed lifecycle receipt must bind that input to the expected image, revision, recipe, GPU order, and container identity. Fresh baseline replay additionally requires a new engine process_start and fresh/reset APC query-hit counters."
+    },
+    "hashes": {
+      "excluded/phase1-collection-recovery/relocation-manifest.json": "e9e531d767d31e95c4e64a117c652840bf0810d75bf88ed2484b641476958669",
+      "plans/collection-recovery.json": "876973cb44224b2454b277f4f9689c16b220d9f1f312bd8d818aeb2a21b5cd02",
+      "plans/run-plan.json": "59e3680b252368ac8613d1a55eec0580f95006c66e36e62867956a7435e43532",
+      "telemetry/collector.py": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+      "telemetry/run_cell.py": "4da3e73183494c7b47b26b367ce3cc3d4c7818599f1cebb614d624d952aaeff2",
+      "telemetry/test-run-cell-receipt.json": "f78dad1acbb86a559a2f49a0d0f3b3c2bbc1b65783cd1624a9f9202f7479f1c9",
+      "telemetry/test_run_cell.py": "d275a1d584d85d88d86028f65685a4bd2e45ed72d446dee7dcec1b96cecaeccd"
+    },
+    "verification_output": {
+      "fixture_exit_code": 0,
+      "fixture_finished_at": "2026-10-17T11:21:14.670827964Z",
+      "fixture_test_count": 5
+    }
+  },
+  "gate_state": "pass",
+  "human_gate_required": false,
+  "promoted": false,
+  "recommendation": "proceed_bounded",
+  "request": {
+    "evaluated_models": [
+      "GLM-5.3-Flash EXL3/TR3 r11",
+      "NVIDIA GLM-5.3-Flash-FP4-Local r2"
+    ],
+    "implementing_model": "GPT-6 Astra",
+    "operation": "independent review of the retained performance-cell runner and fresh-process baseline recovery",
+    "reviewer_model": "GPT-5.6 Sol",
+    "scope": "private GLM-5.3 whole-recipe A/B collection; no promotion"
+  },
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    "telemetry/run_cell.py",
+    "telemetry/test_run_cell.py",
+    "telemetry/test-run-cell-receipt.json",
+    "plans/run-plan.json",
+    "plans/collection-recovery.json",
+    "excluded/phase1-collection-recovery/relocation-manifest.json"
+  ],
+  "tools_used": [
+    "read-only file inspection",
+    "rg",
+    "sha256sum",
+    "review of retained unittest output receipt"
+  ]
+}

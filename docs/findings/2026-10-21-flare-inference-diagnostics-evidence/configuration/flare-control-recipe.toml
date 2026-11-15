@@ -1,0 +1,71 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD"
+name = "glm53-flare-47581cca-tp2-c4-mtp3"
+expected_container = "glm53-flare-wave-control"
+status = "experimental"
+source = "NVIDIA Flare 47581ccac82660953a5b59cb04b2750d64edc97d GLM recipe; unqualified local trial"
+
+  [recipe.download]
+  repo = "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD"
+  revision = "dec48abd33efa73c3bb7c95b74eee10cad34f9be"
+  volume = "flare-glm53-dec48abd"
+  require_complete_cache = true
+  inspection_image = "sha256:a540b65396a83b8b5148bbb51e7ee62cb16498ecee679433017673053b1b9854"
+
+  [recipe.hardware]
+  gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 192
+
+  [recipe.serve]
+  engine = "flare-47581cca"
+  image = "sha256:a540b65396a83b8b5148bbb51e7ee62cb16498ecee679433017673053b1b9854"
+  entrypoint = ["/opt/flare/flare/target/release/flare", "run"]
+  model_path = "/root/.cache/flare/packages/snapshots/d5aec1543dc32413175462d17d374e54d27def24129f878045358c4db128c357/model.safetensors"
+  named_volumes = [
+    "flare-glm53-47581cca-cache:/root/.cache/flare",
+    "flare-glm53-47581cca-private:/root/.config/flare",
+  ]
+  port = 39130
+  served_model_name = "glm53-flare-47581cca-tp2-c4-mtp3"
+  context_tokens = 32768
+  memory_limit_mib = 53248
+  memory_swap_limit_mib = 53248
+  host_memory_reserve_mib = 12288
+  startup_timeout_seconds = 240
+  seccomp_profile = "OPERATOR_PATH_a53a652e829f/seccomp-flare-dcc4a1e40b8b.json"
+  seccomp_profile_sha256 = "dcc4a1e40b8b5e12c59951cd82ab5e76bce12135cfbe2061a73c717b986a766b"
+  ipc = "private"
+  shm_size = "32gb"
+  ulimits = [
+    "memlock=-1",
+    "stack=67108864:67108864",
+  ]
+  env = [
+    "HF_HUB_OFFLINE=1",
+    "TRANSFORMERS_OFFLINE=1",
+    "CARGO_BUILD_JOBS=2",
+    "MAX_JOBS=2",
+    "OMP_NUM_THREADS=1",
+  ]
+  secret_files = { "OPERATOR_PATH_077a00c1ebc2/flare-api-key" = "OPERATOR_PATH_6f3ccf38bed5/flare.key" }
+  flags = [
+    "--api-key-file OPERATOR_PATH_077a00c1ebc2/flare-api-key",
+    "--verify-weights",
+    "--publisher-keys /root/.config/flare/development-publisher.json",
+    "--gpus 0,1",
+    "--max-concurrency 4",
+    "--mtp-draft-tokens 2",
+    "--no-mtp-adaptive-verification",
+    "--scheduler-policy balanced",
+    "--prefix-cache-memory 32G",
+    "--prefix-cache-disk-limit 0",
+    "--memory-limit=-2G",
+    "--host 100.64.0.35",
+    "--port 39130",
+    "--served-model-name glm53-flare-47581cca-tp2-c4-mtp3"
+]
+  # Host-side bounded hardware sampling; no profiler injected into this process.
+  note = "Optimization campaign; capacity16 native package; prefill2048 fixed2-host32; external allocation range verification enabled. Workload ceiling32768 is not native runtime context limit. No promotion."

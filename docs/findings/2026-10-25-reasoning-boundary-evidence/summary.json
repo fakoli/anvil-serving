@@ -1,0 +1,111 @@
+{
+  "boundary_classification": "unknown",
+  "campaign_id": "glm-reasoning-boundary-20261025-r1",
+  "comparison_evidence": null,
+  "complete": true,
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional"
+    ],
+    "next_gate": "Attribute active sampling kernel; separately qualify a pinned upstream fix.",
+    "promotion_authorized": false
+  },
+  "decision_labels": [
+    "no-promotion"
+  ],
+  "elapsed_seconds": 6.543827700894326,
+  "evidence": [
+    "plan.json",
+    "identity.json",
+    "result.json",
+    "observations.json",
+    "offline-response-replay.json",
+    "restoration.json",
+    "projection-ledger.json"
+  ],
+  "evidence_labels": [
+    "functional"
+  ],
+  "execution": "complete",
+  "failures": [
+    "No closing marker or visible answer; length termination.",
+    "Original usage allowlist warning corrected offline; original artifact preserved."
+  ],
+  "forced_marker_provenance": "unproven",
+  "gates": [
+    {
+      "name": "execution-accounting",
+      "status": "passed"
+    },
+    {
+      "name": "reasoning-boundary-and-answer",
+      "status": "failed"
+    },
+    {
+      "name": "unchanged-owner-drain",
+      "status": "passed"
+    }
+  ],
+  "headline_results": [
+    {
+      "evidence": "observations.json",
+      "name": "generated_before_degeneration",
+      "value": 64
+    },
+    {
+      "evidence": "observations.json",
+      "name": "token_zero_suffix",
+      "value": 448
+    }
+  ],
+  "identity": {
+    "evidence": "identity.json",
+    "hardware": "2 x RTX PRO 6000 Blackwell Max-Q 96 GB",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local"
+  },
+  "ignis": "hold",
+  "limitations": [
+    "Single request; active kernel and root cause unproven.",
+    "No throughput, representative coding score, Ignis or patched-engine comparison.",
+    "Public bundle assembled after run; private plan/source gate frozen beforehand."
+  ],
+  "measurement": {
+    "path": "online-direct through isolated existing relay adapter",
+    "sample_count": 1,
+    "statistics": [
+      "single request duration only; no comparative performance claim"
+    ],
+    "warm_cold_state": "uncontrolled; already loaded incumbent"
+  },
+  "metrics_coverage": {
+    "profile": "focused-functional-diagnostic",
+    "reason": "One bounded reasoning transition probe; performance comparison explicitly out of scope.",
+    "status": "not-applicable"
+  },
+  "oracle_passed": false,
+  "original_usage_warning": "unexpected_usage_fields was an allowlist defect; separate offline replay accepts legitimate created_cache_tokens=0 and multimodal_tokens=null. Original result unchanged.",
+  "pattern": {
+    "ordinary_tokens": 64,
+    "repeated_token_zero_suffix": 448
+  },
+  "performance_comparison": "not_collected; diagnostic-only failed output",
+  "promoted": false,
+  "promotion_authorized": false,
+  "reasoning_boundary_gate": "failed",
+  "requests": 1,
+  "restoration": "verified_unchanged",
+  "retries": 0,
+  "root_cause": "unproven; forced-logit split-top-p risk is consistent with observed boundary timing",
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "second_case": "not_run_stop_condition",
+  "workload": {
+    "concurrency": 1,
+    "evidence": "plan.json",
+    "max_tokens": 512,
+    "scope": "focused-functional-diagnostic",
+    "thinking_token_budget": 64
+  }
+}

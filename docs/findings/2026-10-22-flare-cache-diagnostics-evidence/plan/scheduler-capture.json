@@ -1,0 +1,7 @@
+{
+  "model": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+  "container": "glm53-flare-wave-instrumented",
+  "registry": "OPERATOR_PATH_c5a84e5d63b9/flare-instrumented-recipe.toml",
+  "api_key_file": "OPERATOR_PATH_6f3ccf38bed5/flare.key",
+  "duration_ms": 1000
+}

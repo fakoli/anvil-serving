@@ -1,0 +1,27 @@
+{
+  "command": "models recipes load gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis --container public-candidate-001 --registry public-path-002 --gpu-device public-gpu-001 --confirm --transport local",
+  "context": {
+    "command": "models-recipes-load",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": "public-gpu-role-001",
+    "gpu_uuid": "public-gpu-001",
+    "overlay": null,
+    "resource": "public-resource-001",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "loading recipe 'gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis' as container 'public-candidate-001'\n$ docker run -d --memory 55834574848 --memory-swap 55834574849 --name public-candidate-001 --gpus device=public-gpu-001 --label io.anvil-serving.managed-by=models-recipes --label io.anvil-serving.recipe.model=gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis --label io.anvil-serving.recipe.digest=f1717fcae479a3125d1a9ac58694b5e8133a5fc7c9a0d6630adccc5680093ab1 --label io.anvil-serving.recipe.native-kv-offload=false --label io.anvil-serving.recipe.registry-digest=59cf4a03e51a74bace01fbc355be5a5ffb0f4079e042042ac451f3e8429eed75 --label io.anvil-serving.recipe.revision=f75e492c6d726537a4d4c85858bc91ee06a070ef -e CUDA_VISIBLE_DEVICES=public-gpu-001 -e CUDA_DEVICE_ORDER=PCI_BUS_ID -e IGNIS_DOWNLOAD_ENABLED=false -v public-path-003 -p public-endpoint-002:39168 --ipc host --shm-size 8gb --entrypoint ignis-server ghcr.io/gpillon/ignis@sha256:3144a2ed2240969343e2378c518232520a994833f364235b789a3e8d4b6bcdba --model-artifact /models/hub/models--gpillon--Qwen3.8-Flash-Next-trellis-a25-ignis/snapshots/f75e492c6d726537a4d4c85858bc91ee06a070ef/qwen3_8_flash_next_trellis_a25-v2.ninfer --profile none --model-id qwen3.8-flash-next --download-enabled false --model-max-context 131072 --spec-decode-lanes 1 --spec-backend off --vision-enabled false --model-idle-unload 0 --vram-headroom-bytes 4294967296 --reuse-kv-host-pool-bytes 0 --ngram-hot-bytes 1073741824 --server-bind 0.0.0.0:39168\nnext: preflight before trusting this serve: anvil-serving eval preflight --base-url public-endpoint-001 --model qwen3.8-flash-next --confirm\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

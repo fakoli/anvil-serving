@@ -1,0 +1,195 @@
+{
+  "budget": {
+    "configured": {
+      "deadline_s": 600,
+      "max_completion_tokens": 16384,
+      "max_model_calls": 12,
+      "max_retries": 0,
+      "min_free_disk_bytes": 21474836480
+    },
+    "elapsed_s": 103.072385,
+    "exhausted": false,
+    "model_calls": 4,
+    "reason": null
+  },
+  "endpoint": {
+    "auth_env": "ANVIL_ROUTER_TOKEN",
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "llm.primary"
+  },
+  "execution_contract": {
+    "attempts": 2,
+    "cpp_header_lint": "pinned basic_lint with C++ grammar for admitted cpp solution .h files; other paths unchanged; local correction, not official leaderboard equivalence",
+    "edit_format": "whole",
+    "lint": "pinned upstream flake8_lint in prepared image via python3 -I, not host Python",
+    "prompt": "unchanged pinned upstream instructions and test feedback",
+    "test_timeout_s": 180
+  },
+  "failure": null,
+  "instances": [
+    {
+      "artifact_id": "68a6ed0e3075f2dcd929984b6bdafa76c9b76ef7a0e024f98de176ea22107198",
+      "first_attempt_passed": false,
+      "instance_id": "go/exercises/practice/alphametics",
+      "native": {
+        "path": "<private-path>",
+        "sha256": "bb5ff438e83c3798138fb325c162ea34c5fb758d97445bf00ba92e5edc0bd4ff"
+      },
+      "resolved": true,
+      "second_attempt_passed": true
+    }
+  ],
+  "output_budget": {
+    "classification": null,
+    "configured_output_cap_tokens": 16384,
+    "responses": [
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 1749,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 9942,
+          "prompt_tokens": 1133,
+          "reasoning_tokens": 8193,
+          "total_tokens": 11075
+        },
+        "visible_tokens": null
+      },
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 378,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 662,
+          "prompt_tokens": 2427,
+          "reasoning_tokens": 284,
+          "total_tokens": 3089
+        },
+        "visible_tokens": null
+      },
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 1643,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 9836,
+          "prompt_tokens": 5865,
+          "reasoning_tokens": 8193,
+          "total_tokens": 15701
+        },
+        "visible_tokens": null
+      },
+      {
+        "finish_reason": "stop",
+        "non_reasoning_tokens": 306,
+        "output_cap_reached": false,
+        "usage": {
+          "completion_tokens": 1054,
+          "prompt_tokens": 2442,
+          "reasoning_tokens": 748,
+          "total_tokens": 3496
+        },
+        "visible_tokens": null
+      }
+    ],
+    "scope": "response_generation_limit"
+  },
+  "plan_sha256": "e32784e3bef9e0e09745226997fc22bbc6e4cbabe5bb5313b12b47da02472111",
+  "profile": "aider-diagnostic-16k-v1",
+  "promotion": {
+    "authorized": false
+  },
+  "quality": {
+    "oracle_image_id": "sha256:174d85341f24c4c6d3f41793a3a92d2d3626a86e8797151db5dcab8696645b58",
+    "status": "measured"
+  },
+  "request_accounting": {
+    "errors": 0,
+    "pending": 0,
+    "responses": 4,
+    "schema": "anvil-serving.aider-request-accounting/v1",
+    "started": 4,
+    "status": "complete"
+  },
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.6,
+        "requested": 0.6,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_budget_tokens": 8192,
+    "thinking_mode": "default"
+  },
+  "request_observations": {
+    "bytes": 5529,
+    "path": "aider/requests.jsonl",
+    "sha256": "83f065fa95e1e48c346f99cf5f863c35a05967a6096fab42a1ec7b1b5d134caf"
+  },
+  "run_id": "tensorfold-thinking-budget-20261109-max-budget-1",
+  "schema": "anvil-serving.aider-run/v1",
+  "selection": {
+    "excluded": [
+      "cpp/exercises/practice/all-your-base",
+      "java/exercises/practice/affine-cipher",
+      "javascript/exercises/practice/affine-cipher",
+      "python/exercises/practice/affine-cipher",
+      "rust/exercises/practice/accumulate"
+    ],
+    "files": {
+      "go/exercises/practice/alphametics": {
+        ".docs/instructions.append.md": "185a46ef90d3e98fff3e551f9af3ddb8cc4ad4781b04f662b6ef0e73403e041f",
+        ".docs/instructions.md": "5344503af3de77f6a97dfa495e723f0053dc824f712819f8dbcfab3ef147ae13",
+        ".meta/config.json": "273b5b9d421cb5dfcbb359a535aca36e3b52c5902b58b8ec4255de58a05f9038",
+        ".meta/example.go": "c238e965240fe0637ecfe2f3ab9d46a75a79f57659bf3a50817d901f8bf2adeb",
+        ".meta/gen.go": "d3b47ddeefc07e5bdfecee2fdac3516489feb2f68196008601dc80fb6b2d1130",
+        ".meta/tests.toml": "deed16f879de7e9e5425c38871eca465e408847c71e5370e9cb5a86022fb6e79",
+        "alphametics.go": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+        "alphametics_test.go": "eb22bd718a4fafc450ea9701ec2f81e7f6dafbfe48d4b8cbe66650248836657f",
+        "cases_test.go": "b3ed6e9601014a28a9ba2abe9472fb7bd985d5f44cf4375a411ed1fbd36ebf49",
+        "go.mod": "77917406d81852eb56b58e8d8846a595f9cf1ca87533f939c6cd1eb6fdce3596"
+      }
+    },
+    "instance_ids": [
+      "go/exercises/practice/alphametics"
+    ],
+    "sha256": "ba94468a48155f8049bbcd42d819104cff2e1791eb582d55c029db2c0b1bc57c"
+  },
+  "stage": {
+    "clock": {
+      "duration": "monotonic",
+      "duration_resolution_s": 1e-09,
+      "synchronized": null,
+      "wall": "UTC system clock",
+      "wall_precision_s": 1e-06,
+      "wall_resolution_s": 1e-09
+    },
+    "command": [
+      "[Command omitted; native execution verdict retained.]"
+    ],
+    "duration_s": 107.513105,
+    "ended_at": "2026-11-09T22:25:55.643104Z",
+    "output_timing": "buffered; individual stdout/stderr event times unknown",
+    "output_truncated": true,
+    "returncode": 0,
+    "started_at": "2026-11-09T22:24:08.129846Z",
+    "stderr": "[Prose omitted; original private bytes remain hash-bound.]",
+    "stdout": "[Prose omitted; original private bytes remain hash-bound.]"
+  },
+  "state": "completed",
+  "suite": "aider",
+  "summary": {
+    "graded": 1,
+    "resolve_rate": 1.0,
+    "resolved": 1,
+    "selected": 1
+  }
+}

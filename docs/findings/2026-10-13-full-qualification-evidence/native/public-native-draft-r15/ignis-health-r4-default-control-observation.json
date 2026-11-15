@@ -1,0 +1,78 @@
+{
+  "schema": "native-default-control-observation/v1",
+  "observed_at": "2026-10-14T03:40:12.651796+00:00",
+  "container_id": "public-container-001",
+  "actual_model_requests": 1,
+  "response_model": "qwen3.8-flash-next",
+  "visible_answer": "READY",
+  "finish_reason": "stop",
+  "reasoning_present": true,
+  "usage": {
+    "prompt_tokens": 56,
+    "completion_tokens": 25,
+    "total_tokens": 81,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  },
+  "owning_done_attributes": {
+    "class": "interactive",
+    "duration_ms": 283,
+    "finish_reason": "stop",
+    "itl_ms_max": 8,
+    "itl_ms_mean": 7.458333333333333,
+    "itl_samples": 24,
+    "lane": 7,
+    "request_id": "public-request-001",
+    "thinking_budget": 7168,
+    "thinking_closed": true,
+    "thinking_closed_at": 22,
+    "thinking_forced": false,
+    "tok_s": 88.33922261484099,
+    "tokens": 25
+  },
+  "requested_total_output_cap": 9216,
+  "sampler_defaults": {
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "top_k": 20,
+    "enable_thinking": true,
+    "reasoning_effort": null,
+    "proof": "Pinned-source inference only for T/p/k/effort; owning INFO logs did not emit those values. Actual reasoning and thinking_closed observed. No fabricated positive resolved-control record."
+  },
+  "resource_abort": false,
+  "performance_eligible": false,
+  "limitations": "One short control; no quality/tools/context/stability/SWE/speedcomparison. Nextindependentgate pending samplerobservability classification.",
+  "references": [
+    {
+      "path": "public-path-010",
+      "sha256": "fdd3693aa25ac84778265c120cb2cc7a822b74194a5f0c6f07344b6d5828d7f2",
+      "bytes": 126
+    },
+    {
+      "path": "public-path-011",
+      "sha256": "bba60c21b066edb0380979420ee328981637712c90abe0acd2b741cdf4c0764a",
+      "bytes": 427
+    },
+    {
+      "path": "public-path-012",
+      "sha256": "f1de764d07fe19be52e86926911b253a10dd13891dfc65d5b154a7c1269d8be3",
+      "bytes": 4766
+    },
+    {
+      "path": "public-path-013",
+      "sha256": "e664c00f3febf9b24a24ba3da9b6a01f549db1d3a0c27a6b3fe86c859ee16e29",
+      "bytes": 10111
+    },
+    {
+      "path": "public-path-014",
+      "sha256": "b47845238815d566b512bce95d4a6fca0dcc5f10f4dce3664be12eb5f03468fb",
+      "bytes": 3041
+    },
+    {
+      "path": "public-path-015",
+      "sha256": "f0fb00eb69d41510baf7e3ade96eeaf4198b39d394e203858aa7cd0fc371dc81",
+      "bytes": 461
+    }
+  ]
+}

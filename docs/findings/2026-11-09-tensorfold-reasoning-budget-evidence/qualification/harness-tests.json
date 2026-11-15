@@ -1,0 +1,42 @@
+{
+  "base_temp": "<private-path>",
+  "command": [
+    "<private-path>",
+    "-m",
+    "pytest",
+    "tests/test_agentic_benchmark.py",
+    "tests/test_benchmark_suite_runner.py",
+    "tests/test_aider_benchmark.py",
+    "tests/test_aider_prepare.py",
+    "tests/test_aider_worker.py",
+    "-q",
+    "--basetemp",
+    "<private-path>"
+  ],
+  "cwd": "<private-path>",
+  "exit_code": 0,
+  "finished_at": "2026-11-09T16:50:51.115614+00:00",
+  "interpreter": "<private-path>",
+  "pytest_args": [
+    "tests/test_agentic_benchmark.py",
+    "tests/test_benchmark_suite_runner.py",
+    "tests/test_aider_benchmark.py",
+    "tests/test_aider_prepare.py",
+    "tests/test_aider_worker.py",
+    "-q"
+  ],
+  "run_id": "eb2b9308-8692-4ab4-b306-7ce1c2ddac90",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-11-09T16:50:48.431840+00:00",
+  "state": "passed"
+}

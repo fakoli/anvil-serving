@@ -20,6 +20,7 @@ _MATCHED_FIELDS = (
     "measurement_protocol", "engine", "context_tokens", "max_context_tokens",
     "max_tokens", "response_words", "prompt_cache_mode", "request_canaries",
     "controlled_output_policy", "context_seed", "serve_flags", "sampling",
+    "workload_identity",
 )
 
 _CONFIGURATION_FINGERPRINT = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -30,6 +31,24 @@ _DERIVED_TIMING_FIELDS = (
     "decode_tok_s", "mean_inter_token_latency_ms",
     "mean_time_per_output_token_ms", "tpot_ms",
 )
+_TIMING_ROW_FIELDS = frozenset({
+    "request_index", "planned_context_tokens", "prompt_tokens", "output_tokens",
+    "output_token_source", "time_to_first_output_ms", "ttft_ms", "generation_ms",
+    "visible_generation_ms", "e2e_ms", "effective_prefill_tok_s", "decode_tok_s",
+    "mean_inter_token_latency_ms", "mean_time_per_output_token_ms", "tpot_ms",
+    "content_chunks", "reasoning_chunks", "request_canary", "controlled_output",
+    "visible_content_truncated", "visible_content_captured_chars",
+    "visible_content_capture_limit", "stream_terminal_observed", "finish_reasons",
+})
+_REQUEST_CANARY_FIELDS = frozenset({
+    "marker", "marker_at_start", "observed_marker_count", "foreign_marker_count",
+    "capture_complete", "passed",
+})
+_CONTROLLED_OUTPUT_FIELDS = frozenset({
+    "policy", "requested_words", "observed_code_words", "observed_extra_words",
+    "capture_complete", "exact_adherence", "passed",
+})
+_UNIQUE_PREFIX_NAMESPACE = "capacity-v1:seed-request-index"
 
 
 def _percentiles(values: list[float], quantiles: tuple[int, ...]) -> list[float]:
@@ -92,6 +111,9 @@ def _validated_timing_row(row: object, *, path: Path, position: int) -> dict:
     label = f"{path}: request_timings[{position}]"
     if not isinstance(row, dict):
         raise ValueError(f"{label} must be an object")
+    unknown_fields = sorted(set(row) - _TIMING_ROW_FIELDS)
+    if unknown_fields:
+        raise ValueError(f"{label} contains unsupported fields: {', '.join(unknown_fields)}")
     request_index = _integer(row.get("request_index"), label=f"{label}.request_index")
     prompt_tokens = _integer(row.get("prompt_tokens"), label=f"{label}.prompt_tokens")
     output_tokens = _integer(
@@ -115,6 +137,41 @@ def _validated_timing_row(row: object, *, path: Path, position: int) -> dict:
     for key in ("content_chunks", "reasoning_chunks", "planned_context_tokens"):
         if row.get(key) is not None:
             _integer(row[key], label=f"{label}.{key}")
+    for key in ("visible_content_captured_chars", "visible_content_capture_limit"):
+        if key in row and row[key] is not None:
+            _integer(row[key], label=f"{label}.{key}")
+    captured_chars = row.get("visible_content_captured_chars")
+    capture_limit = row.get("visible_content_capture_limit")
+    if (
+        captured_chars is not None
+        and capture_limit is not None
+        and captured_chars > capture_limit
+    ):
+        raise ValueError(f"{label}.visible_content_captured_chars exceeds capture limit")
+    if "stream_terminal_observed" in row and row["stream_terminal_observed"] is not None and not isinstance(
+        row["stream_terminal_observed"], bool
+    ):
+        raise ValueError(f"{label}.stream_terminal_observed must be boolean or null")
+    if "finish_reasons" in row and row["finish_reasons"] is not None:
+        finish_reasons = row["finish_reasons"]
+        if (
+            not isinstance(finish_reasons, list)
+            or len(finish_reasons) > 256
+            or any(not isinstance(reason, str) or len(reason) > 128 for reason in finish_reasons)
+        ):
+            raise ValueError(f"{label}.finish_reasons must be at most 256 strings of at most 128 characters")
+    for key, allowed in (
+        ("request_canary", _REQUEST_CANARY_FIELDS),
+        ("controlled_output", _CONTROLLED_OUTPUT_FIELDS),
+    ):
+        observation = row.get(key)
+        if isinstance(observation, dict):
+            unknown_observation_fields = sorted(set(observation) - allowed)
+            if unknown_observation_fields:
+                raise ValueError(
+                    f"{label}.{key} contains unsupported fields: "
+                    f"{', '.join(unknown_observation_fields)}"
+                )
 
     generation = e2e - first_output
     visible_generation = e2e - ttft
@@ -124,7 +181,7 @@ def _validated_timing_row(row: object, *, path: Path, position: int) -> dict:
         if decode_tokens > 0 and generation > 0 else None
     )
     normalized = {
-        **row,
+        **{key: row[key] for key in _TIMING_ROW_FIELDS if key in row},
         "request_index": request_index,
         "prompt_tokens": prompt_tokens,
         "output_tokens": output_tokens,
@@ -269,6 +326,22 @@ def _sampling_identity(artifacts: list[dict]) -> dict:
     return {"status": "declared-matching"}
 
 
+def _unique_prefix_namespace_identity(artifacts: list[dict]) -> dict:
+    """Require a uniform declared namespace without inventing one for legacy runs."""
+    declared = ["unique_prefix_namespace" in artifact for artifact in artifacts]
+    if artifacts[0]["prompt_cache_mode"] == "shared":
+        # Null and absence are equivalent: shared prompts have no unique prefix.
+        return {"status": "not-applicable", "declared": any(declared)}
+    if any(declared) and not all(declared):
+        raise ValueError("replica unique_prefix_namespace declarations differ")
+    if not any(declared):
+        return {"status": "legacy-unknown", "declared": False}
+    namespace = artifacts[0]["unique_prefix_namespace"]
+    if any(artifact["unique_prefix_namespace"] != namespace for artifact in artifacts[1:]):
+        raise ValueError("replica unique_prefix_namespace values differ")
+    return {"status": "declared-matching", "declared": True, "value": namespace}
+
+
 def _load(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -300,10 +373,43 @@ def _load(path: Path) -> dict:
         raise ValueError(f"{path}: context_seed must be an integer or null")
     if payload.get("prompt_cache_mode") not in ("shared", "unique"):
         raise ValueError(f"{path}: prompt_cache_mode must be shared or unique")
+    if "unique_prefix_namespace" in payload:
+        namespace = payload["unique_prefix_namespace"]
+        if payload["prompt_cache_mode"] == "shared":
+            if namespace is not None:
+                raise ValueError(
+                    f"{path}: shared prompt_cache_mode requires null unique_prefix_namespace"
+                )
+        elif namespace != _UNIQUE_PREFIX_NAMESPACE:
+            raise ValueError(
+                f"{path}: unique prompt_cache_mode requires {_UNIQUE_PREFIX_NAMESPACE!r}"
+            )
     if not isinstance(payload.get("request_canaries"), bool):
         raise ValueError(f"{path}: request_canaries must be boolean")
     if payload.get("controlled_output_policy") not in (None, "observe", "strict"):
         raise ValueError(f"{path}: controlled_output_policy is invalid")
+    if "workload_identity" in payload:
+        workload_identity = payload["workload_identity"]
+        if not isinstance(workload_identity, dict) or set(workload_identity) != {
+            "prompt_contract_revision", "workload_kind",
+        }:
+            raise ValueError(f"{path}: workload_identity must declare revision and kind")
+        if workload_identity.get("prompt_contract_revision") != "capacity-prompt-v1":
+            raise ValueError(f"{path}: workload_identity has an unsupported prompt revision")
+        response_words = payload.get("response_words")
+        if (
+            isinstance(response_words, bool)
+            or not isinstance(response_words, int)
+            or response_words < 0
+        ):
+            raise ValueError(
+                f"{path}: workload_identity requires non-negative integer response_words"
+            )
+        expected_kind = (
+            "synthetic-repeated-code" if response_words else "synthetic-summary"
+        )
+        if workload_identity.get("workload_kind") != expected_kind:
+            raise ValueError(f"{path}: workload_identity conflicts with response_words")
     if not isinstance(payload.get("engine"), str) or not payload["engine"]:
         raise ValueError(f"{path}: engine must be a nonempty string")
     if not isinstance(payload.get("model"), str) or not payload["model"]:
@@ -725,6 +831,7 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
             if artifact.get(field) != first.get(field):
                 raise ValueError(f"{path}: {field} differs from the first artifact")
     shared_prefix = _shared_prefix_status(artifacts)
+    unique_prefix_namespace = _unique_prefix_namespace_identity(artifacts)
     run_identity = _run_identity_status(artifacts)
     timeline = _timeline(artifacts)
     identity = _identity_status(artifacts)
@@ -778,10 +885,12 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
         "max_tokens": first.get("max_tokens"),
         "response_words": first.get("response_words"),
         "prompt_cache_mode": first.get("prompt_cache_mode"),
+        "unique_prefix_namespace_identity": unique_prefix_namespace,
         "shared_prefix_tokens": shared_prefix["effective_tokens"],
         "shared_prefix_identity": shared_prefix,
         "request_canaries": first.get("request_canaries"),
         "controlled_output_policy": first.get("controlled_output_policy"),
+        "workload_identity": first.get("workload_identity"),
         "sampling_identity": _sampling_identity(artifacts),
         "synchronization": timeline["alignment"],
         "metric_population": {
@@ -796,6 +905,8 @@ def combine(paths: list[Path], *, artifact_base: Path | None = None) -> dict:
     }
     if "sampling" in first:
         aggregate["sampling"] = first["sampling"]
+    if unique_prefix_namespace["declared"]:
+        aggregate["unique_prefix_namespace"] = unique_prefix_namespace.get("value")
     return aggregate
 
 

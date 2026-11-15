@@ -1,0 +1,19 @@
+{
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  },
+  "include_reasoning": true,
+  "max_tokens": 8192,
+  "messages": [
+    {
+      "content": "Return only JSON describing an edit: {\"file\":\"app.py\",\"line\":12,\"value\":45}.",
+      "role": "user"
+    }
+  ],
+  "model": "mimo26-flash-lil-tp2-nospec-327k-c4-r1",
+  "return_prompt_text": true,
+  "return_token_ids": true,
+  "stream": false,
+  "temperature": 1.0,
+  "top_p": 0.95
+}

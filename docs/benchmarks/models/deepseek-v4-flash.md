@@ -587,6 +587,8 @@ and after managed teardown. Page-cache reclaim alone is not sufficient.
 
 ## Dated run history
 
+- [2026-10-13 full qualification closure](../../findings/2026-10-13-full-qualification.md): this campaign retains bounded TP1 EXL3 functional/quality evidence and a TP2 compatibility-only outcome. An invalid paired-image map is excluded from outcome claims. No new DeepSeek selection, capacity, or performance result follows.
+
 - [2026-08-21 Infernal Invocation r18 1M qualification and promotion](../../findings/2026-08-21-deepseek-v4-flash-0731-infernal-r18-1m-promotion.md)
 - [2026-08-16 Infernal Invocation r15 393K Primary promotion](../../findings/2026-08-16-deepseek-v4-flash-0731-infernal-r15-393k-promotion.md)
 - [2026-08-11 r33 393K Primary promotion](../../findings/2026-08-11-deepseek-v4-flash-0731-r33-393k-promotion.md)

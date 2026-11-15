@@ -1,0 +1,37 @@
+{
+  "campaign_id": "glm-sampling-fix-20261025-r1",
+  "observed_at": "2026-10-26",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current",
+      "decision_impact": "Defined minimal candidate patch and forced-logit regression.",
+      "evidence_type": "external-prior; exact official source",
+      "hardware_runtime_relevance": "Split top-p kernel production hunks backported to pinned fork; no upstream claim substitutes for local gate.",
+      "id": "upstream-fix",
+      "observed_at": "2026-10-26",
+      "published_or_observed": "2026-10-25 observed",
+      "url": "https://github.com/vllm-project/vllm/commit/0a1276e5e3d9000488e7590cc0957edd709f2152"
+    },
+    {
+      "age_class": "current-runtime-pin",
+      "decision_impact": "Pinned original/patched comparison and dispatch applicability.",
+      "evidence_type": "source-verified",
+      "hardware_runtime_relevance": "Captured original source hash matches retained incumbent; CUDA split branch for batches<=64.",
+      "id": "pinned-fork",
+      "observed_at": "2026-10-26",
+      "published_or_observed": "2026-10-25 inspected",
+      "url": "https://github.com/local-inference-lab/vllm/blob/8244d1c44348ae8a5bbfc9f1b607021652283ed4/vllm/v1/sample/ops/topk_topp_triton.py"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Stopped startup before weights and blocked end-to-end evaluation.",
+      "evidence_type": "local-functional-partial-failed",
+      "hardware_runtime_relevance": "Synthetic float32 logits on CUDA device0 of the RTX PRO6000 Max-Q owner.",
+      "id": "local-kernel-gate",
+      "observed_at": "2026-10-26",
+      "published_or_observed": "2026-10-25 local; 2026-10-26 UTC",
+      "url": "kernel-log-excerpt.json"
+    }
+  ]
+}

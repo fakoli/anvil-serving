@@ -9,12 +9,22 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| Private-target cache-layout and DFlash2 K3 scouts | 144/144 timed requests per trial; no 10% E2E win against both controls; cache slots +38.60% / −40.63% | retain original; natural-output scout, private identity, no promotion | 2026-11-01 | [Private runtime scouts](private-runtime-scouts.md) |
+| Nemotron 3.5 Super VL 120B-A12B NVFP4 TP2 scout | preflight 6/6, vision 18/18, context 2/2; Oracle 48/54; C1 0/4 eligible | exact Oracle and capacity prerequisite fail; no coding qualification, C4, speed, or promotion | 2026-10-16 | [Nemotron 3.5 Super VL](nemotron35-super-vl-120b.md) |
+| 2026-10-16 SGLang, Qwen, and Nemotron comparison | terminal SGLang/Qwen SWE failures; bounded Nemotron functional evidence | no candidate meets replacement gates; no performance comparison | 2026-10-16 | [Campaign finding](../../findings/2026-10-16-sglang-qwen-comparison.md) |
+| Mistral Medium 3.5 TP2 | bounded protocol and native reliability evidence | r2 resource-policy and r3 campaign reliability rejection; no promotion | 2026-10-15 | [Mistral Medium 3.5](mistral-medium-35.md) |
+| DeepSeek V4.1 Flash | Stage 2 compatibility-only, Stage 3 dummy-path, and Stage 4 bounded real-weight diagnostics | full-role r4 failed its first Oracle8 round; no serving, quality, throughput, or promotion claim | 2026-10-15 | [DeepSeek V4.1 Flash](deepseek-v41-flash.md) |
+| 2026-10-15 replacement evaluation | completed replacement gates and bounded DeepSeek diagnostics | no eligible challenger; exact GLM retained after restoration | 2026-10-15 | [Campaign finding](../../findings/2026-10-15-replacement-evaluation.md) |
+| GLM official-base TR3 EXL3 R11 retained | Fresh baseline SWE 2/5; R19 bounded restoration accepted | TP2/DCP1, 327K/C4, APC/no-spec/vision8; thinking-off gap; no challenger promotion | 2026-10-13 | [GLM-5.3-Flash](glm53-flash.md) |
+| MiMo V2.6 Flash RL TP2 no-spec | preflight 25/25 and frozen SWE 4/5 | Agentic profiles 15/18, 17/18, and 17/18 miss the 18/18 gate; no context, multimodal, C4, or speed measurement; `not-qualified` | 2026-10-06 | [MiMo v2.6 Flash](mimo-v26-flash.md) |
+| 2026-10-13 closure lanes | GLM baseline 2/5; terminal Ignis 2/5 resolved/three empty; Qwen, DeepSeek, and MiMo retain bounded native outcomes | No challenger clears complete 4/5 plus Django/Pylint; no promotion or cross-lane ranking | 2026-10-13 | [Campaign finding](../../findings/2026-10-13-full-qualification.md) |
+| GLM-5.3-Flash TR3 4-bpw Abliterated TP2 | preflight 25/25 and agentic 18/18 | frozen SWE 3/5 below the 4/5 floor; no capacity or speed result; `not-qualified` | 2026-10-06 | [GLM-5.3-Flash](glm53-flash.md) |
 | GLM-5.3-Flash CSF/QAD TP2/DCP2 | max functional 25/25; Oracle 18/18; initial SWE 4/5, then fresh-reload A1 2/5 attempts and 2/4 graded | A1 misses the 4/5 floor; B1/B2/A2 stopped. Strict C4 0/4 is performance-ineligible; acceptance gates do not prove full-window, simultaneous-C4, or speed. `rejected`; exact r11 restored and readmitted | 2026-10-05 | [GLM-5.3-Flash](glm53-flash.md) |
 | Qwen prospective primary replacement | frozen coding 3/5 | strict C4 0/4 performance-eligible; evaluated profile rejected, `no-promotion` | 2026-10-05 | [Qwen3.8 Flash Next](qwen38-flash-next.md) |
 | MiMo v2.6 Flash RL SGLang TP2 | V3 healthy load, then two probes with zero visible content | `compatibility-only` plus bounded negative correctness; no capacity/throughput or text/vision qualification; `no-promotion` | 2026-09-21 | [MiMo v2.6 Flash](mimo-v26-flash.md) |
 | GLM-5.3-Flash mixed 3.5-bpw EXL3 | Startup failed from host RAM exhaustion; no inference requests | Rejected unbounded configuration; selected 4-bpw baseline restored; retry requires containment | 2026-09-17 | [GLM-5.3-Flash](glm53-flash.md) |
 | GLM-5.3-Flash mixed 3.5-bpw EXL3, R7 loader fix-forward | C1/C4 functional, repeated C4 quality, 216K actual-token needle; one C4 4/4 cell 98.17 tok/s | Strict capacity inconsistent; no overall win or promotion | 2026-09-17 | [GLM-5.3-Flash](glm53-flash.md) |
-| GLM-5.3-Flash EXL3 r7 no-spec | 327,680 configured tokens; C4 strict120 120/120; separate long-context 9/9; MMLU-Pro 90/100, agentic 30/30, SWE 4/5 | `current` text-only lane; no concurrent full-window soak or fresh-boot proof | 2026-09-14 | [GLM-5.3-Flash](glm53-flash.md) |
+| GLM-5.3-Flash EXL3 r7 no-spec | 327,680 configured tokens; C4 strict120 120/120; separate long-context 9/9; MMLU-Pro 90/100, agentic 30/30, SWE 4/5 | historical text-only quality lineage; no concurrent full-window soak or fresh-boot proof | 2026-09-14 | [GLM-5.3-Flash](glm53-flash.md) |
 | Qwen3.8 Flash Next EXL3 4.05-bpw | MMLU-Pro 91/100, context 9/9, agentic 21/30, SWE 4/5, image/OCR 12/12 | strict120 had zero performance-eligible responses; `no-promotion` | 2026-09-14 | [Qwen3.8 Flash Next](qwen38-flash-next.md) |
 | Qwen3.8 Flash Next NVFP4 TP=2 | 253,703 actual prompt tokens plus 8,192 output; text, image, OCR, and video acceptance | historical rollback evidence | 2026-08-26 | [Qwen3.8 Flash Next](qwen38-flash-next.md) |
 | DeepSeek V4 Flash 0731 | Retained TP=2 quality, capacity, and client evidence | former Primary; historical | 2026-08-21 | [DeepSeek V4 Flash](deepseek-v4-flash.md) |
@@ -58,6 +68,20 @@ evidence by measured hardware.
 | Gemma 4 E4B Fast | 30K retrieval, 20/20 tools, 61 ms warm TTFT, ~97 tok/s | historical Fast control; `no-promotion` | 2026-07-16 | [Gemma 4 E4B](gemma4-e4b.md) |
 
 ## Apple Silicon
+
+### 2026-10-06 English voice campaign
+
+| Configuration | Measured result | Limitation / decision | Dossier |
+|---|---|---|---|
+| Parakeet Metal control | human WER 3.064%; warm C1 p95 81.68 ms | critical entity failure; retained control, not newly qualified | [Parakeet](parakeet.md) |
+| Qwen3-ASR 1.7B q8 | human WER 2.786%; C1 p95 314.25 ms | paired interval overlaps zero, critical error; no promotion | [Qwen MLX](qwen3-asr-1.7b-mlx.md) |
+| Granite TurboCTC FP16 | human WER 3.343%; C1 p95 40.16 ms | critical/point regression; q8 static stop separate | [Granite](granite-speech-turboctc.md) |
+| Kokoro 0.8.2 MPS | warm 60/60; ASR proxy8.118% | no blind naturalness/client qualification | [Kokoro](kokoro.md) |
+| Breeze BF16 / q8 stream / q8 buffer |59/60resource abort;60/60;60/60 | no human winner; exact configurations unqualified | [Breeze](breeze-tts2.md) |
+| Fish S2 Pro q8 buffered |56/60; four resource-aborted requests | no partial ranking; streaming unsupported | [Fish](fish-s2-pro.md) |
+| 4B / stock9B / private 27B off/low / medium | semantic 132/131/138/144/144 of 144 | all strict 8K ineligible, exact failures/private fixture; no promotion | [Voice LLM MLX](voice-llm-mlx.md) |
+
+[Dated finding](../../findings/2026-10-06-m4-max-voice-quality-qualification.md) binds exact model revisions, runtime controls, all populations, failures and reconstruction limits. English Nemotron is a static integration stop, not a measured quality row.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |

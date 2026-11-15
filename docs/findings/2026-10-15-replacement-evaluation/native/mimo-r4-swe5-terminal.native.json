@@ -1,0 +1,162 @@
+{
+  "schema": "anvil-serving.swe-run/v1",
+  "state": "incomplete",
+  "summary": {
+    "attempted": 5,
+    "graded": 4,
+    "resolve_rate": 0.75,
+    "resolved": 3
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default"
+  },
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39132/v1",
+    "model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r4"
+  },
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+  },
+  "instances": [
+    {
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "d0dafd9cd0b2e0f43aa41969f1b032e65ff60ad03ff5d0c87f30227ab2af5233",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "prediction_sha256": "c07f9769cdd9bee7b0add1ecd9ae5e6b9f644a3a869c7b615d0ef62572a4d30b",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      }
+    },
+    {
+      "instance_id": "sympy__sympy-12096",
+      "exit_status": "LimitsExceeded",
+      "failure_class": "model_failure",
+      "grader": {
+        "completed": false,
+        "name": "swe-bench",
+        "report_sha256": "d0dafd9cd0b2e0f43aa41969f1b032e65ff60ad03ff5d0c87f30227ab2af5233",
+        "resolved": null,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "prediction_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      }
+    },
+    {
+      "instance_id": "django__django-13512",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "d0dafd9cd0b2e0f43aa41969f1b032e65ff60ad03ff5d0c87f30227ab2af5233",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "prediction_sha256": "cdf11be620f9d693df408d809e53c0c679b630f5b51ac03619760764ef6ed9ea",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      }
+    },
+    {
+      "instance_id": "pydata__xarray-4356",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "d0dafd9cd0b2e0f43aa41969f1b032e65ff60ad03ff5d0c87f30227ab2af5233",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "prediction_sha256": "6b6fbfc448c96de8398fd14ef3778e4ffe93c768f903d471c13b08bcbddaaccf",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      }
+    },
+    {
+      "instance_id": "pylint-dev__pylint-8898",
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "d0dafd9cd0b2e0f43aa41969f1b032e65ff60ad03ff5d0c87f30227ab2af5233",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "prediction_sha256": "5030f9b5b91212e98214275d6c81cd17ed51e7e62982c2675d0f9032696dc0ec",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      }
+    }
+  ],
+  "failure": {
+    "class": "model_failure",
+    "code": "swe_limits_exceeded",
+    "stage": "agent"
+  },
+  "official_grader_complete": false,
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "artifacts": {
+    "cleanup_postcheck_sha256": "db1a5a8aa306dda4b24d37f0ee0454c97ef8cf7d9f28d9d8c2f1b089607bd005",
+    "cleanup_summary_sha256": "69849cbe8252cfda61bf122be776c4c02ceb7ede338be8bc0178064271c8a14e",
+    "pi_max_events_sha256": "e4c3d37bd44de24ad6b02452a118011c7e150f14d6b8dd6623396e8d41cfc5c1",
+    "pi_max_receipt_sha256": "549f752346d5f75ea6b976400323adf487853681ac7e5acf631b072fe3baf931",
+    "restoration_sha256": "c64ba0f9b7bf5ec46ca224b6b9a47a5a7dea53c5b1fe5925b0672e85a2964161",
+    "summary_sha256": "e989f92c013e977ecbffe4f5e839222c36cc3c3ad748f48f82a00986abb3591c"
+  },
+  "findings": [
+    "All16 restoration references and14summary references independently verified.",
+    "Exact r11 direct25/routed7, unchanged fourconfig hashes, exclusive dualGPUowner, admittedready andOOM0 supported.",
+    "Pi-max invocation/catalogxhigh mapping and observedreasoning_content supported; rawwireeffort notcaptured. OffA1 failure immutable.",
+    "Both exact rejected revisions absent, other MiMo/Qwen snapshots preserved, unrelated bytes unchanged, same r11 running before/after cleanup.",
+    "Cache removal lacks atomic consumer-start guard; operator pre/postchecks protected current bounded cleanup. Open product ticket records gap."
+  ],
+  "format_note": "This retained note summarizes an independent review; it is not schema-validator acceptance. Source field clarification preserved the originally reviewed note and summary bytes separately; benchmark/restoration facts are unchanged.",
+  "gate_state": {
+    "cleanup": "accepted bounded operator preconditions",
+    "pi_max_a2": "accepted bounded reasoning-enabled smoke",
+    "pi_thinking_off_a1": "failed retained",
+    "promotion": "closed",
+    "service_restoration": "accepted"
+  },
+  "human_gate_required": false,
+  "observed_at": "2026-10-06T10:57:56.370839+00:00",
+  "promoted": false,
+  "record_type": "independent-review-notes",
+  "reviewer": "independent GPT-5.6 Sol high adversarial reviewer",
+  "workflow_packet_validator": "unavailable; independent review record is not a claim of tool validation"
+}

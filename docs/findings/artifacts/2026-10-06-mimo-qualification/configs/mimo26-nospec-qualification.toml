@@ -1,0 +1,70 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "XiaomiMiMo/MiMo-V2.6-Flash-RL"
+name = "mimo26-lil-tp2-nospec-327k-c4-r1"
+expected_container = "mimo26-lil-tp2-nospec-327k-c4-r1"
+status = "experimental"
+source = "Pinned October6 LIL runtime and official checkpoint; isolated no-spec control before DFlash and promotion qualification."
+family = "mimo-v2.6-flash-multimodal-moe"
+
+  [recipe.download]
+  repo = "XiaomiMiMo/MiMo-V2.6-Flash-RL"
+  revision = "5711b268169967567844e1e560e8a3966da959b1"
+  volume = "vllm-hfcache"
+  require_complete_cache = true
+
+  [recipe.hardware]
+  gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 192
+
+  [recipe.serve]
+  engine = "vllm-lil-karmic-c8c8fee"
+  image = "ghcr.io/local-inference-lab/vllm@sha256:ad7b059336e539068fc8b829fee7e7db04b0c3d9c32c455e69056d704619c729"
+  model_env = "MODEL"
+  allow_cuda_visible_devices_index = true
+  memory_limit_mib = 53248
+  memory_swap_limit_mib = 53249
+  host_memory_reserve_mib = 12288
+  context_tokens = 327680
+  port = 39132
+  served_model_name = "mimo26-flash-lil-tp2-nospec-327k-c4-r1"
+  startup_timeout_seconds = 3600
+  ipc = "host"
+  shm_size = "32gb"
+  ulimits = [
+    "memlock=-1",
+    "stack=67108864:67108864",
+  ]
+  named_volumes = ["mimo26-lil-c8c8fee-runtime:/cache"]
+  quantization = "Official mixed MXFP4 routed-expert / FP8 target, retained native precision tensors; FP8 KV; DCP1; no speculation"
+  entrypoint = [
+    "bash",
+    "-lc",
+    "test \"$(cat /sys/fs/cgroup/memory.max)\" = 55834574848 && test \"$(cat /sys/fs/cgroup/memory.swap.max)\" = 1048576 || { echo containment-failed >&2; exit 78; }; echo containment-passed; exec /opt/venv/bin/python -m runtime.entrypoint \"$@\"",
+    "anvil-lil-mimo26",
+  ]
+  env = [
+    "PRESET=mimo26-flash-tp2",
+    "HF_HUB_OFFLINE=1",
+    "TRANSFORMERS_OFFLINE=1",
+    "CUDA_VISIBLE_DEVICES=0,1",
+    "CUDA_DEVICE_ORDER=PCI_BUS_ID",
+    "PORT=39132",
+    "TP=2",
+    "DCP=1",
+    "CACHE_MODE=vram",
+    "MAX_MODEL_LEN=327680",
+    "MAX_NUM_SEQS=4",
+    "MAX_NUM_BATCHED_TOKENS=4096",
+    "SPECULATOR=off",
+    "SERVED_MODEL_NAME=mimo26-flash-lil-tp2-nospec-327k-c4-r1",
+    "VLLM_ENGINE_READY_TIMEOUT_S=3600",
+  ]
+  flags = [
+    "--model /models/huggingface/hub/models--XiaomiMiMo--MiMo-V2.6-Flash-RL/snapshots/5711b268169967567844e1e560e8a3966da959b1",
+    "--limit-mm-per-prompt '{\"image\":8,\"video\":0}'",
+    "--override-generation-config '{\"max_new_tokens\":65536,\"temperature\":1.0,\"top_p\":0.95}'",
+  ]
+  note = "Canonical TP2 preset with C4,327680 total tokens,eight images,65536 output; GPU memory0.985 inherited, no LMCache. Loader peak unknown:52GiB RAM and1MiB swap ceiling preserves host reserve. Native sampling1.0/.95. No client alias change."

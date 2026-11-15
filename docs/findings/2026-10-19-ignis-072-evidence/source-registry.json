@@ -1,0 +1,36 @@
+{
+  "campaign": "ignis-072-qualification-20261019",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current",
+      "decision_impact": "Sets the pinned runtime version and timeout/partial-response behavior under test.",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Runtime release contract only; not local Max-Q qualification.",
+      "id": "ignis-072-release",
+      "published_or_observed": "2026-10-19",
+      "url": "https://github.com/gpillon/ignis/releases/tag/v0.7.2",
+      "observed_at": "2026-10-19"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Sets the candidate profile, MTP sidecar, and suggested sampling controls.",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Maintainer settings are for a related RTX PRO 6000 configuration and remain a prior.",
+      "id": "ignis-maintainer-settings",
+      "published_or_observed": "2026-10-19",
+      "url": "https://github.com/fakoli/anvil-serving/issues/660#issuecomment-6262384434",
+      "observed_at": "2026-10-19"
+    },
+    {
+      "age_class": "historical",
+      "decision_impact": "Supplies the historical task selection only; it does not establish the current candidate result.",
+      "evidence_type": "historical-local",
+      "hardware_runtime_relevance": "Prior local evidence selected the same fixed five SWE instances; its private source path is redacted.",
+      "id": "prior-local-fixed-five",
+      "published_or_observed": "2026-10-13",
+      "url": "https://github.com/fakoli/anvil-serving/blob/80ad7e5c5de49221ba1e75fa133ef358af3e72e3/docs/findings/2026-10-13-full-qualification.md",
+      "observed_at": "2026-10-19"
+    }
+  ]
+}

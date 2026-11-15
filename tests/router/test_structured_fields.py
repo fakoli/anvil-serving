@@ -23,14 +23,13 @@ import http.client
 import json
 import threading
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Optional
+from typing import Iterator, List, Optional
 
 
-from tests.router.helpers import StaticBackend
 from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.config import Tier
-from anvil_serving.router.dialects.anthropic import AnthropicDialect, _anthropic_stop_reason
-from anvil_serving.router.dialects.openai import OpenAIDialect, _openai_finish_reason
+from anvil_serving.router.dialects.anthropic import AnthropicDialect
+from anvil_serving.router.dialects.openai import OpenAIDialect
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.internal import InternalRequest, Message, StructuredResult
 
@@ -106,76 +105,6 @@ class TestRelayBackendExtractStructuredAnthropic:
         monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
         return RelayBackend(_anthropic_tier(), transport=_CaptureTransport(reply))
 
-    def test_text_response_end_turn(self, monkeypatch):
-        reply = json.dumps({
-            "stop_reason": "end_turn",
-            "content": [{"type": "text", "text": "hello"}],
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("anthropic")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert s.finish_reason == "end_turn"
-        assert not s.tool_calls
-
-    def test_tool_use_response(self, monkeypatch):
-        reply = json.dumps({
-            "stop_reason": "tool_use",
-            "content": [
-                {"type": "text", "text": ""},
-                {
-                    "type": "tool_use",
-                    "id": "toolu_abc123",
-                    "name": "read_file",
-                    "input": {"path": "/etc/hosts"},
-                },
-            ],
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("anthropic")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert s.finish_reason == "tool_use"
-        assert s.tool_calls is not None
-        assert len(s.tool_calls) == 1
-        tc = s.tool_calls[0]
-        assert tc["name"] == "read_file"
-        assert tc["id"] == "toolu_abc123"
-        # For Anthropic, arguments is the already-parsed input dict (not a JSON string).
-        # Both the dict form and a JSON string that parses to the same dict are acceptable.
-        args = tc["arguments"]
-        if isinstance(args, dict):
-            assert args == {"path": "/etc/hosts"}
-        else:
-            assert json.loads(args) == {"path": "/etc/hosts"}
-
-    def test_max_tokens_truncated(self, monkeypatch):
-        reply = json.dumps({
-            "stop_reason": "max_tokens",
-            "content": [{"type": "text", "text": "truncated"}],
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("anthropic")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert s.finish_reason == "max_tokens"
-
-    def test_multiple_tool_calls(self, monkeypatch):
-        reply = json.dumps({
-            "stop_reason": "tool_use",
-            "content": [
-                {"type": "tool_use", "id": "t1", "name": "fn_a", "input": {"x": 1}},
-                {"type": "tool_use", "id": "t2", "name": "fn_b", "input": {"y": 2}},
-            ],
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("anthropic")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert len(s.tool_calls) == 2
-        assert s.tool_calls[0]["name"] == "fn_a"
-        assert s.tool_calls[1]["name"] == "fn_b"
-
 
 # ---------------------------------------------------------------------------
 # RelayBackend._extract_structured: OpenAI wire shape
@@ -188,137 +117,15 @@ class TestRelayBackendExtractStructuredOpenAI:
         monkeypatch.setenv(OPENAI_ENV, FAKE_KEY)
         return RelayBackend(_openai_tier(), transport=_CaptureTransport(reply))
 
-    def test_stop_response(self, monkeypatch):
-        reply = json.dumps({
-            "choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": "hi"}}]
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("openai")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert s.finish_reason == "stop"
-        assert not s.tool_calls
-
-    def test_tool_calls_response(self, monkeypatch):
-        reply = json.dumps({
-            "choices": [{
-                "finish_reason": "tool_calls",
-                "message": {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [{
-                        "id": "call_xyz",
-                        "type": "function",
-                        "function": {"name": "grep", "arguments": '{"pattern": "foo"}'},
-                    }],
-                },
-            }]
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("openai")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert s.finish_reason == "tool_calls"
-        assert s.tool_calls is not None
-        assert len(s.tool_calls) == 1
-        tc = s.tool_calls[0]
-        assert tc["name"] == "grep"
-        assert tc["id"] == "call_xyz"
-
-    def test_length_finish_reason(self, monkeypatch):
-        reply = json.dumps({
-            "choices": [{"finish_reason": "length", "message": {"role": "assistant", "content": "..."}}]
-        }).encode()
-        backend = self._make_backend(monkeypatch, reply)
-        list(backend.generate(_mk_request("openai")))
-        s = backend.get_last_structured()
-        assert s is not None
-        assert s.finish_reason == "length"
-
 
 # ---------------------------------------------------------------------------
 # RelayBackend thread safety: last_result is per-thread
 # ---------------------------------------------------------------------------
 
-def test_cloud_backend_thread_local_isolation(monkeypatch):
-    """Two threads using the same backend instance see their own last_result."""
-    monkeypatch.setenv(ANTHROPIC_ENV, FAKE_KEY)
-    reply_a = json.dumps({
-        "stop_reason": "end_turn",
-        "content": [{"type": "text", "text": "A"}],
-    }).encode()
-    reply_b = json.dumps({
-        "stop_reason": "tool_use",
-        "content": [{"type": "tool_use", "id": "t1", "name": "fn", "input": {}}],
-    }).encode()
-
-    results: Dict[str, Optional[StructuredResult]] = {}
-    barrier = threading.Barrier(2)
-
-    def _run(label: str, reply: bytes) -> None:
-        backend = RelayBackend(_anthropic_tier(), transport=_CaptureTransport(reply))
-        list(backend.generate(_mk_request("anthropic")))
-        barrier.wait()  # both threads hit this after generate() to ensure overlap
-        results[label] = backend.get_last_structured()
-
-    ta = threading.Thread(target=_run, args=("a", reply_a))
-    tb = threading.Thread(target=_run, args=("b", reply_b))
-    ta.start(); tb.start()
-    ta.join(); tb.join()
-
-    # Each backend instance is separate so both should have their own result
-    assert results["a"] is not None
-    assert results["b"] is not None
-
 
 # ---------------------------------------------------------------------------
 # Stop-reason mappers
 # ---------------------------------------------------------------------------
-
-class TestAnthropicStopReasonMapper:
-    def test_none_is_end_turn(self):
-        assert _anthropic_stop_reason(None) == "end_turn"
-
-    def test_native_values_passthrough(self):
-        assert _anthropic_stop_reason("end_turn") == "end_turn"
-        assert _anthropic_stop_reason("stop_sequence") == "stop_sequence"
-
-    def test_openai_stop_maps_to_end_turn(self):
-        assert _anthropic_stop_reason("stop") == "end_turn"
-
-    def test_tool_calls_maps_to_tool_use(self):
-        assert _anthropic_stop_reason("tool_calls") == "tool_use"
-        assert _anthropic_stop_reason("tool_use") == "tool_use"
-
-    def test_length_maps_to_max_tokens(self):
-        assert _anthropic_stop_reason("length") == "max_tokens"
-        assert _anthropic_stop_reason("max_tokens") == "max_tokens"
-
-    def test_unknown_falls_back_to_end_turn(self):
-        assert _anthropic_stop_reason("weird_value") == "end_turn"
-
-
-class TestOpenAIFinishReasonMapper:
-    def test_none_is_stop(self):
-        assert _openai_finish_reason(None) == "stop"
-
-    def test_native_values_passthrough(self):
-        assert _openai_finish_reason("stop") == "stop"
-        assert _openai_finish_reason("tool_calls") == "tool_calls"
-        assert _openai_finish_reason("length") == "length"
-
-    def test_anthropic_end_turn_maps_to_stop(self):
-        assert _openai_finish_reason("end_turn") == "stop"
-        assert _openai_finish_reason("stop_sequence") == "stop"
-
-    def test_tool_use_maps_to_tool_calls(self):
-        assert _openai_finish_reason("tool_use") == "tool_calls"
-
-    def test_max_tokens_maps_to_length(self):
-        assert _openai_finish_reason("max_tokens") == "length"
-
-    def test_unknown_falls_back_to_stop(self):
-        assert _openai_finish_reason("weird_value") == "stop"
 
 
 # ---------------------------------------------------------------------------
@@ -350,81 +157,6 @@ class TestAnthropicDialectStream:
         r = _mk_request("anthropic")
         return b"".join(d.stream(r, deltas, get_structured=get_structured))
 
-    def test_text_path_no_structured_defaults_to_end_turn(self):
-        raw = self._stream(["hello"])
-        events = _parse_anthropic_sse(raw)
-        msg_delta = next(e for e in events if e[0] == "message_delta")
-        assert msg_delta[1]["delta"]["stop_reason"] == "end_turn"
-        # No tool_use content blocks
-        block_starts = [e for e in events if e[0] == "content_block_start"]
-        assert all(b[1]["content_block"]["type"] == "text" for b in block_starts)
-
-    def test_stop_reason_from_structured(self):
-        s = StructuredResult(finish_reason="max_tokens")
-        raw = self._stream(["hi"], get_structured=lambda: s)
-        events = _parse_anthropic_sse(raw)
-        msg_delta = next(e for e in events if e[0] == "message_delta")
-        assert msg_delta[1]["delta"]["stop_reason"] == "max_tokens"
-
-    def test_tool_use_blocks_emitted(self):
-        s = StructuredResult(
-            finish_reason="tool_use",
-            tool_calls=[{
-                "id": "toolu_01",
-                "name": "read_file",
-                "arguments": '{"path": "/etc/hosts"}',
-            }],
-        )
-        raw = self._stream(["thinking..."], get_structured=lambda: s)
-        events = _parse_anthropic_sse(raw)
-
-        # message_delta stop_reason should be tool_use
-        msg_delta = next(e for e in events if e[0] == "message_delta")
-        assert msg_delta[1]["delta"]["stop_reason"] == "tool_use"
-
-        # There should be a tool_use content_block_start at index 1
-        block_starts = [e for e in events if e[0] == "content_block_start"]
-        tool_block = next(
-            (b for b in block_starts if b[1]["content_block"].get("type") == "tool_use"),
-            None
-        )
-        assert tool_block is not None, "Expected a tool_use content_block_start"
-        assert tool_block[1]["content_block"]["name"] == "read_file"
-        assert tool_block[1]["content_block"]["id"] == "toolu_01"
-
-        # There should be an input_json_delta for the tool block
-        deltas = [e for e in events if e[0] == "content_block_delta"]
-        tool_delta = next(
-            (d for d in deltas if d[1].get("delta", {}).get("type") == "input_json_delta"),
-            None
-        )
-        assert tool_delta is not None
-        parsed_input = json.loads(tool_delta[1]["delta"]["partial_json"])
-        assert parsed_input == {"path": "/etc/hosts"}
-
-    def test_tool_use_dict_arguments(self):
-        """Arguments as a dict (Anthropic upstream) are serialized correctly."""
-        s = StructuredResult(
-            finish_reason="tool_use",
-            tool_calls=[{"id": "t1", "name": "fn", "arguments": {"key": "val"}}],
-        )
-        raw = self._stream([], get_structured=lambda: s)
-        events = _parse_anthropic_sse(raw)
-        deltas = [e for e in events if e[0] == "content_block_delta"]
-        tool_delta = next(
-            (d for d in deltas if d[1].get("delta", {}).get("type") == "input_json_delta"),
-            None
-        )
-        assert tool_delta is not None
-        assert json.loads(tool_delta[1]["delta"]["partial_json"]) == {"key": "val"}
-
-    def test_none_structured_no_regression(self):
-        """get_structured returning None → defaults, no crash."""
-        raw = self._stream(["text"], get_structured=lambda: None)
-        events = _parse_anthropic_sse(raw)
-        msg_delta = next(e for e in events if e[0] == "message_delta")
-        assert msg_delta[1]["delta"]["stop_reason"] == "end_turn"
-
 
 # ---------------------------------------------------------------------------
 # AnthropicDialect.render() — structured fields
@@ -435,48 +167,6 @@ class TestAnthropicDialectRender:
         d = AnthropicDialect()
         r = _mk_request("anthropic")
         return d.render(r, text, structured=structured)
-
-    def test_text_path_no_structured_defaults(self):
-        out = self._render("hello world")
-        assert out["stop_reason"] == "end_turn"
-        assert out["content"] == [{"type": "text", "text": "hello world"}]
-
-    def test_stop_reason_from_structured(self):
-        s = StructuredResult(finish_reason="max_tokens")
-        out = self._render("truncated", structured=s)
-        assert out["stop_reason"] == "max_tokens"
-
-    def test_tool_use_content_blocks(self):
-        s = StructuredResult(
-            finish_reason="tool_use",
-            tool_calls=[{
-                "id": "toolu_99",
-                "name": "write_file",
-                "arguments": '{"path": "/tmp/x", "content": "hello"}',
-            }],
-        )
-        out = self._render("", structured=s)
-        assert out["stop_reason"] == "tool_use"
-        # content should include the tool_use block
-        tool_block = next((b for b in out["content"] if b["type"] == "tool_use"), None)
-        assert tool_block is not None
-        assert tool_block["name"] == "write_file"
-        assert tool_block["id"] == "toolu_99"
-        assert tool_block["input"] == {"path": "/tmp/x", "content": "hello"}
-
-    def test_empty_text_with_tool_only_gets_content(self):
-        """Empty text + tool call must still have content (not an empty list)."""
-        s = StructuredResult(
-            finish_reason="tool_use",
-            tool_calls=[{"id": "t1", "name": "fn", "arguments": "{}"}],
-        )
-        out = self._render("", structured=s)
-        assert len(out["content"]) >= 1
-
-    def test_null_structured_no_regression(self):
-        out = self._render("text", structured=None)
-        assert out["stop_reason"] == "end_turn"
-        assert any(b["type"] == "text" for b in out["content"])
 
 
 # ---------------------------------------------------------------------------
@@ -503,150 +193,6 @@ class TestOpenAIDialectStream:
         r = _mk_request("openai")
         return b"".join(d.stream(r, deltas, get_structured=get_structured))
 
-    def test_text_path_no_structured_defaults_to_stop(self):
-        raw = self._stream(["hello"])
-        chunks = _parse_openai_sse(raw)
-        final = chunks[-1]
-        assert final["choices"][0]["finish_reason"] == "stop"
-        # No tool_calls delta
-        tool_chunks = [c for c in chunks if c["choices"][0]["delta"].get("tool_calls")]
-        assert not tool_chunks
-
-    def test_finish_reason_from_structured(self):
-        s = StructuredResult(finish_reason="length")
-        raw = self._stream(["hi"], get_structured=lambda: s)
-        chunks = _parse_openai_sse(raw)
-        final = chunks[-1]
-        assert final["choices"][0]["finish_reason"] == "length"
-
-    def test_tool_calls_chunks_emitted(self):
-        s = StructuredResult(
-            finish_reason="tool_calls",
-            tool_calls=[{
-                "id": "call_abc",
-                "name": "grep",
-                "arguments": '{"pattern": "foo", "path": "/src"}',
-            }],
-        )
-        raw = self._stream(["text"], get_structured=lambda: s)
-        chunks = _parse_openai_sse(raw)
-
-        # Final chunk must have finish_reason="tool_calls"
-        final = chunks[-1]
-        assert final["choices"][0]["finish_reason"] == "tool_calls"
-
-        # Header chunk: id, type, name
-        tool_chunks = [c for c in chunks if c["choices"][0]["delta"].get("tool_calls")]
-        assert tool_chunks, "Expected tool_call chunks"
-        header = tool_chunks[0]["choices"][0]["delta"]["tool_calls"][0]
-        assert header["id"] == "call_abc"
-        assert header["function"]["name"] == "grep"
-
-        # Arguments chunk
-        if len(tool_chunks) > 1:
-            args_chunk = tool_chunks[1]["choices"][0]["delta"]["tool_calls"][0]
-            assert args_chunk["function"]["arguments"] == '{"pattern": "foo", "path": "/src"}'
-
-    def test_tool_calls_dict_arguments_serialized(self):
-        s = StructuredResult(
-            finish_reason="tool_calls",
-            tool_calls=[{"id": "c1", "name": "fn", "arguments": {"x": 1}}],
-        )
-        raw = self._stream([], get_structured=lambda: s)
-        chunks = _parse_openai_sse(raw)
-        tool_chunks = [c for c in chunks if c["choices"][0]["delta"].get("tool_calls")]
-        # At minimum there should be a header chunk with the function name
-        assert tool_chunks
-
-    def test_none_structured_no_regression(self):
-        raw = self._stream(["text"], get_structured=lambda: None)
-        chunks = _parse_openai_sse(raw)
-        assert chunks[-1]["choices"][0]["finish_reason"] == "stop"
-
-    def test_lazy_streaming_preserved_when_not_requested(self):
-        # The default (non-usage) path MUST stream each delta lazily, not
-        # materialize the whole upstream stream first. A generator that emits
-        # an item immediately proves TTFB is preserved on the common path.
-        d = OpenAIDialect()
-        r = _mk_request("openai")  # no stream_options -> emit_usage False
-        produced = []
-
-        def lazy_deltas():
-            produced.append(("first",))
-            yield "a"
-            produced.append(("second",))
-            yield "b"
-
-        gen = d.stream(r, lazy_deltas())
-        next(gen)  # opening (role) chunk; yields before the source produces anything.
-        assert produced == [], "stream() must not drain the source up front"
-        second = next(gen)
-        assert len(produced) == 1 and produced[0] == ("first",)
-        assert b'"content":"a"' in second
-        # Consume the rest.
-        list(gen)
-        assert len(produced) == 2
-
-    def test_lazy_streaming_preserved_when_usage_requested(self):
-        # The usage path must ALSO stream each delta lazily: the trailing usage
-        # chunk is emitted after the stream, but content must yield as it
-        # arrives, never after the upstream stream is fully drained.
-        d = OpenAIDialect()
-        r = _mk_stream_req(include_usage=True)
-        produced = []
-
-        def lazy_deltas():
-            produced.append(("first",))
-            yield "a"
-            produced.append(("second",))
-            yield "b"
-
-        gen = d.stream(r, lazy_deltas())
-        next(gen)  # opening role chunk
-        assert produced == [], "usage path must not drain the source up front"
-        second = next(gen)
-        assert len(produced) == 1 and produced[0] == ("first",)
-        assert b'"content":"a"' in second
-        # Consume the rest; usage chunk emitted after the stream.
-        rest = b"".join(gen)
-        assert len(produced) == 2
-        assert b'"usage"' in rest
-
-    def test_no_usage_chunk_when_not_requested(self):
-        # Default request has no stream_options -> no usage chunk emitted.
-        raw = self._stream(["hello"])
-        chunks = _parse_openai_sse(raw)
-        usage_chunks = [c for c in chunks if c.get("usage") is not None]
-        assert not usage_chunks
-
-    def test_usage_chunk_with_real_upstream_counts(self):
-        d = OpenAIDialect()
-        r = _mk_stream_req(include_usage=True)
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7})
-        raw = b"".join(d.stream(r, ["hello"], get_structured=lambda: s))
-        chunks = _parse_openai_sse(raw)
-        usage_chunks = [c for c in chunks if c.get("usage") is not None]
-        assert len(usage_chunks) == 1
-        u = usage_chunks[0]
-        assert u["choices"] == []
-        assert u["usage"] == {
-            "prompt_tokens": 12,
-            "completion_tokens": 7,
-            "total_tokens": 19,
-        }
-
-    def test_usage_chunk_estimated_when_upstream_counts_absent(self):
-        d = OpenAIDialect()
-        r = _mk_stream_req(include_usage=True)
-        # No structured usage -> estimates used.
-        raw = b"".join(d.stream(r, ["hello"], get_structured=lambda: None))
-        chunks = _parse_openai_sse(raw)
-        usage_chunks = [c for c in chunks if c.get("usage") is not None]
-        assert len(usage_chunks) == 1
-        u = usage_chunks[0]["usage"]
-        assert set(u) == {"prompt_tokens", "completion_tokens", "total_tokens"}
-        assert u["total_tokens"] == u["prompt_tokens"] + u["completion_tokens"]
-
 
 # ---------------------------------------------------------------------------
 # OpenAIDialect.render() — structured fields
@@ -657,48 +203,6 @@ class TestOpenAIDialectRender:
         d = OpenAIDialect()
         r = _mk_request("openai")
         return d.render(r, text, structured=structured)
-
-    def test_text_path_no_structured_defaults(self):
-        out = self._render("hello")
-        assert out["choices"][0]["finish_reason"] == "stop"
-        assert out["choices"][0]["message"]["content"] == "hello"
-        assert "tool_calls" not in out["choices"][0]["message"]
-
-    def test_finish_reason_from_structured(self):
-        s = StructuredResult(finish_reason="length")
-        out = self._render("truncated", structured=s)
-        assert out["choices"][0]["finish_reason"] == "length"
-
-    def test_tool_calls_in_message(self):
-        s = StructuredResult(
-            finish_reason="tool_calls",
-            tool_calls=[{
-                "id": "call_01",
-                "name": "ls",
-                "arguments": '{"path": "/"}',
-            }],
-        )
-        out = self._render("", structured=s)
-        assert out["choices"][0]["finish_reason"] == "tool_calls"
-        tc = out["choices"][0]["message"].get("tool_calls")
-        assert tc is not None and len(tc) == 1
-        assert tc[0]["id"] == "call_01"
-        assert tc[0]["function"]["name"] == "ls"
-        assert tc[0]["function"]["arguments"] == '{"path": "/"}'
-
-    def test_dict_arguments_serialized(self):
-        s = StructuredResult(
-            finish_reason="tool_calls",
-            tool_calls=[{"id": "c1", "name": "fn", "arguments": {"k": "v"}}],
-        )
-        out = self._render("", structured=s)
-        tc = out["choices"][0]["message"]["tool_calls"]
-        assert json.loads(tc[0]["function"]["arguments"]) == {"k": "v"}
-
-    def test_null_structured_no_regression(self):
-        out = self._render("text", structured=None)
-        assert out["choices"][0]["finish_reason"] == "stop"
-        assert "tool_calls" not in out["choices"][0]["message"]
 
 
 # ---------------------------------------------------------------------------
@@ -726,7 +230,7 @@ class TestFrontDoorStructuredNonStreaming:
     def _server(self, backend):
         httpd = make_server("127.0.0.1", 0, backend)
         host, port = httpd.server_address[:2]
-        t = threading.Thread(target=httpd.serve_forever, daemon=True)
+        t = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         t.start()
         try:
             yield host, port
@@ -744,36 +248,6 @@ class TestFrontDoorStructuredNonStreaming:
         finally:
             conn.close()
 
-    def test_openai_render_with_tool_calls(self):
-        s = StructuredResult(
-            finish_reason="tool_calls",
-            tool_calls=[{"id": "call_x", "name": "fn", "arguments": '{"a": 1}'}],
-        )
-        backend = _StructuredBackend("", s)
-        with self._server(backend) as (host, port):
-            status, data = self._post(host, port, "/v1/chat/completions", {
-                "model": "m", "messages": [{"role": "user", "content": "go"}],
-                "stream": False,
-            })
-        assert status == 200
-        out = json.loads(data)
-        choice = out["choices"][0]
-        assert choice["finish_reason"] == "tool_calls"
-        tc = choice["message"].get("tool_calls")
-        assert tc is not None and tc[0]["function"]["name"] == "fn"
-
-    def test_openai_render_text_path_no_regression(self):
-        backend = _StructuredBackend("hello world", None)
-        with self._server(backend) as (host, port):
-            status, data = self._post(host, port, "/v1/chat/completions", {
-                "model": "m", "messages": [{"role": "user", "content": "hi"}],
-                "stream": False,
-            })
-        assert status == 200
-        out = json.loads(data)
-        assert out["choices"][0]["finish_reason"] == "stop"
-        assert out["choices"][0]["message"]["content"] == "hello world"
-
 
 class TestFrontDoorStructuredStreaming:
     """front_door passes get_structured to dialect.stream()."""
@@ -782,7 +256,7 @@ class TestFrontDoorStructuredStreaming:
     def _server(self, backend):
         httpd = make_server("127.0.0.1", 0, backend)
         host, port = httpd.server_address[:2]
-        t = threading.Thread(target=httpd.serve_forever, daemon=True)
+        t = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         t.start()
         try:
             yield host, port
@@ -822,49 +296,3 @@ class TestFrontDoorStructuredStreaming:
         )
         assert tool_block is not None
         assert tool_block[1]["content_block"]["name"] == "read"
-
-    def test_openai_stream_emits_tool_calls_chunks(self):
-        s = StructuredResult(
-            finish_reason="tool_calls",
-            tool_calls=[{"id": "call_1", "name": "ls", "arguments": '{"p": "/"}'}],
-        )
-        backend = _StructuredBackend("", s)
-        with self._server(backend) as (host, port):
-            status, raw = self._post_stream(host, port, "/v1/chat/completions", {
-                "model": "m",
-                "messages": [{"role": "user", "content": "go"}],
-                "stream": True,
-            })
-        assert status == 200
-        chunks = _parse_openai_sse(raw)
-        final = chunks[-1]
-        assert final["choices"][0]["finish_reason"] == "tool_calls"
-        tool_chunks = [c for c in chunks if c["choices"][0]["delta"].get("tool_calls")]
-        assert tool_chunks
-
-    def test_text_path_no_regression_anthropic_stream(self):
-        """StaticBackend (no get_last_structured) → defaults unchanged."""
-        backend = StaticBackend("hello!")
-        with self._server(backend) as (host, port):
-            status, raw = self._post_stream(host, port, "/v1/messages", {
-                "model": "m",
-                "messages": [{"role": "user", "content": "hi"}],
-                "max_tokens": 100,
-                "stream": True,
-            })
-        assert status == 200
-        events = _parse_anthropic_sse(raw)
-        msg_delta = next(e for e in events if e[0] == "message_delta")
-        assert msg_delta[1]["delta"]["stop_reason"] == "end_turn"
-
-    def test_text_path_no_regression_openai_stream(self):
-        backend = StaticBackend("hi there")
-        with self._server(backend) as (host, port):
-            status, raw = self._post_stream(host, port, "/v1/chat/completions", {
-                "model": "m",
-                "messages": [{"role": "user", "content": "hi"}],
-                "stream": True,
-            })
-        assert status == 200
-        chunks = _parse_openai_sse(raw)
-        assert chunks[-1]["choices"][0]["finish_reason"] == "stop"

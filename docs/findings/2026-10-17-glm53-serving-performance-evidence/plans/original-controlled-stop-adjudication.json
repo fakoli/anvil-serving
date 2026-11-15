@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-17T12:07:58.155143+00:00",
+  "cell": "baseline-controlled-ctx10240-c1",
+  "engine_counter_deltas": {
+    "vllm:generation_tokens_total": 91117.0,
+    "vllm:num_preemptions_total": 0.0,
+    "vllm:prompt_tokens_total": 84439.0,
+    "vllm:request_success_total": 10.0
+  },
+  "engine_finished_reason_deltas": {
+    "abort": 0,
+    "error": 0,
+    "length": 5,
+    "repetition": 0,
+    "stop": 5
+  },
+  "evidence": {
+    "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/cell-summary.json",
+    "sha256": "4ba18abc09dc2d7e808f6638efcdd980f248819f15e67fa6d0fb5fd7e6c0fa68"
+  },
+  "independent_natural_and_edge_cells": "may continue after idle and identity checks",
+  "oom_event_deltas": {
+    "oom": 0,
+    "oom_group_kill": 0,
+    "oom_kill": 0
+  },
+  "original_native_missing": true,
+  "remaining_original_controlled_cells": "blocked pending request-policy diagnosis; no rerun or replacement of original failed row",
+  "root_cause": "unresolved pending same-contract n1 diagnostic; engine token-limit completions observed, response content not retained by interrupted capacity CLI",
+  "schema": "campaign-cell-adjudication/v1",
+  "status": "failed-time-bound-native-artifact-missing",
+  "upstream_drained": true
+}

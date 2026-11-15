@@ -1,0 +1,10 @@
+{
+  "disposition": "source_changed",
+  "native_receipt": "Full receipt was overwritten by subsequent focused run; log and tool exit retained. New full run uses unique --receipt.",
+  "observed_at": "2026-10-17T10:43:38.983749+00:00",
+  "pytest_summary": "12202 passed,75skipped,62subtests,1warning",
+  "reason": "Final reviewer corrections and source commit occurred during full suite; exact source identity gate correctly rejected this as final validation. Rerun committed unchanged tree required.",
+  "source_after": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+  "source_before": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+  "wrapper_exit_code": 2
+}

@@ -4,6 +4,18 @@
 
 ## Current status and review date
 
+### November 1 single-GPU TP1 Swift qualification
+
+The BF16/FP8-KV Swift 1.5 Qwen3.8 27B recipe passed bounded functional,
+context, image, agentic, SWE, stability, resource and capacity gates on one
+RTX PRO 6000 Blackwell Max-Q. The fresh ten-cell population is separate from
+both the historical 60-cell no-spec/MTP comparison and the RTX 5090 result.
+C2 trades per-request speed for aggregate throughput; its 32K median decode
+missed the soft objective (13.43 versus 15 tokens/s). C1 remains latency-first.
+Strict formatting failed 4/4 and the SWE pilot resolved 4/5. Current deployment,
+routing and client assignments are private.
+[Finding](../../findings/2026-11-01-swift-tp1-gpu0.md).
+
 ### October 5 host-cache promotion
 
 The retained Swift-1.5/NInfer NVFP4 derivative is a separate configuration from

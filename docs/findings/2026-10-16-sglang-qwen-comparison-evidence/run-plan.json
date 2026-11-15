@@ -1,0 +1,37 @@
+{
+  "authority_boundary": "User authorization allows promotion only for a fully independently passing candidate; promoted remains false until then. Root owns lifecycle and restoration.",
+  "campaign_id": "2026-10-16-sglang-qwen-comparison",
+  "chronology_note": "Early baseline probes predate common artifact-packet initialization. This plan preserves that late initialization and makes no claim of a fabricated pre-run public record.",
+  "comparison_rules": [
+    "Matched configured 262144-token envelope where supported; incumbent 327680 is separately retained.",
+    "Performance follows correctness and is ineligible after hard-gate failure.",
+    "Speculation speed claims require an otherwise matched no-speculation control.",
+    "Configured C4 is not four full context windows.",
+    "Native policies remain explicit confounders rather than being normalized into an unmeasured common policy."
+  ],
+  "hard_gates": {
+    "coding": "at least 4/5 resolved and no worse than fresh baseline",
+    "deterministic": "100%",
+    "promotion": "all required gates, independent review, supported promotion record, exact restoration and client acceptance"
+  },
+  "remaining_unknowns": [
+    "Final restoration evidence is required before campaign closure; stopped candidate gates remain deliberate non-results."
+  ],
+  "resource_policy": {
+    "candidate_gpu_reserve_mib_per_card": 4096,
+    "candidate_host_limits": "finite cgroup and reserve admission required before load; exact per-candidate values are configuration records",
+    "diagnosis_limit_minutes_per_supported_successor": 90,
+    "successor_budget": "at most two supported successors per candidate; unchanged score-shopping retries disallowed"
+  },
+  "schema": "anvil-serving.public-run-plan/v1",
+  "stages": [
+    "research",
+    "feasibility",
+    "scout",
+    "finalist",
+    "quality",
+    "restoration",
+    "publication"
+  ],
+  "status": "frozen plan/support record; candidate coding outcomes are terminal and later gates are deliberate stops pending final restoration and publication"
+}

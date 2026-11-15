@@ -1,0 +1,300 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "capability": "routed text natural-output baseline",
+    "completed_at": null,
+    "decision_labels": [
+      "current",
+      "no-promotion"
+    ],
+    "dirty_state": "clean frozen benchmark source",
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "id": "2026-10-16-glm-natural-baseline",
+    "promotion_authorized": false,
+    "repository_revision": "e267df90fdc7d6a99cc1904f8a4be466cf63d8ed",
+    "started_at": "2026-10-17T00:00:00Z"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "a360ca59ea47538b0e743037fbb3c966f0c830aa56ddb064277953bf606d36fe",
+          "bytes": 4820
+        }
+      ],
+      "reason": "Partial public-safe campaign index."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "da08fe47fd7a220a5432010a8bf7adebb2d47c7b2f813e9e132d7018c6d5c9af",
+          "bytes": 1018
+        }
+      ],
+      "reason": "Current local measurement provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "workload-manifest.json",
+          "sha256": "36a7447b547ff39920195b9d5746b1e5f9cb5c0708c9491d1f4ffa8abf395af6",
+          "bytes": 1647
+        },
+        {
+          "path": "coding-amendment.md",
+          "sha256": "6c6f950e1b1211b9567c5bf351c89e93fb6943e96e8d527e41e46b541594dcaa",
+          "bytes": 458
+        },
+        {
+          "path": "coding-summary-final.json",
+          "sha256": "dfa5a0a915ec6907693aa298753161445cee876daa3aa8fc2713dd61f1501f3c",
+          "bytes": 5163
+        }
+      ],
+      "reason": "Timing controls and explicit coding amendment."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "run-plan.json",
+          "sha256": "9798967992c19fbb4b785ada443072cc0f37eecb93f96638616f501ff22b2369",
+          "bytes": 1306
+        }
+      ],
+      "reason": "Public-safe campaign plan."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration-identity.json",
+          "sha256": "2c8a54e3b8cd592aa35cbdfe8f75ae7b01f632d923bfc4010a2d60c24fb63325",
+          "bytes": 1280
+        },
+        {
+          "path": "redaction-ledger.json",
+          "sha256": "c070487bb9396214854eb113e70e749583077ee6527a3a81d7880135444c005f",
+          "bytes": 6499
+        },
+        {
+          "path": "native/swe-redaction-bindings.json",
+          "sha256": "b9cacb90f72ecf8ae9ac35460a4ff2a00d6213784ffdb7e8f4284091ebe4fac3",
+          "bytes": 4441
+        }
+      ],
+      "reason": "Sanitized incumbent identity and source-to-copy redaction bindings."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "timing-summary.json",
+          "sha256": "52b1a015bd8de79a190601e87466e0fa430a8379e5b65c351bf58060f92d1cda",
+          "bytes": 4196
+        },
+        {
+          "path": "timing-source-hashes.json",
+          "sha256": "31f04a21cbf60cf806067d829717d0b989ef0133fafccbb77f08d3b39e4b757e",
+          "bytes": 1461
+        },
+        {
+          "path": "timing-summary-provenance.json",
+          "sha256": "e10b0fbb7a3d0d84c6b1105b310e66d94693d1c25ffe1a3a68ab316affa85312",
+          "bytes": 284
+        },
+        {
+          "path": "graph-manifest.json",
+          "sha256": "310e50ab05c440c3f52daf1c0727b91f40fc87fe4f8b34606681b639b3f79346",
+          "bytes": 3000
+        },
+        {
+          "path": "graphs/timing-graph-data.json",
+          "sha256": "6e46fc5d9387c1914ba2bcbe191ff159c118a7e5fe80526e971d358b6167a70a",
+          "bytes": 8230
+        },
+        {
+          "path": "graphs/timing-matrix.svg",
+          "sha256": "44de61af01b37db17d00e9761b8523cd8cfa315fa4f02a24a9c36093cde8862d",
+          "bytes": 11130
+        },
+        {
+          "path": "native/natural-ctx8192-c1-r1.json",
+          "sha256": "4e515deb5d413921b197335951ee36e7f012241accc07573559bbc84753a675e",
+          "bytes": 27743
+        },
+        {
+          "path": "native/natural-ctx8192-c1-r2.json",
+          "sha256": "be46c7f6ea8097b1cc9ca562d6ac0ff92bda82e38f7c6f38f16c53360c3d142c",
+          "bytes": 27783
+        },
+        {
+          "path": "native/natural-ctx8192-c1-r3.json",
+          "sha256": "e085dac4f12cd93cdca8cd18b89f3526abc376090445f66eec7c286297630b4e",
+          "bytes": 27746
+        },
+        {
+          "path": "native/natural-ctx8192-c4-r1.json",
+          "sha256": "862237607d48cdc0d8598038cf8a032a9d092bf97e892bd921972115edf3ed85",
+          "bytes": 27728
+        },
+        {
+          "path": "native/natural-ctx8192-c4-r2.json",
+          "sha256": "a9633809e2acc7adca35bd994abbb52333c5d42ab9acc815b001ed19080e6bf1",
+          "bytes": 27727
+        },
+        {
+          "path": "native/natural-ctx8192-c4-r3.json",
+          "sha256": "84601bb505690ea8db6c925380e7b93a6d8044b48a35dc4130374421bad57a51",
+          "bytes": 27690
+        },
+        {
+          "path": "native/natural-ctx32768-c1-r1.json",
+          "sha256": "3a9662739604527bbf558ea84ba68f25f44232106d03c072277fccce5495f205",
+          "bytes": 27784
+        },
+        {
+          "path": "native/natural-ctx32768-c1-r2.json",
+          "sha256": "c8ed20fda02139e2ed070bbf23876c8703742223727c1cb524fb8577eb4f318f",
+          "bytes": 27782
+        },
+        {
+          "path": "native/natural-ctx32768-c1-r3.json",
+          "sha256": "7afe6ac9b54ba5076ede3ac8512acce14569a956284bd96645dd5f75e849661a",
+          "bytes": 27755
+        },
+        {
+          "path": "native/natural-ctx32768-c4-r1.json",
+          "sha256": "01fde2ce8c356d6a5dd239ee1d5b79eab1cd10cdd53ec747cfdb1d95ca010f46",
+          "bytes": 27811
+        },
+        {
+          "path": "native/natural-ctx32768-c4-r2.json",
+          "sha256": "3a84d3bf1d1cee640b284f69f6015f23e561cd4d61f4012c7cbaccaf670fc59d",
+          "bytes": 27759
+        },
+        {
+          "path": "native/natural-ctx32768-c4-r3.json",
+          "sha256": "97b7aff6f585a5deb9cefe63f53dd4441d9e3b0141b6096e934eeab16518eb42",
+          "bytes": 27762
+        },
+        {
+          "path": "native/cached-swe-r1.json",
+          "sha256": "5a6b43f47056932b26c45e0aa6736f0397a68e214b04d22f86e5c0a9bf08795f",
+          "bytes": 15293
+        },
+        {
+          "path": "native/cached-swe-r1-official-grader.json",
+          "sha256": "89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
+          "bytes": 911
+        },
+        {
+          "path": "native/cached-swe-r1-campaign-evidence.json",
+          "sha256": "aaee35b842b004e2610237c08c10fa0695bf3d6bd558179aa6f27f2f0b3dc5f5",
+          "bytes": 3388
+        },
+        {
+          "path": "native/cached-swe-r2.json",
+          "sha256": "8f8c456e1518b9038226bf72c4efab4a0b52a4dcd229b7a72bed98030dda057f",
+          "bytes": 15506
+        },
+        {
+          "path": "native/cached-swe-r2-official-grader.json",
+          "sha256": "9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+          "bytes": 815
+        },
+        {
+          "path": "native/cached-swe-r2-campaign-evidence.json",
+          "sha256": "05f1cb9c3bc094e150ea587a1876288b80e4edd5cfac2ff0879ea55ea7c78fce",
+          "bytes": 3459
+        }
+      ],
+      "reason": "All timing artifacts, including the retained failure, deterministic timing graph pack, public-safe cached SWE R1/R2 stages, official grader reports, and campaign comparators. R2 is incomplete and unscored."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "4dbd5ed92688985bef5d9aff1a124824790c098ef580296931c64a2e447926ec",
+          "bytes": 1216
+        },
+        {
+          "path": "errata.md",
+          "sha256": "e293056547a152fc0b3b78ea2c27cc4f0882a1909c1737b332bdf7e2c722ca33",
+          "bytes": 469
+        },
+        {
+          "path": "independent-r2-review.json",
+          "sha256": "2c77f45c6045240d510e2bcce427b47a41b7aeaa72d12e9ae0aa44e23354f194",
+          "bytes": 1970
+        }
+      ],
+      "reason": "Known protocol and resource limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "0e8378b66a65923b261ce3907978c89e41195bd0320224fe26455d56f3116a79",
+          "bytes": 2543
+        }
+      ],
+      "reason": "Post-run continuity and actual model readiness verified without lifecycle mutation."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "1d53dc5fc76439f552240cf237cf29f45792001352d8bbfc29d23316c11160e1",
+          "bytes": 3546
+        }
+      ],
+      "reason": "Explicit incomplete decision boundary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "a360ca59ea47538b0e743037fbb3c966f0c830aa56ddb064277953bf606d36fe",
+          "bytes": 4820
+        },
+        {
+          "path": "summary.json",
+          "sha256": "1d53dc5fc76439f552240cf237cf29f45792001352d8bbfc29d23316c11160e1",
+          "bytes": 3546
+        }
+      ],
+      "reason": "Closed public-safe baseline bundle; source finding is published with matching evidence."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 10 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

@@ -315,11 +315,13 @@ _OPERATIONS = (
     ("propagation.resume.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("attempt_id", "state")),
     ("propagation.cancel.v1", ADMISSION_SCOPE, ("intent_id", "expected_digest"), ("state",)),
     ("propagation.recovery.verify.v1", RECOVERY_SCOPE, ("profile_id",), ("state", "evidence_digest", "verified_at")),
+    ("propagation.recovery.cancel.v1", RECOVERY_SCOPE, ("intent_id", "job_id", "expected_digest"), ("state", "receipt_digest")),
     ("propagation.dispatch.pending.v1", DISPATCH_SCOPE, ("cursor",), ("intents", "next_cursor")),
     ("propagation.dispatch.record.v1", DISPATCH_SCOPE, ("intent_id", "workflow_id", "contract_digest"), ("recorded",)),
     ("fleet.propagation.preview.v1", ACTIVITY_SCOPE, ("intent_id", "cursor"), ("preview_digest", "targets")),
     ("fleet.propagation.submit.v1", ACTIVITY_SCOPE, ("intent_id", "preview_digest", "operation_id"), ("contract_digest", "operation_id", "job_id", "state")),
     ("fleet.propagation.current.v1", STATUS_SCOPE, ("intent_id", "job_id", "contract_digest", "generation", "target_id", "resource_id"), ("current", "observed_at")),
+    ("fleet.propagation.revoked.v1", STATUS_SCOPE, ("intent_id", "job_id", "contract_digest", "generation", "target_id", "resource_id"), ("revoked", "observed_at")),
     ("fleet.propagation.status.v1", STATUS_SCOPE, ("job_id", "cursor"), ("outcomes", "receipt_refs")),
     ("fleet.propagation.verify.v1", ACTIVITY_SCOPE, ("intent_id", "job_id", "cursor"), ("checks", "receipts")),
     ("fleet.propagation.convergence.v1", ACTIVITY_SCOPE, ("intent_id", "verification_id", "cursor"), ("changed", "reloads", "checks")),
@@ -525,6 +527,11 @@ def _result_schema(name: str) -> dict[str, Any]:
                         "state": {"type": "string", "enum": ["passed", "failed", "recovery_required"]},
                         "evidence_digest": _nullable(_digest_schema()),
                         "verified_at": _nullable(_timestamp())})
+    if name == "propagation.recovery.cancel.v1":
+        return _object({"intent_id": _identifier(), "job_id": _identifier(),
+                        "contract_digest": _digest_schema(), "state": {"type": "string", "enum": ["cancelled"]},
+                        "quiescent": {"type": "boolean", "enum": [True]},
+                        "receipt_digest": _digest_schema(), "settled_at": _timestamp()})
     if name == "propagation.dispatch.pending.v1":
         return _object({"intents": _array(_intent_row(), 100), "next_cursor": _cursor()})
     if name == "propagation.dispatch.record.v1":
@@ -538,6 +545,8 @@ def _result_schema(name: str) -> dict[str, Any]:
         return _object({"contract_digest": _digest_schema(), "operation_id": _identifier(), "job_id": _identifier(), "state": {"type": "string", "enum": ["created", "existing", "conflict", "refused"]}})
     if name == "fleet.propagation.current.v1":
         return _object({"current": {"type": "boolean"}, "observed_at": _timestamp()})
+    if name == "fleet.propagation.revoked.v1":
+        return _object({"revoked": {"type": "boolean", "enum": [True]}, "observed_at": _timestamp()})
     if name == "fleet.propagation.status.v1":
         return _page({"job_id": _identifier(),
                       "state": {"type": "string", "enum": ["running", "applied", "failed", "cancelled", "recovery_required"]},

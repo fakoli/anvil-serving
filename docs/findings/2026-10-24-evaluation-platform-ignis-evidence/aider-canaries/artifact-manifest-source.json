@@ -1,0 +1,109 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-25-aider-diagnostic-canaries",
+    "capability": "aider-harness-diagnostic",
+    "repository_revision": "60c80fa2b10e70939912c7ce184849790c041fd5",
+    "dirty_state": "clean recorded per-canary commits; mixed revisions explicitly retained",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.aider-plan/v1",
+    "anvil-serving.aider-retention/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "native-records.jsonl"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "native-records.jsonl"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "native-records.jsonl",
+        "projection-ledger.json"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native-records.jsonl",
+        "projection-validation.json"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "projection-ledger.json"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "restoration",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No model/route lifecycle mutation during these standalone canaries; no fresh live-state claim. Broader campaign restoration remains separate."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "restoration.json"
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "External diagnostic preparation only; no narrative matrix or social publication yet."
+    }
+  ]
+}

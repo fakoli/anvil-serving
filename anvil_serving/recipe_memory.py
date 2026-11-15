@@ -17,6 +17,19 @@ _CGROUP_FILES = ('memory.current', 'memory.peak', 'memory.max', 'memory.swap.max
 _CGROUP_READ = ("set -eu; for file in " + " ".join(_CGROUP_FILES)
                 + "; do printf '%s\\n' \"$file\"; "
                 + "head -c 2048 \"$1/$file\"; printf '\\n'; done")
+FAILURE_PREFIX = 'recipe-containment-failure/v1 '
+
+
+def failure_evidence(container_id, cleanup, observed):
+    """Closed, secret-free record shared by CLI failures and MCP forwarding."""
+    if (not isinstance(container_id, str) or not re.fullmatch(r'[0-9a-f]{64}', container_id)
+            or cleanup not in {'stopped_logs_retained', 'stop_failed'}
+            or not isinstance(observed, dict)):
+        return None
+    return {'container_id': container_id, 'cleanup': cleanup, 'host_memory': {
+        key: value if type(value := observed.get(key)) is int and 0 <= value < 2**64 else None
+        for key in ('limit_bytes', 'ram_plus_swap_limit_bytes',
+                    'effective_limit_bytes', 'effective_swap_limit_bytes')}}
 
 
 def _memory_facts(text):
@@ -91,6 +104,40 @@ def limits(serve: dict) -> tuple[int, int, int] | None:
     if memory < 6 or total < memory or reserve < 1024:
         raise ValueError('recipe memory requires RAM >= 6 MiB, RAM+swap >= RAM, host reserve >= 1024 MiB')
     return memory, total, reserve
+
+
+def docker_limits(serve: dict) -> tuple[int, int] | None:
+    bounds = limits(serve)
+    if bounds is None:
+        return None
+    memory, total, _reserve = bounds
+    # cgroups systemd/v2 omits MemorySwapMax for a zero delta (issue #74).
+    # A one-byte delta persists the property; Linux rounds it down to zero
+    # pages. Effective cgroup readback must still prove the requested zero.
+    return memory * MIB, total * MIB + int(total == memory)
+
+
+def containment_error(observed: dict, serve: dict | None = None) -> str | None:
+    """Check effective limits, retaining requested limits only as expectations."""
+    bounds = limits(serve or {})
+    if bounds is not None:
+        memory, total, _reserve = bounds
+        memory, swap = memory * MIB, (total - memory) * MIB
+    else:
+        memory, total = observed.get('limit_bytes'), observed.get('ram_plus_swap_limit_bytes')
+        if type(memory) is not int or memory <= 0:
+            return None  # No explicit Docker RAM bound (legacy recipe).
+        if type(total) is not int or total < memory:
+            return 'memory containment unavailable: no finite RAM-plus-swap bound'
+        swap = total - memory
+        if swap == 1:
+            swap = 0  # Docker wire encoding for zero effective swap.
+    actual = (observed.get('effective_limit_bytes'), observed.get('effective_swap_limit_bytes'))
+    if any(type(value) is not int for value in actual) or actual != (memory, swap):
+        return ('memory containment failed: expected RAM=%s swap=%s bytes; '
+                'effective RAM=%s swap=%s bytes (None means unlimited or unavailable)'
+                % (memory, swap, *actual))
+    return None
 
 
 def _docker_endpoint(_run):

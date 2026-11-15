@@ -1,0 +1,157 @@
+{
+  "base_image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+  "baseline_inspection": {
+    "capture": {
+      "files": {
+        "runtime-template": {
+          "bytes": 11390,
+          "sha256": "b5bbea09a508f00213386271fae738fb6373bf396e0cc19baaa9675a10952bb0"
+        },
+        "tokenizer.json": {
+          "bytes": 20217442,
+          "sha256": "19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d"
+        },
+        "tokenizer_config.json": {
+          "bytes": 761,
+          "sha256": "98b1271574f41abf89427ae2dda030d94dc9478f0edc5a8bd240db213c6fd5fc"
+        },
+        "vllm/config/reasoning.py": {
+          "bytes": 5168,
+          "sha256": "2c4f7bdee48a9fb3d93787c4c32361c2411417cce452cfde86808d8759977861"
+        },
+        "vllm/entrypoints/openai/chat_completion/protocol.py": {
+          "bytes": 50183,
+          "sha256": "0d85d431a4ccb56cbe45665aaa040578d707cc8c728408a72a68666ec085cab2"
+        },
+        "vllm/entrypoints/openai/chat_completion/serving.py": {
+          "bytes": 56242,
+          "sha256": "ea1f76074a9587c8054f54d30a6ba748b6a5fc4d90dd82c801504505c1da1f92"
+        },
+        "vllm/parser/engine/adapters.py": {
+          "bytes": 9812,
+          "sha256": "beb7d4df5452e5bd67143f4e95777fb6cbb7cff49077887be1d02b20d7860600"
+        },
+        "vllm/parser/engine/parser_engine.py": {
+          "bytes": 47510,
+          "sha256": "c277dac977c6ba3d817e2f444521991bb9f46a658243a3e629081bf1168d7999"
+        },
+        "vllm/parser/engine/parser_engine_config.py": {
+          "bytes": 4813,
+          "sha256": "a2da63ae56698232bc9dde54ed0eb9e0ee5f15e6b51aa16d26912c01dd6a8878"
+        },
+        "vllm/parser/engine/registered_adapters.py": {
+          "bytes": 2238,
+          "sha256": "b85b0f370a7c66b4d886401cfb752e14d5605ff826a27faada827dd56c00fedf"
+        },
+        "vllm/parser/engine/streaming_parser_engine.py": {
+          "bytes": 23426,
+          "sha256": "685dae3eb741acd6eef58297da5145f2aa74fdfe721f16fedc209f56dc0ce680"
+        },
+        "vllm/parser/glm47_moe.py": {
+          "bytes": 9871,
+          "sha256": "18c6710da4456be28c685202664f32d30eabdeda9c79b4e622df0f32a32da657"
+        },
+        "vllm/reasoning/__init__.py": {
+          "bytes": 4377,
+          "sha256": "db21c175b232d8a51f28325e0e50663527f62e4679470bf436fd3df6349401bc"
+        },
+        "vllm/reasoning/abs_reasoning_parsers.py": {
+          "bytes": 12903,
+          "sha256": "8370b7f76cb597b01a76b3842d345c5b387f86aca631dcd5897af27a4e6ebcba"
+        },
+        "vllm/reasoning/glm47_moe_reasoning_parser.py": {
+          "bytes": 236,
+          "sha256": "f1124342a23bb4c00754fc5117dc46115adff4b8cfbdc3d3e748ebe95883bdbb"
+        },
+        "vllm/sampling_params.py": {
+          "bytes": 56186,
+          "sha256": "f21efc98bf8ce8aab88eb67adb4207285e509a167d976e14d3e2e8282e024bea"
+        },
+        "vllm/tokenizers/fastokens.py": {
+          "bytes": 1388,
+          "sha256": "365b0c86e837ee07e8067e64e43c66891a377ab7962796bbbbe87131513a7fc4"
+        },
+        "vllm/tokenizers/hf.py": {
+          "bytes": 8372,
+          "sha256": "fa96702c3b78dea6c70e90d3eaa6054315b953aec647a7ad1ac389931fdba85d"
+        },
+        "vllm/tokenizers/registry.py": {
+          "bytes": 12111,
+          "sha256": "077f11649db9c6e086eeb60f9dd81ed5667cadd83a29e66a0870c1ed5b1680a5"
+        },
+        "vllm/v1/sample/ops/topk_topp_triton.py": {
+          "bytes": 71061,
+          "sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2"
+        },
+        "vllm/v1/worker/gpu/sample/sampler.py": {
+          "bytes": 13754,
+          "sha256": "832c9945d201a1e730ff9b4b52076aa83bd4a5064e1e4cfea952cf84d4a8d1f0"
+        },
+        "vllm/v1/worker/gpu/sample/thinking_budget.py": {
+          "bytes": 14998,
+          "sha256": "020513e1d3406f367de6ad995a95055008fd0c28f2873647e8283c9870e22404"
+        },
+        "vllm/v1/worker/gpu/spec_decode/rejection_sampler.py": {
+          "bytes": 12345,
+          "sha256": "030db5bfca162cc1f305112f299de5d6d61c59d3ed0807fee46575441ca4086d"
+        }
+      },
+      "markers": {
+        "end": [
+          154842
+        ],
+        "forced_end": [
+          154842
+        ],
+        "start": [
+          154841
+        ]
+      },
+      "package_version": "0.1.dev21830+g8244d1c44.cu134",
+      "tokenizer_method": "fastokens.patch_transformers + AutoTokenizer local_files_only; add_special_tokens=False"
+    },
+    "inference_requests": 0,
+    "launch": {
+      "command_sha256": "00dda05b0fed3df771a324bc6c5e16eeacb358ce06a376f930f969c5fae7f81d",
+      "entrypoint_sha256": "ae8a7ccee10b493bede97aae9d230c562a193c687fac03f5808a23074ea67a60",
+      "image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+      "mounts_sha256": "ef9bac739b828b5e4924fba9fad62bf97623fd0979426d89bbdde96a9741174e",
+      "reasoning_parser": "glm45",
+      "running": true,
+      "speculative_tokens": 3,
+      "started_at": "2026-10-25T11:00:29.053304547Z"
+    },
+    "schema": "anvil-serving.reasoning-runtime-inspection/v1"
+  },
+  "candidate_image_digest": "sha256:b9d7e1c083047e7b5cbca464913df2ddbad0fff2a3d29236a3c07be89585519e",
+  "candidate_ready_runtime_inspection": "not_run; preweight gate failed",
+  "configured_topology": {
+    "context_tokens": 327680,
+    "decode_context_parallel": 2,
+    "kv": "FP8",
+    "maximum_sequences": 4,
+    "note": "Preserved serving configuration; candidate weights and distributed serving were never started.",
+    "reserved_gpu_count": 2,
+    "runner": "V2",
+    "speculative_tokens": 3,
+    "tensor_parallel": 2,
+    "weights": "FP4"
+  },
+  "engine_revision": "8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+  "host": "Primary Node",
+  "measured_hardware": {
+    "device_selection": "CUDA device 0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_count": 1,
+    "path": "synthetic kernel regression only"
+  },
+  "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+  "model_revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+  "original_source_sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
+  "patched_trace_source_sha256": "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6",
+  "schema": "anvil-serving.sampling-fix-identity/v1",
+  "served_name": "served-model-1",
+  "source_revision": "cf0b0db9efbd8d1213f3ff3fd4b765b0e2e3eb50",
+  "upstream_fix_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+  "upstream_only_source_sha256": "af4e82ffd0fa8fc3b2ab7493c589d0c64c336d7b135e082575329670cc610c90"
+}

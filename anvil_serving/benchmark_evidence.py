@@ -118,6 +118,54 @@ def _sampling_summary(raw: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _capacity_workload_identity(raw: Mapping[str, Any]) -> tuple[dict[str, str] | None, str | None]:
+    """Normalize the declared synthetic prompt identity without inferring legacy data."""
+    if "workload_identity" not in raw:
+        return None, None
+    identity = raw.get("workload_identity")
+    if not isinstance(identity, Mapping) or set(identity) != {
+        "prompt_contract_revision", "workload_kind",
+    }:
+        return None, "workload_identity must declare prompt_contract_revision and workload_kind"
+    revision = identity.get("prompt_contract_revision")
+    kind = identity.get("workload_kind")
+    if revision != "capacity-prompt-v1":
+        return None, "workload_identity has an unsupported prompt_contract_revision"
+    if not isinstance(kind, str):
+        return None, "workload_identity.workload_kind must be text"
+    response_words = raw.get("response_words")
+    if isinstance(response_words, bool) or not isinstance(response_words, int) or response_words < 0:
+        return None, "workload_identity requires a non-negative integer response_words"
+    expected_kind = (
+        "synthetic-repeated-code" if response_words else "synthetic-summary"
+    )
+    if kind != expected_kind:
+        return None, "workload_identity.workload_kind conflicts with response_words"
+    return {
+        "prompt_contract_revision": revision,
+        "workload_kind": kind,
+    }, None
+
+
+def _unique_prefix_namespace(raw: Mapping[str, Any]) -> tuple[str | None, bool, str | None]:
+    """Keep the declared namespace distinct from absent legacy metadata."""
+    mode = raw.get("prompt_cache_mode")
+    if mode == "shared":
+        namespace = raw.get("unique_prefix_namespace")
+        if namespace is not None:
+            return None, True, "shared prompt_cache_mode requires null unique_prefix_namespace"
+        # Shared prompts have no unique prefix, so null and absence are equivalent.
+        return None, False, None
+    if "unique_prefix_namespace" not in raw:
+        return None, False, None
+    namespace = raw.get("unique_prefix_namespace")
+    if mode != "unique":
+        return None, True, "unique_prefix_namespace requires prompt_cache_mode shared or unique"
+    if namespace != "capacity-v1:seed-request-index":
+        return None, True, "unique prompt_cache_mode requires capacity-v1:seed-request-index"
+    return namespace, True, None
+
+
 def _immutable_sha256(value: object) -> str | None:
     text = _text(value)
     if text is None or len(text) != 64:
@@ -300,7 +348,7 @@ def _numeric_shape_errors(groups: Sequence[tuple[str, Mapping[str, Any], Sequenc
     errors: list[str] = []
     for prefix, values, fields in groups:
         for field in fields:
-            if field in values and _number(values.get(field)) is None:
+            if field in values and values.get(field) is not None and _number(values.get(field)) is None:
                 errors.append(f"{prefix}.{field} must be a finite number")
     return errors
 
@@ -330,7 +378,22 @@ def _artifact_kind(raw: Mapping[str, Any]) -> str | None:
 def summarize_artifact(path: str | Path) -> dict[str, Any]:
     """Return a prompt-free normalized summary for one benchmark artifact."""
     artifact_path = Path(path)
-    return summarize_payload(_load_json(artifact_path), artifact_path)
+    raw = _load_json(artifact_path)
+    summary = summarize_payload(raw, artifact_path)
+    if summary.get("kind") == "campaign":
+        from .benchmarking.artifacts import BenchmarkArtifactError, validate_cross_suite_evidence
+        try:
+            validated = validate_cross_suite_evidence(raw, artifact_root=str(artifact_path.parent))
+            coverage = _mapping(validated.get("metrics_coverage"))
+            if summary.get("metrics_coverage") is not None:
+                summary["metrics_coverage"] = {
+                    "status": _text(coverage.get("status")),
+                    "missing_required_metrics": _list(coverage.get("missing_required_metrics")),
+                    "verified": bool(coverage.get("plan_verified")),
+                }
+        except BenchmarkArtifactError as exc:
+            summary["validation_errors"] = [f"{exc.code}: {exc.message}"]
+    return summary
 
 
 def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[str, Any]:
@@ -346,6 +409,9 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         scenario = _mapping(raw.get("scenario"))
         config = _mapping(scenario.get("configuration"))
         errors = []
+        overlap_contract = raw.get("overlap_contract", "contender-response-wait/v1")
+        if overlap_contract not in {"contender-response-wait/v1", "contender-stream-active/v1"}:
+            errors.append("unsupported stability overlap contract")
         try:
             validate_scenario(raw.get("scenario"))
             if raw.get("scenario_sha256") != fingerprint(scenario):
@@ -389,10 +455,15 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
                        for role in ("anchor", "contender")):
                     errors.append("completed claim lacks request-level gates")
                 if scenario["mode"] == "overlap":
+                    contender = _mapping(pair.get("contender"))
+                    active = overlap_contract == "contender-stream-active/v1"
+                    flag = ("anchor_output_during_contender_active" if active
+                            else "anchor_output_during_contender_response_wait")
                     times = [_mapping(pair.get("anchor")).get("first_output"),
-                             _mapping(pair.get("contender")).get("response_headers_at"),
-                             pair.get("overlap_output_at"), _mapping(pair.get("contender")).get("first_output")]
-                    if (pair.get("anchor_output_during_contender_response_wait") is not True
+                             contender.get("first_output" if active else "response_headers_at"),
+                             pair.get("active_overlap_output_at" if active else "overlap_output_at"),
+                             contender.get("end" if active else "first_output")]
+                    if (pair.get(flag) is not True
                             or any(type(t) not in (int, float) or not math.isfinite(t) for t in times)
                             or times != sorted(times)):
                         errors.append("completed claim lacks client overlap timing")
@@ -403,6 +474,7 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             "completeness": _text(raw.get("status")), "quality": {"suites": []},
             "protocol": {"repetitions": _number(scenario.get("rounds"))},
             "stability": {"rounds_observed": len(rounds),
+                          "overlap_contract": overlap_contract,
                           "mode": _text(scenario.get("mode")),
                           "prefix_mode": _text(scenario.get("prefix_mode")),
                           **{gate: _bool(raw.get(gate)) for gate in
@@ -423,9 +495,10 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         )
 
         try:
-            validate_cross_suite_evidence(raw, verify_files=False)
+            normalized_evidence = validate_cross_suite_evidence(raw, verify_files=False)
             validation_errors = []
         except BenchmarkArtifactError as exc:
+            normalized_evidence = raw
             validation_errors = [f"{exc.code}: {exc.message}"]
         run = _mapping(raw.get("run"))
         identities = _mapping(raw.get("identities"))
@@ -433,6 +506,7 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         served = _mapping(identities.get("served_model"))
         source = _mapping(raw.get("source"))
         summary = _mapping(raw.get("summary"))
+        coverage = _mapping(normalized_evidence.get("metrics_coverage"))
         return {
             "path": _text(artifact_path.as_posix()),
             "schema": _text(raw.get("schema")),
@@ -447,6 +521,11 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             "completeness": _text(raw.get("completeness")),
             "suite": _text(run.get("suite")),
             "profile": _text(run.get("profile")),
+            "metrics_coverage": {
+                "status": _text(coverage.get("status")),
+                "missing_required_metrics": _list(coverage.get("missing_required_metrics")),
+                "verified": bool(coverage.get("plan_verified")),
+            } if coverage else None,
             "source_url": _text(source.get("url")),
             "summary": {
                 "attempted": _number(summary.get("attempted")),
@@ -513,6 +592,12 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
     ):
         warnings.append("one or more attempts exhausted the completion budget")
     is_capacity = kind == "capacity"
+    workload_identity, workload_identity_error = (
+        _capacity_workload_identity(raw) if is_capacity else (None, None)
+    )
+    unique_prefix_namespace, namespace_declared, namespace_error = (
+        _unique_prefix_namespace(raw) if is_capacity else (None, False, None)
+    )
     method = raw.get("method")
     method_sha256 = (
         hashlib.sha256(method.encode("utf-8")).hexdigest()
@@ -544,6 +629,9 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             "cache_policy": _text(
                 raw.get("cache_policy"), serve_flags.get("cache_policy")
             ),
+            "capacity_workload_identity": workload_identity,
+            "unique_prefix_namespace": unique_prefix_namespace,
+            "unique_prefix_namespace_declared": namespace_declared,
         },
         "capacity": {
             "requests": _number(raw.get("requests")),
@@ -594,7 +682,12 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         summary["protocol"]["thinking_mode"] = _text(
             serve_flags.get("thinking_mode"), summary["protocol"]["thinking_mode"]
         )
-    summary["validation_errors"] = [*numeric_shape_errors, *_validate_summary(summary)]
+    summary["validation_errors"] = [
+        *numeric_shape_errors,
+        *([workload_identity_error] if workload_identity_error else []),
+        *([namespace_error] if namespace_error else []),
+        *_validate_summary(summary),
+    ]
     return summary
 
 
@@ -761,6 +854,11 @@ def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         "cache_policy": ("workload", "cache_policy"),
         "prompt_set_id": ("workload", "prompt_set_id"),
         "measurement_protocol": ("workload", "measurement_protocol"),
+        "capacity_workload_identity": ("workload", "capacity_workload_identity"),
+        "unique_prefix_namespace": ("workload", "unique_prefix_namespace"),
+        "unique_prefix_namespace_declared": (
+            "workload", "unique_prefix_namespace_declared"
+        ),
         "gpu": ("provenance", "gpu"),
         "sampling_recorded": ("protocol", "sampling", "recorded"),
         "sampling_temperature_requested": (
@@ -861,6 +959,13 @@ def compare_summaries(summaries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             unknown_fields.setdefault(
                 "campaign.semantic_workload_sampling_identity", []
             ).append(str(summary.get("path")))
+            coverage = _mapping(summary.get("metrics_coverage"))
+            if summary.get("profile") == "serving-comparison/v1":
+                missing = _list(coverage.get("missing_required_metrics"))
+                if coverage.get("status") != "complete" or missing or coverage.get("verified") is not True:
+                    unknown_fields.setdefault("metrics_coverage.missing_required_metrics", []).append(
+                        str(summary.get("path"))
+                    )
     if any(summary.get("kind") == "quality" and not _suite_signature(summary)
            for summary in summaries):
         unknown_fields["suites"] = [
@@ -1096,6 +1201,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         _render_compare(result)
     if args.action == "compare" and not result["comparable"] and not args.allow_mismatch:
+        return 1
+    if args.action == "show" and result.get("validation_errors"):
         return 1
     return 0
 

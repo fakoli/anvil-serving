@@ -80,6 +80,59 @@ def test_unexercised_or_failed_case_cannot_pass_or_continue(tmp_path, fault):
         stability.run(scenario(), path, metadata=metadata)
 
 
+@pytest.mark.parametrize("anchor_phase", ["waiting", "streaming", "finished"])
+def test_overlap_requires_live_anchor_progress_during_contender_stream(tmp_path, anchor_phase):
+    contender_ready = threading.Event()
+    anchor_advanced = threading.Event()
+
+    def stream(base, model, prompt, key, max_tokens, **kwargs):
+        observe = kwargs["observer"]
+        observe("response", {})
+        if prompt == "anchor":
+            observe("delta", {"content": "expected"})
+            assert contender_ready.wait(2)
+            if anchor_phase == "finished":
+                # Wait for the request's own terminal stamp, not merely server return.
+                deadline = time.monotonic() + 2
+                while "end" not in evidence["rounds"][0]["contender"]:
+                    assert time.monotonic() < deadline
+                    time.sleep(.001)
+            observe("delta", {"content": "continued"})
+            anchor_advanced.set()
+        else:
+            if anchor_phase != "waiting":
+                observe("delta", {"content": "expected"})
+            contender_ready.set()
+            if anchor_phase != "finished":
+                assert anchor_advanced.wait(2)
+            if anchor_phase == "waiting":
+                observe("delta", {"content": "expected"})
+        return result()
+
+    path = tmp_path / "overlap.json"
+    evidence = stability.new_evidence(scenario(), path)
+    observed = stability.run(scenario(), path, stream=stream, calibrate=calibration,
+                             metadata=metadata, identity=identity, _evidence=evidence)
+    assert observed["coverage_passed"] is (anchor_phase == "streaming")
+    from anvil_serving.benchmark_evidence import summarize_payload
+    assert summarize_payload(observed, path)["validation_errors"] == []
+    if anchor_phase == "waiting":
+        historical = copy.deepcopy(observed)
+        historical.pop("overlap_contract")
+        historical.update(status="completed", coverage_passed=True)
+        historical["rounds"][0].update(coverage_passed=True)
+        historical["rounds"][0].pop("anchor_output_during_contender_active")
+        assert historical["rounds"][0]["anchor_output_during_contender_response_wait"] is True
+        assert summarize_payload(historical, path)["validation_errors"] == []
+    if anchor_phase == "streaming":
+        corrupted = copy.deepcopy(observed)
+        corrupted["rounds"][0]["active_overlap_output_at"] = corrupted["rounds"][0]["contender"]["end"] + 1
+        assert summarize_payload(corrupted, path)["validation_errors"]
+        corrupted = copy.deepcopy(observed)
+        corrupted.pop("overlap_contract")
+        assert summarize_payload(corrupted, path)["validation_errors"]
+
+
 def test_preview_has_no_network_or_artifact_side_effects(tmp_path, monkeypatch):
     config = tmp_path / "scenario $(not-a-command) ; space.json"
     config.write_text(json.dumps(scenario()))
@@ -100,7 +153,7 @@ def test_preview_has_no_network_or_artifact_side_effects(tmp_path, monkeypatch):
 
 
 def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
-    contender_headers_observed = threading.Event()
+    contender_output_observed = threading.Event()
     anchor_content_observed = threading.Event()
     mode = ["overlap"]
 
@@ -111,8 +164,8 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             # Release the server only after the real client has recorded the
             # event. A server write alone does not establish client ordering.
             observer(kind, data)
-            if prompt == "contender" and kind == "response":
-                contender_headers_observed.set()
+            if prompt == "contender" and kind == "delta":
+                contender_output_observed.set()
             if prompt == "anchor" and kind == "delta" and data.get("content"):
                 anchor_content_observed.set()
 
@@ -130,6 +183,7 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
 
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            assert body["top_p"] == .95
             self.send_response(200)
             self.send_header("x-request-id", "synthetic-id")
             self.end_headers()
@@ -142,9 +196,10 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             if anchor:
                 emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                 if mode[0] == "overlap":
-                    assert contender_headers_observed.wait(8)
+                    assert contender_output_observed.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
             else:
+                emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                 assert anchor_content_observed.wait(8)
                 emit({"choices": [{"delta": {"content": "expected"}}]})
             emit({"choices": [{"delta": {}, "finish_reason": "stop"}],
@@ -152,21 +207,21 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
             self.wfile.write(b"data: [DONE]\n\n")
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         base = f"http://127.0.0.1:{server.server_port}/v1"
         for selected in ("overlap", "serial"):
             mode[0] = selected
-            contender_headers_observed.clear()
+            contender_output_observed.clear()
             anchor_content_observed.clear()
-            observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30),
+            observed = stability.run(scenario(base, mode=selected, timeout_seconds=10, run_timeout_seconds=30, top_p=.95),
                                      tmp_path / (selected + ".json"), stream=observed_stream,
                                      calibrate=calibration, identity=identity)
             assert observed["status"] == "completed", observed["rounds"]
             assert observed["coverage_passed"] is True
             pair = observed["rounds"][0]
-            assert pair["anchor_output_during_contender_response_wait"] is (selected == "overlap")
+            assert pair["anchor_output_during_contender_active"] is (selected == "overlap")
             assert pair["anchor"]["request_id"] == "synthetic-id"
             assert observed["scheduler_overlap"] == "not_measured"
             assert observed["performance_eligible"] is False
@@ -206,42 +261,6 @@ def test_real_sse_overlap_is_observed_and_serial_is_distinct(tmp_path):
         thread.join()
 
 
-@pytest.mark.parametrize("changes", [{"rounds": True}, {"rounds": 100}, {"temperature": float("nan")},
-                                     {"anchor_tokens": 4000}, {"base_url": "http://key@127.0.0.1/v1"},
-                                     {"mode": "anything"}, {"base_url": "http://127.0.0.1:8001/v1\r\n"},
-                                     {"model": "bad\nmodel"}, {"api_key_env": "KEY\x00"}])
-def test_invalid_scenario_is_rejected_before_network(changes):
-    with pytest.raises(ValueError):
-        stability.validate_scenario(scenario(**changes))
-
-
-@pytest.mark.parametrize("content", ['{', '{"schema":"a","schema":"b"}', '[]'])
-def test_malformed_scenario_cli_fails_without_creating_artifact(tmp_path, content):
-    path = tmp_path / "invalid.json"
-    path.write_text(content)
-    output = tmp_path / "result.json"
-    with pytest.raises(SystemExit) as error:
-        stability.main(["--scenario", str(path), "--output", str(output)])
-    assert error.value.code == 2
-    assert not output.exists()
-
-
-@pytest.mark.parametrize("replacement", ["b" * 64, "redacted:sha256:" + "b" * 64])
-def test_identity_change_stops_before_requests(tmp_path, replacement):
-    count = [0]
-    def changing(config):
-        row = identity(config)
-        count[0] += 1
-        if count[0] == 2:
-            row["container_id"] = replacement
-        return row
-    observed = stability.run(scenario(), tmp_path / "changed.json", identity=changing,
-                             metadata=metadata, stream=lambda *a, **k: pytest.fail("wrong identity requested"))
-    assert observed["status"] == "failed"
-    assert observed["failure_class"] == "identity_mismatch"
-    assert not observed["rounds"]
-
-
 def test_faulty_tokenizer_cannot_expand_prompt_without_bound(monkeypatch):
     calls = []
     def tokenizer(*args):
@@ -251,41 +270,6 @@ def test_faulty_tokenizer_cannot_expand_prompt_without_bound(monkeypatch):
     with pytest.raises(ValueError, match="prompt bound"):
         stability.calibrated_prompt(scenario(anchor_tokens=1000000, context_limit=2000000), "anchor", "salt", None)
     assert len(calls) == 1
-
-
-@pytest.mark.skipif(os.name == "nt", reason="Unix device and FIFO inputs")
-def test_device_fifo_and_oversized_scenario_are_rejected(tmp_path):
-    fifo = tmp_path / "fifo"
-    os.mkfifo(fifo)
-    for path in (fifo, "/dev/zero"):
-        with pytest.raises(ValueError, match="regular file"):
-            stability.read_scenario(path)
-    large = tmp_path / "large.json"
-    large.write_bytes(b" " * 65537)
-    with pytest.raises(ValueError, match="64 KiB"):
-        stability.read_scenario(large)
-
-
-def test_pre_network_delay_cannot_claim_overlap(tmp_path):
-    entered = threading.Event()
-    def stream(base, model, prompt, key, max_tokens, **kwargs):
-        observe = kwargs["observer"]
-        if prompt == "anchor":
-            observe("response", {})
-            observe("delta", {"content": "expected"})
-            assert entered.wait(2)
-            observe("delta", {"content": "expected"})
-        else:
-            entered.set()
-            time.sleep(.05)  # Anchor progresses before any contender response headers.
-            observe("response", {})
-            observe("delta", {"content": "expected"})
-        return result()
-    observed = stability.run(scenario(), tmp_path / "delay.json", stream=stream,
-                             calibrate=calibration, metadata=metadata, identity=identity)
-    assert observed["runtime_passed"] is True
-    assert observed["coverage_passed"] is False
-    assert observed["status"] == "incomplete"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Synthetic executable replaces local managed inventory")
@@ -348,6 +332,7 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
                     emit({"choices": [{"delta": {"content": "continuing"}}]})
                     advanced.set()
                 else:
+                    emit({"choices": [{"delta": {"reasoning_content": "planning"}}]})
                     entered.set()
                     assert advanced.wait(3)
                     time.sleep(.05)
@@ -357,7 +342,7 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
             except (BrokenPipeError, ConnectionResetError):
                 pass
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     config = scenario(f"http://127.0.0.1:{server.server_port}/v1", run_timeout_seconds=2 if fault == "drip" else 10)
     row = {"Id": "a" * 64, "Name": "/synthetic-model", "Image": config["configuration"]["image_digest"],

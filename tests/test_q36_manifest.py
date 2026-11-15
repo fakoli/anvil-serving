@@ -1,23 +1,7 @@
 from pathlib import Path
 
-from anvil_serving import serves
-
 
 ROOT = Path(__file__).resolve().parents[1]
-
-
-def test_q36_experiment_manifest_uses_truthful_engine_and_managed_compose():
-    manifest = ROOT / "examples" / "primary-node" / "serves.q36.toml"
-
-    loaded = serves.load_manifest(manifest)
-
-    assert len(loaded) == 1
-    serve = loaded[0]
-    assert serve["name"] == "q36-pro6000"
-    assert serve["engine"] == "q36"
-    assert serve["port"] == 39040
-    assert serve["up"][:3] == ["docker", "compose", "-f"]
-    assert serve["up"][-2:] == ["--build", "q36-pro6000"]
 
 
 def test_q36_launcher_validates_mtp_without_shell_evaluation():

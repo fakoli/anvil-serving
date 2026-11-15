@@ -1,0 +1,32 @@
+{
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "preflight",
+    "--base-url",
+    "http://127.0.0.1:31841/v1",
+    "--model",
+    "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "--checks",
+    "smoke,json",
+    "--thinking-mode",
+    "default",
+    "--reasoning-effort",
+    "max",
+    "--visible-answer-tokens",
+    "16384",
+    "--reasoning-headroom-tokens",
+    "49152",
+    "--timeout",
+    "900",
+    "--output",
+    "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/restoration/direct-preflight.json",
+    "--confirm",
+    "--json"
+  ],
+  "returncode": 0,
+  "stderr": "",
+  "stdout": "{\"command\":\"eval preflight --base-url http://127.0.0.1:31841/v1 --model glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec --checks smoke,json --thinking-mode default --reasoning-effort max --visible-answer-tokens 16384 --reasoning-headroom-tokens 49152 --timeout 900 --output [PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/restoration/direct-preflight.json --confirm\",\"context\":{\"command\":null,\"command_host\":null,\"command_runtime\":null,\"controller_endpoint\":null,\"controller_endpoint_kind\":null,\"execution_host\":null,\"execution_runtime\":null,\"gpu_role\":null,\"gpu_uuid\":null,\"overlay\":null,\"resource\":null,\"resource_endpoint\":null,\"resource_endpoint_kind\":null,\"resource_host\":null,\"resource_runtime\":null,\"target\":null,\"topology\":null,\"transport\":null},\"data\":\"PRE-FLIGHT  http://127.0.0.1:31841/v1  model=glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec  thinking=default visible=16384 reasoning_headroom=49152 max_tokens=65536\\n------------------------------------------------------------\\n[PASS] smoke (short coding)                   4.5s got=\\\"```python\\\\nsum(xs)\\\\n```\\\\n\\\\nThat's it \\u2014 Python's built-\\\" finish='stop' visible=351 reasoning_chars=897 reasoning_tokens=None\\n[PASS] structured JSON                        parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=183 reasoning_tokens=None\\n------------------------------------------------------------\\nRESULT: ALL PASS\\n\",\"error\":null,\"ok\":true,\"warnings\":[]}\n"
+}

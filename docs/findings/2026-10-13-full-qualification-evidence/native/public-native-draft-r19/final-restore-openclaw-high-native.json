@@ -1,0 +1,837 @@
+{
+  "passed": true,
+  "checks": {
+    "process_succeeded": true,
+    "status_ok": true,
+    "marker_exact": true,
+    "provider_exact": true,
+    "model_exact": true,
+    "winner_provider_exact": true,
+    "winner_model_exact": true,
+    "fallback_forbidden": true,
+    "context_exact": true
+  },
+  "thinking": "high",
+  "persistent_provider_changes": false,
+  "native": {
+    "runId": "public-runId-001",
+    "status": "ok",
+    "summary": "completed",
+    "result": {
+      "payloads": [
+        {
+          "text": "ANVIL_OPENCLAW_HIGH_CONTROL_25BF43B4448A48B09FBE007C6BCD8DBD",
+          "mediaUrl": null
+        }
+      ],
+      "meta": {
+        "durationMs": 5940,
+        "agentMeta": {
+          "sessionId": "public-sessionId-001",
+          "sessionFile": "public-sessionFile-001",
+          "provider": "anvil",
+          "model": "llm.primary",
+          "contextTokens": 327680,
+          "maxOutputTokens": 65536,
+          "contextTokensSource": "resolved",
+          "agentHarnessId": "openclaw",
+          "credentialSource": {
+            "kind": "direct",
+            "evidence": "provider-config",
+            "authorization": "declared"
+          },
+          "contextBudgetStatus": {
+            "schemaVersion": 1,
+            "source": "pre-prompt-estimate",
+            "updatedAt": 1791957170183,
+            "provider": "anvil",
+            "model": "llm.primary",
+            "route": "fits",
+            "shouldCompact": false,
+            "estimatedPromptTokens": 25331,
+            "contextTokenBudget": 327680,
+            "promptBudgetBeforeReserve": 307680,
+            "reserveTokens": 20000,
+            "effectiveReserveTokens": 20000,
+            "remainingPromptBudgetTokens": 282349,
+            "overflowTokens": 0,
+            "toolResultReducibleChars": 0,
+            "messageCount": 0,
+            "unwindowedMessageCount": 0,
+            "sessionId": "public-sessionId-001"
+          },
+          "codeModeEngaged": false,
+          "assistantTurns": 2,
+          "bridgeCalls": {
+            "search": 0,
+            "describe": 0,
+            "call": 0
+          },
+          "terminalReceipt": {
+            "runId": "public-runId-001",
+            "sessionId": "public-sessionId-001",
+            "turnId": "public-runId-001",
+            "requested": {
+              "provider": "anvil",
+              "model": "llm.primary"
+            },
+            "effective": {
+              "provider": "anvil",
+              "model": "llm.primary",
+              "responseModel": "llm.primary"
+            },
+            "successfulToolNames": [
+              "exec"
+            ],
+            "rerouted": false
+          }
+        },
+        "aborted": false,
+        "systemPromptReport": {
+          "source": "run",
+          "generatedAt": 1791957170125,
+          "sessionId": "public-sessionId-001",
+          "sessionKey": "public-sessionFile-001",
+          "provider": "anvil",
+          "model": "llm.primary",
+          "workspaceDir": "public-workspaceDir-001",
+          "bootstrapMaxChars": 20000,
+          "bootstrapTotalMaxChars": 60000,
+          "bootstrapTruncation": {
+            "warningMode": "always",
+            "warningShown": true,
+            "promptWarningSignature": "{\"bootstrapMaxChars\":20000,\"bootstrapTotalMaxChars\":60000,\"files\":[{\"path\":\"public-path-006\",\"rawChars\":42943,\"injectedChars\":19189,\"causes\":[\"per-file-limit\"]},{\"path\":\"public-path-007\",\"rawChars\":9423,\"injectedChars\":3999,\"causes\":[\"per-file-limit\"]}]}",
+            "warningSignaturesSeen": [
+              "{\"bootstrapMaxChars\":20000,\"bootstrapTotalMaxChars\":60000,\"files\":[{\"path\":\"public-path-006\",\"rawChars\":42943,\"injectedChars\":19189,\"causes\":[\"per-file-limit\"]},{\"path\":\"public-path-007\",\"rawChars\":9423,\"injectedChars\":3999,\"causes\":[\"per-file-limit\"]}]}"
+            ],
+            "truncatedFiles": 2,
+            "nearLimitFiles": 3,
+            "totalNearLimit": false
+          },
+          "sandbox": {
+            "mode": "off",
+            "sandboxed": false
+          },
+          "systemPrompt": {
+            "chars": 83830,
+            "hash": "938580e614671cce16a2034eaad0ee49582c3f173000c651069fe97f0d9e4aee",
+            "projectContextChars": 47483,
+            "nonProjectContextChars": 36347
+          },
+          "injectedWorkspaceFiles": [
+            {
+              "name": "AGENTS.md",
+              "path": "public-path-006",
+              "missing": false,
+              "rawChars": 42943,
+              "injectedChars": 19189,
+              "truncated": true
+            },
+            {
+              "name": "SOUL.md",
+              "path": "public-path-008",
+              "missing": false,
+              "rawChars": 1509,
+              "injectedChars": 1509,
+              "truncated": false
+            },
+            {
+              "name": "IDENTITY.md",
+              "path": "public-path-009",
+              "missing": false,
+              "rawChars": 1275,
+              "injectedChars": 1275,
+              "truncated": false
+            },
+            {
+              "name": "USER.md",
+              "path": "public-path-007",
+              "missing": false,
+              "rawChars": 9423,
+              "injectedChars": 3999,
+              "truncated": true
+            },
+            {
+              "name": "MEMORY.md",
+              "path": "public-path-010",
+              "missing": false,
+              "rawChars": 18933,
+              "injectedChars": 18933,
+              "truncated": false
+            }
+          ],
+          "skills": {
+            "promptChars": 17887,
+            "hash": "20d8450f4d9a0ea7d471a31957984847227f794c2b5e4f3489db96f0d1682deb",
+            "entries": [
+              {
+                "name": "1password",
+                "blockChars": 136
+              },
+              {
+                "name": "add-model-provider",
+                "blockChars": 164
+              },
+              {
+                "name": "agent-patterns",
+                "blockChars": 128
+              },
+              {
+                "name": "public-resource-004-deep-dive",
+                "blockChars": 144
+              },
+              {
+                "name": "apple-calendar-ios",
+                "blockChars": 153
+              },
+              {
+                "name": "apple-notes",
+                "blockChars": 140
+              },
+              {
+                "name": "apple-reminders",
+                "blockChars": 148
+              },
+              {
+                "name": "archify",
+                "blockChars": 102
+              },
+              {
+                "name": "blog-publish",
+                "blockChars": 124
+              },
+              {
+                "name": "blogwatcher",
+                "blockChars": 140
+              },
+              {
+                "name": "browser-automation",
+                "blockChars": 133
+              },
+              {
+                "name": "camsnap",
+                "blockChars": 132
+              },
+              {
+                "name": "canvas",
+                "blockChars": 109
+              },
+              {
+                "name": "chronicle",
+                "blockChars": 118
+              },
+              {
+                "name": "clawhub",
+                "blockChars": 132
+              },
+              {
+                "name": "cloud-image-bake",
+                "blockChars": 160
+              },
+              {
+                "name": "configure-channel",
+                "blockChars": 162
+              },
+              {
+                "name": "control-ui",
+                "blockChars": 138
+              },
+              {
+                "name": "data-story",
+                "blockChars": 120
+              },
+              {
+                "name": "design-system",
+                "blockChars": 114
+              },
+              {
+                "name": "dev-server-over-tailscale",
+                "blockChars": 150
+              },
+              {
+                "name": "diagnose-gateway",
+                "blockChars": 160
+              },
+              {
+                "name": "diagram-maker",
+                "blockChars": 144
+              },
+              {
+                "name": "discord",
+                "blockChars": 111
+              },
+              {
+                "name": "fan-out",
+                "blockChars": 114
+              },
+              {
+                "name": "gemini",
+                "blockChars": 130
+              },
+              {
+                "name": "gh-issues",
+                "blockChars": 136
+              },
+              {
+                "name": "gifgrep",
+                "blockChars": 132
+              },
+              {
+                "name": "github",
+                "blockChars": 130
+              },
+              {
+                "name": "gog",
+                "blockChars": 124
+              },
+              {
+                "name": "graphify",
+                "blockChars": 106
+              },
+              {
+                "name": "gws-admin-reports",
+                "blockChars": 124
+              },
+              {
+                "name": "gws-agent-safety",
+                "blockChars": 122
+              },
+              {
+                "name": "gws-auth",
+                "blockChars": 106
+              },
+              {
+                "name": "gws-calendar",
+                "blockChars": 114
+              },
+              {
+                "name": "gws-calendar-agenda",
+                "blockChars": 128
+              },
+              {
+                "name": "gws-calendar-insert",
+                "blockChars": 128
+              },
+              {
+                "name": "gws-chat",
+                "blockChars": 106
+              },
+              {
+                "name": "gws-chat-send",
+                "blockChars": 116
+              },
+              {
+                "name": "gws-classroom",
+                "blockChars": 116
+              },
+              {
+                "name": "gws-docs",
+                "blockChars": 106
+              },
+              {
+                "name": "gws-docs-write",
+                "blockChars": 118
+              },
+              {
+                "name": "gws-drive",
+                "blockChars": 108
+              },
+              {
+                "name": "gws-drive-upload",
+                "blockChars": 122
+              },
+              {
+                "name": "gws-events",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-events-renew",
+                "blockChars": 122
+              },
+              {
+                "name": "gws-events-subscribe",
+                "blockChars": 130
+              },
+              {
+                "name": "gws-forms",
+                "blockChars": 108
+              },
+              {
+                "name": "gws-gmail",
+                "blockChars": 108
+              },
+              {
+                "name": "gws-gmail-forward",
+                "blockChars": 124
+              },
+              {
+                "name": "gws-gmail-reply",
+                "blockChars": 120
+              },
+              {
+                "name": "gws-gmail-reply-all",
+                "blockChars": 128
+              },
+              {
+                "name": "gws-gmail-send",
+                "blockChars": 118
+              },
+              {
+                "name": "gws-gmail-triage",
+                "blockChars": 122
+              },
+              {
+                "name": "gws-gmail-watch",
+                "blockChars": 120
+              },
+              {
+                "name": "gws-keep",
+                "blockChars": 106
+              },
+              {
+                "name": "gws-meet",
+                "blockChars": 106
+              },
+              {
+                "name": "gws-modelarmor",
+                "blockChars": 118
+              },
+              {
+                "name": "gws-modelarmor-create-template",
+                "blockChars": 150
+              },
+              {
+                "name": "gws-modelarmor-sanitize-prompt",
+                "blockChars": 150
+              },
+              {
+                "name": "gws-modelarmor-sanitize-response",
+                "blockChars": 154
+              },
+              {
+                "name": "gws-people",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-quick-ref",
+                "blockChars": 116
+              },
+              {
+                "name": "gws-schema",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-script",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-shared",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-sheets",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-sheets-append",
+                "blockChars": 124
+              },
+              {
+                "name": "gws-sheets-read",
+                "blockChars": 120
+              },
+              {
+                "name": "gws-slides",
+                "blockChars": 110
+              },
+              {
+                "name": "gws-tasks",
+                "blockChars": 108
+              },
+              {
+                "name": "gws-workflow",
+                "blockChars": 114
+              },
+              {
+                "name": "gws-workflow-email-to-task",
+                "blockChars": 142
+              },
+              {
+                "name": "gws-workflow-file-announce",
+                "blockChars": 142
+              },
+              {
+                "name": "gws-workflow-meeting-prep",
+                "blockChars": 140
+              },
+              {
+                "name": "gws-workflow-standup-report",
+                "blockChars": 144
+              },
+              {
+                "name": "gws-workflow-weekly-digest",
+                "blockChars": 142
+              },
+              {
+                "name": "healthcheck",
+                "blockChars": 140
+              },
+              {
+                "name": "himalaya",
+                "blockChars": 134
+              },
+              {
+                "name": "impeccable",
+                "blockChars": 108
+              },
+              {
+                "name": "live-verify",
+                "blockChars": 139
+              },
+              {
+                "name": "mcp-server-diagnosis",
+                "blockChars": 157
+              },
+              {
+                "name": "mcporter",
+                "blockChars": 134
+              },
+              {
+                "name": "meme-maker",
+                "blockChars": 138
+              },
+              {
+                "name": "model-usage",
+                "blockChars": 140
+              },
+              {
+                "name": "node-connect",
+                "blockChars": 142
+              },
+              {
+                "name": "node-fleet-inventory",
+                "blockChars": 157
+              },
+              {
+                "name": "node-inspect-debugger",
+                "blockChars": 160
+              },
+              {
+                "name": "notion",
+                "blockChars": 130
+              },
+              {
+                "name": "obsidian",
+                "blockChars": 134
+              },
+              {
+                "name": "openai-whisper",
+                "blockChars": 146
+              },
+              {
+                "name": "openhue",
+                "blockChars": 132
+              },
+              {
+                "name": "ordercli",
+                "blockChars": 134
+              },
+              {
+                "name": "pdf",
+                "blockChars": 106
+              },
+              {
+                "name": "peekaboo",
+                "blockChars": 134
+              },
+              {
+                "name": "persona-content-creator",
+                "blockChars": 136
+              },
+              {
+                "name": "persona-customer-support",
+                "blockChars": 138
+              },
+              {
+                "name": "persona-event-coordinator",
+                "blockChars": 140
+              },
+              {
+                "name": "persona-exec-assistant",
+                "blockChars": 134
+              },
+              {
+                "name": "persona-hr-coordinator",
+                "blockChars": 134
+              },
+              {
+                "name": "persona-it-admin",
+                "blockChars": 122
+              },
+              {
+                "name": "persona-project-manager",
+                "blockChars": 136
+              },
+              {
+                "name": "persona-researcher",
+                "blockChars": 126
+              },
+              {
+                "name": "persona-sales-ops",
+                "blockChars": 124
+              },
+              {
+                "name": "persona-team-lead",
+                "blockChars": 124
+              },
+              {
+                "name": "playwright",
+                "blockChars": 120
+              },
+              {
+                "name": "port-agent-skill",
+                "blockChars": 120
+              },
+              {
+                "name": "python-debugpy",
+                "blockChars": 146
+              },
+              {
+                "name": "recipe-backup-sheet-as-csv",
+                "blockChars": 142
+              },
+              {
+                "name": "recipe-batch-invite-to-event",
+                "blockChars": 146
+              },
+              {
+                "name": "recipe-block-focus-time",
+                "blockChars": 136
+              },
+              {
+                "name": "recipe-bulk-download-folder",
+                "blockChars": 144
+              },
+              {
+                "name": "recipe-collect-form-responses",
+                "blockChars": 148
+              },
+              {
+                "name": "recipe-compare-sheet-tabs",
+                "blockChars": 140
+              },
+              {
+                "name": "recipe-copy-sheet-for-new-month",
+                "blockChars": 152
+              },
+              {
+                "name": "recipe-create-classroom-course",
+                "blockChars": 150
+              },
+              {
+                "name": "recipe-create-doc-from-template",
+                "blockChars": 152
+              },
+              {
+                "name": "recipe-create-events-from-sheet",
+                "blockChars": 152
+              },
+              {
+                "name": "recipe-create-expense-tracker",
+                "blockChars": 148
+              },
+              {
+                "name": "recipe-create-feedback-form",
+                "blockChars": 144
+              },
+              {
+                "name": "recipe-create-gmail-filter",
+                "blockChars": 142
+              },
+              {
+                "name": "recipe-create-meet-space",
+                "blockChars": 138
+              },
+              {
+                "name": "recipe-create-presentation",
+                "blockChars": 142
+              },
+              {
+                "name": "recipe-create-shared-drive",
+                "blockChars": 142
+              },
+              {
+                "name": "recipe-create-task-list",
+                "blockChars": 136
+              },
+              {
+                "name": "recipe-create-vacation-responder",
+                "blockChars": 154
+              },
+              {
+                "name": "recipe-draft-email-from-doc",
+                "blockChars": 144
+              },
+              {
+                "name": "recipe-email-drive-link",
+                "blockChars": 136
+              },
+              {
+                "name": "recipe-find-free-time",
+                "blockChars": 132
+              },
+              {
+                "name": "recipe-find-large-files",
+                "blockChars": 136
+              }
+            ]
+          },
+          "tools": {
+            "listChars": 0,
+            "schemaChars": 6079,
+            "entries": [
+              {
+                "name": "ls",
+                "summaryChars": 192,
+                "summaryHash": "90bdd7a772f66ad236d45f18e28ee873b8c795fe219804f2c19074a867423e20",
+                "schemaChars": 254,
+                "schemaHash": "ebe8d6a85b7011ec7e0d43a759b3b53b1ce96e682f54a64312b10e89260e9af9",
+                "propertiesCount": 3
+              },
+              {
+                "name": "read",
+                "summaryChars": 164,
+                "summaryHash": "d136f5b09e28d671addad4ca800b75b8aa6a36002bc739ead964f618d3e34829",
+                "schemaChars": 481,
+                "schemaHash": "b1b9b637dfe1dfade40f50c37cf840a298f1992b534cb9425b7470233a6b0cbb",
+                "propertiesCount": 5
+              },
+              {
+                "name": "edit",
+                "summaryChars": 130,
+                "summaryHash": "4149500b1f6501ec6450e4c048bdb6844764dd4a888a10846726cbbc7256152e",
+                "schemaChars": 501,
+                "schemaHash": "adf3140833ca927b84c66c989d6833fdcbd9de011dd2ffc59f9a2c4d3c25f127",
+                "propertiesCount": 2
+              },
+              {
+                "name": "write",
+                "summaryChars": 49,
+                "summaryHash": "f9ce3d8ac929a51498c03331b97c59bfaa2bb4d25580a5ddf0102e6a8e173aec",
+                "schemaChars": 191,
+                "schemaHash": "b61d2da23febf5fbda55e391526f36d283e9e9fb7f1a1dbadcf5c618a0632287",
+                "propertiesCount": 2
+              },
+              {
+                "name": "apply_patch",
+                "summaryChars": 71,
+                "summaryHash": "5c1173efe93d080a386a23216bc3e58db2e0033eb3ddea697eb2439938b7cae4",
+                "schemaChars": 153,
+                "schemaHash": "05521268363ff4f191472c90d69ef08a503ba9acf1d2febc50b3ee68db32ab65",
+                "propertiesCount": 1
+              },
+              {
+                "name": "exec",
+                "summaryChars": 366,
+                "summaryHash": "6a41ebbc7cd1fae376a497c1bb1662c40a5faa87e5f811bff3ae37e04fb20973",
+                "schemaChars": 1242,
+                "schemaHash": "aeabc27dd35e066195bd6dc30a5fd0e3598974789e8784eb7303eee80fe82518",
+                "propertiesCount": 12
+              },
+              {
+                "name": "process",
+                "summaryChars": 190,
+                "summaryHash": "75fd9c7b8d560599081ab2621e4f897babc118254cf439bd8329a60a905a9ef1",
+                "schemaChars": 1164,
+                "schemaHash": "6cf3281369349e15ea532e644c8ec7f94c96fa6a4e3287272c8cfe90b0960516",
+                "propertiesCount": 12
+              },
+              {
+                "name": "sessions_yield",
+                "summaryChars": 181,
+                "summaryHash": "1a6f218bea29a4cb742605d09f114443b3b3a55f1644338a65f0a4cc6bbc1acb",
+                "schemaChars": 259,
+                "schemaHash": "affee0fae7ad36a16fa1e339d4fe9e1e80351178f1023af65e3d1240f700935d",
+                "propertiesCount": 2
+              },
+              {
+                "name": "view_image",
+                "summaryChars": 251,
+                "summaryHash": "e2376193be463d237e7adf38be13783d31bd56422917718b2dd6f3fd6ed216f2",
+                "schemaChars": 360,
+                "schemaHash": "d8118d854eb7c2cb3e6ce3b36dc55f653a1a868c02c411f95ace140807ab81a3",
+                "propertiesCount": 5
+              },
+              {
+                "name": "tool_search",
+                "summaryChars": 502,
+                "summaryHash": "acdcab138b356606711452241e668c366bdb15428e39a28a94d7be27d7968626",
+                "schemaChars": 1139,
+                "schemaHash": "68200f9c9d55e96ea6795d854144f9d5ab43609c19169cf460fba0b0709c25a6",
+                "propertiesCount": 3
+              },
+              {
+                "name": "tool_describe",
+                "summaryChars": 92,
+                "summaryHash": "fc74d14dc28e4026dba1a8904339a6bef1ce8118588e0bff809c37be73ce7a02",
+                "schemaChars": 125,
+                "schemaHash": "8b60055097c87990f29b27c1f82ecea48435ffb1163c486121a2189f118aa0a4",
+                "propertiesCount": 1
+              },
+              {
+                "name": "tool_call",
+                "summaryChars": 61,
+                "summaryHash": "0dc569a573cbc94928d868c94a178930879ac898b541cd9009338699a3e7d1fd",
+                "schemaChars": 210,
+                "schemaHash": "f48bfb0705c11b32ccbdfd456b791ce458604b1f51b1e31f61bc2d7b25ae07b9",
+                "propertiesCount": 2
+              }
+            ]
+          },
+          "currentTurn": {
+            "promptChars": 211,
+            "runtimeContextChars": 52,
+            "modelOnlyPromptChars": 0
+          }
+        },
+        "finalPromptText": "Use the exec tool exactly once to read the UTF-8 file at \"/var/folders/gq/2s_2tqq13nj0l0nm316522sr0000gn/T/anvil-routed-tool-probe-e0o_sae5/nonce.txt\". Then reply with exactly the file contents and nothing else.",
+        "finalAssistantVisibleText": "ANVIL_OPENCLAW_HIGH_CONTROL_25BF43B4448A48B09FBE007C6BCD8DBD",
+        "finalAssistantRawText": "ANVIL_OPENCLAW_HIGH_CONTROL_25BF43B4448A48B09FBE007C6BCD8DBD",
+        "replayInvalid": true,
+        "livenessState": "working",
+        "stopReason": "stop",
+        "executionTrace": {
+          "winnerProvider": "anvil",
+          "winnerModel": "llm.primary",
+          "attempts": [
+            {
+              "provider": "anvil",
+              "model": "llm.primary",
+              "result": "success",
+              "stage": "assistant"
+            }
+          ],
+          "fallbackUsed": false,
+          "runner": "embedded"
+        },
+        "requestShaping": {
+          "thinking": "high"
+        },
+        "completion": {
+          "stopReason": "stop",
+          "finishReason": "stop"
+        },
+        "toolSummary": {
+          "calls": 1,
+          "tools": [
+            "exec"
+          ],
+          "failures": 0
+        }
+      }
+    }
+  },
+  "returncode": 0,
+  "marker": "ANVIL_OPENCLAW_HIGH_CONTROL_25BF43B4448A48B09FBE007C6BCD8DBD",
+  "finished_at": "2026-10-14T05:52:55.273430+00:00"
+}

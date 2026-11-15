@@ -1,0 +1,29 @@
+{
+  "baseline_cache_separate_bind": true,
+  "baseline_running_before_apply": true,
+  "candidate_containers_absent_before_apply": true,
+  "caveat": "Free-space delta is a bounded host observation; co-resident writes may affect it. MiMo shares most blobs with another revision; only unreferenced blobs were collected.",
+  "data_free_after_bytes": 863792975872,
+  "data_free_before_bytes": 688002150400,
+  "finished_at": "2026-10-06T10:50:42.799728+00:00",
+  "managed_receipts": [
+    {
+      "artifact": "rejected-mimo-cache-remove-native.json",
+      "exit_code": 0,
+      "repository": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "revision": "5711b268169967567844e1e560e8a3966da959b1",
+      "sha256": "c62de5dccf4b9cf5be71207cda095211dd7be4c932efa27010dae6fc95b1444a"
+    },
+    {
+      "artifact": "rejected-uncensored-cache-remove-native.json",
+      "exit_code": 0,
+      "repository": "lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated",
+      "revision": "c8f58e6aa9117c73607d692978b22f091d80450c",
+      "sha256": "c4ea0cf7a2477853197b131d38ff82b04e59f9ce71151baeac0c4f7d35a8a39f"
+    }
+  ],
+  "observed_free_space_delta_bytes": 175790825472,
+  "removed_revisions": 2,
+  "schema": "anvil-serving.cache-cleanup-receipt/v1",
+  "started_at": "2026-10-06T10:50:37.882358+00:00"
+}

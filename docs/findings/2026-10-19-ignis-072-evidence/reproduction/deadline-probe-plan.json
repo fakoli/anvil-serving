@@ -1,0 +1,29 @@
+{
+  "client_timeout_seconds": 15,
+  "deadline_seconds": 2,
+  "expected": [
+    "nonstreamHTTP200,finishlength,ignis-stopped-by=request_timeout,generatedtokens>0",
+    "streamfinishlength,usage,DONE",
+    "engine cancel cause timeout for both",
+    "short recovery200"
+  ],
+  "not_exercised": [
+    "2400-second real wall-clock expiry",
+    "error reply policy",
+    "Responses API and image deadlines"
+  ],
+  "offline_parser_fixture": "passed; see reproduction/deadline-probe-offline-result.json",
+  "recipe_sha256": "01b8cfcf6b5bbcffa6cf6bedf844882241cf39c9fb0d1ed7d2909967fbf96dbf",
+  "requests": [
+    "long nonstream completion cap16384",
+    "long stream completion cap16384 include_usage",
+    "short recovery"
+  ],
+  "runner_sha256": "0d877c50e9176b74dc351b800fd20656b278f39531fdafc91a2154911d078af1",
+  "scope": "scaled deadline contract diagnostic after scored SWE generation ends; not the primary2400s qualification profile",
+  "source": "https://github.com/gpillon/ignis/blob/9179781ddbd826a9876fd873199e04cb75285956/docs/adr/0058-every-route-has-a-deadline-and-a-passed-one-answers-what-was-generated.md",
+  "public_fixture_sha256": "c6c90c15851e7f1e53edf517767005e86b641e6ac98d49dac69f4f15b5cb98f8",
+  "offline_result_sha256": "aee865613894d1fe011bb0f3cb1e60f699460bb95f3eb4209e7b25e7d857e9e7",
+  "hash_scope": "runner and fixture hashes bind public packet bytes; protected source runner and helper hashes are retained only in deadline-provenance.json.",
+  "recipe_hash_scope": "recipe_sha256 binds the public recipe bytes; protected source hash is in deadline-provenance.json."
+}

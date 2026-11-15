@@ -1,0 +1,175 @@
+{
+  "advisory_priors": [
+    "The initial candidate context result was 17/18; unchanged replay was 18/18 and the original fixture passed three follow-ups. This supports variability diagnosis only and does not erase the original failure.",
+    "External NVIDIA benchmark numbers are vendor priors against BF16 and are not a comparison against the incumbent EXL3 recipe."
+  ],
+  "artifacts": {
+    "findings_summary": {
+      "blockers": [],
+      "breakage_probes": [
+        {
+          "axis": "unreadable_or_tampered_state",
+          "classification": "refuted",
+          "input_state": "referenced raw file digest no longer matches",
+          "result": "CLI reports validation error and exits nonzero"
+        },
+        {
+          "axis": "malformed_or_boundary_input",
+          "classification": "refuted_by_source_and_regressions",
+          "input_state": "absolute, NUL-bearing, parent-traversal, duplicate-key, or cross-arm reference",
+          "result": "reference and JSON guards reject it without command interpretation"
+        },
+        {
+          "axis": "resource_bounds",
+          "classification": "refuted_for_prepared_campaign",
+          "input_state": "long-running or physically blocked matrix cell",
+          "result": "21600-second total bound, 16200-second request cutoff, 5400-second restore reserve, per-cell outer timeouts, and stop rules are explicit"
+        },
+        {
+          "axis": "state_drift_across_cli_finalizer_and_config_freeze",
+          "classification": "refuted_after_fix",
+          "input_state": "summary metric differs from hash-bound validated native coverage",
+          "result": "exact coverage equality is required; prepared plan remains frozen_before_requests=false until post-commit refresh"
+        }
+      ],
+      "fixed_findings": [
+        {
+          "classification": "refuted_after_fix",
+          "holdout": "valid show=0; tampered show=1",
+          "input_state": "hash-bound referenced native artifact changed after envelope creation",
+          "references": [
+            "anvil_serving/benchmark_evidence.py:1194",
+            "tests/test_benchmark_artifact_integrity.py:398"
+          ],
+          "severity": "high",
+          "wrong_result_prevented": "evidence show now returns exit 1 and verified=false rather than a successful command"
+        },
+        {
+          "classification": "refuted_after_fix",
+          "holdout": "rejected with bad_metrics_coverage",
+          "input_state": "baseline measurement receipt reused as the candidate cell",
+          "references": [
+            "anvil_serving/benchmarking/artifacts.py:319",
+            "tests/test_benchmark_artifact_integrity.py:387"
+          ],
+          "severity": "high",
+          "wrong_result_prevented": "candidate cell cannot inherit baseline evidence"
+        },
+        {
+          "classification": "refuted_after_fix",
+          "holdout": "rejected with exact native-evidence mismatch",
+          "input_state": "complete decision summary changed TTFT p50 while retaining the original comparison_evidence hash reference",
+          "references": [
+            "skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py:237",
+            "tests/test_benchmark_docs_skill.py:1259"
+          ],
+          "severity": "high",
+          "wrong_result_prevented": "finalizer now rejects summary/native metric-matrix drift"
+        }
+      ],
+      "matrix_review": {
+        "comparison_scope": "whole recipes; no causal MTP, quantization, or engine attribution",
+        "concurrencies": [
+          1,
+          2,
+          4
+        ],
+        "contexts": [
+          10240,
+          40960,
+          163840
+        ],
+        "excluded_warmups_per_arm": 2,
+        "measured_cells_per_arm": 18,
+        "measured_requests_per_arm": 252,
+        "native_workload_kinds": [
+          "synthetic-summary",
+          "synthetic-repeated-code"
+        ],
+        "total_measured_requests": 504
+      },
+      "missing_tests": [],
+      "residual_risk": [
+        "The guard verifies typed values, hashes, arm/cell identity, workload, and request population; it intentionally does not recompute arbitrary metric statistics from native timings.",
+        "The prior candidate context miss remains quality evidence and is independent of performance completeness.",
+        "Measured client concurrency is stream-call overlap and does not prove engine KV residency; engine telemetry must remain separately labeled.",
+        "No performance result, qualification winner, or promotion exists at this pre-request gate."
+      ]
+    },
+    "reviewed_hashes": {
+      "artifacts.py": "c3b7bc545187db0c5ca21d00cb6078226ad7c1855796c77d2e80b8578d9f3ca3",
+      "benchmark_evidence.py": "f2d1aea7a73d126380a05292efa9b92c0e724d6f1b2c275d8d60e4a6d66fe97a",
+      "benchmarking_cli.py": "e6170f7b990eb51623bdc154110a54c572d2ea71488b43ecfd2f1318bd51c800",
+      "comparison_plan_pre_freeze.json": "50632b4fd3848786c80106a3778b772fe113f4e66cab96050c168df51cb23fa7",
+      "finalize_artifact_set.py": "6526774c49e5d183cb4d32a15d86ea489b1b716bd158201be73620215c783ce1",
+      "head_before_freeze": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+      "reviewed_tracked_diff_sha256": "d35c904802d07510615d792eaf4ecbc9b316b6b0c513beee35daca20813de8d1",
+      "run_plan.json": "23d29a4d776886ffd35f4f91f2468359bed6377603891642887d60de6fa8c9ea"
+    },
+    "verification": {
+      "coordinator_reported": "68 focused tests passed after finalizer equality fix; earlier integrity and client-concurrency focused checks passed",
+      "git_diff_check": "pass",
+      "independent_holdouts": [
+        "valid CLI show exit 0",
+        "tampered CLI show exit 1",
+        "cross-arm receipt reuse rejected",
+        "mutated complete-summary metric rejected after final fix"
+      ]
+    }
+  },
+  "gate_state": {
+    "code_review": "pass",
+    "pre_request_precondition": "Commit the reviewed source, refresh plans/source copies and hashes, set comparison-plan frozen_before_requests=true with the committed source revision, then validate the frozen plan before dispatch.",
+    "prepared_campaign": "pass_with_mechanical_freeze_precondition",
+    "promotion": "not_authorized",
+    "state": "pass_for_freeze_then_authorized_execution"
+  },
+  "human_gate_required": false,
+  "promoted": false,
+  "recommendation": {
+    "conditions": [
+      "refresh the private source freeze and comparison-plan hashes from the committed reviewed files",
+      "set frozen_before_requests=true only after that refresh and validate it before the first benchmark request",
+      "retain partial/blocked cells and the prior quality failure without converting them into measured passes",
+      "restore and verify the exact retained r11 deployment; do not promote"
+    ],
+    "decision": "accept",
+    "scope": "freeze the reviewed source and execute the already-authorized bounded performance A/B under the prepared stop and restoration rules"
+  },
+  "request": {
+    "authorization": "[REDACTED]",
+    "evaluated_models": [
+      "GLM-5.3-Flash EXL3/TR3 K4 r11 incumbent",
+      "NVIDIA GLM-5.3-Flash-FP4-Local r2 candidate"
+    ],
+    "implementer": "GPT-6 Astra coordinator and GPT-6 worker",
+    "operation": "independent adversarial review of serving-comparison guard and prepared GLM-5.3 performance A/B",
+    "reviewed_at": "2026-10-17T10:34:33.239683+00:00",
+    "reviewer": {
+      "independent_from_evaluated_models": true,
+      "independent_from_implementer": true,
+      "model": "GPT-5.6 Sol"
+    }
+  },
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    "anvil_serving/benchmarking/artifacts.py",
+    "anvil_serving/benchmark_evidence.py",
+    "anvil_serving/benchmarking/cli.py",
+    "skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py",
+    "tests/test_benchmark_artifact_integrity.py",
+    "tests/test_benchmark_docs_skill.py",
+    "tests/test_capacity_concurrency.py",
+    "plans/run-plan.json",
+    "plans/comparison-plan.json",
+    "plans/validation-source-freeze.json"
+  ],
+  "tools_used": [
+    "read-only git status/diff/diff-check inspection",
+    "read-only source and documentation inspection",
+    "isolated temporary-directory CLI and validator holdouts",
+    "private plan structure/hash inspection",
+    "operation_contracts unavailable in this session",
+    "workflow_packet_validate unavailable in this session"
+  ]
+}

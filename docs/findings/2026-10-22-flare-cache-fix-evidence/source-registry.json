@@ -1,0 +1,184 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-22-flare-cache-fix",
+  "observed_at": "2026-10-23T00:21:01Z",
+  "scope": "Assembled offline from retained observations only. Top-level observed_at is the retained upstream comparison timestamp, not a new freshness check. Day-only dates preserve available precision. Local URLs/evidence pointers are publication-relative; raw artifacts require sanitization before public release. No external performance prior is represented as a local measurement.",
+  "sources": [
+    {
+      "id": "pinned-numerical-policy",
+      "url": "https://github.com/NVIDIA/flare-local-inference/blob/47581ccac82660953a5b59cb04b2750d64edc97d/docs/core-design.md#L960-L964",
+      "published_or_observed": "Source observed 2026-10-22; commit publication date not inferred",
+      "observed_at": "2026-10-22",
+      "age_class": "pinned historical source; freshness limited to retained observation",
+      "evidence_type": "external-prior: official pinned source contract",
+      "hardware_runtime_relevance": "Arithmetic/state-transfer contract at the experiment base; arrival-ordered atomic MoE reductions may affect identical-input replay. Component applicability still requires verification.",
+      "decision_impact": "Possible mechanism only; no measured attribution of observed divergence. Preserve the failed exact-output gate and require matched state and component-specific numerical references/bounds.",
+      "observation_evidence": [
+        "review/numerical-policy-addendum.md"
+      ]
+    },
+    {
+      "id": "observed-upstream-comparison",
+      "url": "https://github.com/NVIDIA/flare-local-inference/compare/47581ccac82660953a5b59cb04b2750d64edc97d...e5bd6a67c0ae1d07f4f5dd52b8197cc36f462982",
+      "published_or_observed": "Source observed 2026-10-23T00:21:01Z; commit publication date not inferred",
+      "observed_at": "2026-10-23T00:21:01Z",
+      "age_class": "pinned historical source; freshness limited to retained observation",
+      "evidence_type": "external-prior: official pinned comparison",
+      "hardware_runtime_relevance": "Official comparison reported the experiment base 132 commits behind the observed main revision and zero ahead.",
+      "decision_impact": "Keep this experiment pinned. A future contribution must reconcile then-current upstream; this observation is not present-day freshness or exhaustive review of intervening changes.",
+      "observation_evidence": [
+        "review/upstream-freshness.md"
+      ]
+    },
+    {
+      "id": "observed-upstream-row-allocation",
+      "url": "https://github.com/NVIDIA/flare-local-inference/blob/e5bd6a67c0ae1d07f4f5dd52b8197cc36f462982/helios/src/offload/slab.rs#L334-L355",
+      "published_or_observed": "Source observed 2026-10-23T00:21:01Z; commit publication date not inferred",
+      "observed_at": "2026-10-23T00:21:01Z",
+      "age_class": "pinned historical source; freshness limited to retained observation",
+      "evidence_type": "external-prior: official pinned source inspection",
+      "hardware_runtime_relevance": "The inspected sizing surface still assigned one quarter of the byte budget to rows before clamps; no equivalent configurable row share was found at this revision.",
+      "decision_impact": "Supports the focused non-duplication finding for this surface only; does not establish performance or exhaustive issue/PR coverage.",
+      "observation_evidence": [
+        "review/upstream-freshness.md"
+      ]
+    },
+    {
+      "id": "observed-upstream-host-store-contract",
+      "url": "https://github.com/NVIDIA/flare-local-inference/blob/e5bd6a67c0ae1d07f4f5dd52b8197cc36f462982/helios/src/offload/mod.rs#L725-L745",
+      "published_or_observed": "Source observed 2026-10-23T00:21:01Z; commit publication date not inferred",
+      "observed_at": "2026-10-23T00:21:01Z",
+      "age_class": "pinned historical source; freshness limited to retained observation",
+      "evidence_type": "external-prior: official pinned source inspection",
+      "hardware_runtime_relevance": "Adjacent PrefixStore poll failure reporting changed to a Result-returning contract with worker-stop ownership implications.",
+      "decision_impact": "Reconcile the newer transfer/lifetime contract before proposing a transplant; base-era tests do not establish compatibility.",
+      "observation_evidence": [
+        "review/upstream-freshness.md"
+      ]
+    },
+    {
+      "id": "observed-upstream-orbit-forwarding",
+      "url": "https://github.com/NVIDIA/flare-local-inference/commit/c2ee3b7e15339961073b5ffef0130071920f5884",
+      "published_or_observed": "Source observed 2026-10-23T00:21:01Z; commit publication date not inferred",
+      "observed_at": "2026-10-23T00:21:01Z",
+      "age_class": "pinned historical source; freshness limited to retained observation",
+      "evidence_type": "external-prior: official pinned commit inspection",
+      "hardware_runtime_relevance": "Prefix-cache forwarding to every Orbit rank affects the CLI/configuration seam used by the candidate.",
+      "decision_impact": "Preserve current forwarding semantics during any future contribution. No rebase or submission follows from this source review.",
+      "observation_evidence": [
+        "review/upstream-freshness.md",
+        "contribution/CONTRIBUTION.md"
+      ]
+    },
+    {
+      "id": "local-cache-geometry",
+      "url": "geometry.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22",
+      "observed_at": "2026-10-22",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-capacity: metadata-derived geometry with startup corroboration",
+      "hardware_runtime_relevance": "TP2 layout arithmetic for the fixed 32 GiB budget; control 52 rows/7314 pages and candidate 158 rows/2434 pages have separate startup corroboration.",
+      "decision_impact": "Supports the allocation tradeoff only. Distinguish logical record bytes from physically rounded mappings, and early metadata reconstruction from later signed-model verification.",
+      "observation_evidence": [
+        "geometry.json",
+        "report.md",
+        "coverage-and-gaps.md"
+      ]
+    },
+    {
+      "id": "local-failed-output-gate",
+      "url": "pilot-a-restore-comparison.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22T22:12:20.002452+00:00",
+      "observed_at": "2026-10-22T22:12:20.002452+00:00",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-quality: failed exact sampled-output gate",
+      "hardware_runtime_relevance": "Exact 128-token comparison failed. Separate repeatability evidence includes divergence without host fetch and on full GPU-cache hits.",
+      "decision_impact": "Numerical acceptance and qualified performance remain blocked. Diagnostic-only policy remains binding; transfer bytes and strict pilots cannot replace a missing numerical/state oracle.",
+      "observation_evidence": [
+        "pilot-a-restore-comparison.json",
+        "pilot-a-repeatability-comparison.json",
+        "diagnostic-amendment.json",
+        "review/numerical-policy-addendum.md"
+      ]
+    },
+    {
+      "id": "local-later-cpu-lifetime-test",
+      "url": "lifetime-test-execution/r2/execution.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22T23:48:59Z",
+      "observed_at": "2026-10-22T23:48:59Z",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-functional: deterministic CPU lifetime fixture",
+      "hardware_runtime_relevance": "Shared held fetch, first-waiter cancellation, bounded allocation pressure, survivor completion and reclamation under controlled successful/failed fetch completion.",
+      "decision_impact": "Later test-only delta outside the frozen v2 image; no real HTTP/DMA overlap, TP2 transfer, executor-drain or numerical-equivalence claim. Preserve the original missing-feature compile failure.",
+      "observation_evidence": [
+        "lifetime-test-execution/execution.json",
+        "lifetime-test-execution/r2/execution.json",
+        "review/lifetime-fixture-review.md"
+      ]
+    },
+    {
+      "id": "local-transfer-byte-audit-a",
+      "url": "audit-a-transfer-audit.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22",
+      "observed_at": "2026-10-22",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-functional: bounded transfer payload verification",
+      "hardware_runtime_relevance": "Actual signed-model TP2 outbound/inbound page and row payload audit for allocation arm A.",
+      "decision_impact": "Exact bytes for exercised transfers/ranks only; audit scratch is outside the host-cache pool and verification is disabled for timing. Does not establish numerical state equivalence or cancellation during DMA.",
+      "observation_evidence": [
+        "audit-a-transfer-audit.json",
+        "audit-a-transfer-logs.json",
+        "report.md"
+      ]
+    },
+    {
+      "id": "local-strict-three-pilot-a",
+      "url": "audit-a-correctness/http/attempts.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22T22:33:49.987191+00:00",
+      "observed_at": "2026-10-22T22:33:49.987191+00:00",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-functional: independent strict arithmetic/json/tool checks",
+      "hardware_runtime_relevance": "Three-case audit-enabled pilot for exact v2 allocation arm A and image, with retained messages and deterministic independent checks.",
+      "decision_impact": "Pilot incarnation only. Do not add pilot cases to formal denominators, imply identical audit/timing recipes, or claim semantic rescoring of formal timing bodies.",
+      "observation_evidence": [
+        "audit-a-correctness/summary.json",
+        "audit-a-correctness/http/attempts.json",
+        "harness/oracles.py",
+        "harness/oracle-fixtures.json",
+        "review/functional-proof-scope.md"
+      ]
+    },
+    {
+      "id": "local-transfer-byte-audit-b",
+      "url": "audit-b-transfer-audit.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22",
+      "observed_at": "2026-10-22",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-functional: bounded transfer payload verification",
+      "hardware_runtime_relevance": "Actual signed-model TP2 outbound/inbound page and row payload audit for allocation arm B.",
+      "decision_impact": "Exact bytes for exercised transfers/ranks only; audit scratch is outside the host-cache pool and verification is disabled for timing. Does not establish numerical state equivalence or cancellation during DMA.",
+      "observation_evidence": [
+        "audit-b-transfer-audit.json",
+        "audit-b-transfer-logs.json",
+        "report.md"
+      ]
+    },
+    {
+      "id": "local-strict-three-pilot-b",
+      "url": "audit-b-correctness/http/attempts.json",
+      "published_or_observed": "Retained campaign observation 2026-10-22T22:40:02.448250+00:00",
+      "observed_at": "2026-10-22T22:40:02.448250+00:00",
+      "age_class": "campaign-local retained evidence; day precision where timestamp unavailable",
+      "evidence_type": "local-functional: independent strict arithmetic/json/tool checks",
+      "hardware_runtime_relevance": "Three-case audit-enabled pilot for exact v2 allocation arm B and image, with retained messages and deterministic independent checks.",
+      "decision_impact": "Pilot incarnation only. Do not add pilot cases to formal denominators, imply identical audit/timing recipes, or claim semantic rescoring of formal timing bodies.",
+      "observation_evidence": [
+        "audit-b-correctness/summary.json",
+        "audit-b-correctness/http/attempts.json",
+        "harness/oracles.py",
+        "harness/oracle-fixtures.json",
+        "review/functional-proof-scope.md"
+      ]
+    }
+  ]
+}

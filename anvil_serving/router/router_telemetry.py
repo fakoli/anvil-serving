@@ -1,6 +1,6 @@
 """Safe, bounded operational views over the router decision-log snapshot.
 
-This module deliberately has no server, clock, or persistence dependency.  A
+Public decision-buffer views are independent of retained accounting. A
 ``DecisionLog`` is an in-memory ring buffer. Its optional record timestamps do
 not make this retained snapshot a historical time window, so these functions
 must not be presented as time-window statistics or monotonic counters.
@@ -11,6 +11,13 @@ import math
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Optional
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from .usage_store import (UsageError, UsageStore, AuthorityScope, _COUNTER_NAMES,
+                          _USAGE_LABELS, _usage_labels, _utc)
+from .decision_log import TokenDirection, TokenUsage
 
 from .decision_log import safe_correlation, safe_gateway_request_id, summarize_decisions
 
@@ -569,4 +576,174 @@ __all__ = [
     "find_request",
     "render_capacity_prometheus",
     "render_prometheus",
+    "collect_usage_snapshot",
+    "render_usage_prometheus",
+    "UsageSnapshot",
 ]
+
+
+# Protected usage uses committed accounting, never the public decision buffer.
+
+_USAGE_PREFIX = "anvil_router_usage_"
+_USAGE_BYTES = 2 * 1024 * 1024
+_USAGE_GLOBALS = (
+    "snapshot_timestamp_seconds", "snapshot_revision", "available", "coverage_epoch_timestamp_seconds",
+    "coverage_complete", "coverage_gap_intervals", "coverage_start_timestamp_seconds", "coverage_end_timestamp_seconds",
+    "represented_groups", "omitted_groups", "series_budget", "groups_budget", "unresolved_requests",
+    "accounting_failures", "owner_unknown_runs", "export_complete", "export_bytes", "float_precision_safe",
+    "freshness_limit_seconds", "retained_detail_start_timestamp_seconds",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class UsageSnapshot:
+    # Only bounded immutable fixed projections cross into the renderer.
+    groups: tuple
+    globals: tuple
+
+    def __post_init__(self):
+        if type(self.groups) is not tuple or len(self.groups) > 256 or type(self.globals) is not tuple or len(self.globals) != 20:
+            raise UsageError("accounting_invalid")
+        seen = set()
+        for group in self.groups:
+            if type(group) is not tuple or len(group) != 4:
+                raise UsageError("accounting_invalid")
+            labels, counts, active, at = group
+            if (type(labels) is not tuple or len(labels) != 16 or any(type(v) is not str or len(v.encode("utf-8")) > 2048 for v in labels)
+                    or labels in seen or type(counts) is not tuple or len(counts) != len(_COUNTER_NAMES)
+                    or any(type(v) is not int or v < 0 for v in counts) or type(active) is not int or active < 0
+                    or type(at) not in (int, float) or not math.isfinite(at)):
+                raise UsageError("accounting_invalid")
+            seen.add(labels)
+        if any(v is not None and (type(v) not in (int, float) or not math.isfinite(v) or v < 0) for v in self.globals):
+            raise UsageError("accounting_invalid")
+        budget = self.globals[_USAGE_GLOBALS.index("series_budget")]
+        if type(budget) is not int or not 41 <= budget <= 8192:
+            raise UsageError("accounting_invalid")
+
+
+def _usage_timestamp(value):
+    if value is None:
+        return None
+    return datetime.fromisoformat(_utc(value).replace("Z", "+00:00")).timestamp()
+
+
+def collect_usage_snapshot(store, active_registry, now, series_budget=8192, *, domain_id=None, authority_scope=None):
+    """Authorized coherent ledger/owned-registry read; no cache or owner inference."""
+    if type(series_budget) is not int or not 41 <= series_budget <= 8192:
+        raise UsageError("accounting_invalid")
+    if type(store) is not UsageStore or active_registry is None or domain_id is None:
+        raise UsageError("accounting_unavailable")
+    if type(now) is not datetime or now.tzinfo is None or now.utcoffset() is None:
+        raise UsageError("accounting_invalid")
+    timestamp = now.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    if authority_scope is not None and (type(authority_scope) is not AuthorityScope or authority_scope.domain_id != domain_id):
+        raise UsageError("accounting_unavailable")
+    try:
+        revision, entries, omitted_active = active_registry.usage_snapshot()
+        metadata, retained = store._usage_metrics_snapshot(domain_id=domain_id, authority_scope=authority_scope, collected_at=timestamp)
+        groups = {labels: [counts, 0, at] for labels, counts, at in retained}
+        for entry in entries:
+            start = entry.usage_start
+            usage = TokenUsage(input=TokenDirection(applicability=start.input_applicability),
+                               output=TokenDirection(applicability=start.output_applicability))
+            labels = _usage_labels(store._dimensions(start, usage, domain_id, "active"))
+            at = entry.updated_at.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+            if at > timestamp:
+                raise UsageError("accounting_unavailable")
+            group = groups.setdefault(labels, [tuple(0 for _ in _COUNTER_NAMES), 0, at])
+            group[1] += 1
+            group[2] = max(group[2], at)
+        if active_registry.usage_snapshot()[0] != revision:
+            raise UsageError("accounting_unavailable")
+    except (ValueError, TypeError, AttributeError, KeyError, OverflowError):
+        raise UsageError("accounting_unavailable") from None
+    budget = min(256, (series_budget - 20) // 21)
+    total = len(groups)
+    selected = tuple((labels, counts, active, _usage_timestamp(at))
+                     for labels, (counts, active, at) in sorted(groups.items())[:budget])
+    known = omitted_active == 0
+    values = {
+        "snapshot_timestamp_seconds": _usage_timestamp(timestamp), "snapshot_revision": metadata["snapshot_revision"],
+        "available": int(metadata["available"]), "coverage_epoch_timestamp_seconds": metadata["coverage_epoch_timestamp_seconds"],
+        "coverage_complete": int(metadata["coverage_complete"]), "coverage_gap_intervals": len(metadata["coverage_gaps"]),
+        "coverage_start_timestamp_seconds": _usage_timestamp(metadata["covered_range"]["from_utc"]),
+        "coverage_end_timestamp_seconds": _usage_timestamp(metadata["covered_range"]["to_utc"]),
+        "represented_groups": len(selected), "omitted_groups": total - len(selected) if known else None,
+        "series_budget": series_budget, "groups_budget": budget, "unresolved_requests": metadata["unresolved_requests"],
+        "accounting_failures": metadata["accounting_failures"], "owner_unknown_runs": metadata["owner_unknown_runs"],
+        "export_complete": int(known and total == len(selected)), "export_bytes": 0,
+        "float_precision_safe": 1, "freshness_limit_seconds": 30,
+        "retained_detail_start_timestamp_seconds": _usage_timestamp(metadata["retained_scope"]["detail_floor_utc"]),
+    }
+    return UsageSnapshot(selected, tuple(values[n] for n in _USAGE_GLOBALS))
+
+
+def _usage_group_block(group):
+    labels, counts, active, at = group
+    label_text = ",".join(f'{name}="{_prometheus_label(value)}"' for name, value in zip(_USAGE_LABELS, labels))
+    counters = dict(zip(_COUNTER_NAMES, counts))
+    lines = []
+    def sample(name, value, extra=""):
+        lines.append(f'{_USAGE_PREFIX}{name}{{{label_text}{extra}}} {value}')
+    sample("requests_total", counters["requests"])
+    sample("attempts_total", counters["attempts"])
+    for direction in ("input", "output"):
+        extra = f',direction="{direction}"'
+        source = labels[_USAGE_LABELS.index(direction + "_source")]
+        applicable = labels[_USAGE_LABELS.index(direction + "_applicability")] == "applicable"
+        if applicable and source in {"measured", "estimated"}:
+            sample("tokens_total", counters[source + "_" + direction], extra)
+        for name, counter in (("unknown_requests_total", "unknown_"), ("partial_requests_total", "partial_"),
+                              ("not_applicable_requests_total", "not_applicable_")):
+            sample(name, counters[counter + direction + "_requests"], extra)
+    sample("active_requests", active)
+    sample("last_activity_timestamp_seconds", at)
+    for bound, le in ((100, "0.1"), (1000, "1"), (5000, "5"), (30000, "30"),
+                      (120000, "120"), (900000, "900"), (None, "+Inf")):
+        sample("latency_seconds_bucket", counters["latency_le_inf" if bound is None else f"latency_le_{bound}_ms"], f',le="{le}"')
+    sample("latency_seconds_sum", Decimal(counters["latency_sum_ms"]) / 1000)
+    sample("latency_seconds_count", counters["latency_count"])
+    return ("\n".join(lines) + "\n").encode("utf-8")
+
+
+def render_usage_prometheus(snapshot):
+    """Complete deterministic group blocks; exact decimal integers stay intact."""
+    if type(snapshot) is not UsageSnapshot or len(snapshot.globals) != 20:
+        raise UsageError("accounting_invalid")
+    values = dict(zip(_USAGE_GLOBALS, snapshot.globals))
+    specs = (("requests_total", "counter"), ("attempts_total", "counter"), ("tokens_total", "counter"),
+             ("unknown_requests_total", "counter"), ("partial_requests_total", "counter"),
+             ("not_applicable_requests_total", "counter"), ("active_requests", "gauge"),
+             ("last_activity_timestamp_seconds", "gauge"), ("latency_seconds", "histogram"))
+    header = "".join(f"# HELP {_USAGE_PREFIX}{name} Protected observed usage.\n# TYPE {_USAGE_PREFIX}{name} {kind}\n" for name, kind in specs).encode()
+    blocks = [_usage_group_block(group) for group in snapshot.groups]
+    def body():
+        gauges = "".join(f"# TYPE {_USAGE_PREFIX}{name} gauge\n{_USAGE_PREFIX}{name} {'NaN' if values[name] is None else values[name]}\n" for name in _USAGE_GLOBALS).encode()
+        return header + b"".join(blocks) + gauges
+    while True:
+        values["represented_groups"] = len(blocks)
+        removed = len(snapshot.groups) - len(blocks)
+        original_omitted = snapshot.globals[_USAGE_GLOBALS.index("omitted_groups")]
+        values["omitted_groups"] = None if original_omitted is None else original_omitted + removed
+        if removed:
+            values["export_complete"] = 0
+        exported = snapshot.groups[:len(blocks)]
+        values["float_precision_safe"] = int(all(v <= 2**53 for _, counts, active, _ in exported for v in (*counts, active))
+                                              and all(type(v) is not int or v <= 2**53 for v in values.values()))
+        values["export_bytes"] = 0
+        for _ in range(8):  # Decimal width settles within a few iterations below 2 MiB.
+            raw = body()
+            if len(raw) == values["export_bytes"]:
+                break
+            values["export_bytes"] = len(raw)
+        else:
+            raise UsageError("accounting_unavailable")
+        if len(raw) <= _USAGE_BYTES:
+            samples = sum(not line.startswith(b"#") for line in raw.splitlines())
+            if samples > values["series_budget"]:
+                raise UsageError("accounting_unavailable")
+            return raw
+        if not blocks:
+            raise UsageError("accounting_unavailable")
+        blocks.pop()

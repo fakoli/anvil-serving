@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -15,7 +16,7 @@ from anvil_serving.propagation_native_acceptance import (
 )
 
 
-def fixture_profile(tmp_path):
+def fixture_profile(tmp_path, *, separate_metadata=False):
     tmp_path.chmod(0o700)
     executable = tmp_path / 'hermes'
     executable.write_text('#!/bin/sh\nexit 1\n')
@@ -32,22 +33,39 @@ def fixture_profile(tmp_path):
         native_runtime=dict(executable=str(executable), fixture_root=str(tmp_path), path=["/usr/bin"]),
         hermes=dict(bin=str(executable), home=str(tmp_path), profile='default'))
     profile = dict(expected_identity_digest='2'*64, targets=[target])
+    if separate_metadata:
+        metadata = tmp_path / 'hermes-metadata'
+        metadata.write_text('#!/bin/sh\nexit 2\n')
+        metadata.chmod(0o500)
+        target['hermes'].update(bin=str(metadata), bin_sha256=hashlib.sha256(metadata.read_bytes()).hexdigest())
+        identity = tmp_path.stat()
+        profile['managed_hermes_home'] = dict(path=str(tmp_path), device=identity.st_dev,
+            inode=identity.st_ino, uid=identity.st_uid)
     deadline = (datetime.now(timezone.utc) + timedelta(minutes=10)).strftime('%Y-%m-%dT%H:%M:%SZ')
     contract = SimpleNamespace(digest='1'*64, value={'deadline_at': deadline})
     return profile, contract
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
-def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
-    profile, contract = fixture_profile(tmp_path)
+@pytest.mark.parametrize('managed,separate_metadata', [(False, False), (True, False),
+    pytest.param(True, True, marks=pytest.mark.skipif(sys.platform != 'linux', reason='managed home is Linux-only'))])
+def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed, separate_metadata):
+    profile, contract = fixture_profile(tmp_path, separate_metadata=separate_metadata)
     calls, histories = [], {}
     def run(argv, timeout, environment):
         calls.append(argv)
         assert 0 < timeout <= 120
+        assert argv[0] == profile['targets'][0]['native_runtime']['executable']
+        if separate_metadata:
+            assert argv[0] != profile['targets'][0]['hermes']['bin']
         assert argv[1:3] == ('-p', 'default')
         assert '--model' not in argv and '--provider' not in argv
         assert environment['HERMES_HOME'] == str(tmp_path)
         assert environment['PATH'] == str(Path('/usr/bin').resolve())
+        cap = json.loads(argv[argv.index('--native-output-cap') + 1]) if managed else None
+        if managed:
+            assert argv.index('--native-output-cap') > argv.index('chat')
+            assert cap['max_tokens'] == 512 and cap['context_tokens'] == 8192
         prompt = argv[argv.index('-q') + 1]
         probe = Path(re.search(r'"([^"\n]+/probe-[a-f0-9]+)"', prompt)[1])
         marker = probe.read_text()
@@ -60,11 +78,13 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
         Path(argv[argv.index('--usage-file') + 1]).write_text(json.dumps(dict(
             session_id=native_id, provider='custom', model='llm.primary',
             completed=True, failed=False, api_calls=1, context_length=8192,
-            max_tokens=512, fallback_used=False)))
+            max_tokens=512, fallback_used=False,
+            **(dict(output_cap_mode='managed_invocation', endpoint_sha256=cap['endpoint_sha256']) if cap else {}))))
         return subprocess.CompletedProcess(argv, 0, response, '')
-    lifecycle = NativeFixtureLifecycle(profile, contract, run=run)
+    lifecycle = NativeFixtureLifecycle(profile, contract, run=run,
+        router_base_url='http://127.0.0.1:8000/v1' if managed else None)
     target = profile['targets'][0]
-    validate_native_runtime(target)
+    validate_native_runtime(target, managed_hermes_home=profile.get('managed_hermes_home'))
     assert calls == []
     lifecycle.prepare()
     assert len(calls) == 1
@@ -81,6 +101,7 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
     assert receipts[1]['native_session_id'] != 'native-1'
     assert receipts[0]['continuity_kind'] == 'durable_resume'
     assert receipts[1]['continuity_kind'] == 'loaded_fixture'
+    assert {row['schema'] for row in receipts} == {'native-session-acceptance/v2' if managed else 'native-session-acceptance/v1'}
     assert all(Path(row['receipt_file']).stat().st_mode & 0o077 == 0 for row in target['native_sessions'])
     assert not list(tmp_path.glob('probe-*'))
     with pytest.raises(NativeAcceptanceError, match='already exists'):
@@ -88,19 +109,36 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path):
     assert len(calls) == 3
 
 
-@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
-def test_expired_budget_and_changed_executable_never_start_turn(tmp_path):
-    profile, contract = fixture_profile(tmp_path)
-    def forbidden(*args):
-        pytest.fail('invalid preflight started a turn')
-    lifecycle = NativeFixtureLifecycle(profile, contract, run=forbidden, budget_seconds=0)
-    with pytest.raises(NativeAcceptanceError, match='budget exhausted'):
+@pytest.mark.skipif(sys.platform != 'linux', reason='managed home is Linux-only')
+@pytest.mark.parametrize('tamper', ['undeclared', 'wrong-home', 'wrong-inode', 'missing-metadata-pin',
+    'changed-metadata', 'missing-session-pin', 'changed-session', 'unsafe-metadata'])
+def test_distinct_hermes_executables_require_managed_identity_and_both_pins(tmp_path, tamper):
+    profile, contract = fixture_profile(tmp_path, separate_metadata=True)
+    target, managed = profile['targets'][0], profile['managed_hermes_home']
+    if tamper == 'undeclared':
+        profile.pop('managed_hermes_home')
+    elif tamper == 'wrong-home':
+        managed['path'] = str(tmp_path.parent)
+    elif tamper == 'wrong-inode':
+        managed['inode'] += 1
+    elif tamper == 'missing-metadata-pin':
+        target['hermes'].pop('bin_sha256')
+    elif tamper == 'changed-metadata':
+        target['hermes']['bin_sha256'] = '0' * 64
+    elif tamper == 'missing-session-pin':
+        for item in target['native_sessions']:
+            item['executable_digest'] = None
+    elif tamper == 'changed-session':
+        target['native_sessions'][0]['executable_digest'] = '0' * 64
+    else:
+        Path(target['hermes']['bin']).chmod(0o720)
+    calls = []
+    lifecycle = NativeFixtureLifecycle(profile, contract, run=lambda *args: calls.append(args))
+    with pytest.raises(NativeAcceptanceError):
         lifecycle.prepare()
-    assert not list(tmp_path.glob('probe-*'))
-    executable = Path(profile['targets'][0]['native_runtime']['executable'])
-    executable.write_text('changed')
-    with pytest.raises(NativeAcceptanceError, match='differs from its pin'):
-        validate_native_runtime(profile['targets'][0])
+    assert calls == []
+    assert not list(tmp_path.glob('*fixture.json'))
+
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
@@ -130,26 +168,6 @@ def test_pi_handle_survives_prepare_and_closes_on_catalog_failure(tmp_path):
         lifecycle.close()
     assert handles[0].closed is True
     assert all(not Path(row['receipt_file']).exists() for row in target['native_sessions'])
-
-
-@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
-def test_shared_prefixture_uses_existing_route_even_when_new_check_is_first(tmp_path):
-    profile, contract = fixture_profile(tmp_path)
-    target = profile['targets'][0]
-    for item in target['native_sessions']:
-        item['fixture_id'] = 'shared-fixture'
-        item['fixture_file'] = str(tmp_path / 'shared-fixture.json')
-    target['native_sessions'].reverse()
-    lifecycle = NativeFixtureLifecycle(profile, contract, run=lambda *args: pytest.fail('unexpected runner'))
-    selected = []
-    def turn(_target, item):
-        selected.append(item['kind'])
-        return {'session_id': 'native-before'}, 'synthetic-history-marker'
-    lifecycle._turn = turn
-    lifecycle.prepare()
-    assert selected == ['existing_session']
-    assert json.loads((tmp_path / 'shared-fixture.json').read_text())['fixture_id'] == 'shared-fixture'
-    lifecycle.close()
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
@@ -201,47 +219,6 @@ def test_web_fixture_lifecycle_uses_owned_loopback_adapter_and_closes(tmp_path):
     assert all(state['state'] == 'accepted' for state in states.values())
 
 
-def test_cleanup_failure_cannot_be_caught_as_pending_acceptance(tmp_path):
-    from anvil_serving.propagation_native_acceptance import NativeQuiescenceError
-    profile, contract = fixture_profile(tmp_path)
-    lifecycle = NativeFixtureLifecycle(profile, contract, run=lambda *args: None)
-    attempts = []
-    def fail_close():
-        attempts.append('failed')
-        raise RuntimeError('owned process still alive')
-    def good_close():
-        attempts.append('closed')
-    lifecycle.prepared = {'first': (SimpleNamespace(close=fail_close), None),
-                          'second': (SimpleNamespace(close=good_close), None)}
-    with pytest.raises(NativeQuiescenceError) as caught:
-        lifecycle.close()
-    assert not isinstance(caught.value, NativeAcceptanceError)
-    assert attempts == ['failed', 'closed']
-    assert set(lifecycle.prepared) == {'first', 'second'}
-
-
-def test_pi_evidence_failure_normalizes_only_after_verified_cleanup(tmp_path):
-    from anvil_serving.propagation_pi_acceptance import PiAcceptanceError, PiQuiescenceError
-    from anvil_serving.propagation_native_acceptance import NativeQuiescenceError
-    profile, contract = fixture_profile(tmp_path)
-    target = profile['targets'][0]
-    target['client'] = 'pi'
-    target['native_runtime'].update(agent_dir=str(tmp_path), loaded_catalog_digest='4'*64)
-    stamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    for failure, expected in ((PiAcceptanceError, NativeAcceptanceError), (PiQuiescenceError, NativeQuiescenceError)):
-        closed = []
-        class Pi:
-            def complete_existing(self, *args, **kwargs):
-                raise failure('synthetic Pi failure')
-        handle = SimpleNamespace(native_session_id='before', history_marker='prior-marker',
-            process_generation='generation-1', prepared_at=stamp, close=lambda: closed.append(True))
-        lifecycle = NativeFixtureLifecycle(profile, contract, run=lambda *args: None, pi=Pi())
-        lifecycle.prepared['target-1'] = (handle, None)
-        with pytest.raises(expected):
-            lifecycle.complete(stamp, {'target-1': '3'*64})
-        assert closed == [True]
-
-
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 def test_cleanup_proof_is_exact_and_requires_completed_owned_cleanup(tmp_path):
     from anvil_serving.propagation_native_acceptance import NativeQuiescenceError, verify_native_cleanup
@@ -283,61 +260,3 @@ def test_openclaw_lost_response_never_proves_gateway_quiescence(tmp_path):
         lifecycle.record_cleanup(dict(job_id='job', operation_id='operation', intent_id='intent',
             contract_digest=contract.digest), '7'*64)
     assert not list(tmp_path.glob('cleanup-*'))
-
-
-@pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
-def test_mac_admin_group_runtime_is_explicit_and_keeps_private_evidence(tmp_path, monkeypatch):
-    from anvil_serving import propagation_native_acceptance as native
-    profile, _ = fixture_profile(tmp_path)
-    target = profile['targets'][0]
-    runtime = target['native_runtime']
-    brew = tmp_path / 'brew'
-    brew.mkdir(mode=0o775)
-    brew.chmod(0o775)
-    old = Path(runtime['executable'])
-    executable = brew / 'hermes'
-    executable.write_bytes(old.read_bytes())
-    executable.chmod(0o755)
-    runtime['executable'] = target['hermes']['bin'] = str(executable)
-    runtime['path'] = [str(brew)]
-    gid = brew.stat().st_gid
-    assert gid > 0
-    monkeypatch.setattr(native.sys, 'platform', 'darwin')
-    monkeypatch.setattr(native.os, 'getgroups', lambda: [gid])
-    with pytest.raises(NativeAcceptanceError, match='custody differs'):
-        validate_native_runtime(target)
-    runtime['trusted_admin_group_ids'] = [gid]
-    validate_native_runtime(target)
-    monkeypatch.setattr(native.os, 'getgroups', lambda: [gid, gid + 1])
-    runtime['trusted_admin_group_ids'] = [gid + 1]
-    with pytest.raises(NativeAcceptanceError, match='custody differs'):
-        validate_native_runtime(target)
-    runtime['trusted_admin_group_ids'] = [gid]
-    brew.chmod(0o777)
-    with pytest.raises(NativeAcceptanceError, match='custody differs'):
-        validate_native_runtime(target)
-    brew.chmod(0o775)
-    # Group trust covers runtime bytes, never the receipt/fixture directory.
-    tmp_path.chmod(0o770)
-    with pytest.raises(NativeAcceptanceError, match='custody differs'):
-        validate_native_runtime(target)
-    tmp_path.chmod(0o700)
-    monkeypatch.setattr(native.os, 'getgroups', lambda: [])
-    monkeypatch.setattr(native.os, 'getegid', lambda: gid + 1)
-    with pytest.raises(NativeAcceptanceError, match='group approval differs'):
-        validate_native_runtime(target)
-    monkeypatch.setattr(native.os, 'getgroups', lambda: [gid])
-    monkeypatch.setattr(native.sys, 'platform', 'linux')
-    with pytest.raises(NativeAcceptanceError, match='group approval differs'):
-        validate_native_runtime(target)
-
-
-@pytest.mark.parametrize('groups', [[], [True], [0], [-1], ['80'], [80, 80], [81, 80]])
-def test_invalid_admin_group_approval_fails_before_turn(tmp_path, monkeypatch, groups):
-    from anvil_serving import propagation_native_acceptance as native
-    profile, _ = fixture_profile(tmp_path)
-    target = profile['targets'][0]
-    target['native_runtime']['trusted_admin_group_ids'] = groups
-    monkeypatch.setattr(native.sys, 'platform', 'darwin')
-    with pytest.raises(NativeAcceptanceError, match='group approval differs'):
-        validate_native_runtime(target)

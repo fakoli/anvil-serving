@@ -1,0 +1,28 @@
+{
+  "reviewer": "flare_trial_review; independent Sol",
+  "recommendation": "accept",
+  "at": 1792649361.7636511,
+  "confirmed": [
+    "44/44 samples; both ranks0/1; exact max rank; valid chronology and unique fences1577..1620",
+    "zero drops and excluded boundaries; two valid clock anchors",
+    "4/4 fixed-output requests;7037prompt,1024completion token IDs/timestamps; length and complete ordering",
+    "all7037prompt tokens reused in the pilot",
+    "same incarnation with no containment/restart error; join recipe/build/compute owner for GPU/source provenance"
+  ],
+  "means": {
+    "max_rank_gpu_ms": 22.6934,
+    "host_wall_ms": 22.7473,
+    "rank_interval_skew_us": 7.434,
+    "selection_to_commit_us": 3.414,
+    "commit_to_observation_ms": 22.7634,
+    "prior_observation_age_us": 11.433,
+    "retained_cost_ms": 22.4071
+  },
+  "limits": [
+    "One1second early decode window;44unqueued speculative4x3 launches",
+    "No summing ranks, no wall-minus-GPU CPU claim, no HTTP request/token attribution",
+    "Graph dimensions are capacities",
+    "No generalization to other shapes, queued work, entire requests, observer overhead, throughput, kernels or causal optimization"
+  ],
+  "promoted": false
+}

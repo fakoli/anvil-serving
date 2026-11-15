@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "id": "upstream-base",
+      "url": "https://api.github.com/repos/NVIDIA/flare-local-inference/commits/main",
+      "published_or_observed": "2026-10-24T04:54:39.138Z",
+      "observed_at": "2026-10-24T04:54:39.138Z",
+      "age_class": "current-at-observation",
+      "evidence_type": "official-source-snapshot",
+      "hardware_runtime_relevance": "Flare upstream source and issue/PR context; not local GLM performance evidence.",
+      "decision_impact": "Pins the tested upstream base before the canonical run; compatibility patch remains separately identified."
+    },
+    {
+      "id": "upstream-discussion",
+      "url": "https://api.github.com/repos/NVIDIA/flare-local-inference/issues?state=all&sort=updated&direction=desc&per_page=100",
+      "published_or_observed": "2026-10-24T04:54:54.678Z",
+      "observed_at": "2026-10-24T04:54:54.678Z",
+      "age_class": "current-at-observation",
+      "evidence_type": "official-source-snapshot",
+      "hardware_runtime_relevance": "Flare upstream source and issue/PR context; not local GLM performance evidence.",
+      "decision_impact": "Bounds duplicate-work and related-fix review to the retained upstream discussion snapshot."
+    }
+  ],
+  "status": "draft; local final-result entries deferred until closure",
+  "campaign_id": "2026-10-23-flare-upstream-refresh",
+  "observed_at": "2026-10-24T04:54:54.678Z"
+}

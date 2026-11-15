@@ -1,0 +1,14 @@
+{
+  "at": 1792647170.7339346,
+  "old_generation": "2289f08455377a6f88242ca71c492cd18ab424afe574d6c3b3cbc3e1915f5660",
+  "current_generation": "f0fb22facdc6eabba3ef59f7c5134e15ae350300248b016606f73c1605de9f73",
+  "checks": {
+    "retired": {
+      "status": 503
+    },
+    "current": {
+      "status": 200,
+      "bytes": 42400
+    }
+  }
+}

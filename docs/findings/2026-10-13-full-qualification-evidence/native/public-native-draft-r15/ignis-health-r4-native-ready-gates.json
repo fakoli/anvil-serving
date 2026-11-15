@@ -1,0 +1,78 @@
+{
+  "schema": "native-ready-control-gate/v1",
+  "observed_at": "2026-10-14T03:36:28.677026+00:00",
+  "container_id": "public-container-001",
+  "ready": true,
+  "native_defaults_request_permitted": true,
+  "max_events_baseline": 0,
+  "plan": {
+    "budget_bytes": 97771323392,
+    "expected_hit_rate": 0.9998353090030392,
+    "expert_cache_bytes": 37795446784,
+    "kv_pool_bytes": 52323279872,
+    "kv_pool_pages": 193549,
+    "kv_pool_policy": "resident",
+    "kv_pool_tokens": 12387136,
+    "lanes": 1,
+    "oversubscribed": false,
+    "pool_bytes": 52453284928,
+    "program_bytes": 469949168,
+    "residency_fixed_bytes": 1577394176,
+    "retained_device_bytes": 0,
+    "speculation": "off",
+    "verify_round_bytes": 0,
+    "weights_bytes": 5022463744
+  },
+  "host_plan": {
+    "available_bytes": 92979752960,
+    "kv_disk_staging_bytes": 67108864,
+    "kv_ram_arena_bytes": 0,
+    "left_bytes": 53003339776,
+    "ngram_hot_budget": "1G",
+    "ngram_hot_budget_bytes": 1073741824,
+    "ngram_hot_rows_bytes": 1073741824,
+    "ngram_whole_table": false,
+    "planned_bytes": 39976413184,
+    "retained_host_bytes": 1040115712,
+    "retained_host_slots": 8
+  },
+  "warnings": "ngram cache readonly fallsback artifact; KVdisk tieroff, nohostKV. Disclosed; nochmod/rootUSER/performanceclaim.",
+  "references": [
+    {
+      "path": "public-path-004",
+      "sha256": "6c296261dc606d7b4a13f0bd130cd49d6ed385c291cd160dd377cc63dc0eafd9",
+      "bytes": 22308
+    },
+    {
+      "path": "public-path-005",
+      "sha256": "14926c75e8c21df0e13c9d3fd381c480152274c5d0a056550ede1f7f261b65fb",
+      "bytes": 2757
+    },
+    {
+      "path": "public-path-006",
+      "sha256": "3faaf2e85c707c5e4dee5b4b7b526dd6be25aa9c4103bb98a0e2d5c83f1aabdc",
+      "bytes": 2098
+    },
+    {
+      "path": "public-path-007",
+      "sha256": "98b86d8a0afa13f619b5cc62adc86150bbbeb08857578b1245ba3e2084f156a2",
+      "bytes": 8578
+    },
+    {
+      "path": "public-path-008",
+      "sha256": "ba467f09715100c2f59847a01f60935a29192e2776217264a6c85c6d21633250",
+      "bytes": 1186
+    },
+    {
+      "path": "public-path-009",
+      "sha256": "4e06a34b27009e0d77a059b8aa57c495b5669336ce9e11765191cc1acacd3c9c",
+      "bytes": 132
+    },
+    {
+      "path": "public-path-010",
+      "sha256": "fdd3693aa25ac84778265c120cb2cc7a822b74194a5f0c6f07344b6d5828d7f2",
+      "bytes": 126
+    }
+  ],
+  "scope": "One frozen plain control only; no suite/SWE/perf/route/promotion"
+}

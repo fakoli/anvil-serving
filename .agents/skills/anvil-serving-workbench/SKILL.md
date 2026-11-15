@@ -68,7 +68,7 @@ managed service, resolve the command surface first — never improvise `kill`,
 
 ## MCP Tool Map
 
-- Gateway: `router_status`, `router_fleet_status`, `router_logs`, `router_manage`,
+- Gateway: `router_status`, `router_fleet_status`, `router_config_export`, `router_logs`, `router_manage`,
   `router_transition`, `router_configuration`, `runtime_experiment`, and `decision_summary`.
 - Serves and residency: `serves_status`, `reservation_status`,
   `serves_manage`, `serves_mode`, `serves_logs`, `serves_probe`, `serves_profile`,
@@ -77,7 +77,7 @@ managed service, resolve the command surface first — never improvise `kill`,
   `media_worker_logs`, and `media_worker_teardown`. Lifecycle mutations retain
   the managed-serve dry-run, confirmation, and human-approval gates.
 - Caller media: `media_capabilities`, `media_workflow_list`,
-  `media_workflow_show`, `media_workflow_validate`, `media_workflow_run`,
+  `media_workflow_show`, `media_workflow_validate`, `media_workflow_prepare`, `media_workflow_run`,
   `media_job_status`, `media_job_cancel`, and `media_artifact_inspect`.
 - Voice: `voice_manage` and `voice_proxy_manage`.
 - Host, models, and telemetry: `doctor_summary`, `host_summary`,
@@ -199,7 +199,14 @@ the supported Anvil CLI or MCP path; if it is unavailable, report the blocker.
   `router_manage`, `router_transition`, and `decision_summary`; lifecycle and
   tier-transition mutation is preview-first and live only with `confirm=true`
   plus `dry_run=false`.
-- Evaluation: use `preflight_probe` with the model family's declared thinking
+- Evaluation: before model validation or comparison, load
+  `skills/anvil-serving-llm-qualification/references/evidence-contract.md`
+  and `skills/anvil-serving-benchmark-docs/SKILL.md`. Declare the test scope
+  and freeze the required serving-metrics matrix before requests. A focused
+  smoke check must identify its limited scope; a full comparison requires
+  verified coverage of the frozen matrix. Preserve quality failures separately
+  from safe performance measurements and report every unmeasured metric.
+  Use `preflight_probe` with the model family's declared thinking
   mode, reasoning effort/evidence expectation, visible-answer budget,
   reasoning headroom, and allowed finish reasons. Use `benchmark_probe` or
   `benchmark_artifact` for capacity only. For quality, run

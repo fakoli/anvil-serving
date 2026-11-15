@@ -1,0 +1,106 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Diagnostic packet index, not a complete graph.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Original private hashes and derivative hash distinction.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "Full frozen workload not projected because native nonterminal rows are refused; exact96-row report retained.",
+      "role": "workload-manifest",
+      "status": "missing"
+    },
+    {
+      "files": [],
+      "reason": "Prepared plans remain private; no complete plan projection claimed.",
+      "role": "run-plan",
+      "status": "missing"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Exact source and frozen manifest hashes; private topology omitted. Full configuration reconstruction is absent.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "campaign-report.json",
+        "terminal-command.json",
+        "first-repeat-chain-audit.json",
+        "prospective-eligibility.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Exact report and bounded selected diagnostic evidence; no full native graph claim.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "projection-refusal.json",
+        "cancellation-diagnosis.json"
+      ],
+      "reason": "Native nonterminal refusal and blocked interval preserved.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "physical-recovery-context.json"
+      ],
+      "reason": "Retained observations with verified=false; not restoration acceptance.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Incomplete diagnostic; no ranking or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Bounded diagnostic publication draft, not published.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "incomplete",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-evaluation-pilot-r8-stopped",
+    "promotion_authorized": false,
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

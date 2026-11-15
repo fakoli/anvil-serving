@@ -1,0 +1,2775 @@
+{
+  "chart_rendering": {
+    "reason": "requires identity-matched accepted baseline/candidate pairs",
+    "status": "ready"
+  },
+  "complete_strata": {
+    "natural_and_edge": true,
+    "original_matrix": false
+  },
+  "coverage": {
+    "bytes": 880513,
+    "path": "analysis/final-serving-comparison-evidence.json",
+    "sha256": "31125339e63804594d2f41703a7cc10ca8f9ac2a37d5f40b7dc4af547a7dbab1"
+  },
+  "promotion": {
+    "promoted": false
+  },
+  "prompt_reconstruction": {
+    "evidence": {
+      "bytes": 39826,
+      "path": "plans/prompt-reconstruction-review.json",
+      "sha256": "614480d6affd73020efd82d2ad7a97dcac8122ebd6b399a50883215ed3e26819"
+    },
+    "scope": "These hashes prove deterministic source-prompt equality between planned arms. They are reconstructed and do not prove the exact bytes transmitted on the wire or the runtime chat-template serialization."
+  },
+  "rows": [
+    {
+      "actual_prompt_tokens": {
+        "max": 7683,
+        "min": 7681,
+        "ordered": [
+          7682,
+          7681,
+          7682,
+          7681,
+          7682,
+          7683,
+          7683,
+          7682
+        ],
+        "p50": 7682.0,
+        "p95": 7683
+      },
+      "aggregate_output_throughput_tok_s": 52.41934640707116,
+      "cell_id": "baseline-natural-ctx10240-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "10240": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55362048000,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 68711047168
+      },
+      "native": {
+        "bytes": 21732,
+        "path": "native/baseline/baseline-natural-ctx10240-c1.json",
+        "sha256": "b5f06a2826ce86363c2f75bf7ff3e4823a2e8135d49a02e6a9af3d8d4df74cae"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 10240,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39338,
+        "path": "analysis/projections/baseline-natural-ctx10240-c1.json",
+        "sha256": "b7e785b5fca4ac2bb63e2cd3a1e54b1a27ce0f8b5b2f05116a66db10bf972e5a"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 229.0,
+          "p95": 329.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 77.66937100159443,
+          "p95": 77.73385038946806,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 4451.420110999607,
+          "p95": 5756.927713984624,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 5060.1894184987195,
+          "p95": 5133.346544939969,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 7682.0,
+          "p95": 7683.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 1516.1379399942234,
+          "p95": 1537.4017499852926,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 12.874706748010258,
+          "p95": 12.894007925987589,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 3651.448654010892,
+          "p95": 4930.311443982646,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 7683,
+        "min": 7681,
+        "ordered": [
+          7682,
+          7681,
+          7682,
+          7681,
+          7682,
+          7683,
+          7683,
+          7682
+        ],
+        "p50": 7682.0,
+        "p95": 7683
+      },
+      "aggregate_output_throughput_tok_s": 63.50387100599247,
+      "cell_id": "baseline-natural-ctx10240-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "10240": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55370526720,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 67744440320
+      },
+      "native": {
+        "bytes": 21708,
+        "path": "native/baseline/baseline-natural-ctx10240-c2.json",
+        "sha256": "aeae59638d38287bdd9d55911a72ab86a0127ce1b84bf46241232307ced64485"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 10240,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39335,
+        "path": "analysis/projections/baseline-natural-ctx10240-c2.json",
+        "sha256": "23474299a39712dc39833cb377204dc0198603abe87db8b912fa83f6030bff7c"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 170.0,
+          "p95": 373.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 42.86315009308582,
+          "p95": 77.16424604638507,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 5468.112965929322,
+          "p95": 10333.858583006077,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4832.897647408073,
+          "p95": 4886.155894780455,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 7682.0,
+          "p95": 7683.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 1585.0386701058596,
+          "p95": 3473.0919679859653,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 23.155311006121337,
+          "p95": 24.213312391117707,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 3708.123564021662,
+          "p95": 9427.476836019196,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 7685,
+        "min": 7683,
+        "ordered": [
+          7684,
+          7683,
+          7684,
+          7683,
+          7684,
+          7685,
+          7685,
+          7684
+        ],
+        "p50": 7684.0,
+        "p95": 7685
+      },
+      "aggregate_output_throughput_tok_s": 79.4588690635448,
+      "cell_id": "baseline-natural-ctx10240-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 4,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 3,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 3.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "10240": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55371055104,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 67714125824
+      },
+      "native": {
+        "bytes": 21681,
+        "path": "native/baseline/baseline-natural-ctx10240-c4.json",
+        "sha256": "6c5f7411d33a8eb434e1a0c58543ab552104d90b7f195cf253ee2a42ec7ba1bc"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 10240,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39326,
+        "path": "analysis/projections/baseline-natural-ctx10240-c4.json",
+        "sha256": "3ca9061ad6db64703a26d4ed08beb055caa3112a0741ae6f0b26a259704bca15"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 177.0,
+          "p95": 293.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 28.798104172272733,
+          "p95": 59.07487013575657,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 9144.949725014158,
+          "p95": 16169.5690570632,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4236.2474421664965,
+          "p95": 4753.38369022524,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 7684.0,
+          "p95": 7685.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 1630.800907034427,
+          "p95": 6490.144632989541,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 31.174712877037887,
+          "p95": 45.08034168243475,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 6654.890165082179,
+          "p95": 12023.68161699269,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 31601,
+        "min": 31599,
+        "ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "p50": 31600.0,
+        "p95": 31601
+      },
+      "aggregate_output_throughput_tok_s": 25.321512583096183,
+      "cell_id": "baseline-natural-ctx40960-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "40960": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55372005376,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 67697836032
+      },
+      "native": {
+        "bytes": 21725,
+        "path": "native/baseline/baseline-natural-ctx40960-c1.json",
+        "sha256": "9a7d045808eccf9bf7bd47a01f0c91d26c67b6ae3dc833f669d870de1fb46c9e"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 40960,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39352,
+        "path": "analysis/projections/baseline-natural-ctx40960-c1.json",
+        "sha256": "3d90f79aad182fe7fcb06f0fecddecf42e99d057c18108deb2d22403ad6dbe31"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 178.0,
+          "p95": 374.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 77.38486056629539,
+          "p95": 77.6007782499599,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 8588.56604306493,
+          "p95": 11140.110424021259,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 5011.274077452863,
+          "p95": 5071.044041604725,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 31600.0,
+          "p95": 31601.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 6305.5832530371845,
+          "p95": 6316.343166050501,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 12.914398931107431,
+          "p95": 12.938768009708566,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 7718.499285983853,
+          "p95": 10295.873366994783,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 31601,
+        "min": 31599,
+        "ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "p50": 31600.0,
+        "p95": 31601
+      },
+      "aggregate_output_throughput_tok_s": 32.1287712724839,
+      "cell_id": "baseline-natural-ctx40960-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "40960": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55377637376,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 67807657984
+      },
+      "native": {
+        "bytes": 21726,
+        "path": "native/baseline/baseline-natural-ctx40960-c2.json",
+        "sha256": "43d94daf8c07474739fa5600dca363705b8a027f0e523be48f4094042340d679"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 40960,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39341,
+        "path": "analysis/projections/baseline-natural-ctx40960-c2.json",
+        "sha256": "dc5c3e804efae406487059fcf3dd6630515d5ec4d72af733c21f048c1eda6a3d"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 190.0,
+          "p95": 534.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 68.84577059395384,
+          "p95": 76.99860521533377,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 9658.048425102606,
+          "p95": 32286.259656073526,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4939.141189973293,
+          "p95": 4953.8515392348345,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 31600.0,
+          "p95": 31601.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 6397.090263082646,
+          "p95": 12795.798494946212,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 14.524433243936167,
+          "p95": 58.55132804645673,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 8943.328995024785,
+          "p95": 24979.289575014263,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 31601,
+        "min": 31599,
+        "ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "p50": 31600.0,
+        "p95": 31601
+      },
+      "aggregate_output_throughput_tok_s": 31.43979787377617,
+      "cell_id": "baseline-natural-ctx40960-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 4,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 3,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 3.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "40960": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55379849216,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 67868053504
+      },
+      "native": {
+        "bytes": 21698,
+        "path": "native/baseline/baseline-natural-ctx40960-c4.json",
+        "sha256": "a89c44d118452b05f8dd8f6c83bc0cc31b98e79679160ac91938ca3c7a9503f9"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 40960,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39337,
+        "path": "analysis/projections/baseline-natural-ctx40960-c4.json",
+        "sha256": "42799a028ab9e5ff1fe909687a28ff1f9ca88fffa87f2c550a3ba072ec0b4737"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 191.0,
+          "p95": 394.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 11.760282913681253,
+          "p95": 65.62770800593682,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 27230.108070070855,
+          "p95": 48318.930840003304,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4313.747489535614,
+          "p95": 4904.245628366345,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 31600.0,
+          "p95": 31601.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 6992.479325039312,
+          "p95": 24948.93785205204,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 75.77180541896571,
+          "p95": 135.471245058273,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 26123.46095801331,
+          "p95": 46840.50109097734,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 134359,
+        "min": 134351,
+        "ordered": [
+          134351,
+          134353,
+          134355,
+          134357,
+          134358,
+          134359,
+          134359,
+          134359
+        ],
+        "p50": 134357.5,
+        "p95": 134359
+      },
+      "aggregate_output_throughput_tok_s": 6.864734177583691,
+      "cell_id": "baseline-natural-ctx163840-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "163840": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55401955328,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1991245824,
+        "gpu_peak_used_bytes_worst_device": 100079239168,
+        "host_available_bytes": 65351258112
+      },
+      "native": {
+        "bytes": 21760,
+        "path": "native/baseline/baseline-natural-ctx163840-c1.json",
+        "sha256": "e4b900a89d7d290978051d5aa0d04601ef3c86fb482534573c8f09ec1b4ed5f1"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 163840,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39472,
+        "path": "analysis/projections/baseline-natural-ctx163840-c1.json",
+        "sha256": "01f0ad924374f9c5fe8fba9391e2d258e1282834feb0deb9568ecaedffef9ad8"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 170.0,
+          "p95": 327.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 77.7970055922058,
+          "p95": 78.59969279053959,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 28572.346618049778,
+          "p95": 30796.689732931554,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 5057.938314283915,
+          "p95": 5088.689325478073,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 134357.0,
+          "p95": 134359.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 26491.110799019225,
+          "p95": 26631.472517969087,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 12.842956958641711,
+          "p95": 12.9837553403226,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 27825.22450911347,
+          "p95": 29786.05502890423,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 134359,
+        "min": 134351,
+        "ordered": [
+          134351,
+          134353,
+          134355,
+          134357,
+          134358,
+          134359,
+          134359,
+          134359
+        ],
+        "p50": 134357.5,
+        "p95": 134359
+      },
+      "aggregate_output_throughput_tok_s": 6.546618557513111,
+      "cell_id": "baseline-natural-ctx163840-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "163840": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55409836032,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1949302784,
+        "gpu_peak_used_bytes_worst_device": 100121182208,
+        "host_available_bytes": 62997626880
+      },
+      "native": {
+        "bytes": 21730,
+        "path": "native/baseline/baseline-natural-ctx163840-c2.json",
+        "sha256": "b91cdc624757488b3f93048d3f8080b859da039c05c3076b2d5788e71128ada4"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 163840,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39465,
+        "path": "analysis/projections/baseline-natural-ctx163840-c2.json",
+        "sha256": "7de5912efcc201a42f38dd595b62bbc6a4f844c691014509be328db7d0445842"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 159.0,
+          "p95": 295.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 7.572158265030563,
+          "p95": 72.81396734532838,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 54354.17980491184,
+          "p95": 80051.35081906337,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4374.769366412702,
+          "p95": 4926.725567423204,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 134357.0,
+          "p95": 134359.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 30082.815364934504,
+          "p95": 52049.17399992701,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 79.09356121484551,
+          "p95": 193.5980299354664,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 53430.09845097549,
+          "p95": 59887.8244360676,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 134359,
+        "min": 134351,
+        "ordered": [
+          134351,
+          134353,
+          134355,
+          134357,
+          134358,
+          134359,
+          134359,
+          134359
+        ],
+        "p50": 134357.5,
+        "p95": 134359
+      },
+      "aggregate_output_throughput_tok_s": 8.937146858667889,
+      "cell_id": "baseline-natural-ctx163840-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 4,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 2,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 2.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "163840": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55430361088,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1928331264,
+        "gpu_peak_used_bytes_worst_device": 100142153728,
+        "host_available_bytes": 61934002176
+      },
+      "native": {
+        "bytes": 21762,
+        "path": "native/baseline/baseline-natural-ctx163840-c4.json",
+        "sha256": "69a0ded020ab8cbffb34e824b9dcdad4356aa159d49dabeda7b486cc328f6d64"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 163840,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39461,
+        "path": "analysis/projections/baseline-natural-ctx163840-c4.json",
+        "sha256": "16d6494dcdf3713a3010bbee729926d3afde5d84fd3758bd7ace23b2115f5ccd"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 169.0,
+          "p95": 375.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 3.805370265346772,
+          "p95": 65.5019669624011,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 80036.19651601184,
+          "p95": 208628.837728058,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 2546.7287364486197,
+          "p95": 4305.676516217035,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 134357.0,
+          "p95": 134359.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 51293.02653600462,
+          "p95": 107499.95856301393,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 199.83560547274962,
+          "p95": 384.87556793667846,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 76636.0127920052,
+          "p95": 189281.9883270422,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "cell_id": "baseline-controlled-ctx10240-c1",
+      "disposition": "failed",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 10240,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "retained original controlled deadline/failure"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx10240-c2",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 10240,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx10240-c4",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 10240,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx40960-c1",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 40960,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx40960-c2",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 40960,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx40960-c4",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 40960,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx163840-c1",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 163840,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx163840-c2",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 163840,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "baseline-controlled-ctx163840-c4",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 163840,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 252302,
+        "min": 252300,
+        "ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "p50": 252300.5,
+        "p95": 252302
+      },
+      "aggregate_output_throughput_tok_s": 3.289504911308123,
+      "cell_id": "baseline-capacity-edge-ctx310272-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "310272": 4
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55568371712,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1760559104,
+        "gpu_peak_used_bytes_worst_device": 100309925888,
+        "host_available_bytes": 62213378048
+      },
+      "native": {
+        "bytes": 16993,
+        "path": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+        "sha256": "f3b87cbc09120c22b0d99fc26c1354ba337ac0fe79241688b773a6d7fd0cdbff"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 1,
+        "context_tokens": 310272,
+        "requests": 4,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 38913,
+        "path": "analysis/projections/baseline-capacity-edge-ctx310272-c1.json",
+        "sha256": "5940730cf760983d17d265513eaa48a00808337b64cc9b0f951de9722ea86139"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 149.0,
+          "p95": 289.0,
+          "samples": 4
+        },
+        "decode_tok_s": {
+          "p50": 78.72035976711844,
+          "p95": 80.42041379743645,
+          "samples": 4
+        },
+        "e2e_ms": {
+          "p50": 52748.39311896358,
+          "p95": 54392.5559920026,
+          "samples": 4
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4969.429991342842,
+          "p95": 5034.123249912407,
+          "samples": 4
+        },
+        "prompt_tokens": {
+          "p50": 252300.0,
+          "p95": 252302.0,
+          "samples": 4
+        },
+        "time_to_first_output_ms": {
+          "p50": 50674.61613903288,
+          "p95": 50869.03102195356,
+          "samples": 4
+        },
+        "tpot_ms": {
+          "p50": 12.698392547364977,
+          "p95": 12.909513378367087,
+          "samples": 4
+        },
+        "ttft_ms": {
+          "p50": 52049.156015971676,
+          "p95": 53589.59678304382,
+          "samples": 4
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 252302,
+        "min": 252300,
+        "ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "p50": 252300.5,
+        "p95": 252302
+      },
+      "aggregate_output_throughput_tok_s": 3.9569522346165757,
+      "cell_id": "baseline-capacity-edge-ctx310272-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "310272": 4
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55639867392,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1760559104,
+        "gpu_peak_used_bytes_worst_device": 100309925888,
+        "host_available_bytes": 64565837824
+      },
+      "native": {
+        "bytes": 16987,
+        "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+        "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 2,
+        "context_tokens": 310272,
+        "requests": 4,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 38908,
+        "path": "analysis/projections/baseline-capacity-edge-ctx310272-c2.json",
+        "sha256": "aa6ab25d757f6f00b4c3c856b58feab68796d6077de77bfae34e60b211c5d7a0"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 166.0,
+          "p95": 243.0,
+          "samples": 4
+        },
+        "decode_tok_s": {
+          "p50": 5.508038116160653,
+          "p95": 71.72835889163937,
+          "samples": 4
+        },
+        "e2e_ms": {
+          "p50": 101335.02844895702,
+          "p95": 110268.1252489565,
+          "samples": 4
+        },
+        "effective_prefill_tok_s": {
+          "p50": 2761.616936937679,
+          "p95": 4372.643429570463,
+          "samples": 4
+        },
+        "prompt_tokens": {
+          "p50": 252300.0,
+          "p95": 252302.0,
+          "samples": 4
+        },
+        "time_to_first_output_ms": {
+          "p50": 59033.21515605785,
+          "p95": 99770.0840360485,
+          "samples": 4
+        },
+        "tpot_ms": {
+          "p50": 64.40516081538645,
+          "p95": 182.77322728483176,
+          "samples": 4
+        },
+        "ttft_ms": {
+          "p50": 100487.24191496149,
+          "p95": 101262.55168300122,
+          "samples": 4
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 252302,
+        "min": 252300,
+        "ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "p50": 252300.5,
+        "p95": 252302
+      },
+      "aggregate_output_throughput_tok_s": 4.831855236980872,
+      "cell_id": "baseline-capacity-edge-ctx310272-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 4,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 2,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 2.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "310272": 4
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 998210,
+        "physical_bytes": 16642998272
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 55834574848,
+        "cgroup_sampled_peak_bytes": 55712325632,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 1760559104,
+        "gpu_peak_used_bytes_worst_device": 100309925888,
+        "host_available_bytes": 64142020608
+      },
+      "native": {
+        "bytes": 17003,
+        "path": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+        "sha256": "fccedef35f7f33164f5d85fe5642585d3058c727f5b3b438c5c87022122070b1"
+      },
+      "plan": {
+        "arm": "baseline",
+        "concurrency": 4,
+        "context_tokens": 310272,
+        "requests": 4,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 38903,
+        "path": "analysis/projections/baseline-capacity-edge-ctx310272-c4.json",
+        "sha256": "87b10ce9411a1c11b46e0b6f47cba7ca13739212c8c0cd02a34989fc5f3cbeea"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 173.0,
+          "p95": 468.0,
+          "samples": 4
+        },
+        "decode_tok_s": {
+          "p50": 4.083835570791817,
+          "p95": 65.49259261549646,
+          "samples": 4
+        },
+        "e2e_ms": {
+          "p50": 198283.12347189058,
+          "p95": 200938.38414095808,
+          "samples": 4
+        },
+        "effective_prefill_tok_s": {
+          "p50": 1615.5900426769956,
+          "p95": 4200.827647270026,
+          "samples": 4
+        },
+        "prompt_tokens": {
+          "p50": 252300.0,
+          "p95": 252302.0,
+          "samples": 4
+        },
+        "time_to_first_output_ms": {
+          "p50": 108460.27420798782,
+          "p95": 197472.34331199434,
+          "samples": 4
+        },
+        "tpot_ms": {
+          "p50": 197.8140647559999,
+          "p95": 394.3989932776825,
+          "samples": 4
+        },
+        "ttft_ms": {
+          "p50": 195384.19928390067,
+          "p95": 200227.63687302358,
+          "samples": 4
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 7683,
+        "min": 7681,
+        "ordered": [
+          7682,
+          7681,
+          7682,
+          7681,
+          7682,
+          7683,
+          7683,
+          7682
+        ],
+        "p50": 7682.0,
+        "p95": 7683
+      },
+      "aggregate_output_throughput_tok_s": 128.87785911248233,
+      "cell_id": "candidate-natural-ctx10240-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "10240": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43175661568,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60847116288
+      },
+      "native": {
+        "bytes": 21676,
+        "path": "native/candidate/candidate-natural-ctx10240-c1.json",
+        "sha256": "421ce10a5efa2f5e7ccfc47d1c2dfb8abda82eb38607514b66333dca4bb1f6d5"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 10240,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39395,
+        "path": "analysis/projections/candidate-natural-ctx10240-c1.json",
+        "sha256": "09e849aac1961a270227346e2657bd4d65ecd08b9076744c8a5d930b7f32e66b"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 286.0,
+          "p95": 551.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 203.30977267723355,
+          "p95": 217.50136464442252,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 2303.5802439553663,
+          "p95": 3571.2024529930204,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 9117.677278436455,
+          "p95": 9184.126168088469,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 7682.0,
+          "p95": 7683.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 840.2546650031582,
+          "p95": 849.1554759675637,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 4.778280296401742,
+          "p95": 5.256252708893857,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 1988.363154930994,
+          "p95": 3180.694635026157,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 7683,
+        "min": 7681,
+        "ordered": [
+          7682,
+          7681,
+          7682,
+          7681,
+          7682,
+          7683,
+          7683,
+          7682
+        ],
+        "p50": 7682.0,
+        "p95": 7683
+      },
+      "aggregate_output_throughput_tok_s": 127.71137736041486,
+      "cell_id": "candidate-natural-ctx10240-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 0,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "10240": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43187109888,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60879884288
+      },
+      "native": {
+        "bytes": 21679,
+        "path": "native/candidate/candidate-natural-ctx10240-c2.json",
+        "sha256": "ec1619669f647f15fae983a4c534787ea7aade16400c5e538681b731bee8f879"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 10240,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39394,
+        "path": "analysis/projections/candidate-natural-ctx10240-c2.json",
+        "sha256": "fb380fc1ac93ab906ca8388166e7acce1e5c96f25cf04dbd8283606425d443e8"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 271.0,
+          "p95": 399.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 107.07758485819687,
+          "p95": 175.9812803151937,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 4115.3902360238135,
+          "p95": 5556.1179630458355,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4628.537553292263,
+          "p95": 7999.172017975073,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 7682.0,
+          "p95": 7683.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 1650.3714870195836,
+          "p95": 3042.1532400650904,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 9.310980455484241,
+          "p95": 12.712377804422342,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 3520.2890710206702,
+          "p95": 5219.579340075143,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 7685,
+        "min": 7683,
+        "ordered": [
+          7684,
+          7683,
+          7684,
+          7683,
+          7684,
+          7685,
+          7685,
+          7684
+        ],
+        "p50": 7684.0,
+        "p95": 7685
+      },
+      "aggregate_output_throughput_tok_s": 115.95978926153663,
+      "cell_id": "candidate-natural-ctx10240-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 3,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 2,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 2.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "10240": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43188457472,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 61177151488
+      },
+      "native": {
+        "bytes": 21624,
+        "path": "native/candidate/candidate-natural-ctx10240-c4.json",
+        "sha256": "fb0a39d81dbb59a705134b4d151a24387706ef0c4b5c7c0c2bd6a6a9c9aaf579"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 10240,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39386,
+        "path": "analysis/projections/candidate-natural-ctx10240-c4.json",
+        "sha256": "e764611e3b574256298c503de6647ce646df0843757e855298153f76fa007cc8"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 164.0,
+          "p95": 305.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 113.27352460261478,
+          "p95": 192.66454954178718,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 5289.525522035547,
+          "p95": 8705.540847033262,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 1579.550645624437,
+          "p95": 8531.629564369934,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 7684.0,
+          "p95": 7685.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 4424.487903947011,
+          "p95": 5783.138141967356,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 8.81260158796663,
+          "p95": 11.70889124581923,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 4972.360386978835,
+          "p95": 7914.623775985092,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 31601,
+        "min": 31599,
+        "ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "p50": 31600.0,
+        "p95": 31601
+      },
+      "aggregate_output_throughput_tok_s": 46.57402244297622,
+      "cell_id": "candidate-natural-ctx40960-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "40960": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43190095872,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60698832896
+      },
+      "native": {
+        "bytes": 21689,
+        "path": "native/candidate/candidate-natural-ctx40960-c1.json",
+        "sha256": "b496d99e4c5814c458c995bacae742e51e09b359fd68a45087ad520ab67d3876"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 40960,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39403,
+        "path": "analysis/projections/candidate-natural-ctx40960-c1.json",
+        "sha256": "a2ec58bbe530c2af263f6f75df3754368c0311cafc2c2b0f01b18f1409ac80a7"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 190.0,
+          "p95": 277.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 201.49485936538724,
+          "p95": 223.1873506382989,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 4426.441236981191,
+          "p95": 4858.702225028537,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 9002.460391524311,
+          "p95": 9089.277016455293,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 31600.0,
+          "p95": 31601.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 3505.905297002755,
+          "p95": 3541.708705946803,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 4.813680121950595,
+          "p95": 5.5035958587635125,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 4122.115194913931,
+          "p95": 4524.347213096917,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 31601,
+        "min": 31599,
+        "ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "p50": 31600.0,
+        "p95": 31601
+      },
+      "aggregate_output_throughput_tok_s": 53.70204361300273,
+      "cell_id": "candidate-natural-ctx40960-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "40960": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43190992896,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60958937088
+      },
+      "native": {
+        "bytes": 21698,
+        "path": "native/candidate/candidate-natural-ctx40960-c2.json",
+        "sha256": "a8e7bea1eaa048205b5a282b8838c805e2391fc2fc06ee9c5a8aa33326f5b5f8"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 40960,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39398,
+        "path": "analysis/projections/candidate-natural-ctx40960-c2.json",
+        "sha256": "6b64f14a0302843b009945370c24f49f1ad3f19c39de01291013ee38948604ce"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 197.0,
+          "p95": 525.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 103.52201576863627,
+          "p95": 200.94926584388315,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 10256.058919010684,
+          "p95": 11865.369937964715,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 4271.196259557936,
+          "p95": 8753.565345517642,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 31600.0,
+          "p95": 31601.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 6803.644699044526,
+          "p95": 8998.515818966553,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 9.560754272419421,
+          "p95": 10.312606488506114,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 9535.337868030183,
+          "p95": 11012.985239038244,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 31601,
+        "min": 31599,
+        "ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "p50": 31600.0,
+        "p95": 31601
+      },
+      "aggregate_output_throughput_tok_s": 63.14338751729282,
+      "cell_id": "candidate-natural-ctx40960-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 3,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 3.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "40960": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43194183680,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60831399936
+      },
+      "native": {
+        "bytes": 21687,
+        "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+        "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 40960,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39398,
+        "path": "analysis/projections/candidate-natural-ctx40960-c4.json",
+        "sha256": "c90ccb44d8822fa7716988b7206a7e0dd295f534344581d98a692b3d194621d1"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 297.0,
+          "p95": 453.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 110.29645076986883,
+          "p95": 190.37520324371866,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 18888.943376019597,
+          "p95": 22466.961150057614,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 1784.1254450388271,
+          "p95": 8672.795451314514,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 31600.0,
+          "p95": 31601.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 17090.63128195703,
+          "p95": 19226.687913993374,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 8.987547902635555,
+          "p95": 9.654079303157168,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 18595.0216880301,
+          "p95": 22190.313988015987,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 134359,
+        "min": 134351,
+        "ordered": [
+          134351,
+          134353,
+          134355,
+          134357,
+          134358,
+          134359,
+          134359,
+          134359
+        ],
+        "p50": 134357.5,
+        "p95": 134359
+      },
+      "aggregate_output_throughput_tok_s": 11.408183818957859,
+      "cell_id": "candidate-natural-ctx163840-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "163840": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43221663744,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 61092581376
+      },
+      "native": {
+        "bytes": 21717,
+        "path": "native/candidate/candidate-natural-ctx163840-c1.json",
+        "sha256": "6c2564840ebbdbfd067f4869c3e1e0f7e205429681552d8270205544a8a75061"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 163840,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39529,
+        "path": "analysis/projections/candidate-natural-ctx163840-c1.json",
+        "sha256": "7da1286b9e3714ce73a0e3c527b7fb5775f4dd3d5fed201acec356340d6c2403"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 176.0,
+          "p95": 327.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 214.1751255879287,
+          "p95": 232.46257000042857,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 17799.127941951156,
+          "p95": 18653.25217298232,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 7885.6505058585235,
+          "p95": 7929.073037969899,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 134357.0,
+          "p95": 134359.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 17026.129427948035,
+          "p95": 17069.163403939456,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 4.651484024665244,
+          "p95": 4.991174064522347,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 17490.375223918818,
+          "p95": 18329.400017973967,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 134359,
+        "min": 134351,
+        "ordered": [
+          134351,
+          134353,
+          134355,
+          134357,
+          134358,
+          134359,
+          134359,
+          134359
+        ],
+        "p50": 134357.5,
+        "p95": 134359
+      },
+      "aggregate_output_throughput_tok_s": 11.590420721773928,
+      "cell_id": "candidate-natural-ctx163840-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "163840": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43219697664,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 61249507328
+      },
+      "native": {
+        "bytes": 21740,
+        "path": "native/candidate/candidate-natural-ctx163840-c2.json",
+        "sha256": "3a1bd2ed7f82447e80eebd094cdb022cf0fbbedf384edcdab4b96e4ce5647888"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 163840,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39517,
+        "path": "analysis/projections/candidate-natural-ctx163840-c2.json",
+        "sha256": "86c13c8e194df937b41a84402de3b2f763a0db1260f29ba2c93f9cd4c14d77c0"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 157.0,
+          "p95": 374.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 99.05138505825606,
+          "p95": 225.61496932537958,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 35148.13826803584,
+          "p95": 38048.34059101995,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 3955.4621244969476,
+          "p95": 7907.3318624731455,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 134357.0,
+          "p95": 134359.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 33535.16631096136,
+          "p95": 34907.60304208379,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 9.700289642781142,
+          "p95": 10.681959705102264,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 34397.31777203269,
+          "p95": 37711.317361099645,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 134359,
+        "min": 134351,
+        "ordered": [
+          134351,
+          134353,
+          134355,
+          134357,
+          134358,
+          134359,
+          134359,
+          134359
+        ],
+        "p50": 134357.5,
+        "p95": 134359
+      },
+      "aggregate_output_throughput_tok_s": 11.018851813018587,
+      "cell_id": "candidate-natural-ctx163840-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 3,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 3.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "163840": 8
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43240263680,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 58691543040
+      },
+      "native": {
+        "bytes": 21719,
+        "path": "native/candidate/candidate-natural-ctx163840-c4.json",
+        "sha256": "836f5fd48f42c44de7a153cdc8816c3ced59cb616e51275e0c483a57cd0052ee"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 163840,
+        "requests": 8,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 39517,
+        "path": "analysis/projections/candidate-natural-ctx163840-c4.json",
+        "sha256": "84c3f6d3bad04959bd42fb679bde21c98db934a5ac935d75803f4484b6990a0c"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 178.0,
+          "p95": 365.0,
+          "samples": 8
+        },
+        "decode_tok_s": {
+          "p50": 101.96883242337992,
+          "p95": 199.0073530488532,
+          "samples": 8
+        },
+        "e2e_ms": {
+          "p50": 69526.39530203305,
+          "p95": 73568.51203506812,
+          "samples": 8
+        },
+        "effective_prefill_tok_s": {
+          "p50": 1907.9968429091882,
+          "p95": 7892.160319785545,
+          "samples": 8
+        },
+        "prompt_tokens": {
+          "p50": 134357.0,
+          "p95": 134359.0,
+          "samples": 8
+        },
+        "time_to_first_output_ms": {
+          "p50": 68722.40490897093,
+          "p95": 70657.48994005844,
+          "samples": 8
+        },
+        "tpot_ms": {
+          "p50": 9.801597011507104,
+          "p95": 11.126850649348594,
+          "samples": 8
+        },
+        "ttft_ms": {
+          "p50": 69203.57615803368,
+          "p95": 73256.08236098196,
+          "samples": 8
+        }
+      }
+    },
+    {
+      "cell_id": "candidate-controlled-ctx10240-c1",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 10240,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx10240-c2",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 10240,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx10240-c4",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 10240,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx40960-c1",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 40960,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx40960-c2",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 40960,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx40960-c4",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 40960,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx163840-c1",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 163840,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx163840-c2",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 163840,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "cell_id": "candidate-controlled-ctx163840-c4",
+      "disposition": "blocked",
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 163840,
+        "requests": 20,
+        "workload": "synthetic-repeated-code"
+      },
+      "reason": "blocked: fixed-word prompt is not a dependable controlled output workload under retained request policy"
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 252302,
+        "min": 252300,
+        "ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "p50": 252300.5,
+        "p95": 252302
+      },
+      "aggregate_output_throughput_tok_s": 5.15884798495899,
+      "cell_id": "candidate-capacity-edge-ctx310272-c1",
+      "concurrency": {
+        "client_observed_max": 1,
+        "engine_active_max": 1,
+        "engine_occupancy_max": 1,
+        "engine_waiting_max": 0,
+        "requested": 1,
+        "waiting_by_reason_max": {
+          "capacity": 0.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "310272": 4
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43263918080,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60473618432
+      },
+      "native": {
+        "bytes": 16926,
+        "path": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+        "sha256": "6e588b1f25bc1ca3d113683bb5ff1971162565013b40ec258fdad13d3ddce27f"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 1,
+        "context_tokens": 310272,
+        "requests": 4,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 38966,
+        "path": "analysis/projections/candidate-capacity-edge-ctx310272-c1.json",
+        "sha256": "9de92fef5f41ddc5c25f84650cba9f4b72bd185de6658aa7bf5e60f2b44e8328"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 151.0,
+          "p95": 235.0,
+          "samples": 4
+        },
+        "decode_tok_s": {
+          "p50": 220.90772372378513,
+          "p95": 226.52150918827488,
+          "samples": 4
+        },
+        "e2e_ms": {
+          "p50": 34235.515908920206,
+          "p95": 34902.00679807458,
+          "samples": 4
+        },
+        "effective_prefill_tok_s": {
+          "p50": 7463.282766427175,
+          "p95": 7528.891731789979,
+          "samples": 4
+        },
+        "prompt_tokens": {
+          "p50": 252300.0,
+          "p95": 252302.0,
+          "samples": 4
+        },
+        "time_to_first_output_ms": {
+          "p50": 33769.064146094024,
+          "p95": 33805.84565701429,
+          "samples": 4
+        },
+        "tpot_ms": {
+          "p50": 4.5264910943316,
+          "p95": 4.925837617306768,
+          "samples": 4
+        },
+        "ttft_ms": {
+          "p50": 33899.64445098303,
+          "p95": 34648.31329707522,
+          "samples": 4
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 252302,
+        "min": 252300,
+        "ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "p50": 252300.5,
+        "p95": 252302
+      },
+      "aggregate_output_throughput_tok_s": 4.848355025625722,
+      "cell_id": "candidate-capacity-edge-ctx310272-c2",
+      "concurrency": {
+        "client_observed_max": 2,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 2,
+        "engine_waiting_max": 1,
+        "requested": 2,
+        "waiting_by_reason_max": {
+          "capacity": 1.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "310272": 4
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43273326592,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60468326400
+      },
+      "native": {
+        "bytes": 16954,
+        "path": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+        "sha256": "124cafe03d375861a80c758c0daee689478a0fb7ace3a6f5aeb8ceedd239f8ec"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 2,
+        "context_tokens": 310272,
+        "requests": 4,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 38953,
+        "path": "analysis/projections/candidate-capacity-edge-ctx310272-c2.json",
+        "sha256": "021dc3cdf96c14de9b5a2f9238988dcfdc462dfee8549d1a97ce8833dd961226"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 151.0,
+          "p95": 217.0,
+          "samples": 4
+        },
+        "decode_tok_s": {
+          "p50": 94.76532376782224,
+          "p95": 229.02982571925804,
+          "samples": 4
+        },
+        "e2e_ms": {
+          "p50": 67943.82063299417,
+          "p95": 70028.0758269364,
+          "samples": 4
+        },
+        "effective_prefill_tok_s": {
+          "p50": 3740.222271411361,
+          "p95": 7433.237073757332,
+          "samples": 4
+        },
+        "prompt_tokens": {
+          "p50": 252300.0,
+          "p95": 252302.0,
+          "samples": 4
+        },
+        "time_to_first_output_ms": {
+          "p50": 67288.88410003856,
+          "p95": 68499.70763700549,
+          "samples": 4
+        },
+        "tpot_ms": {
+          "p50": 9.369311435471495,
+          "p95": 10.763156267119125,
+          "samples": 4
+        },
+        "ttft_ms": {
+          "p50": 67694.48753609322,
+          "p95": 69290.97845591605,
+          "samples": 4
+        }
+      }
+    },
+    {
+      "actual_prompt_tokens": {
+        "max": 252302,
+        "min": 252300,
+        "ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "p50": 252300.5,
+        "p95": 252302
+      },
+      "aggregate_output_throughput_tok_s": 6.20641464316848,
+      "cell_id": "candidate-capacity-edge-ctx310272-c4",
+      "concurrency": {
+        "client_observed_max": 4,
+        "engine_active_max": 2,
+        "engine_occupancy_max": 4,
+        "engine_waiting_max": 3,
+        "requested": 4,
+        "waiting_by_reason_max": {
+          "capacity": 3.0,
+          "deferred": 0.0
+        }
+      },
+      "configured_context_distribution": {
+        "310272": 4
+      },
+      "disposition": "accepted",
+      "kv": {
+        "allocated_tokens": 1330579,
+        "physical_bytes": 15290083572
+      },
+      "memory": {
+        "cgroup_lifetime_peak_bytes": 53049847808,
+        "cgroup_sampled_peak_bytes": 43306901504,
+        "gpu_memory_accounting": "worst single sampled device; not a two-GPU sum",
+        "gpu_min_free_bytes_worst_device": 938475520,
+        "gpu_peak_used_bytes_worst_device": 101132009472,
+        "host_available_bytes": 60539084800
+      },
+      "native": {
+        "bytes": 16963,
+        "path": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+        "sha256": "f2251279413b8c4417b8225e34882e3c47ecf823cdf13de61268b5fecf09d89d"
+      },
+      "plan": {
+        "arm": "candidate",
+        "concurrency": 4,
+        "context_tokens": 310272,
+        "requests": 4,
+        "workload": "synthetic-summary"
+      },
+      "projection": {
+        "bytes": 38954,
+        "path": "analysis/projections/candidate-capacity-edge-ctx310272-c4.json",
+        "sha256": "5cf379419c7c6083089209bbedda93925961e19dc496d5f71f96be4b16a6b527"
+      },
+      "timing": {
+        "completion_tokens": {
+          "p50": 147.0,
+          "p95": 408.0,
+          "samples": 4
+        },
+        "decode_tok_s": {
+          "p50": 92.35456954081913,
+          "p95": 209.9150132990351,
+          "samples": 4
+        },
+        "e2e_ms": {
+          "p50": 69934.18766302057,
+          "p95": 138711.5456419997,
+          "samples": 4
+        },
+        "effective_prefill_tok_s": {
+          "p50": 2451.300805996955,
+          "p95": 7450.856968967504,
+          "samples": 4
+        },
+        "prompt_tokens": {
+          "p50": 252300.0,
+          "p95": 252302.0,
+          "samples": 4
+        },
+        "time_to_first_output_ms": {
+          "p50": 68373.10189392883,
+          "p95": 136772.66574196983,
+          "samples": 4
+        },
+        "tpot_ms": {
+          "p50": 10.231021850988824,
+          "p95": 10.916683699942187,
+          "samples": 4
+        },
+        "ttft_ms": {
+          "p50": 69183.66149801295,
+          "p95": 138339.8089329712,
+          "samples": 4
+        }
+      }
+    }
+  ],
+  "schema": "private-serving-final-draft/v2",
+  "statistics": {
+    "accepted_cells": 24,
+    "accepted_expected_terminal": 24,
+    "blocked_controlled_cells": 17,
+    "failed_original_controlled_cells": 1,
+    "matched_latency_pairs": 12,
+    "original_matrix_status": "partial",
+    "pending_cells": 0,
+    "required_cells": 42
+  }
+}

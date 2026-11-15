@@ -1,0 +1,125 @@
+[
+  {
+    "attempt": 0,
+    "index": 7,
+    "diagnostic_only": true,
+    "response": {
+      "time_to_first_output": 0.058519823011010885,
+      "ttft": 0.7444267070386559,
+      "e2e": 1.1052193710347638,
+      "out_toks": 184,
+      "output_token_source": "usage",
+      "content_chunks": 64,
+      "reasoning_chunks": 118,
+      "visible_content": "ANVIL_REQ_210321_00007 The code defines a series of ~1,232 boilerplate helper functions (helper_7 through helper_1238), each of which simply calls `compute(i)` with a sequential integer argument starting from 0, tagged with a \"routine specialist context\" comment.",
+      "visible_content_captured_chars": 263,
+      "visible_content_truncated": false,
+      "visible_content_capture_limit": 8192,
+      "finish_reasons": [
+        "stop"
+      ],
+      "stream_terminal_observed": true,
+      "usage": {
+        "prompt_tokens": 22923,
+        "completion_tokens": 184,
+        "total_tokens": 23107,
+        "prompt_tokens_details": {
+          "cached_tokens": 22923
+        }
+      }
+    },
+    "observation": {
+      "request_canary": {
+        "marker": "ANVIL_REQ_210321_00007",
+        "marker_at_start": true,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": true
+      },
+      "controlled_output": null
+    }
+  },
+  {
+    "attempt": 1,
+    "index": 6,
+    "diagnostic_only": true,
+    "response": {
+      "time_to_first_output": 0.03484300593845546,
+      "ttft": 0.6465175329940394,
+      "e2e": 0.985514500993304,
+      "out_toks": 164,
+      "output_token_source": "usage",
+      "content_chunks": 59,
+      "reasoning_chunks": 103,
+      "visible_content": "ANVIL_REQ_210321_00006 The code consists of roughly 1,200 boilerplate wrapper functions (helper_6 through helper_1237), each of which simply calls compute(n) with a sequential integer argument from 0 upward, differing only in the index passed.",
+      "visible_content_captured_chars": 243,
+      "visible_content_truncated": false,
+      "visible_content_capture_limit": 8192,
+      "finish_reasons": [
+        "stop"
+      ],
+      "stream_terminal_observed": true,
+      "usage": {
+        "prompt_tokens": 22924,
+        "completion_tokens": 164,
+        "total_tokens": 23088,
+        "prompt_tokens_details": {
+          "cached_tokens": 22924
+        }
+      }
+    },
+    "observation": {
+      "request_canary": {
+        "marker": "ANVIL_REQ_210321_00006",
+        "marker_at_start": true,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": true
+      },
+      "controlled_output": null
+    }
+  },
+  {
+    "attempt": 2,
+    "index": 7,
+    "diagnostic_only": true,
+    "response": {
+      "time_to_first_output": 0.03139657306019217,
+      "ttft": 0.24266057298518717,
+      "e2e": 0.6227579560363665,
+      "out_toks": 104,
+      "output_token_source": "usage",
+      "content_chunks": 66,
+      "reasoning_chunks": 36,
+      "visible_content": "ANVIL_REQ_210321_00007 A Python file containing ~1,238 boilerplate helper functions (helper_7 through helper_1238), each returning a call to an undefined `compute(n)` with a sequential argument offset by 6 from the helper's index, all annotated \"routine specialist context.\"",
+      "visible_content_captured_chars": 274,
+      "visible_content_truncated": false,
+      "visible_content_capture_limit": 8192,
+      "finish_reasons": [
+        "stop"
+      ],
+      "stream_terminal_observed": true,
+      "usage": {
+        "prompt_tokens": 22923,
+        "completion_tokens": 104,
+        "total_tokens": 23027,
+        "prompt_tokens_details": {
+          "cached_tokens": 22923
+        }
+      }
+    },
+    "observation": {
+      "request_canary": {
+        "marker": "ANVIL_REQ_210321_00007",
+        "marker_at_start": true,
+        "observed_marker_count": 1,
+        "foreign_marker_count": 0,
+        "capture_complete": true,
+        "passed": true
+      },
+      "controlled_output": null
+    }
+  }
+]

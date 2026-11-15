@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-21T09:24:37.208288+00:00",
+  "runtime_package_path": "/root/.cache/flare/packages/snapshots/ccfacae530f1d4fcf85c95e5a1396188c7bcebcf0aa6125db975c4a37e35e26c/model.safetensors",
+  "path_is_cache_key_not_content_hash": true,
+  "bytes": 2501456,
+  "metadata_method": "read-only exact non-secret package-file stat;managed auxiliary-volume metadata query absent",
+  "package_index_sha256": "afbdc17bc85a906bb361ba3db92442e5b800c702f204ff0d3e00f7e5a5e94b50",
+  "hash_scope": "model.safetensors package index only; external blobs are not included in this digest"
+}

@@ -1,0 +1,61 @@
+{
+  "declared_at": "2026-10-21T14:55:11.028426+00:00",
+  "scope": "One additional same-policy incumbent control; preserve all earlier results.",
+  "reason": "Actual completion return_prompt_text proves top-level reasoning_effort=high renders High instead of configured default Max.",
+  "transport_proof": "incumbent-reasoning-request-path-assessment.json",
+  "gate": "seven-check High preflight must pass first",
+  "capacity": {
+    "requests": 100,
+    "concurrency": 4,
+    "seed": 211016,
+    "context_tokens": 10240,
+    "response_words": 16,
+    "max_tokens": 2048,
+    "temperature": 1,
+    "top_p": 0.95,
+    "reasoning_effort": "high",
+    "cache": "unique",
+    "canaries": true,
+    "policy": "strict"
+  },
+  "stop_by": "2026-10-21T15:05:00Z",
+  "limitations": "Different checkpoints and engine; no API sampling seed; no general quality or engine-only speed claim.",
+  "additional_control_declared_at": "2026-10-21T14:56:17.981673+00:00",
+  "conditional_natural_matrix": {
+    "gate": "strict16n100100/100 and endpoint remains healthy",
+    "requests_per_cell": 12,
+    "contexts": [
+      10240,
+      32768
+    ],
+    "concurrency": [
+      1,
+      4
+    ],
+    "warmth": [
+      "cold",
+      "warm"
+    ],
+    "seeds": [
+      210104,
+      210324,
+      210101,
+      210321
+    ],
+    "max_tokens": 2048,
+    "temperature": 1,
+    "top_p": 0.95,
+    "response_words": 0,
+    "canaries": true,
+    "reasoning_effort": "high",
+    "no_new_cells_after": "2026-10-21T15:05:00Z"
+  },
+  "conditional_agentic": {
+    "gate": "nativeHighpreflightpassed and idleendpoint",
+    "cases": "same9oracle8cases x2",
+    "reasoning_effort": "high",
+    "max_steps": 24,
+    "max_completion_tokens": 8192,
+    "deadline_start": "2026-10-21T15:05:00Z"
+  }
+}

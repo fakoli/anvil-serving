@@ -1,0 +1,40 @@
+{
+  "type": "mock-only no network or GPU work",
+  "script_sha256": "2ff4aa170dd3365bd3bf29c677bd659ca4d3459e3108073a7ae9571f02beb87a",
+  "checks": [
+    {
+      "mock_invalid_usage": false,
+      "exit_code": 0,
+      "passed": 4,
+      "journal_completed_requests": 4,
+      "gates": {
+        "client_overlap": true,
+        "cold_prefixes": true,
+        "idle_after": true,
+        "metrics_complete": true,
+        "no_engine_failure_delta": true,
+        "quality": true,
+        "sampled_active_four": true
+      },
+      "raw_response_preserved": true,
+      "exclusive_output": true
+    },
+    {
+      "mock_invalid_usage": true,
+      "exit_code": 1,
+      "passed": 3,
+      "journal_completed_requests": 4,
+      "gates": {
+        "client_overlap": true,
+        "cold_prefixes": true,
+        "idle_after": true,
+        "metrics_complete": true,
+        "no_engine_failure_delta": true,
+        "quality": false,
+        "sampled_active_four": true
+      },
+      "raw_response_preserved": true,
+      "exclusive_output": true
+    }
+  ]
+}

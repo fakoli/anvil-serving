@@ -1,0 +1,781 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-22-flare-cache-fix",
+    "title": "Flare 32 GiB host-cache row allocation diagnostics",
+    "decision": "no-promotion",
+    "diagnostic_only": true,
+    "performance_eligible": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "flare-cache-fix-normalized/v1",
+    "flare-cache-fix-analysis/v1",
+    "flare-cache-fix-descriptive/v1",
+    "flare-cache-fix-proof/v1",
+    "flare-cache-fix-lane-proofs/v1",
+    "flare-cache-fix-historical-readiness/v1",
+    "flare-cache-fix-window-closeout/v1",
+    "preflight/v2",
+    "recipe-container-status/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "3ca091886497fb7f2dfcc8096cd6bffafa529624c3111fb69376982a990b8d45",
+          "bytes": 9934
+        },
+        {
+          "path": "publication/source-alias-map.json",
+          "sha256": "b69b8d4757082e7cd06ac98c1e321deaf1a080b2c66e0b1b2b2fd6898fe30002",
+          "bytes": 10092
+        },
+        {
+          "path": "report-evidence-map.json",
+          "sha256": "6e021b9cc7f004d67a8f92ce62fd5b7e966928db4c33396bd97e6210f7ce09f8",
+          "bytes": 5374
+        },
+        {
+          "path": "report.md",
+          "sha256": "dc6d9ca8857724df2a07f72c8abe2a91db950fadf238f7c2f91fe7c2a95a89e9",
+          "bytes": 12331
+        },
+        {
+          "path": "provenance.json",
+          "sha256": "eb18896a8ae92779f2eb44452471c71e618639267694289b40d536bf85f4a94c",
+          "bytes": 5904752
+        },
+        {
+          "path": "publication-transformations.json",
+          "sha256": "57346027c74c25191611e6fdb73090a1e204aa1549a46acc3e36ac3c7c33f5e8",
+          "bytes": 1713
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "contribution/CONTRIBUTION.md",
+          "sha256": "8e85be3fe534694c3828676d190ca08e05e0103c3550e39caa9d71d09f82c6c2",
+          "bytes": 4368
+        },
+        {
+          "path": "contribution/SPLIT-REVIEW.md",
+          "sha256": "9d5b554b7c09f529ead64b63e077fd35f5b6173042f9574ac612f45a2e854791",
+          "bytes": 1375
+        },
+        {
+          "path": "contribution/flare-fix-001-incremental.patch",
+          "sha256": "429ef969cb3a5cb4f6b207aea88cec2d676ade2e7e9915fe8a696e881a5fa285",
+          "bytes": 86360
+        },
+        {
+          "path": "contribution/flare-fix-001-row-share-admission.patch",
+          "sha256": "f9f9f1f9e26ab88cf9e51bd443ed1273cedd83293103512945b242299a5c850e",
+          "bytes": 35298
+        },
+        {
+          "path": "contribution/flare-fix-001-transfer-audit.patch",
+          "sha256": "203896f53cfe424a5c57c219313e0349963c97fe4c2b1cbc552085f6c2d8bbfd",
+          "bytes": 63042
+        },
+        {
+          "path": "contribution/manifest.json",
+          "sha256": "a54948012d84fc348e3d0f89dc63fb9a93b0c2ab729ff84f93cf8e70ef05e9d6",
+          "bytes": 4486
+        },
+        {
+          "path": "harness/oracles.py",
+          "sha256": "a0f434ad49a71a3d52bbaa4501ccbbde91e808fed48eadafd5278a7d48924f0b",
+          "bytes": 1061
+        },
+        {
+          "path": "source-registry.json",
+          "sha256": "c5f903f2a666e5544ea1fc85723b75cdfa86acd627e218469ac70cd60c812990",
+          "bytes": 12207
+        },
+        {
+          "path": "raw/lifetime-and-transfer-fixtures.tar.gz",
+          "sha256": "1f9d9640b3329fb88c924d96096779dcf0d3cc0d43b6dd390a4d123771af9660",
+          "bytes": 12057
+        },
+        {
+          "path": "source/frozen-source-and-harness.tar.gz",
+          "sha256": "01290499944497877b93c66c4f2aa4dbd2fa15c4970054e0f0f53fe09fda9343",
+          "bytes": 229702
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "analysis/normalized-matrix.json.gz",
+          "sha256": "365ec89330de407571b505a203657c8820de5b9d88d494b0f3f28ae497d2dde5",
+          "bytes": 1542045
+        },
+        {
+          "path": "harness/DECODE.md",
+          "sha256": "2bf1191b993276261c99ffb42ad230521bf2ed6d83ab18beaade5d8f28ef0e0a",
+          "bytes": 2724
+        },
+        {
+          "path": "harness/NORMALIZATION.md",
+          "sha256": "cc615119626970b9af8719edfc5f116a76c567d95cc61a85d58a3a5c5d532fea",
+          "bytes": 4272
+        },
+        {
+          "path": "harness/PROOFS.md",
+          "sha256": "f5dd985bda0299c6ecc001f2271d6b567da22733a15e294255424c6cce7231a3",
+          "bytes": 3370
+        },
+        {
+          "path": "harness/README.md",
+          "sha256": "badf4934780eed86fa47c2281462132bf29727c645932a7d84967bc97bc6b362",
+          "bytes": 12450
+        },
+        {
+          "path": "harness/RUNTIME.md",
+          "sha256": "089e9e3a1e18071967d51f8351e30cd1da085832dcbcdc00cec8cb24583bf5df",
+          "bytes": 1383
+        },
+        {
+          "path": "harness/oracle-fixtures.json",
+          "sha256": "a16b794e0ced3c34fc193e69fd6703f65d866b2fef8b9b95453e698e3ad18536",
+          "bytes": 3480
+        },
+        {
+          "path": "harness/oracles.py",
+          "sha256": "a0f434ad49a71a3d52bbaa4501ccbbde91e808fed48eadafd5278a7d48924f0b",
+          "bytes": 1061
+        },
+        {
+          "path": "harness/sse-model-identity-issue.md",
+          "sha256": "a9632a20adc2c561166e23cfd0653e4750cd1061efb6ae640b3c5ec205056277",
+          "bytes": 1614
+        },
+        {
+          "path": "source/frozen-source-and-harness.tar.gz",
+          "sha256": "01290499944497877b93c66c4f2aa4dbd2fa15c4970054e0f0f53fe09fda9343",
+          "bytes": 229702
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "analysis/final-causal-procedure.md",
+          "sha256": "00ec179ac00311b2257b2bb1d9c181a7816779a2366db134fd76e654a687d42c",
+          "bytes": 5753
+        },
+        {
+          "path": "diagnostic-amendment.json",
+          "sha256": "b6be295ebe5e6e41de64ffa43d65990866479dbcaf2a1cf0183b6068f8e0c68a",
+          "bytes": 1065
+        },
+        {
+          "path": "geometry.json",
+          "sha256": "0d920e36a1492276d5ab3e73adfd3284cc20144fabaddd73b23083257e9bd7c1",
+          "bytes": 2652
+        },
+        {
+          "path": "publication/README.md",
+          "sha256": "372bbce2b770d113c74e32e2cdcbf0659bc8c2799851d45dccd64939b58ec0c9",
+          "bytes": 2485
+        },
+        {
+          "path": "publication/inventory-selection-plan.md",
+          "sha256": "0cabf5b604a3ca731822c2cb9f821f4d0d9afbd93388254a8b60658797872825",
+          "bytes": 7613
+        },
+        {
+          "path": "publication/native-evidence-schemas.json",
+          "sha256": "b1b78226c437421bc311d2cd14456a89f3f8bc79b6cf7deb7c8550c96950a4b3",
+          "bytes": 11359
+        },
+        {
+          "path": "publication/source-alias-map.json",
+          "sha256": "b69b8d4757082e7cd06ac98c1e321deaf1a080b2c66e0b1b2b2fd6898fe30002",
+          "bytes": 10092
+        },
+        {
+          "path": "raw/configuration-and-operations.tar.gz",
+          "sha256": "f7beb2c3475611e5869184da2e487a2feabf5bd1eb1deb4d4882bee24a8cbf87",
+          "bytes": 48732
+        },
+        {
+          "path": "review/reviews-and-limitations.tar.gz",
+          "sha256": "04cfc02eb8f4d87c92d9bc59bfc3f1a5b03b60b1f2d258bbe6ac4bc8ed02e6fb",
+          "bytes": 151278
+        },
+        {
+          "path": "source/frozen-source-and-harness.tar.gz",
+          "sha256": "01290499944497877b93c66c4f2aa4dbd2fa15c4970054e0f0f53fe09fda9343",
+          "bytes": 229702
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "implementation/source-tests.md",
+          "sha256": "342f10178edf0271eed72cce41c9f811c5241f42fa6917a926ad2591d2c6ca5c",
+          "bytes": 8506
+        },
+        {
+          "path": "lifetime-test-proposal/COVERAGE.md",
+          "sha256": "92de6f5498ba93a7239034092ad6cf5099c72582a0808a4e946c71b4249edf3a",
+          "bytes": 4121
+        },
+        {
+          "path": "monitoring/capture-plan.md",
+          "sha256": "bdd82e0a5624db4d6092993bad495256126db87239b49a30e6ebb2716566a013",
+          "bytes": 5151
+        },
+        {
+          "path": "raw/configuration-and-operations.tar.gz",
+          "sha256": "f7beb2c3475611e5869184da2e487a2feabf5bd1eb1deb4d4882bee24a8cbf87",
+          "bytes": 48732
+        },
+        {
+          "path": "raw/formal-r1-a.tar.gz",
+          "sha256": "664af4318babed170b4612e416e07897846fd7fb22011fa3596a817a31dd545a",
+          "bytes": 8115533
+        },
+        {
+          "path": "raw/formal-r1-b.tar.gz",
+          "sha256": "ed3e1b4c28fcf187a9acf054b55e6cbf1866ae936fb8a90027a092697132964b",
+          "bytes": 8146082
+        },
+        {
+          "path": "raw/formal-r2-a.tar.gz",
+          "sha256": "5100b5260993762c6f5de08bbc09155034718d253c9e207222c27e109b85854d",
+          "bytes": 8117619
+        },
+        {
+          "path": "raw/formal-r2-b.tar.gz",
+          "sha256": "bc1edebddbbea240e3af4e956756b3cb0026c998f8afc18329804df1413f8d0c",
+          "bytes": 8143427
+        },
+        {
+          "path": "raw/formal-r3-a.tar.gz",
+          "sha256": "f5ddfeb1139a5284b8af75175df95199d2c8b70144551b75f8222124b63ce7db",
+          "bytes": 8115496
+        },
+        {
+          "path": "raw/formal-r3-b.tar.gz",
+          "sha256": "5b469862ac478fde2517ee471b675ca3399ea42024298aeb2d67bfbdce3d39b0",
+          "bytes": 8144069
+        },
+        {
+          "path": "raw/monitoring-and-readiness.tar.gz",
+          "sha256": "cd016e5d990034f9999bbb94b6b36c3273aee6fcb0e5bb614a2beb323cc07c8e",
+          "bytes": 22826
+        },
+        {
+          "path": "raw/pilots-and-audits.tar.gz",
+          "sha256": "d34abb768139365c7e9aa6e088f57148ff9d5f657f12937ed195651e867bf3ef",
+          "bytes": 6721222
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "audit-a-correctness/http/attempts.json",
+          "sha256": "85bfed2673a9fc766db084de32c64f6902221f57f26e06f7897b6928eff26272",
+          "bytes": 59282
+        },
+        {
+          "path": "audit-a-correctness/summary.json",
+          "sha256": "110232478bde4b40368859afd7aacc32fdf46786fe225edc735f3f8c44f871e9",
+          "bytes": 248
+        },
+        {
+          "path": "audit-a-transfer-audit.json",
+          "sha256": "bdd6d1313ffe1c5efd26338cbfe996a4af26c1c88b376812638c78e18dd58b3a",
+          "bytes": 59985
+        },
+        {
+          "path": "audit-a-transfer-logs.json",
+          "sha256": "76b05994473a6fb4786bf9b8b00b709ce9e53b0ec373ce9a3a93446d19898131",
+          "bytes": 44944
+        },
+        {
+          "path": "audit-b-correctness/http/attempts.json",
+          "sha256": "abad60b4c3f978ea2a0ed6ad77e2993e2537067bb57e6bf2ca85465dc8016086",
+          "bytes": 59161
+        },
+        {
+          "path": "audit-b-correctness/summary.json",
+          "sha256": "7ea75d3d0195b6d783dc7b86b84ee3c686edeea9b4842eab70f2f4b9216407bd",
+          "bytes": 248
+        },
+        {
+          "path": "audit-b-transfer-audit.json",
+          "sha256": "71d7d9e397d7aa261d11126ce8572c329a7f2a4350e751835cc2179fc54cd047",
+          "bytes": 93613
+        },
+        {
+          "path": "audit-b-transfer-logs.json",
+          "sha256": "e9f7afe926506cbf0fb3b64a695c168691efb837bfdda43e3aa8ddcac3b5b6bc",
+          "bytes": 69153
+        },
+        {
+          "path": "lifetime-test-execution/execution.json",
+          "sha256": "1da32f39d3eaabc166946f4abcf81020d44c6ef278a957f5e841d35ac4a929e2",
+          "bytes": 1742
+        },
+        {
+          "path": "lifetime-test-execution/r2/execution.json",
+          "sha256": "c1553fd7b97269f68425745744d9a8b122ab83db88536413ef3db3dca7cd8313",
+          "bytes": 2095
+        },
+        {
+          "path": "pilot-a-repeatability-comparison.json",
+          "sha256": "6c72bed3e537fdaa10eb472446131cbf6777256376d494515b3b2145028cbb9d",
+          "bytes": 5011
+        },
+        {
+          "path": "pilot-a-restore-comparison.json",
+          "sha256": "fc9817f90c0c96493b5ff1c6feccd4e2546403e73fcc5e3fe0664c7139ee46a8",
+          "bytes": 4564
+        },
+        {
+          "path": "raw/failed-windows.tar.gz",
+          "sha256": "c4050ed34017a06522a99d8452ad8440a5fdb992046079f905b14c05a8f4a66a",
+          "bytes": 17417
+        },
+        {
+          "path": "raw/formal-r1-a.tar.gz",
+          "sha256": "664af4318babed170b4612e416e07897846fd7fb22011fa3596a817a31dd545a",
+          "bytes": 8115533
+        },
+        {
+          "path": "raw/formal-r1-b.tar.gz",
+          "sha256": "ed3e1b4c28fcf187a9acf054b55e6cbf1866ae936fb8a90027a092697132964b",
+          "bytes": 8146082
+        },
+        {
+          "path": "raw/formal-r2-a.tar.gz",
+          "sha256": "5100b5260993762c6f5de08bbc09155034718d253c9e207222c27e109b85854d",
+          "bytes": 8117619
+        },
+        {
+          "path": "raw/formal-r2-b.tar.gz",
+          "sha256": "bc1edebddbbea240e3af4e956756b3cb0026c998f8afc18329804df1413f8d0c",
+          "bytes": 8143427
+        },
+        {
+          "path": "raw/formal-r3-a.tar.gz",
+          "sha256": "f5ddfeb1139a5284b8af75175df95199d2c8b70144551b75f8222124b63ce7db",
+          "bytes": 8115496
+        },
+        {
+          "path": "raw/formal-r3-b.tar.gz",
+          "sha256": "5b469862ac478fde2517ee471b675ca3399ea42024298aeb2d67bfbdce3d39b0",
+          "bytes": 8144069
+        },
+        {
+          "path": "raw/lifetime-and-transfer-fixtures.tar.gz",
+          "sha256": "1f9d9640b3329fb88c924d96096779dcf0d3cc0d43b6dd390a4d123771af9660",
+          "bytes": 12057
+        },
+        {
+          "path": "raw/monitoring-and-readiness.tar.gz",
+          "sha256": "cd016e5d990034f9999bbb94b6b36c3273aee6fcb0e5bb614a2beb323cc07c8e",
+          "bytes": 22826
+        },
+        {
+          "path": "raw/pilots-and-audits.tar.gz",
+          "sha256": "d34abb768139365c7e9aa6e088f57148ff9d5f657f12937ed195651e867bf3ef",
+          "bytes": 6721222
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "f14fe596d6dc6b8780bf2d64ff09d9b2cbd5bc983471bc9ebe9744de9d9fae70",
+          "bytes": 9518
+        },
+        {
+          "path": "review/audit-a-gate-review.md",
+          "sha256": "391c2c38aeb40e3369c6b36e4e82528f71eef0dc24a5e93a207a4937511ff7e9",
+          "bytes": 6267
+        },
+        {
+          "path": "review/cache-counter-semantics.md",
+          "sha256": "0726170485c1f321317ffbcb7615c97f5f3730d5606c39f73d3d0ef3d81326be",
+          "bytes": 5866
+        },
+        {
+          "path": "review/correctness-coverage.md",
+          "sha256": "c17c78cc51a553f04584cbda793569811e381a3491c7e10185ad5efe906aa829",
+          "bytes": 6201
+        },
+        {
+          "path": "review/decode-warmup-audit-review.md",
+          "sha256": "df2887c4a6375a88d2effa24a4951cd2b4ad5654b206db36b38a98fed5c61d77",
+          "bytes": 6371
+        },
+        {
+          "path": "review/descriptive-analysis-review.md",
+          "sha256": "73f68d84e42c7639fbe28f712b65e95c1075fb89c4a958144538a9f1954cdae5",
+          "bytes": 5944
+        },
+        {
+          "path": "review/final-causal-review.md",
+          "sha256": "473a96eddeb730e470ef9e468ba786f528597dfab4a6d862e205ae0cfd6fa9de",
+          "bytes": 7621
+        },
+        {
+          "path": "review/final-matrix-review.md",
+          "sha256": "59f12a56a4e908d4e16fb0b158d2c4c5d0ae63012f5827677a3f94893e9b4f2e",
+          "bytes": 7459
+        },
+        {
+          "path": "review/final-report-review.md",
+          "sha256": "3728e04609ab149290d633f098da6e44218a63c92ea0cc69c07e2435038a346c",
+          "bytes": 7716
+        },
+        {
+          "path": "review/functional-proof-scope.md",
+          "sha256": "72a3d0787542a141aafc5808ec62b6336edaf7470593956260fe07b9661e7f44",
+          "bytes": 5019
+        },
+        {
+          "path": "review/lifetime-fixture-review.md",
+          "sha256": "4ce897dc9b0a630f5f0a06e6642d1c1272bb829c0fef5dfd72325ceb485a3aee",
+          "bytes": 7044
+        },
+        {
+          "path": "review/live-cancellation-feasibility.md",
+          "sha256": "e649366ef0ac93275b8c647e44b87f6015d66bba52bf3a3928033265e21f4311",
+          "bytes": 7337
+        },
+        {
+          "path": "review/monitoring-collector-review.md",
+          "sha256": "05b00d11229d910b0c5123fdb65f6245e8f5b72a6ade7196acdf64c10b71ac8f",
+          "bytes": 6474
+        },
+        {
+          "path": "review/narrative-draft-review.md",
+          "sha256": "456aa344c92b7e8511e48c6db8ee78a48dfefdd6964d5f5e3d6bad46be6ae5cf",
+          "bytes": 3575
+        },
+        {
+          "path": "review/native-evidence-registry-review.md",
+          "sha256": "9d21b5bab62e0738c4d0328d6929e6713c74efe89ae50152b75301b23b053980",
+          "bytes": 5964
+        },
+        {
+          "path": "review/numerical-policy-addendum.md",
+          "sha256": "0b6ae427a39d8f57ec419e671ae1a3e19ffe207e47154ef2babbe8741c8fa58d",
+          "bytes": 1951
+        },
+        {
+          "path": "review/preformal-gate-review.md",
+          "sha256": "2e5226dc7c263386318ddc499b4ac02ef1a90df1db5f14efce3705bf4b740017",
+          "bytes": 4255
+        },
+        {
+          "path": "review/proof-assembler-review.md",
+          "sha256": "748c35f3037747154ffc07ecee64946598155f5e0ef08564d61e7b0b02fc5bb5",
+          "bytes": 11425
+        },
+        {
+          "path": "review/publication-prep-review.md",
+          "sha256": "82157d01ddc846440d36c49bc2a5f352a74459e702ef9021e52228d61f54a5f0",
+          "bytes": 10084
+        },
+        {
+          "path": "review/r1-b-closeout-review.md",
+          "sha256": "d05688b0f31b7738770afc632a4d99b6581f1befc9147d850024331be19f872c",
+          "bytes": 5372
+        },
+        {
+          "path": "review/r2-a-closeout-review.md",
+          "sha256": "78ce7dba973ebbfcde496b25dc5ba5a6191be991068d9715798d935e04e6dc6e",
+          "bytes": 4134
+        },
+        {
+          "path": "review/r2-b-closeout-review.md",
+          "sha256": "9b5e0a96c291a94e229ae465b3ea4dac37a51849e2dc4dbe3db7ddfe6098fdb2",
+          "bytes": 10135
+        },
+        {
+          "path": "review/r3-a-closeout-review.md",
+          "sha256": "5b0aec63ca171f12af562b5f41438289c87cd23a3ed0a1fcc8213814f59623c6",
+          "bytes": 3690
+        },
+        {
+          "path": "review/r3-b-closeout-review.md",
+          "sha256": "43881611fa04cafdbe73bb7873907df98290c43cb41b60175381fe738a8d1745",
+          "bytes": 3841
+        },
+        {
+          "path": "review/review.md",
+          "sha256": "3607104d3ba7d83a63877cc7d7a6134603b2d0c731d7ecda4eb99414b20a2e23",
+          "bytes": 15146
+        },
+        {
+          "path": "review/sampling-discriminator.json",
+          "sha256": "0c29f240a60ffe4fef89ddba37aaa1720d926e0bd294077d52775511ef96dc13",
+          "bytes": 1333
+        },
+        {
+          "path": "review/sampling-discriminator.md",
+          "sha256": "a4157e179860fdd4d1880890a896969f0281056f0baae3d38e02ed795733d463",
+          "bytes": 6998
+        },
+        {
+          "path": "review/serial-runner-review.md",
+          "sha256": "525fbe1cb97668f572bc0135136d1beea2b90b6d3126db643bfc313e4625faa8",
+          "bytes": 8598
+        },
+        {
+          "path": "review/transfer-verification-feasibility.md",
+          "sha256": "80cacaf86afecb4c5e4feb63912f220e3012c34f945897f64292ffa8727879d8",
+          "bytes": 6235
+        },
+        {
+          "path": "review/upstream-freshness.md",
+          "sha256": "5979870a83fdb1a0aa620edbe64e1f3bed3b556cfd97650052fc0c1a213f0c02",
+          "bytes": 6309
+        },
+        {
+          "path": "raw/configuration-and-operations.tar.gz",
+          "sha256": "f7beb2c3475611e5869184da2e487a2feabf5bd1eb1deb4d4882bee24a8cbf87",
+          "bytes": 48732
+        },
+        {
+          "path": "raw/failed-windows.tar.gz",
+          "sha256": "c4050ed34017a06522a99d8452ad8440a5fdb992046079f905b14c05a8f4a66a",
+          "bytes": 17417
+        },
+        {
+          "path": "raw/formal-r1-a.tar.gz",
+          "sha256": "664af4318babed170b4612e416e07897846fd7fb22011fa3596a817a31dd545a",
+          "bytes": 8115533
+        },
+        {
+          "path": "raw/formal-r1-b.tar.gz",
+          "sha256": "ed3e1b4c28fcf187a9acf054b55e6cbf1866ae936fb8a90027a092697132964b",
+          "bytes": 8146082
+        },
+        {
+          "path": "raw/formal-r2-a.tar.gz",
+          "sha256": "5100b5260993762c6f5de08bbc09155034718d253c9e207222c27e109b85854d",
+          "bytes": 8117619
+        },
+        {
+          "path": "raw/formal-r2-b.tar.gz",
+          "sha256": "bc1edebddbbea240e3af4e956756b3cb0026c998f8afc18329804df1413f8d0c",
+          "bytes": 8143427
+        },
+        {
+          "path": "raw/formal-r3-a.tar.gz",
+          "sha256": "f5ddfeb1139a5284b8af75175df95199d2c8b70144551b75f8222124b63ce7db",
+          "bytes": 8115496
+        },
+        {
+          "path": "raw/formal-r3-b.tar.gz",
+          "sha256": "5b469862ac478fde2517ee471b675ca3399ea42024298aeb2d67bfbdce3d39b0",
+          "bytes": 8144069
+        },
+        {
+          "path": "raw/lifetime-and-transfer-fixtures.tar.gz",
+          "sha256": "1f9d9640b3329fb88c924d96096779dcf0d3cc0d43b6dd390a4d123771af9660",
+          "bytes": 12057
+        },
+        {
+          "path": "raw/pilots-and-audits.tar.gz",
+          "sha256": "d34abb768139365c7e9aa6e088f57148ff9d5f657f12937ed195651e867bf3ef",
+          "bytes": 6721222
+        },
+        {
+          "path": "review/reviews-and-limitations.tar.gz",
+          "sha256": "04cfc02eb8f4d87c92d9bc59bfc3f1a5b03b60b1f2d258bbe6ac4bc8ed02e6fb",
+          "bytes": 151278
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "7702b68537f60d300bc4395fdb56f57dfdba306febd5891e02138db203065943",
+          "bytes": 9512
+        },
+        {
+          "path": "raw/configuration-and-operations.tar.gz",
+          "sha256": "f7beb2c3475611e5869184da2e487a2feabf5bd1eb1deb4d4882bee24a8cbf87",
+          "bytes": 48732
+        },
+        {
+          "path": "raw/failed-windows.tar.gz",
+          "sha256": "c4050ed34017a06522a99d8452ad8440a5fdb992046079f905b14c05a8f4a66a",
+          "bytes": 17417
+        },
+        {
+          "path": "raw/formal-r1-a.tar.gz",
+          "sha256": "664af4318babed170b4612e416e07897846fd7fb22011fa3596a817a31dd545a",
+          "bytes": 8115533
+        },
+        {
+          "path": "raw/formal-r1-b.tar.gz",
+          "sha256": "ed3e1b4c28fcf187a9acf054b55e6cbf1866ae936fb8a90027a092697132964b",
+          "bytes": 8146082
+        },
+        {
+          "path": "raw/formal-r2-a.tar.gz",
+          "sha256": "5100b5260993762c6f5de08bbc09155034718d253c9e207222c27e109b85854d",
+          "bytes": 8117619
+        },
+        {
+          "path": "raw/formal-r2-b.tar.gz",
+          "sha256": "bc1edebddbbea240e3af4e956756b3cb0026c998f8afc18329804df1413f8d0c",
+          "bytes": 8143427
+        },
+        {
+          "path": "raw/formal-r3-a.tar.gz",
+          "sha256": "f5ddfeb1139a5284b8af75175df95199d2c8b70144551b75f8222124b63ce7db",
+          "bytes": 8115496
+        },
+        {
+          "path": "raw/formal-r3-b.tar.gz",
+          "sha256": "5b469862ac478fde2517ee471b675ca3399ea42024298aeb2d67bfbdce3d39b0",
+          "bytes": 8144069
+        },
+        {
+          "path": "raw/monitoring-and-readiness.tar.gz",
+          "sha256": "cd016e5d990034f9999bbb94b6b36c3273aee6fcb0e5bb614a2beb323cc07c8e",
+          "bytes": 22826
+        },
+        {
+          "path": "raw/pilots-and-audits.tar.gz",
+          "sha256": "d34abb768139365c7e9aa6e088f57148ff9d5f657f12937ed195651e867bf3ef",
+          "bytes": 6721222
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "analysis/README.md",
+          "sha256": "41060a6496f5987fb230d98c314f54556c9ff07ca7dcdaf527f04ae469151542",
+          "bytes": 2578
+        },
+        {
+          "path": "analysis/cache-causal-observations.json.gz",
+          "sha256": "08f5a8584c01d0771116893d51532d8668ec780b4e1edc3ad4007de433ac6da0",
+          "bytes": 60027
+        },
+        {
+          "path": "analysis/descriptive.json.gz",
+          "sha256": "ace764e246358262f6a1c2bbb1769007567867cefdc1a5f64f9304c10d445bd6",
+          "bytes": 53383
+        },
+        {
+          "path": "analysis/diagnostic-analysis.json",
+          "sha256": "952a0bfcf01e147a6572c252eadb01b62d22161d6522205d2e544140caae040a",
+          "bytes": 16300
+        },
+        {
+          "path": "analysis/final-causal-assessment.json",
+          "sha256": "d5342ddc8c0f2c2da9368d45a563c60c1635f3c090db48d022982dc8dc665256",
+          "bytes": 16297
+        },
+        {
+          "path": "analysis/final-causal-assessment.md",
+          "sha256": "eac18fa8b5c0d1d32512cfb791d57ec9b7275bcbe91ed1189fcbc6fe4fbfd7d3",
+          "bytes": 2707
+        },
+        {
+          "path": "analysis/final-causal-procedure.md",
+          "sha256": "00ec179ac00311b2257b2bb1d9c181a7816779a2366db134fd76e654a687d42c",
+          "bytes": 5753
+        },
+        {
+          "path": "analysis/normalized-matrix.json.gz",
+          "sha256": "365ec89330de407571b505a203657c8820de5b9d88d494b0f3f28ae497d2dde5",
+          "bytes": 1542045
+        },
+        {
+          "path": "analysis/proof-assembly-map.md",
+          "sha256": "ca1256e388506fb667a3ddbf68e9882748ace2182db6b74c8a9a9359958fcc33",
+          "bytes": 7004
+        },
+        {
+          "path": "analysis/r1-b-monitoring-limitations.md",
+          "sha256": "bb887d23d2bfdf7ec4c82a4df856dbf20455c8b38be0a5e9c7dae5143e412792",
+          "bytes": 2375
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "5d603e7b141bbe9f8910aad33252594037887d3ac664fd3ba9f6f1f14f075126",
+          "bytes": 5983
+        },
+        {
+          "path": "report-evidence-map.json",
+          "sha256": "6e021b9cc7f004d67a8f92ce62fd5b7e966928db4c33396bd97e6210f7ce09f8",
+          "bytes": 5374
+        },
+        {
+          "path": "report.md",
+          "sha256": "dc6d9ca8857724df2a07f72c8abe2a91db950fadf238f7c2f91fe7c2a95a89e9",
+          "bytes": 12331
+        },
+        {
+          "path": "summary.json",
+          "sha256": "3b3ba91ea958e43a04a62695aff5ee19fab88c5f56736d37fe70d6c5fbe3e84b",
+          "bytes": 20619
+        },
+        {
+          "path": "review/reviews-and-limitations.tar.gz",
+          "sha256": "04cfc02eb8f4d87c92d9bc59bfc3f1a5b03b60b1f2d258bbe6ac4bc8ed02e6fb",
+          "bytes": 151278
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Requested public deliverable is the complete dated report and evidence bundle, not separate social or announcement copy."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 8 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

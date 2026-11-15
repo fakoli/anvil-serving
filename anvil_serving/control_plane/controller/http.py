@@ -54,6 +54,7 @@ from .security import (
     _strict_json_loads,
 )
 from .store import (
+    DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES,
     OperationStore,
     _idempotency_context,
     _idempotency_key,
@@ -64,6 +65,13 @@ from .store import (
 
 DEFAULT_MAX_BODY_BYTES = 1024 * 1024
 DEFAULT_READ_TIMEOUT_SECONDS = 30.0
+
+# A job includes up to 256 KiB of specification and 1 MiB of retained logs.
+# Two persisted copies in operation status remain below the 4 MiB client limit.
+_BENCHMARK_JOB_RESULT_BYTES = 1536 * 1024
+_BENCHMARK_JOB_RESULT_TOOLS = frozenset({
+    "benchmark_job_submit", "benchmark_job_status", "benchmark_job_logs", "benchmark_job_cancel",
+})
 
 _LEGACY_TOOL_SCOPES = frozenset((None, "media:read", "media:submit", "media:cancel"))
 _UNDECLARED_SCOPE = object()
@@ -878,6 +886,11 @@ def make_handler(
                     "succeeded" if envelope.get("ok") else "failed",
                     envelope,
                     auth_token,
+                    default_max_result_bytes=(
+                        _BENCHMARK_JOB_RESULT_BYTES
+                        if _mcp_tool_name(tool_name) in _BENCHMARK_JOB_RESULT_TOOLS
+                        else DEFAULT_IDEMPOTENCY_MAX_RESULT_BYTES
+                    ),
                 )
             return envelope, 200
 

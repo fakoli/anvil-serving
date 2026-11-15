@@ -1,0 +1,1142 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 5060.1894184987195,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 4832.897647408073,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 4236.2474421664965,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 5011.274077452863,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 4939.141189973293,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 4313.747489535614,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 5057.938314283915,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 4374.769366412702,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 2546.7287364486197,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 4969.429991342842,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 2761.616936937679,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 1615.5900426769956,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 9117.677278436455,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 4628.537553292263,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 1579.550645624437,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 9002.460391524311,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 4271.196259557936,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 1784.1254450388271,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 7885.6505058585235,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 3955.4621244969476,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 1907.9968429091882,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 7463.282766427175,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 3740.222271411361,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 2451.300805996955,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill p50 (tok/s)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "Effective prefill p50 (tok/s)"
+    },
+    {
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 1516.1379399942234,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 1585.0386701058596,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 1630.800907034427,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 6305.5832530371845,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 6397.090263082646,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 6992.479325039312,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 26491.110799019225,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 30082.815364934504,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 51293.02653600462,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 50674.61613903288,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 59033.21515605785,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 108460.27420798782,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 840.2546650031582,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 1650.3714870195836,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 4424.487903947011,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 3505.905297002755,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 6803.644699044526,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 17090.63128195703,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 17026.129427948035,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 33535.16631096136,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 68722.40490897093,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 33769.064146094024,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 67288.88410003856,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 68373.10189392883,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "TTFO p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "TTFO p50 (ms)"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 3651.448654010892,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 3708.123564021662,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 6654.890165082179,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 7718.499285983853,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 8943.328995024785,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 26123.46095801331,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 27825.22450911347,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 53430.09845097549,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 76636.0127920052,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 52049.156015971676,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 100487.24191496149,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 195384.19928390067,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 1988.363154930994,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 3520.2890710206702,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 4972.360386978835,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 4122.115194913931,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 9535.337868030183,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 18595.0216880301,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 17490.375223918818,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 34397.31777203269,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 69203.57615803368,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 33899.64445098303,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 67694.48753609322,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 69183.66149801295,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "TTFT p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "TTFT p50 (ms)"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 77.66937100159443,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 42.86315009308582,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 28.798104172272733,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 77.38486056629539,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 68.84577059395384,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 11.760282913681253,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 77.7970055922058,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 7.572158265030563,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 3.805370265346772,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 78.72035976711844,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 5.508038116160653,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 4.083835570791817,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 203.30977267723355,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 107.07758485819687,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 113.27352460261478,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 201.49485936538724,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 103.52201576863627,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 110.29645076986883,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 214.1751255879287,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 99.05138505825606,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 101.96883242337992,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 220.90772372378513,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 94.76532376782224,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 92.35456954081913,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "Decode p50 (tok/s)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "Decode p50 (tok/s)"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 12.874706748010258,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 23.155311006121337,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 31.174712877037887,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 12.914398931107431,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 14.524433243936167,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 75.77180541896571,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 12.842956958641711,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 79.09356121484551,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 199.83560547274962,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 12.698392547364977,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 64.40516081538645,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 197.8140647559999,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 4.778280296401742,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 9.310980455484241,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 8.81260158796663,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 4.813680121950595,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 9.560754272419421,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 8.987547902635555,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 4.651484024665244,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 9.700289642781142,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 9.801597011507104,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 4.5264910943316,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 9.369311435471495,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 10.231021850988824,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "TPOT p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "TPOT p50 (ms)"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 4451.420110999607,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 5468.112965929322,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 9144.949725014158,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 8588.56604306493,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 9658.048425102606,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 27230.108070070855,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 28572.346618049778,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 54354.17980491184,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 80036.19651601184,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 52748.39311896358,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 101335.02844895702,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 198283.12347189058,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 2303.5802439553663,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 4115.3902360238135,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 5289.525522035547,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 4426.441236981191,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 10256.058919010684,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 18888.943376019597,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 17799.127941951156,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 35148.13826803584,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 69526.39530203305,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 34235.515908920206,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 67943.82063299417,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 69934.18766302057,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "E2E p50 (ms)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "E2E p50 (ms)"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "baseline",
+          "points": [
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c1.json",
+              "artifact_sha256": "a7a3cc39d44bf7d6cbdd0ab69f50dc1a34f6758fecf5ee073ff5423561267432",
+              "value": 52.41934640707116,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c2.json",
+              "artifact_sha256": "3654d8ead990e740867b4e7469b68dfdf369a0f7e6588c2d1861c2b8f02668f6",
+              "value": 63.50387100599247,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx10240-c4.json",
+              "artifact_sha256": "5ff39d7cf94247f2bf0991719ce7b6058c24c386b53561d534feb554a4ef0b89",
+              "value": 79.4588690635448,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c1.json",
+              "artifact_sha256": "ea2189bd223279063a68ea9ef49d72d97af32a78596a684b38853ea64047dc2b",
+              "value": 25.321512583096183,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c2.json",
+              "artifact_sha256": "cbccc6e5aca0f6ee8ba28d35b327cee89fce62a8d8ff2751fa818b0067f94205",
+              "value": 32.1287712724839,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx40960-c4.json",
+              "artifact_sha256": "9485fb7322e9dcb23d10310c46b12f4223b2523e740e79c4aca11dfc304ba609",
+              "value": 31.43979787377617,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c1.json",
+              "artifact_sha256": "9adfe9d2732c353835469e56eefecdb91358d9b1e868ca3bdc9750d587e379d7",
+              "value": 6.864734177583691,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c2.json",
+              "artifact_sha256": "7ec776d17be32a8f39b10e38085d293f44160b59ce57ca42c7a9fbd9c7fef5a9",
+              "value": 6.546618557513111,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-natural-ctx163840-c4.json",
+              "artifact_sha256": "bee2db3b07dddcd89281e70c2e9e0f500d227c778133c7be579e6dbe14244ac8",
+              "value": 8.937146858667889,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "65a877dab266ee23830f62f7bc78260d67ed0fd9c2550e932785932f143ada35",
+              "value": 3.289504911308123,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "79430bc6e388a4a7e1ea7f6913cd6dcf81e3d93a007edcdd886822ef64ec5ab3",
+              "value": 3.9569522346165757,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/baseline/baseline-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "baffb3732fa3b94568bb0165e3e431fc9b69bda66e8ed0dd1cfef8dd56794393",
+              "value": 4.831855236980872,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        },
+        {
+          "label": "candidate",
+          "points": [
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c1.json",
+              "artifact_sha256": "171f19fa235364c80b0a2f2601887d221a9f770b6fb11436675cbf4194d3d00b",
+              "value": 128.87785911248233,
+              "x": "synthetic-summary 10240 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c2.json",
+              "artifact_sha256": "129e3bcdf4e426450ce635bcd051716cac6cf9f1ffcb514854d32c9eae823300",
+              "value": 127.71137736041486,
+              "x": "synthetic-summary 10240 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx10240-c4.json",
+              "artifact_sha256": "3a6e5a681f2fa7df25107c79c2ef08aef7a9bac001678a6a9156dc5c518d50d0",
+              "value": 115.95978926153663,
+              "x": "synthetic-summary 10240 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c1.json",
+              "artifact_sha256": "db2f4b43aff81b1cb2d48bd463efa3211ae6d78a597e446a8f074d831270711f",
+              "value": 46.57402244297622,
+              "x": "synthetic-summary 40960 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c2.json",
+              "artifact_sha256": "50a2d70e0c0692e915364175b2e32784573899f333477c79a3620fbd95921fc5",
+              "value": 53.70204361300273,
+              "x": "synthetic-summary 40960 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx40960-c4.json",
+              "artifact_sha256": "d452be655dd979307173a4d5f4083210c42668d5536e8729a3052f9dee8ff061",
+              "value": 63.14338751729282,
+              "x": "synthetic-summary 40960 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c1.json",
+              "artifact_sha256": "252f3aac7dc7860e0e1ff31e134a5f5fda05311efdd9b855bc9b4cdd093d56a1",
+              "value": 11.408183818957859,
+              "x": "synthetic-summary 163840 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c2.json",
+              "artifact_sha256": "74a19639dc105bec12d59808c77504f0332e610b73e2734c044fc4677303e04f",
+              "value": 11.590420721773928,
+              "x": "synthetic-summary 163840 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-natural-ctx163840-c4.json",
+              "artifact_sha256": "e5c468f520e44ee7153df912d742220dc5b78835a9e0c2a7deab3da0eb93250d",
+              "value": 11.018851813018587,
+              "x": "synthetic-summary 163840 c4"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c1.json",
+              "artifact_sha256": "d9a436e181162dc37df42939f344d436a0ded7176092ac1fb2c03323ca22fe40",
+              "value": 5.15884798495899,
+              "x": "synthetic-summary 310272 c1"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c2.json",
+              "artifact_sha256": "cbaa9d0fde23d07c60855b69ce297409c2277c68bba541c6c751f12bf3694703",
+              "value": 4.848355025625722,
+              "x": "synthetic-summary 310272 c2"
+            },
+            {
+              "artifact": "native/candidate/candidate-capacity-edge-ctx310272-c4.json",
+              "artifact_sha256": "2263ce70e3df5d46b2bd6c420c63d87c410ea277fec001441a5e9263de8ca685",
+              "value": 6.20641464316848,
+              "x": "synthetic-summary 310272 c4"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output throughput (tok/s)",
+      "x_label": "Nominal input target and concurrency",
+      "y_label": "Aggregate output throughput (tok/s)"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "12 matched pairs; X labels are nominal input targets, actual token counts are in the tables",
+  "title": "GLM-5.3 matched serving comparison"
+}

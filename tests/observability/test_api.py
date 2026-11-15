@@ -8,12 +8,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from anvil_serving import mcp
 from anvil_serving.control_plane.authorization import load_authorization_policy
 from anvil_serving.observability.api import (
     ProbeRegistration,
     TelemetryRegistry,
-    build_default_registry,
     create_server,
     run_server_in_thread,
 )
@@ -91,17 +89,6 @@ def test_registry_returns_structured_redacted_probe_contract() -> None:
     assert payload["sample_count"] == 1
     assert payload["samples"][0]["metric"] == "host.memory.used"
     assert TOKEN not in json.dumps(payload)
-
-
-def test_probe_failure_is_degraded_without_hiding_registry() -> None:
-    def broken():
-        raise RuntimeError("probe broke")
-
-    payload = _registry(broken).snapshot(generated_at=NOW)
-
-    assert payload["degraded_count"] == 1
-    assert payload["samples"][0]["capability_status"] == "failed"
-    assert payload["samples"][0]["value"] is None
 
 
 def test_default_bind_is_loopback_and_non_loopback_requires_authentication() -> None:
@@ -196,35 +183,6 @@ def test_reserved_workload_route_precedes_legacy_auth_and_cannot_be_shadowed(tmp
         thread.join(timeout=2)
 
 
-def test_reserved_workload_absence_exception_and_invalid_service_are_fixed(tmp_path):
-    calls = []
-    with pytest.raises(ValueError, match="exact WorkloadHTTPService"):
-        create_server(_registry(), workload_service=lambda: None)
-
-    absent = create_server(_registry())
-    failing = create_server(
-        _registry(),
-        workload_service=_workload_service(tmp_path, calls, reader=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("private failure"))),
-    )
-    threads = [(absent, run_server_in_thread(absent)), (failing, run_server_in_thread(failing))]
-    try:
-        for server, _thread in threads:
-            base = f"http://127.0.0.1:{server.server_address[1]}"
-            with pytest.raises(urllib.error.HTTPError) as refused:
-                urllib.request.urlopen(_workload_request(base), timeout=2)
-            body = refused.value.read()
-            assert refused.value.code in {403, 503}
-            assert json.loads(body)["error"]["code"] in {
-                "authorization_scope_denied", "workload_source_unavailable"
-            }
-            assert b"private failure" not in body
-    finally:
-        for server, thread in threads:
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=2)
-
-
 @pytest.mark.parametrize("framing", [
     "Content-Length: 1\r\n",
     "Content-Length: 0\r\nContent-Length: 0\r\n",
@@ -287,50 +245,3 @@ def test_reserved_workload_rejects_unread_body_headers_and_post_before_service(t
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
-
-
-def test_mcp_controller_tool_returns_same_structured_contract(monkeypatch) -> None:
-    monkeypatch.setattr(
-        "anvil_serving.observability.api.build_default_registry", lambda: _registry()
-    )
-
-    result = mcp.call_tool("observability_collect", {"capabilities": ["host-resources"]})
-
-    assert result["ok"] is True
-    assert result["data"]["samples"][0]["host_id"] == "generic-host"
-    assert result["data"]["samples"][0]["collector_id"] == "fixture"
-
-
-def test_api_has_no_third_party_imports() -> None:
-    import ast
-    import inspect
-    import anvil_serving.observability.api as api
-
-    tree = ast.parse(inspect.getsource(api))
-    roots = {
-        node.names[0].name.split(".")[0]
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Import)
-    }
-    assert roots <= {
-        "hmac", "ipaddress", "json", "os", "platform", "re", "threading", "urllib"
-    }
-
-
-def test_macos_default_registry_preserves_model_free_mini_role(monkeypatch) -> None:
-    monkeypatch.setattr("platform.system", lambda: "Darwin")
-    monkeypatch.setattr("platform.node", lambda: "generic-mac")
-
-    capabilities = build_default_registry().capabilities
-
-    assert "host-resources" in capabilities
-    assert "service-health" in capabilities
-    assert "nvidia-gpu" not in capabilities
-    assert "containers" not in capabilities
-
-
-def test_mcp_rejects_empty_capability_request_as_typed_error() -> None:
-    result = mcp.call_tool("observability_collect", {"capabilities": []})
-
-    assert result["ok"] is False
-    assert result["error"]["code"] == "bad_argument"

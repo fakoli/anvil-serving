@@ -1,0 +1,25 @@
+{
+  "schema": "marker-gpu-trace-router-transition/v1",
+  "tiers": [
+    {
+      "tier_id": "primary-local",
+      "active_requests": 0,
+      "draining": false,
+      "expected_model": "served-model-1",
+      "observed_model": "served-model-1",
+      "metadata_source": "configured",
+      "readiness_reason": "identity_passed",
+      "readiness_state": "ready",
+      "ready": true,
+      "reason": "admitting",
+      "state": "admitting"
+    }
+  ],
+  "projection": {
+    "native_source_sha256": "f8ba58a27556add5a313785c3f5e11d856c140e5e50441999ee50b2a74cc16f6",
+    "transformations": [
+      "Replaced the private served model name with served-model-1.",
+      "Removed an empty managed CLI envelope while preserving native transition fields."
+    ]
+  }
+}

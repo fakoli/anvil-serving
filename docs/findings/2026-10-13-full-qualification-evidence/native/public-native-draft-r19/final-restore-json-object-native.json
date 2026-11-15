@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-10-14T05:39:47.432710+00:00",
+  "passed": true,
+  "alias": "llm.primary",
+  "response_format": "json_object",
+  "parsed": {
+    "restoration": "GLM_R11_READY"
+  },
+  "native_response": {
+    "id": "chatcmpl-fd94287a8961494294e9e9b0",
+    "object": "chat.completion",
+    "created": 1791956387,
+    "model": "llm.primary",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"restoration\":\"GLM_R11_READY\"}",
+          "reasoning_content": "public-opaque-text-025"
+        },
+        "finish_reason": "stop"
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 28,
+      "completion_tokens": 292,
+      "total_tokens": 320
+    }
+  },
+  "fixture_sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+}

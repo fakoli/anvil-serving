@@ -1,0 +1,256 @@
+{
+  "schema": "anvil-serving.sampling-upstream-kernel-summary/v1",
+  "derived_from": "kernel-receipts.log",
+  "policy": "upstream-count-v1",
+  "result": {
+    "diagnostic_rows": 1,
+    "failed_native_batches": 0,
+    "failed_rows": 0,
+    "forced_cases": 8,
+    "ordinary_cases": 8,
+    "ordinary_rows": 272,
+    "passed": true,
+    "peak_tensor_bytes": 519289856,
+    "policy": "upstream-count-v1"
+  },
+  "stock_patch_equal_rows": 271,
+  "baseline_exact_binary64_reference_rows": 36,
+  "patched_exact_binary64_reference_rows": 35,
+  "native_batch_tolerance": [
+    {
+      "seed": 58231,
+      "vocabulary": 131072,
+      "rows": 4,
+      "baseline": {
+        "maximum_count_difference": 11,
+        "maximum_native_count": 97085,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.011330277591800999
+      },
+      "patched": {
+        "maximum_count_difference": 11,
+        "maximum_native_count": 97085,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.011330277591800999
+      }
+    },
+    {
+      "seed": 58231,
+      "vocabulary": 131072,
+      "rows": 64,
+      "baseline": {
+        "maximum_count_difference": 20,
+        "maximum_native_count": 97278,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.020559633216143423
+      },
+      "patched": {
+        "maximum_count_difference": 20,
+        "maximum_native_count": 97278,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.020559633216143423
+      }
+    },
+    {
+      "seed": 58231,
+      "vocabulary": 154856,
+      "rows": 4,
+      "baseline": {
+        "maximum_count_difference": 30,
+        "maximum_native_count": 114766,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.026140146036282525
+      },
+      "patched": {
+        "maximum_count_difference": 30,
+        "maximum_native_count": 114766,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.026140146036282525
+      }
+    },
+    {
+      "seed": 58231,
+      "vocabulary": 154856,
+      "rows": 64,
+      "baseline": {
+        "maximum_count_difference": 26,
+        "maximum_native_count": 114855,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.022637238256932656
+      },
+      "patched": {
+        "maximum_count_difference": 26,
+        "maximum_native_count": 114855,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.022637238256932656
+      }
+    },
+    {
+      "seed": 42,
+      "vocabulary": 131072,
+      "rows": 4,
+      "baseline": {
+        "maximum_count_difference": 18,
+        "maximum_native_count": 97193,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.01851985225273425
+      },
+      "patched": {
+        "maximum_count_difference": 18,
+        "maximum_native_count": 97193,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.01851985225273425
+      }
+    },
+    {
+      "seed": 42,
+      "vocabulary": 131072,
+      "rows": 64,
+      "baseline": {
+        "maximum_count_difference": 16,
+        "maximum_native_count": 97322,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.01644027044244878
+      },
+      "patched": {
+        "maximum_count_difference": 16,
+        "maximum_native_count": 97322,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.01644027044244878
+      }
+    },
+    {
+      "seed": 42,
+      "vocabulary": 154856,
+      "rows": 4,
+      "baseline": {
+        "maximum_count_difference": 5,
+        "maximum_native_count": 114716,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.004358589908992643
+      },
+      "patched": {
+        "maximum_count_difference": 5,
+        "maximum_native_count": 114716,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.004358589908992643
+      }
+    },
+    {
+      "seed": 42,
+      "vocabulary": 154856,
+      "rows": 64,
+      "baseline": {
+        "maximum_count_difference": 24,
+        "maximum_native_count": 114838,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.02089900555565231
+      },
+      "patched": {
+        "maximum_count_difference": 24,
+        "maximum_native_count": 114838,
+        "passed": true,
+        "policy": "upstream-count-v1",
+        "relative_percent": 0.02089900555565231
+      }
+    }
+  ],
+  "differing_rows": [
+    {
+      "baseline": {
+        "boundary": {
+          "logit": -0.6419956088066101,
+          "probability": 2.0450994609581097e-06,
+          "token": 139002
+        },
+        "exact": true,
+        "extra_count": 0,
+        "extra_mass": 0.0,
+        "kept_count": 114428,
+        "missing_count": 0,
+        "missing_mass": 0.0,
+        "prefix_holes": 0,
+        "reference_difference": {
+          "count": 0,
+          "first32": [],
+          "sha256_u32be": null
+        },
+        "remove_lowest_mass": 0.9499981153085724,
+        "retained_mass": 0.9500001604080334
+      },
+      "failed_checks": [],
+      "input_sha256_f32be": "88e40489e8feec7f87475207b33646354bdb8a32b3c58f54356434d023b8f995",
+      "invalid_output_counts": [
+        0,
+        0
+      ],
+      "passed": true,
+      "patched": {
+        "boundary": {
+          "logit": -0.6420466899871826,
+          "probability": 2.0449949975313364e-06,
+          "token": 30317
+        },
+        "exact": false,
+        "extra_count": 1,
+        "extra_mass": 2.0449949975313364e-06,
+        "kept_count": 114429,
+        "missing_count": 0,
+        "missing_mass": 0.0,
+        "prefix_holes": 0,
+        "reference_difference": {
+          "count": 1,
+          "first32": [
+            30317
+          ],
+          "sha256_u32be": null
+        },
+        "remove_lowest_mass": 0.9500001604080334,
+        "retained_mass": 0.9500022054030309
+      },
+      "policy": "upstream-count-v1",
+      "reference": {
+        "boundary": {
+          "logit": -0.6419956088066101,
+          "probability": 2.0450994609581097e-06,
+          "token": 139002
+        },
+        "kept_count": 114428,
+        "remove_lowest_mass": 0.9499981153085724,
+        "retained_mass": 0.9500001604080334
+      },
+      "row": 31,
+      "rows": 64,
+      "seed": 58231,
+      "strict_diagnostics": {
+        "patched_count_error_bounded": true,
+        "patched_difference_not_worse": false
+      },
+      "top_p": 0.949999988079071,
+      "version_difference": {
+        "count": 1,
+        "first32": [
+          30317
+        ],
+        "sha256_u32be": null
+      },
+      "vocabulary": 154856
+    }
+  ],
+  "scope": "Synthetic CUDA kernel gate only; model inference and restoration are separate evidence."
+}

@@ -1,0 +1,132 @@
+{
+  "created_at": "2026-11-08T23:49:20.278712Z",
+  "failure": {
+    "class": "worker_runtime",
+    "code": "FileExistsError",
+    "message": "[Errno 17] File exists: '<private-path>'"
+  },
+  "partial": true,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "ANVIL_ROUTER_TOKEN",
+      "base_url": "http://127.0.0.1:30000/v1",
+      "model": "llm.primary"
+    },
+    "finished_at": "2026-11-08T23:49:20.278647Z",
+    "started_at": "2026-11-08T23:49:14.661827Z",
+    "submitted_at": "2026-11-08T23:45:08.990732+00:00",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "failed",
+      "created_at": "2026-11-08T23:49:20.269686Z",
+      "evidence_kind": "measured",
+      "failure": {
+        "class": "worker_runtime",
+        "code": "FileExistsError",
+        "message": "[Errno 17] File exists: '<private-path>'"
+      },
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": "unavailable",
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "Aider Polyglot",
+          "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+        },
+        "hardware": {
+          "worker_id": "Primary Node"
+        },
+        "harnesses": {
+          "aider": {
+            "revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+            "source": "https://github.com/Aider-AI/aider"
+          },
+          "polyglot-benchmark": {
+            "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f",
+            "source": "https://github.com/paraemsi/polyglot-benchmark"
+          }
+        },
+        "image": {
+          "status": "not-applicable"
+        },
+        "model": {
+          "alias": "llm.primary"
+        },
+        "runtime": {
+          "reason": "not exposed by router preflight",
+          "status": "unavailable"
+        },
+        "served_model": {
+          "configured_context": "unavailable",
+          "id": "llm.primary"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "tensorfold-go-validation-20261108",
+        "profile": "aider-diagnostic-16k-v1",
+        "run_id": "tensorfold-go-validation-20261108-16384",
+        "spec_sha256": "e3e9560789e7ad2315a132372bc58a96ee687f5fd881b2d5d5fc25baad66700a",
+        "suite": "aider"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 792,
+              "path": "evidence/0-admission.json",
+              "sha256": "13f9e1bf5badc61e0959cc5feacb5821017506d24a5cc9b1114b77211e648e3c"
+            }
+          ],
+          "name": "admission",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 665,
+              "path": "evidence/0-aider-retention.json",
+              "sha256": "afc67fef12c0448204c5b8f5ea2233c1c160acc3f61bf6ca2b87c2c1b9cac64c"
+            }
+          ],
+          "name": "aider_retention",
+          "sequence": 1,
+          "status": "incomplete"
+        }
+      ],
+      "summary": {
+        "attempted": true,
+        "completed": false
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "tensorfold-go-validation-20261108",
+    "profile": "aider-diagnostic-16k-v1",
+    "run_id": "tensorfold-go-validation-20261108-16384",
+    "spec_sha256": "e3e9560789e7ad2315a132372bc58a96ee687f5fd881b2d5d5fc25baad66700a",
+    "suite": "aider"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "failed"
+}

@@ -25,14 +25,21 @@ _OPAQUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 def _identity(pid: int) -> dict[str, Any] | None:
     try:
         raw = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
+    except (OSError, UnicodeError) as exc:
+        if isinstance(exc, OSError) and exc.errno in {errno.ENOENT, errno.ESRCH}:
+            return None
+        raise PropagationJobError("process_observation_failed") from exc
+    try:
         tail = raw[raw.rfind(")") + 2:].split()
-        if len(tail) < 20 or tail[0] == "Z":
+        if not raw.startswith(f"{pid} (") or len(tail) < 20 or not tail[19].isdigit():
+            raise ValueError()
+        if tail[0] == "Z":
             return None
-        return {"pid": pid, "start_ticks": tail[19],
-                "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()}
-    except OSError as exc:
-        if exc.errno in {errno.ENOENT, errno.ESRCH}:
-            return None
+        boot_id = Path("/proc/sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
+        if not boot_id:
+            raise ValueError()
+        return {"pid": pid, "start_ticks": tail[19], "boot_id": boot_id}
+    except (OSError, UnicodeError, ValueError) as exc:
         raise PropagationJobError("process_observation_failed") from exc
 
 

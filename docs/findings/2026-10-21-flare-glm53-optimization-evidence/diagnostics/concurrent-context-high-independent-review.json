@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-10-21T14:30:18.439942+00:00",
+  "reviewer": "independent Sol high",
+  "gate": "approved_for_bounded_execution",
+  "workload_sha256": "f7cd9e005334bcd86715177145a549d380ec48892f1bd6828282f8b9c7b10b09",
+  "wrapper_sha256": "b78db27b0bdc07dfa96af5b4f0bc575fccb6b9e663803bf4724c986729fc5abc",
+  "verified_diff": "request effort high, disclosed high/High in plan, wrapper fixture filename; all bounds and gates identical",
+  "limits": [
+    "sampled active count is not simultaneous full-window capacity",
+    "request-policy comparison, not isolated engine speedup or independent random-seed repetitions"
+  ],
+  "promoted": false
+}

@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-21T09:23:07.766796+00:00",
+  "candidate_requests_started": false,
+  "remaining_window_priority": [
+    "native health and identity",
+    "matched seven-check preflight",
+    "natural ctx10240 C1/C4",
+    "strict and ctx32768 cells if time remains"
+  ],
+  "reason": "preparation/export consumed most fixed outage window;all workload controls remain predeclared",
+  "stop": "no new requests without restoration margin;stop candidate by09:29:22Z",
+  "no_change": [
+    "request sampling",
+    "validators",
+    "model/runtime/config identity",
+    "promotion boundary"
+  ]
+}

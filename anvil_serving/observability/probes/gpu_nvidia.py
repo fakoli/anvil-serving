@@ -8,10 +8,11 @@ import re
 import subprocess
 import xml.etree.ElementTree as ET
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime
 
 from ..schema import CapabilityStatus, TelemetrySample
 from ..status import prepare_sample
+from . import normalize_collection_time as _timestamp
 
 
 XmlProvider = Callable[[], str]
@@ -272,13 +273,3 @@ def _number(value: str, *, mib: bool) -> int | float:
         raise ValueError("NVIDIA collector returned an invalid value")
     converted = number * 1024 * 1024 if mib else number
     return int(converted) if converted.is_integer() else converted
-
-
-def _timestamp(value: datetime | None) -> datetime:
-    if value is None:
-        return datetime.now(timezone.utc)
-    if not isinstance(value, datetime):
-        raise TypeError("collected_at must be a datetime or None")
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("collected_at must be timezone-aware")
-    return value.astimezone(timezone.utc)

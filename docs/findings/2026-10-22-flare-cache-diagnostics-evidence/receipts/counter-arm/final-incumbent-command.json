@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "models",
+    "recipes",
+    "status",
+    "nvidia/GLM-5.3-Flash-FP4-Local",
+    "--container",
+    "glm53-nvidia-fp4-local-ab-r2",
+    "--registry",
+    "OPERATOR_PATH_72fc2a9c500f/restore-original-recipe.toml",
+    "--json"
+  ],
+  "at": 1792664888.230386
+}

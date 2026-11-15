@@ -1,0 +1,214 @@
+{
+  "schema": "anvil-serving.public-evidence-lineage/v1",
+  "campaign_id": "2026-10-16-quasar-swift15",
+  "policy": "Native schema, prompts, responses, reasoning, case results and scores preserved. Only observed operator metadata fields were replaced. Unmodified files retain exact original bytes.",
+  "grade_hash_note": "Retained grade artifact_sha256 values identify original pre-redaction native input bytes. This ledger maps those source hashes to public copies; visible code/reasoning and grader inputs are unchanged.",
+  "files": [
+    {
+      "path": "native/quasar-text32k-coding-raw.json",
+      "source_basename": "quasar-text32k-coding-raw.json",
+      "source_sha256": "dead4f3902454f62fed20bbbcc965e10a883178ccc600e5c28583b7347770c22",
+      "public_sha256": "52f992dd5d78af09e40f4c8a64bf664bfb685b69991e52aa24962179763c8189",
+      "bytes": 65886,
+      "redactions": [
+        {
+          "field": "identity.base_url",
+          "replacement": "http://127.0.0.1:30001/v1",
+          "kind": "operator-port"
+        },
+        {
+          "field": "suites.quasar-swift15-coding.source",
+          "replacement": "fixture/suite.json",
+          "kind": "operator-home-path"
+        }
+      ]
+    },
+    {
+      "path": "native/swift15-text32k-coding-raw.json",
+      "source_basename": "swift15-text32k-coding-raw.json",
+      "source_sha256": "e5f0d4104e217d3bdfaf2f9556a4a383788787d4e2236dd0408d3d7c4439b30c",
+      "public_sha256": "589bd264b7f2e11c662436f84f07e9eb69d5106aab7a7cc25b98a12f30d2149d",
+      "bytes": 64755,
+      "redactions": [
+        {
+          "field": "identity.base_url",
+          "replacement": "http://127.0.0.1:30002/v1",
+          "kind": "operator-port"
+        },
+        {
+          "field": "suites.quasar-swift15-coding.source",
+          "replacement": "fixture/suite.json",
+          "kind": "operator-home-path"
+        }
+      ]
+    },
+    {
+      "path": "native/quasar-text32k-coding-grade.json",
+      "source_basename": "quasar-text32k-coding-grade.json",
+      "source_sha256": "3307cec73e100cb72240727ad1b5f9a121a66004e3c6cddb19c7a3c91848e1d0",
+      "public_sha256": "3307cec73e100cb72240727ad1b5f9a121a66004e3c6cddb19c7a3c91848e1d0",
+      "bytes": 25952,
+      "redactions": []
+    },
+    {
+      "path": "native/swift15-text32k-coding-grade.json",
+      "source_basename": "swift15-text32k-coding-grade.json",
+      "source_sha256": "f9893b22d00b5878a87c9d360a5356837ba4d08a60027e52f3f9b579d2bd9a88",
+      "public_sha256": "f9893b22d00b5878a87c9d360a5356837ba4d08a60027e52f3f9b579d2bd9a88",
+      "bytes": 26326,
+      "redactions": []
+    },
+    {
+      "path": "native/quasar-text32k-coding-grade-tuple-edges.json",
+      "source_basename": "quasar-text32k-coding-grade-tuple-edges.json",
+      "source_sha256": "12618f561b8f2c447829ab3a825435bdba80ff2a8d7aa6d3d22f235a4f101d45",
+      "public_sha256": "12618f561b8f2c447829ab3a825435bdba80ff2a8d7aa6d3d22f235a4f101d45",
+      "bytes": 27028,
+      "redactions": []
+    },
+    {
+      "path": "native/swift15-text32k-coding-grade-tuple-edges.json",
+      "source_basename": "swift15-text32k-coding-grade-tuple-edges.json",
+      "source_sha256": "7bae34a73e6f4438ed1cd4071990e9944adedbf7b5c5383ac45549dabd0d6783",
+      "public_sha256": "7bae34a73e6f4438ed1cd4071990e9944adedbf7b5c5383ac45549dabd0d6783",
+      "bytes": 27058,
+      "redactions": []
+    },
+    {
+      "path": "native/quasar-text32k-agentic-raw.json",
+      "source_basename": "quasar-text32k-agentic-raw.json",
+      "source_sha256": "8b30cf8efc550916c04bbc766b5c75a6c4895ad23dd7c77de3a3d41bbbec0b6f",
+      "public_sha256": "8b30cf8efc550916c04bbc766b5c75a6c4895ad23dd7c77de3a3d41bbbec0b6f",
+      "bytes": 39940,
+      "redactions": []
+    },
+    {
+      "path": "native/swift15-text32k-agentic-raw.json",
+      "source_basename": "swift15-text32k-agentic-raw.json",
+      "source_sha256": "7d78e52ed7d75d2a09add1fd53162cb0bb5232cd086f0f74ff40fe008992d30a",
+      "public_sha256": "7d78e52ed7d75d2a09add1fd53162cb0bb5232cd086f0f74ff40fe008992d30a",
+      "bytes": 40557,
+      "redactions": []
+    },
+    {
+      "path": "native/quasar-32k-preflight.json",
+      "source_basename": "quasar-32k-preflight.json",
+      "source_sha256": "39096a041f2ab18f6a4694a1cd77420cd7058245169fc64a53e5f0e0113ae004",
+      "public_sha256": "5c299f3d3908a69ef5ec620da44a2c52e40eb27d202197855f9e26ed50b64f96",
+      "bytes": 19058,
+      "redactions": [
+        {
+          "field": "base_url",
+          "replacement": "http://127.0.0.1:30001/v1",
+          "kind": "operator-port"
+        }
+      ]
+    },
+    {
+      "path": "native/swift15-text32k-preflight.json",
+      "source_basename": "swift15-text32k-preflight.json",
+      "source_sha256": "aec0600b999bcbcdd122ed74c4e8bc892165c672acabc99cd5b93537e8049ac9",
+      "public_sha256": "59cf0ad8c1d262d48efbc62c2664ec2e6228eb72380a65fc78cd744c0707e10d",
+      "bytes": 19058,
+      "redactions": [
+        {
+          "field": "base_url",
+          "replacement": "http://127.0.0.1:30002/v1",
+          "kind": "operator-port"
+        }
+      ]
+    },
+    {
+      "path": "native/final-restored-preflight.json",
+      "source_basename": "final-restored-preflight.json",
+      "source_sha256": "3b464312c8beff609714f54e9bc54ff9d4446dff0042b53f9fcd56704e31c8a1",
+      "public_sha256": "b427f2174333b825c466481593677acda7ce5dcd6c865239b8141b54b18d9713",
+      "bytes": 19066,
+      "redactions": [
+        {
+          "field": "base_url",
+          "replacement": "http://127.0.0.1:30000/v1",
+          "kind": "operator-port"
+        }
+      ]
+    },
+    {
+      "path": "native/harness-provenance.json",
+      "source_basename": "harness-provenance.json",
+      "source_sha256": "b9e475ed24719143867a677dabe4cc8248326c6dfad5ddcdf11079363d02b16e",
+      "public_sha256": "b9e475ed24719143867a677dabe4cc8248326c6dfad5ddcdf11079363d02b16e",
+      "bytes": 55402,
+      "redactions": []
+    },
+    {
+      "path": "native/final-restored-verification.json",
+      "source_basename": "final-restored-verification.json",
+      "source_sha256": "17f3866c7d8561c75fefd30244b67e13ee6a6f549b131517a9f8d21b494df59b",
+      "public_sha256": "17f3866c7d8561c75fefd30244b67e13ee6a6f549b131517a9f8d21b494df59b",
+      "bytes": 2088,
+      "redactions": []
+    },
+    {
+      "path": "fixture/suite.json",
+      "source_basename": "suite.json",
+      "source_sha256": "3f7f061135313c81e9002f9971f682ee80d03ae485f566cfdb2fd17ea9b7c57a",
+      "public_sha256": "3f7f061135313c81e9002f9971f682ee80d03ae485f566cfdb2fd17ea9b7c57a",
+      "bytes": 6645,
+      "redactions": []
+    },
+    {
+      "path": "fixture/grade.py",
+      "source_basename": "grade.py",
+      "source_sha256": "f3048e159926ea8b6223cae6f76368bd4a6f81d92151ae35f749b268e27b66d6",
+      "public_sha256": "f3048e159926ea8b6223cae6f76368bd4a6f81d92151ae35f749b268e27b66d6",
+      "bytes": 18290,
+      "redactions": []
+    },
+    {
+      "path": "source-review-notes.md",
+      "source_basename": "source-review-notes.md",
+      "source_sha256": "f0743b402fa0e4beda58efd1d564f6a721be5d0a040636e5a9f0673eda4cc31f",
+      "public_sha256": "f0743b402fa0e4beda58efd1d564f6a721be5d0a040636e5a9f0673eda4cc31f",
+      "bytes": 2825,
+      "redactions": []
+    },
+    {
+      "path": "recipes/quasar-text32k.toml",
+      "source_basename": "quasar-recipe.toml",
+      "source_sha256": "677fa461c641927b5718b1a9d2125340cae19875fe0ce9beed385645c53bd0ff",
+      "public_sha256": "6ac23b5579da91d6f4b99884bb1659f2de8a71980397ebb6a786d8297898252a",
+      "bytes": 2712,
+      "redactions": [
+        {
+          "field": "recipe.download.volume",
+          "replacement": "model-cache",
+          "kind": "generic-cache-volume"
+        },
+        {
+          "field": "recipe.serve.port and --port flag",
+          "replacement": 30001,
+          "kind": "operator-port"
+        }
+      ]
+    },
+    {
+      "path": "recipes/swift15-text32k.toml",
+      "source_basename": "swift15-text32k-recipe.toml",
+      "source_sha256": "6f9a8bfad8a4df26f74b74efd60cb47f22634dab220b5090acfc53442f377352",
+      "public_sha256": "330583971160dd81fd510f3116bffd50bd897587536ee0320c5f818dbf529f04",
+      "bytes": 2746,
+      "redactions": [
+        {
+          "field": "recipe.download.volume",
+          "replacement": "model-cache",
+          "kind": "generic-cache-volume"
+        },
+        {
+          "field": "recipe.serve.port and --port flag",
+          "replacement": 30002,
+          "kind": "operator-port"
+        }
+      ]
+    }
+  ]
+}

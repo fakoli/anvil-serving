@@ -1,0 +1,90 @@
+{
+  "campaign": "glm53-nvidia-fp4-ab-20261017",
+  "authorized": "Controlled A/B using NVIDIA recipe with only slight modifications; no promotion",
+  "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+  "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+  "runtime_image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+  "objectives": [
+    "independent functional coding/tools/JSON/vision/context correctness",
+    "matched natural-output C1/C4 latency and completion evidence",
+    "preserve and restore exact original r11"
+  ],
+  "planned_stages": [
+    "offline harness",
+    "storage and bounded feasibility",
+    "download pinned model",
+    "baseline controls",
+    "quiesce/drain exact primary",
+    "retain stopped incumbent",
+    "load isolated candidate",
+    "direct gates",
+    "matched timing and coding",
+    "matched no-spec diagnostic if appropriate",
+    "restore exact r11",
+    "publish evidence"
+  ],
+  "budget": {
+    "startup_seconds": 3600,
+    "configuration_search_max_versions": 3,
+    "candidate_live_hours": 3,
+    "restoration_reserve_minutes": 70,
+    "candidate_total_seconds": 10800,
+    "restoration_reserve_seconds": 4200,
+    "live_requests_deadline_seconds_after_candidate_load_start": 6600,
+    "per_stage_timeout_seconds": 900,
+    "abort_rule": "Stop dispatch on failed correctness/runtime gate or deadline. Cancel active durable job with eval benchmark {suite} cancel; unload candidate through recipes; restore exact incumbent via independently reviewed managed path; readmit only after health, identity, JSON and routed checks.",
+    "lifecycle_timeout_seconds": 3600,
+    "stage_cap_scope": "900 seconds applies only to benchmark/preflight stages; managed load has3600 seconds, plus bounded reconciliation after CLI timeout."
+  },
+  "candidate_modifications": [
+    "immutable revision and image",
+    "managed loopback endpoint and unique served name",
+    "RAM 52 GiB, zero effective swap in r2, and 12 GiB host reserve; r1 1 MiB swap admission refused before container creation",
+    "comparison context 327680 and maximum sequences 4",
+    "GPU-only prefix cache using direct upstream command, no LMCache process"
+  ],
+  "promotion_authorized": false,
+  "created_at": "2026-10-17T07:10:18.907649+00:00",
+  "reserve_policy": {
+    "default_mib_per_gpu": 4096,
+    "effective": "Published .985 recipe; fixed KV bytes independently set",
+    "scope": "provisional isolated startup and bounded scout only",
+    "owner_waiver": true,
+    "reason": "Dedicated model-only GPUs, user requested upstream recipe with minimal changes. Startup/workload per-device and cgroup telemetry required; does not prove safety or authorize promotion."
+  },
+  "restoration_contract": "Restart the exact retained original container through managed serves mode restore-retained, with full 10-manifest/32-serve scope, immutable ID/image/registry/manifest bindings, explicit native owner, and fresh original-source hashes. Preserve original image, entrypoint, flags, cgroup limits, UUID order, served identity, port and router config. Readmit only after direct checks.",
+  "restoration_risk": "Retained restore has a 600-second readiness bound and stops/retains the same container on failure. Historical r11 startup took about 121 seconds. New-create replay was superseded because free host swap was below its 1 MiB allowance.",
+  "matched_stability_workload": {
+    "scenario": "baseline-stability-scout-r3.json",
+    "anchor_tokens": 32000,
+    "contender_tokens": 8192,
+    "anchor_max_tokens": 16384,
+    "contender_max_tokens": 8192,
+    "reasoning_effort": "max",
+    "temperature": 0.0,
+    "top_p": 0.95,
+    "rounds": 1,
+    "purpose": "bounded overlap/retrieval diagnostic; not scheduler proof, endurance, or performance ranking"
+  },
+  "candidate_version": "r2",
+  "version_history": [
+    {
+      "version": "r1",
+      "result": "host swap admission refusal before creation"
+    },
+    {
+      "version": "r2",
+      "delta": "zero swap; served identity/version suffix",
+      "result": "startup, preflight, vision and agentic passed; context failed17/18"
+    }
+  ],
+  "stopping_result": {
+    "gate": "candidate context",
+    "passed": 17,
+    "attempted": 18,
+    "failed_case": "native-needle-318464-0.900-r0",
+    "actual_input_tokens": 316249,
+    "decision": "stop dependent overlap/timing; restore exact incumbent",
+    "no_follow_on_requests": true
+  }
+}

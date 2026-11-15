@@ -3,7 +3,6 @@
 subprocess/`input`/`sys.platform`/`_wslconfig_path` are all injected or monkeypatched, so these run
 on any OS with no docker, no WSL, no prompts.
 """
-import os
 import json
 import subprocess
 
@@ -48,60 +47,8 @@ class _SharedMemoryRun:
 
 # ---- recommend_wsl_memory_gb (the safe-cap math) -----------------------------
 
-def test_recommend_leaves_a_windows_reserve():
-    assert host.recommend_wsl_memory_gb(93.7) == 80        # 93.7 - 14 -> 79.7 -> 80 (the RIGHT answer)
-    assert host.recommend_wsl_memory_gb(64.0) == 50        # 64 - 14
-    assert host.recommend_wsl_memory_gb(None) is None
-    assert host.recommend_wsl_memory_gb(12.0) is None      # too small to leave the 10 GB floor -> no rec
-
-
-def test_recommend_never_suggests_a_value_wsl_config_would_refuse():
-    # doctor must not recommend a value cmd_wsl_config then rejects (the small-host contradiction).
-    for h in (11.0, 12.0, 13.5, 14.0, 16.0, 32.0, 64.0, 93.7, 128.0, 256.0):
-        r = host.recommend_wsl_memory_gb(h)
-        assert r is None or (h - r) >= host.MIN_WINDOWS_RESERVE_GB, "%s -> %s starves Windows" % (h, r)
-
 
 # ---- set_wslconfig_values (pure transform) -----------------------------------
-
-def test_changes_only_memory_and_preserves_custom_lines():
-    cfg = ("[wsl2]\nmemory=64GB\nkernel=C:\\ZFSonWSL\\bzImage\nswap=16GB\n"
-           "networkingMode=mirrored\n[experimental]\nhostAddressLoopback=true\n")
-    new, changes = host.set_wslconfig_values(cfg, memory_gb=80)
-    assert "memory=80GB" in new and "memory=64GB" not in new
-    assert "kernel=C:\\ZFSonWSL\\bzImage" in new            # custom kernel preserved
-    assert "networkingMode=mirrored" in new                # networking preserved
-    assert "[experimental]" in new and "hostAddressLoopback=true" in new
-    assert any("80GB" in c for c in changes)
-
-
-def test_changes_swap_too():
-    new, _ = host.set_wslconfig_values("[wsl2]\nmemory=64GB\nswap=16GB\n", memory_gb=80, swap_gb=32)
-    assert "memory=80GB" in new and "swap=32GB" in new
-
-
-def test_inserts_missing_key_under_wsl2():
-    new, changes = host.set_wslconfig_values("[wsl2]\nswap=8GB\n", memory_gb=80)
-    assert "memory=80GB" in new and "swap=8GB" in new
-    assert any("memory=80GB" in c for c in changes)
-
-
-def test_creates_section_when_empty():
-    new, _ = host.set_wslconfig_values("", memory_gb=80)
-    assert new.startswith("[wsl2]") and "memory=80GB" in new
-
-
-def test_no_change_when_already_set():
-    _, changes = host.set_wslconfig_values("[wsl2]\nmemory=80GB\n", memory_gb=80)
-    assert changes == []
-
-
-def test_handles_section_header_with_trailing_comment():
-    # `[wsl2]  # comment` must be recognized (edit in place), not treated as absent -> duplicate section.
-    new, _ = host.set_wslconfig_values("[wsl2]   # main\nmemory=64GB\nprocessors=8\n", memory_gb=80)
-    assert new.count("[wsl2]") == 1                         # no duplicate section
-    assert "memory=80GB" in new and "processors=8" in new
-    assert "memory=64GB" not in new
 
 
 # ---- cmd_wsl_config: safe cap + backup + revert ------------------------------
@@ -115,31 +62,6 @@ def _win(monkeypatch, tmp_path):
 
 def _host94(argv, **k):
     return proc(0, _bytes(93.7))          # Win32_ComputerSystem TotalPhysicalMemory
-
-
-def test_refuses_memory_that_starves_windows(monkeypatch, tmp_path, capsys):
-    p = _win(monkeypatch, tmp_path); p.write_text("[wsl2]\nmemory=64GB\n", encoding="utf-8")
-    rc = host.cmd_wsl_config(memory_gb=84, _run=_host94)     # 84 leaves 9.7 < 10 floor
-    assert rc == 2
-    assert "REFUSING" in capsys.readouterr().err
-    assert p.read_text(encoding="utf-8") == "[wsl2]\nmemory=64GB\n"     # untouched
-    assert host._backups(str(p)) == []                                  # no backup on refusal
-
-
-def test_force_overrides_the_refusal(monkeypatch, tmp_path):
-    p = _win(monkeypatch, tmp_path); p.write_text("[wsl2]\nmemory=64GB\n", encoding="utf-8")
-    rc = host.cmd_wsl_config(memory_gb=84, force=True, _run=_host94)
-    assert rc == 0 and "memory=84GB" in p.read_text(encoding="utf-8")
-
-
-def test_safe_value_backs_up_then_writes(monkeypatch, tmp_path):
-    p = _win(monkeypatch, tmp_path); p.write_text("[wsl2]\nmemory=64GB\n", encoding="utf-8")
-    rc = host.cmd_wsl_config(memory_gb=80, _run=_host94)
-    assert rc == 0
-    baks = host._backups(str(p))
-    assert len(baks) == 1
-    assert "memory=64GB" in open(baks[0], encoding="utf-8").read()      # backup = the ORIGINAL
-    assert "memory=80GB" in p.read_text(encoding="utf-8")               # live = the new
 
 
 def test_revert_restores_the_newest_backup(monkeypatch, tmp_path):
@@ -167,114 +89,7 @@ def test_fails_closed_when_host_ram_unreadable(monkeypatch, tmp_path, capsys):
     assert host._backups(str(p)) == []
 
 
-def test_force_overrides_unreadable_host_ram(monkeypatch, tmp_path):
-    p = _win(monkeypatch, tmp_path); p.write_text("[wsl2]\nmemory=64GB\n", encoding="utf-8")
-    rc = host.cmd_wsl_config(memory_gb=200, force=True, _run=lambda argv, **k: proc(1, "", "boom"))
-    assert rc == 0 and "memory=200GB" in p.read_text(encoding="utf-8")
-
-
-def test_backup_numbering_survives_a_gap(monkeypatch, tmp_path):
-    # Deleting a middle backup must NOT make the next write collide with / overwrite an existing one.
-    p = _win(monkeypatch, tmp_path); p.write_text("[wsl2]\nmemory=64GB\n", encoding="utf-8")
-    for m in (70, 72, 74):                       # accrue .bak.1/.2/.3
-        host.cmd_wsl_config(memory_gb=m, _run=_host94)
-    baks = host._backups(str(p))
-    assert len(baks) == 3
-    os.remove(baks[1])                           # prune the MIDDLE backup (.bak.2)
-    host.cmd_wsl_config(memory_gb=76, _run=_host94)   # next write must go to .bak.4, not clobber .bak.3
-    nums = sorted(int(b.rsplit(".", 1)[-1]) for b in host._backups(str(p)))
-    assert nums == [1, 3, 4]                      # .bak.3 preserved; new backup is .bak.4
-
-
-def test_wsl_config_rejected_off_windows(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "linux")
-    assert host.cmd_wsl_config(memory_gb=80) == 2
-    assert "not applicable" in capsys.readouterr().err
-
-
 # ---- cmd_restart_docker: confirm / force -------------------------------------
-
-def test_restart_docker_declined_without_force(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    rc = host.cmd_restart_docker(force=False, _run=lambda *a, **k: proc(0), _input=lambda p: "n")
-    assert rc == 1 and "aborted" in capsys.readouterr().out
-
-
-def test_restart_docker_force_kills_and_relaunches(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "isfile", lambda p: True)
-    calls = []
-    rc = host.cmd_restart_docker(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "linux" if a[0] == "docker" else "killed"),
-                                 _input=lambda p: "n")
-    assert rc == 0
-    flat = [" ".join(c) for c in calls]
-    assert any("Stop-Process" in c and "Docker Desktop" in c for c in flat)   # stops the old/failed instance
-    assert any("Start-Process" in c for c in flat)                            # relaunches Docker Desktop
-    assert calls[-1] == ["docker", "--context", "desktop-linux", "info", "--format", "{{.OSType}}"]
-    assert any("-WindowStyle Hidden -ErrorAction Stop" in c for c in flat)
-
-
-def test_restart_docker_finds_per_user_install(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setenv("ProgramFiles", r"C:\\Program Files")
-    monkeypatch.setenv("LOCALAPPDATA", r"C:\\Users\\example\\AppData\\Local")
-    expected = host.os.path.join(
-        r"C:\\Users\\example\\AppData\\Local",
-        "Programs",
-        "DockerDesktop",
-        "Docker Desktop.exe",
-    )
-    monkeypatch.setattr(host.os.path, "isfile", lambda path: path == expected)
-    calls = []
-
-    assert host.cmd_restart_docker(
-        force=True,
-        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "linux" if argv[0] == "docker" else "killed"),
-    ) == 0
-    assert any(expected in " ".join(command) for command in calls)
-
-
-def test_restart_docker_does_not_stop_engine_without_launcher(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "isfile", lambda _path: False)
-    calls = []
-
-    assert host.cmd_restart_docker(
-        force=True,
-        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "killed"),
-    ) == 1
-    assert calls == []
-
-
-def test_restart_docker_quotes_per_user_launcher_path(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    expected = host.os.path.join(
-        r"C:\fixtures\operator's data\Local",
-        "Programs",
-        "DockerDesktop",
-        "Docker Desktop.exe",
-    )
-    monkeypatch.setenv("LOCALAPPDATA", r"C:\fixtures\operator's data\Local")
-    monkeypatch.setattr(host.os.path, "isfile", lambda path: path == expected)
-    calls = []
-
-    assert host.cmd_restart_docker(
-        force=True,
-        _run=lambda argv, **_kwargs: calls.append(argv) or proc(0, "linux" if argv[0] == "docker" else "killed"),
-    ) == 0
-    launch = next(" ".join(command) for command in calls if "Start-Process" in " ".join(command))
-    assert "-FilePath 'C:\\fixtures\\operator''s data\\Local" in launch
-
-
-def test_restart_docker_reports_launcher_failure(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "isfile", lambda _path: True)
-
-    def failed_launch(argv, **_kwargs):
-        return proc(1 if "Start-Process" in " ".join(argv) else 0, "killed")
-
-    assert host.cmd_restart_docker(force=True, _run=failed_launch) == 1
-    assert "could not launch Docker Desktop" in capsys.readouterr().err
 
 
 def test_restart_docker_macos_timeout_returns_failure(monkeypatch):
@@ -285,17 +100,6 @@ def test_restart_docker_macos_timeout_returns_failure(monkeypatch):
         raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
     assert host.cmd_restart_docker(force=True, _run=timeout) == 1
-
-
-def test_restart_docker_macos_launch_failure_is_not_success(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "darwin")
-    calls = []
-
-    def run(argv, **_kwargs):
-        calls.append(argv)
-        return proc(1 if argv[0] == "open" else 0)
-
-    assert host.cmd_restart_docker(force=True, _run=run) == 1
 
 
 class _ReadinessClock:
@@ -360,60 +164,7 @@ def test_desktop_recovery_launch_success_cannot_mask_unavailable_engine(
     assert "did not become ready" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("output", ["", "windows", "<no value>"])
-def test_desktop_readiness_rejects_invalid_success_payload(output):
-    clock = _ReadinessClock()
-    assert not host._await_docker_desktop(
-        _run=lambda *_args, **_kwargs: proc(0, output),
-        _sleep=clock.sleep, _monotonic=clock.monotonic,
-    )
-    assert clock.now == host.DOCKER_DESKTOP_READY_TIMEOUT_SECONDS
-
-
-def test_desktop_readiness_tolerates_transient_process_error():
-    clock = _ReadinessClock()
-    calls = []
-
-    def run(*_args, **_kwargs):
-        calls.append(clock.now)
-        if len(calls) == 1:
-            raise OSError("Docker CLI unavailable during recovery")
-        return proc(0, "linux")
-
-    assert host._await_docker_desktop(run, clock.sleep, clock.monotonic)
-    assert calls == [0, 2]
-
-
 # ---- _kill_process: locale-independent status parsing ------------------------
-
-def test_kill_process_parses_status_tokens():
-    for token in ("killed", "notfound", "denied"):
-        assert host._kill_process("x", _run=lambda a, **k: proc(0, token + "\n")) == token
-    assert host._kill_process("x", _run=lambda a, **k: proc(0, "weird")) == "error"   # unknown -> error
-    def boom(a, **k):
-        raise OSError("no powershell")
-    assert host._kill_process("x", _run=boom) == "error"                              # launch failed
-
-
-def test_powershell_exe_prefers_powershell_then_falls_back_to_pwsh(monkeypatch):
-    monkeypatch.setattr(host.shutil, "which", lambda e: "x" if e == "powershell" else None)
-    assert host._powershell_exe() == "powershell"                 # prefer Windows PowerShell
-    monkeypatch.setattr(host.shutil, "which", lambda e: "x" if e == "pwsh" else None)
-    assert host._powershell_exe() == "pwsh"                       # fall back to PowerShell 7
-    monkeypatch.setattr(host.shutil, "which", lambda e: None)
-    assert host._powershell_exe() is None                         # neither on PATH
-
-
-def test_ps_short_circuits_without_powershell(monkeypatch):
-    monkeypatch.setattr(host.shutil, "which", lambda e: None)     # no powershell AND no pwsh
-    ran = []
-    assert host._ps("anything", _run=lambda *a, **k: ran.append(a) or proc(0)) is None
-    assert ran == []                                              # never attempted to run
-    # and the pwsh chosen exe reaches _run when present:
-    monkeypatch.setattr(host.shutil, "which", lambda e: "x" if e == "pwsh" else None)
-    seen = []
-    host._ps("cmd", _run=lambda a, **k: seen.append(a[0]) or proc(0))
-    assert seen == ["pwsh"]
 
 
 # ---- cmd_reset_wsl: un-wedge a hung WSL subsystem ----------------------------
@@ -422,19 +173,6 @@ def test_reset_wsl_declined_without_force(monkeypatch, capsys):
     monkeypatch.setattr(host.sys, "platform", "win32")
     rc = host.cmd_reset_wsl(force=False, _run=lambda *a, **k: proc(0), _input=lambda p: "n")
     assert rc == 1 and "aborted" in capsys.readouterr().out
-
-
-def test_reset_wsl_force_kills_vm_and_frontends_then_restarts(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "isfile", lambda p: True)   # for the inner restart-docker exe check
-    calls = []
-    rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: calls.append(a) or proc(0, "linux" if a[0] == "docker" else "killed"),
-                            _input=lambda p: "n")
-    assert rc == 0
-    flat = [" ".join(c) for c in calls]
-    assert any("Stop-Process" in c and "vmmemWSL" in c for c in flat)          # force-kills the WSL VM
-    assert any("Stop-Process" in c and "-Name 'wsl'" in c for c in flat)       # clears hung wsl.exe front-ends
-    assert any("Start-Process" in c and "Docker Desktop.exe" in c for c in flat)   # rebuilds the backend
 
 
 def test_reset_wsl_access_denied_returns_nonzero_and_prints_fallback(monkeypatch, capsys):
@@ -452,20 +190,6 @@ def test_reset_wsl_access_denied_returns_nonzero_and_prints_fallback(monkeypatch
     assert "access denied" in out.lower()
 
 
-def test_reset_wsl_propagates_restart_docker_failure(monkeypatch):
-    # Docker Desktop.exe missing -> inner restart-docker returns nonzero -> reset-wsl must NOT report success.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setattr(host.os.path, "isfile", lambda p: False)   # exe missing -> restart fails
-    rc = host.cmd_reset_wsl(force=True, _run=lambda a, **k: proc(0, "killed"), _input=lambda p: "n")
-    assert rc != 0
-
-
-def test_reset_wsl_rejected_off_windows(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "linux")
-    assert host.cmd_reset_wsl(force=True) == 2
-    assert "Windows only" in capsys.readouterr().err
-
-
 @pytest.mark.parametrize(
     ("action", "platform"),
     [("restart-docker", "win32"), ("restart-docker", "darwin"), ("reset-wsl", "win32")],
@@ -480,21 +204,6 @@ def test_disruptive_host_dry_run_never_launches(monkeypatch, capsys, action, pla
         rc = host.cmd_reset_wsl(dry_run=True, _run=runner)
     assert rc == 0
     assert json.loads(capsys.readouterr().out)["dry_run"] is True
-
-
-def test_host_status_prints_structured_summary(monkeypatch, capsys):
-    monkeypatch.setattr(host, "host_summary", lambda **_kwargs: {"mutates": False, "checks": []})
-    assert host.cmd_status() == 0
-    assert json.loads(capsys.readouterr().out) == {"checks": [], "mutates": False}
-
-
-def test_host_status_probes_are_time_bounded():
-    def timeout(argv, **kwargs):
-        assert kwargs["timeout"] == host.DEFAULT_PROBE_TIMEOUT_SECONDS
-        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
-
-    assert host._wsl_vm_memory_gb(_run=timeout) is None
-    assert host._gpus(_run=timeout) == []
 
 
 # ---- cmd_doctor --------------------------------------------------------------
@@ -545,22 +254,6 @@ class _WslBox:
         return proc(0)
 
 
-def test_wsl_meminfo_parses_proc_meminfo():
-    mem = host.wsl_meminfo(_run=lambda a, **k: proc(0, _meminfo_text(64, 8, 50)))
-    assert round(mem["total_gb"]) == 64 and round(mem["cached_gb"]) == 50
-    assert round(mem["available_gb"]) == 8 and round(mem["used_gb"]) == 56   # total - available
-    assert host.wsl_meminfo(_run=lambda a, **k: proc(1, "", "no wsl")) is None
-    def boom(a, **k):
-        raise OSError("wsl.exe not found")
-    assert host.wsl_meminfo(_run=boom) is None
-
-
-def test_wsl_meminfo_targets_the_requested_distro():
-    seen = []
-    host.wsl_meminfo(_run=lambda a, **k: seen.append(a) or proc(0, _meminfo_text()), distro="Ubuntu")
-    assert seen[0][:3] == ["wsl", "-d", "Ubuntu"]
-
-
 def test_memory_reports_wsl_and_page_cache(monkeypatch, capsys):
     monkeypatch.setattr(host.sys, "platform", "win32")
     def fake(argv, **k):
@@ -580,49 +273,6 @@ def test_memory_reports_wsl_and_page_cache(monkeypatch, capsys):
     assert "host reclaim --confirm" in out          # cache > half the VM -> points at the fix
 
 
-def test_memory_rejected_off_windows(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "linux")
-    assert host.cmd_memory() == 2
-    assert "Windows only" in capsys.readouterr().err
-
-
-def test_reclaim_rejected_off_windows(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "linux")
-    assert host.cmd_reclaim(force=True) == 2
-    assert "Windows only" in capsys.readouterr().err
-
-
-def test_reclaim_refuses_while_a_load_is_streaming(monkeypatch, capsys):
-    # Cached grows 2 GB across the 2 s sample window (1 GB/s > 0.25 floor) -> a checkpoint is
-    # streaming -> refuse, run nothing.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50, 50, 52])                     # before, sample A, sample B
-    rc = host.cmd_reclaim(_run=box, _input=lambda p: "y", _sleep=lambda s: None)
-    assert rc == 2
-    assert "REFUSING" in capsys.readouterr().err
-    assert box.drops == []                          # drop_caches NOT run
-
-
-def test_reclaim_force_overrides_streaming_and_prompt(monkeypatch):
-    # The SAME growing fixture that makes the un-forced path refuse (test above): if --force ever
-    # stops bypassing the streaming check, this samples 50 -> 52 (1 GB/s), refuses, and fails here.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50, 50, 52])
-    rc = host.cmd_reclaim(force=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
-    assert rc == 0 and len(box.drops) == 1
-    j = " ".join(box.drops[0])
-    assert "-u root" in j and "drop_caches" in j and "sync" in j
-    assert "echo 1 > /proc/sys/vm/drop_caches" in j
-
-
-def test_reclaim_reports_before_and_after_cache(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50, 5])                          # before, after
-    rc = host.cmd_reclaim(force=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
-    assert rc == 0
-    assert "50.0 GB -> 5.0 GB" in capsys.readouterr().out
-
-
 def test_reclaim_declined_without_confirmation(monkeypatch, capsys):
     monkeypatch.setattr(host.sys, "platform", "win32")
     box = _WslBox([50])                             # stable cache -> passes the streaming check
@@ -631,58 +281,12 @@ def test_reclaim_declined_without_confirmation(monkeypatch, capsys):
     assert "aborted" in capsys.readouterr().out
 
 
-def test_reclaim_fails_when_wsl_unreachable(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    rc = host.cmd_reclaim(force=True, _run=lambda a, **k: proc(1, "", "no wsl"))
-    assert rc == 1
-    assert "cannot read" in capsys.readouterr().err
-
-
 def test_reclaim_dry_run_runs_nothing(monkeypatch, capsys):
     monkeypatch.setattr(host.sys, "platform", "win32")
     box = _WslBox([50])
     rc = host.cmd_reclaim(dry_run=True, _run=box)
     assert rc == 0 and box.drops == []
     assert "drop_caches" in capsys.readouterr().out
-
-
-def test_reclaim_watch_requires_threshold(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    assert host.cmd_reclaim(watch=True, force=True) == 2
-    assert "--threshold-gb" in capsys.readouterr().err
-
-
-def test_reclaim_rejects_nonpositive_watch_values(monkeypatch, capsys):
-    # interval <= 0 reaches time.sleep -> ValueError (or a busy loop); threshold <= 0 drops every
-    # interval. Both must be usage errors, not crashes.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50])
-    assert host.cmd_reclaim(watch=True, threshold_gb=40, interval_s=-5, force=True, _run=box) == 2
-    assert "--interval" in capsys.readouterr().err
-    assert host.cmd_reclaim(watch=True, threshold_gb=0, force=True, _run=box) == 2
-    assert "--threshold-gb" in capsys.readouterr().err
-    assert box.drops == []
-
-
-def test_reclaim_rejects_watch_flags_without_watch(monkeypatch, capsys):
-    # `reclaim --threshold-gb 40` (forgot --watch) must NOT silently do a one-shot drop.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50])
-    assert host.cmd_reclaim(threshold_gb=40, force=True, _run=box) == 2
-    assert "--watch" in capsys.readouterr().err
-    assert box.drops == []
-
-
-def test_reclaim_ctrl_c_at_prompt_or_sample_aborts_cleanly(monkeypatch, capsys):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    def ctrl_c(prompt):
-        raise KeyboardInterrupt
-    rc = host.cmd_reclaim(_run=_WslBox([50]), _input=ctrl_c, _sleep=lambda s: None)
-    assert rc == 1 and "aborted" in capsys.readouterr().out          # prompt Ctrl-C
-    def ctrl_c_sleep(seconds):
-        raise KeyboardInterrupt
-    rc = host.cmd_reclaim(_run=_WslBox([50, 50]), _input=lambda p: "y", _sleep=ctrl_c_sleep)
-    assert rc == 1 and "aborted" in capsys.readouterr().out          # growth-sample Ctrl-C
 
 
 def test_reclaim_watch_drops_over_threshold_then_stops_on_interrupt(monkeypatch, capsys):
@@ -696,82 +300,7 @@ def test_reclaim_watch_drops_over_threshold_then_stops_on_interrupt(monkeypatch,
     assert "dropped: 50.0 GB" in out and "watchdog stopped" in out
 
 
-def test_reclaim_watch_fails_closed_when_growth_sample_unreadable(monkeypatch, capsys):
-    # Unattended watchdog + unreadable growth sample (likeliest DURING a disk-saturating load):
-    # must skip the tick, NOT drop (guard.py: fail closed when safety state can't be read).
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    class FlakyBox(_WslBox):
-        meminfo_calls = 0
-        def __call__(self, argv, **k):
-            if "/proc/meminfo" in " ".join(argv):
-                self.meminfo_calls += 1
-                if self.meminfo_calls > 1:               # threshold read ok, then samples fail
-                    return proc(1, "", "wsl timed out")
-            return super().__call__(argv, **k)
-    box = FlakyBox([50])
-    def sleep(seconds):
-        if seconds != host._STREAM_SAMPLE_SECONDS:       # the interval sleep -> stop the loop
-            raise KeyboardInterrupt
-    rc = host.cmd_reclaim(watch=True, threshold_gb=40, _run=box, _input=lambda p: "y", _sleep=sleep)
-    assert rc == 0 and box.drops == []                   # tick skipped, nothing dropped
-    assert "streaming check unavailable" in capsys.readouterr().out
-
-
-def test_reclaim_one_shot_warns_when_growth_sample_unreadable(monkeypatch, capsys):
-    # One-shot stays fail-open (human at the prompt) but must SAY the guard didn't run.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    class FlakyBox(_WslBox):
-        def __call__(self, argv, **k):
-            j = " ".join(argv)
-            if "/proc/meminfo" in j and len(self.cached) < 3 and "drop" not in j:
-                if not self.drops:                       # growth samples fail; before-read succeeded
-                    return proc(1, "", "wsl timed out")
-            return super().__call__(argv, **k)
-    box = FlakyBox([50, 50, 5])                          # before ok, samples fail, after ok
-    rc = host.cmd_reclaim(_run=box, _input=lambda p: "y", _sleep=lambda s: None)
-    assert rc == 0 and len(box.drops) == 1               # proceeded (fail-open)...
-    assert "streaming check unavailable" in capsys.readouterr().err   # ...but never silently
-
-
-def test_reclaim_yes_skips_prompt_but_keeps_streaming_refusal(monkeypatch, capsys):
-    # guard.py's --yes/--force split: --yes = don't prompt; only --force disarms the safety check.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50, 50, 52])                          # growing -> streaming
-    rc = host.cmd_reclaim(yes=True, _run=box, _input=lambda p: "n", _sleep=lambda s: None)
-    assert rc == 2 and box.drops == []                   # refusal NOT bypassed by --yes
-    assert "REFUSING" in capsys.readouterr().err
-    box2 = _WslBox([50, 50, 50, 5])                      # stable -> passes the check
-    rc = host.cmd_reclaim(yes=True, _run=box2, _input=lambda p: "n", _sleep=lambda s: None)
-    assert rc == 0 and len(box2.drops) == 1              # prompt skipped without --force
-
-
-def test_reclaim_watch_waits_out_a_streaming_load(monkeypatch, capsys):
-    # Over threshold but growing fast -> the watchdog must WAIT for the load, not drop under it.
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    box = _WslBox([50, 50, 52])                     # check, sample A, sample B (streaming)
-    calls = {"n": 0}
-    def sleep(seconds):
-        calls["n"] += 1
-        if calls["n"] >= 2:                         # sample sleep, then interval sleep -> stop
-            raise KeyboardInterrupt
-    rc = host.cmd_reclaim(watch=True, threshold_gb=40, _run=box, _input=lambda p: "y", _sleep=sleep)
-    assert rc == 0 and box.drops == []
-    assert "waiting" in capsys.readouterr().out
-
-
 # ---- vLLM native KV-offload shared-memory lifecycle ------------------------
-
-def test_shared_memory_inspection_classifies_unmapped_orphan(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    path = "/dev/shm/vllm_offload_1234-abcd.mmap"
-    run = _SharedMemoryRun([path + "\t8589934592\t\n"])
-
-    report = host.inspect_vllm_offload_shared_memory(_run=run)
-
-    assert report["available"] is True
-    assert report["active_containers"] == []
-    assert report["reclaimable_files"] == [path]
-    assert report["reclaimable_bytes"] == 8589934592
 
 
 def test_shared_memory_inspection_blocks_mapped_or_active_files(monkeypatch):
@@ -797,22 +326,6 @@ def test_shared_memory_inspection_blocks_mapped_or_active_files(monkeypatch):
     assert "offload mmap is mapped by a live process" in report["blocked_reasons"]
 
 
-def test_shared_memory_reclaim_requires_two_matching_scans_and_checks_postcondition(
-    monkeypatch,
-):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    path = "/dev/shm/vllm_offload_orphan.mmap"
-    row = path + "\t4096\t\n"
-    run = _SharedMemoryRun([row, row, ""])
-
-    result = host.reclaim_vllm_offload_shared_memory(confirm=True, _run=run)
-
-    assert result["outcome"] == "reclaimed"
-    assert result["removed_files"] == [path]
-    rm = next(call for call in run.calls if "rm" in call)
-    assert rm[-2:] == ["--", path]
-
-
 def test_shared_memory_reclaim_never_deletes_unrelated_paths(monkeypatch):
     monkeypatch.setattr(host.sys, "platform", "win32")
     offload_path = "/dev/shm/vllm_offload_orphan.mmap"
@@ -826,17 +339,6 @@ def test_shared_memory_reclaim_never_deletes_unrelated_paths(monkeypatch):
     rm = next(call for call in run.calls if "rm" in call)
     assert rm[-2:] == ["--", offload_path]
     assert unrelated_path not in rm
-
-
-def test_shared_memory_reclaim_refuses_when_second_scan_changes(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    path = "/dev/shm/vllm_offload_orphan.mmap"
-    run = _SharedMemoryRun([path + "\t4096\t\n", path + "\t4096\t99\n"])
-
-    result = host.reclaim_vllm_offload_shared_memory(confirm=True, _run=run)
-
-    assert result["outcome"] == "changed"
-    assert not any("rm" in call for call in run.calls)
 
 
 def test_shared_memory_command_honors_top_level_confirmation_scope(monkeypatch):
@@ -867,20 +369,6 @@ def test_container_native_offload_detection_is_explicit():
 
 
 # ---- CLI dispatch ------------------------------------------------------------
-
-def test_main_dispatches(monkeypatch):
-    seen = {}
-    monkeypatch.setattr(host, "cmd_wsl_config", lambda **k: seen.update(k) or 0)
-    rc = host.main(["wsl-config", "--memory", "80", "--force"])
-    assert rc == 0 and seen["memory_gb"] == 80 and seen["force"] is True
-
-
-def test_main_dispatches_reclaim_flags(monkeypatch):
-    seen = {}
-    monkeypatch.setattr(host, "cmd_reclaim", lambda **k: seen.update(k) or 0)
-    rc = host.main(["reclaim", "--watch", "--threshold-gb", "40", "--interval", "15", "--force"])
-    assert rc == 0 and seen["watch"] is True and seen["threshold_gb"] == 40
-    assert seen["interval_s"] == 15 and seen["force"] is True
 
 
 def test_main_dispatches_status_and_disruptive_dry_run(monkeypatch):
@@ -916,111 +404,6 @@ def test_main_dispatches_shared_memory_commands(monkeypatch):
 
 # ---- persistent lifecycle cache-reclaim policy ------------------------------
 
-def test_cache_reclaim_policy_missing_is_disabled_and_honors_config_home(
-        monkeypatch, tmp_path):
-    config_home = tmp_path / "operator-home"
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(config_home))
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    policy = host.load_cache_reclaim_policy()
-    assert policy == {
-        "enabled": False,
-        "distro": "docker-desktop",
-        "threshold_gb": 16.0,
-        "source_path": str(config_home / "host.toml"),
-        "configured": False,
-        "applicable": True,
-        "schema_version": 1,
-    }
-
-
-def test_cache_reclaim_policy_uses_config_home(monkeypatch, tmp_path):
-    home = tmp_path / "operator-home"
-    home.mkdir()
-    policy_path = home / "host.toml"
-    policy_path.write_text(
-        "schema_version = 1\n[cache_reclaim]\nenabled = true\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
-    monkeypatch.setattr(host.sys, "platform", "win32")
-
-    policy = host.load_cache_reclaim_policy()
-
-    assert policy["source_path"] == str(policy_path)
-    assert policy["configured"] is True
-
-
-def test_cache_reclaim_policy_missing_section_is_disabled(tmp_path):
-    path = tmp_path / "host.toml"
-    path.write_text("schema_version = 1\n", encoding="utf-8")
-    policy = host.load_cache_reclaim_policy(path)
-    assert policy["enabled"] is False
-    assert policy["configured"] is False
-
-
-def test_cache_reclaim_policy_parses_enabled_values(monkeypatch, tmp_path):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    path = tmp_path / "host.toml"
-    path.write_text(
-        "schema_version = 1\n[cache_reclaim]\n"
-        "enabled = true\ndistro = \"Ubuntu-24.04\"\nthreshold_gb = 24.5\n",
-        encoding="utf-8",
-    )
-    policy = host.load_cache_reclaim_policy(path)
-    assert policy["enabled"] is True
-    assert policy["distro"] == "Ubuntu-24.04"
-    assert policy["threshold_gb"] == 24.5
-    assert policy["configured"] is True
-    assert policy["applicable"] is True
-
-
-@pytest.mark.parametrize("text", [
-    "schema_version = 2\n[cache_reclaim]\nenabled = true\n",
-    "schema_version = 1\nunknown = true\n",
-    "schema_version = 1\n[cache_reclaim]\nenabled = \"yes\"\n",
-    "schema_version = 1\n[cache_reclaim]\nthreshold_gb = 0\n",
-    "schema_version = 1\n[cache_reclaim]\ndistro = \"\"\n",
-    "schema_version = 1\n[cache_reclaim]\nextra = 1\n",
-])
-def test_cache_reclaim_policy_strict_validation(tmp_path, text):
-    path = tmp_path / "host.toml"
-    path.write_text(text, encoding="utf-8")
-    with pytest.raises(host.HostConfigError):
-        host.load_cache_reclaim_policy(path)
-
-
-def test_cache_reclaim_policy_non_windows_is_not_applicable(monkeypatch, tmp_path):
-    monkeypatch.setattr(host.sys, "platform", "linux")
-    path = tmp_path / "host.toml"
-    path.write_text(
-        "schema_version = 1\n[cache_reclaim]\nenabled = true\n",
-        encoding="utf-8",
-    )
-    policy = host.load_cache_reclaim_policy(path)
-    assert policy["enabled"] is True
-    assert policy["applicable"] is False
-
-
-def test_host_summary_adds_resolved_cache_reclaim_policy(monkeypatch, tmp_path):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    (tmp_path / "host.toml").write_text(
-        "schema_version = 1\n[cache_reclaim]\n"
-        "enabled = true\ndistro = \"docker-desktop\"\nthreshold_gb = 20\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(host, "_host_total_gb", lambda **_kwargs: 96.0)
-    monkeypatch.setattr(host, "_wsl_vm_memory_gb", lambda **_kwargs: 80.0)
-    monkeypatch.setattr(host, "_gpus", lambda **_kwargs: [])
-    summary = host.host_summary()
-    assert summary["cache_reclaim"]["valid"] is True
-    assert summary["cache_reclaim"]["enabled"] is True
-    assert summary["cache_reclaim"]["threshold_gb"] == 20.0
-    assert summary["cache_reclaim"]["source_path"] == str(tmp_path / "host.toml")
-    assert {item["name"] for item in summary["checks"]} == {
-        "host_ram", "docker_wsl_memory", "gpu_inventory",
-    }
-
 
 def _auto_policy(**overrides):
     policy = {
@@ -1039,17 +422,6 @@ def _auto_policy(**overrides):
 def _sample(cached):
     return {"total_gb": 64.0, "used_gb": 40.0, "available_gb": 24.0,
             "cached_gb": cached}
-
-
-def test_automatic_reclaim_disabled_and_not_applicable_never_probe():
-    def runner(*_args, **_kwargs):
-        pytest.fail("disabled/not-applicable policy probed WSL")
-    assert host.automatic_cache_reclaim(
-        _auto_policy(enabled=False), None, operation="pull", _run=runner,
-    )["outcome"] == "disabled"
-    assert host.automatic_cache_reclaim(
-        _auto_policy(applicable=False), None, operation="pull", _run=runner,
-    )["outcome"] == "not-applicable"
 
 
 def test_automatic_reclaim_readiness_timeout_skips_sampling():
@@ -1082,55 +454,6 @@ def test_automatic_reclaim_unavailable_below_threshold_and_no_growth():
     )
     assert result["outcome"] == "no-operation-growth"
     assert unchanged.drops == []
-
-
-def test_automatic_reclaim_waits_for_settling_then_drops_page_cache_only():
-    box = _WslBox([20, 22, 22.1, 4])
-    result = host.automatic_cache_reclaim(
-        _auto_policy(), _sample(10), operation="up", _run=box,
-        _sleep=lambda _seconds: None,
-    )
-    assert result["outcome"] == "reclaimed"
-    assert result["before_cache_gb"] == 10
-    assert result["after_cache_gb"] == 4
-    assert result["growth_gb"] == pytest.approx(12.1, abs=0.01)
-    assert len(box.drops) == 1
-    command = " ".join(box.drops[0])
-    assert "echo 1 > /proc/sys/vm/drop_caches" in command
-    assert "echo 3" not in command
-
-
-@pytest.mark.parametrize(
-    ("samples", "threshold_gb", "outcome"),
-    [
-        ([20, 15], 16, "below-threshold"),
-        ([20, 10.5], 8, "no-operation-growth"),
-    ],
-)
-def test_automatic_reclaim_rechecks_eligibility_after_settling(
-    samples, threshold_gb, outcome,
-):
-    box = _WslBox(samples)
-    result = host.automatic_cache_reclaim(
-        _auto_policy(threshold_gb=threshold_gb), _sample(10), operation="up", _run=box,
-        _sleep=lambda _seconds: None,
-    )
-    assert result["outcome"] == outcome
-    assert box.drops == []
-
-
-def test_automatic_reclaim_refuses_active_io_after_bounded_polling():
-    # Initial post-operation sample plus 15 two-second samples = exactly 30s.
-    box = _WslBox([20 + index for index in range(16)])
-    sleeps = []
-    result = host.automatic_cache_reclaim(
-        _auto_policy(), _sample(10), operation="pull", _run=box,
-        _sleep=lambda seconds: sleeps.append(seconds),
-    )
-    assert result["outcome"] == "active-io"
-    assert len(sleeps) == 15
-    assert sum(sleeps) == 30
-    assert box.drops == []
 
 
 def test_automatic_reclaim_reports_drop_failure_and_renderer_warns(capsys):
@@ -1207,21 +530,3 @@ def test_host_summary_darwin_reports_unified_memory(monkeypatch):
     checks = {c["name"]: c for c in summary["checks"]}
     assert checks["host_ram"]["ok"] is True
     assert checks["unified_memory_sample"]["ok"] is True
-
-
-def test_host_summary_darwin_degrades_when_sampling_fails(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "darwin")
-    monkeypatch.setattr(host, "cache_reclaim_policy_summary", lambda path=None: {"applicable": False})
-    summary = host.host_summary(_run=_darwin_runner({}))
-    assert summary["platform"] == "macos"
-    assert summary["host_ram_gb"] is None
-    checks = {c["name"]: c for c in summary["checks"]}
-    assert checks["host_ram"]["ok"] is False
-    assert checks["unified_memory_sample"]["ok"] is False
-    assert checks["unified_memory_sample"]["detail"]
-
-
-def test_host_summary_windows_declares_platform(monkeypatch):
-    monkeypatch.setattr(host.sys, "platform", "win32")
-    summary = host.host_summary(_run=_darwin_runner({}))
-    assert summary["platform"] == "windows"

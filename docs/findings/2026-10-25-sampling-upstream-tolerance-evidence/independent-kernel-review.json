@@ -1,0 +1,17 @@
+{
+  "reviewer": "Sol independent protocol reviewer",
+  "verdict": "pass",
+  "records": 19,
+  "forced_cases": 8,
+  "ordinary_cases": 8,
+  "ordinary_rows": 272,
+  "all_native_tolerance_recomputed": true,
+  "all_case_input_hashes_match_prior": true,
+  "prior_one_token_diagnostic_preserved": true,
+  "maximum_relative_count_difference_percent": 0.02614014603628252,
+  "peak_tensor_bytes": 519289856,
+  "model_probe": "pending",
+  "promoted": false,
+  "ignis": "hold",
+  "limitation": "Local cases passed pinned helper formula; upstream test suite was not run."
+}

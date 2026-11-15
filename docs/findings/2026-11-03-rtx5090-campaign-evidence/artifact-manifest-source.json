@@ -1,0 +1,198 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "closed_inventory": true,
+  "campaign": {
+    "id": "2026-11-03-rtx5090-campaign",
+    "publication": "sanitized retrospective derivative",
+    "structurally_complete": true,
+    "full_serving_comparison_complete": false,
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-observation/v1",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.agentic/v1",
+    "anvil-serving.benchmark-decision-summary/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.coding-fixture-grade/v1",
+    "anvil-serving.context-curve-summary/v1",
+    "anvil-serving.context-curve/v1",
+    "anvil-serving.context-observation/v1",
+    "anvil-serving.context-suite-run/v1",
+    "anvil-serving.context/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.public-resource-observations/v1",
+    "anvil-serving.public-workload-description/v1",
+    "anvil-serving.publication-redaction/v1",
+    "anvil-serving.stability-scenario/v1",
+    "anvil-serving.stability/v1",
+    "local-runtime-reasoning-observation/v1",
+    "multimodal-benchmark-evidence/v1",
+    "multimodal-corpus/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 5 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.md"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.md",
+        "redaction-ledger.json",
+        "resource-observations.json"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "raw/coding-candidate-128k-agentic-deep-raw.json",
+        "raw/coding-candidate-128k-context-artifact.json",
+        "raw/coding-candidate-128k-context-raw.json",
+        "raw/coding-candidate-128k-recheck-coding-grade-final.json",
+        "raw/coding-candidate-128k-recheck-coding.json",
+        "raw/coding-candidate-coding-grade-final.json",
+        "raw/coding-candidate-coding.json",
+        "raw/coding-candidate-df-coding-grade-final.json",
+        "raw/coding-candidate-df-coding.json",
+        "raw/historical-reference-coding-grade-final.json",
+        "raw/historical-reference-coding.json",
+        "raw/ignis-256k-vision-agentic-artifact.json",
+        "raw/ignis-256k-vision-agentic-raw.json",
+        "raw/ignis-256k-vision-coding-grade-final.json",
+        "raw/ignis-256k-vision-coding.json",
+        "raw/ignis-256k-vision-context-artifact.json",
+        "raw/ignis-256k-vision-context-raw.json",
+        "raw/ignis-256k-vision-final-status.json",
+        "raw/ignis-256k-vision-models.json",
+        "raw/ignis-256k-vision-multimodal.json",
+        "raw/ignis-256k-vision-preflight-disabled-v2.json",
+        "raw/ignis-256k-vision-preflight-disabled.json",
+        "raw/ignis-256k-vision-start-status.json",
+        "raw/ignis-budget1024-coding-grade-final.json",
+        "raw/ignis-budget1024-coding-reasoning-observation.json",
+        "raw/ignis-budget1024-coding.json",
+        "raw/ignis-budget4096-agentic-raw.json",
+        "raw/ignis-budget4096-capacity16-120.json",
+        "raw/ignis-budget4096-coding-grade-final.json",
+        "raw/ignis-budget4096-coding-reasoning-observation.json",
+        "raw/ignis-budget4096-coding.json",
+        "raw/ignis-budget4096-context-raw.json",
+        "raw/ignis-budget4096-stability-overlap.json",
+        "raw/ignis-budget4096-stability-serial.json",
+        "raw/ignis-coding-grade-final.json",
+        "raw/ignis-coding.json",
+        "raw/ignis-l4-thinking-coding-grade-final.json",
+        "raw/ignis-l4-thinking-coding.json",
+        "raw/qat-coding-grade-final.json",
+        "raw/qat-coding.json",
+        "raw/qat-df-coding-grade-final.json",
+        "raw/qat-df-coding.json",
+        "raw/qat-draft3-coding-grade-final.json",
+        "raw/qat-draft3-coding.json",
+        "raw/qat-nospec160k-failed-load-status.json",
+        "raw/qat-reverse-capacity16-120.json",
+        "raw/qat-reverse-coding-grade-final.json",
+        "raw/qat-reverse-coding.json",
+        "raw/qat-text160k-agentic-raw.json",
+        "raw/qat-text160k-coding-grade-final.json",
+        "raw/qat-text160k-coding.json",
+        "raw/qat-text160k-context-raw.json",
+        "raw/qat-vision-load-finding.json",
+        "raw/reference-budget1024-coding-grade-final.json",
+        "raw/reference-budget1024-coding.json",
+        "raw/reference-coding-grade-final.json",
+        "raw/reference-coding.json",
+        "raw/reference-matched-capacity16-120.json",
+        "raw/reference-matched-coding-grade-final.json",
+        "raw/reference-matched-coding.json",
+        "raw/reference-matched-thinking-coding-grade-final.json",
+        "raw/reference-matched-thinking-coding.json",
+        "raw/reference-restored-agentic-raw.json",
+        "raw/reference-restored-coding-grade-final.json",
+        "raw/reference-restored-coding.json",
+        "raw/reference-restored-context-raw.json",
+        "raw/reference-restored-multimodal.json"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "raw/restoration-final-health.json",
+        "raw/restoration-final-main-status.json",
+        "restoration.json"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "capacity-comparison.svg",
+        "capacity-graph-data.json",
+        "capacity-graph-manifest.json",
+        "coding-results.md",
+        "summary.json"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Sanitized publication evidence; identity/text redactions and limits documented."
+    }
+  ]
+}

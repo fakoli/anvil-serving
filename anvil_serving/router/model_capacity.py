@@ -377,22 +377,33 @@ def _scheduler_key(labels: str) -> tuple[Optional[str], Optional[str], Optional[
     )
 
 
-def _interrupt_metrics_connection(connection: http.client.HTTPConnection) -> None:
+def _interrupt_metrics_connection(
+    connection: http.client.HTTPConnection, owned_socket: socket.socket | None = None
+) -> None:
     """Break a default metrics read that is blocked in headers or body."""
-    sock = getattr(connection, "sock", None)
-    shutdown = getattr(sock, "shutdown", None)
-    if callable(shutdown):
-        try:
-            shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
+    sockets = (owned_socket, getattr(connection, "sock", None))
+    seen: set[int] = set()
+    for sock in sockets:
+        if sock is None or id(sock) in seen:
+            continue
+        seen.add(id(sock))
+        shutdown = getattr(sock, "shutdown", None)
+        if callable(shutdown):
+            try:
+                shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
     connection.close()
 
 
 def _default_metrics_read(
     url: str, headers: Mapping[str, str], *, timeout: float, max_bytes: int
 ) -> tuple[int, bytes]:
-    """Read direct HTTP metrics within one interruptible wall-clock deadline."""
+    """Read direct HTTP metrics within one interruptible wall-clock deadline.
+
+    Hostname resolution may outlive this deadline; callers needing a hard bound
+    must validate a literal address before calling this helper.
+    """
     parsed = urlsplit(url)
     if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         raise ValueError("invalid metrics URL")
@@ -402,10 +413,14 @@ def _default_metrics_read(
     )
     connection = connection_type(parsed.hostname, parsed.port, timeout=timeout)
     interrupted = threading.Event()
+    # getresponse() may transfer the socket from HTTPConnection to
+    # HTTPResponse (notably HTTP/1.0 and Connection: close).  Keep the socket
+    # that this request owns so the deadline can still interrupt body reads.
+    owned_socket: list[socket.socket | None] = [None]
 
     def interrupt() -> None:
         interrupted.set()
-        _interrupt_metrics_connection(connection)
+        _interrupt_metrics_connection(connection, owned_socket[0])
 
     timer = threading.Timer(timeout, interrupt)
     timer.daemon = True
@@ -413,15 +428,32 @@ def _default_metrics_read(
     response = None
     try:
         connection.request("GET", target, headers=dict(headers))
+        owned_socket[0] = connection.sock
+        if interrupted.is_set():
+            raise TimeoutError()
         response = connection.getresponse()
         if interrupted.is_set():
             raise TimeoutError()
-        return response.status, response.read(max_bytes + 1)
+        payload = bytearray()
+        while len(payload) <= max_bytes:
+            chunk = response.read(max_bytes + 1 - len(payload))
+            if not chunk:
+                break
+            payload.extend(chunk)
+            if interrupted.is_set():
+                raise TimeoutError()
+        if interrupted.is_set():
+            raise TimeoutError()
+        return response.status, bytes(payload)
+    except (OSError, http.client.HTTPException) as exc:
+        if interrupted.is_set():
+            raise TimeoutError() from exc
+        raise
     finally:
         timer.cancel()
         if response is not None:
             response.close()
-        _interrupt_metrics_connection(connection)
+        _interrupt_metrics_connection(connection, owned_socket[0])
 
 
 def _parse_metrics(

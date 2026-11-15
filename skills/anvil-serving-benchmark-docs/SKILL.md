@@ -17,13 +17,19 @@ workspace-resolution skill and read the canonical product skill. Read
 editing.
 
 For a multi-cell, delegated, or resumable campaign, also read
-`docs/benchmarks/repeatable-campaigns.md` before the first live request.
+`docs/benchmarks/repeatable-campaigns.md` before the first live request. For a
+serving comparison, declare its scope and retain the content-bound frozen plan
+and matching profile × workload × context × requested-concurrency matrix before
+requests. Load the matching `metrics_coverage` from the retained native evidence; do not reconstruct it from
+prose or substitute configured/estimated values for measurements.
 
 ## 1. Inspect exact evidence
 
 1. Inspect the retained artifact with
    `anvil-serving eval benchmark evidence show ARTIFACT --json` or the
-   applicable modality skill. Do not infer a pass from a command transcript.
+   applicable modality skill. This command is fail-closed: validation errors
+   produce a nonzero exit and no usable evidence result. Do not infer a pass
+   from a command transcript.
 2. Record model repository and exact revision, served name, image digest and
    engine revision, quantization, KV format, context, concurrency, host,
    measured GPU, co-resident/protected hardware, workload, completion state,

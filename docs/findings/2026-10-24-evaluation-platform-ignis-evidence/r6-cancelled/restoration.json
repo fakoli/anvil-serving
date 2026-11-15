@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "cancelled-attempt-2",
+  "assembled_at": "2026-10-25T02:59:40.633061+00:00",
+  "status": "incomplete_campaign_interval",
+  "verified": false,
+  "model_restoration": {
+    "required": false,
+    "performed": false,
+    "reason": "Incumbent was not unloaded; candidate and temporary alias were not activated. No model swap occurred."
+  },
+  "configuration_scope": "Router retained the original configuration through this attempt; a metadata overlay preceded it. No model reload, candidate load, alias activation/reversal or full client restoration was performed. No model restoration was required.",
+  "worker_recovery": {
+    "state": "cancelled",
+    "worker_terminated": true,
+    "cancel_exit_code": 0,
+    "declared_endpoint_credential_supplied": true,
+    "evidence": "failure-diagnostic.json"
+  },
+  "campaign_interval": {
+    "total_active_wall_seconds": null,
+    "unknown_batch_intervals": 1,
+    "failed_children": "Two failed children closed with fresh verified drain and complete four-plane telemetry.",
+    "cancelled_child": "Cancelled before activation; interval remains unknown.",
+    "scope": "No whole-campaign closure or full restoration/client acceptance claim."
+  },
+  "separate_post_cancel_observation": {
+    "evidence": "failure-diagnostic.json",
+    "scope": "Independent later running/waiting zero observation only. Does not establish drain during, or repair, the frozen cancelled interval."
+  },
+  "promoted": false
+}

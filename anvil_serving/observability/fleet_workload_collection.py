@@ -22,6 +22,7 @@ from .workloads import (
     WorkloadQuery,
     WorkloadRecord,
     FleetResult,
+    canonical_workload_query,
     normalize_workload_timestamp,
 )
 
@@ -67,18 +68,6 @@ class _SourceBuffer:
             self.owner, self.status, self.collected, records,
             Truncation(len(records), self.omitted), self.error,
         )
-
-
-def _query_copy(query: WorkloadQuery) -> WorkloadQuery:
-    return WorkloadQuery(
-        query.owner,
-        query.kind,
-        query.state,
-        query.host,
-        query.active_only,
-        query.recent_seconds,
-        query.limit,
-    )
 
 
 def _status(values: tuple[ResultStatus, ...]) -> ResultStatus:
@@ -166,7 +155,7 @@ def normalize_node_workloads(
 ) -> NodeResult:
     """Detach one supplied node or reduce it to fixed canonical fallback data."""
     baseline = build_node_workloads(host, query, now, {})
-    checked_query = _query_copy(query)
+    checked_query = canonical_workload_query(query)
     collected = baseline.collection_timestamp
     if checked_query.host is not None and checked_query.host != host:
         return _fixed_sources(host, checked_query, collected, None)
@@ -226,7 +215,7 @@ def build_fleet_workloads(
 ) -> FleetResult:
     """Compose declared nodes using bounded newest-first global selection."""
     validation = build_node_workloads("validation", query, now, {})
-    checked_query = _query_copy(query)
+    checked_query = canonical_workload_query(query)
     checked_now = validation.collection_timestamp
     if type(hosts) is not tuple or len(hosts) > MAX_NODES:
         raise WorkloadError(WorkloadErrorCode.INVALID, "invalid fleet workload hosts")

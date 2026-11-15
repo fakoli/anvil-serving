@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-21T09:32:44.093442+00:00",
+  "checks": [
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.voice.toml",
+      "expected": "3b600347c13dde77ab80505e8d65acc4b5d941c7f51d17792df1879dcbaeec13",
+      "actual": "3b600347c13dde77ab80505e8d65acc4b5d941c7f51d17792df1879dcbaeec13",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.toml",
+      "expected": "f533cd2dff5b5aa37ec54c21bb294be25a830e15e52d3dd680fa424f2ef7b4f5",
+      "actual": "f533cd2dff5b5aa37ec54c21bb294be25a830e15e52d3dd680fa424f2ef7b4f5",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-v043-promotion.toml",
+      "expected": "0df654329e870e33bd407dd21699be30caa91c6f4ab8399b371166b1267557ea",
+      "actual": "0df654329e870e33bd407dd21699be30caa91c6f4ab8399b371166b1267557ea",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "expected": "df3e9d39b26cbcaaa913049b34f46b6724337dc80514ecc02f634e87ccb8c899",
+      "actual": "df3e9d39b26cbcaaa913049b34f46b6724337dc80514ecc02f634e87ccb8c899",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.tp2-campaign.toml",
+      "expected": "29555561105ede3c526d8c8728c0a11e7af3a4b6dca1ea056f455c3c2ce19dff",
+      "actual": "29555561105ede3c526d8c8728c0a11e7af3a4b6dca1ea056f455c3c2ce19dff",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-sglang-sm120-393k.toml",
+      "expected": "a345fe27d3d721761ed65da4ace87245bf5dbb755e77db047b52d3d4dcd17277",
+      "actual": "a345fe27d3d721761ed65da4ace87245bf5dbb755e77db047b52d3d4dcd17277",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-exl3-327k-r9-vision8-nospec.toml",
+      "expected": "658faa3938a968d8904d18c055a9d358123184cba8bff6d8badd7bb02f57290e",
+      "actual": "658faa3938a968d8904d18c055a9d358123184cba8bff6d8badd7bb02f57290e",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "expected": "42f44e2fc4d2f2415fdf545e24484531494efd9019c18a7908c6198394d68975",
+      "actual": "42f44e2fc4d2f2415fdf545e24484531494efd9019c18a7908c6198394d68975",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.mimo26-isolated-20261006.toml",
+      "expected": "611dc34ec6af021598ac5f5c16f5963de12fd59137bb9d1d125088f5ca6a8f7c",
+      "actual": "611dc34ec6af021598ac5f5c16f5963de12fd59137bb9d1d125088f5ca6a8f7c",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-abliterated-isolated-20261006.toml",
+      "expected": "611dc34ec6af021598ac5f5c16f5963de12fd59137bb9d1d125088f5ca6a8f7c",
+      "actual": "611dc34ec6af021598ac5f5c16f5963de12fd59137bb9d1d125088f5ca6a8f7c",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-abliterated-promotion.toml",
+      "expected": "a5e33af708a8cb2a44f60a921775976bf67bd93c9c720529d7b029bd89fbfc7a",
+      "actual": "a5e33af708a8cb2a44f60a921775976bf67bd93c9c720529d7b029bd89fbfc7a",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/hosts/primary-node/operator-home/serves.glm53-nvidia-fp4-promotion-20261017.toml",
+      "expected": "2c3bd11fa7cc724b97229e6090ba52e64725d669ad96a816355805d28b0e5c74",
+      "actual": "2c3bd11fa7cc724b97229e6090ba52e64725d669ad96a816355805d28b0e5c74",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/evidence/flare-trial/restoration/serves.glm53-nvidia-fp4-promotion-20261017.toml",
+      "expected": "892f858c64cf34f9f38a636e0d1788248a97dd1619a35dd2f6fb8c09d417d094",
+      "actual": "892f858c64cf34f9f38a636e0d1788248a97dd1619a35dd2f6fb8c09d417d094",
+      "matched": true
+    },
+    {
+      "path": "/operator-private/evidence/flare-trial/restoration/restore-original-recipe.toml",
+      "expected": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+      "actual": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+      "matched": true
+    }
+  ],
+  "all_matched": true
+}

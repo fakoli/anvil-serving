@@ -33,12 +33,100 @@ copyable `resource:member` / `resource:admin` values. Use these exact IDs with
 `users create --grant` or `users access --grant`; application names need not match
 resource IDs. API resources are excluded because browser grants do not authorize
 API access. Passthrough applications retain their own internal permissions.
+Resources reporting `operator_only: true` additionally require the configured
+Connect operator identity; an application `admin` grant alone is insufficient.
 
 The command defaults to `/etc/anvil-connect/deployment.json`, accepts `--manifest`,
 and works identically as `anvil-serving connect resources`. It reads only the
 declaration; it does not contact services, read referenced secrets or establish
 live readiness or current access. A deployment without browser resources returns
 an empty list.
+
+## Native OIDC clients
+
+Add a native application to `authelia.additional_oidc_clients` with this entry
+([complete entry in the repository](https://github.com/fakoli/anvil-serving/blob/main/connect/examples/native-oidc-client.json)):
+
+```json
+{
+  "client_id": "native-example",
+  "client_name": "Native Example",
+  "public": true,
+  "redirect_uris": ["app.example.connect.ios:/oauth/callback"],
+  "groups_scope": true
+}
+```
+
+`public` is a boolean and defaults to `false`. A public client must omit
+`client_secret_file`; the native application holds no client secret. Omitting
+`public`, or setting it to `false`, preserves the existing confidential profile,
+which requires a protected secret file and exact HTTPS callbacks.
+
+Public callbacks use an exact lower-case reverse-DNS scheme, one slash after the
+colon, and a canonical non-root path. Register the identical URI in the
+application. This profile rejects web and loopback callbacks, authorities,
+wildcards, escapes, query strings, fragments, and ambiguous paths. The private-use
+scheme follows [RFC 8252 section 7.1](https://www.rfc-editor.org/rfc/rfc8252#section-7.1).
+Client IDs remain unique across additional clients and the Connect gateway.
+
+Rendering fixes the public client to authorization code, PKCE `S256`,
+`token_endpoint_auth_method: none`, explicit consent, two-factor authorization,
+and RS256 ID tokens. Allowed scopes are `openid`, `email`, and `profile`, with
+`groups` only when `groups_scope` is `true`. Refresh and implicit grants are not
+part of this profile. Authelia's existing public subject identifiers are retained.
+
+Preview the managed gateway configuration after editing the deployment:
+
+```sh
+anvil-serving connect up --manifest /etc/anvil-connect/deployment.json --service gateway --dry-run
+```
+
+Use the existing confirmed gateway update after reviewing that preview. Client
+registration supplies sign-in identity; service grants and a receiving
+application's explicitly trusted token exchange remain separate policies.
+Server introspection credentials stay in that server's protected configuration.
+
+## Native Memory service
+
+`connect native-memory-service` owns one personal OIDC Memory gateway as an
+exact three-unit systemd deployment: the gateway, a root authority projector,
+and its ten-second refresh timer. It is deliberately separate from the Connect
+gateway lifecycle, Capability Gateway, model services, and Tailscale edge
+publication.
+
+Preview and apply a protected declaration:
+
+```sh
+sudo anvil-serving connect native-memory-service install --declaration /protected/native-memory-service.json
+sudo anvil-serving connect native-memory-service install --declaration /protected/native-memory-service.json --confirm
+sudo anvil-serving connect native-memory-service status --declaration /protected/native-memory-service.json
+```
+
+The declaration is root-owned, non-writable, outside Git, and contains paths and
+SHA-256 digests rather than credential values. It pins a single zipapp, Python
+interpreter, gateway configuration, Memory receipt, introspection secret,
+installed Connect manager, fixed UID/GID, Memory/task bounds, current Connect
+manifest, and one browser resource. Installation copies the artifact and config
+into deployment-specific directories, freezes both declared credential sources
+as root-only deployment snapshots for `LoadCredential`, creates only the
+declared system account, installs the three exact units, publishes initial
+authority, and starts the timer and gateway. Source credentials remain
+untouched. A failed apply rolls back resources created by that attempt; an
+interrupted operation retains a declaration-bound receipt for managed removal.
+
+Removal also previews by default:
+
+```sh
+sudo anvil-serving connect native-memory-service remove --declaration /protected/native-memory-service.json --confirm
+```
+
+It first proves the receipt, every owned unit, file, and directory membership,
+then stops only those units, requires the service UID to own no processes,
+removes exact digest-matching copies and the generated authority file, and
+finally removes the dedicated account. It never removes the Connect manifest,
+source credential files, installed manager, router, model service, or unrelated
+unit. Manage the single HTTPS mapping separately with the maintained `edge`
+lifecycle.
 
 ## Users
 
@@ -76,8 +164,47 @@ Creation defaults to role `member` (Authelia group `members`). Use `--role admin
 explicitly for group `admins`. These groups record the intended role; Connect
 operator privileges still require separate authorization. `--grant` assigns
 exact service entitlements and an application role; repeat it for each declared
-browser service. Omitting grants creates only the Authelia account.
+browser service. With memory configured, creation also provisions a personal
+Hindsight bank even when browser grants are omitted.
 Resets preserve existing groups and do not enable disabled accounts.
+
+Install protected per-user bank settings, then provision an existing account:
+
+```sh
+sudo anvil-connect-ctl users configure-memory --input /protected/user-memory.json --confirm
+sudo anvil-connect-ctl users memory developer --confirm
+```
+
+Omit `--confirm` to preview. Installation input must be root-owned, mode `0600`,
+and outside Git. Its `memory` settings and optional email-based `user_defaults`
+are documented in [Per-user banks](../HINDSIGHT.md#per-user-banks). The memory
+command preserves the person's current browser grants, creates and protects
+their personal bank, and invalidates existing Connect browser and terminal
+credentials without restarting Authelia. Shared defaults require explicit grants.
+Suspending or deleting an account closes bank access and retains its memories.
+
+When `memory.router` is installed, `users create`, `access`, and `memory` also
+provision a personal API key for `memory.user`. It resolves through the same
+principal and bank policy for REST, MCP, and application clients. Resume only the
+key phase with this idempotent command (it does not rotate the account generation):
+
+```sh
+sudo anvil-connect-ctl users memory-key developer --confirm
+```
+
+The key stays in the configured root-only directory; output contains its protected
+file path and metadata, never the token. Lost pipe responses recover the saved
+token. Compatible router approvals and manual keys are preserved; existing
+pending, denied, or incompatible approvals require an explicit policy decision.
+The command renews its managed key within one hour of expiry or after an account
+generation change, then revokes only the prior receipt-owned key. Schedule this
+command with the application's native enrollment owner to maintain credentials.
+Preview reports known creation/rotation needs; live router validation is deferred
+to confirmation. Bank access remains ready if key setup fails: retry `memory-key`,
+not the account-generation-changing `memory` command. Renewal needs one free slot
+within the existing ten-key account limit. If all slots are occupied, revoke an
+unused personal key in Connect Home and retry; onboarding never revokes manual
+keys to make space.
 
 Replace an existing person's complete service grant list:
 
@@ -114,10 +241,30 @@ Deletion backs up authentication state before removing it, briefly restarts
 Authelia if active, and retains a protected progress record if interrupted. Retry
 the same deletion to finish; an incomplete deletion stays disabled.
 
+For older pending requests without a username, the worker can recover only an
+already-absent sign-in account with one exact public OIDC subject mapping to the
+authorized principal. It pins that mapping and the original intent in its private
+progress record, backs up the remaining authentication state, and refuses an
+existing or recreated account, ambiguous mapping, or changed native request.
+No new deletion request or direct authority-database repair is needed.
+
 Backups, application data and separately issued API keys are retained; these keys
 have no automatic username association and require separate revocation. An old
 backup can contain a deleted account: review revocations before recovery. Use
 suspension when access may be needed again.
+
+Applications that opt into `authelia.additional_oidc_clients[].groups_scope`
+receive the `groups` claim. The installed account-reconciliation worker runs the
+equivalent of this command before independently processing a pending deletion:
+
+```sh
+sudo anvil-connect-ctl users sync-operators --confirm
+```
+
+It derives `anvil-connect-operators` from configured operators that are enabled,
+have no pending deletion, retain the declared browser-administration resource,
+and resolve to an enabled local sign-in account. It removes stale members and
+does not restart Authelia when the file is already converged.
 
 With filesystem delivery, the result names an exclusive, root-only handoff file beneath
 `/etc/anvil-connect/handoffs`; credentials never appear in command output.
@@ -218,6 +365,22 @@ sequential Authelia and gateway snapshots. The timer catches up after downtime.
 It does not send email notifications.
 An existing unrelated unit with the same name is refused.
 
+Run the installed full backup worker immediately with:
+
+```sh
+sudo anvil-connect-ctl users backup --scheduled
+sudo anvil-connect-ctl users backup --scheduled --confirm
+```
+
+The first command previews the operation. The confirmed command verifies the
+selected immutable manager, default manifest and exact installed worker before
+starting it. The worker already includes the gateway snapshot; `--scheduled`
+cannot be combined with `--include-gateway`. Success requires a new worker
+invocation with a successful exit, not an earlier stored result. A timeout or
+uncertain result does not stop or retry the worker: inspect its state and retained
+backup receipts before trying again. The operation briefly interrupts
+authentication and gateway connections, as the nightly backup does.
+
 To enable permanent deletion from the browser, install the verified manager and
 its fixed worker first:
 
@@ -295,10 +458,89 @@ matching receiver mapping is denied. When `roles` is configured, assertions
 without a role are also denied, even if a legacy subject mapping exists. Assign
 roles to existing users before enabling this receiver mode. Receivers that omit
 `roles` retain the existing subject-based behavior. A role downgrade changes the signed request identity and
-invalidates previous sessions. Passthrough applications, including a separate
-Pi deployment without a Connect identity adapter, still manage their own roles;
+invalidates previous sessions. Passthrough applications without an explicit application-role binding, including
+a separate Pi deployment without a Connect identity adapter, still manage their own roles;
 their editor says that explicitly and their tiles omit the role badge. Merely storing a role label does not
 grant or restrict an action inside such an application.
+
+### Applications restricted to Connect operators
+
+Set `operator_only: true` on a gateway browser resource, beside `display_name`
+and `rule`, to restrict the application to the existing
+`browser_administration.operators` allowlist. The operator must still hold its
+normal explicit resource grant. Nonoperators cannot reach the origin, including
+through a direct URL or upgraded connection, even with an accidental app grant.
+Both service choosers hide the app from nonoperators. The general access editor
+omits it; use the existing managed `operators-ensure-resource` administrative
+operation to add its grant to configured operators. Changed operators must sign
+in to Connect again; an already-converged request preserves their sessions.
+The operator allowlist is startup configuration; grant changes increment the
+affected human's generation and invalidate their existing Connect sessions.
+
+Omitting the setting or using `false` preserves ordinary browser access.
+Malformed values, API resources, and an enabled restriction without configured
+browser administration are refused. Keep the origin private, retain its native
+Host/Origin checks, and publish the app through the existing managed connector
+and TLS edge. A tile opens the application normally; it does not embed a frame.
+This restriction covers the declared browser resource; separately declared API
+aliases and direct origin access require their own protection.
+
+### Application roles owned by Connect
+
+An application owner can install a reviewed adapter and opt one existing browser
+passthrough resource into native member/admin management. The top-level deployment
+setting is explicit; it does not change routing or replace application credentials:
+
+```json
+{
+  "application_role_bindings": [{
+    "resource": "chat",
+    "adapter_path": "/opt/anvil-connect-adapters/webui/adapter.py",
+    "adapter_sha256": "REPLACE_WITH_EXACT_SHA256",
+    "configuration_path": "/etc/anvil-connect/adapters/webui.json",
+    "configuration_sha256": "REPLACE_WITH_EXACT_SHA256"
+  }]
+}
+```
+
+Use real lowercase SHA256 digests from the reviewed installation. Both files and
+all ancestors must be root-owned, outside Git, and not writable by other users.
+The configuration file is mode 0600 and contains protected deployment metadata.
+The application owner verifies native account linkage, applies roles through its
+supported APIs, and revokes native sessions on reductions. No shared administrator
+credential is distributed to clients. See the [adapter contract](../specs/connect-application-roles/spec.md).
+
+Home offers Member/Admin choices for a bound resource. `users create --grant`
+and `users access --grant` use the same authority. Inspect current reconciliation:
+
+```sh
+sudo anvil-connect-ctl users sync-roles
+sudo anvil-connect-ctl users sync-roles --confirm
+```
+
+Omission of `--confirm` is a read-only adapter preview. Output contains per-resource
+counts; awaiting first login is reported separately from failure. Connect resolves
+exact issuer/subject identities, never email or global administrator groups.
+Configured applications must preserve their recovery administrator during adoption.
+For Open WebUI, a first browser sign-in establishes the linked account; the native
+exchange does not create that account. The application remains pending until the
+worker applies the explicit grant. Account data is retained when access is removed.
+
+Install or refresh the existing account worker after installing a new Connect
+manager release:
+
+```sh
+sudo anvil-connect-ctl users deletion-schedule --confirm
+```
+
+That worker reconciles native roles before deletion and still reconciles operator
+groups independently. Failed role updates, revocations, or authority drift block
+destructive deletion and remain retryable. Pending first-login linkage alone does
+not block deletion. The timer runs 10 seconds after the preceding run finishes;
+role changes are eventually consistent, not instantaneous. A missing adapter,
+configuration drift, or failed native API leaves reconciliation incomplete. The
+worker keeps the retained native mappings for recovery and never reports a failed
+revocation as complete. Deployments without bindings keep their previous behavior.
 
 Authelia 4.39.28's file backend has no forced-first-login-change or annual-expiry
 flag. Connect requires initial password setup by withholding the discarded
@@ -600,8 +842,25 @@ Public reverse tunnels open connections on demand. Zero idle registrations are
 reported as idle, not a failed tunnel, and do not trigger a connector restart on
 an unchanged apply. Status does not replace an authenticated application request.
 
+A `tunnel_disconnected` event can also mean that the caller or an intermediary
+canceled an idle pending handshake before HTTP 101. It does not prove prior
+establishment or origin readiness. Intermediary reconnects remain visible;
+backend failures and authority cancellation with a live caller continue to
+report establishment failure.
+The reverse TCP backend waits for demand before completing its HTTP upgrade.
+Pending handshakes retain lease, capacity, cancellation and absolute lifetime
+limits; the 45-second read idle limit starts after the verified upgrade.
+
 `connect status` reports bounded owned service metadata. `--service` narrows it.
 A process reported as running is not a claim that its origin is ready.
+
+If an interrupted gateway leaves ingress or administrative sockets behind, confirmed
+`connect up --service gateway` can recover it without restarting healthy
+Authelia or Caddy services. Recovery stops the gateway, verifies the declared
+directory and socket ownership, requires a refused socket connection, and
+rechecks the socket identity before removal. Live, replaced, or unowned sockets
+are refused. Preview performs no recovery; only `ingress.sock` and `admin.sock` are eligible. Account state and credentials
+are not part of socket recovery.
 
 ## Doctor
 
@@ -613,6 +872,10 @@ narrows the checks. Diagnostics exclude secret file contents and request bodies.
 `connect logs --service SERVICE --tail 100` returns bounded service event metadata.
 The maximum tail is 200. Credential-bearing raw process logs are not a public
 diagnostic contract.
+Native events project only required journal fields and return at most the last
+64 rows from the current service invocation, within the existing output byte
+limit. This is a bounded observation, not complete history. Native event results
+and generic log availability are reported independently.
 
 ## Init
 
@@ -695,6 +958,60 @@ Save its private output, redeem it with `connect init --service
 connector:dashboard --bundle ...`, then inspect `connect identity`. The final
 approval request uses `operation: approve`, `installation: dashboard`, and the
 independently checked `fingerprint` returned by identity inspection.
+
+## Native authority
+
+`connect native-authority --manifest /absolute/deployment.json --resource pi-web
+--output /absolute/private/native-authority.json --reader-gid GID` previews a
+short-lived projection of the exact Connect human grants for one declared browser
+resource. `--confirm` publishes it atomically as root, readable by the broker's
+dedicated group. A managed publisher must refresh it before its 30-second expiry;
+stale projections deny access. The broker must pin the same issuer and source
+resource. This projection neither creates accounts nor grants new authority.
+This first broker supports at most 64 granted principals per source resource.
+Exceeding that capacity stops publication; existing authority expires after 30
+seconds and access fails closed. Check roster capacity before extending grants.
+
+## Native agents
+
+`connect native-agents --config /absolute/private/native-agents.json` runs the
+native Agents broker in the foreground. A managed service owns process lifecycle.
+The protected configuration declares fixed OIDC introspection/userinfo endpoints,
+the allowed native client, the fresh authority projection, owned workspaces and
+their separate private Pi owner endpoints. Provider and owner secrets remain on
+the host. Every operation and stream is scoped to the verified issuer/subject and
+current Connect grant; a browser cookie, email address or WebUI token is not an
+admission credential. Deploy with the managed infrastructure role and retain its
+artifact digests and rollback record before exposing the HTTPS endpoint.
+
+## Native agents check
+
+```bash
+anvil-serving connect native-agents-check
+```
+
+This finite local check needs no email activation or OAuth sign-in. It runs the
+real broker HTTP handler and receipt store with two synthetic users and synthetic
+owners, checking session creation, state, Stop, cross-user denial and local
+admission revocation. A temporary loopback listener uses random credentials held
+only in memory; it closes and its private state is removed when the check ends.
+There is no production authentication setting or persistent development token.
+
+For actual guest owners, supply `--config /absolute/private/guest-check.json` to
+preview, then add `--confirm` to run. This uses the protected broker config format
+but requires exactly two guest principals, two to four sandboxed workspaces, and
+no personal-user workspace. Each owner endpoint and credential must be distinct.
+The command ignores the configured production listen port and broker store. It
+creates empty native sessions, reads their state, checks access boundaries, and
+Stops them. Session IDs are returned for audit; the empty native sessions remain.
+It sends no model prompts and changes no accounts or grants. `--dry-run` overrides
+`--confirm`; without a config only disposable synthetic state is used.
+
+These checks exercise broker behavior and, in configured mode, owner control
+paths. They do not establish OAuth, browser, model, filesystem/network isolation,
+private Hindsight or whole-process revocation acceptance. Those remain separate
+deployment checks. Reading protected owner credentials requires the existing
+local operator permissions; this command does not grant them.
 
 ## Keygen
 

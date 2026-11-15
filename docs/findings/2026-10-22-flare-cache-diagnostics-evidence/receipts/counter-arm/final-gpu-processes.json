@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "nvidia-smi",
+    "--query-compute-apps=gpu_uuid,pid,process_name,used_gpu_memory",
+    "--format=csv,noheader,nounits"
+  ],
+  "at": 1792664879.27635,
+  "rows": [
+    {
+      "gpu_uuid": "synthetic-id-14c581c315ea",
+      "pid": "158336",
+      "process_name": "VLLM::Worker_TP0_DCP0",
+      "used_gpu_memory": "96436"
+    },
+    {
+      "gpu_uuid": "synthetic-id-d013185ea964",
+      "pid": "159099",
+      "process_name": "VLLM::Worker_TP1_DCP1",
+      "used_gpu_memory": "96436"
+    }
+  ]
+}

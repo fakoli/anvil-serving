@@ -1,0 +1,37 @@
+{
+  "agent_settled": true,
+  "argv": [
+    "pi",
+    "--mode",
+    "rpc",
+    "--no-extensions",
+    "--session-dir",
+    "<PRIVATE_PATH>",
+    "--session-id",
+    "e1b38846-b8b3-4472-a050-894d70930efd",
+    "--provider",
+    "anvil",
+    "--model",
+    "llm.primary",
+    "--thinking",
+    "high",
+    "--tools",
+    "read"
+  ],
+  "final_state": {
+    "is_streaming": false,
+    "model": "llm.primary",
+    "provider": "anvil"
+  },
+  "initial_state": {
+    "model": "llm.primary",
+    "provider": "anvil"
+  },
+  "marker_sha256": "a70e91abd979323be81a735fc0aaea63300eab6f8c43660b6c7417f774a18762",
+  "persistent_provider_changes": false,
+  "probe_sha256": "a70e91abd979323be81a735fc0aaea63300eab6f8c43660b6c7417f774a18762",
+  "raw_turn_events_sha256": "384453cdb9b440e761e73805849e9f84cc814d9094129500a50f5e9106816944",
+  "schema": "interim-pi-actual-acceptance/v1",
+  "scope": "selected anvil/llm.primary actual read turn; full provider catalog not tested",
+  "status": "passed"
+}

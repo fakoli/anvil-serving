@@ -1,0 +1,27 @@
+{
+  "analysis": {
+    "boundary": "unknown",
+    "finish_reason": "length",
+    "generated_reasoning_token_ids_count": null,
+    "oracle": false,
+    "reasoning_span_tokens": null,
+    "response_anomalies": [
+      "finish_reason_not_stop"
+    ],
+    "usage": {
+      "completion_tokens": 512,
+      "completion_tokens_details": {
+        "reasoning_tokens": 512
+      },
+      "prompt_tokens": 48,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "created_cache_tokens": 0,
+        "multimodal_tokens": null
+      },
+      "total_tokens": 560
+    }
+  },
+  "network": false,
+  "source_response_sha256": "3ff9f594a511d75e00770a52014b2262556470504563c298130d59672dd3d679"
+}

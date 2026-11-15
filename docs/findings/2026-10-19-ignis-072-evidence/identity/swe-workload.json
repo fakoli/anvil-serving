@@ -1,0 +1,147 @@
+{
+  "endpoint": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "qwen3.8-flash-next"
+  },
+  "ownership_id": "ignis-072-qualification-20261019",
+  "parameters": {
+    "campaign_source": {
+      "repository": "$WORKTREE",
+      "revision": "803e44e2809fa0f9ced0480083008e89a79838d7"
+    },
+    "client_topology": "co-resident",
+    "configuration": {
+      "decode_lanes": 8,
+      "image": "ghcr.io/gpillon/ignis@sha256:440563a1fc52db29cc9a51442093a03c05a70d377d8f9f61e119f42fbd1665db",
+      "mtp_depth": 3,
+      "recipe": "ignis-072-flash-next-tp1-c8-131k-mtp3",
+      "registry": "$OPERATOR_HOME",
+      "registry_sha256": "1f0f3f677bcc0dbd282240d447a4ebfe251423071dd21eb12da7f8cdee78cd34",
+      "require_complete_cache": false,
+      "speculation": "MTP via rtxpro6000 profile",
+      "tensor_parallel_size": 1
+    },
+    "harness_contract": {
+      "agent": {
+        "name": "mini-swe-agent",
+        "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+      },
+      "dataset": {
+        "data_sha256": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd",
+        "name": "princeton-nlp/SWE-bench_Verified",
+        "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a"
+      },
+      "grader": {
+        "independent": true,
+        "name": "swe-bench",
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "isolation": {
+        "cpus": 4,
+        "memory": "8g",
+        "memory_swap": "8g",
+        "network": "none",
+        "pids_limit": 512
+      },
+      "prebuilt_instance_images": {
+        "django__django-13512": "docker.io/swebench/sweb.eval.x86_64.django_1776_django-13512:latest",
+        "pydata__xarray-4356": "docker.io/swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest",
+        "pylint-dev__pylint-8898": "docker.io/swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest",
+        "sphinx-doc__sphinx-9658": "docker.io/swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest",
+        "sympy__sympy-12096": "docker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest"
+      }
+    },
+    "identities": {
+      "concurrency": {
+        "requests": 1,
+        "workers": 1
+      },
+      "context": {
+        "configured_tokens": 131072
+      },
+      "dataset": {
+        "name": "princeton-nlp/SWE-bench_Verified",
+        "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+        "split": "test"
+      },
+      "hardware": {
+        "gpu": "1x RTX PRO 6000 Blackwell Max-Q",
+        "vram_mib_per_gpu": 97887
+      },
+      "harnesses": {
+        "mini-swe-agent": {
+          "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+        }
+      },
+      "image": {
+        "reference": "ghcr.io/gpillon/ignis@sha256:440563a1fc52db29cc9a51442093a03c05a70d377d8f9f61e119f42fbd1665db"
+      },
+      "model": {
+        "artifact_sha256": "12e3b265b0678ba935a4b05d1b612ba4b68b3a96c3026d818ad65838985fd864",
+        "mtp_artifact": "qwen3_8_flash_next_mtp_3p0-v2.ninfer",
+        "mtp_artifact_sha256": "432fe5c0838027047c5b46c4fde526f3d3ef3d126f00fed1213921f8705988d2",
+        "repository": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+        "revision": "f75e492c6d726537a4d4c85858bc91ee06a070ef"
+      },
+      "runtime": {
+        "engine": "Ignis",
+        "version": "0.7.2"
+      },
+      "served_model": {
+        "configured_context": 131072,
+        "id": "qwen3.8-flash-next"
+      },
+      "topology": {
+        "kind": "co-resident-benchmark-client",
+        "worker_id": "local-benchmark"
+      }
+    },
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "model_host_id": "local-benchmark",
+    "paired_image_ids": {
+      "django__django-13512": "sha256:730eab5b64c03ed8e8c94064da483db36fbd79d2465ffa98809acc6282bcfd82",
+      "pydata__xarray-4356": "sha256:6783a6b3a574ea663b66d11da371b6fe00a18c6501e361e1384c8daeb978bf5c",
+      "pylint-dev__pylint-8898": "sha256:a78e6034f627c1ae69c67b5a25ae5420192afb7279a4fd032a74095752e707d7",
+      "sphinx-doc__sphinx-9658": "sha256:f8847eb2c89ef395c61e91c1f00166b274b2742aee6f310e3a315a10999f1e93",
+      "sympy__sympy-12096": "sha256:278dcceabbf7775dee7ee59434fd829e857d5476ac9e547fe9f9f204b2c3f4fe"
+    },
+    "paired_image_ids_source": {
+      "path": "$RESEARCH_EVIDENCE",
+      "scope": "retained verified mapping",
+      "sha256": "ee83932b1bcb1188c3b625e6909bf117ec053296c33f53f873cb06d904cf6b68"
+    },
+    "profile_contract": {
+      "instance_limit": 5,
+      "max_completion_tokens": 16384,
+      "max_steps": 60
+    },
+    "qualification_limits": [
+      "This exact profile differs from the prior no-speculation C1 run in engine version, lane count, MTP, expert residency, and n-gram sizing.",
+      "The paired task images must be present and identity-verified before agent and grader stages.",
+      "JSON_OBJECT compatibility remains a separately retained boundary check."
+    ],
+    "sampler": {
+      "native_default_top_k": 20,
+      "proof": "Record only if startup/request evidence proves the effective native default.",
+      "request_top_k_present": false
+    },
+    "temperature": 1.0,
+    "thinking_mode": "default",
+    "top_p": 0.95
+  },
+  "profile": "scout",
+  "run_id": "ignis-072-swe5-20261019-r2",
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "submitted_at": "2026-10-20T02:32:18.703766Z",
+  "suite": "swe",
+  "timeout_s": 21600,
+  "worker": {
+    "id": "local-benchmark"
+  }
+}

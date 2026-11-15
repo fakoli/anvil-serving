@@ -1,0 +1,224 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "quality",
+      "compatibility-only"
+    ],
+    "id": "evaluation-platform-r12-r13",
+    "promotion_authorized": false,
+    "repository_revision": "c0ce1d0633939eaf686bbd1e9e59241f6a0534aa"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "94194c6a77445f80b3f488b1abb36ab759b3c9b6be99929283dc0e4164974a52",
+          "bytes": 2331
+        }
+      ],
+      "reason": "Human index of separately retained attempts and their limitations."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "39d7ddaaef9f94770957828d20f274f446a0a2630cf9ac532c337d56c8a0dcae",
+          "bytes": 376
+        },
+        {
+          "path": "supplemental-projection-ledger.json",
+          "sha256": "f07fe473d48bb22d8ddc847a39275b2c74417c173d29fccd92a57a29c7f61f4d",
+          "bytes": 19529
+        }
+      ],
+      "reason": "Local sources and explicit private-original/derivative distinction."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/campaign-control-records-0001.jsonl",
+          "sha256": "d2c0a1c4c9a67629d4bce91b814a21cb539adf6f453e6c0823981304c505a6b9",
+          "bytes": 265467
+        },
+        {
+          "path": "projections/child-evidence-records-0001.jsonl",
+          "sha256": "693b04cff06c06f3ff9064521ed848b5d0b49986b8e2b4e9f599023620a647bf",
+          "bytes": 12475506
+        }
+      ],
+      "reason": "R12 native workload projections; R13 full workload/plans remain private and are not claimed complete."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/campaign-control-records-0001.jsonl",
+          "sha256": "d2c0a1c4c9a67629d4bce91b814a21cb539adf6f453e6c0823981304c505a6b9",
+          "bytes": 265467
+        },
+        {
+          "path": "projections/child-evidence-records-0001.jsonl",
+          "sha256": "693b04cff06c06f3ff9064521ed848b5d0b49986b8e2b4e9f599023620a647bf",
+          "bytes": 12475506
+        },
+        {
+          "path": "r13/frozen-population.json",
+          "sha256": "870d256f9763d8a22818e5919e280363ab0a0d63242c6a040c02e6bd4cce13e6",
+          "bytes": 35027
+        }
+      ],
+      "reason": "R12 prepared plans plus separate prospective44/4 eligibility and bounded R13 configured controls; no complete R13 plan projection."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity-control-map.json",
+          "sha256": "9f89223e5afe6108b059fe957b95778eda0173844596813df9a9af7318307118",
+          "bytes": 683
+        },
+        {
+          "path": "r13/frozen-population.json",
+          "sha256": "870d256f9763d8a22818e5919e280363ab0a0d63242c6a040c02e6bd4cce13e6",
+          "bytes": 35027
+        }
+      ],
+      "reason": "Configured model/runtime/source identity; candidate was never created."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "projections/aider-and-partial-records-0001.jsonl",
+          "sha256": "6ada07c0cf715113582fded974ebcf03cc45a8b010643f8ceb391743ebadefaf",
+          "bytes": 2730557
+        },
+        {
+          "path": "projections/campaign-control-records-0001.jsonl",
+          "sha256": "d2c0a1c4c9a67629d4bce91b814a21cb539adf6f453e6c0823981304c505a6b9",
+          "bytes": 265467
+        },
+        {
+          "path": "projections/child-evidence-records-0001.jsonl",
+          "sha256": "693b04cff06c06f3ff9064521ed848b5d0b49986b8e2b4e9f599023620a647bf",
+          "bytes": 12475506
+        },
+        {
+          "path": "projections/telemetry-records-0001.jsonl",
+          "sha256": "39c89ab047e0c45c5b8fbcb64e7cefb8b132bb5a168bdf96d361c2aeaeb7822d",
+          "bytes": 2043906
+        },
+        {
+          "path": "campaign-report.json",
+          "sha256": "54ccad5ebe7f6eacf8807bf2c1243cdba47495f1a61ab14428098b22cd008c1c",
+          "bytes": 117644
+        },
+        {
+          "path": "r13/campaign-report.json",
+          "sha256": "df64c351d4a2c89c5354f219e58a6d3e5b0b4f7117ed71903138bef197ba2f81",
+          "bytes": 73199
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "35dfd3413160f94f629b904407b3a82590609f42d09e57a525fed0c0813988e3",
+          "bytes": 11807821
+        },
+        {
+          "path": "projection-validation.json",
+          "sha256": "e1bf6b30d86d4ce46bc937b18a477245a9bb68d3cd95143e011e3a4903b26651",
+          "bytes": 1790
+        },
+        {
+          "path": "r12-closure-and-cancellation.json",
+          "sha256": "338b6d636a6f5920d02ff662fd8ef83a75c1948769a052f6156bd931b71be481",
+          "bytes": 120279
+        }
+      ],
+      "reason": "R12 full projection and separate unexecuted R13 native report; derivative hashes do not validate private native chains."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "da1e0e18b0d3a581e7ce4ed900d3f07b72b222e1263db65b6ed90ec7cafc6aa9",
+          "bytes": 1720
+        },
+        {
+          "path": "r13/admission-refusal.json",
+          "sha256": "f6e7c7c23d1b27dc19f221b94c0bd71be446386f9043bce05e8f6d3d186a4421",
+          "bytes": 3580
+        },
+        {
+          "path": "r12-closure-and-cancellation.json",
+          "sha256": "338b6d636a6f5920d02ff662fd8ef83a75c1948769a052f6156bd931b71be481",
+          "bytes": 120279
+        }
+      ],
+      "reason": "Keep cancellation unknowns and pre-create admission refusal."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "c167e25fa14074cd9336d57a24cfe5559d44b75a13028eca91af1d131013afc2",
+          "bytes": 1982
+        },
+        {
+          "path": "restoration-evidence.json",
+          "sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+          "bytes": 9399
+        }
+      ],
+      "reason": "Exact incumbent restoration and routed checks plus explicit minimal-thinking Pi acceptance. Historical thinking-off failure remains open; no fleet-global drain claim."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+          "bytes": 6679
+        }
+      ],
+      "reason": "Separate attempt outcomes and verified scoped restoration; no model comparison or promotion."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "f2357c9dd6f5aa01a11ede76f2994fcafd4617cbacdc8381a4d3517bb61ea744",
+          "bytes": 1535
+        }
+      ],
+      "reason": "Derivative public copy; exact restoration verified and independent content review passed."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 16 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

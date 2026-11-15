@@ -1,0 +1,42 @@
+{
+  "source_before": "8ee1033a4c46fec2e767e376fa7b590ec3d3aff585873a5c9eb0bc48df6a3767",
+  "patch_before": "43f14e55bd3724c87d9a04c847ee50d2412ed2df056b5826f52118faa4fde149",
+  "binaries_before": {
+    "OPERATOR_PATH_d6852559f772/flare_helios-2c1079bd13063c63": "f9a2c46e50a97fa60a95ae87a68a996c530b24c580f1ff803c2c19367668b7ca",
+    "OPERATOR_PATH_c9e0b9bd05e9/flare_helios-db6a0d3e7eef93eb": "94b83483bde5fd94083a36955ace5ca1c69f8ba188ff152a63d13a11aedfa50f"
+  },
+  "source_applied": "b21df8e9ad32b725b7f5934820441138483b245eeb35479c176f1f701081aa78",
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "--jobs",
+    "2",
+    "--manifest-path",
+    "helios/Cargo.toml",
+    "--features",
+    "server",
+    "--lib",
+    "server::runtime::phase_tests::cancelled_shared_fetch_keeps_ticket_resources_until_completion",
+    "--",
+    "--exact",
+    "--nocapture"
+  ],
+  "cwd": "OPERATOR_PATH_d81b073e3d22/flare-local-inference",
+  "environment_overrides": {
+    "PROTOC": "OPERATOR_PATH_b14c926a7f3b/protoc",
+    "LD_LIBRARY_PATH": "OPERATOR_PATH_904a718e9796/x86_64-linux-gnu"
+  },
+  "timeout_seconds": 900,
+  "status": "failed",
+  "started_utc": "2026-10-22T23:47:40Z",
+  "exit_code": 101,
+  "elapsed_seconds": 7.377780915936455,
+  "source_after": "b21df8e9ad32b725b7f5934820441138483b245eeb35479c176f1f701081aa78",
+  "patch_after": "43f14e55bd3724c87d9a04c847ee50d2412ed2df056b5826f52118faa4fde149",
+  "binaries_after": {
+    "OPERATOR_PATH_d6852559f772/flare_helios-2c1079bd13063c63": "f9a2c46e50a97fa60a95ae87a68a996c530b24c580f1ff803c2c19367668b7ca",
+    "OPERATOR_PATH_c9e0b9bd05e9/flare_helios-db6a0d3e7eef93eb": "94b83483bde5fd94083a36955ace5ca1c69f8ba188ff152a63d13a11aedfa50f"
+  },
+  "finished_utc": "2026-10-22T23:47:48Z"
+}

@@ -1,0 +1,62 @@
+{
+  "campaign_id": "glm-diagnostics-20261025-r1",
+  "local_sources": [
+    {
+      "age_class": "current-at-run",
+      "decision_impact": "Six graded cases, two unstarted cells; diagnostic only.",
+      "evidence_type": "local-native-evidence",
+      "hardware_runtime_relevance": "Pinned incumbent GLM FP4 on dual RTX PRO 6000 Blackwell Max-Q; focused routed Aider/Polyglot coding diagnostics.",
+      "id": "campaign",
+      "manifest_sha256": "13dbf9a94b8ae9b6f207db424bc3896879fc630e67c1fe7eb69b998665abb5b4",
+      "observed_at": "2026-10-25",
+      "observed_date": "2026-10-25",
+      "path": "campaign-report.json",
+      "published_or_observed": "2026-10-25 (local observation)",
+      "url": ""
+    },
+    {
+      "age_class": "current-at-run",
+      "decision_impact": "Unchanged two-attempt oracle and native handling of length-finished responses.",
+      "evidence_type": "pinned-source",
+      "hardware_runtime_relevance": "Pinned incumbent GLM FP4 on dual RTX PRO 6000 Blackwell Max-Q; focused routed Aider/Polyglot coding diagnostics.",
+      "id": "aider",
+      "observed_at": "2026-10-25",
+      "path": "projections/campaign-control-records-0001.jsonl",
+      "published_or_observed": "2026-10-25 (local observation)",
+      "revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "url": ""
+    },
+    {
+      "age_class": "current-at-run",
+      "decision_impact": "Fixed Go/Rust task and independent test/reference population.",
+      "evidence_type": "pinned-source",
+      "hardware_runtime_relevance": "Pinned incumbent GLM FP4 on dual RTX PRO 6000 Blackwell Max-Q; focused routed Aider/Polyglot coding diagnostics.",
+      "id": "polyglot",
+      "observed_at": "2026-10-25",
+      "path": "projections/campaign-control-records-0001.jsonl",
+      "published_or_observed": "2026-10-25 (local observation)",
+      "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f",
+      "url": ""
+    },
+    {
+      "age_class": "current-at-run",
+      "decision_impact": "Bounded diagnostics, raw-grade separation and whole-job admission.",
+      "evidence_type": "source-and-tests",
+      "hardware_runtime_relevance": "Pinned incumbent GLM FP4 on dual RTX PRO 6000 Blackwell Max-Q; focused routed Aider/Polyglot coding diagnostics.",
+      "id": "harness",
+      "observed_at": "2026-10-25",
+      "path": "validation.json",
+      "published_or_observed": "2026-10-25 (local observation)",
+      "revision": "3e211eec5998998712acba85cf2d06ae4a49cd1a",
+      "url": ""
+    }
+  ],
+  "observed_at": "2026-10-25",
+  "provenance": [
+    "projection-ledger.json",
+    "supplemental-projection-ledger.json"
+  ],
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "scope": "Locally measured native evidence and offline source tests; no external performance priors.",
+  "sources": []
+}

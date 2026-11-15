@@ -1,0 +1,65 @@
+{
+  "actual_swap_bytes": 0,
+  "cache_mode": "FP16",
+  "concurrency": 1,
+  "configured_context_tokens": 32768,
+  "container_id": "[redacted-container-id]",
+  "cpu_moe_offload_layers_configured": 0,
+  "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+  "evidence": [
+    {
+      "path": "raw/qwen-exl3-405-tp1-32k-load.json",
+      "sha256": "c44d7d3c43f8377bb23a3d3318ba7a69715b2cea0b3835cf12d97d1939709e57"
+    },
+    {
+      "path": "raw/qwen-exl3-405-tp1-32k-logs-startup.json",
+      "sha256": "2349f1f4d2c1187f0900807d23f44dad7852ab2f396405aa7d16e4c9bff9ceb6"
+    },
+    {
+      "path": "raw/qwen-exl3-405-tp1-32k-status-ready.json",
+      "sha256": "4d28b081561396829a3c5035dee443711715beeee3fa2a3183ac6d5d648e1ef5"
+    },
+    {
+      "path": "raw/qwen-exl3-405-tp1-preflight-32k-xhigh-native.json",
+      "sha256": "8dc256c2ff85bfbea27bcd8ff26ca0a7a1aedcebf64c93ca5e7ae65b805d3a5c"
+    },
+    {
+      "path": "raw/qwen-exl3-405-tp1-preflight-32k-xhigh-memory.json",
+      "sha256": "d116077bfe5820f081d92f094aa40f32e26f196de44c9b70b04045f2aa0cb21a"
+    }
+  ],
+  "gpu_post_functional": [
+    {
+      "gpu_uuid": "[redacted-gpu-uuid]",
+      "total_mib": "97887",
+      "used_mib": "65433",
+      "utilization_pct": "0"
+    },
+    {
+      "gpu_uuid": "[redacted-gpu-uuid]",
+      "total_mib": "97887",
+      "used_mib": "0",
+      "utilization_pct": "0"
+    }
+  ],
+  "host_peak_bytes": 46101901312,
+  "limits": [
+    "No measured32Kfullprompt, quality/performance orpromotionclaim.",
+    "131K noweligiblefornewexactrecipeindependentreview; no131load untilreview.",
+    "Tabby3forwardinghashesnative match; ExLcoreGitrevisionnotexposed; endpointn_ctxnull."
+  ],
+  "min_sampled_host_memavailable_kb": 88136860,
+  "model_revision": "55a732e0c4c3d4614bc42b68493bb930d9b02c0a",
+  "mtp_configured": "disabled",
+  "native_functional_observations": 13,
+  "native_memory_note": "filecache dominant; no huge mapped-kernel allocationseen; corePLE placement/causalityunproven",
+  "ngram_ram_requested": false,
+  "observed_at": "2026-10-13T19:58:04.848422+00:00",
+  "passed": true,
+  "preflight_sampler": "Tabby defaultT1/p1/k0/minp0; futurequalitySWE explicitT1/p.95/no inheritedQADtopk20",
+  "promoted": false,
+  "request_reasoning_effort": "xhigh",
+  "schema_version": "native-stage-decision/v1",
+  "streaming_reasoning_effort": "exact template native defaultxhigh",
+  "tensor_parallel_size": 1
+}

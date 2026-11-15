@@ -1,0 +1,31 @@
+{
+  "files": {
+    ".agents/skills/anvil-serving-workbench/SKILL.md": "2a76a3c920d46d607f2e08aab721de01279268facdfbb5390d2c33c80a34dd45",
+    ".claude/skills/anvil-serving-workbench/SKILL.md": "e3b8c21a2ac0b1567d9136a765dc88982304b2453f6fca4d8e5a22cc719a0388",
+    "anvil_serving/benchmark_evidence.py": "f2d1aea7a73d126380a05292efa9b92c0e724d6f1b2c275d8d60e4a6d66fe97a",
+    "anvil_serving/benchmarking/artifacts.py": "c3b7bc545187db0c5ca21d00cb6078226ad7c1855796c77d2e80b8578d9f3ca3",
+    "anvil_serving/benchmarking/cli.py": "e6170f7b990eb51623bdc154110a54c572d2ea71488b43ecfd2f1318bd51c800",
+    "docs/benchmarks/hardware/rtx-pro-6000.md": "9f92ede9796f8b6d4921dd221875ed320bf01845b43d7598d9986d03d3f81ce7",
+    "docs/benchmarks/methodology.md": "886a24f198b9dc33fada8901bef31b3350cb19343e68bb1f08e304aa86f0770f",
+    "docs/benchmarks/models/glm53-flash.md": "3329f6779a40d640afdb6f54ef95fecae8779292f4219283b1c04a2e216b269b",
+    "docs/benchmarks/repeatable-campaigns.md": "0c9feaaf02912a10a11bd817af0e33ec971a87ad620e0bf3e4776041ad80acd1",
+    "docs/benchmarks/rtx-pro-6000-audit.md": "c4781f01d21708704b9e0c22035d8d0787b3e7005a7ab6a1f8db8af146e9b244",
+    "docs/benchmarks/runs.md": "c6ccfebd585733d2eb0cf3f09bd6873e689ea2ec16e96bb65e667210b538c39c",
+    "docs/findings/README.md": "c311e32ce05f5ec2b2a4ce77c3ae0b0fbd08691ea1eddcb3229a208a03074a03",
+    "skills/anvil-serving-benchmark-docs/SKILL.md": "af4d4698a5878a1ae5f7146223565185ab085cb37ee76e3fee43ac8abda3d7f1",
+    "skills/anvil-serving-benchmark-docs/references/artifact-set-contract.md": "533eade19f5e4233bcde53160d51a1c5224e956256ba4531d47a2500993f72b9",
+    "skills/anvil-serving-benchmark-docs/scripts/finalize_artifact_set.py": "0f6d9354ff16f2db3b242f7a88381b7ec3c55718f4ba1917b3429e0f6ab2c882",
+    "skills/anvil-serving-benchmark-docs/templates/artifact-set/coverage-and-gaps.md": "0b41729a74dea3af8fba32205955601b586fd032b30c6da1c7321479f830b6fd",
+    "skills/anvil-serving-benchmark-docs/templates/artifact-set/dispatch-packet.md": "aae04ef01c19b57ac685ba734d0b12b2238e4c0d10cd3ca46090c77e2465b13b",
+    "skills/anvil-serving-benchmark-docs/templates/artifact-set/summary.json": "5ffc85110c0c33d9e74af60bc55278a8c87787d44e4413b4287a6d6b93a35a11",
+    "skills/anvil-serving-llm-qualification/SKILL.md": "ba2e022676156e6dec0dd1e31fbc56775ce6c1c574381705be6851209845a3c2",
+    "skills/anvil-serving-llm-qualification/references/evidence-contract.md": "26a49d9a44ed8f6571116c45a8326b650eac322afb7755247e22bbce9a09f90e",
+    "tests/test_benchmark_artifact_integrity.py": "acb8d68b6fee00e9744576dc5b4acd32f948980d9a64095f6b950e185818b33c",
+    "tests/test_benchmark_docs_skill.py": "4e648f45a4acddf4f223c9ba65a3520e43cf828e529f6bc55ac4579235926390",
+    "tests/test_capacity_concurrency.py": "346d06bef20e8e81bc47a0bfc9ec9e790e937d40c0fa498d872b43aa83a26fcf"
+  },
+  "full_test_command": "TMPDIR=/data/cache/t python scripts/run_tests.py tests/ -x -q",
+  "head": "c721ad95cec8d9bd73b4ae762ca568fbf976c9e1",
+  "observed_at": "2026-10-17T10:31:36.482380+00:00",
+  "session": 87975
+}

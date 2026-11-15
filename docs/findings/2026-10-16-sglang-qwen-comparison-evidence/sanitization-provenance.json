@@ -1,0 +1,18 @@
+{
+  "leaf_transforms": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "bound_port": "30000 integer synthetic endpoint redaction",
+    "container_id": "redacted:sha256 of original ID",
+    "history_and_tool_arrays": "original list length and item shapes retained; confidential nested string values replaced",
+    "nested_tool_argument_string_leaves": "empty string; mapping/list shape and non-string scalar values retained",
+    "raw_text_fields": "empty string",
+    "response_bearing_detail_fields": "empty string",
+    "runtime_alias": "glm53-flash-baseline"
+  },
+  "private_originals": "Retained outside this repository; each projection source SHA-256 is recorded in baseline-source-ledger.json.",
+  "projection_contract": "Each native file is a schema-preserving public projection: all original mapping/list paths, list lengths, and scalar JSON types are retained. Confidential string values are replaced by empty strings or public-safe placeholders; confidential list items are recursively sanitized in place. No raw model output, prompt, reasoning excerpt, tool argument, response-bearing detail, private endpoint, operator path, host identity, GPU UUID, container name, or raw container ID is published.",
+  "schema": "anvil-serving.sanitized-evidence-provenance/v1",
+  "scope": "Nine incumbent baseline native projections listed in baseline-source-ledger.json, plus that ledger and baseline-public-configuration.json.",
+  "served_identity_binding": "baseline-public-configuration.json binds glm53-flash-baseline to public-safe repository, revision, image digest, recipe digest, engine, quantization, TP, context, and hardware facts.",
+  "status": "draft; final manifest and publication remain deferred"
+}

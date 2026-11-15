@@ -1,0 +1,48 @@
+{
+  "identity": {
+    "concurrency": 4,
+    "configured_resource_policy": {
+      "distinction": "Configured and startup-loading observations only; not capacity or performance measurements.",
+      "gpu_memory_utilization": 0.95,
+      "host_memory_reserve_mib": 12288,
+      "host_ple_mapped_gib": 26.82,
+      "memory_limit_mib": 53248
+    },
+    "context_tokens": 262144,
+    "engine": "vLLM local-inference-lab release 2026-10-15",
+    "hardware": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "model_repository": "nvidia/Qwen3.8-Flash-Next-FP4-Local",
+    "model_revision": "b9ce18a6887e18c089fdea8509a33e63429a3300",
+    "native_request_policy": {
+      "reasoning_effort": "omitted; pinned template native default xhigh",
+      "temperature": 1.0,
+      "thinking": "enabled",
+      "top_k": 20,
+      "top_p": 0.95
+    },
+    "public_served_alias": "qwen38-nvidia-fp4-local-scout",
+    "quantization": "NVIDIA FP4 QAD 1.0 ModelOpt mixed NVFP4/MXFP8; FP8 KV; host PLE offload; MTP3",
+    "runtime_image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "runtime_template_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+    "tensor_parallelism": 1
+  },
+  "measured_to_date": {
+    "r2_admission": "failed before container creation and model requests",
+    "r3_oracle8": "passed 54 of 54 across three rounds",
+    "r3_preflight": "passed 6 of 6 checks with 26 observations",
+    "r3_startup_gates": "passed containment, identity, reserve, template, and served-model gates",
+    "r3_swe5": "terminal incomplete: 5 attempted, 4 officially graded, 2 resolved; official grader incomplete because the Sympy case exhausted its 60-call budget"
+  },
+  "privacy_boundary": "No private host, path, endpoint, container identity, GPU UUID, raw prompts, responses, reasoning, tool arguments, logs, or commands are retained.",
+  "restoration_boundary": "Final campaign restoration is recorded in restoration.json; the exact retained GLM incumbent passed direct and routed JSON checks with unchanged client-facing contract and router hash.",
+  "schema": "anvil-serving.public-qwen-scout-configuration/v1",
+  "status": "terminal scout support record; Qwen SWE is incomplete below the frozen floor and later gates are deliberate stops. No qualification or promotion is eligible; final restoration and publication remain separate",
+  "unrun_or_pending": [
+    "vision",
+    "context",
+    "capacity",
+    "stability",
+    "qualification",
+    "promotion"
+  ]
+}

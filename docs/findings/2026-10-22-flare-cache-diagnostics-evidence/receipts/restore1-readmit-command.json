@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "router",
+    "readmit",
+    "--tier",
+    "primary-local",
+    "--confirm",
+    "--json"
+  ],
+  "at": 1792662697.1934903
+}

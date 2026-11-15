@@ -16,8 +16,10 @@ from ..control_plane.mcp.tools.media import service_context
 from ..control_plane.mcp.errors import ToolError
 from ..control_plane.mcp.security import caller_context, require_scope
 from ..media.artifacts import ArtifactPayload, ArtifactStore
+from ..media.assets import LimitedReader
 from ..media.contracts import TERMINAL_STATES
 from ..media.errors import MediaError
+from ..media.downloads import ArtifactDownloadLinks, read_range
 from ..media.workflows import WorkflowRegistry
 
 
@@ -35,9 +37,13 @@ class ProtocolGateway:
     artifacts: ArtifactStore
     public_origin: str
     mcp_handler: Callable[..., dict | None] = mcp.handle_request
+    download_links: ArtifactDownloadLinks | None = None
 
     def mcp_request(self, request: dict) -> dict | None:
-        with service_context(self.tasks.operations, self.tasks.backend):
+        with service_context(
+            self.tasks.operations, self.tasks.backend, public_origin=self.public_origin,
+            download_links=self.download_links,
+        ):
             return self.mcp_handler(request, caller=self.caller, audience="media")
 
     def a2a_request(self, request: dict) -> dict:
@@ -99,6 +105,15 @@ class ProtocolGateway:
             server_version=__version__,
         )
 
+    def _artifact_principal(self) -> str:
+        try:
+            with caller_context(self.caller):
+                identity = require_scope("media:read")
+        except ToolError as exc:
+            status = 401 if exc.code in {"authentication_required", "invalid_caller_context"} else 403
+            raise MediaError(exc.code, exc.message, status=status) from exc
+        return identity.principal
+
     def artifact(
         self,
         artifact_id: str,
@@ -106,18 +121,33 @@ class ProtocolGateway:
         start: int | None = None,
         end: int | None = None,
     ) -> ArtifactPayload:
-        try:
-            with caller_context(self.caller):
-                identity = require_scope("media:read")
-        except ToolError as exc:
-            status = 401 if exc.code in {"authentication_required", "invalid_caller_context"} else 403
-            raise MediaError(exc.code, exc.message, status=status) from exc
         return self.artifacts.read(
             artifact_id,
-            principal=identity.principal,
+            principal=self._artifact_principal(),
             start=start,
             end=end,
         )
+
+    def artifact_stream(self, artifact_id: str, range_header: str | None):
+        # Reuse the exact principal/scope boundary before exposing size or bytes.
+        artifact = self.artifacts.metadata(artifact_id, principal=self._artifact_principal())
+        start, end = read_range(range_header, artifact.byte_length)
+
+        def chunks():
+            for offset in range(start, end + 1, 1024 * 1024):
+                yield self.artifact(artifact_id, start=offset, end=min(offset + 1024 * 1024 - 1, end)).data
+
+        return artifact, start, end, chunks()
+
+    def asset_upload(self, source, *, length: int, media_type: str, sha256: str):
+        try:
+            with caller_context(self.caller):
+                identity = require_scope("media:submit")
+                return self.tasks.operations.asset_upload(
+                    LimitedReader(source, length), principal=identity.principal,
+                    media_type=media_type, sha256=sha256)
+        except ToolError as exc:
+            raise MediaError(exc.code, exc.message, status=403) from exc
 
 
 def _stream_task_request(params: Mapping[str, Any]) -> str:

@@ -1,0 +1,94 @@
+{
+  "active_assignments": [],
+  "campaign_id": "2026-10-26-flash-next-engine-qualification",
+  "completed_cells": [
+    "Ignis/vLLM/Flare agentic 6/6 each",
+    "Ignis/vLLM/Flare context 9/9 each",
+    "Ignis/vLLM/Flare Aider: six attempted cells each",
+    "Ignis/vLLM/Flare fixed-five SWE: five attempted tasks each",
+    "vLLM serving C1: 8 responses, 0 performance-eligible",
+    "Flare serving C1: 8 responses, 0 performance-eligible",
+    "Final restoration: exact routes/caps and GLM incumbent; direct/routed 5/5 each; one Pi read-tool turn passed"
+  ],
+  "current_stage": "complete",
+  "launcher": {
+    "ignis_source_content_sha256": "daf9d724d6513c488667740e0e4db2ecc5e4ec6fad58b6fb2cac1694e101f83a",
+    "invocation": "managed Anvil Serving evaluation commands",
+    "module_source": "anvil_serving",
+    "repository_revision": "a5ccb7454ad49f47e5a953b130696fff69cdb829 (vLLM and Flare only; Ignis Git revision unknown)",
+    "verified": true,
+    "version": null
+  },
+  "next_actions": [],
+  "promotion_authorized": false,
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "stages": [
+    {
+      "evidence": [],
+      "failures": [],
+      "id": "research",
+      "status": "completed"
+    },
+    {
+      "evidence": [],
+      "failures": [],
+      "id": "feasibility",
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        "vLLM and Flare serving C1 native results",
+        "flare-c1-offline-reconciliation.md"
+      ],
+      "failures": [
+        "Flare setup/admission refusals retained in friction log",
+        "vLLM and Flare C1 each terminal at 0/8 eligible; native output failures retained."
+      ],
+      "id": "scout",
+      "status": "completed_with_failures"
+    },
+    {
+      "evidence": [],
+      "failures": [],
+      "id": "finalist",
+      "status": "not_started"
+    },
+    {
+      "evidence": [
+        "agentic, Aider and SWE native reports"
+      ],
+      "failures": [
+        "Mixed results and unresolved coding attribution"
+      ],
+      "id": "quality",
+      "status": "completed_with_gaps"
+    },
+    {
+      "evidence": [
+        "final-restoration-evidence.json",
+        "restoration.json",
+        "glm-restoration-direct-preflight.json",
+        "glm-restoration-routed-preflight.json"
+      ],
+      "failures": [
+        "Router runtime uses reviewed PR #704 overlay rather than the original image.",
+        "Remote-memory terminal UNKNOWN; drained=false."
+      ],
+      "id": "restoration",
+      "status": "completed_with_runtime_image_difference"
+    },
+    {
+      "evidence": [
+        "README.md",
+        "artifact-manifest.json",
+        "summary.json",
+        "publication-summary.md"
+      ],
+      "failures": [],
+      "id": "publication",
+      "status": "complete"
+    }
+  ],
+  "status": "complete_no_promotion",
+  "updated_at": "2026-10-26T18:50:20Z"
+}

@@ -1,0 +1,124 @@
+{
+  "completeness": "failed",
+  "created_at": "2026-10-17T03:10:40.529496Z",
+  "evidence_kind": "measured",
+  "failure": {
+    "class": "model_behavior",
+    "code": "model_failure",
+    "message": "benchmark suite did not complete"
+  },
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": null,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "SWE-bench_Verified",
+      "split": "test"
+    },
+    "hardware": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 109701644288,
+      "harness_assets": [],
+      "owned_output_writable": true,
+      "platform": "linux"
+    },
+    "harnesses": {
+      "mini-swe-agent": {
+        "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+        "source": "https://github.com/SWE-agent/mini-swe-agent"
+      },
+      "swe-bench": {
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+        "source": "https://github.com/SWE-bench/SWE-bench"
+      },
+      "swe-bench-verified": {
+        "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+        "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+      },
+      "worker-base": {
+        "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+      }
+    },
+    "image": {
+      "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+      "kind": "image",
+      "reused": true
+    },
+    "model": {
+      "alias": "llm.primary"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": null,
+      "id": "llm.primary"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "glm-natural-baseline-20261016",
+    "profile": "scout",
+    "run_id": "glm-natural-baseline-20261016-cached-swe-r2",
+    "spec_sha256": "119054039eb08071fefe15721abb5a8e0c52ff82d1efbffe06afb5b2a3405ed1",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 10908,
+          "path": "redacted://campaign-stage/asset_preparation",
+          "sha256": "be5da794984c6deea46dfc00218a484e96abec46a260a05be0ff25ab459f182d"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 2114,
+          "path": "redacted://campaign-stage/preflight",
+          "sha256": "c89cbcc5196db1cfa1ae2ecacf28a8717b98dbfae79c85e7465f212463c3edba"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 42202,
+          "path": "redacted://campaign-stage/swe",
+          "sha256": "f629daff8a454f754d07c2c726eb5553ba0735c457e631f0429ca1d3ce7404f4"
+        }
+      ],
+      "name": "swe",
+      "sequence": 2,
+      "status": "failed"
+    }
+  ],
+  "summary": {
+    "attempted": true,
+    "completed": false
+  }
+}

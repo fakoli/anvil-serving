@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-2",
+  "object": "chat.completion",
+  "created": 1791949474,
+  "model": "qwen3.8-flash-next",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "reasoning_content": "public-redacted-text-003",
+        "content": "READY"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 56,
+    "completion_tokens": 25,
+    "total_tokens": 81,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    }
+  }
+}

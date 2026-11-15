@@ -1,0 +1,38 @@
+{
+  "amendment": {
+    "declared_python_source_sha256": "1e6d1aa5e9d349020832a31556dc2a3526d96939be75744792a8f0adde9c3ee4",
+    "path": "final-r4/stability-observer-amendment.json",
+    "revision": "b15823d74379548f567ce68e117b350f89a521b6",
+    "sha256": "c6db965529bbf19d62fd13439ba79ac630f8508353a1d150283ae9ce38b3dff7"
+  },
+  "corrected_verdict": {
+    "remaining_scope": "Stability is limited to client-stream behavior; it does not prove scheduler batching, throughput ranking, or decode during contender prefill. Capacity and resource gates remain independent.",
+    "replay_required_for_source_binding": false,
+    "source_binding": "accepted"
+  },
+  "execution_binding": {
+    "contemporaneous_authoritative_records": [
+      "[EXECUTION_SESSION]",
+      "[EXECUTION_SESSION]"
+    ],
+    "reported_controls": [
+      "explicit isolated-worktree CWD",
+      "source aggregate and git HEAD asserted before exact native CLI subprocess"
+    ],
+    "review_note": "Those tool records, not this after-the-fact correction file, are the contemporaneous execution evidence. The successful r2 artifacts also report the contract introduced only by the pinned corrected source."
+  },
+  "schema": "independent-stability-source-binding-correction/v1",
+  "supersedes_review": {
+    "path": "final-r4/independent-stability-final-review.json",
+    "sha256": "9f8feade10bede1e91aeb24abb1019a87e022e2448f320239dc6dadf20bfa680",
+    "superseded_finding": "The aggregate source digest was not reproducible."
+  },
+  "verified_method": {
+    "description": "SHA256(concat(str(path.relative_to(root)).encode() + path.read_bytes() for path in sorted((root / 'anvil_serving').rglob('*.py'))))",
+    "implementation_reference": "telemetry/run_cell.py:44-46 load_plan source binding check",
+    "matches_declared": true,
+    "observed_clean_revision": "b15823d74379548f567ce68e117b350f89a521b6",
+    "observed_worktree_dirty": false,
+    "recomputed_sha256": "1e6d1aa5e9d349020832a31556dc2a3526d96939be75744792a8f0adde9c3ee4"
+  }
+}

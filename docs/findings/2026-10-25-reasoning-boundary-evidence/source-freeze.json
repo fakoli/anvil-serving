@@ -1,0 +1,23 @@
+{
+  "captured_at": "2026-10-26T02:08:10.829398+00:00",
+  "files": {
+    ".tickets/reasoning-probe-runtime-capture.md": "0acf5a2682a7c0095e3859f1be84d8a517566f40a673f35d5b5dd4390ff91dfe",
+    "anvil_serving/commands/eval.py": "621432b4e63e8e7a4bb27044438e7ad4c81361b897a3d23e79e0642ef2ddd390",
+    "anvil_serving/reasoning_probe.py": "cf2901fec0f15689b4c41a6cf414d39dfd9c38403f93f14467b0e2b1922f35bd",
+    "anvil_serving/reasoning_probe_runtime.py": "4a0e1f2fd0c4f55cff02158b367f98840117fd37a73b1bf33612dba8ffedeb50",
+    "docs/CLI-COMMAND-MANIFEST.json": "a505af7d13e5a862dd6b86ea36054879bbaf1c76a8eb34ac13c68a87bf40b199",
+    "docs/CLI-REFERENCE-AUDIT.json": "9cc48f0a37900be34ff297ee5c6e299c4b6c17d2b1592550d3865d47c8c58862",
+    "docs/CLI.md": "c55a4e8e196c0812ace9f212c77be672157c438d520e8fd666fc909190081a15",
+    "docs/benchmarks/reasoning-limit-probe.md": "bb16381f1c9a0f748d9131e0e5adbfcbf7117b46f396671276bf0d2a072995cb",
+    "mkdocs.yml": "24e4de54757a4847a9eab72a496bb32c9b695052cb628b43e3f4b8220d031277",
+    "tests/test_reasoning_probe.py": "1ef5fa5471ee27fd3c3f7ca7f5d0a7fc9f03e1b4f1474fe29ddccf4379bf105a",
+    "tests/test_reasoning_probe_runtime.py": "d2fe6858d2fe1905542f8e21ac312084e8b2e6133d2b9fbc45197f2172975874"
+  },
+  "head": "3ccb65f1b886f527a2da98fc63439e9bd89fcf38",
+  "installed": false,
+  "offline_preflight": {
+    "log_sha256": "4f97529d38e367fad900f7bd9ce57337e757640ca494e55078dee42cc82b6878",
+    "passed": 269
+  },
+  "patch_sha256": "4f3a324d6ffc86d11bfa6149c15ebc4b6849152c20df112a0f893b01933d31d8"
+}

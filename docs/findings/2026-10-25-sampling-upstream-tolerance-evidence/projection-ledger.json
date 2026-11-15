@@ -1,0 +1,321 @@
+{
+  "schema": "anvil-serving.public-projection-ledger/v1",
+  "projections": [
+    {
+      "private_source": "candidate-startup-logs.json",
+      "private_sha256": "03ec56f44b2a7c6a051c4c7ea4c2fd6d100b41d3a443b5bca8d6abe50d33b335",
+      "projection": "Only exact ANVIL_SAMPLING_ JSON receipt lines from the data field retained; summary derived from those lines. Context, warnings, topology, runtime paths, container identity, process IDs and general startup logs omitted.",
+      "public_artifacts": [
+        {
+          "file": "kernel-receipts.log",
+          "sha256": "f0704eade17573dd26b31f43f0ff66b122fc675c6201bc3954ef346cb5d15f4f",
+          "bytes": 15350
+        },
+        {
+          "file": "kernel-summary.json",
+          "sha256": "22df898ea47d84b937380ce9143f04a20fb587de390730af559d96b1b89a36a1",
+          "bytes": 6981
+        }
+      ]
+    },
+    {
+      "private_source": "experiment-plan.json",
+      "private_sha256": "a880b1a5f9658007425303a1bf87e9c2cbdf858acb525947ebc99f5bc01fafff",
+      "projection": "Private prior-attempt path replaced by public finding link; operational smoke commands and private binding-file references omitted. Gate, timing and workload values retained.",
+      "public_artifacts": [
+        {
+          "file": "plan.json",
+          "sha256": "f4f479724b3dbccbb1b7ead93b56e7ccb0d7e044549d3e244c7b548c7b5bd068",
+          "bytes": 6988
+        }
+      ]
+    },
+    {
+      "private_source": "source-freeze.json",
+      "private_sha256": "88e2321d438dd076149898fedc28203da129988f2ce3fc95c03bb7bfe7b1c10c",
+      "projection": "Exact source-freeze object retained; this original receipt has no schema field.",
+      "public_artifacts": [
+        {
+          "file": "source-freeze.json",
+          "sha256": "88e2321d438dd076149898fedc28203da129988f2ce3fc95c03bb7bfe7b1c10c",
+          "bytes": 1172
+        }
+      ]
+    },
+    {
+      "private_source": "build-result.json",
+      "private_sha256": "ac690dc9fcbd3b398362fbf641c17d2ebadad07e5c69152c3638749951ee20c0",
+      "projection": "Allowlisted native build result; wrapper context, paths, command arguments, local image alias and topology omitted.",
+      "public_artifacts": [
+        {
+          "file": "build.json",
+          "sha256": "87bc5af90e1a9726e829b6e57cabec90115845b7093e969ce5ee3d07c360dc95",
+          "bytes": 425
+        }
+      ]
+    },
+    {
+      "private_source": "baseline-smoke.json",
+      "private_sha256": "55690af0f3f1d166b77f9ac7eddc662e55702b37795d917374fdf1fff8356a19",
+      "projection": "Native preflight result with endpoint omitted; synthetic prompt response, counts, timing, sampling and failed strict JSON verdict retained.",
+      "public_artifacts": [
+        {
+          "file": "baseline-smoke.json",
+          "sha256": "4befa147bda4bf0668d326f9b261be6ae025ad4974a23f3d1561e80183cdb1e5",
+          "bytes": 1861
+        }
+      ]
+    },
+    {
+      "private_source": "trial/candidate-plan.json",
+      "private_sha256": "d3e518bb5ab202e10591f8482c29f32932711a1837df8da0d713d904e72077e7",
+      "projection": "Frozen bounded probe plan retained; synthetic benchmark prompts contain no private material.",
+      "public_artifacts": [
+        {
+          "file": "probe-plan.json",
+          "sha256": "d3e518bb5ab202e10591f8482c29f32932711a1837df8da0d713d904e72077e7",
+          "bytes": 3599
+        }
+      ]
+    },
+    {
+      "private_source": "live-1/0-request.json",
+      "private_sha256": "0aedf2279c95aea90be8ae704e918cf39fe604c52d904e5311c21dbee99f7277",
+      "projection": "Exact synthetic forwarded request; private served model label replaced with served-model-1.",
+      "public_artifacts": [
+        {
+          "file": "request.json",
+          "sha256": "5471262015d8a55f190d16287e3c94924e0dfdde1f0184a894fee4f984b6b89c",
+          "bytes": 484
+        }
+      ]
+    },
+    {
+      "private_source": "live-1/0-response.json",
+      "private_sha256": "8681a2da2509741e5e0845c46802cd80f36aa2ca06266238c968c00dc72bbc59",
+      "projection": "Retains complete synthetic choices, content, reasoning, token IDs and usage. Request ID, wall-clock creation field, fingerprint and unused optional fields omitted; served label replaced.",
+      "public_artifacts": [
+        {
+          "file": "response.json",
+          "sha256": "b2d829964d6215844ca293ba4695e43b26e47506948277e2c7dc7f34b02aa0f3",
+          "bytes": 3083
+        }
+      ]
+    },
+    {
+      "private_source": "live-1/result.json",
+      "private_sha256": "a468f08c2c2dcee3e7b48d872d0f5a3ed614f348d5b56a3dacf9af31282ab90c",
+      "projection": "Exact native probe result retained. Embedded request/response artifact hashes and byte counts bind the ORIGINAL private receipts, not the separately projected public request.json/response.json. Native runtime_verified=false and engine_drain=unknown remain unchanged; subsequent inspector evidence is separate.",
+      "public_artifacts": [
+        {
+          "file": "probe-result.json",
+          "sha256": "7621266c783180f36526525aed4d0a8ad6101afc3c4a9af34e469ae045f43ef2",
+          "bytes": 2007
+        }
+      ]
+    },
+    {
+      "private_source": "candidate-attestation.json",
+      "private_sha256": "5ba40badbce43b2d964f00b8e56da64aa19e4629148c65b90ca4f6eded8d2c83",
+      "projection": "Exact safe comparison attestation retained; inspection_sha256 binds the original private runtime inspector envelope.",
+      "public_artifacts": [
+        {
+          "file": "candidate-attestation.json",
+          "sha256": "5ba40badbce43b2d964f00b8e56da64aa19e4629148c65b90ca4f6eded8d2c83",
+          "bytes": 432
+        }
+      ]
+    },
+    {
+      "private_source": "serving-worker-traces.log",
+      "private_sha256": "c38d873577f548c16cfa6cd1a19ce77f3e65e25e168b450c18a4683531baf5ca",
+      "projection": "Removed process IDs and log prefix; preserved all numeric receipt fields and rank order.",
+      "public_artifacts": [
+        {
+          "file": "serving-worker-traces.json",
+          "sha256": "e8b0218dea104c78380677192dde166572595708b91d44fd4f6af44d01b1d19d",
+          "bytes": 1172
+        }
+      ]
+    },
+    {
+      "private_source": "runtime-candidate-before.json",
+      "private_sha256": "20f076640a1984910d523a785cdbc06b86d1aaf84aa0c24695c6953bc904fe75",
+      "projection": "Allowlisted native runtime identity, launch hashes, captured file hashes, engine and numeric memory observations; topology, process inventory, device IDs, raw argv, environment, paths and container identity omitted. Capture files represented as records to avoid secret-key-name scanner ambiguity.",
+      "public_artifacts": [
+        {
+          "file": "runtime-candidate-before.json",
+          "sha256": "ee49f8de29bfc6f9a76111d1255517fe217cf2989a079699c1648ff5c33e07be",
+          "bytes": 7974
+        }
+      ]
+    },
+    {
+      "private_source": "runtime-candidate-after.json",
+      "private_sha256": "af8a7ecab295bceb686f6563ce5b46758ccb47729a2c836b24a254f8ed2840f8",
+      "projection": "Allowlisted native runtime identity, launch hashes, captured file hashes, engine and numeric memory observations; topology, process inventory, device IDs, raw argv, environment, paths and container identity omitted. Capture files represented as records to avoid secret-key-name scanner ambiguity.",
+      "public_artifacts": [
+        {
+          "file": "runtime-candidate-after.json",
+          "sha256": "659d129aba069b141e39f055a1c37c71f8173dbb2b2b5eea799ee70723bd0ad7",
+          "bytes": 7974
+        }
+      ]
+    },
+    {
+      "private_source": "live-1/0-response.json",
+      "private_sha256": "8681a2da2509741e5e0845c46802cd80f36aa2ca06266238c968c00dc72bbc59",
+      "projection": "Derived token positions/counts cross-checked with the native probe verdict; synthetic visible response contains correct integers but fails exact output.",
+      "public_artifacts": [
+        {
+          "file": "boundary-summary.json",
+          "sha256": "7f22b6d88772c3d653a6c87955e2e7d38461b4678cd0c37c8e29c57d831e922d",
+          "bytes": 752
+        }
+      ]
+    },
+    {
+      "private_source": "independent-kernel-review.json",
+      "private_sha256": "a250d37921f996803575ce55d343beb18d18356fcd0650e0b64e2a35a334e0a7",
+      "projection": "Exact safe independent review retained; phase-scoped pending fields are historical, not final campaign state.",
+      "public_artifacts": [
+        {
+          "file": "independent-kernel-review.json",
+          "sha256": "a250d37921f996803575ce55d343beb18d18356fcd0650e0b64e2a35a334e0a7",
+          "bytes": 560
+        }
+      ]
+    },
+    {
+      "private_source": "independent-live-review.json",
+      "private_sha256": "6e20eb0cc1d34e3239f9e175211e375ad63c47c691ceb7a54f12e2bce79dab2a",
+      "projection": "Exact safe independent review retained; phase-scoped pending fields are historical, not final campaign state.",
+      "public_artifacts": [
+        {
+          "file": "independent-live-review.json",
+          "sha256": "6e20eb0cc1d34e3239f9e175211e375ad63c47c691ceb7a54f12e2bce79dab2a",
+          "bytes": 1299
+        }
+      ]
+    },
+    {
+      "private_source": "candidate-ready-logs.json + candidate-after-logs.json",
+      "projection": "Derived warning-prefix equality and appended receipt counts only; both original source hashes are retained in the artifact. General warnings, worker process IDs and topology omitted.",
+      "public_artifacts": [
+        {
+          "file": "trace-freshness.json",
+          "sha256": "770f1346ffd0f3478f59da6853849feb054f3fb9f97d86941bea63bb5af181e7",
+          "bytes": 628
+        }
+      ]
+    },
+    {
+      "private_source": "closure.json",
+      "private_sha256": "dc8f13d9e04240e7b8606b939c47b768027c537ddaecbcf4021e7da0c3e4ff26",
+      "projection": "Exact safe campaign closure receipt retained. memory_before_bytes is initial baseline-inspection available RAM, not an immediate pre-unload measurement.",
+      "public_artifacts": [
+        {
+          "file": "closure.json",
+          "sha256": "dc8f13d9e04240e7b8606b939c47b768027c537ddaecbcf4021e7da0c3e4ff26",
+          "bytes": 1314
+        }
+      ]
+    },
+    {
+      "private_source": "restoration-smoke.json",
+      "private_sha256": "46cb194153ff290f7ec000a0755ad51653a4b55c9ee14e2590591d4ce2c0db15",
+      "projection": "Native preflight object with endpoint omitted; complete synthetic response and failed verdict retained.",
+      "public_artifacts": [
+        {
+          "file": "restoration-smoke.json",
+          "sha256": "bf16908e6ee1451965faf61effa30e402bc12af9f00603017f35c6236d9f4253",
+          "bytes": 1916
+        }
+      ]
+    },
+    {
+      "private_source": "runtime-restored.json",
+      "private_sha256": "f97ab3df4c73a1de250f9972a77beb8daa7a7cd1084f1d100a0424837602934a",
+      "projection": "Allowlisted native restored runtime, captured artifact records, launch hashes and numeric resources; private topology, IDs, process inventory, paths, argv and environment omitted.",
+      "public_artifacts": [
+        {
+          "file": "runtime-restored.json",
+          "sha256": "c5427021a42e009da80e5fda8a18e7b7f0ed7fbe07341e41c21f2ac57a43d24c",
+          "bytes": 6632
+        }
+      ]
+    },
+    {
+      "private_source": "router-final.json",
+      "private_sha256": "66657f39935646011467d9f238197750a62be9fbefb4bbdd106bdda2981b18af",
+      "projection": "Native tier readiness and admission subset retained; private tier ID omitted and model label replaced consistently.",
+      "public_artifacts": [
+        {
+          "file": "router-restored.json",
+          "sha256": "241d32ecf31e79acb186bdae4814c3d0421eb3ebc78937bc751c8b43bf62522e",
+          "bytes": 326
+        }
+      ]
+    },
+    {
+      "private_source": "mode-restored.json",
+      "private_sha256": "e92d571478db274714156501f7ddb5b00e24d2194b41f9ca18edebe2f62c4f0c",
+      "projection": "Mode, TP and unresolved state retained; workload/owner/device IDs omitted; ownership equality supplied by closure check.",
+      "public_artifacts": [
+        {
+          "file": "mode-restored.json",
+          "sha256": "bc88637fcc635cdc17bd386b1589f52b3861bc6763359255dc55ae3c7615e416",
+          "bytes": 164
+        }
+      ]
+    },
+    {
+      "private_source": "shared-memory-restored.json",
+      "private_sha256": "c05fa09d5ede1d37d5f98e97fe4cb3f3e749307e13c8c1bca953ed778c8222ac",
+      "projection": "Native shared-memory outcome subset; host/container identities omitted.",
+      "public_artifacts": [
+        {
+          "file": "shared-memory-restored.json",
+          "sha256": "fa59f55c3af9d184938078d9a398d8c9310d0246a0ba5ed17466c52d0834cfec",
+          "bytes": 125
+        }
+      ]
+    },
+    {
+      "private_source": "resources-final.json",
+      "private_sha256": "7ac383bb424172c45381a54254f4f5ba8d2daf71d796eada5f668dd9e4f49cf3",
+      "projection": "Numeric host, swap, pressure and engine observations retained; process inventory and GPU CSV identities omitted.",
+      "public_artifacts": [
+        {
+          "file": "resources-final.json",
+          "sha256": "2d8e1fe7a5559951db8964b776a4754398f926c8a26162a303ee1b7fb2200341",
+          "bytes": 666
+        }
+      ]
+    },
+    {
+      "private_source": "independent-restoration-review.json",
+      "private_sha256": "a451b7662339536d92508c5b42be6bed3d1980ba87d747f6b8f48bdc4d598aed",
+      "projection": "Exact safe independent restoration review retained.",
+      "public_artifacts": [
+        {
+          "file": "independent-restoration-review.json",
+          "sha256": "a451b7662339536d92508c5b42be6bed3d1980ba87d747f6b8f48bdc4d598aed",
+          "bytes": 1302
+        }
+      ]
+    },
+    {
+      "private_source": "runtime-before.json",
+      "private_sha256": "58644ff3381f0e57bedceabff357aaa9b11fe1962458a4e6e2e0f2dce13d4330",
+      "projection": "Initial baseline inspector allowlist matches restored projection; private identifiers, process inventory, environment and topology omitted. This is not an immediate pre-unload sample.",
+      "public_artifacts": [
+        {
+          "file": "runtime-before.json",
+          "sha256": "4c68c5bdfc25be61acf2afea18e222ba0c54149c789e10c784e06bfd8d2117a4",
+          "bytes": 6630
+        }
+      ]
+    }
+  ]
+}

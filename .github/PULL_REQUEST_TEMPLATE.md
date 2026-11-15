@@ -2,6 +2,10 @@
 
 <!-- What does this PR change, and why? -->
 
+## Change cost
+
+<!-- Cases / Python LOC / normal offline runtime / CPU-RAM-I-O-subprocess impact changed, or N/A. Link the focused evidence for a slower or opt-in lane. -->
+
 ## Related issue
 
 <!-- e.g. Closes #123 -->

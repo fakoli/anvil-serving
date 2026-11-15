@@ -1,0 +1,82 @@
+{
+  "schema_version": "flare-fix-001-contribution-package/v1",
+  "base_commit": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "baseline": {
+    "pre_existing_patch": "../baseline-source/pre-existing.patch",
+    "pre_existing_patch_sha256": "0353cb3b46631ad10951522556b7c84512bf392c6eeb0918b69ea46958480aa3",
+    "scheduler_trace": "../baseline-source/scheduler_trace.rs",
+    "scheduler_trace_sha256": "b441672fa247815a6c9d62efb8bc1284941cdeff70df6310f0ec2842d44c790e"
+  },
+  "reviewed_current": {
+    "patch": "../candidate-source-v2.patch",
+    "patch_sha256": "b132065b27532028bf2a02e754e86553ea846281f616f22ce74e89442ff0ec76",
+    "scheduler_trace": "../candidate-v2-scheduler_trace.rs",
+    "scheduler_trace_sha256": "b441672fa247815a6c9d62efb8bc1284941cdeff70df6310f0ec2842d44c790e"
+  },
+  "incremental_patch": {
+    "path": "flare-fix-001-incremental.patch",
+    "sha256": "429ef969cb3a5cb4f6b207aea88cec2d676ade2e7e9915fe8a696e881a5fa285",
+    "line_count": 1929,
+    "files": [
+      {"path": "docs/prefix-cache-offload.md", "added": 18, "deleted": 1},
+      {"path": "flare/src/cli.rs", "added": 74, "deleted": 4},
+      {"path": "helios/src/offload/mod.rs", "added": 125, "deleted": 20},
+      {"path": "helios/src/offload/slab.rs", "added": 87, "deleted": 13},
+      {"path": "helios/src/offload/transfer.rs", "added": 502, "deleted": 201},
+      {"path": "helios/src/runtime_package/model.rs", "added": 28, "deleted": 8},
+      {"path": "helios/src/server/metrics.rs", "added": 30, "deleted": 0},
+      {"path": "helios/src/server/runtime/phase_tests.rs", "added": 105, "deleted": 0},
+      {"path": "helios/src/server/runtime.rs", "added": 19, "deleted": 4},
+      {"path": "ignition/cli/config.py", "added": 13, "deleted": 2},
+      {"path": "tests/cli/test_config.py", "added": 8, "deleted": 2},
+      {"path": "tests/cli/test_serve.py", "added": 13, "deleted": 2}
+    ]
+  },
+  "split_review_units": {
+    "v1_source_patch": {"path": "../candidate-source.patch", "sha256": "0c9a200ddd9fe62918e748a04d7fcbd2f467a76e752ced7d5b9b7076d1c3eff1"},
+    "row_share_admission": {
+      "path": "flare-fix-001-row-share-admission.patch",
+      "sha256": "f9f9f1f9e26ab88cf9e51bd443ed1273cedd83293103512945b242299a5c850e",
+      "line_count": 713,
+      "files": [
+        {"path": "docs/prefix-cache-offload.md", "added": 6, "deleted": 1},
+        {"path": "flare/src/cli.rs", "added": 40, "deleted": 0},
+        {"path": "helios/src/offload/mod.rs", "added": 22, "deleted": 3},
+        {"path": "helios/src/offload/slab.rs", "added": 84, "deleted": 13},
+        {"path": "helios/src/runtime_package/model.rs", "added": 1, "deleted": 0},
+        {"path": "helios/src/server/metrics.rs", "added": 30, "deleted": 0},
+        {"path": "helios/src/server/runtime/phase_tests.rs", "added": 105, "deleted": 0},
+        {"path": "helios/src/server/runtime.rs", "added": 19, "deleted": 4},
+        {"path": "ignition/cli/config.py", "added": 9, "deleted": 2},
+        {"path": "tests/cli/test_config.py", "added": 6, "deleted": 2},
+        {"path": "tests/cli/test_serve.py", "added": 12, "deleted": 2}
+      ]
+    },
+    "transfer_audit": {
+      "path": "flare-fix-001-transfer-audit.patch",
+      "sha256": "203896f53cfe424a5c57c219313e0349963c97fe4c2b1cbc552085f6c2d8bbfd",
+      "line_count": 1443,
+      "files": [
+        {"path": "docs/prefix-cache-offload.md", "added": 12, "deleted": 0},
+        {"path": "flare/src/cli.rs", "added": 37, "deleted": 7},
+        {"path": "helios/src/offload/mod.rs", "added": 107, "deleted": 21},
+        {"path": "helios/src/offload/slab.rs", "added": 14, "deleted": 11},
+        {"path": "helios/src/offload/transfer.rs", "added": 502, "deleted": 201},
+        {"path": "helios/src/runtime_package/model.rs", "added": 27, "deleted": 8},
+        {"path": "ignition/cli/config.py", "added": 6, "deleted": 2},
+        {"path": "tests/cli/test_config.py", "added": 4, "deleted": 2},
+        {"path": "tests/cli/test_serve.py", "added": 2, "deleted": 1}
+      ]
+    },
+    "dependency": "saved telemetry/scheduler_trace baseline; see SPLIT-REVIEW.md",
+    "test_provenance": "existing campaign evidence only; split units were not newly tested"
+  },
+  "verification": {
+    "incremental_patch_applies_to_exact_baseline": true,
+    "reapplied_tree_matches_reviewed_current_bytes": true,
+    "split_chain_applies_to_exact_baseline": true,
+    "split_chain_matches_reviewed_v2_bytes": true,
+    "upstream_submission": false,
+    "promoted": false
+  }
+}

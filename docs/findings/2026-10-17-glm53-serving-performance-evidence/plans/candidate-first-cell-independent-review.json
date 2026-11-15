@@ -1,0 +1,158 @@
+{
+  "advisory_priors": [
+    "Request identity is deterministic reconstruction and token-bound, not transmitted-byte proof.",
+    "Startup KV and runtime model-load memory values are rounded engine reports.",
+    "This review accepts the first candidate cell and collection machinery; it does not independently establish campaign-wide performance."
+  ],
+  "artifacts": {
+    "breakage_probes": [
+      {
+        "axis": "unreadable_or_tampered_state",
+        "classification": "refuted",
+        "input_or_state": "Recursively resolve every projection evidence reference and recompute SHA-256 and bytes.",
+        "result": "All 91 references resolved exactly."
+      },
+      {
+        "axis": "malformed_or_boundary_input",
+        "classification": "refuted",
+        "input_or_state": "Check exact frozen arm/cell/model/engine/context/concurrency/seed/namespace and eight request canaries.",
+        "result": "All identities and request boundaries matched; no malformed population observed."
+      },
+      {
+        "axis": "resource_exhaustion_or_missing_bounds",
+        "classification": "refuted",
+        "input_or_state": "Inspect OOM events, GPU/host/cgroup samples, collector cadence, and startup KV/model-load reports.",
+        "result": "No OOM or collector errors; bounded cadence and resource fields were present."
+      },
+      {
+        "axis": "state_drift_across_process_config_and_artifacts",
+        "classification": "refuted",
+        "input_or_state": "Compare before/after managed identity, counter deltas, frozen plan, native receipt, and matched baseline request identity.",
+        "result": "No identity or configuration drift; counters and matched request identity reconciled exactly."
+      }
+    ],
+    "finding_summary": {
+      "details": [
+        "All 91 embedded path/hash/byte references in the projection resolved exactly.",
+        "Native population is 8 requested, 8 completed, 8 responses received, 0 failed, performance eligible.",
+        "Engine counter deltas reconcile exactly to native usage: 61456 prompt tokens, 2327 generation tokens, 8 successes, 0 preemptions.",
+        "All projected token, latency, throughput, context, memory, concurrency, OOM, admission, and KV values inspected match their bound sources.",
+        "Prefill, decode, and queue histogram bucket/count/sum deltas recompute exactly from bound before/after metrics; each count is 8.",
+        "Baseline and candidate request seed, namespace, indices, ordered prompt-token vector, and canaries match exactly.",
+        "Startup log binds two distinct workers reporting 82.73 GiB runtime model-load memory and 7.12 GiB KV reservation each; projection preserves rounding and accounting caveats.",
+        "Collector and runner coverage passed with no collector errors, OOM events, or identity drift."
+      ],
+      "result": "No blocking findings.",
+      "severity": "none"
+    },
+    "references": {
+      "after_metrics": {
+        "bytes": 81160,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/after-metrics.json",
+        "sha256": "74405a35397b14ba05e73fccd84cad47955c4dff16c33e4e05f034ec2fb3df21"
+      },
+      "after_slow": {
+        "bytes": 5108,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/after-slow.json",
+        "sha256": "662a52f49d5e5b66da71e1126dca0c09fcd7aebab087c2cb66b7a004c7a07a1b"
+      },
+      "baseline_projection": {
+        "bytes": 39338,
+        "path": "analysis/projections/baseline-natural-ctx10240-c1.json",
+        "sha256": "b7e785b5fca4ac2bb63e2cd3a1e54b1a27ce0f8b5b2f05116a66db10bf972e5a"
+      },
+      "before_metrics": {
+        "bytes": 80958,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/before-metrics.json",
+        "sha256": "a8854bec726186d2e926425a4290da1dae25488f6ed67399cd1b6dcd2aacb5a8"
+      },
+      "before_slow": {
+        "bytes": 5105,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/before-slow.json",
+        "sha256": "06d7f21230b12e285a94ca5dc3cdb6a6c13fbdeda1b4af5bf31c235d640154ac"
+      },
+      "cell_summary": {
+        "bytes": 2474,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/cell-summary.json",
+        "sha256": "d51384f9b2ebb0797630992db8ab64b51232628e9c3479d523f0f8f4cf0e69c9"
+      },
+      "comparison_plan": {
+        "bytes": 10864,
+        "path": "plans/comparison-plan.json",
+        "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+      },
+      "engine_metrics": {
+        "bytes": 236368,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/engine-metrics.jsonl.gz",
+        "sha256": "87850a4b534f94398228b4acf7a2822fe35070d0f90682db36f330cfb1b1acfd"
+      },
+      "native": {
+        "bytes": 21676,
+        "path": "native/candidate/candidate-natural-ctx10240-c1.json",
+        "sha256": "421ce10a5efa2f5e7ccfc47d1c2dfb8abda82eb38607514b66333dca4bb1f6d5"
+      },
+      "projection": {
+        "bytes": 39395,
+        "path": "analysis/projections/candidate-natural-ctx10240-c1.json",
+        "sha256": "09e849aac1961a270227346e2657bd4d65ecd08b9076744c8a5d930b7f32e66b"
+      },
+      "projection_receipt": {
+        "bytes": 777,
+        "path": "analysis/receipts/candidate-natural-ctx10240-c1.json",
+        "sha256": "7ba3b07e0d3e775987870feec481cbfcf0a535764aca802d20b5133cd2bf36c9"
+      },
+      "run_plan": {
+        "bytes": 76940,
+        "path": "plans/run-plan.json",
+        "sha256": "f46f275fe8b2a6b53472a6ec53da3e8b3fa046069054aba008844dfd3e245d6f"
+      },
+      "settle_metrics": {
+        "bytes": 6619,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/settle-metrics.jsonl.gz",
+        "sha256": "ed100ebd301cf0cd406dfa06f65402d74b47f9af9e2a6f58889e7f93aec712c3"
+      },
+      "slow": {
+        "bytes": 2483,
+        "path": "telemetry/candidate/candidate-natural-ctx10240-c1/slow.jsonl.gz",
+        "sha256": "cd06f570861af00013cae68a7791d097cbb00f01e05554224b068ad30df180b5"
+      },
+      "startup_log": {
+        "bytes": 71176,
+        "path": "logs/candidate-startup.log",
+        "sha256": "1d4a8e30ea3ad757b50717f2729ffdabd2b2b64243587188424e58d47711c45f"
+      }
+    }
+  },
+  "gate_state": "accepted_for_continued_measurement",
+  "human_gate_required": true,
+  "human_gate_scope": "Any promotion or deployment recommendation remains subject to the existing human gate.",
+  "missing_tests": [],
+  "promoted": false,
+  "recommendation": "accept",
+  "recommendation_scope": "Continue remaining candidate natural-output and capacity-edge cells under the frozen runner and collector.",
+  "request": "Independent first-scored-candidate-cell review before bulk candidate measurement.",
+  "residual_risk": "The completed result may be described as a complete matched natural-output and capacity-edge comparison only after all 12 pairs validate. The overall frozen 42-cell campaign remains partial because controlled-output retains one deadline failure and 17 stop-rule-blocked cells.",
+  "reviewed_at": "2026-10-17T12:41:00.942273+00:00",
+  "reviewer": {
+    "evaluated_models": [
+      "GLM-5.3-Flash EXL3/TR3 K4 r11",
+      "NVIDIA GLM-5.3-Flash-FP4-Local r2"
+    ],
+    "implementer_model": "GPT-6 Astra",
+    "independent_from_evaluated_models": true,
+    "independent_from_implementer": true,
+    "model": "GPT-5.6 Sol",
+    "role": "independent adversarial reviewer"
+  },
+  "schema_version": "operator-workflow/v1",
+  "targets": [
+    "candidate-natural-ctx10240-c1",
+    "first candidate scored-cell projection and native/telemetry provenance"
+  ],
+  "tools_used": [
+    "read-only file inspection",
+    "SHA-256 and byte verification",
+    "native/telemetry recomputation",
+    "startup-log inspection"
+  ]
+}

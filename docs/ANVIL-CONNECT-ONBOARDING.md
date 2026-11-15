@@ -178,7 +178,11 @@ Existing applications with their own Authelia sign-in can be retained through
 `authelia.additional_oidc_clients` in the deployment manifest. Each entry declares
 `client_id`, `client_name`, a protected `client_secret_file`, and HTTPS
 `redirect_uris`. These confidential clients use authorization code with PKCE S256,
-`client_secret_post`, and the `openid`, `email`, and `profile` scopes. Keep existing
+`client_secret_post`, and the `openid`, `email`, and `profile` scopes. A client can
+set `groups_scope` to `true` to opt into the Authelia `groups` claim. The existing
+account-reconciliation worker then derives the `anvil-connect-operators` group from
+configured, enabled Connect browser administrators; it removes stale membership too.
+Keep existing
 credentials in protected files outside the rendered configuration and state trees.
 This preserves application sign-in configuration; it does not grant Connect access.
 

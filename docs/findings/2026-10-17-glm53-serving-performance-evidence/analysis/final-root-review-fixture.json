@@ -1,0 +1,35 @@
+{
+  "baseline_pairs_verified": 24,
+  "helper_sha256": "5ae93de0a0d53e49274a1913556887da3c75e4c870db01578a04da5940869784",
+  "negative_cases": [
+    {
+      "case": "controls",
+      "result": "refused"
+    },
+    {
+      "case": "vector",
+      "result": "refused"
+    },
+    {
+      "case": "hash_format",
+      "result": "refused"
+    },
+    {
+      "case": "population",
+      "result": "refused"
+    },
+    {
+      "case": "input_binding",
+      "result": "refused"
+    },
+    {
+      "case": "warmup",
+      "result": "refused"
+    },
+    {
+      "case": "duplicate_pair",
+      "result": "refused"
+    }
+  ],
+  "scope": "offline; original private evidence unchanged"
+}

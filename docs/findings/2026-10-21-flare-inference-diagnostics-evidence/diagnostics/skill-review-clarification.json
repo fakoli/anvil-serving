@@ -1,0 +1,25 @@
+{
+  "at": 1792650069.5698104,
+  "reviewer": "flare_trial_review; independent Sol",
+  "scope": "reviewed prose decision cases, not fleet skill adoption",
+  "cases": {
+    "development_bare_model_probe": {
+      "evaluated": true,
+      "expected": "pending admission until authenticated trace verified",
+      "observed": "pending admission"
+    },
+    "complete_authenticated_trace": {
+      "expected": "instrumentation compatibility only",
+      "observed": "instrumentation compatibility only"
+    },
+    "offline_tuner": {
+      "expected": "not applicable",
+      "observed": "not applicable"
+    },
+    "fresh_holdout_dropped_1": {
+      "expected": "incomplete",
+      "observed": "incomplete"
+    }
+  },
+  "limit": "Original receipt did not retain full vectors. Clarification is reviewer testimony; no live fleet adoption claim."
+}

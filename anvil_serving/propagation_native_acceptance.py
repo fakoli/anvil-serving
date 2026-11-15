@@ -18,7 +18,7 @@ import sys
 import time
 import uuid
 
-from .control_plane.propagation import ReceiptIdentity, _utc
+from .control_plane.propagation import ReceiptIdentity, _digest, _utc
 from .propagation_pi_acceptance import (
     PiAcceptanceError, PiQuiescenceError, PiFixtureAcceptance, PiFixtureProfile, PiWebFixtureAcceptance, PiWebFixtureProfile, _write_private_json,
     write_acceptance_receipt,
@@ -73,8 +73,11 @@ def _custody(path, *, directory=False, digest=None, trusted_admin_groups=frozens
     return path
 
 
-def validate_native_runtime(target):
-    """Static preview only: no process, turn, fixture creation, or credential read."""
+def validate_native_runtime(target, *, managed_hermes_home=None):
+    """Static preview only; distinct Hermes executables require the pinned managed home.
+
+    No process, turn, fixture creation, or credential read occurs here.
+    """
     sessions = target.get("native_sessions", [])
     if not sessions:
         return
@@ -91,7 +94,6 @@ def validate_native_runtime(target):
     if web:
         if target["client"] != "pi" or type(runtime["port"]) is not int or not 1024 <= runtime["port"] <= 65535:
             raise NativeAcceptanceError("invalid Pi Web transport")
-        from .control_plane.propagation import _digest
         _digest(runtime["bridge_artifact_digest"])
         _digest(runtime["loaded_catalog_digest"])
         token_path = _custody(runtime["acceptance_token_file"])
@@ -123,9 +125,25 @@ def validate_native_runtime(target):
     if target["client"] == "pi" and not web:
         _custody(runtime["agent_dir"], directory=True)
     elif target["client"] == "hermes":
+        home = _custody(target["hermes"]["home"], directory=True)
         if runtime["executable"] != target["hermes"]["bin"]:
-            raise NativeAcceptanceError("Hermes runtime differs from catalog writer")
-        _custody(target["hermes"]["home"], directory=True)
+            managed = managed_hermes_home
+            if (sys.platform != 'linux' or type(managed) is not dict
+                    or set(managed) != {'path', 'device', 'inode', 'uid'}
+                    or type(managed['path']) is not str or managed['path'] != target['hermes']['home']
+                    or any(type(managed[key]) is not int or managed[key] < 0 for key in ('device', 'inode', 'uid'))
+                    or managed['uid'] != os.geteuid()):
+                raise NativeAcceptanceError("Hermes runtime differs without a managed home binding")
+            identity = home.stat()
+            if (identity.st_dev, identity.st_ino, identity.st_uid) != (managed['device'], managed['inode'], managed['uid']):
+                raise NativeAcceptanceError("managed Hermes home identity differs")
+            try:
+                metadata_digest = _digest(target['hermes'].get('bin_sha256'))
+                for item in sessions:
+                    _digest(item.get('executable_digest'))
+            except ValueError:
+                raise NativeAcceptanceError("managed Hermes executable pins are required") from None
+            _custody(target['hermes']['bin'], digest=metadata_digest, trusted_admin_groups=trusted_groups)
 
 
 def _cleanup_binding(profile, contract, job, job_digest):
@@ -168,8 +186,12 @@ class NativeFixtureLifecycle:
     and close in finally. Static preview uses validate_native_runtime alone.
     """
 
-    def __init__(self, profile, contract, *, run, pi=None, web=None, budget_seconds=540):
+    def __init__(self, profile, contract, *, run, pi=None, web=None, budget_seconds=540,
+                 router_base_url=None):
         self.profile, self.contract, self.run = profile, contract, run
+        from .routed_eval import _validate_base_url
+        self.managed_endpoint_digest = (hashlib.sha256(_validate_base_url(router_base_url).rstrip('/').encode()).hexdigest()
+            if router_base_url is not None else None)
         self.pi = pi or PiFixtureAcceptance()
         self.web = web or PiWebFixtureAcceptance()
         self.web_handles = set()
@@ -211,7 +233,7 @@ class NativeFixtureLifecycle:
         return PiWebFixtureProfile(runtime["port"], token, runtime["bridge_artifact_digest"], runtime["loaded_catalog_digest"])
 
     def _pi_profile(self, target):
-        validate_native_runtime(target)
+        validate_native_runtime(target, managed_hermes_home=self.profile.get('managed_hermes_home'))
         runtime = target["native_runtime"]
         return PiFixtureProfile(Path(runtime["executable"]), target["native_sessions"][0]["executable_digest"],
             Path(runtime["agent_dir"]), Path(runtime["fixture_root"]),
@@ -228,7 +250,7 @@ class NativeFixtureLifecycle:
         finally:
             os.close(descriptor)
         def runner(argv, timeout):
-            validate_native_runtime(target)
+            validate_native_runtime(target, managed_hermes_home=self.profile.get('managed_hermes_home'))
             if target["client"] == "hermes":
                 argv = (argv[0], "-p", target["hermes"]["profile"], *argv[1:])
             return self.run(argv, min(timeout, self._timeout()), self._environment(target))
@@ -236,13 +258,26 @@ class NativeFixtureLifecycle:
             probe_path=str(probe), timeout_seconds=timeout, runner=runner,
             executable=target["native_runtime"]["executable"], configured_route=True,
             session_id=session_id, previous_marker=previous_marker)
+        attempt_path = root / ("attempt-" + secrets.token_hex(16) + ".json")
+        attempt = {"schema": "native-session-attempt/v1", "contract_digest": self.contract.digest,
+            "target_id": target["target_id"], "fixture_id": item["fixture_id"],
+            "started_at": _stamp(), "probe_sha256": hashlib.sha256(marker.encode()).hexdigest(),
+            "state": "started", "checks": {}, "error_type": None, "error_code": None}
         try:
+            _write_private_json(attempt_path.with_suffix('.started.json'), attempt)
             if target["client"] == "hermes":
-                result = evaluate_hermes(**arguments, expected_observed_provider=item["provider"])
+                cap = (dict(model=item["model_id"], provider=item["provider"],
+                    endpoint_sha256=self.managed_endpoint_digest, context_tokens=item["context_tokens"],
+                    max_tokens=item["max_output_tokens"]) if self.managed_endpoint_digest is not None else None)
+                result = evaluate_hermes(**arguments, expected_observed_provider=item["provider"],
+                                         managed_output_cap=cap)
             else:
                 result = evaluate_openclaw(**arguments, run_id="fixture-" + secrets.token_hex(16),
                     expected_context_tokens=item["context_tokens"])
             checks = result["checks"]
+            attempt.update(state="returned", checks={key: value for key, value in checks.items()
+                if type(key) is str and key.replace('_', '').isascii()
+                and key.replace('_', '').isalnum() and type(value) is bool})
             if target["client"] == "openclaw" and (
                     not all(checks.get(key) is True for key in (
                         "process_succeeded", "output_bounded", "json_valid", "status_ok", "session_identified"))
@@ -253,16 +288,26 @@ class NativeFixtureLifecycle:
             accepted = (result["passed"] if require_loaded or target["client"] != "openclaw"
                 else all(value for key, value in checks.items() if key != "context_exact"))
             if accepted is not True:
+                attempt["state"] = "failed"
                 raise NativeAcceptanceError("native fixture turn did not verify")
+            attempt["state"] = "accepted"
             return result["observed"], marker
+        except BaseException as exc:
+            attempt.update(state="failed", error_type=type(exc).__name__)
+            code = getattr(exc, "code", None)
+            if code in {"process_group_inspection_denied", "process_group_stop_unproven", "descendant_process_stopped"}:
+                attempt["error_code"] = code
+            raise
         finally:
             probe.unlink(missing_ok=True)
+            attempt["completed_at"] = _stamp()
+            _write_private_json(attempt_path.with_suffix('.result.json'), attempt)
 
     def prepare(self):
         if self.prepared:
             raise NativeAcceptanceError("native fixtures already prepared")
         for target in self.targets:
-            validate_native_runtime(target)
+            validate_native_runtime(target, managed_hermes_home=self.profile.get('managed_hermes_home'))
             if any(Path(item[key]).exists() or Path(item[key]).is_symlink()
                    for item in target["native_sessions"] for key in ("fixture_file", "receipt_file")):
                 raise NativeAcceptanceError("native fixture evidence already exists")
@@ -312,7 +357,8 @@ class NativeFixtureLifecycle:
                         physical_catalogs[target["target_id"]], item["fixture_id"], native_id,
                         prepared_at, completed_at, item["kind"], item["provider"], item["model_id"],
                         item["context_tokens"], item["max_output_tokens"],
-                        handle.process_generation if handle is not None else None)
+                        handle.process_generation if handle is not None else None,
+                        self.managed_endpoint_digest if target["client"] == "hermes" else None)
                     self._timeout()
                     if target["target_id"] in self.web_handles:
                         receipt = (self.web.complete_existing(check, handle, timeout_seconds=self._timeout())
@@ -335,6 +381,9 @@ class NativeFixtureLifecycle:
                             "turn_completed": True, "tool_probe_passed": True, "history_probe_passed": existing,
                             "fallback_used": observed["fallback_used"], "physical_catalog_digest": check.physical_catalog_digest,
                             "process_generation": None}
+                        if check.managed_endpoint_digest is not None:
+                            receipt.update(schema="native-session-acceptance/v2",
+                                output_cap_mode=observed["output_cap_mode"], endpoint_sha256=observed["endpoint_sha256"])
                     write_acceptance_receipt(Path(item["receipt_file"]), receipt)
                     states[(target["target_id"], item["kind"])] = native_session_state(check, receipt, now=datetime.now(timezone.utc))
             return states

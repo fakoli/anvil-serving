@@ -23,6 +23,7 @@ _USER_OPTIONS = (
     _option("--output", summary="Exclusive private handoff file; default is beside the manifest.", value_name="PATH"),
     _option("--input", summary="Private authentication archive to restore.", value_name="PATH"),
     _option("--include-gateway", summary="Also capture gateway authority after the authentication backup."),
+    _option("--scheduled", summary="Run the verified installed full backup worker now; exclusive with --include-gateway."),
     _option("--sha256", summary="Independently retained authentication archive checksum for restore.", value_name="DIGEST"),
     _option("--destination", summary="Fresh private recovery directory; does not activate restored accounts.", value_name="PATH"),
 )
@@ -46,6 +47,14 @@ def commands() -> CommandNode:
     return _node(
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
         children=(
+            _node("native-agents-check", "Run finite local Agents checks without browser or email sign-in.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("native-agents-check",), forward_confirm_flag=True),
+                options=(_option("--config", summary="Optional protected guest-only broker config; omission uses synthetic owners.", value_name="PATH"),) + _CONFIRM,
+                mutation_class="mutate", execution_policy="offline", docs_anchor="docs/cli/connect.md#native-agents-check"),
+            _node("native-agents", "Run the native Agents broker behind a managed TLS edge.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("native-agents",)),
+                options=(_option("--config", summary="Protected native broker configuration.", value_name="PATH"),),
+                mutation_class="process", execution_policy="offline", docs_anchor="docs/cli/connect.md#native-agents"),
             _node(
                 "resources", "List declared browser services and copyable grant values.",
                 handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("resources",)),
@@ -83,6 +92,33 @@ def commands() -> CommandNode:
                 docs_anchor="docs/cli/connect.md#qualify",
             ),
             _command("validate", "Validate declarations and selected native components."),
+            _command("native-authority", "Project fresh Connect grants for native Agents admission.", service=False, mutation=True, extra=(
+                _option("--resource", summary="Exact authorized Pi browser resource.", value_name="ID"),
+                _option("--output", summary="Protected expiring authority file outside Git and rendered state.", value_name="PATH"),
+                _option("--reader-gid", summary="Dedicated native broker reader group.", value_name="GID"),
+            )),
+            _node(
+                "native-memory-service", "Manage one OIDC-authenticated native Memory sidecar.",
+                children=tuple(
+                    _node(
+                        operation, summary,
+                        handler=_handler("anvil_serving.connect.cli", attribute="dispatch",
+                                         argv_prefix=("native-memory-service", operation),
+                                         forward_confirm_flag=operation != "status"),
+                        options=(_option("--declaration", summary="Protected native Memory service declaration.", value_name="PATH"),)
+                        + ((_CONFIRM) if operation != "status" else ()),
+                        mutation_class="read" if operation == "status" else "mutate",
+                        execution_policy="offline", docs_anchor="docs/cli/connect.md#native-memory-service",
+                    )
+                    for operation, summary in (
+                        ("install", "Preview or install and start the exact declared sidecar."),
+                        ("status", "Verify the exact declared sidecar and authority schedule."),
+                        ("remove", "Preview or remove only the exact receipt-owned sidecar."),
+                    )
+                ),
+                mutation_class="mutate", execution_policy="offline",
+                docs_anchor="docs/cli/connect.md#native-memory-service",
+            ),
             _command("render", "Preview or stage an owned configuration generation.", service=False, mutation=True),
             _command("up", "Preview or activate only the selected owned services.", mutation=True, extra=(
                 _option("--services", summary="Comma-separated exact roles for one coordinated activation; exclusive with --service.", value_name="SERVICES"),

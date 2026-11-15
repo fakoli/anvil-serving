@@ -1,0 +1,157 @@
+{
+  "parts": [
+    {
+      "bytes": 581903,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000001.jsonl.gz",
+      "records": 99,
+      "sha256": "f4fc5ad84d3bccc10feb2dc76e7b13eac06a7439c83ca053b123c90df5fff685"
+    },
+    {
+      "bytes": 581895,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000002.jsonl.gz",
+      "records": 99,
+      "sha256": "f7e8c6930504f5387388b8d62c47cd977c6e304dda10dade5df27ec8674e2fb8"
+    },
+    {
+      "bytes": 581693,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000003.jsonl.gz",
+      "records": 99,
+      "sha256": "6af1ae55fddc1969dbcaad1d4974bf20e6236971465a41e103aa9c50d20444f6"
+    },
+    {
+      "bytes": 581593,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000004.jsonl.gz",
+      "records": 99,
+      "sha256": "7deb27bd49498b90d6f91a7ae2da68f04d0a3ad506d762ebe6f06f04c9dfe3a4"
+    },
+    {
+      "bytes": 582334,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000005.jsonl.gz",
+      "records": 99,
+      "sha256": "bcbf987a8eae5da4f2b6752163341615c867f63d26b5f2801cbcd3a34bf31540"
+    },
+    {
+      "bytes": 583257,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000006.jsonl.gz",
+      "records": 99,
+      "sha256": "2c251a459aa2a04a94184e71b2d00f74bc03e804bd62d9721e7a1e0eed82cf74"
+    },
+    {
+      "bytes": 583521,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000007.jsonl.gz",
+      "records": 99,
+      "sha256": "3fbf3847f9e7d962b211460d14fff81ff6dbf362d5bae5e1acbc259223cdf945"
+    },
+    {
+      "bytes": 583574,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000008.jsonl.gz",
+      "records": 99,
+      "sha256": "fb8132d1288560ce96e93d0d1f9a4d25f066fa829e0ee796bd68b49c0fb6d530"
+    },
+    {
+      "bytes": 583618,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000009.jsonl.gz",
+      "records": 99,
+      "sha256": "7962bbbdb8be0f109c274a6a5e0956f81dc72b34292dd75cfa0247f01b337f9e"
+    },
+    {
+      "bytes": 583687,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000010.jsonl.gz",
+      "records": 99,
+      "sha256": "676976aff0d8fd425b18e6fa50c37cdbc80050a028663d5d561e633b1008d5dc"
+    },
+    {
+      "bytes": 583973,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000011.jsonl.gz",
+      "records": 99,
+      "sha256": "d9eef9b1b30aae8528a79135bddb5e7e0afd1365039556c4c56b2e2544c9cf7b"
+    },
+    {
+      "bytes": 583745,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000012.jsonl.gz",
+      "records": 99,
+      "sha256": "9689dce485242267ec99f50a23cecfa56ecb8324d4bef521182dd05b4fd9c377"
+    },
+    {
+      "bytes": 583668,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000013.jsonl.gz",
+      "records": 99,
+      "sha256": "d8efc24174014684415a7d986ccbb7fba257a9abf66bbbc542c92a4dedd8fa45"
+    },
+    {
+      "bytes": 584761,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000014.jsonl.gz",
+      "records": 99,
+      "sha256": "4619e3c7a65d98761bbb58630bc73f381032c9f237b77996371e36d37db33461"
+    },
+    {
+      "bytes": 585635,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000015.jsonl.gz",
+      "records": 99,
+      "sha256": "1ebf4e5b1bf193f19579b7c03d91c8ba2b3d92695028fc8a81bb315919a2e3b3"
+    },
+    {
+      "bytes": 585757,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000016.jsonl.gz",
+      "records": 99,
+      "sha256": "4efad89c6010ef6b1c7e9a99033b6dcfd203eacbe34447441f0e6f1fa1aa1a62"
+    },
+    {
+      "bytes": 585654,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000017.jsonl.gz",
+      "records": 99,
+      "sha256": "baaab613f1308dd30171aee8846cae35f19422de362f431772fd8a1081edef5a"
+    },
+    {
+      "bytes": 585846,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000018.jsonl.gz",
+      "records": 99,
+      "sha256": "14d1f8ca961175c05e657c12db5a3ae69c0dfecc9bd1598df1b2dc40d232007f"
+    },
+    {
+      "bytes": 584636,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000019.jsonl.gz",
+      "records": 99,
+      "sha256": "bc7216954aee8203856ac717257bb19252c57508fd08e262941a43753fe8a722"
+    },
+    {
+      "bytes": 584920,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000020.jsonl.gz",
+      "records": 99,
+      "sha256": "c19b5ef68553daee1b6d6f6f7e2c5affdd644f2b158d50d32f89feea5147a1bc"
+    },
+    {
+      "bytes": 585253,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000021.jsonl.gz",
+      "records": 99,
+      "sha256": "9848facf5e779286fd2a929ad55c7051710a59df5ca290ae0afdbb0d141183d1"
+    },
+    {
+      "bytes": 584771,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000022.jsonl.gz",
+      "records": 99,
+      "sha256": "f598a32506f86a0506b7ed3c9c753b6a2a59267a5616e9092e0145504a095a2a"
+    },
+    {
+      "bytes": 584760,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000023.jsonl.gz",
+      "records": 99,
+      "sha256": "f0211997e342ec0892507ec098e2a3e14b0ceed75621b1c39880cd0bf677b580"
+    },
+    {
+      "bytes": 584973,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000024.jsonl.gz",
+      "records": 99,
+      "sha256": "38bf8e1e72878abfef08032706bb52b3e99ba539c4477f1fa78b454d02736be0"
+    },
+    {
+      "bytes": 142093,
+      "path": "telemetry/baseline/baseline-controlled-ctx10240-c1/engine-metrics.jsonl.parts/000025.jsonl.gz",
+      "records": 24,
+      "sha256": "e685af8a010190ad3efc8cbbd8a264fd11a82890640c65329b90f20f7d753113"
+    }
+  ],
+  "sanitized_concatenation_sha256": "edd3fbdac78150168ad62625e14469f396c2f979fe668fe96d37ef2c7c90e55a",
+  "schema": "sanitized-jsonl-chunks/v1",
+  "total_records": 2400
+}

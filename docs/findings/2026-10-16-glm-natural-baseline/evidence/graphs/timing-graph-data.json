@@ -1,0 +1,227 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "artifact": "native/natural-ctx8192-c1-r1.json",
+              "artifact_sha256": "4e515deb5d413921b197335951ee36e7f012241accc07573559bbc84753a675e",
+              "value": 4120.3440389363095,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c1-r2.json",
+              "artifact_sha256": "be46c7f6ea8097b1cc9ca562d6ac0ff92bda82e38f7c6f38f16c53360c3d142c",
+              "value": 3737.337775994092,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c1-r3.json",
+              "artifact_sha256": "e085dac4f12cd93cdca8cd18b89f3526abc376090445f66eec7c286297630b4e",
+              "value": 4312.904532067478,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "artifact": "native/natural-ctx8192-c4-r1.json",
+              "artifact_sha256": "862237607d48cdc0d8598038cf8a032a9d092bf97e892bd921972115edf3ed85",
+              "value": 10173.091002972797,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c4-r2.json",
+              "artifact_sha256": "a9633809e2acc7adca35bd994abbb52333c5d42ab9acc815b001ed19080e6bf1",
+              "value": 9114.818708971143,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c4-r3.json",
+              "artifact_sha256": "84601bb505690ea8db6c925380e7b93a6d8044b48a35dc4130374421bad57a51",
+              "value": 8885.95572905615,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "8K end-to-end latency",
+      "x_label": "repeat",
+      "y_label": "p50 milliseconds"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "artifact": "native/natural-ctx32768-c1-r1.json",
+              "artifact_sha256": "3a9662739604527bbf558ea84ba68f25f44232106d03c072277fccce5495f205",
+              "value": 8176.866049994715,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c1-r2.json",
+              "artifact_sha256": "c8ed20fda02139e2ed070bbf23876c8703742223727c1cb524fb8577eb4f318f",
+              "value": 8612.800211063586,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c1-r3.json",
+              "artifact_sha256": "7afe6ac9b54ba5076ede3ac8512acce14569a956284bd96645dd5f75e849661a",
+              "value": 7676.636946969666,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "artifact": "native/natural-ctx32768-c4-r1.json",
+              "artifact_sha256": "01fde2ce8c356d6a5dd239ee1d5b79eab1cd10cdd53ec747cfdb1d95ca010f46",
+              "value": 24696.240538032725,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c4-r2.json",
+              "artifact_sha256": "3a84d3bf1d1cee640b284f69f6015f23e561cd4d61f4012c7cbaccaf670fc59d",
+              "value": 23523.790008970536,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c4-r3.json",
+              "artifact_sha256": "97b7aff6f585a5deb9cefe63f53dd4441d9e3b0141b6096e934eeab16518eb42",
+              "value": 22222.37262793351,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "32K end-to-end latency",
+      "x_label": "repeat",
+      "y_label": "p50 milliseconds"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "artifact": "native/natural-ctx8192-c1-r1.json",
+              "artifact_sha256": "4e515deb5d413921b197335951ee36e7f012241accc07573559bbc84753a675e",
+              "value": 3569.949577911757,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c1-r2.json",
+              "artifact_sha256": "be46c7f6ea8097b1cc9ca562d6ac0ff92bda82e38f7c6f38f16c53360c3d142c",
+              "value": 3084.16227507405,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c1-r3.json",
+              "artifact_sha256": "e085dac4f12cd93cdca8cd18b89f3526abc376090445f66eec7c286297630b4e",
+              "value": 3657.9408010002226,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "artifact": "native/natural-ctx8192-c4-r1.json",
+              "artifact_sha256": "862237607d48cdc0d8598038cf8a032a9d092bf97e892bd921972115edf3ed85",
+              "value": 8764.1307329759,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c4-r2.json",
+              "artifact_sha256": "a9633809e2acc7adca35bd994abbb52333c5d42ab9acc815b001ed19080e6bf1",
+              "value": 7441.0400099586695,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx8192-c4-r3.json",
+              "artifact_sha256": "84601bb505690ea8db6c925380e7b93a6d8044b48a35dc4130374421bad57a51",
+              "value": 6960.768657037988,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "8K time to first visible token",
+      "x_label": "repeat",
+      "y_label": "p50 milliseconds"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "C1",
+          "points": [
+            {
+              "artifact": "native/natural-ctx32768-c1-r1.json",
+              "artifact_sha256": "3a9662739604527bbf558ea84ba68f25f44232106d03c072277fccce5495f205",
+              "value": 7358.747574035078,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c1-r2.json",
+              "artifact_sha256": "c8ed20fda02139e2ed070bbf23876c8703742223727c1cb524fb8577eb4f318f",
+              "value": 7795.516223064624,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c1-r3.json",
+              "artifact_sha256": "7afe6ac9b54ba5076ede3ac8512acce14569a956284bd96645dd5f75e849661a",
+              "value": 7045.820003957488,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "C4",
+          "points": [
+            {
+              "artifact": "native/natural-ctx32768-c4-r1.json",
+              "artifact_sha256": "01fde2ce8c356d6a5dd239ee1d5b79eab1cd10cdd53ec747cfdb1d95ca010f46",
+              "value": 19949.374695075676,
+              "x": "r1"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c4-r2.json",
+              "artifact_sha256": "3a84d3bf1d1cee640b284f69f6015f23e561cd4d61f4012c7cbaccaf670fc59d",
+              "value": 21267.867935006507,
+              "x": "r2"
+            },
+            {
+              "artifact": "native/natural-ctx32768-c4-r3.json",
+              "artifact_sha256": "97b7aff6f585a5deb9cefe63f53dd4441d9e3b0141b6096e934eeab16518eb42",
+              "value": 20243.38181805797,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "32K time to first visible token",
+      "x_label": "repeat",
+      "y_label": "p50 milliseconds"
+    }
+  ],
+  "metric_semantics": {
+    "failure": "C1/8K r2 has one retained no-visible-content failure; its p50 metrics cover 19 completed requests and its aggregate throughput is ineligible.",
+    "scope": "Natural-output observation; not controlled decode or stable tail latency."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Three repeat-level p50 observations per cell. Shared routed traffic; variable natural-output length. C1/8K r2 completed 19/20 and is conditional on successful requests; its failure is retained separately.",
+  "title": "GLM-5.3-Flash natural-output timing"
+}

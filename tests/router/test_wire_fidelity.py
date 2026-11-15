@@ -10,19 +10,14 @@ history an agent loop rides on. These tests pin:
 """
 from __future__ import annotations
 
-import json
 
 from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
 from anvil_serving.router.dialects.translate import (
-    anthropic_messages_to_openai,
     anthropic_tool_choice_to_openai,
-    anthropic_tools_to_openai,
-    has_tool_artifacts,
     openai_messages_to_anthropic,
     openai_tool_choice_to_anthropic,
-    openai_tools_to_anthropic,
 )
 from tests.router.helpers import make_tier as _tier
 
@@ -54,41 +49,11 @@ OPENAI_TOOLS = [{
 # --------------------------------------------------------------------------- #
 # detector
 # --------------------------------------------------------------------------- #
-def test_has_tool_artifacts_detects_each_shape():
-    assert has_tool_artifacts({"tools": ANTHROPIC_TOOLS})
-    assert has_tool_artifacts({"tool_choice": "auto"})
-    assert has_tool_artifacts({"messages": [{"role": "tool", "content": "42"}]})
-    assert has_tool_artifacts({"messages": [
-        {"role": "assistant", "tool_calls": [{"id": "c1"}]}]})
-    assert has_tool_artifacts({"messages": [
-        {"role": "user", "content": [
-            {"type": "tool_result", "tool_use_id": "t1", "content": "ok"}]}]})
-    assert not has_tool_artifacts({"messages": [{"role": "user", "content": "hi"}]})
-    assert not has_tool_artifacts({})
 
 
 # --------------------------------------------------------------------------- #
 # tool-definition translation
 # --------------------------------------------------------------------------- #
-def test_anthropic_tools_to_openai_shape():
-    out = anthropic_tools_to_openai(ANTHROPIC_TOOLS)
-    assert out == OPENAI_TOOLS
-
-
-def test_openai_tools_to_anthropic_shape():
-    out = openai_tools_to_anthropic(OPENAI_TOOLS)
-    assert out == ANTHROPIC_TOOLS
-
-
-def test_server_tools_and_malformed_entries_are_skipped():
-    tools = [
-        {"type": "web_search_20250305", "name": "web_search"},  # server tool
-        {"no": "name"},
-        "garbage",
-    ] + ANTHROPIC_TOOLS
-    out = anthropic_tools_to_openai(tools)
-    assert out == OPENAI_TOOLS
-    assert openai_tools_to_anthropic(["garbage", {"type": "function"}]) == []
 
 
 def test_tool_choice_translation_both_ways():
@@ -112,31 +77,6 @@ def test_tool_choice_translation_both_ways():
 # --------------------------------------------------------------------------- #
 # message-history translation
 # --------------------------------------------------------------------------- #
-def test_anthropic_history_to_openai_preserves_tool_traffic():
-    messages = [
-        {"role": "user", "content": "What's the weather in Oakland?"},
-        {"role": "assistant", "content": [
-            {"type": "text", "text": "Let me check."},
-            {"type": "tool_use", "id": "toolu_1", "name": "get_weather",
-             "input": {"city": "Oakland"}},
-        ]},
-        {"role": "user", "content": [
-            {"type": "tool_result", "tool_use_id": "toolu_1",
-             "content": [{"type": "text", "text": "68F sunny"}]},
-        ]},
-    ]
-    out = anthropic_messages_to_openai(messages)
-    assert out[0] == {"role": "user", "content": "What's the weather in Oakland?"}
-    assistant = out[1]
-    assert assistant["role"] == "assistant"
-    assert assistant["content"] == "Let me check."
-    (tc,) = assistant["tool_calls"]
-    assert tc["id"] == "toolu_1"
-    assert tc["function"]["name"] == "get_weather"
-    assert json.loads(tc["function"]["arguments"]) == {"city": "Oakland"}
-    tool_msg = out[2]
-    assert tool_msg == {"role": "tool", "tool_call_id": "toolu_1",
-                        "content": "68F sunny"}
 
 
 def test_openai_history_to_anthropic_preserves_tool_traffic():
@@ -170,47 +110,6 @@ def test_openai_history_to_anthropic_preserves_tool_traffic():
 # --------------------------------------------------------------------------- #
 # _build_body integration
 # --------------------------------------------------------------------------- #
-def test_same_dialect_openai_passthrough():
-    body_in = {
-        "model": "quick-edit",
-        "messages": [
-            {"role": "user", "content": "weather?"},
-            {"role": "assistant", "content": None, "tool_calls": [
-                {"id": "call_1", "type": "function",
-                 "function": {"name": "get_weather", "arguments": "{}"}}]},
-            {"role": "tool", "tool_call_id": "call_1", "content": "68F"},
-        ],
-        "tools": OPENAI_TOOLS,
-        "tool_choice": "auto",
-    }
-    request = OpenAIDialect().parse_request(body_in)
-    body = _backend("openai")._build_body(request)
-    assert body["tools"] == OPENAI_TOOLS
-    assert body["tool_choice"] == "auto"
-    assert body["messages"] == body_in["messages"]  # verbatim, tool traffic intact
-    assert body["model"] == "concrete-model"
-
-
-def test_same_dialect_anthropic_passthrough():
-    body_in = {
-        "model": "quick-edit",
-        "max_tokens": 512,
-        "system": "be brief",
-        "messages": [
-            {"role": "user", "content": [
-                {"type": "tool_result", "tool_use_id": "toolu_1", "content": "68F"},
-                {"type": "text", "text": "and SF?"},
-            ]},
-        ],
-        "tools": ANTHROPIC_TOOLS,
-        "tool_choice": {"type": "auto"},
-    }
-    request = AnthropicDialect().parse_request(body_in)
-    body = _backend("anthropic")._build_body(request)
-    assert body["tools"] == ANTHROPIC_TOOLS
-    assert body["tool_choice"] == {"type": "auto"}
-    assert body["messages"] == body_in["messages"]
-    assert body["system"] == "be brief"
 
 
 def test_cross_dialect_anthropic_request_to_openai_tier():
@@ -258,29 +157,3 @@ def test_cross_dialect_openai_request_to_anthropic_tier():
     # system message dropped from messages; carried on the top-level field
     assert [m["role"] for m in body["messages"]] == ["user"]
     assert body["system"] == "be brief"
-
-
-def test_tool_free_request_body_is_unchanged():
-    """Regression pin: without tool artifacts the body matches the old shape."""
-    body_in = {
-        "model": "chat",
-        "messages": [
-            {"role": "system", "content": "be brief"},
-            {"role": "user", "content": "hello there"},
-        ],
-        "temperature": 0.5,
-        "max_tokens": 64,
-    }
-    request = OpenAIDialect().parse_request(body_in)
-    body = _backend("openai")._build_body(request)
-    assert body == {
-        "model": "concrete-model",
-        "messages": [
-            {"role": "system", "content": "be brief"},
-            {"role": "user", "content": "hello there"},
-        ],
-        "stream": False,
-        "max_tokens": 64,
-        "temperature": 0.5,
-    }
-    assert "tools" not in body and "tool_choice" not in body

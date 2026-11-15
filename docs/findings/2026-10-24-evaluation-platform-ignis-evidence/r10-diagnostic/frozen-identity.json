@@ -1,0 +1,22 @@
+{
+  "arms": 1,
+  "batches": 30,
+  "budgets": {
+    "drain_reserve_s": 120,
+    "per_arm_s": 3600,
+    "total_s": 3600
+  },
+  "cells": 48,
+  "head": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+  "host_memory_reserve_mib": 16384,
+  "manifest_bytes": 112056,
+  "manifest_raw_sha256": "0ade837bd2d539f49f053853f890b9f95bc5cfe0a67f98867cf8b787cd1c0ed7",
+  "manifest_sha256": "80406e77c611d671bd759f5bdeeb937faf383a705c20c9327be44dba143b2238",
+  "memory_limit_mib": 50176,
+  "memory_swap_limit_mib": 50176,
+  "recipe_sha256": "d7d3740c1ab9e9aaad22e434bea3ce93fc65831f19f82fc005a845e78e671282",
+  "registry_sha256": "1a150dac55ac22e8b5923fff4ef6c4461cf5a7602f91ae248192127a532e74e5",
+  "schema": "anvil-serving.frozen-identity-excerpt/v1",
+  "scope": "Selected frozen identities and effective controls; inherited serve.note52GiB is erroneous prose, actual fields bind49GiB/no-swap. Complete private plans remain authoritative.",
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430"
+}

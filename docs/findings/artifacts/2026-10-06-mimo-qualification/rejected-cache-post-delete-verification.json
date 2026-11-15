@@ -1,0 +1,29 @@
+{
+  "baseline_running_after_apply": true,
+  "checks": [
+    {
+      "absent": true,
+      "repository": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "revision": "5711b268169967567844e1e560e8a3966da959b1"
+    },
+    {
+      "absent": true,
+      "repository": "lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated",
+      "revision": "c8f58e6aa9117c73607d692978b22f091d80450c"
+    },
+    {
+      "preserved": true,
+      "repository": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4",
+      "revision": "7c4f1bc1a2d6847e0cbc01ac6b823f00251de8dd"
+    },
+    {
+      "preserved": true,
+      "repository": "XiaomiMiMo/MiMo-V2.6-Flash-RL",
+      "revision": "3b38d063180c3e4aed9691fdc735f3d10b266ee4"
+    }
+  ],
+  "native_inventory_sha256": "688fbf6e6eb4d913ce5c97dbb8cbbbadab9d7676f60c748ebc6c5b4d2fb65005",
+  "observed_at": "2026-10-06T10:51:19.011709+00:00",
+  "passed": true,
+  "unrelated_model_revisions_and_bytes_unchanged": true
+}

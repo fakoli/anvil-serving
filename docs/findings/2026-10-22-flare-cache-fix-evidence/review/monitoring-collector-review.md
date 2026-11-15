@@ -1,0 +1,32 @@
+# Retained monitoring collector review
+
+Decision: **HOLD for one bounded correction pass**. Static review of analysis/collect-retained-monitoring.py, SHA-256 b5441d6fd372f3fe4dc10d8b88b06a3096f2458357d882cd6848a6fb0e29623e; parsed syntax successfully. No collector execution, Prometheus/network/model request, lifecycle, GPU, build or corpus operation. Only this note was written.
+
+1. **Persist acquired evidence before semantic validation** (collect_lane lines 126–135; collect_restoration lines 165–169). An empty/down/one-scrape/stale response fails validate_readiness before any response is written. Also the comprehension collects all five queries before persistence, so a later transport/JSON failure loses earlier successful responses. Store each acquired raw query response and error context durably as it arrives, then assemble and validate the historical proof. Failed/partial attempts must remain clearly failed, with query, epoch and generation retained; never silently replace them with a passing retry. Reuse historical_values for the predicate, not as a prerequisite to recording evidence. No generic retry framework is needed.
+
+2. **Reuse complete existing exports/history without replacing them** (planned_outputs lines 102–120). It currently rejects every nonempty query-ranges directory and every existing readiness history, including valid r1-A artifacts and the new serial runner's intended output. Distinguish missing, complete-valid, and partial/invalid: preserve and validate existing complete ranges/manifests/generation/interval/query scope and history; query/write only genuinely missing products. Existing complete ranges must cause zero repeat range calls. Existing complete readiness must cause zero repeat instant calls. Partial/invalid inputs should fail visibly and remain untouched, or use one explicitly separate attempt location; do not overwrite or pretend completeness. The currently permitted existing empty ranges directory also fails at ranges.mkdir(); handle that state consistently. Keep provenance and original online/retrospective distinction.
+
+3. **Accept the retained generation filename variants** (lane_inputs line 81). Read registration-generation.txt or generation.txt according to retained evidence; require a nonempty value. If both exist, require agreement rather than silently choosing one. Bind that generation to lane-complete/phase identity as applicable and retain the chosen input reference. This is analogous to the already implemented up-N versus monitor-up-N resolution, not a new schema.
+
+Focused offline checks should mock query functions and cover: invalid readiness preserves the response; a later query exception preserves earlier responses/error; a complete existing export/history produces no queries or rewrites; partial export remains unchanged and rejected; each generation filename works and disagreement rejects. Retain initial empty up receipts as failures, not as a successful scrape or fabricated sample. The collector gathers historical evidence only; the approved assembler still decides proof validity and cannot claim original enforcement from retrospective data.
+
+These changes address evidence preservation and reuse only. Do not add model workloads, lifecycle management, numerical-oracle exceptions, or a second proof framework. One correction pass remains under the parent's stated limit.
+
+## Final bounded recheck
+
+Reviewed collector SHA-256 `7eda06635b7d159e75266ed3190ae07723c8d4de0f374f978cd51cfa9016f3e1`. **HOLD for the whole collector CLI and general reuse.** Two author correction passes are exhausted; no further repair cycle is requested.
+
+The corrected lane path accepts either generation filename and rejects disagreement. Offline mocked probes confirmed that failed lane readiness retains all acquired responses plus validation_error; a later query exception retains earlier responses plus collection_error. A lane with all three missing-output flags false performs zero query calls. No network, model requests, lifecycle, GPU, build, or full-corpus operation was performed.
+
+Two blockers remain:
+
+1. `collect_restoration` still validates before writing, losing failed readiness receipts and earlier responses on a later query exception. The mocked failed-readiness case produced no restoration receipt. A direct successful call overwrote existing restoration bytes. Static inspection confirms `main` calls this function even after `planned_outputs` has accepted an existing valid restoration receipt, so general reuse is not non-overwriting.
+2. `validate_existing_range` requires exact equality to newly computed padding bounds. On the small retained r1-A cold input, it demands [1792712002, 1792712062] and rejects the existing [1792711835, 1792712046] manifest. This is not a traffic-coverage assessment and cannot approve reuse of the existing A or serial-runner exports. The probe stopped at manifest mismatch; it did not scan the range corpus.
+
+### Narrow r1-B missing-output collection decision
+
+**GO for direct `collect_lane` calls for the nine closed r1-B lanes only**, after preflighting all nine lane inputs and confirming that each lane's history JSON, query-ranges directory, and monitoring-samples JSONL are nonexistent. Use the reviewed frozen queries, exact r1-B identity and history destination, and action `(True, True, True)`. This approval explicitly excludes `main`, `collect_restoration`, and every existing-output reuse path. The parent owns execution; no concurrent writer may create these destinations between preflight and collection. Stop on the first failure and retain partial output; do not rerun over it.
+
+This is approval to collect retrospective evidence, not a readiness or monitoring proof. `collect_lane` preserves returned lane responses before semantic readiness validation and retains partial range collection errors. The approved proof assembler must still validate range content, generation, GPU identity, actual traffic coverage, and scrape evidence. If a retained up receipt is empty, sample reconstruction can fail after history/ranges have been saved; preserve that failure and the original empty receipt rather than treating it as a successful scrape. Restoration history must be collected separately by the parent with raw responses preserved before validation.
+
+The independent serial-runner GO is unchanged. Numerical acceptance, promotion, and strict performance qualification remain outside this collection approval.

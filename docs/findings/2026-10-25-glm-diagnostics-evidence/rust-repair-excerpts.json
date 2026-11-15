@@ -1,0 +1,34 @@
+{
+  "cases": [
+    {
+      "cell": "cell-4",
+      "code": "/// Apply the given operation to every element of the input collection,\n/// returning a new collection with the results.\npub fn map<T, U, F>(input: Vec<T>, mut function: F) -> Vec<U>\nwhere\n F: FnMut(T) -> U,\n{\n let mut result = Vec::with_capacity(input.len());\n for element in input {\n result.push(function(element));\n }\n result\n}\n",
+      "direct_native_file_reference": false,
+      "exact_text_observed_in_hash_bound_history": true,
+      "final_result": "Actual cargo test -- --include-ignored output reports12 passed,0 failed, including mutating_closure and minimal_bounds_on_input_and_output. Contained command returncode0; native tests_outcomes=[false,true], resolved=true.",
+      "final_solution_sha256": "673dcd05dacd3751387774bee64f85a6d196c9f0910ddb5d21b8a582657699e5",
+      "first_attempt": "The retained edit hardcodes Vec<i32> input/output and a fn(i32)->i32 function pointer. Actual rustc output reports21 errors, including E0277/E0308/E0599; the captured counter closure cannot coerce to a function pointer, and heterogeneous input/output tests conflict with i32.",
+      "history_private_original": {
+        "bytes": 33749,
+        "sha256": "777e7819cdc05043d184e085d40fe7b6c9cff353c58cc4fc75ec3842fb513761"
+      },
+      "repair": "The retained second edit changes to map<T,U,F>(input:Vec<T>, mut function:F)->Vec<U> with F:FnMut(T)->U, retaining the explicit loop. It fixes the type/function-pointer restrictions and provides the mutable callable binding."
+    },
+    {
+      "cell": "cell-5",
+      "code": "/// Applies `function` to every element of `input` and returns a new vector\n/// containing the results, in the same order.\npub fn map<T, U>(input: Vec<T>, function: impl FnMut(T) -> U) -> Vec<U> {\n let mut output = Vec::with_capacity(input.len());\n for element in input {\n output.push(function(element));\n }\n output\n}\n",
+      "direct_native_file_reference": false,
+      "exact_text_observed_in_hash_bound_history": true,
+      "final_result": "The library/lib-test compilation fails before test execution. Contained command returncode101; native tests_outcomes=[false,false], resolved=false. No patched solution or rerun was attempted.",
+      "final_solution_sha256": "6599a03e2e519fdbabe3d6b7e08c62ba569038f60d83daa7111cd1d61509d35e",
+      "first_attempt": "The retained edit accepts a borrowed slice &[T] and Fn(&T)->U while the pinned tests pass owned Vec values and by-value callables. Actual rustc output reports21 errors, including E0277/E0282/E0308/E0631; it explicitly contrasts expected reference &[ _ ] with Vec and borrowed-argument signatures with fn(i32).",
+      "history_private_original": {
+        "bytes": 36604,
+        "sha256": "69be95951610a5eed197dd7406e1da967879b9581fbc54f81712e39b0478d0db"
+      },
+      "repair": "The second edit adopts Vec<T> and FnMut(T)->U but leaves function immutable. Actual rustc error E0596 says function cannot be borrowed as mutable and explicitly suggests adding mut to that parameter."
+    }
+  ],
+  "schema": "sanitized-code-diagnostic-excerpts/v1",
+  "scope": "Only benchmark-generated Rust solution text and bounded compiler interpretation; private native originals remain authoritative."
+}

@@ -1,5 +1,104 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-13 Mia TensorFold functional checks:** two96GiB Max-Q cards at300W passed the [runtime delta](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md): truncated Messages500 fixed,128-entry prompt scoring, tools/image, C4 canaries and cache restart.1164 coherent telemetry samples observed four active streams; this is not a speed or simultaneous-full-window capacity measurement.
+
+**2026-11-09 TensorFold reasoning controls:** the dual-card GLM EXL3
+[quality investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
+keeps the response cap at 16K while changing request-local Max/Low effort.
+Both Low repetitions passed their first contained Go test; both Max
+repetitions failed after response-cap starvation. The newer disk-cache/process baseline
+and coexisting user traffic preclude a historical or isolated performance
+comparison. No deployment or global model-policy change follows.
+
+**2026-11-09 request-control rollout follow-up:** merged support is deployed
+in the local CLI/router. The separate dual-card C1 check on one Go task
+retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset 1/1 at a 16,384
+response cap. Second Max failed both attempts at that cap without exhausting
+whole-job time/call budgets; 8,192 is not established as a reliable fix or
+default. Sharded-KV runtime differs from the original disk-only matrix, with
+no contemporary unbounded-Max control or causal quality/speed claim. B10
+remains partial: remote-controller numeric admission is unsupported and
+observer migration is deferred. No hardware-capacity or promotion claim
+follows.
+[Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+· [Summary](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+· [Evidence index](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+**2026-11-08 TensorFold Go validation:** the dual-card GLM EXL3 lane passed
+the selected Go task on its first 32K attempt, while both 16K attempts failed
+after length-finished responses. Two targeted profile checks on one task
+provide `quality` evidence, with no hardware-capacity, performance or promotion
+claim. [Finding](../../findings/2026-11-08-tensorfold-go-validation.md) ·
+[Evidence index](../../findings/2026-11-08-tensorfold-go-validation-evidence/README.md).
+
+**2026-11-01 Swift TP1 qualification accepted:** one RTX PRO 6000 Blackwell Max-Q
+measured the final TP1 capacity population (10 cells, 72 requests), resource
+window, and final functional/quality evidence. C2 is the selected interactive
+setting with a retained 32K decode soft miss; C1 remains latency-first. This is
+not sixteen-active-request or stable-p99 evidence. [Finding](../../findings/2026-11-01-swift-tp1-gpu0.md).
+
+**2026-11-01 — keep the current configuration:** the dual-card
+[cache-layout and DFlash scouts](../../findings/2026-11-01-runtime-scouts.md)
+each completed 144 timed requests at ~6K/~25K actual input and requested C1/C4.
+Neither met the 10% E2E improvement gate against both baseline controls.
+The layout candidate added 38.60% reported KV slots; DFlash2 K3 reduced them
+40.63%. Both original configurations were restored; `no-promotion`.
+Target identity is private. These are bounded natural-output scouts, not
+controlled speculative-speedup, full-context or broad quality evidence.
+[Dossier](../models/private-runtime-scouts.md) ·
+[Raw evidence](../../findings/2026-11-01-runtime-scouts-evidence/README.md).
+
+**2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion:** Ignis 0.8.0, vLLM r2, and Flare r2 each used one RTX PRO 6000 Blackwell Max-Q in serialized single-request functional/context scouts. Agentic passed 6/6 and context 9/9 per recipe, up to 114,588 observed prompt tokens. Coding results were mixed and historical output attribution is uncertain because the shared router's buffered-text path collapses repeated spaces; original HTTP bodies were not retained. The second card was not used for performance evidence. vLLM and Flare C1 each ended 0/8 performance-eligible. Exact prior route/output-cap configuration and GLM incumbent readmission passed local checks; router uses reviewed PR #704 overlay, not original image. No speed result, capacity qualification, engine ranking, or promotion claim. [Finding](../../findings/2026-10-26-flash-next-engine-qualification.md) · [evidence](../../findings/2026-10-26-flash-next-engine-qualification-evidence/README.md).
+
+**2026-10-26 Ignis 0.8 mandatory-tool qualification:** [one-card functional evidence](../../findings/2026-10-26-ignis-080-preflight.md) retains the original unseeded `auto` tools result at 3/4. On the same immutable Ignis/model/recipe, the documented request-level `required` path with normal thinking passed 3/3 mechanism cells, a 5/5-check and 9/9-observation preflight, and a 4/4 different-seed repeat. The candidate point snapshot recorded 96,027 MiB on the measured card and 0 MiB on the protected equal card; phase-two managed cgroup peak was 41.86 GiB with zero OOM events. Exact operational restoration passed. These are functional/resource observations, not capacity or performance evidence. No promotion.
+
+**2026-10-26 reasoning-close GPU marker trace:** [bounded actual-GPU diagnostic](../../findings/2026-10-26-marker-gpu-trace.md). One Max-Q ran the preweight marker and sampling gates; the dual-Max-Q pair served one C1 request. The exact-answer response had one close at index 64 with matching budget-store observations on both ranks, but the frozen analyzer remained `unknown` because the trace had one token after the 75-token API response. No second close reproduced. Operational restoration passed; strict JSON functional acceptance remained incomplete. No hardware ranking, capacity, speed, resolution or promotion claim. [Summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
+
+**2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
+
+**2026-10-25 sampling-reference diagnostic:** [independent synthetic split-top-p checks](../../findings/2026-10-25-sampling-reference.md) measured one RTX PRO 6000 Blackwell Max-Q. All eight forced cases passed, but the patch retained one extra token on one of 272 ordinary rows and failed the strict local no-worse gate. Candidate weights and model inference never started; two GPUs were only reserved for the planned serve. Exact operational restoration passed, while the restored incumbent failed its single strict JSON smoke. No hardware ranking, capacity, speed, end-to-end fix, or promotion claim. [Summary](../../findings/2026-10-25-sampling-reference-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-reference-evidence/README.md).
+
+**2026-10-25 sampling-fix trial:** [synthetic sampling-kernel checks](../../findings/2026-10-25-sampling-fix.md) measured CUDA device 0 on one RTX PRO 6000 Blackwell Max-Q. Two GPUs were reserved for the planned candidate serve, but model weights and distributed inference never started. Ordinary-mask parity failed after partial forced-token success. No hardware ranking, capacity or speed claim. [Authoritative summary](../../findings/2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-fix-evidence/README.md).
+
+**2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
+
+**2026-10-25 GLM Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) completed six measurements on the dual-card GLM configuration, with one passing and five failing task grades. Two supported cells remained unstarted and four reasoning controls were blocked. All six jobs have complete engine/GPU/host/cgroup telemetry and verified closure. Raw grades remain separate from completed measurements; this diagnostic establishes no causal cap benefit or hardware ranking. No Ignis run or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
+
+Closure through the final postcheck took 26.73 minutes. Sampled host available RAM ranged from 69.30 to 71.49 GiB; observed host and serving-cgroup OOM counters did not increase. Three additional Aider request starts lack captured responses, so their usage remains unknown; completed measurement eligibility does not imply complete token accounting.
+
+**2026-10-25 R12/R13 successor:** the dual-card GLM FP4 incumbent completed 44 measured/graded jobs (38 pass, six fail), with four cancelled unknowns. R13's configured one-card Ignis candidate was refused before creation; it supplied no GPU workload or capacity result. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. No hardware/engine comparison or promotion follows. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md) · [Manifest](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json).
+
+**Historical R5–R10 evaluation-platform diagnostics, 2026-10-24–25:** the dual-card GLM FP4 incumbent executed the coding/tool workload; the one-card Ignis 0.8 candidate reached startup only. R8 retains 42 complete incumbent grades (32 pass, ten fail) with censored remaining rows and unknown final interval. A separate mixed-C4 canary verified four complete measurements and shared closure, with one valid task failure. R9 host-reserve refusal and R10 monitoring identity refusal supply no candidate inference or hardware-capacity result. Exact incumbent service restoration passed, while strict Pi final-text acceptance failed. The pilot remains incomplete; no comparative performance or promotion claim follows. [Finding and population boundaries](../../findings/2026-10-24-evaluation-platform-ignis.md).
+
+**2026-10-21–23 Flare engine investigations:** the dual-card TP2 reports are
+bounded diagnostic evidence, not a hardware ranking or a promotion. The
+[engine-testing index](../engine-testing.md) links every retained finding and
+its restoration boundary.
+
+**Historical primary decision, 2026-10-17:** the operator selected the pinned NVIDIA
+GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
+TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
+promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
+acceptance passed. Subsequent checks accepted five Pi process combinations,
+both primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway, and
+WebUI catalog reconciliation. The complete controlled A/B remains the numeric
+comparison: faster C1 prefill/decode, mixed concurrent latency, and narrow GPU
+headroom. Full fleet catalog/session propagation remains blocked by the older
+13-target NativeWorkflows custody gap; public web publication remains pending.
+[Promotion record and KV accounting](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+
+**2026-10-17 GLM serving-performance comparison:** on the dual RTX PRO 6000 Blackwell Max-Q pair, 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs produced 24 accepted cells and 84 requests per arm across four actual-input strata and C1/C2/C4. The retained canonical finding carries the full measured table and coverage, including per-device memory and runtime-KV observations; allocated KV tokens are not proof of simultaneous full-window capacity. The original 42-cell matrix closed partial with one visible-output-overrun failure and 17 stop-rule-blocked cells. The candidate was not qualified or promoted when that comparison closed; SWE, endurance, no-speculation, and MTP-off comparisons were not measured. Exact r11 restoration passed direct and routed smokes, router readmission, and protected-state checks. [Finding](../../findings/2026-10-17-glm53-serving-performance.md).
+
+**2026-10-16 SGLang, Qwen, and Nemotron comparison:** The original GLM baseline C1 and Nemotron C1 each had 0/4 performance-eligible requests. SGLang GLM and Qwen FP4 passed preflight/Oracle prerequisites but terminal SWE evidence was 0/5 resolved (2/5 graded) and 2/5 resolved (4/5 graded). Nemotron passed preflight 6/6, vision 18/18, and context 2/2, but Oracle was 48/54. No candidate entered C4 or a controlled throughput population; the exact GLM restoration remains the campaign boundary. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md).
+
+**2026-10-16 GLM v0.9.1 trial:** on the dual RTX PRO 6000 Blackwell Max-Q pair, the R2 candidate passed functional, Oracle, image, bounded-context, and sampled reserve checks, but resolved 3/5 pinned SWE cases below the four-case replacement gate. It is `rejected`/`no-promotion`; the original GLM was exactly restored. The fresh original control also resolved the same five cases at 3/5. Its 1725/1745 MiB sampled minima use the historical incumbent waiver and are not a challenger reserve pass. No capacity, stability, DFlash, throughput, causal, comparative-quality, or model-family claim is made. [Finding](../../findings/2026-10-16-glm-v091-trial.md).
+
+**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
+
+**2026-10-13 full qualification:** only TP1/TP2 measurements on the dual RTX PRO 6000 Blackwell Max-Q pair are included. The GLM baseline capacity cells retained actual prompt means of 25,280.5 (32K/C1), 25,281.125 (32K/C4), 106,520 (128K/C1), and 216,194.67 (256K/C1); their 3–8 request populations do not support a p99 claim. The baseline fixed-five result was 2/5. Terminal Ignis was 2/5 resolved, 2/5 graded, and three empty, with C8 6/13 preflight, serial C1 6/6, and 24 recovered SWE engine-full retry notices retained separately. No candidate was promoted. [Finding](../../findings/2026-10-13-full-qualification.md).
+
+**2026-10-06 replacement-quality scout:** MiMo V2.6 Flash RL TP2 no-spec and Lovesenko GLM-5.3-Flash TR3 4-bpw Abliterated TP2 were tested on the dual-Max-Q pair. MiMo passed preflight 25/25 and frozen SWE 4/5 but missed all three 18/18 native agentic profiles; the abliterated GLM passed preflight 25/25 and agentic 18/18 but reached 3/5 SWE. Both are `not-qualified` and `no-promotion`. The configured 327,680-token/C4/eight-image settings are not capacity, context, multimodal, or speed measurements. Exact r11 restoration was verified with direct 25/25, routed 7/7, unchanged configuration hashes, readmission, zero cgroup OOM counters, and no shared-memory offload mapping. [Finding](../../findings/2026-10-06-mimo-qualification.md).
+
 **2026-10-05 Xeon qualification campaign:** an evaluated Qwen replacement was
 rejected at frozen-primary SWE 3/5 and strict C4 0/4 performance eligibility.
 The GLM CSF/QAD scout retained max functional 25/25, original Oracle 17/18,
@@ -37,8 +136,8 @@ experimental mitigation; the exact baseline was restored. First-fault
 attribution and broader qualification remain open. See the
 [dated finding](../../findings/2026-09-23-glm-runtime-stability.md).
 
-**2026-09-23 DCP1 r11:** the exact batch-2,048/C4/0.97 recipe is selected and
-deployed after retained direct/routed preflights and native-client acceptance.
+**2026-09-23 DCP1 r11:** the exact batch-2,048/C4/0.97 recipe was selected and
+deployed at that time after retained direct/routed preflights and native-client acceptance.
 Independent reviews, dashboard receipt, successful Pages publication, and
 HTTP/browser readback are retained. The 825,268-KV pool is 41.73% below retained
 DCP2's 1,416,244, so four full 327K windows are unsupported. It makes no
@@ -63,8 +162,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-05. **Evidence
-interpretation reviewed:** 2026-10-05.
+history. **Last locally measured:** 2026-11-13 (dual-card focused runtime functional and telemetry checks; no new speed ranking). **Evidence
+interpretation reviewed:** 2026-11-13.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).
@@ -153,6 +252,10 @@ tok/s for itself, but the next failed at 3/4 (65/64 code words); the baseline
 also had a 2/4 strict failure (63/64). No overall win, full 327K/C4 context,
 or repository/session/client qualification is established. The baseline remains
 selected and the candidate is `no-promotion`.
+
+## October 6 replacement scout
+
+The dual-Max-Q pair ran direct isolated quality scouts for MiMo V2.6 Flash RL and an abliterated GLM-5.3-Flash TR3 variant. MiMo passed preflight 25/25 and SWE 4/5 but missed its 18/18 agentic gate in all three native profiles (15/18, 17/18, 17/18). The abliterated GLM passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. Both are `not-qualified` and `no-promotion`. Configured 327,680 tokens, C4, and eight images are not measurements of capacity, context, or multimodal behavior. No speed comparison ran. [Evidence](../../findings/2026-10-06-mimo-qualification.md). Exact r11 restoration is verified: direct 25/25, routed 7/7, unchanged protected configuration hashes, and router readmission.
 
 ## Recorded promotion, rollback, and challenger state
 
@@ -321,8 +424,14 @@ image/OCR passed on both with CPU feature transport. The official-FP8 arm was
 subsequently human-promoted as the single-service Primary/general-vision/OCR
 profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 
+## 2026-10-15 replacement evaluation
+
+The GLM, MiMo, and Mistral replacement gates were measured on the dual RTX PRO 6000 Blackwell Max-Q configuration and produced no eligible challenger. DeepSeek Stage 2 is separately one-GPU numerical evidence; Stage 3 r12 is a two-GPU dummy-path pass only. Stage 4 adds bounded real-weight 64K/C1/image=0 evidence; full-role r2/r3 are exact resource-policy failures and r4 failed its first required Oracle8 round after passing resources. Exact GLM was restored. No DeepSeek quality, throughput, route, or promotion result follows. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
+
 ## Recent changes
 
+- 2026-10-25: [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) — identity-bound engine/GPU/host/cgroup coverage and shared closure for the released incumbent batches; complete interval coverage does not establish request overlap or simultaneous full-window capacity. R13's 49 GiB RAM plus 16 GiB host-reserve requirement was refused before creation; exact refusal-time available memory is unknown. No candidate hardware measurement or ranking.
+- 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — measured incumbent tools/coding on the dual-card pair; candidate startup on one card without generation; censored attempts and incomplete real-client acceptance retained.
 - 2026-09-08: native Linux / retained WSL GLM comparison added above; same
   measured dual-card pair, faster historical-style decode with explicit failed
   strict-output and routed gates; no new promotion.
@@ -566,3 +675,10 @@ profile and then qualified for one video; Inferact NVFP4 remains no-promotion.
 The complete PRO 6000 history, including failed loads and incomplete runs, is
 in the [run catalog](../runs.md#rtx-pro-6000-runs). Every row links its dated
 finding and a stable [model dossier](../models/index.md).
+## 2026-10-16 measured dual-GPU baseline
+
+The dated GLM baseline used a dual-GPU resident serve with shared host/router traffic; it was not an isolated hardware benchmark. See [the finding](../../findings/2026-10-16-glm-natural-baseline.md).
+
+## 2026-10-19 Ignis 0.7.2
+
+Measured on one RTX PRO6000 Blackwell Max-Q: bounded C1 and short C8 tool checks passed, but the five-task coding run remained incomplete and unsuccessful. The candidate was removed and the incumbent restored. This is not a hardware capacity or performance comparison. [Finding](../../findings/2026-10-19-ignis-072.md).

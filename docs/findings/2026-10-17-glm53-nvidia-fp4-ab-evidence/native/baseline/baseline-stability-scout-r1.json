@@ -1,0 +1,43 @@
+{
+  "configuration_identity": "unverified",
+  "error": "no discovered Anvil recipe container matches the selector",
+  "error_type": "RecipeError",
+  "failure_class": "identity_unavailable",
+  "finished_at": "2026-10-17T07:32:30.292911+00:00",
+  "identity_observations": [],
+  "performance_eligible": false,
+  "promoted": false,
+  "rounds": [],
+  "scenario": {
+    "anchor_max_tokens": 2048,
+    "anchor_tokens": 32000,
+    "base_url": "http://127.0.0.1/v1",
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "glm53-fp4-ab-baseline-r11-stability-scout-r1",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6"
+    },
+    "contender_max_tokens": 256,
+    "contender_tokens": 8192,
+    "context_limit": 327680,
+    "managed_container": "[REDACTED-CONTAINER-ID]",
+    "mode": "overlap",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "prefix_mode": "unique",
+    "reasoning_effort": "max",
+    "rounds": 1,
+    "run_timeout_seconds": 900,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "c93b1397b5329b7f0b55dbe0ed1be36891fc2eb1a8d599f1e46a786a6f7665bb",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "stage": "identity_discovery",
+  "started_at": "2026-10-17T07:32:30.139188+00:00",
+  "status": "failed"
+}

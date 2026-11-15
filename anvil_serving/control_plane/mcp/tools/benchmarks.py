@@ -7,16 +7,15 @@ import json
 import sys
 
 from ....model_controls import REASONING_EFFORT_CHOICES
-from ....benchmarking.jobs import BenchmarkJobError, validate_job_spec
+from ....benchmarking.jobs import BenchmarkJobError, parse_job_spec_json
 from ....benchmarking.evidence_reader import read_referenced_job_evidence
 from ....benchmarking.preflight import run_benchmark_preflight
 from ....benchmarking.harnesses import (
-    cleanup_harness_work,
     harness_asset_status,
     prepare_harness_assets,
 )
-from ....benchmarking.profiles import load_profile
-from ....benchmarking.worker import cancel_benchmark_job, launch_benchmark_job
+from ....benchmarking.profiles import PROFILE_NAMES, SUITE_NAMES, load_profile
+from ....benchmarking.worker import cancel_benchmark_job, cleanup_benchmark_job, launch_benchmark_job
 from ...controller.store import BenchmarkJobStore
 from ....benchmarking.artifacts import (
     benchmark_key_metrics as _benchmark_key_metrics,
@@ -90,12 +89,7 @@ def tool_benchmark_job_submit(args: dict) -> dict:
     if not confirm:
         raise ToolError("confirmation_required", "benchmark submission requires confirmation")
     try:
-        value = json.loads(raw)
-        spec = validate_job_spec(value)
-        if spec["suite"] != suite:
-            raise BenchmarkJobError(
-                "suite_mismatch", "job specification suite does not match the command"
-            )
+        spec = parse_job_spec_json(raw, suite=suite)
         store = _benchmark_job_store()
         disposition, job = store.submit(spec)
         launch = (
@@ -104,8 +98,8 @@ def tool_benchmark_job_submit(args: dict) -> dict:
                 run_root=store.run_root,
                 run_id=job["spec"]["run_id"],
             )
-            if job["state"] == "queued"
-            else {"launched": False, "reason": f"job is {job['state']}"}
+            if disposition == "submitted"
+            else {"launched": False, "reason": f"existing job is {job['state']}"}
         )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_spec_json", "spec_json must be valid JSON") from None
@@ -127,20 +121,17 @@ def tool_benchmark_job_preflight(args: dict) -> dict:
     raw_spec = _str_arg(args, "spec_json", required=True)
     raw_requirements = _str_arg(args, "requirements_json") or "{}"
     try:
-        spec = validate_job_spec(json.loads(raw_spec))
+        spec = parse_job_spec_json(raw_spec, suite=suite)
         requirements = json.loads(raw_requirements)
         if not isinstance(requirements, dict):
             raise BenchmarkJobError("bad_json", "requirements_json must be an object")
-        if spec["suite"] != suite:
-            raise BenchmarkJobError(
-                "suite_mismatch", "job specification suite does not match the command"
-            )
         store = _benchmark_job_store()
         artifact = run_benchmark_preflight(
             spec,
             run_root=store.run_root,
             requirements=requirements,
             assets_root=os.environ.get("ANVIL_BENCHMARK_ASSETS_ROOT"),
+            job_store=store,
         )
     except (TypeError, json.JSONDecodeError):
         raise ToolError("bad_json", "benchmark preflight JSON is invalid") from None
@@ -253,6 +244,7 @@ def tool_benchmark_harness_status(args: dict) -> dict:
             run_root=store.run_root,
             ownership_id=_str_arg(args, "ownership_id", required=True),
             run_id=_str_arg(args, "run_id", required=True),
+            suite=_str_arg(args, "suite", required=True),
         )
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
@@ -264,11 +256,11 @@ def tool_benchmark_harness_cleanup(args: dict) -> dict:
         raise ToolError("confirmation_required", "harness cleanup requires confirmation")
     store = _benchmark_job_store()
     try:
-        result = cleanup_harness_work(
-            run_root=store.run_root,
-            ownership_id=_str_arg(args, "ownership_id", required=True),
-            run_id=_str_arg(args, "run_id", required=True),
-        )
+        run_id = _str_arg(args, "run_id", required=True)
+        record = _job_for_suite(store, run_id, _str_arg(args, "suite", required=True))
+        if record["spec"]["ownership_id"] != _str_arg(args, "ownership_id", required=True):
+            raise BenchmarkJobError("ownership_mismatch", "run belongs to a different owner")
+        result = cleanup_benchmark_job(store, run_id)
     except BenchmarkJobError as exc:
         raise _job_error(exc) from None
     return _ok(result)
@@ -282,17 +274,38 @@ def tool_preflight_probe(args: dict) -> dict:
     api_key_env = _probe_api_key_env(args)
     needle_ctx = _bounded_int_arg(args, "needle_ctx", 128000, min_value=1, max_value=1000000)
     tool_batch = _bounded_int_arg(args, "tool_batch", 20, min_value=1, max_value=128)
+    tool_choice_mode = _str_arg(args, "tool_choice_mode") or "auto"
+    if tool_choice_mode not in {"auto", "required"}:
+        raise ToolError("bad_argument", "tool_choice_mode must be auto or required")
+    seed = args.get("seed")
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)
+                             or not -(2 ** 63) <= seed <= 2 ** 63 - 1):
+        raise ToolError("bad_argument", "seed must be a signed 64-bit integer")
+    capture_tool_transport = _arg_bool(
+        args.get("capture_tool_transport"), False, name="capture_tool_transport"
+    )
     no_thinking = _arg_bool(args.get("no_thinking"), False, name="no_thinking")
+    force_nonempty_content = _arg_bool(
+        args.get("force_nonempty_content"), False, name="force_nonempty_content"
+    )
     checks = _str_arg(args, "checks") or "smoke,json,needle,tools"
     selected_checks = [item.strip() for item in checks.split(",") if item.strip()]
-    known_checks = {"smoke", "json", "needle", "tools", "image", "ocr", "video"}
+    known_checks = {
+        "smoke", "json", "needle", "tools", "long-tools", "streaming-tools",
+        "tool-result", "responses", "image", "ocr", "video",
+    }
     unknown_checks = sorted(set(selected_checks) - known_checks)
     if not selected_checks or unknown_checks:
         raise ToolError(
             "bad_argument",
-            "checks must select smoke,json,needle,tools,image,ocr,video",
+            "checks must select smoke,json,needle,tools,long-tools,streaming-tools,"
+            "tool-result,responses,image,ocr,video",
             {"unknown": unknown_checks},
         )
+    if capture_tool_transport and not (
+        {"tools", "long-tools", "streaming-tools", "tool-result"} & set(selected_checks)
+    ):
+        raise ToolError("bad_argument", "capture_tool_transport requires a tool check")
     image_path = _str_arg(args, "image_path")
     video_path = _str_arg(args, "video_path")
     image_expect = [item.strip() for item in _str_list_arg(args, "image_expect")]
@@ -351,6 +364,10 @@ def tool_preflight_probe(args: dict) -> dict:
         thinking_mode = "disabled"
     if reasoning_effort and thinking_mode != "default":
         raise ToolError("bad_argument", "reasoning_effort cannot be combined with thinking_mode")
+    if force_nonempty_content and thinking_mode != "enabled":
+        raise ToolError(
+            "bad_argument", "--force-nonempty-content requires --thinking-mode enabled"
+        )
     try:
         validate_reasoning_control(
             model,
@@ -374,6 +391,10 @@ def tool_preflight_probe(args: dict) -> dict:
     allowed_finish_reasons = _str_arg(args, "allowed_finish_reasons") or "stop,tool_calls"
     if not any(item.strip() for item in allowed_finish_reasons.split(",")):
         raise ToolError("bad_argument", "allowed_finish_reasons cannot be empty")
+    temperature = args.get("temperature", 0.0)
+    if (isinstance(temperature, bool) or not isinstance(temperature, (int, float))
+            or not 0 <= temperature <= 2):
+        raise ToolError("bad_argument", "temperature must be a number from 0 through 2")
     dry_run = _arg_bool(args.get("dry_run"), False, name="dry_run")
     confirm = _arg_bool(args.get("confirm"), False, name="confirm")
     timeout_seconds = _bounded_int_arg(args, "timeout_seconds", 900, min_value=1, max_value=3600)
@@ -391,10 +412,14 @@ def tool_preflight_probe(args: dict) -> dict:
         base_url,
         "--model",
         model,
+        "--temperature",
+        str(temperature),
         "--needle-ctx",
         str(needle_ctx),
         "--tool-batch",
         str(tool_batch),
+        "--tool-choice-mode",
+        tool_choice_mode,
         "--checks",
         checks,
         "--thinking-mode",
@@ -412,8 +437,14 @@ def tool_preflight_probe(args: dict) -> dict:
     ]
     if api_key_env:
         argv += ["--api-key-env", api_key_env]
+    if seed is not None:
+        argv += ["--seed", str(seed)]
+    if capture_tool_transport:
+        argv.append("--capture-tool-transport")
     if no_thinking:
         argv.append("--no-thinking")
+    if force_nonempty_content:
+        argv.append("--force-nonempty-content")
     if reasoning_effort:
         argv += ["--reasoning-effort", reasoning_effort]
     if image_path:
@@ -583,8 +614,8 @@ FAMILY = ToolFamily(
             "description": "Prepare exact external benchmark assets through the managed worker cache.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
-                    "profile": {"type": "string", "enum": ["smoke", "scout", "deep"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
+                    "profile": {"type": "string", "enum": sorted(PROFILE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                     "offline": {"type": "boolean"},
@@ -599,7 +630,7 @@ FAMILY = ToolFamily(
             "description": "Inspect one run's prepared external benchmark assets.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                 },
@@ -611,7 +642,7 @@ FAMILY = ToolFamily(
             "description": "Clean only a benchmark run's owned work directory.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "ownership_id": {"type": "string", "maxLength": 128},
                     "confirm": {"type": "boolean"},
@@ -624,7 +655,7 @@ FAMILY = ToolFamily(
             "description": "Validate a benchmark endpoint and isolated worker without model lifecycle changes.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "spec_json": {"type": "string", "maxLength": 262144},
                     "requirements_json": {"type": "string", "maxLength": 262144},
                 },
@@ -633,10 +664,10 @@ FAMILY = ToolFamily(
             "handler": tool_benchmark_job_preflight,
         },
         "benchmark_job_submit": {
-            "description": "Submit one durable context, agentic, or SWE benchmark job.",
+            "description": "Submit one durable benchmark job for the selected suite.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "spec_json": {"type": "string", "maxLength": 262144},
                     "follow": {"type": "boolean"},
                     "detach": {"type": "boolean"},
@@ -650,7 +681,7 @@ FAMILY = ToolFamily(
             "description": "Read durable benchmark job status.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                 },
                 required=["suite", "run_id"],
@@ -671,7 +702,7 @@ FAMILY = ToolFamily(
             "description": "Read bounded cursor logs for a durable benchmark job.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "cursor": _bounded_integer_schema(0, 2147483647, 0),
                     "limit": _bounded_integer_schema(1, 1000, 100),
@@ -685,7 +716,7 @@ FAMILY = ToolFamily(
             "description": "Cancel a durable benchmark job after recording partial evidence.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "confirm": {"type": "boolean"},
                 },
@@ -697,7 +728,7 @@ FAMILY = ToolFamily(
             "description": "Read a durable benchmark job artifact.",
             "inputSchema": _schema(
                 {
-                    "suite": {"type": "string", "enum": ["context", "agentic", "swe"]},
+                    "suite": {"type": "string", "enum": sorted(SUITE_NAMES)},
                     "run_id": {"type": "string", "maxLength": 128},
                     "path": {"type": "string", "maxLength": 512},
                 },
@@ -712,9 +743,14 @@ FAMILY = ToolFamily(
                     "base_url": {"type": "string"},
                     "model": {"type": "string"},
                     "api_key_env": {"type": "string"},
+                    "temperature": {"type": "number", "minimum": 0, "maximum": 2, "default": 0},
                     "needle_ctx": _bounded_integer_schema(1, 1000000, 128000),
                     "tool_batch": _bounded_integer_schema(1, 128, 20),
+                    "tool_choice_mode": {"type": "string", "enum": ["auto", "required"], "default": "auto"},
+                    "seed": {"type": "integer", "minimum": -(2 ** 63), "maximum": 2 ** 63 - 1},
+                    "capture_tool_transport": {"type": "boolean"},
                     "no_thinking": {"type": "boolean"},
+                    "force_nonempty_content": {"type": "boolean"},
                     "checks": {"type": "string"},
                     "image_path": {"type": "string"},
                     "image_expect": {

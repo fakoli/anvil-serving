@@ -84,6 +84,10 @@ fields rather than treating the report itself as an execution failure.
 
 ## Start and stop serves
 
+`anvil-serving serves up --compose FILE SERVICE --no-deps --confirm` updates only
+the named Compose service, without starting its dependencies. `--no-deps`
+requires both `--compose` and an explicit service name.
+
 ```bash
 anvil-serving serves up --group ocr --dry-run
 anvil-serving serves up --group ocr --confirm
@@ -196,6 +200,31 @@ unavailable. Discover and inspect that owner with
 [`models recipes running`](models.md#operate-a-loaded-recipe), then unload it
 or add the intended durable manifest ownership before retrying the mode
 transaction.
+
+## Retained exclusive restoration
+
+`anvil-serving serves mode restore-retained NAME --manifest FILE --expected-container-id ID --expected-image DIGEST --manifest-sha256 SHA --registry-sha256 SHA`
+previews restoration of an already-started, now-exited exclusive recipe owner.
+Add `--confirm` to start only that exact retained container ID. This local native
+operation requires the complete manifest reservation scope, native UUID-backed
+TP=2 ownership, exact recipe/launch identity, no competing or unresolved GPU
+owners, and the existing serving authority and experiment fences. Ordinary
+exclusive `serves up` remains refused.
+
+The selected manifest must declare the unrouted retained owner and its recipe
+registry. No recipe execution, creation, recreation, pull, environment rewriting,
+router profile change or alternate-model recovery is available. Readiness checks
+health and exact served identity. Failed readiness stops and retains only the
+same identity-bound container; unresolved identity or cleanup stays HOLD. Storage
+checks do not repair ownership or restart the container. Preserve failed evidence
+and resolve custody before another attempt. Use explicit operator-home selection;
+this path does not read home dotenv files.
+
+Topology resolution must prove a local native caller and match both GPU roles
+to the resource owner. GPU monitoring containers with one exact
+`NVIDIA_DRIVER_CAPABILITIES=utility` setting may coexist when they have no
+privileged, manual-device or compute-capability overrides. Physical compute,
+VRAM, display and unmanaged recipe ownership checks still apply.
 
 ## Serving profiles
 
@@ -450,6 +479,49 @@ local container but never promotes router policy. Recipe-loaded candidates are
 inspected and removed through
 [`models recipes status|logs|unload`](models.md#operate-a-loaded-recipe), not
 raw Docker or manifest-only `serves` verbs.
+
+A promotion may opt into a no-restart route handoff with a `route_update`
+mapping containing the router URL, a credential environment-variable name, and
+the protected frozen campaign-arm path (`activation`). A plan that may use the
+same path for a hot rollback must also declare `rollback_activation`: it is the
+separate frozen arm for the restored owner, never the forward candidate receipt.
+The operator config must
+already have initialized live route state. The promotion previews and prepares
+the route hold before any unload, drains the complete affected request set,
+then loads and qualifies the candidate. Before it can resume and publish, it
+re-reads the managed recipe inventory and the monitoring qualification receipt
+for the newly loaded container. That binds the declared recipe revision and
+observed container/image incarnation; it deliberately does **not** claim a
+weight-cache-byte fingerprint. Missing or changed evidence leaves the route
+held for a fresh recovery, with no router restart or automatic restore. A
+plain live route update remains configuration/served-name scoped and reports
+artifact identity as unverified.
+
+Hot `--resume` repeats the drain for a prepared transaction. Once its revision
+has committed, recovery verifies the existing owner and readmits that same
+revision without another unload. A completed transaction is rechecked against
+fresh health, qualification, owner evidence and live route identity; it never
+recreates a running model as part of that verification.
+
+If a newly recreated target fails after the route is prepared, the route stays
+held. To restore the original owner, use the explicit, transaction-bound
+recovery form (with the transaction id from the route-update status):
+
+```bash
+anvil-serving serves promote PROMOTION_PLAN --rollback \
+  --recover-prepared TRANSACTION_ID --confirm
+```
+
+This is intentionally neither automatic rollback nor a generic cancellation.
+It first proves that the held transaction still has the expected original
+route revision and rollback projection, then proves that the transaction's
+candidate digest and affected tier scope belong to this promotion plan. While
+the hold remains closed it recreates the original owner, verifies health,
+exact identity, the rollback preflight gates, and a fresh managed-recipe
+monitoring receipt. Only then can it cancel that exact prepared route
+transaction and reopen its scope. A stale, mismatched, changed, or failed
+transaction remains held; `--recover-prepared` cannot be used with `--resume`
+or `--dry-run` and always requires `--rollback`.
 
 Promotion and an explicitly requested rollback also evaluate the enabled machine cache
 policy exactly once after their existing readiness gates. Controller-dispatched serve

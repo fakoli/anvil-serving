@@ -31,7 +31,7 @@ stdlib-only.
 
 Use option 4.
 
-`mcp_bridge/` pins the official client and server SDK packages to `2.0.0` and
+`mcp_bridge/` pins the official client and server SDK packages to `2.3.0` and
 bundles the reviewed result into the Python wheel. Remote
 `anvil-serving mcp serve --controller-url ... --auth-env ...` validates the
 private controller URL and credential reference in Python, then replaces

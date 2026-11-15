@@ -1,0 +1,7 @@
+{
+  "campaign_id": "evaluation-platform-r12-r13",
+  "observed_at": "2026-10-25T11:06:58.314485+00:00",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "scope": "Local retained native evidence only; supplemental private-original commitments are in supplemental-projection-ledger.json; R12 full projection bindings are in projection-ledger.json.",
+  "sources": []
+}

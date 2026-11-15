@@ -6,6 +6,9 @@ auth_env = "ANVIL_ROUTER_TOKEN"
 # a reviewed cutover.
 # admission_state_path = "/var/lib/anvil-router/admission-intent.json"
 # decision_log_path = "/var/lib/anvil-router/decisions.jsonl"
+# Hot route updates are opt-in. Initialize this file through the managed
+# route-state installation workflow before starting the router with it enabled.
+# route_state_path = "/var/lib/anvil-router/route-state.json"
 
 [router]
 relay_timeout = 60

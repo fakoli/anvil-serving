@@ -1,0 +1,16 @@
+{
+  "status": "GO for repaired four-child mixed-C4 closure only",
+  "reviewer": "independent Sol/high",
+  "original_private_review_sha256": "49ee302e52c48f473b7ccd7c7df58b36752d26b0f8d066f9caf2198f8e33f8bb",
+  "original_private_review_bytes": 8673,
+  "earlier_GO_version_original_sha256": "7cc37b12955a5acc5ceacca3f281aede12b48d32e734acac383a0b82bae4effc",
+  "version_delta": "Final review adds full-chain audit binding; earlier GO provenance retained.",
+  "original_private_full_chain_audit_sha256": "63bbeb423295a78bdcdf64106ae881c27120dc91e5d07be791146c2109d6ffad",
+  "public_full_chain_audit": "full-chain-audit.json",
+  "bound_reference_count": 41,
+  "source_python_file_count": 447,
+  "source_and_reference_reads_unchanged_twice": true,
+  "model_quality_ranking": false,
+  "publication_approval": false,
+  "promotion_authorized": false
+}

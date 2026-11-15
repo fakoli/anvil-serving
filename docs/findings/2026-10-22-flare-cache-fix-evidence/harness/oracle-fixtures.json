@@ -1,0 +1,128 @@
+{
+  "schema": "flare-cache-fix-independent-oracles/v1",
+  "source": "trial anvil_serving/preflight.py:330-412,662-698; exact validators stricter",
+  "semantic": [
+    {
+      "id": "known-answer",
+      "kind": "strict",
+      "body": {
+        "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+        "temperature": 0,
+        "top_p": 0.95,
+        "max_tokens": 2048,
+        "stream": true,
+        "return_token_ids": true,
+        "return_token_timestamps": true,
+        "stream_options": {
+          "include_usage": true
+        },
+        "reasoning_effort": "max",
+        "messages": [
+          {
+            "role": "user",
+            "content": "What is 17 multiplied by 19? Return ONLY the decimal integer."
+          }
+        ]
+      },
+      "expected": "323"
+    },
+    {
+      "id": "json",
+      "kind": "json",
+      "body": {
+        "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+        "temperature": 0,
+        "top_p": 0.95,
+        "max_tokens": 2048,
+        "stream": true,
+        "return_token_ids": true,
+        "return_token_timestamps": true,
+        "stream_options": {
+          "include_usage": true
+        },
+        "reasoning_effort": "max",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose."
+          }
+        ]
+      },
+      "expected": {
+        "language": "python",
+        "ok": true
+      }
+    },
+    {
+      "id": "tool",
+      "kind": "tool",
+      "body": {
+        "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+        "temperature": 0,
+        "top_p": 0.95,
+        "max_tokens": 2048,
+        "stream": true,
+        "return_token_ids": true,
+        "return_token_timestamps": true,
+        "stream_options": {
+          "include_usage": true
+        },
+        "reasoning_effort": "max",
+        "tool_choice": "auto",
+        "tools": [
+          {
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "description": "Get current weather for a city",
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "city": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "city"
+                ]
+              }
+            }
+          }
+        ],
+        "messages": [
+          {
+            "role": "system",
+            "content": "Use the supplied function for weather requests."
+          },
+          {
+            "role": "user",
+            "content": "What's the weather in Oakland? Use the tool."
+          }
+        ]
+      },
+      "expected": {
+        "name": "get_weather",
+        "arguments": {
+          "city": "Oakland"
+        }
+      },
+      "preserve_tool_request_ids": true
+    }
+  ],
+  "restore": {
+    "kind": "restore_tokens",
+    "indices": [
+      0,
+      40,
+      51
+    ],
+    "body_source": {
+      "path": "OPERATOR_PATH_a9b08f824c76/fixed1-bodies.json",
+      "sha256": "199ce268f4d0f845ca0453706792778cfaaed6b2812ab2797a49561ca87739ca"
+    },
+    "uncached_token_oracle": null,
+    "status": "pilot_required",
+    "method": "record uncached exact token IDs, prime and restore same bytes; exact equality or predeclared numerical tolerance before timing",
+    "coverage_limit": "one-token model check does not replace source recurrent/partial-page/draft-state numerical fixtures"
+  }
+}

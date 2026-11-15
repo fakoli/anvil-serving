@@ -43,6 +43,8 @@ no adapter reads or writes existing Hermes/Pi stores.
 
 ## Operations
 
+The following limits also apply to per-user routes described below.
+
 The REST body contains exactly `alias`, `operation`, and `arguments`:
 
 ```json
@@ -56,7 +58,7 @@ The REST body contains exactly `alias`, `operation`, and `arguments`:
 | `reflect` | `query`, optional `budget`, `max_tokens`, `tags` | 4,096 query characters; 4,096 output tokens |
 
 Budgets are `low`, `mid`, or `high`. Tags allow at most 16 identifiers of
-128 characters. Caller-selected banks, endpoints, models, defense policies,
+128 characters. Fixed principal-bound routes reject caller-selected banks. Endpoints, models, defense policies,
 metadata, asynchronous retention, document administration, and extra arguments
 are rejected. The response names the selected alias, backend, operation, and
 upstream result. A content rejection stays a rejection without echoing the
@@ -98,6 +100,85 @@ owns protected files and client setup. Neither a browser login nor tailnet
 membership grants access to the router memory endpoint.
 
 ## Deployment and recovery
+
+### Per-user banks
+
+A dynamic route resolves the authenticated Connect owner through a protected
+bank policy. API keys must still grant the alias and both endpoint paths.
+Connect Home lists these dynamic aliases for operator approval. Approve
+`memory.user`, `/v1/memory`, and `/v1/memory/mcp` before the user creates a key.
+Fixed device-bound memory routes are excluded from that approval catalog.
+Unowned device keys cannot use this route; attribution headers and caller-supplied
+user IDs do not grant access. Existing fixed principal routes keep their bindings.
+
+```toml
+[[router.memory_routes]]
+alias = "memory.user"
+backend = "hindsight"
+base_url = "http://127.0.0.1:8888"
+auth_env = "HINDSIGHT_GATEWAY_TOKEN"
+access_file = "/run/anvil-memory/access.json"
+timeout = 120
+```
+
+Mount the root-owned policy **directory** read-only so atomic replacements become
+visible. Connect writes the host policy; the router and browser read it for every
+operation. The dedicated directory uses mode `0750` and the configured reader
+group; `access.json` uses mode `0640`. Keep bank creation receipts root-only.
+Policy subjects are verified Connect `human:` principal hashes. Each entry has
+`default_bank`, an `admin` boolean, and explicit `banks` operation grants. Members
+can access only their granted banks; administrators can select and list all banks.
+
+REST accepts optional top-level `bank`; omission selects the user's default.
+`operation: "banks"` returns the authorized inventory and default bank. It accepts
+`limit` (1–100) and `offset` (0–1,000,000) for administrator inventory. MCP exposes
+`memory_banks` alongside the existing tools and accepts optional `bank` on memory
+operations. These options are exclusive to Connect-owned dynamic routes.
+For administrator-managed key enrollment, REST `banks` also accepts an optional
+`arguments.expected_principal` with the target Connect `human:` hash. A key owned
+by another account is rejected even when both accounts can access the same banks.
+This assertion can only restrict the authenticated key; it never selects a user
+or grants access. Resolve the target from the trusted identity provider binding,
+never from model input or a display name.
+
+Declare optional `memory` settings in the private Connect deployment:
+`base_url`, protected root-only `auth_file`, absolute `access_file`, numeric
+`reader_gid`, `default_banks` and `shared_banks`. The last two map local usernames
+to existing shared defaults and explicit shared operation grants. Every shared
+default needs a matching grant. No shared bank is created, modified or adopted.
+
+Personal banks keep the legacy `retain`, `recall` and `reflect` grant. To opt an
+existing personal bank into native browsing or mutation, include its exact bank
+ID under that user's `shared_banks` entry with the desired additional operations:
+`list`, `detail`, `invalidate` and/or `restore`. Despite the historical field
+name, an entry matching the user's protected creation receipt is a personal
+operation opt-in, not a shared bank. Provisioning requires that receipt and a
+matching live ownership marker; it will not create or adopt a bank for this
+opt-in. Other entries retain their exact shared grants. Removing the personal
+entry and running `users memory USER --confirm` restores only the legacy grant.
+This uses the existing declaration format, so older account-deletion managers
+can still withdraw every mapping for the deleted username.
+
+Use `users configure-memory` with protected outside-Git installation JSON containing
+`memory` and `user_defaults`. Optional defaults use
+`{"email":"owner@example.test","bank":"shared-bank","operations":["recall"]}`;
+the command resolves each email to exactly one enabled account before writing.
+Then use `users memory USER --confirm` for existing accounts. It preserves current
+browser grants and rotates existing Connect credentials without restarting sign-in.
+Once installed, `users create` automatically provisions a personal bank, including
+accounts created without browser grants. Administrators come from the account's
+admin group or its `hindsight-ui:admin` grant. A configured shared default still
+retains the account's personal bank.
+
+Provisioning verifies the bank ownership marker and sensitive-data defense before
+publishing access. Interrupted creation retries from its protected receipt.
+Provisioning failures leave access closed and preserve created banks. Suspension
+and deletion remove the policy entry before native account revocation, retaining
+bank contents and receipts. Permanent deletion also withdraws shared/default grants
+from the private declaration before removing identity records, so a reused username
+receives a fresh personal bank. Resume through `users access`; retry incomplete memory
+setup with `users memory`. Package installation and managed router/browser
+activation are separate steps and require their own authenticated readback.
 
 Infrastructure provisions the digest-pinned upstream service, storage, bank
 defense, extraction credentials and backups. Adopt that external Compose
@@ -173,3 +254,21 @@ several serialized extraction calls; lookups and completion updates allow
 30 seconds. This does not extend the gateway's 300-second interactive limit.
 Consumers receive only principal-bound router access to the imported bank.
 Back up and verify recovery after migration before treating it as complete.
+
+#### Personal API keys during onboarding
+
+The optional `memory.router` object connects bank provisioning to a locally
+managed router and protected credential directory:
+
+```json
+{"container": "anvil-router", "store_path": "/var/lib/anvil-serving/router-keys/keys.sqlite3", "key_directory": "/etc/anvil-connect/memory/user-keys"}
+```
+
+Install it with the other `memory` fields through `users configure-memory`.
+The directory must be dedicated, root-owned, mode `0700`, and outside Git;
+provisioning creates it when absent. Credentials use only `memory.user` and the
+REST/MCP memory paths. They contain no fixed bank ID: the principal's current
+bank policy owns the default, shared grants, and administrator all-bank view.
+The router and native Connect package must both support `users memory-key`.
+Open WebUI enrollment belongs to the infrastructure provisioner, using its
+native encrypted personal settings after the person's first sign-in.

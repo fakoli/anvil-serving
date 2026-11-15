@@ -1,0 +1,72 @@
+{
+  "schema": "anvil-serving.coding-summary/v1",
+  "status": "final-incomplete-repeat-set",
+  "scope": {
+    "campaign": "glm-natural-baseline-20261016",
+    "suite": "SWE-bench_Verified",
+    "split": "test",
+    "source_revision": "e267df90",
+    "workload_reuse": "both repeats use the same five tasks; this is not a fresh held-out evaluation",
+    "configured_controls": "T.6 routed, max reasoning, 16384 output-token limit, 60 steps",
+    "controls_comparison": "R1 and R2 generated configurations are byte-identical. The independent review verified profile, dataset, endpoint alias, request controls, harness revisions, Python environment, container limits, selection, and paired image IDs; distinct plan hashes are expected for separate run identities."
+  },
+  "repeat_1": {
+    "status": "completed",
+    "attempted": 5,
+    "graded": 5,
+    "official_grader_complete": true,
+    "resolved": 4,
+    "resolve_rate": 0.8,
+    "task_outcomes": [
+      {"instance_id": "sphinx-doc__sphinx-9658", "exit_status": "Submitted", "graded": true, "resolved": true},
+      {"instance_id": "sympy__sympy-12096", "exit_status": "Submitted", "graded": true, "resolved": true},
+      {"instance_id": "django__django-13512", "exit_status": "Submitted", "graded": true, "resolved": true},
+      {"instance_id": "pydata__xarray-4356", "exit_status": "Submitted", "graded": true, "resolved": true},
+      {"instance_id": "pylint-dev__pylint-8898", "exit_status": "Submitted", "graded": true, "resolved": false}
+    ]
+  },
+  "repeat_2": {
+    "status": "failed-incomplete",
+    "failure": {"class": "model_behavior", "code": "model_failure", "message": "benchmark suite did not complete"},
+    "stage_agent_state": "swe_limits_exceeded",
+    "attempted": 5,
+    "graded": 2,
+    "official_grader_complete": false,
+    "resolved": 0,
+    "resolve_rate_among_graded": 0.0,
+    "task_outcomes": [
+      {"instance_id": "sphinx-doc__sphinx-9658", "exit_status": "Submitted", "failure_class": null, "graded": true, "resolved": false, "independent_review": "Patch applied; mock branch emitted unknown.secret. instead of unknown.secret.Class."},
+      {"instance_id": "sympy__sympy-12096", "exit_status": "LimitsExceeded", "failure_class": "model_failure", "assistant_turns": 60, "patch": "empty", "graded": false, "resolved": null},
+      {"instance_id": "django__django-13512", "exit_status": "Submitted", "failure_class": null, "graded": true, "resolved": false, "independent_review": "Patch applied; JSONField.prepare_value test passed but admin Unicode display remained escaped."},
+      {"instance_id": "pydata__xarray-4356", "exit_status": "LimitsExceeded", "failure_class": "model_failure", "assistant_turns": 60, "patch": "empty", "graded": false, "resolved": null},
+      {"instance_id": "pylint-dev__pylint-8898", "exit_status": "LimitsExceeded", "failure_class": "model_failure", "assistant_turns": 60, "patch": "empty", "graded": false, "resolved": null}
+    ],
+    "classification": "Three planned step-budget/model failures plus two wrong patches; independent review found no harness defect or configuration drift.",
+    "recovery": "Planned attempts exhausted; no recovery rerun is required."
+  },
+  "combined_accounting": {
+    "attempted": 10,
+    "graded": 7,
+    "resolved": 4,
+    "interpretation": "4 resolved across 10 attempts and 7 graded instances is accounting only, not a fully graded resolve rate or a 10-task fresh evaluation."
+  },
+  "conclusion": {
+    "coding_behavior": "R1 4/5 versus this valid R2 negative reliability evidence materially challenges repeat reliability under this contract; stable behavior is not established.",
+    "independent_grading": "incomplete",
+    "score": "No combined or repeat-averaged score is reported because R2 is terminal failed and official grading is incomplete."
+  },
+  "caveats": [
+    "R1 and R2 reuse the same five tasks.",
+    "R2 has only two graded outcomes; the three LimitsExceeded entries are ungraded.",
+    "Output-token accounting is unavailable in both native stages.",
+    "The historical 3/5 result remains unmatched and is not pooled."
+  ],
+  "source_artifacts": [
+    {"path": "native/cached-swe-r1-stage.json", "byte_sha256": "daae6ffc2888d5d41532a3d2c4069b197dc0bb64132c59862b0af89923050294"},
+    {"path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r1-artifact.json", "byte_sha256": "4bf12c97668a7fde67b05e759fad8c19ffa63cc09da874295f1e5c4e326d2a23", "canonical_json_sha256": "0cc9eddf8722cec5b8a874608ea8924fc0ddbf2d99d61cc0423cf398eaa03f83"},
+    {"path": "native/cached-swe-r2-stage.json", "byte_sha256": "f629daff8a454f754d07c2c726eb5553ba0735c457e631f0429ca1d3ce7404f4"},
+    {"path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r2-artifact.json", "byte_sha256": "a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd", "canonical_json_sha256": "99c31a299a3925e0775e8315c3a08429a5c9a667d647877ce012af3d8b018729"},
+    {"path": "identity/cached-swe-r2-artifact-bindings.json", "official_grader_complete": false},
+    {"path": "reviews/cached-swe-r2-failure-review.json", "role": "independent R2 failure classification"}
+  ]
+}

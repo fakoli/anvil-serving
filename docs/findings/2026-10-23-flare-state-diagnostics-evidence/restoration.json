@@ -1,0 +1,32 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-23-flare-state-diagnostics",
+  "status": "verified with retained original incident",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "runtime/incumbent-before.json",
+      "runtime/router-before.json",
+      "hosting/serve-before.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "formal/protected-abba-2/recovery-closeout.json",
+      "state/window-2/closeout.json",
+      "formal/trace-paired-1/root-closure-verification.json"
+    ]
+  },
+  "differences": [
+    "protected original closeout retains a wrapper reconciliation failure; additive managed recovery was independently verified",
+    "state Window 1 failed and restored; Window 2 closed restored",
+    "trace window closed with exact incumbent restoration, direct/routed checks, ready/admitting idle, restart count zero and no OOM"
+  ],
+  "post_run_checks": [
+    "formal/trace-paired-1/root-closure-verification.json"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

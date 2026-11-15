@@ -1,0 +1,133 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "reviewer": {
+    "role": "independent adversarial reviewer",
+    "model": "GPT-5.6 Sol high",
+    "implementing_model": "GPT-6 Astra",
+    "evaluated_model": "GLM-5.3-Flash through NVIDIA Flare"
+  },
+  "request": "Independent review of the completed p2048 fixed2 host32 Max and High evidence before incumbent restoration and publication staging",
+  "gate_state": "bounded_evidence_accepted_restoration_pending",
+  "targets": [
+    {
+      "served_model": "glm53-flare-47581cca-tp2-c4-mtp3",
+      "package_index_sha256": "0fdced23da87f99c3669dc05ab87ecd7f17a6572773c6b61021d077f68a09ed9",
+      "recipe_sha256": "c5885a608b8ef253b11a8f89d89001614f1ecd63bcc772b1334d613a4d2380f1",
+      "policies": [
+        "default Max",
+        "High"
+      ]
+    }
+  ],
+  "tools_used": [
+    "read-only JSON and JSONL inspection",
+    "sha256sum",
+    "diff",
+    "manual operator-workflow/v1 shape review; workflow_packet_validate and operation_contracts were not available in this reviewer tool surface"
+  ],
+  "breakage_probes": [
+    {
+      "axis": "fail-closed unreadable state",
+      "concrete_state": "missing, malformed, or unbound plan, command, journal, or result",
+      "wrong_result": "a run could be reported successful without auditable inputs or terminal custody",
+      "classification": "refuted",
+      "evidence": "Both C4 results parse; result-to-plan hashes match; command script hashes match the plan; both wrappers returned zero and recorded drained=true."
+    },
+    {
+      "axis": "malformed and boundary input",
+      "concrete_state": "underfilled near-window prompts or non-exact strict-output responses",
+      "wrong_result": "quality or context gates could pass invalid responses",
+      "classification": "refuted",
+      "evidence": "All C4 prompts measured 317257..317277 tokens inside the declared 300000..319488 gate. Both strict-128 arms correctly failed all 12 non-exact responses."
+    },
+    {
+      "axis": "resource exhaustion and missing bounds",
+      "concrete_state": "request hang, wrapper timeout, telemetry loss, or requests remaining active after the diagnostic",
+      "wrong_result": "success could be reported while work remained active or evidence was partial",
+      "classification": "refuted",
+      "evidence": "Each request was bounded to 300 seconds, wrappers to 420 seconds; neither timed out, telemetry was complete, and both 30-second drain checks observed idle."
+    },
+    {
+      "axis": "state drift across process and config seams",
+      "concrete_state": "Max and High runs using a different package, recipe, policy, or fixture than disclosed",
+      "wrong_result": "the policy comparison would confound runtime identity",
+      "classification": "refuted for identity; confirmed for performance comparability",
+      "evidence": "Both identity receipts bind the same package index and recipe; plan and script hashes bind the policy. Cache warmth was not matched, so elapsed-time or throughput differences are not a causal High-versus-Max comparison."
+    }
+  ],
+  "artifacts": {
+    "reviewed": [
+      {
+        "path": "cap16-p2048-fixed2-host32-concurrent-context-r1.json",
+        "sha256": "4586d0dc90937a1d9500ab36eb2ac6c7ccc77262917cdea57c5950be1b346b16"
+      },
+      {
+        "path": "cap16-p2048-fixed2-host32-high-concurrent-context-r1.json",
+        "sha256": "9ca922b5f8170e88871b9f810ff757492050e49633c6c6b3477397add5523ef5"
+      },
+      {
+        "path": "native-cap16-p2048-fixed2-host32-high-agentic/artifact.json",
+        "sha256": "ce80907b0d0146b4e9fad795ae55f4f27fb2220e02af0864584ae04512bf0377"
+      },
+      {
+        "path": "native-cap16-p2048-fixed2-host32-high-context/artifact.json",
+        "sha256": "a5b4d4587a1b6c1b590b52715a612d554298801b04588a934cfda5c772bb7b2d"
+      },
+      {
+        "path": "cap16-p2048-fixed2-host32-strict128-ctx10240-c4-cold.json",
+        "sha256": "bd2ba98e3c6acd0dc3af12b438d705a633a0201955ca585f68688f91361e127c"
+      },
+      {
+        "path": "cap16-p2048-fixed2-host32-high-strict128-ctx10240-c4-cold.json",
+        "sha256": "95c9f1dca155232b6470daa1422e42dea6c8aa4e92bc4868a646705eee676198"
+      },
+      {
+        "path": "cap16-p2048-fixed2-host32-high-preflight-native.json",
+        "sha256": "4529e399785ef7e292f9ee6d22a7574486516e18e7ccd1c2cc6b99b253c41458"
+      }
+    ],
+    "findings_summary": [
+      {
+        "severity": "high",
+        "status": "confirmed",
+        "finding": "Campaign closure and any recommendation change remain blocked until exact incumbent restoration, direct and routed health, router readmission, and candidate absence are recorded. No promotion is supported."
+      },
+      {
+        "severity": "medium",
+        "status": "confirmed",
+        "finding": "Strict 128-word adherence failed 0/12 for both default Max and High. Default outputs were 133..198 code words; High outputs were 156..1634. Both artifacts correctly set performance_eligible=false."
+      },
+      {
+        "severity": "medium",
+        "status": "confirmed",
+        "finding": "Each C4 diagnostic is one four-request observation: 4/4 exact-answer passes, all seven gates true, measured inputs 317257..317277, sampled active maximum four, and idle drain. It does not establish sustained concurrency, simultaneous GPU execution, four full-window KV residency, or capacity at the configured 1M context."
+      },
+      {
+        "severity": "low",
+        "status": "confirmed",
+        "finding": "High passed independent deterministic agentic 18/18 and C1 context 18/18 oracles plus preflight 7/7. The eight natural cells completed 96/96, but those capacity cells use observe mode and establish completion/canary integrity rather than semantic quality."
+      },
+      {
+        "severity": "low",
+        "status": "confirmed",
+        "finding": "Default Max and High C4 timings cannot establish a policy speedup: each policy has one run, output trajectories may differ, cache warmth is unmatched, and omitted API seeds resolve through the engine default rather than independent random replications."
+      }
+    ]
+  },
+  "advisory_priors": [
+    "Max strict-16 n=100 was still running at review time and is excluded from this recommendation.",
+    "The failed Low-effort preflight, retained MTP0 failure, absent valid no-spec performance control, and blocked SWE run remain campaign limitations.",
+    "Publication bundle size and exact-inventory exception were explicitly deferred and are not approved by this packet.",
+    "The evaluated model did not grade itself: C4, agentic, context, preflight, and strict-output gates use deterministic harness checks or exact programmatic oracles."
+  ],
+  "recommendation": "Accept these records as bounded no-promotion scout evidence. Preserve the strict-128 failures and all failed or incomplete controls. Do not claim a High-versus-Max speedup, full serving equivalence, sustained C4 capacity, or 1M-context qualification. Complete and independently verify incumbent restoration before campaign closure; review the final publication inventory separately.",
+  "remaining_gates": [
+    "exact incumbent restoration and retained identity",
+    "direct preflight and routed readmission health",
+    "candidate absence after unload",
+    "final artifact inventory, size exception, sanitization, and publication-manifest review",
+    "separate human gate for any promotion or recommendation change"
+  ],
+  "human_gate_required": "promotion or recommendation change only; restoration remains mandatory under existing authorization",
+  "promoted": false
+}

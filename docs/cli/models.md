@@ -41,7 +41,8 @@ swap.
 | Replace the deployed Primary recipe | `models recipes list` | Choose a row that activates `primary`, inspect it, then preview `serves switch primary MODEL --dry-run`. |
 | Add or revise an operator recipe | `models recipes create|update ... --dry-run` | Apply with `--confirm`; retain the numbered backup. |
 | Start a candidate without changing routing | `models recipes load MODEL --container NAME --dry-run` | Apply, run `eval preflight`, then review a `serves switch`. |
-| Remove one exact cached revision | `models cache remove OWNER/REPO --revision COMMIT --dry-run` | Apply with `--confirm` after reviewing the snapshot and reclaimable blobs. |
+| Remove one exact cached revision | `models cache remove OWNER/REPO --revision COMMIT --cache-dir /srv/model-cache --dry-run` | Apply with `--config-home /srv/operator --confirm` after reviewing the snapshot and reclaimable blobs. |
+| Retire an entire unused model cache | `models cache discard --volume retired-model-cache --config-home /srv/operator --dry-run` | Review the fingerprint and complete inventory, stop writers, then confirm discard. |
 | Reclaim cache space broadly | `models cache prune --dry-run` | Add `--execute --confirm` only after reviewing the protected mixture. |
 
 ## Commands
@@ -63,6 +64,7 @@ swap.
 | `models recipes unload` | Remove one exact recipe-loaded candidate container. |
 | `models cache inventory` | Record a read-only model-cache and Docker storage inventory. |
 | `models cache remove` | Plan or remove one exact cached repository revision. |
+| `models cache discard` | Audit and discard one entire retired model cache. |
 | `models cache prune` | Plan or prune model-cache storage. |
 
 ## Catalog sync
@@ -89,7 +91,8 @@ catalog untouched.
 
 ## Artifact pull
 
-`pull` downloads a Hugging Face repository into a named Docker volume. It never
+`pull` downloads a Hugging Face repository into a named Docker volume, or into
+an explicit native cache with `--cache-dir`. It never
 places a token value on the command line: `--token-env` names the source variable,
 and `--token-file` is a fallback dotenv file.
 
@@ -114,6 +117,96 @@ fails before downloading unless free bytes cover the missing artifact bytes
 plus `--headroom-gib`. The download keeps native `hf download` progress and
 resumability. Success is reported only after the exact requested snapshot
 exists with no incomplete files or broken links.
+
+For a bounded Docker downloader, provide both ceilings in MiB. Docker receives
+their exact byte values as `--memory` and `--memory-swap`; set both to the same
+value to request no extra host swap for the container.
+
+```bash
+anvil-serving models pull OWNER/REPO --memory-mib 2048 --memory-swap-mib 2048 --dry-run
+```
+
+These are requested Docker configuration limits, retained in the CLI JSON
+envelope's token-free plan output and exact Docker argv. They do not report
+measured cgroup values. Omitting both flags preserves the legacy unbounded
+downloader behavior. Native `--cache-dir` pulls reject the Docker-only flags.
+
+For one public LFS artifact on Windows, `--native-stage` uses the installed
+`curl.exe` to resume into a declared host directory, verifies the immutable
+LFS SHA-256, and imports through a read-only bind into the Docker cache volume:
+
+```powershell
+anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT --include weights.ninfer --native-stage C:/model-stage --no-token --dry-run
+```
+
+Apply the reviewed command with `--confirm` in place of `--dry-run`. This path
+requires one literal file path, a full lowercase commit revision, and
+`--no-token`; it does not read Hugging Face credentials. Confirmed apply checks
+both staging and volume capacity, rehashes the imported bytes, and verifies the
+snapshot. Preview performs no metadata/storage probes or writes. The import
+container has no network. `--cache-dir`, `--exclude`, and Docker memory flags
+are incompatible with staging. A failed transfer retains staged bytes for
+resumption; imported cache bytes have no automatic rollback. It does not start
+a model or change routing.
+
+For native macOS MLX artifacts or another installed native engine, select the
+exact repository and immutable 40-character lowercase commit:
+
+```bash
+anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --no-token --dry-run
+anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --no-token --confirm --json
+```
+
+For a public repository whose files require Xet, add `--xet`. This explicit
+native-only opt-in keeps Xet scratch under the declared cache filesystem for
+the one writer-held download and removes that owned scratch afterward. HTTP is
+the default transport.
+
+Native pulls discover an already installed `hf` executable on `PATH`; use
+`--hf-executable /operator/engine/bin/hf` to select one explicitly. Anvil installs
+no downloader dependency. Pass either the direct hub-cache path or an existing
+Hugging Face home containing `hub/`; the resolved hub path is passed to
+`hf download --cache-dir`. Native pulls reject `--volume`, `--image`, mutable
+revisions, and the Docker-only `--expected-bytes` metadata override.
+
+The native preview reads public metadata for that exact commit and applies
+`--include`/`--exclude` to its complete file inventory. It checks every selected
+file's declared size and public LFS SHA-256 or Git blob hash, credits only
+hash-verified existing selected bytes, and requires missing bytes plus
+`--headroom-gib` on the target filesystem. Existing partial downloads receive
+no speculative disk credit and remain available to `hf` for resumption. Preview
+performs no writes, secret-source reads, downloads, Docker operations, or
+serving lifecycle actions. Authenticated metadata resolution is deferred to
+confirmed apply, so previews require publicly accessible metadata.
+
+Apply holds one nonblocking writer lock per repository and resolved cache,
+rechecks storage, and invokes the selected executable directly without a shell.
+On POSIX the downloader inherits the lock so an abruptly exiting parent cannot
+release it while its downloader remains alive. HTTP pulls disable Xet. An
+explicit `--xet` pull uses private cache-local scratch and disables shared blobs;
+its receipt records the selected transport. The configured Xet shard cache limit
+is a soft upload-cache setting, not a download-space bound. `--no-token` strips inherited Hugging Face token variables and disables
+implicit use of a saved login. Other pulls resolve only the declared secret
+reference; native output never prints its variable name, dotenv path, or value.
+
+After `hf` succeeds, independent verification requires every selected file at
+`models--OWNER--REPO/snapshots/COMMIT`, checks its actual bytes against the
+public hashes, and refuses unsafe links, missing files, or selected incomplete
+artifacts. Unrelated cache contents are retained. Corrupt completed artifacts
+fail closed and remain available for diagnosis. Repeating the same command
+resumes the download; there is no automatic pruning or rollback.
+
+The native `--json` envelope contains a `native-model-pull/v1` report in `data`,
+including the exact inventory, storage admission, immutable snapshot path,
+downloader status, and per-file verification. Every started apply retains a
+JSON receipt outside the hub cache, under its parent's
+`.anvil-serving/model-pulls/` directory. Use
+`--evidence-out /operator/evidence/native-pull.json` to retain the report at a
+new explicit file instead. Existing evidence files are refused rather than
+overwritten, and failed or interrupted downloads retain their cache bytes and
+started receipt for recovery.
 
 ## Recipes
 
@@ -224,6 +317,33 @@ recipe TOML, ordered write actions, deferred gate, and manual recovery path. Cre
 and delete use atomic writes and numbered backups. A mutation never overwrites the
 packaged registry implicitly.
 
+### Prepare a Flare package
+
+The pinned Flare qualification candidate has a guarded, non-serving preparation
+path. It downloads the exact model revision and primary package into the recipe's
+persistent Flare home volume under an 8 GiB RAM and 8 GiB RAM-plus-swap ceiling.
+It does not request GPU devices or start a serving process.
+
+```bash
+anvil-serving models recipes prepare local-inference-lab/Qwen3.8-Flash-Next-FLARE \
+  --registry "$FLARE_RECIPE_REGISTRY" --dry-run
+anvil-serving models recipes prepare local-inference-lab/Qwen3.8-Flash-Next-FLARE \
+  --registry "$FLARE_RECIPE_REGISTRY" --confirm
+```
+
+The apply step runs Flare's native `download` with the immutable repository
+revision and exact primary filename, then accepts a receipt only when native
+`flare inspect --json` verifies the signed index and returns the publisher
+namespace and fingerprint pinned by the recipe. The image's embedded/default
+Flare trust profile must make that verification possible; a missing or mismatched
+profile fails closed. If the image and persistent home lack that profile, supply
+`--publisher-keys PATH` with the public `publisher.json` downloaded from the
+recipe's official model repository. An explicit file is accepted only when its
+public key fingerprint and namespace match the recipe pins, and it is mounted
+read-only for inspection. The receipt states that `inspect` does not verify every
+payload byte and that serving-loader validation has not run. Preparation preserves
+the existing Flare cache and does not approve publisher trust or change a serve.
+
 ### Load a recipe
 
 ```bash
@@ -254,6 +374,17 @@ sufficient available RAM and free swap at admission. The host reserve is an
 admission check, not a reservation against unrelated workloads. Existing recipes
 without these fields retain their previous behavior.
 
+For zero swap, the Docker adapter sends RAM plus one byte as its wire total.
+This keeps systemd's `MemorySwapMax` property explicit; Linux cgroup v2 rounds
+the byte down to zero pages. This encoding is not a one-byte usable allowance.
+Bounded loads verify the exact created container's effective RAM and swap limits
+before returning success, including loads without an HTTP port. Missing,
+unlimited, or mismatched limits fail closed and stop only that newly created ID;
+the stopped container and its logs remain available for managed logs/unload.
+HTTP readiness polling rechecks containment. Status reports `containment_error`
+and exits nonzero on drift without changing the container; logs and unload remain
+available. Existing positive swap allowances keep their exact wire values.
+
 `models recipes status` and `running --json` include `host_memory`: Docker limits,
 effective cgroup RAM/swap limits, current/peak usage, OOM events and exit state.
 Confirm effective limits before trusting a new loader. Windows uses read-only
@@ -272,8 +403,9 @@ restoration separate.
 When machine-level cache reclaim is enabled, the preview also declares that `load`
 will wait up to 600 seconds for the recipe's HTTP health after the container starts.
 Only then does it evaluate the cache threshold, fixed 1 GiB growth gate, and settled-I/O
-gate. A readiness timeout skips reclaim and leaves the container running; it does not
-change the successful load's exit code. Configure the default-off policy in
+gate. A readiness failure skips reclaim and returns a nonzero load exit code.
+The container remains available for owned `models recipes logs` and `unload` recovery.
+Configure the default-off policy in
 [`host.toml`](../CONFIGURATION.md#machine-policy-hosttoml).
 
 ### Operate a loaded recipe
@@ -314,9 +446,13 @@ exact-path shared-memory cleanup guard after removal.
 
 `--contains` is a case-insensitive literal filter and may be repeated; a line
 is emitted when it contains any selected literal. Filtering happens after the
-exact recipe/container ownership check and preserves stdout/stderr separation.
-Use it to inspect actionable startup signatures without returning every model
-load progress line. Remove the filter when the complete bounded tail is needed.
+exact recipe/container ownership check. Successful container log text from
+stdout and stderr is combined in the command data stream so stderr-only startup
+failures remain visible to managed callers. The streams are grouped by source
+stream, not reconstructed in chronological order. A nonzero Docker command
+keeps its diagnostic on stderr and preserves its failure status. Use the filter
+to inspect actionable startup signatures without returning every model load
+progress line. Remove the filter when the complete bounded tail is needed.
 
 Use these commands for isolated benchmark candidates. Use `serves status`,
 `serves logs`, and `serves down` for manifest-owned deployments. Do not use raw
@@ -333,12 +469,12 @@ recipe or modify router policy.
 
 ## Cache remove
 
-Use the exact-removal verb when one known repository revision—not a policy
-selected set—is the target:
+Use the exact-removal verb for one known repository revision in a directly
+accessible native Hugging Face cache:
 
 ```bash
-anvil-serving models cache remove OWNER/REPO --revision COMMIT --dry-run
-anvil-serving models cache remove OWNER/REPO --revision COMMIT --confirm
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --cache-dir /srv/model-cache --dry-run
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --cache-dir /srv/model-cache --config-home /srv/operator --confirm
 ```
 
 The selector requires both an exact `OWNER/REPO` and revision. Preview reports
@@ -347,22 +483,98 @@ that snapshot, collects only blobs no remaining snapshot references, and
 verifies the target snapshot is absent. It does not approximate repository
 identity with a substring or wildcard.
 
-Native Hugging Face caches have an inspection-only removal plan. It takes an
-explicit local cache root, accepts only a 40-character lowercase commit revision,
-and never contacts Docker, the network, or credential sources:
+**Behavior change:** legacy Docker revision removal without `--cache-dir` or
+`--discard-volume` refuses `--confirm`, including dispatcher authorization,
+before contacting Docker. That helper cannot audit ownership or fence writers.
+Its `--dry-run` remains a bounded read-only preview of an existing volume; the
+helper has no deletion action. The preview binds the inspected daemon path
+read-only, so a missing volume cannot be created by cleanup preview. Artifact
+acquisition preflight retains its existing named-volume creation behavior.
+
+Use [whole-cache discard](#whole-cache-discard) when every asset in a cache is
+retired, or use native exact removal when the cache is directly accessible.
+Docker Desktop and remote-daemon deletion must run on an owner with direct
+access to the daemon's cache storage; there is no destructive helper fallback.
+
+Native Hugging Face caches take an explicit local cache root and only a
+40-character lowercase commit revision. Preview is filesystem-only:
 
 ```bash
 anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT \
   --cache-dir /operator/model-cache/hub --dry-run
 ```
 
-The plan separates exclusive from shared blobs and reports an inode-deduplicated
-physical-byte reclaim estimate (`st_blocks * 512`) and refs that point to the
-selected snapshot. APFS copy-on-write or clone accounting can make eventual disk
-release lower. Native deletion is intentionally unsupported: `--confirm` is
-refused until the product has a native ownership and deletion-safety
-implementation. The scanner refuses symlinked selected-path ancestry and does
-not follow metadata links outside the selected repository.
+Apply requires `--confirm` and the authoritative operator configuration home:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT \
+  --cache-dir /operator/model-cache/hub --config-home /operator/home --confirm
+```
+
+Before deletion, the command audits running and stopped Docker bind mounts and
+current configuration references, rejects unresolved values and unsafe paths,
+then re-plans. It unlinks only the selected snapshot's links, refs, and
+exclusive blobs through no-follow directory descriptors, preserving other
+snapshots and shared blobs before verifying the snapshot is absent.
+Live configuration cannot delegate through the root `recovered-configs` archive;
+restore that manifest into an authoritative current location before attempting
+native cache removal.
+It refuses observed cache drift and active Hugging Face locks. Released Hugging
+Face lock paths persist, so it checks and retains their advisory locks through
+the deletion rather than treating a lock pathname as active. A writer that does
+not cooperate with those cache locks can still race filesystem metadata, so
+stop external cache writers before applying the reviewed command.
+
+An operator can declare one or more exact 64-character container IDs as
+non-model read-only root observations with `--non-model-root-view CONTAINER_ID`.
+Native revision removal uses this assertion during confirmed apply; dedicated
+volume removal also validates it during preview. For each declared ID,
+the current inventory must show an exact read-only bind from `/` to an absolute
+container destination and no GPU device requests. It permits only that one root
+observation; another overlapping mount, a mutable root view, an unknown ID, or
+a GPU request still blocks removal. The declaration records the caller's
+observation purpose and does not classify or otherwise exempt containers.
+
+### Discard a dedicated Docker model cache
+
+Use `--discard-volume` for a retired model whose global shared-blob cache belongs
+entirely to one repository revision:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --volume retired-model-cache --discard-volume --config-home /operator/home --dry-run
+```
+
+Review the returned volume fingerprint, stop external cache writers, then apply
+the same selection with that fingerprint:
+
+```bash
+anvil-serving models cache remove OWNER/REPO --revision 40_HEX_COMMIT --volume retired-model-cache --discard-volume --config-home /operator/home --expected-volume-fingerprint SHA256 --writers-quiesced --confirm
+```
+
+This CLI-only local POSIX operation requires filesystem access to Docker's cache
+storage. It accepts the dedicated `hub/models--OWNER--REPO` plus
+`hub/blobs/<prefix>/<hash>` layout; other layouts remain refused.
+It refuses another model or revision, unknown cache contents, nonlocal volume
+drivers/options, active or retained container references, current configuration
+references, open files, memory mappings, working directories, executables,
+held download locks, and identity drift. A confirmed operation holds
+cache locks, repeats the audits, removes only the named volume without force,
+and verifies both Docker and filesystem absence. The measured free-space delta
+is reported separately from the cache-size estimate.
+
+`--writers-quiesced` is the owner's assertion that independent writers have
+stopped; advisory locks cannot fence a writer that ignores them. The entire
+selected cache is discarded after its supported contents are audited. There is no
+automatic rollback: recovery requires downloading the pinned revision again.
+Other model caches, images, containers, and build caches are preserved.
+
+Some dedicated caches also contain generated Hugging Face metadata, exact-model
+remote-code copies, empty kernel lookup records, or empty Xet staging metadata
+and bounded transfer logs. The
+preview inventories the supported auxiliary artifacts and binds them to its
+fingerprint. If present, apply additionally requires
+`--auxiliary-caches-reviewed` after reviewing that inventory. Unknown files,
+another model's remote code, and downloaded kernel payloads remain refused.
 
 ## Cache inventory
 
@@ -430,3 +642,48 @@ actions, rescan drift, and the irreversible/no-automatic-rollback boundary.
 - [Model serves](serves.md)
 - [Evaluation & benchmarks](eval.md)
 - [Benchmarks](../BENCHMARKS.md)
+
+## Whole-cache discard
+
+`models cache discard` retires one entire native flat-model directory or local
+Docker Hugging Face volume, including incomplete downloads and global shared blobs.
+Use it only when every model and auxiliary asset in that root is retired.
+It runs on a native Linux storage owner and requires root access to `/proc`
+for complete process auditing. It has no destructive MCP wrapper. Docker
+Desktop and remote storage must be operated from an owner with that access.
+
+```bash
+anvil-serving models cache discard --volume retired-model-cache --config-home /srv/operator --dry-run
+anvil-serving models cache discard --volume retired-model-cache --config-home /srv/operator --expected-fingerprint SHA256 --writers-quiesced --inventory-reviewed --confirm
+```
+
+Use `--cache-dir /srv/models/retired-model` instead of `--volume` for a flat
+materialization with safetensors weights, one pinned source revision, and known
+model/tokenizer metadata. Unknown assets are deliberately refused; nested model
+assets require matching download receipts. Preview inventories every entry and binds the operator config,
+model identity, and cache filesystem identity into the fingerprint. Apply repeats
+the audit under retained POSIX locks. Running or stopped containers, native file
+descriptors, memory mappings, working directories, executables, active locks,
+configured references, missing config dependencies,
+external links, special files, mount boundaries (including same-filesystem bind
+mounts), and unreadable state
+block deletion. Historical declarations must be explicitly reconciled first.
+`--non-model-root-view ID` is only for an independently audited read-only root
+observer without GPU access; every declaration is validated again.
+
+The owner must keep external writers quiescent through apply. Docker removal is
+non-force; a failed removal request or postcheck returns `unknown` and must be
+inspected before any retry.
+Native removal uses no-follow directory descriptors; a failure after deletion
+starts returns `partial`. Removed downloads must be acquired again for recovery.
+
+Docker volumes reject hardlinked files. Native retirement may unlink one name
+of a regular file shared outside the selected root, preserving the other names
+and contents. It refuses duplicate inode names inside the root and shared locks;
+shared files are listed separately and excluded from estimated reclaimed bytes.
+
+`--config-home` must match the canonical home selected by `ANVIL_SERVING_HOME`
+and pass topology validation. The operator is responsible for selecting the
+complete authoritative home; an alternate environment override is not independent
+proof of ownership. Metadata audits check entry, size, and time bounds; a hung
+filesystem syscall remains an operating-system limitation.

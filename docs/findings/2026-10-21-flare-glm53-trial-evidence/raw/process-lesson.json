@@ -1,0 +1,18 @@
+{
+  "scope": "Flare47581cca managed preparation on native TP2 Blackwell",
+  "observation": "Pinned model cache was complete, but recipe admission selected an unavailable default inspection image and timed out before GPU load. Docker default seccomp then denied required io_uring calls.",
+  "owning_layer": "Anvil recipe/cache admission and launch policy, not model quality or skill text",
+  "disposition": "product fixes implemented and independently reviewed;no skill instruction edit",
+  "evidence": [
+    "candidate-load.json",
+    "candidate-r2-logs.json",
+    "cache-inspection-review.json",
+    "seccomp-review.json",
+    "seccomp-final-tests.json"
+  ],
+  "validation": "244 focused models/recipes tests passed; separate sampling542 and upstreamCPU132 retained; fullsource/doc gates pending",
+  "counterevidence": "default inspector remains compatible for existing recipes; new options are explicit; no global seccomp weakening",
+  "expiry": "recheck at Anvil cache/recipe API or Flare container-policy revision",
+  "skill_evaluation": "not applicable: no proposed instruction delta or behavioral improvement claim",
+  "cost": "no paired replay;existing evidence reused;token cost not measured"
+}

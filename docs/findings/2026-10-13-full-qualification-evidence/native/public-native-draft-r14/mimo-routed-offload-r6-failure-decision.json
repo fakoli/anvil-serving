@@ -1,0 +1,53 @@
+{
+  "schema": "candidate-failure-decision/v1",
+  "observed_at": "2026-10-14T03:10:30.929469+00:00",
+  "candidate": "MiMo-V2.6-Flash-MOPD-NVFP4",
+  "model_revision": "da654d8ed8d0d2acbf0fc5b63df72a7b75a6bb2a",
+  "topology": "TP2 C1 32768 tokens language-only",
+  "attempt": "R6 corrected selective CPU offload",
+  "configured_offload_gib_per_rank": 2,
+  "native_offload_gib_per_rank": 2,
+  "sampled_gpu_used_mib": 94465,
+  "sampled_gpu_total_mib": 97887,
+  "free_mib": 3422,
+  "reserve_mib": 4096,
+  "shortfall_mib": 674,
+  "reason": "ModelOpt conversion-time GPU allocation/reservation exceeded reserve despite effective offload; allocated versus cached split not measured.",
+  "classification": "policy-infeasible under preserved GPU reserve; no physical OOM",
+  "zero_swap": true,
+  "oom_kill": 0,
+  "accepted_readiness": false,
+  "requests": 0,
+  "quality_scored": false,
+  "promotion": false,
+  "cleanup": "Exact owning candidate managed-unloaded; both GPUs0 afterward.",
+  "decision": "Stop this MiMo lane; context/KV/graphs are later than violating peak. No source-backed recipe-only remedy remains; runtime instrumentation is deferred.",
+  "references": [
+    {
+      "path": "public-path-019",
+      "sha256": "77a72f22fa89bc5477a50cb39f9f6499c94d7bc59df745ebf0746c98a4d0e828",
+      "bytes": 118603
+    },
+    {
+      "path": "public-path-020",
+      "sha256": "6600dd5ce22490b55a1fe346efc8e396aedd4d2d1b65ecd3a1429029f2899659",
+      "bytes": 29759
+    },
+    {
+      "path": "public-path-021",
+      "sha256": "94ee9d42beab74de24f73dd385ed14504a45dd8a032414c651a5f0edad4a49cc",
+      "bytes": 2230
+    },
+    {
+      "path": "public-path-022",
+      "sha256": "94dd241c312db8d5b243077a814d79d588359c29441d3fe57d4c0ac32c89d72f",
+      "bytes": 836
+    },
+    {
+      "path": "public-path-023",
+      "sha256": "d9366658381f802137ef1bf18f4079d2dff072e5f5d310fc5a0239fbf32caaa4",
+      "bytes": 8020
+    }
+  ],
+  "projection_disclosure": "Private operator-workflow audit reference omitted from this public custom decision; retained source hash identifies the private original."
+}

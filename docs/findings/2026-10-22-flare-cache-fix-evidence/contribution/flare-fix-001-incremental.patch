@@ -1,0 +1,1929 @@
+diff --git a/docs/prefix-cache-offload.md b/docs/prefix-cache-offload.md
+index a282092..9db8909 100644
+--- a/docs/prefix-cache-offload.md
++++ b/docs/prefix-cache-offload.md
+@@ -53,6 +53,18 @@ CPU-mapped destination and the page planes are mapped only on the GPU side.
+ A GPUDirect Storage transport could remove payload staging; its indexes and
+ I/O control structures would still occupy host memory.
+ 
++For a bounded correctness diagnostic, `flare run --verify-host-cache-transfers`
++or `[prefix_cache] verify_transfers = true` in Ignition checks every staged page
++plane and row copy against its source before the rank reports completion. The
++default is off. Enabled startup reports 32 MiB of scratch per rank, and each
++completed rank job logs direction, page/row presence, checked bytes and copies,
++and failures without logging payloads or addresses. A meaningful diagnostic
++run needs positive outbound and inbound checked bytes on every rank, with a
++row and pages present and zero failures. The added readbacks and waits change
++transfer timing, so performance measurements use the default-off setting.
++The diagnostic accepts a memory-only or disk-only store; a composite has two
++transfer sets and is rejected under the diagnostic's 32 MiB-per-rank bound.
++
+ ## 2. Design
+ 
+ ### 2.1 Checkpoint bytes
+@@ -561,6 +573,11 @@ Offload limits interference through bounded work and explicit ownership:
+   `/proc/meminfo` reports it, clamped to the memory store's minimum and
+   32 GiB. The attribute's value on DGX Spark hardware must be verified before
+   the default is relied on there.
++- Row share: `[prefix_cache] row_percent = 60` in `config.toml` passes
++  `--prefix-cache-row-percent 60` to `flare run`. Values are integers from
++  1 through 99; omitting the setting retains the 25% startup split. The
++  configured host memory total stays fixed, with at least 128 page slabs and
++  two row slabs.
+ - Disk directory: `--prefix-cache-disk DIR` names the directory under which
+   the model's record directory, `<identity prefix>-<layout fingerprint>`, is
+   created; `ignition run` passes `[paths] prefix_cache` when it is set. An
+@@ -581,7 +598,7 @@ Offload limits interference through bounded work and explicit ownership:
+   probe rejects the direct path. Once the probe exists, the default becomes
+   direct where the probe accepts it.
+ - The staged transport's staging pool size is derived; it is not a setting.
+-- A memory store retains at most as many records as it has row slabs, and
++- A memory store retains at most as many records as it has row slabs. By default
+   rows take one quarter of the pool, so on Qwen, whose rows are 112 MiB, a
+   4 GiB pool holds eight records while the GPU cache holds dozens. A memory
+   tier that cannot hold more records than the GPU cache rarely has a record
+diff --git a/flare/src/cli.rs b/flare/src/cli.rs
+index 5496e77..c4e4907 100644
+--- a/flare/src/cli.rs
++++ b/flare/src/cli.rs
+@@ -610,6 +610,15 @@ pub struct ServingOptions {
+     #[arg(long, value_name = "SIZE", value_parser = parse_size, help_heading = "Prefix cache options")]
+     pub prefix_cache_memory: Option<u64>,
+ 
++    /// Percent of host checkpoint memory reserved for row slabs [default: 25].
++    #[arg(long, value_name = "PERCENT", value_parser = clap::value_parser!(u8).range(1..=99),
++        help_heading = "Prefix cache options")]
++    pub prefix_cache_row_percent: Option<u8>,
++
++    /// Check staged host checkpoint transfers byte for byte (diagnostic; changes transfer timing).
++    #[arg(long, help_heading = "Prefix cache options")]
++    pub verify_host_cache_transfers: bool,
++
+     /// Directory for prefix checkpoints and prepared inputs on disk [default: disabled].
+     #[arg(long, value_name = "DIR", help_heading = "Prefix cache options")]
+     pub prefix_cache_disk: Option<PathBuf>,
+@@ -715,6 +724,31 @@ impl ServingOptions {
+         if self.embedding_table_resident_scales {
+             options.push("--embedding-table-resident-scales".into());
+         }
++        if let Some(bytes) = self.prefix_cache_memory {
++            options.extend(["--prefix-cache-memory".into(), bytes.to_string()]);
++        }
++        if let Some(percent) = self.prefix_cache_row_percent {
++            options.extend(["--prefix-cache-row-percent".into(), percent.to_string()]);
++        }
++        if self.verify_host_cache_transfers {
++            options.push("--verify-host-cache-transfers".into());
++        }
++        if let Some(path) = &self.prefix_cache_disk {
++            options.extend(["--prefix-cache-disk".into(), path.display().to_string()]);
++        }
++        if let Some(bytes) = self.prefix_cache_disk_limit {
++            options.extend(["--prefix-cache-disk-limit".into(), bytes.to_string()]);
++        }
++        if let Some(transport) = self.prefix_cache_disk_transport {
++            options.extend([
++                "--prefix-cache-disk-transport".into(),
++                match transport {
++                    Transport::Staged => "staged",
++                    Transport::Direct => "direct",
++                }
++                .into(),
++            ]);
++        }
+         options
+     }
+ 
+@@ -744,6 +778,8 @@ impl ServingOptions {
+             device_labels: Some(self.gpus.clone()),
+             prefix_cache: PrefixCacheOffload {
+                 memory_bytes: self.prefix_cache_memory,
++                row_percent: self.prefix_cache_row_percent,
++                verify_transfers: self.verify_host_cache_transfers,
+                 disk: self.prefix_cache_disk.clone(),
+                 disk_limit: self.prefix_cache_disk_limit,
+                 transport: self.prefix_cache_disk_transport,
+@@ -957,6 +993,9 @@ mod tests {
+             "ram",
+             "--prefix-cache-memory",
+             "1.5GiB",
++            "--prefix-cache-row-percent",
++            "60",
++            "--verify-host-cache-transfers",
+             "--prefix-cache-disk",
+             "prefixes",
+             "--prefix-cache-disk-limit",
+@@ -976,11 +1015,29 @@ mod tests {
+             options.prefix_cache,
+             PrefixCacheOffload {
+                 memory_bytes: Some(3 << 29),
++                row_percent: Some(60),
++                verify_transfers: true,
+                 disk: Some(PathBuf::from("prefixes")),
+                 disk_limit: Some(0),
+                 transport: Some(Transport::Direct),
+             }
+         );
++        let mut peer = vec!["flare".to_owned(), "run".into(), "model.safetensors".into()];
++        peer.extend(args.rank_options());
++        let peer = run(&peer.iter().map(String::as_str).collect::<Vec<_>>()).load_options();
++        assert_eq!(peer.prefix_cache, options.prefix_cache);
++        for value in ["0", "100", "256"] {
++            assert!(
++                Cli::try_parse_from([
++                    "flare",
++                    "run",
++                    "model.safetensors",
++                    "--prefix-cache-row-percent",
++                    value
++                ])
++                .is_err()
++            );
++        }
+     }
+ 
+     #[test]
+@@ -1146,12 +1203,25 @@ mod tests {
+ 
+     #[test]
+     fn resident_embedding_scales_are_forwarded_to_every_rank() {
+-        let args = run(&["flare", "run", "model.safetensors", "--embedding-table-resident-scales",
+-                         "--embedding-table-cache-size", "1G"]);
++        let args = run(&[
++            "flare",
++            "run",
++            "model.safetensors",
++            "--embedding-table-resident-scales",
++            "--embedding-table-cache-size",
++            "1G",
++        ]);
+         assert!(args.load_options().embedding_table_resident_scales);
+         assert_eq!(args.load_options().embedding_table_cache_bytes, 1 << 30);
+-        assert!(args.rank_options().contains(&"--embedding-table-resident-scales".to_owned()));
+-        assert!(!run(&["flare", "run", "model.safetensors"]).load_options().embedding_table_resident_scales);
++        assert!(
++            args.rank_options()
++                .contains(&"--embedding-table-resident-scales".to_owned())
++        );
++        assert!(
++            !run(&["flare", "run", "model.safetensors"])
++                .load_options()
++                .embedding_table_resident_scales
++        );
+     }
+ 
+     #[test]
+diff --git a/helios/src/offload/mod.rs b/helios/src/offload/mod.rs
+index 91d9609..9db4437 100644
+--- a/helios/src/offload/mod.rs
++++ b/helios/src/offload/mod.rs
+@@ -66,6 +66,10 @@ pub struct PrefixCacheOffload {
+     /// Host retention budget shared by registered checkpoints and ordinary CPU inputs.
+     /// Zero selects no memory retention.
+     pub memory_bytes: Option<u64>,
++    /// Percent of checkpoint memory reserved for row slabs (1..=99); default 25.
++    pub row_percent: Option<u8>,
++    /// Verify every staged host transfer against its source bytes; diagnostic only.
++    pub verify_transfers: bool,
+     /// Directory under which the model's record directory is created.
+     pub disk: Option<PathBuf>,
+     /// Bytes of record files kept on disk; zero selects no disk store.
+@@ -74,6 +78,14 @@ pub struct PrefixCacheOffload {
+ }
+ 
+ impl PrefixCacheOffload {
++    fn row_percent(&self) -> Result<u8> {
++        let percent = self.row_percent.unwrap_or(25);
++        if !(1..=99).contains(&percent) {
++            return Err("prefix cache row percent must be 1 through 99".into());
++        }
++        Ok(percent)
++    }
++
+     pub fn enabled(&self) -> bool {
+         self.memory_bytes.unwrap_or(0) != 0 || (self.disk.is_some() && self.disk_limit != Some(0))
+     }
+@@ -91,11 +103,17 @@ impl PrefixCacheOffload {
+         layout: &Layout,
+         inputs: bool,
+     ) -> Result<(u64, u64)> {
++        self.row_percent()?;
+         if !self.enabled() {
+             return Ok((0, 0));
+         }
+         let memory = self.memory_bytes.unwrap_or(0);
+         let disk = self.disk.is_some() && self.disk_limit != Some(0);
++        if self.verify_transfers && memory != 0 && disk {
++            return Err(
++                "transfer verification requires one host cache tier to bound scratch memory".into(),
++            );
++        }
+         let staging = if disk {
+             layout
+                 .page_record_bytes
+@@ -110,17 +128,31 @@ impl PrefixCacheOffload {
+         } else {
+             0
+         };
++        let rank_count = u64::try_from(ranks).map_err(|_| "too many host cache transfer ranks")?;
++        let audit = if self.verify_transfers {
++            rank_count
++                .checked_mul(2 * transfer::BATCH_BYTES as u64)
++                .ok_or("prefix cache transfer verification scratch overflows")?
++        } else {
++            0
++        };
+         let host = memory
+             .checked_add(staging)
++            .and_then(|bytes| bytes.checked_add(audit))
+             .ok_or("prefix cache host memory overflows the device budget")?;
+         let ordinary = input_memory_bytes(memory, slab::SlabPool::minimum_bytes(layout), inputs);
+         let pinned = memory - ordinary;
+         let mapped = if disk {
+             pinned + staging
+         } else {
+-            pinned.div_ceil(ranks.max(1) as u64)
++            pinned.div_ceil(rank_count.max(1))
+         };
+-        Ok((mapped.div_ceil(512) + STORE_DEVICE_MARGIN_BYTES, host))
++        let device = mapped
++            .div_ceil(512)
++            .checked_add(audit.div_ceil(rank_count.max(1)).div_ceil(512))
++            .and_then(|n| n.checked_add(STORE_DEVICE_MARGIN_BYTES))
++            .ok_or("prefix cache transfer verification device budget overflows")?;
++        Ok((device, host))
+     }
+ }
+ 
+@@ -164,6 +196,7 @@ fn invalid_size(text: &str) -> String {
+ #[derive(Clone, Debug, PartialEq, Eq)]
+ pub struct Resolved {
+     pub memory_bytes: u64,
++    pub verify_transfers: bool,
+     /// The model's record directory, or `None` for no disk store.
+     pub directory: Option<PathBuf>,
+     pub disk_limit: u64,
+@@ -220,10 +253,13 @@ impl Prepared {
+         let mut parts = Vec::new();
+         if let Some(pool) = &self.memory_pool {
+             parts.push(format!(
+-                "memory {} ({} pages + {} rows{})",
++                "memory {} ({} bytes: {} pages x {} bytes + {} rows x {} bytes{})",
+                 gibibytes(pool.bytes()),
++                pool.bytes(),
+                 pool.page_count(),
++                pool.page_bytes(),
+                 pool.row_count(),
++                pool.row_bytes(),
+                 if pool.rank_parts().is_some() {
+                     ", split by rank"
+                 } else {
+@@ -241,6 +277,14 @@ impl Prepared {
+         if let Some(pool) = &self.staging_pool {
+             parts.push(format!("staging {}", gibibytes(pool.bytes())));
+         }
++        if self.resolved.verify_transfers {
++            parts.push(format!(
++                "transfer verification enabled ({} MiB scratch per rank)",
++                2 * transfer::BATCH_BYTES / (1 << 20)
++            ));
++        } else {
++            parts.push("transfer verification off".to_owned());
++        }
+         if let Some(directory) = &self.resolved.directory {
+             parts.push(format!(
+                 "disk {} (limit {}, {} records, {})",
+@@ -342,6 +386,7 @@ pub fn prepare_with_inputs(
+     contexts: Vec<(usize, i32)>,
+     input_staging: u64,
+ ) -> Result<Preparation> {
++    let row_percent = options.row_percent()?;
+     if !options.enabled() {
+         return Ok(Preparation::None("disabled".to_owned()));
+     }
+@@ -389,6 +434,11 @@ pub fn prepare_with_inputs(
+         },
+     };
+     let directory = directory.filter(|_| disk_limit != 0);
++    if options.verify_transfers && memory_bytes != 0 && directory.is_some() {
++        return Err(
++            "transfer verification requires one host cache tier to bound scratch memory".into(),
++        );
++    }
+     if memory_bytes == 0 && directory.is_none() {
+         notes.insert(0, "disabled".to_owned());
+         return Ok(Preparation::None(notes.join("; ")));
+@@ -406,9 +456,15 @@ pub fn prepare_with_inputs(
+     let memory_pool = (checkpoint_memory != 0)
+         .then(|| {
+             if directory.is_none() {
+-                return slab::SlabPool::sized_by_rank(&layout, checkpoint_memory, &contexts);
++                return slab::SlabPool::sized_by_rank_with_row_percent(
++                    &layout,
++                    checkpoint_memory,
++                    &contexts,
++                    row_percent,
++                );
+             }
+-            let mut pool = slab::SlabPool::sized(&layout, checkpoint_memory)?;
++            let mut pool =
++                slab::SlabPool::sized_with_row_percent(&layout, checkpoint_memory, row_percent)?;
+             pool.register(context)?;
+             Ok::<_, crate::Error>(pool)
+         })
+@@ -444,6 +500,7 @@ pub fn prepare_with_inputs(
+         disk_budget,
+         resolved: Resolved {
+             memory_bytes,
++            verify_transfers: options.verify_transfers,
+             directory,
+             disk_limit,
+             transport,
+@@ -534,24 +591,30 @@ pub fn open(prepared: Prepared) -> Result<Box<dyn PrefixStore>> {
+         scanned,
+         directory_lock,
+     } = prepared;
+-    let transfers = std::sync::Arc::new(std::sync::Mutex::new(transfer::Transfers::start(
+-        &contexts,
+-        geometry.clone(),
+-        memory_pool
+-            .as_ref()
+-            .or(staging_pool.as_ref())
+-            .ok_or("prefix transfers require a slab pool")?,
+-    )?));
++    let transfers = std::sync::Arc::new(std::sync::Mutex::new(
++        transfer::Transfers::start_with_verification(
++            &contexts,
++            geometry.clone(),
++            memory_pool
++                .as_ref()
++                .or(staging_pool.as_ref())
++                .ok_or("prefix transfers require a slab pool")?,
++            resolved.verify_transfers,
++        )?,
++    ));
+     let disk = directory_lock
+         .map(|directory| {
+             let disk_transfers = if memory_pool.is_some() {
+-                std::sync::Arc::new(std::sync::Mutex::new(transfer::Transfers::start(
+-                    &contexts,
+-                    geometry.clone(),
+-                    staging_pool
+-                        .as_ref()
+-                        .ok_or("disk transfers require a staging pool")?,
+-                )?))
++                std::sync::Arc::new(std::sync::Mutex::new(
++                    transfer::Transfers::start_with_verification(
++                        &contexts,
++                        geometry.clone(),
++                        staging_pool
++                            .as_ref()
++                            .ok_or("disk transfers require a staging pool")?,
++                        resolved.verify_transfers,
++                    )?,
++                ))
+             } else {
+                 transfers.clone()
+             };
+@@ -897,6 +960,48 @@ mod tests {
+         );
+         options.disk_limit = Some(0);
+         assert_eq!(options.headroom_bytes(2, &layout).unwrap().1, 16 << 30);
++        options.verify_transfers = true;
++        let (device, host) = options.headroom_bytes(2, &layout).unwrap();
++        assert_eq!(host, (16u64 << 30) + 4 * transfer::BATCH_BYTES as u64);
++        assert_eq!(
++            device,
++            ((8u64 << 30) / 512)
++                + (2 * transfer::BATCH_BYTES as u64).div_ceil(512)
++                + STORE_DEVICE_MARGIN_BYTES
++        );
++        assert_eq!(4 * transfer::BATCH_BYTES as u64, 64 << 20);
++        options.disk_limit = None;
++        assert!(
++            options
++                .headroom_bytes(2, &layout)
++                .unwrap_err()
++                .to_string()
++                .contains("requires one host cache tier")
++        );
++    }
++
++    #[test]
++    fn transfer_verification_rejects_composite_before_cuda_setup() {
++        let directory = test_directory();
++        let error = prepare(
++            &PrefixCacheOffload {
++                memory_bytes: Some(1 << 30),
++                disk: Some(directory.clone()),
++                disk_limit: Some(1 << 30),
++                verify_transfers: true,
++                ..Default::default()
++            },
++            std::path::Path::new("unopened-package"),
++            [0; 32],
++            vec![geometry::tests::geometry(64, &[("kv", 4096)], 4096)],
++            Vec::new(),
++        )
++        .err()
++        .expect("mixed transfer sets exceed diagnostic scratch bound");
++        assert!(error.to_string().contains("requires one host cache tier"));
++        if directory.exists() {
++            std::fs::remove_dir_all(directory).unwrap();
++        }
+     }
+ 
+     #[test]
+diff --git a/helios/src/offload/slab.rs b/helios/src/offload/slab.rs
+index 5c6c64f..2953e2b 100644
+--- a/helios/src/offload/slab.rs
++++ b/helios/src/offload/slab.rs
+@@ -237,7 +237,11 @@ impl SlabPool {
+     /// page minimum so the pool never exceeds `bytes`. A `bytes` below
+     /// [`SlabPool::minimum_bytes`] fails with that minimum in the message.
+     pub fn sized(layout: &Layout, bytes: u64) -> Result<Self> {
+-        let (page_count, row_count) = Self::sized_counts(layout, bytes)?;
++        Self::sized_with_row_percent(layout, bytes, 25)
++    }
++
++    pub fn sized_with_row_percent(layout: &Layout, bytes: u64, row_percent: u8) -> Result<Self> {
++        let (page_count, row_count) = Self::sized_counts(layout, bytes, row_percent)?;
+         Self::new(
+             layout.page_record_bytes,
+             page_count,
+@@ -255,6 +259,15 @@ impl SlabPool {
+     /// address a slab's record, so the pool suits stores that move records only
+     /// between devices and slabs; [`SlabPool::rank_parts`] locates the parts.
+     pub fn sized_by_rank(layout: &Layout, bytes: u64, contexts: &[(usize, i32)]) -> Result<Self> {
++        Self::sized_by_rank_with_row_percent(layout, bytes, contexts, 25)
++    }
++
++    pub fn sized_by_rank_with_row_percent(
++        layout: &Layout,
++        bytes: u64,
++        contexts: &[(usize, i32)],
++        row_percent: u8,
++    ) -> Result<Self> {
+         if contexts.len() != layout.ranks.len() {
+             return Err(invalid(format!(
+                 "a pool split by rank needs one context per rank: {} contexts for {} ranks",
+@@ -262,9 +275,12 @@ impl SlabPool {
+                 layout.ranks.len()
+             )));
+         }
+-        let (page_count, row_count) = Self::sized_counts(layout, bytes)?;
++        let (page_count, row_count) = Self::sized_counts(layout, bytes, row_percent)?;
+         let page_region = region_bytes("page", layout.page_record_bytes, page_count)?;
+         let row_region = region_bytes("row", layout.row_record_bytes, row_count)?;
++        let mapping_bytes = page_region.checked_add(row_region).ok_or_else(|| {
++            invalid("page and row slabs together exceed the addressable pool size")
++        })?;
+         let shares: Vec<(usize, usize)> = (0..layout.ranks.len())
+             .map(|rank| {
+                 let next = layout.ranks.get(rank + 1);
+@@ -286,7 +302,7 @@ impl SlabPool {
+             .collect();
+         let memory = crate::cuda::map_device_host_parts(&requests)?;
+         let base = memory.address();
+-        if memory.nbytes() < page_region + row_region {
++        if memory.nbytes() < mapping_bytes {
+             return Err(invalid(
+                 "the reserved range of a pool split by rank is smaller than its records",
+             ));
+@@ -332,7 +348,10 @@ impl SlabPool {
+     }
+ 
+     /// Page and row slab counts of a retaining pool of at most `bytes`.
+-    fn sized_counts(layout: &Layout, bytes: u64) -> Result<(usize, usize)> {
++    fn sized_counts(layout: &Layout, bytes: u64, row_percent: u8) -> Result<(usize, usize)> {
++        if !(1..=99).contains(&row_percent) {
++            return Err(invalid("prefix cache row percent must be 1 through 99"));
++        }
+         let page_record = layout.page_record_bytes;
+         let row_record = layout.row_record_bytes;
+         if page_record == 0 || row_record == 0 {
+@@ -340,19 +359,25 @@ impl SlabPool {
+                 "record layout declares zero-byte page or row records",
+             ));
+         }
+-        let minimum = Self::minimum_bytes(layout);
+-        if bytes < minimum {
++        let minimum = MINIMUM_PAGE_SLABS as u128 * page_record as u128
++            + MINIMUM_ROW_SLABS as u128 * row_record as u128;
++        if (bytes as u128) < minimum {
+             return Err(invalid(format!(
+                 "prefix cache memory of {bytes} bytes is below the minimum of {minimum} bytes \
+                  for this layout: {MINIMUM_PAGE_SLABS} page records of {page_record} bytes \
+                  and {MINIMUM_ROW_SLABS} row records of {row_record} bytes"
+             )));
+         }
+-        let quarter_rows = bytes / 4 / row_record;
+-        let most_rows = (bytes - MINIMUM_PAGE_SLABS as u64 * page_record) / row_record;
+-        let row_count = quarter_rows.max(MINIMUM_ROW_SLABS as u64).min(most_rows);
+-        let page_count = (bytes - row_count * row_record) / page_record;
+-        Ok((page_count as usize, row_count as usize))
++        let target_rows = (bytes as u128 * row_percent as u128 / 100) / row_record as u128;
++        let most_rows =
++            (bytes as u128 - MINIMUM_PAGE_SLABS as u128 * page_record as u128) / row_record as u128;
++        let row_count = target_rows.max(MINIMUM_ROW_SLABS as u128).min(most_rows);
++        let page_count = (bytes as u128 - row_count * row_record as u128) / page_record as u128;
++        let pages = u32::try_from(page_count)
++            .map_err(|_| invalid("prefix cache page count exceeds the addressable pool size"))?;
++        let rows = u32::try_from(row_count)
++            .map_err(|_| invalid("prefix cache row count exceeds the addressable pool size"))?;
++        Ok((pages as usize, rows as usize))
+     }
+ 
+     /// Each rank's part of the slabs, in rank order, for a pool split by rank.
+@@ -421,8 +446,9 @@ impl SlabPool {
+ 
+     /// Bytes of the smallest retaining pool for a layout.
+     pub fn minimum_bytes(layout: &Layout) -> u64 {
+-        MINIMUM_PAGE_SLABS as u64 * layout.page_record_bytes
+-            + MINIMUM_ROW_SLABS as u64 * layout.row_record_bytes
++        (MINIMUM_PAGE_SLABS as u128 * layout.page_record_bytes as u128
++            + MINIMUM_ROW_SLABS as u128 * layout.row_record_bytes as u128)
++            .min(u64::MAX as u128) as u64
+     }
+ 
+     /// Register the mapping with the driver as portable so every rank's context
+@@ -844,6 +870,54 @@ pub(crate) mod tests {
+         assert!(pool.bytes() <= budget);
+     }
+ 
++    #[test]
++    fn row_share_preserves_exact_budget_and_minimums() {
++        let layout = layout();
++        let minimum = SlabPool::minimum_bytes(&layout);
++        for budget in [minimum, minimum + PAGE + ROW + 1, 16 << 20] {
++            for percent in [1, 25, 50, 75, 99] {
++                let (pages, rows) = SlabPool::sized_counts(&layout, budget, percent).unwrap();
++                assert!(pages >= MINIMUM_PAGE_SLABS && rows >= MINIMUM_ROW_SLABS);
++                assert!(pages as u64 * PAGE + rows as u64 * ROW <= budget);
++                assert!(budget - (pages as u64 * PAGE + rows as u64 * ROW) < PAGE);
++                if percent == 25 {
++                    let old_rows = (budget / 4 / ROW).max(2).min((budget - 128 * PAGE) / ROW);
++                    assert_eq!(rows as u64, old_rows);
++                }
++            }
++        }
++        let quarter = SlabPool::sized(&layout, 16 << 20).unwrap();
++        let tuned = SlabPool::sized_with_row_percent(&layout, 16 << 20, 75).unwrap();
++        assert!(tuned.row_count() > quarter.row_count());
++        assert!(tuned.page_count() < quarter.page_count());
++        assert_eq!(tuned.bytes(), quarter.bytes());
++    }
++
++    #[test]
++    fn row_share_rejects_invalid_counts_and_wide_geometry() {
++        let mut layout = layout();
++        let minimum = SlabPool::minimum_bytes(&layout);
++        for percent in [0, 100, u8::MAX] {
++            assert!(SlabPool::sized_counts(&layout, minimum, percent).is_err());
++        }
++        assert!(SlabPool::sized_counts(&layout, minimum - 1, 99).is_err());
++        assert!(SlabPool::sized_counts(&layout, u64::MAX, 50).is_err());
++        layout.page_record_bytes = 1 << 30;
++        layout.row_record_bytes = BLOCK_BYTES;
++        let minimum = SlabPool::minimum_bytes(&layout);
++        assert_eq!(
++            SlabPool::sized_counts(&layout, minimum, 99).unwrap(),
++            (MINIMUM_PAGE_SLABS, MINIMUM_ROW_SLABS)
++        );
++        layout.page_record_bytes = BLOCK_BYTES;
++        layout.row_record_bytes = 1 << 30;
++        let minimum = SlabPool::minimum_bytes(&layout);
++        assert_eq!(
++            SlabPool::sized_counts(&layout, minimum, 1).unwrap(),
++            (MINIMUM_PAGE_SLABS, MINIMUM_ROW_SLABS)
++        );
++    }
++
+     #[test]
+     fn sized_below_the_minimum_reports_the_minimum() {
+         let layout = layout();
+diff --git a/helios/src/offload/transfer.rs b/helios/src/offload/transfer.rs
+index c5050b8..d7eca67 100644
+--- a/helios/src/offload/transfer.rs
++++ b/helios/src/offload/transfer.rs
+@@ -30,7 +30,7 @@ use std::{
+ use crate::{
+     Error, ExecutionError, Failure, Result,
+     cache::PageId,
+-    cuda::{Event, Stream},
++    cuda::{Event, PinnedHost, Stream},
+     scheduler::StateSlotId,
+ };
+ 
+@@ -85,6 +85,18 @@ pub struct Transfers {
+     ranks: Vec<RankThread>,
+     receiver: Receiver<RankReply>,
+     pending: HashMap<(JobId, u32), Pending>,
++    verification: Option<Vec<VerificationStats>>,
++}
++
++/// Successfully checked production bytes and descriptors, by rank and direction.
++#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
++pub struct VerificationStats {
++    pub out_bytes: u64,
++    pub out_copies: u64,
++    pub in_bytes: u64,
++    pub in_copies: u64,
++    /// Failed audited jobs, including transfer and comparison errors.
++    pub failures: u64,
+ }
+ 
+ struct RankThread {
+@@ -100,6 +112,7 @@ struct RankReply {
+     rank: usize,
+     result: Result<()>,
+     bytes: u64,
++    audit: Option<(u64, u64, u64)>,
+ }
+ 
+ struct Pending {
+@@ -292,6 +305,136 @@ struct RankWorker {
+     destinations: Vec<u64>,
+     sources: Vec<u64>,
+     sizes: Vec<usize>,
++    verification: Option<Verification>,
++}
++
++/// Scratch and counters belong to one rank thread. No payload bytes enter logs.
++struct Verification {
++    readback: PinnedHost,
++    expected: Vec<u8>,
++    checked_bytes: u64,
++    checked_copies: u64,
++    failures: u64,
++}
++
++fn verify_bytes(expected: &[u8], actual: &[u8]) -> Result<()> {
++    if expected.len() != actual.len() || expected != actual {
++        return Err(invalid("host cache transfer verification mismatch"));
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod verification_tests {
++    use super::verify_bytes;
++
++    #[test]
++    fn detects_corruption_without_exposing_payload() {
++        assert!(verify_bytes(&[1, 2, 3], &[1, 2, 3]).is_ok());
++        let error = verify_bytes(&[1, 2, 3], &[1, 9, 3])
++            .unwrap_err()
++            .to_string();
++        assert_eq!(error, "host cache transfer verification mismatch");
++        assert!(verify_bytes(&[1, 2], &[1, 2, 3]).is_err());
++    }
++}
++
++impl Verification {
++    fn host_bytes(stream: &Stream, address: u64, bytes: usize) -> Result<&[u8]> {
++        let address =
++            usize::try_from(address).map_err(|_| invalid("host cache address exceeds usize"))?;
++        let host = stream
++            .mapped_host_address(address, bytes)?
++            .ok_or_else(|| invalid("host cache transfer expected mapped host storage"))?;
++        // SAFETY: CUDA resolved both endpoints to one host allocation, and the
++        // submitting store keeps that allocation live through the rank reply.
++        Ok(unsafe { std::slice::from_raw_parts(host as *const u8, bytes) })
++    }
++
++    fn download(
++        &mut self,
++        stream: &Stream,
++        event: &Event,
++        address: u64,
++        bytes: usize,
++    ) -> Result<()> {
++        let address =
++            usize::try_from(address).map_err(|_| invalid("device cache address exceeds usize"))?;
++        // SAFETY: expand bounded this descriptor within the live device allocation.
++        unsafe {
++            stream.download(&self.readback, address, bytes)?;
++        }
++        stream.record(event)?;
++        event.synchronize()?;
++        Ok(())
++    }
++
++    fn capture(
++        &mut self,
++        stream: &Stream,
++        event: &Event,
++        descriptors: &[Descriptor],
++        direction: Direction,
++    ) -> Result<()> {
++        self.expected.clear();
++        for descriptor in descriptors {
++            let next = self
++                .expected
++                .len()
++                .checked_add(descriptor.bytes)
++                .filter(|&n| n <= BATCH_BYTES)
++                .ok_or_else(|| invalid("verification batch exceeds scratch capacity"))?;
++            match direction {
++                Direction::Out => {
++                    self.download(stream, event, descriptor.source, descriptor.bytes)?;
++                    self.expected
++                        .extend_from_slice(&self.readback.bytes()[..descriptor.bytes]);
++                }
++                Direction::In => self.expected.extend_from_slice(Self::host_bytes(
++                    stream,
++                    descriptor.source,
++                    descriptor.bytes,
++                )?),
++            }
++            debug_assert_eq!(self.expected.len(), next);
++        }
++        Ok(())
++    }
++
++    fn compare(
++        &mut self,
++        stream: &Stream,
++        event: &Event,
++        descriptors: &[Descriptor],
++        direction: Direction,
++    ) -> Result<()> {
++        let mut offset = 0usize;
++        for descriptor in descriptors {
++            let end = offset
++                .checked_add(descriptor.bytes)
++                .ok_or_else(|| invalid("verification descriptor offset overflows"))?;
++            if self.expected.get(offset..end).is_none() {
++                return Err(invalid("verification descriptor exceeds captured bytes"));
++            }
++            match direction {
++                Direction::Out => verify_bytes(
++                    &self.expected[offset..end],
++                    Self::host_bytes(stream, descriptor.destination, descriptor.bytes)?,
++                )?,
++                Direction::In => {
++                    self.download(stream, event, descriptor.destination, descriptor.bytes)?;
++                    verify_bytes(
++                        &self.expected[offset..end],
++                        &self.readback.bytes()[..descriptor.bytes],
++                    )?;
++                }
++            }
++            self.checked_bytes += descriptor.bytes as u64;
++            self.checked_copies += 1;
++            offset = end;
++        }
++        Ok(())
++    }
+ }
+ 
+ impl RankWorker {
+@@ -304,9 +447,21 @@ impl RankWorker {
+         geometry: CacheGeometry,
+         layout: RankLayout,
+         part: RankPart,
++        verify_transfers: bool,
+     ) -> Result<Self> {
+         let stream = Stream::open_lowest_priority(context, device)?;
+         let event = stream.blocking_event()?;
++        let verification = if verify_transfers {
++            Some(Verification {
++                readback: stream.host_buffer(BATCH_BYTES)?,
++                expected: Vec::with_capacity(BATCH_BYTES),
++                checked_bytes: 0,
++                checked_copies: 0,
++                failures: 0,
++            })
++        } else {
++            None
++        };
+         let chunks = |bytes: u64| bytes.div_ceil(BATCH_BYTES as u64) as usize;
+         let window = geometry
+             .planes
+@@ -326,6 +481,7 @@ impl RankWorker {
+             destinations: Vec::with_capacity(BATCH_ENTRIES),
+             sources: Vec::with_capacity(BATCH_ENTRIES),
+             sizes: Vec::with_capacity(BATCH_ENTRIES),
++            verification,
+         })
+     }
+ 
+@@ -354,6 +510,14 @@ impl RankWorker {
+                 self.sizes.push(descriptor.bytes);
+                 bytes += descriptor.bytes as u64;
+             }
++            if let Some(verification) = &mut self.verification {
++                verification.capture(
++                    &self.stream,
++                    &self.event,
++                    &self.descriptors[start..end],
++                    job.direction,
++                )?;
++            }
+             // SAFETY: Device ranges lie inside the rank's cache allocations by
+             // the id checks in `expand`, and the submitting store keeps every
+             // slab mapped, registered, and unchanged until this job's reply.
+@@ -361,6 +525,16 @@ impl RankWorker {
+                 self.stream
+                     .copy_batch(&self.destinations, &self.sources, &self.sizes)?;
+             }
++            if let Some(verification) = &mut self.verification {
++                self.stream.record(&self.event)?;
++                self.event.synchronize()?;
++                verification.compare(
++                    &self.stream,
++                    &self.event,
++                    &self.descriptors[start..end],
++                    job.direction,
++                )?;
++            }
+             start = end;
+         }
+         self.stream.record(&self.event)?;
+@@ -378,21 +552,50 @@ impl RankWorker {
+ 
+     fn serve(mut self, jobs: Receiver<Job>, replies: Sender<RankReply>) {
+         for job in jobs {
++            let before = self
++                .verification
++                .as_ref()
++                .map(|v| (v.checked_bytes, v.checked_copies, v.failures));
+             let (result, bytes) = match self.run(&job) {
+                 Ok(bytes) => (Ok(()), bytes),
+                 Err(error) => {
++                    if let Some(verification) = &mut self.verification {
++                        verification.failures += 1;
++                    }
+                     // Drain the stream before reporting, so destination ids
+                     // are quiescent when the caller frees them.
+                     self.drain();
+                     (Err(error), 0)
+                 }
+             };
++            let audit = before.zip(self.verification.as_ref()).map(
++                |((prior_bytes, prior_copies, prior_failures), verification)| {
++                    (
++                        verification.checked_bytes - prior_bytes,
++                        verification.checked_copies - prior_copies,
++                        verification.failures - prior_failures,
++                    )
++                },
++            );
++            if let Some((checked_bytes, checked_copies, failures)) = audit {
++                eprintln!(
++                    "host_cache_transfer_verification rank={} direction={:?} pages={} row={} checked_bytes={} checked_copies={} failures={}",
++                    self.rank,
++                    job.direction,
++                    job.pages.len(),
++                    job.row.is_some(),
++                    checked_bytes,
++                    checked_copies,
++                    failures
++                );
++            }
+             let reply = RankReply {
+                 id: job.id,
+                 window: job.window,
+                 rank: self.rank,
+                 result,
+                 bytes,
++                audit,
+             };
+             if replies.send(reply).is_err() {
+                 break;
+@@ -411,6 +614,15 @@ impl Transfers {
+         contexts: &[(usize, i32)],
+         geometry: Vec<CacheGeometry>,
+         pool: &SlabPool,
++    ) -> Result<Self> {
++        Self::start_with_verification(contexts, geometry, pool, false)
++    }
++
++    pub fn start_with_verification(
++        contexts: &[(usize, i32)],
++        geometry: Vec<CacheGeometry>,
++        pool: &SlabPool,
++        verify_transfers: bool,
+     ) -> Result<Self> {
+         if contexts.is_empty() || contexts.len() != geometry.len() {
+             return Err(invalid(format!(
+@@ -427,6 +639,8 @@ impl Transfers {
+             ranks: Vec::with_capacity(contexts.len()),
+             receiver,
+             pending: HashMap::new(),
++            verification: verify_transfers
++                .then(|| vec![VerificationStats::default(); contexts.len()]),
+         };
+         for (rank, ((&(context, device), geometry), part)) in
+             contexts.iter().zip(geometry).zip(parts).enumerate()
+@@ -438,14 +652,21 @@ impl Transfers {
+             let thread = std::thread::Builder::new()
+                 .name(format!("flare-offload-{rank}"))
+                 .spawn(move || {
+-                    let worker =
+-                        match RankWorker::open(rank, context, device, geometry, layout, part) {
+-                            Ok(worker) => worker,
+-                            Err(error) => {
+-                                let _ = ready_sender.send(Err(error));
+-                                return;
+-                            }
+-                        };
++                    let worker = match RankWorker::open(
++                        rank,
++                        context,
++                        device,
++                        geometry,
++                        layout,
++                        part,
++                        verify_transfers,
++                    ) {
++                        Ok(worker) => worker,
++                        Err(error) => {
++                            let _ = ready_sender.send(Err(error));
++                            return;
++                        }
++                    };
+                     lower_priority();
+                     if ready_sender.send(Ok(())).is_err() {
+                         return;
+@@ -480,6 +701,11 @@ impl Transfers {
+         &self.layout
+     }
+ 
++    /// Per-rank diagnostic counters; absent when byte verification is disabled.
++    pub fn verification_stats(&self) -> Option<&[VerificationStats]> {
++        self.verification.as_deref()
++    }
++
+     /// Queue the job on every rank without waiting.
+     ///
+     /// `Err` means no rank accepted the job and no reply follows: a rank's
+@@ -540,6 +766,29 @@ impl Transfers {
+     }
+ 
+     fn absorb(&mut self, reply: RankReply, replies: &mut Vec<Reply>) {
++        if let (Some(stats), Some((bytes, copies, failures))) = (
++            self.verification
++                .as_mut()
++                .and_then(|ranks| ranks.get_mut(reply.rank)),
++            reply.audit,
++        ) {
++            match self
++                .pending
++                .get(&(reply.id, reply.window))
++                .map(|pending| pending.direction)
++            {
++                Some(Direction::Out) => {
++                    stats.out_bytes += bytes;
++                    stats.out_copies += copies;
++                }
++                Some(Direction::In) => {
++                    stats.in_bytes += bytes;
++                    stats.in_copies += copies;
++                }
++                None => {}
++            }
++            stats.failures += failures;
++        }
+         if let Some(thread) = self.ranks.get_mut(reply.rank) {
+             thread.outstanding = thread.outstanding.saturating_sub(1);
+         }
+@@ -666,6 +915,7 @@ impl Transfers {
+             ranks: Vec::new(),
+             receiver,
+             pending: HashMap::new(),
++            verification: None,
+         })
+     }
+ }
+@@ -965,6 +1215,7 @@ mod tests {
+                 .collect(),
+             receiver,
+             pending: HashMap::new(),
++            verification: None,
+         };
+         (transfers, sender)
+     }
+@@ -991,6 +1242,7 @@ mod tests {
+             rank,
+             result,
+             bytes,
++            audit: None,
+         };
+         let mut replies = Vec::new();
+         sender.send(reply(JobId(1), 0, 1, Ok(()), 100)).unwrap();
+@@ -1082,6 +1334,7 @@ mod tests {
+             ranks: vec![rank(accepting), rank(full), rank(disconnected)],
+             receiver,
+             pending: HashMap::new(),
++            verification: None,
+         };
+         transfers.submit(job(Direction::Out)).unwrap();
+         assert_eq!(transfers.in_flight(), 1);
+@@ -1109,6 +1362,7 @@ mod tests {
+                 rank: 0,
+                 result: Ok(()),
+                 bytes: 40,
++                audit: None,
+             })
+             .unwrap();
+         transfers.poll(&mut replies);
+@@ -1391,7 +1645,7 @@ mod tests {
+ 
+     /// Two contexts on the first two devices, each with `k` and `v` page planes
+     /// and a row plane; a split pool must cost each device only its part and
+-    /// carry each rank's units in that rank's part.
++    /// carry each rank's units in that rank's part at both supported test shares.
+     #[cfg(feature = "runtime-package")]
+     #[test]
+     #[ignore = "requires two CUDA devices"]
+@@ -1477,214 +1731,261 @@ mod tests {
+                 .collect()
+         };
+         let layout = Layout::new(&geometry).unwrap();
+-        let before = free();
+-        let mut registered = SlabPool::sized(&layout, POOL_BYTES).unwrap();
+-        registered.register(contexts[0].0).unwrap();
+-        let with_registered = free();
+-        drop(registered);
+-        let between = free();
+-        let pool = SlabPool::sized_by_rank(&layout, POOL_BYTES, &contexts).unwrap();
+-        let with_split = free();
+-        let mib = |bytes: i64| bytes as f64 / (1 << 20) as f64;
+-        for rank in 0..2 {
+-            let registered = before[rank] - with_registered[rank];
+-            let split = between[rank] - with_split[rank];
+-            eprintln!(
+-                "rank {rank}: registering {:.1} GiB costs {:.1} MiB, its split part {:.1} MiB",
+-                POOL_BYTES as f64 / (1u64 << 30) as f64,
+-                mib(registered),
+-                mib(split)
+-            );
+-            assert!(registered > 0, "registration cost rank {rank} nothing");
+-            assert!(
+-                split * 4 <= registered * 3,
+-                "rank {rank}'s split part costs {split} bytes against {registered} registered"
+-            );
+-        }
+-        assert!(pool.registered());
+-        assert_eq!(pool.page_bytes() as u64, layout.page_record_bytes);
+-        let parts = pool.rank_parts().unwrap();
+-        assert_eq!(parts.len(), 2);
++        let mut default_counts = None;
++        for row_percent in [25, 75] {
++            let before = free();
++            let mut registered =
++                SlabPool::sized_with_row_percent(&layout, POOL_BYTES, row_percent).unwrap();
++            let counts = (registered.page_count(), registered.row_count());
++            if let Some((pages, rows)) = default_counts {
++                assert!(counts.0 < pages && counts.1 > rows);
++            } else {
++                default_counts = Some(counts);
++            }
++            registered.register(contexts[0].0).unwrap();
++            let with_registered = free();
++            drop(registered);
++            let between = free();
++            let pool = SlabPool::sized_by_rank_with_row_percent(
++                &layout,
++                POOL_BYTES,
++                &contexts,
++                row_percent,
++            )
++            .unwrap();
++            assert_eq!((pool.page_count(), pool.row_count()), counts);
++            let with_split = free();
++            let mib = |bytes: i64| bytes as f64 / (1 << 20) as f64;
++            for rank in 0..2 {
++                let registered = before[rank] - with_registered[rank];
++                let split = between[rank] - with_split[rank];
++                eprintln!(
++                    "rank {rank}: registering {:.1} GiB costs {:.1} MiB, its split part {:.1} MiB",
++                    POOL_BYTES as f64 / (1u64 << 30) as f64,
++                    mib(registered),
++                    mib(split)
++                );
++                assert!(registered > 0, "registration cost rank {rank} nothing");
++                assert!(
++                    split * 4 <= registered * 3,
++                    "rank {rank}'s split part costs {split} bytes against {registered} registered"
++                );
++            }
++            assert!(pool.registered());
++            assert_eq!(pool.page_bytes() as u64, layout.page_record_bytes);
++            let parts = pool.rank_parts().unwrap();
++            assert_eq!(parts.len(), 2);
+ 
+-        fn fill(bytes: &mut [u8], seed: u64) {
+-            for (index, byte) in bytes.iter_mut().enumerate() {
+-                let index = index as u64;
+-                *byte = (index.wrapping_mul(29) ^ seed.wrapping_mul(7907) ^ (index >> 7)) as u8;
++            fn fill(bytes: &mut [u8], seed: u64) {
++                for (index, byte) in bytes.iter_mut().enumerate() {
++                    let index = index as u64;
++                    *byte = (index.wrapping_mul(29) ^ seed.wrapping_mul(7907) ^ (index >> 7)) as u8;
++                }
+             }
+-        }
+-        let seed = |rank: usize, plane: usize, unit: u32| {
+-            (rank as u64 + 1) * 1_000_000_007 + (plane as u64 + 1) * 1_000_003 + u64::from(unit)
+-        };
+-        let write = |context: usize, address: u64, bytes: &[u8]| unsafe {
+-            loader
+-                .check("cuCtxSetCurrent", (loader.context_set)(context as _))
+-                .unwrap();
+-            loader
+-                .check(
+-                    "cuMemcpyHtoD_v2",
+-                    (loader.upload)(address, bytes.as_ptr().cast(), bytes.len()),
+-                )
+-                .unwrap();
+-        };
+-        let read = |context: usize, address: u64, length: usize| -> Vec<u8> {
+-            let mut bytes = vec![0u8; length];
+-            unsafe {
++            let seed = |rank: usize, plane: usize, unit: u32| {
++                (rank as u64 + 1) * 1_000_000_007 + (plane as u64 + 1) * 1_000_003 + u64::from(unit)
++            };
++            let write = |context: usize, address: u64, bytes: &[u8]| unsafe {
+                 loader
+                     .check("cuCtxSetCurrent", (loader.context_set)(context as _))
+                     .unwrap();
+                 loader
+                     .check(
+-                        "cuMemcpyDtoH_v2",
+-                        (loader.download)(bytes.as_mut_ptr().cast(), address, length),
++                        "cuMemcpyHtoD_v2",
++                        (loader.upload)(address, bytes.as_ptr().cast(), bytes.len()),
+                     )
+                     .unwrap();
+-            }
+-            bytes
+-        };
+-        let sources: Vec<u32> = (1..=WINDOW_PAGES as u32 / 2).collect();
+-        let targets: Vec<u32> = sources
+-            .iter()
+-            .map(|id| id + WINDOW_PAGES as u32 / 2)
+-            .collect();
+-        let row_plane = 2;
+-        for (rank, (rank_geometry, &(context, _))) in geometry.iter().zip(&contexts).enumerate() {
+-            for (plane, unit) in rank_geometry.planes.iter().enumerate() {
+-                for &id in &sources {
+-                    let mut bytes = vec![0u8; unit.unit_bytes as usize];
+-                    fill(&mut bytes, seed(rank, plane, id));
+-                    write(context, unit.unit_address(u64::from(id)), &bytes);
++            };
++            let read = |context: usize, address: u64, length: usize| -> Vec<u8> {
++                let mut bytes = vec![0u8; length];
++                unsafe {
++                    loader
++                        .check("cuCtxSetCurrent", (loader.context_set)(context as _))
++                        .unwrap();
++                    loader
++                        .check(
++                            "cuMemcpyDtoH_v2",
++                            (loader.download)(bytes.as_mut_ptr().cast(), address, length),
++                        )
++                        .unwrap();
+                 }
++                bytes
++            };
++            let sources: Vec<u32> = (1..=WINDOW_PAGES as u32 / 2).collect();
++            let targets: Vec<u32> = sources
++                .iter()
++                .map(|id| id + WINDOW_PAGES as u32 / 2)
++                .collect();
++            let row_plane = 2;
++            for (rank, (rank_geometry, &(context, _))) in geometry.iter().zip(&contexts).enumerate()
++            {
++                for (plane, unit) in rank_geometry.planes.iter().enumerate() {
++                    for &id in &sources {
++                        let mut bytes = vec![0u8; unit.unit_bytes as usize];
++                        fill(&mut bytes, seed(rank, plane, id));
++                        write(context, unit.unit_address(u64::from(id)), &bytes);
++                    }
++                }
++                let mut bytes = vec![0u8; ROW_BYTES as usize];
++                fill(&mut bytes, seed(rank, row_plane, 1));
++                write(context, rank_geometry.row.unit_address(1), &bytes);
+             }
+-            let mut bytes = vec![0u8; ROW_BYTES as usize];
+-            fill(&mut bytes, seed(rank, row_plane, 1));
+-            write(context, rank_geometry.row.unit_address(1), &bytes);
+-        }
+-        let mut pool = pool;
+-        let slabs: Vec<usize> = sources
+-            .iter()
+-            .map(|_| {
+-                let slab = pool.allocate_page().unwrap();
+-                pool.page_address(slab)
+-            })
+-            .collect();
+-        let row = pool.allocate_row().unwrap();
+-        let row_slab = pool.row_address(row);
+-        let mut transfers = Transfers::start(&contexts, geometry.clone(), &pool).unwrap();
+-        let wait = |transfers: &mut Transfers| -> Reply {
+-            let deadline = Instant::now() + Duration::from_secs(60);
+-            let mut replies = Vec::new();
+-            while replies.is_empty() {
+-                assert!(Instant::now() < deadline, "no transfer reply within 60 s");
+-                transfers.poll(&mut replies);
+-                std::thread::sleep(Duration::from_millis(1));
++            let mut pool = pool;
++            let slabs: Vec<usize> = sources
++                .iter()
++                .map(|_| {
++                    let slab = pool.allocate_page().unwrap();
++                    pool.page_address(slab)
++                })
++                .collect();
++            let row = pool.allocate_row().unwrap();
++            let row_slab = pool.row_address(row);
++            let mut transfers =
++                Transfers::start_with_verification(&contexts, geometry.clone(), &pool, true)
++                    .unwrap();
++            let wait = |transfers: &mut Transfers| -> Reply {
++                let deadline = Instant::now() + Duration::from_secs(60);
++                let mut replies = Vec::new();
++                while replies.is_empty() {
++                    assert!(Instant::now() < deadline, "no transfer reply within 60 s");
++                    transfers.poll(&mut replies);
++                    std::thread::sleep(Duration::from_millis(1));
++                }
++                replies.pop().unwrap()
++            };
++            let unit_bytes: u64 = geometry
++                .iter()
++                .map(|rank| sources.len() as u64 * rank.page_bytes() + ROW_BYTES)
++                .sum();
++            transfers
++                .submit(Job {
++                    id: JobId(1),
++                    window: 0,
++                    direction: Direction::Out,
++                    pages: sources
++                        .iter()
++                        .zip(&slabs)
++                        .map(|(id, slab)| (PageId(*id), *slab))
++                        .collect(),
++                    row: Some((StateSlotId(1), row_slab)),
++                })
++                .unwrap();
++            let reply = wait(&mut transfers);
++            assert!(reply.result.is_ok(), "{:?}", reply.result);
++            assert_eq!(reply.bytes, unit_bytes);
++            for (rank, stats) in transfers.verification_stats().unwrap().iter().enumerate() {
++                assert_eq!(
++                    stats.out_bytes,
++                    sources.len() as u64 * geometry[rank].page_bytes() + ROW_BYTES
++                );
++                assert!(stats.out_copies > 0);
++                assert_eq!(stats.in_bytes, 0);
++                assert_eq!(stats.failures, 0);
+             }
+-            replies.pop().unwrap()
+-        };
+-        let unit_bytes: u64 = geometry
+-            .iter()
+-            .map(|rank| sources.len() as u64 * rank.page_bytes() + ROW_BYTES)
+-            .sum();
+-        transfers
+-            .submit(Job {
+-                id: JobId(1),
+-                window: 0,
+-                direction: Direction::Out,
+-                pages: sources
+-                    .iter()
+-                    .zip(&slabs)
+-                    .map(|(id, slab)| (PageId(*id), *slab))
+-                    .collect(),
+-                row: Some((StateSlotId(1), row_slab)),
+-            })
+-            .unwrap();
+-        let reply = wait(&mut transfers);
+-        assert!(reply.result.is_ok(), "{:?}", reply.result);
+-        assert_eq!(reply.bytes, unit_bytes);
+-
+-        // Each rank's units must sit in its own part, which the host can read.
+-        for (rank, part) in parts.iter().enumerate() {
+-            let offsets = &layout.ranks[rank].plane_offsets;
+-            for (index, &id) in sources.iter().enumerate() {
+-                let record = part.page(slabs[index]).unwrap().unwrap() as usize;
+-                for (plane, unit) in geometry[rank].planes.iter().enumerate() {
+-                    let mut wanted = vec![0u8; unit.unit_bytes as usize];
+-                    fill(&mut wanted, seed(rank, plane, id));
+-                    // SAFETY: The part is mapped for the host and no copy is in flight.
+-                    let actual = unsafe {
+-                        std::slice::from_raw_parts(
+-                            (record + offsets[plane] as usize) as *const u8,
+-                            unit.unit_bytes as usize,
+-                        )
+-                    };
+-                    assert!(
+-                        actual == &wanted[..],
+-                        "rank {rank} plane {plane} page {id} differs in its host part"
+-                    );
++
++            // Each rank's units must sit in its own part, which the host can read.
++            for (rank, part) in parts.iter().enumerate() {
++                let stream =
++                    Stream::open_lowest_priority(contexts[rank].0, contexts[rank].1).unwrap();
++                let offsets = &layout.ranks[rank].plane_offsets;
++                for (index, &id) in sources.iter().enumerate() {
++                    let record = part.page(slabs[index]).unwrap().unwrap() as usize;
++                    for (plane, unit) in geometry[rank].planes.iter().enumerate() {
++                        let mut wanted = vec![0u8; unit.unit_bytes as usize];
++                        fill(&mut wanted, seed(rank, plane, id));
++                        // SAFETY: The part is mapped for the host and no copy is in flight.
++                        let host = stream
++                            .mapped_host_address(
++                                record + offsets[plane] as usize,
++                                unit.unit_bytes as usize,
++                            )
++                            .unwrap()
++                            .expect("page slab must map to CPU memory");
++                        let actual = unsafe {
++                            std::slice::from_raw_parts(host as *const u8, unit.unit_bytes as usize)
++                        };
++                        assert!(
++                            actual == &wanted[..],
++                            "rank {rank} plane {plane} page {id} differs in its host part"
++                        );
++                    }
+                 }
++                let row = part.row(row_slab).unwrap().unwrap() as usize;
++                let mut wanted = vec![0u8; ROW_BYTES as usize];
++                fill(&mut wanted, seed(rank, row_plane, 1));
++                // SAFETY: As above.
++                let host = stream
++                    .mapped_host_address(row, ROW_BYTES as usize)
++                    .unwrap()
++                    .expect("row slab must map to CPU memory");
++                let actual =
++                    unsafe { std::slice::from_raw_parts(host as *const u8, ROW_BYTES as usize) };
++                assert!(
++                    actual == &wanted[..],
++                    "rank {rank} row differs in its host part"
++                );
+             }
+-            let row = part.row(row_slab).unwrap().unwrap() as usize;
+-            let mut wanted = vec![0u8; ROW_BYTES as usize];
+-            fill(&mut wanted, seed(rank, row_plane, 1));
+-            // SAFETY: As above.
+-            let actual =
+-                unsafe { std::slice::from_raw_parts(row as *const u8, ROW_BYTES as usize) };
+-            assert!(
+-                actual == &wanted[..],
+-                "rank {rank} row differs in its host part"
+-            );
+-        }
+ 
+-        transfers
+-            .submit(Job {
+-                id: JobId(2),
+-                window: 0,
+-                direction: Direction::In,
+-                pages: targets
+-                    .iter()
+-                    .zip(&slabs)
+-                    .map(|(id, slab)| (PageId(*id), *slab))
+-                    .collect(),
+-                row: Some((StateSlotId(2), row_slab)),
+-            })
+-            .unwrap();
+-        let reply = wait(&mut transfers);
+-        assert!(reply.result.is_ok(), "{:?}", reply.result);
+-        assert_eq!(reply.bytes, unit_bytes);
+-        for (rank, (rank_geometry, &(context, _))) in geometry.iter().zip(&contexts).enumerate() {
+-            for (plane, unit) in rank_geometry.planes.iter().enumerate() {
+-                for (source, target) in sources.iter().zip(&targets) {
+-                    let mut wanted = vec![0u8; unit.unit_bytes as usize];
+-                    fill(&mut wanted, seed(rank, plane, *source));
+-                    let actual = read(
+-                        context,
+-                        unit.unit_address(u64::from(*target)),
+-                        unit.unit_bytes as usize,
+-                    );
+-                    assert!(
+-                        actual == wanted,
+-                        "rank {rank} plane {plane} page {target} differs from page {source}"
+-                    );
++            transfers
++                .submit(Job {
++                    id: JobId(2),
++                    window: 0,
++                    direction: Direction::In,
++                    pages: targets
++                        .iter()
++                        .zip(&slabs)
++                        .map(|(id, slab)| (PageId(*id), *slab))
++                        .collect(),
++                    row: Some((StateSlotId(2), row_slab)),
++                })
++                .unwrap();
++            let reply = wait(&mut transfers);
++            assert!(reply.result.is_ok(), "{:?}", reply.result);
++            assert_eq!(reply.bytes, unit_bytes);
++            for (rank, stats) in transfers.verification_stats().unwrap().iter().enumerate() {
++                let expected = sources.len() as u64 * geometry[rank].page_bytes() + ROW_BYTES;
++                assert_eq!(stats.out_bytes, expected);
++                assert_eq!(stats.in_bytes, expected);
++                assert!(stats.out_copies > 0 && stats.in_copies > 0);
++                assert_eq!(stats.failures, 0);
++            }
++            for (rank, (rank_geometry, &(context, _))) in geometry.iter().zip(&contexts).enumerate()
++            {
++                for (plane, unit) in rank_geometry.planes.iter().enumerate() {
++                    for (source, target) in sources.iter().zip(&targets) {
++                        let mut wanted = vec![0u8; unit.unit_bytes as usize];
++                        fill(&mut wanted, seed(rank, plane, *source));
++                        let actual = read(
++                            context,
++                            unit.unit_address(u64::from(*target)),
++                            unit.unit_bytes as usize,
++                        );
++                        assert!(
++                            actual == wanted,
++                            "rank {rank} plane {plane} page {target} differs from page {source}"
++                        );
++                    }
+                 }
++                let mut wanted = vec![0u8; ROW_BYTES as usize];
++                fill(&mut wanted, seed(rank, row_plane, 1));
++                let actual = read(
++                    context,
++                    rank_geometry.row.unit_address(2),
++                    ROW_BYTES as usize,
++                );
++                assert!(actual == wanted, "rank {rank} row 2 differs from row 1");
++            }
++            transfers.close().unwrap();
++            drop(transfers);
++            drop(pool);
++            let released = free();
++            for rank in 0..2 {
++                assert!(
++                    released[rank] + (4 << 20) >= between[rank],
++                    "rank {rank} kept {} MiB after the split pool was dropped",
++                    mib(between[rank] - released[rank])
++                );
+             }
+-            let mut wanted = vec![0u8; ROW_BYTES as usize];
+-            fill(&mut wanted, seed(rank, row_plane, 1));
+-            let actual = read(
+-                context,
+-                rank_geometry.row.unit_address(2),
+-                ROW_BYTES as usize,
+-            );
+-            assert!(actual == wanted, "rank {rank} row 2 differs from row 1");
+-        }
+-        transfers.close().unwrap();
+-        drop(transfers);
+-        drop(pool);
+-        let released = free();
+-        for rank in 0..2 {
+-            assert!(
+-                released[rank] + (4 << 20) >= between[rank],
+-                "rank {rank} kept {} MiB after the split pool was dropped",
+-                mib(between[rank] - released[rank])
+-            );
+         }
+         // SAFETY: Every allocation belongs to its context and nothing uses it.
+         unsafe {
+diff --git a/helios/src/runtime_package/model.rs b/helios/src/runtime_package/model.rs
+index b93ae06..943bd7c 100644
+--- a/helios/src/runtime_package/model.rs
++++ b/helios/src/runtime_package/model.rs
+@@ -362,17 +362,25 @@ impl NativeModel {
+             ));
+         }
+         if options.embedding_table_resident_scales && engram.is_empty() {
+-            return Err(invalid("resident embedding scales require an embedding table catalog"));
++            return Err(invalid(
++                "resident embedding scales require an embedding table catalog",
++            ));
+         }
+         let ram = options.embedding_table_storage == Some(crate::engram::Storage::Ram);
+-        let resident_bytes = engram.iter().flat_map(|(index, _)| &index.tables)
++        let resident_bytes = engram
++            .iter()
++            .flat_map(|(index, _)| &index.tables)
+             .flat_map(|table| table.planes.iter().enumerate())
+-            .filter(|(ordinal, _)| ram || (options.embedding_table_resident_scales && *ordinal == 1))
++            .filter(|(ordinal, _)| {
++                ram || (options.embedding_table_resident_scales && *ordinal == 1)
++            })
+             .try_fold(0u64, |bytes, (_, plane)| {
+-                bytes.checked_add(plane.resident_bytes()? as u64)
++                bytes
++                    .checked_add(plane.resident_bytes()? as u64)
+                     .ok_or_else(|| invalid("resident embedding tables exceed the memory budget"))
+             })?;
+-        let embedding_host_bytes = resident_bytes.checked_add(options.embedding_table_cache_bytes)
++        let embedding_host_bytes = resident_bytes
++            .checked_add(options.embedding_table_cache_bytes)
+             .ok_or_else(|| invalid("embedding tables and row cache exceed the memory budget"))?;
+         let prepared: crate::model::PreparedContract =
+             serde_json::from_value(server_config["model_contract"].clone())
+@@ -674,7 +682,9 @@ impl NativeModel {
+                     .map(|(_, shared, rank)| (shared, rank))
+                     .collect();
+                 let label = match storage {
+-                    crate::engram::Storage::Disk if options.embedding_table_resident_scales => "disk weights, RAM scales",
++                    crate::engram::Storage::Disk if options.embedding_table_resident_scales => {
++                        "disk weights, RAM scales"
++                    }
+                     crate::engram::Storage::Disk => "disk",
+                     crate::engram::Storage::Ram => "RAM",
+                 };
+@@ -741,11 +751,19 @@ impl NativeModel {
+                 .map_err(|error| invalid(format!("invalid prepared contract: {error}")))?;
+         let manifest = self.ranks[0].execution_manifest()?;
+         let staging = crate::offload::input_staging_bytes(&contract, |name| {
+-            manifest.buffers.iter().find(|buffer| buffer.name == name)
++            manifest
++                .buffers
++                .iter()
++                .find(|buffer| buffer.name == name)
+                 .map(|buffer| buffer.nbytes as u64)
+         })?;
+         let prepared = crate::offload::prepare_with_inputs(
+-            &options.prefix_cache, root, identity, geometry, contexts, staging,
++            &options.prefix_cache,
++            root,
++            identity,
++            geometry,
++            contexts,
++            staging,
+         )?;
+         let summary = prepared.summary();
+         self.offload = prepared.into_shared();
+@@ -980,6 +998,8 @@ mod tests {
+             crate::offload::PrefixCacheOffload::default(),
+             crate::offload::PrefixCacheOffload {
+                 memory_bytes: Some(0),
++                row_percent: None,
++                verify_transfers: false,
+                 disk: Some("unopened-prefix-cache".into()),
+                 disk_limit: Some(0),
+                 transport: Some(crate::offload::Transport::Direct),
+diff --git a/helios/src/server/metrics.rs b/helios/src/server/metrics.rs
+index e44956f..62b23a3 100644
+--- a/helios/src/server/metrics.rs
++++ b/helios/src/server/metrics.rs
+@@ -344,6 +344,11 @@ pub(super) struct Metrics {
+     pub pending: AtomicU64,
+     host_lookups: AtomicU64,
+     host_hits: AtomicU64,
++    pub host_admission_raw_lookup_match: AtomicU64,
++    pub host_admission_cost_rejected: AtomicU64,
++    pub host_admission_capacity_rejected: AtomicU64,
++    pub host_admission_fetch_admitted: AtomicU64,
++    pub host_admission_fetch_failed: AtomicU64,
+     host_reused_tokens: AtomicU64,
+     host_stored: AtomicU64,
+     host_store_skipped: AtomicU64,
+@@ -822,6 +827,31 @@ impl Metrics {
+                 "Host prefix store lookups whose chain the admission fetched.",
+                 &self.host_hits,
+             ),
++            (
++                "host_cache_admission_raw_lookup_match_total",
++                "Raw host lookup matches per scheduler admission attempt, including waiting retries and readmissions; not unique requests.",
++                &self.host_admission_raw_lookup_match,
++            ),
++            (
++                "host_cache_admission_cost_rejected_total",
++                "Host lookup matches rejected by transfer cost per scheduler admission attempt, including waiting retries and readmissions.",
++                &self.host_admission_cost_rejected,
++            ),
++            (
++                "host_cache_admission_capacity_rejected_total",
++                "Host restore admissions rejected for scheduler capacity per attempt, before trying recomputation; includes waiting retries and readmissions.",
++                &self.host_admission_capacity_rejected,
++            ),
++            (
++                "host_cache_admission_fetch_admitted_total",
++                "Scheduler host restore admissions whose fetch was accepted or joined an existing chain; includes readmissions and later post-admission retries, not unique requests or completed transfers.",
++                &self.host_admission_fetch_admitted,
++            ),
++            (
++                "host_cache_admission_fetch_failed_total",
++                "Host fetch calls rejected synchronously plus asynchronous failed chain completions; once per fetch or chain event, not per waiter.",
++                &self.host_admission_fetch_failed,
++            ),
+             (
+                 "host_cache_reused_tokens_total",
+                 "Tokens covered by host prefix store chains beyond the GPU checkpoint.",
+diff --git a/helios/src/server/runtime/phase_tests.rs b/helios/src/server/runtime/phase_tests.rs
+index 4b1f00e..26d9b5b 100644
+--- a/helios/src/server/runtime/phase_tests.rs
++++ b/helios/src/server/runtime/phase_tests.rs
+@@ -1281,6 +1281,111 @@ fn host_hit_holds_the_request_inbound_until_the_restore_completes() {
+     assert_eq!(fixture.metrics.snapshot(false).prefill_tokens, 0);
+ }
+ 
++#[test]
++fn host_admission_metrics_distinguish_cost_capacity_and_fetch_outcomes() {
++    for outcome in ["accepted", "cost", "capacity", "rejected", "failed"] {
++        let fixture = Fixture::new();
++        let (sender, receiver) = mpsc::channel();
++        let (incoming, _generation) = fixture.incoming(vec![0; 70], 4);
++        let mut history = crate::cache::PrefixHistory::new(fixture.config.identity);
++        history.append(&incoming.prompt.tokens, &[]).unwrap();
++        let mut hit = host_hit(&history, 70);
++        if outcome == "cost" {
++            hit.estimated_seconds = f64::MAX;
++        }
++        let mut store = FakeStore::new(Some(hit));
++        store.reject_fetch = outcome == "rejected";
++        sender.send(vec![incoming]).unwrap();
++        let mut worker = fixture.worker(receiver);
++        if outcome == "capacity" {
++            worker.scheduler.share_snapshot_pages(&vec![0..16; 16]).unwrap();
++        }
++        worker.attach_store(Some(Box::new(store)));
++        assert_eq!(worker.admit().unwrap(), ControlFlow::Continue(true));
++        if outcome == "failed" {
++            let (_, ticket) = fake_store(&mut worker).fetched.pop().unwrap();
++            fake_store(&mut worker).events.push_back(crate::offload::StoreEvent::Fetched {
++                key: ticket.key,
++                result: Err("transfer failed".into()),
++            });
++            worker.service_store().unwrap();
++            assert_eq!(worker.admit().unwrap(), ControlFlow::Continue(true));
++            worker.service_store().unwrap();
++        }
++        let text = fixture.metrics.render();
++        for (name, expected) in [
++            ("raw_lookup_match", 1),
++            ("cost_rejected", u64::from(outcome == "cost")),
++            ("capacity_rejected", u64::from(outcome == "capacity")),
++            ("fetch_admitted", u64::from(matches!(outcome, "accepted" | "failed"))),
++            ("fetch_failed", u64::from(matches!(outcome, "rejected" | "failed"))),
++        ] {
++            let metric = format!("flare_host_cache_admission_{name}_total");
++            assert!(text.contains(&format!("# TYPE {metric} counter\n")));
++            assert!(text.contains(&format!("\n{metric} {expected}\n")), "{outcome}: {metric}");
++        }
++    }
++}
++
++#[test]
++fn host_admission_joined_chain_counts_admissions_without_another_fetch() {
++    let fixture = Fixture::new();
++    let (sender, receiver) = mpsc::channel();
++    let (first, _first_generation) = fixture.incoming(vec![0; 70], 4);
++    let (second, _second_generation) = fixture.incoming(vec![0; 70], 4);
++    let mut history = crate::cache::PrefixHistory::new(fixture.config.identity);
++    history.append(&first.prompt.tokens, &[]).unwrap();
++    sender.send(vec![first, second]).unwrap();
++    let mut worker = fixture.worker(receiver);
++    worker.attach_store(Some(Box::new(FakeStore::new(Some(host_hit(&history, 70))))));
++    assert_eq!(worker.admit().unwrap(), ControlFlow::Continue(true));
++    assert_eq!(fake_store(&mut worker).fetched.len(), 1);
++    assert_eq!(fixture.metrics.host_admission_raw_lookup_match.load(Ordering::Relaxed), 2);
++    assert_eq!(fixture.metrics.host_admission_fetch_admitted.load(Ordering::Relaxed), 2);
++    assert_eq!(worker.scheduler.stats().inbound_waiting, 2);
++}
++
++#[test]
++fn host_admission_capacity_retries_count_attempts_without_counting_admissions() {
++    let mut fixture = Fixture::new();
++    fixture.config.limits.pages = 2;
++    let (_sender, receiver) = mpsc::channel();
++    let mut worker = fixture.worker(receiver);
++    worker.scheduler.share_snapshot_pages(&vec![0..2; 16]).unwrap();
++    worker.scheduler.admit(RequestSpec {
++        prompt: vec![1],
++        message_boundaries: vec![],
++        conditioning: vec![],
++        max_new_tokens: 1,
++        grammar_constrained: false,
++        host_stops: false,
++        growable_output: false,
++    }).unwrap();
++    let mut history = crate::cache::PrefixHistory::new(fixture.config.identity);
++    history.append(&[0; 70], &[]).unwrap();
++    let mut store = FakeStore::new(Some(host_hit(&history, 70)));
++    for _ in 0..2 {
++        let spec = RequestSpec {
++            prompt: vec![0; 70],
++            message_boundaries: vec![],
++            conditioning: vec![],
++            max_new_tokens: 4,
++            grammar_constrained: false,
++            host_stops: false,
++            growable_output: false,
++        };
++        assert!(matches!(
++            admit_with_host_store(&mut worker.scheduler, &mut store, spec, 1.0, &fixture.metrics),
++            Err(Error::Admission(AdmissionError::Capacity(_)))
++        ));
++    }
++    assert_eq!(fixture.metrics.host_admission_raw_lookup_match.load(Ordering::Relaxed), 2);
++    assert_eq!(fixture.metrics.host_admission_capacity_rejected.load(Ordering::Relaxed), 2);
++    assert_eq!(fixture.metrics.host_admission_fetch_admitted.load(Ordering::Relaxed), 0);
++    assert_eq!(worker.scheduler.stats().host_lookups, 0);
++    assert_eq!(worker.scheduler.stats().host_hits, 0);
++}
++
+ #[test]
+ fn host_hit_recomputes_when_snapshot_backing_would_prevent_admission() {
+     let fixture = Fixture::new();
+diff --git a/helios/src/server/runtime.rs b/helios/src/server/runtime.rs
+index 1fdd3ff..99258ef 100644
+--- a/helios/src/server/runtime.rs
++++ b/helios/src/server/runtime.rs
+@@ -1090,7 +1090,7 @@ impl<'a> Worker<'a> {
+             let admission = if let Some(store) =
+                 self.store.as_mut().filter(|_| incoming.host_lookup)
+             {
+-                admit_with_host_store(&mut self.scheduler, store.as_mut(), spec, self.prefill_rate)
++                admit_with_host_store(&mut self.scheduler, store.as_mut(), spec, self.prefill_rate, self.metrics)
+             } else {
+                 self.scheduler.admit(spec)
+             };
+@@ -1853,6 +1853,9 @@ impl<'a> Worker<'a> {
+                     let _ = self.scheduler.unpin_checkpoint(checkpoint);
+                 }
+                 crate::offload::StoreEvent::Fetched { key, result } => {
++                    if result.is_err() {
++                        self.metrics.host_admission_fetch_failed.fetch_add(1, Ordering::Relaxed);
++                    }
+                     requeued.extend(self.scheduler.finish_inbound(key, result.is_ok())?);
+                 }
+             }
+@@ -1931,11 +1934,19 @@ fn admit_with_host_store(
+     store: &mut dyn crate::offload::PrefixStore,
+     spec: RequestSpec,
+     prefill_rate: f64,
++    metrics: &super::metrics::Metrics,
+ ) -> Result<RequestHandle> {
+     let plan = scheduler.plan_admission(&spec)?;
+-    let hit = store
+-        .lookup(plan.history(), plan.resident_tokens())
+-        .filter(|hit| crate::offload::worth_fetching(hit, prefill_rate));
++    // These observations count attempts, including retries of capacity-blocked
++    // requests; the scheduler's existing lookup/hit counters count admissions.
++    let hit = store.lookup(plan.history(), plan.resident_tokens()).filter(|hit| {
++        metrics.host_admission_raw_lookup_match.fetch_add(1, Ordering::Relaxed);
++        let worthwhile = crate::offload::worth_fetching(hit, prefill_rate);
++        if !worthwhile {
++            metrics.host_admission_cost_rejected.fetch_add(1, Ordering::Relaxed);
++        }
++        worthwhile
++    });
+     let Some(hit) = hit else {
+         let handle = scheduler.admit_planned(spec, plan, None)?.handle;
+         // Lookups count once per admitted request, not per attempt of a waiting one.
+@@ -1950,6 +1961,7 @@ fn admit_with_host_store(
+     let admitted = match scheduler.admit_planned(spec.clone(), plan, Some(inbound)) {
+         Ok(admitted) => admitted,
+         Err(Error::Admission(AdmissionError::Capacity(_))) => {
++            metrics.host_admission_capacity_rejected.fetch_add(1, Ordering::Relaxed);
+             let handle = scheduler.admit(spec)?;
+             scheduler.record_host_lookup();
+             return Ok(handle);
+@@ -1958,15 +1970,18 @@ fn admit_with_host_store(
+     };
+     scheduler.record_host_lookup();
+     let Some(ticket) = admitted.ticket else {
++        metrics.host_admission_fetch_admitted.fetch_add(1, Ordering::Relaxed);
+         return Ok(admitted.handle);
+     };
+     let key = ticket.key;
+     if store.fetch(hit, ticket).is_err() {
++        metrics.host_admission_fetch_failed.fetch_add(1, Ordering::Relaxed);
+         // No event follows a rejected fetch; this request is the ticket's only
+         // waiter, so retire it and admit the request again without the store.
+         scheduler.finish_inbound(key, false)?;
+         return scheduler.admit(spec);
+     }
++    metrics.host_admission_fetch_admitted.fetch_add(1, Ordering::Relaxed);
+     Ok(admitted.handle)
+ }
+ 
+diff --git a/ignition/cli/config.py b/ignition/cli/config.py
+index f360fcf..b0366df 100644
+--- a/ignition/cli/config.py
++++ b/ignition/cli/config.py
+@@ -20,7 +20,8 @@ _SECTIONS = {
+     "defaults": {"model": str, "max_concurrency": int, "image_concurrency": int, "speculative_token_capacity": int},
+     "memory": {"reserve": str},
+     "preparation": {"compile_workers": int, "checkpoint_token_file": str},
+-    "prefix_cache": {"memory": str, "disk_limit": str, "disk_transport": str},
++    "prefix_cache": {"memory": str, "row_percent": int, "verify_transfers": bool,
++                     "disk_limit": str, "disk_transport": str},
+     "paths": {"hub_cache": str, "kernel_cache": str, "package_cache": str, "export_staging": str,
+               "prefix_cache": str, "cuda": str},
+ }
+@@ -32,7 +33,8 @@ _BUILT_IN = {
+     "memory.reserve": "0",
+     "preparation.compile_workers": 0,
+     "preparation.checkpoint_token_file": "~/.config/flare/agent.token",
+-    "prefix_cache.memory": "", "prefix_cache.disk_limit": "", "prefix_cache.disk_transport": "",
++    "prefix_cache.memory": "", "prefix_cache.row_percent": 0, "prefix_cache.verify_transfers": False,
++    "prefix_cache.disk_limit": "", "prefix_cache.disk_transport": "",
+     "paths.hub_cache": "~/.cache/huggingface/hub", "paths.kernel_cache": "~/.cache/flare/kernels",
+     "paths.package_cache": "~/.cache/flare/packages",
+     "paths.export_staging": "",
+@@ -124,6 +126,8 @@ class Configuration:
+                 raise UsageError(f"{path}: port in [{section}] must be 1 through 65535")
+             if key in ("max_concurrency", "image_concurrency", "speculative_token_capacity", "compile_workers") and value < 1:
+                 raise UsageError(f"{path}: {key} in [{section}] must be at least 1")
++            if section == "prefix_cache" and key == "row_percent" and not 1 <= value <= 99:
++                raise UsageError(f"{path}: row_percent in [prefix_cache] must be 1 through 99")
+ 
+     def get(self, key: str, flag=None) -> Setting:
+         """Resolve `section.key` from a flag, the file, or the built-in value."""
+@@ -171,6 +175,11 @@ class Configuration:
+             value = self.get(f"prefix_cache.{key}").value
+             if value:
+                 flags += [flag, value]
++        row_percent = self.get("prefix_cache.row_percent").value
++        if row_percent:
++            flags += ["--prefix-cache-row-percent", str(row_percent)]
++        if self.get("prefix_cache.verify_transfers").value:
++            flags.append("--verify-host-cache-transfers")
+         return flags
+ 
+     def directory(self, name: str) -> Path | None:
+@@ -200,6 +209,8 @@ class Configuration:
+             "                   # GPU memory left untouched for processes that start later",
+             "", "[prefix_cache]",
+             '# memory = "16G"                 # host RAM for checkpoints and prepared inputs; 0 disables retention',
++            '# row_percent = 25               # share of checkpoint RAM for rows; default: 25',
++            '# verify_transfers = false        # exact byte check; diagnostic, changes timing',
+             '# disk_limit = "200G"            # record files kept under paths.prefix_cache; 0 disables the disk tier',
+             '# disk_transport = "staged"      # staged, or direct for GPUDirect Storage',
+             "", "[paths]",
+diff --git a/tests/cli/test_config.py b/tests/cli/test_config.py
+index 24575fd..38a0dfb 100644
+--- a/tests/cli/test_config.py
++++ b/tests/cli/test_config.py
+@@ -61,15 +61,21 @@ speculative_token_capacity = 8
+ 
+ 
+ def test_prefix_cache_settings_validate_and_forward(tmp_path):
+-    configuration = load(tmp_path, "[prefix_cache]\nmemory = \"4G\"\ndisk_transport = \"direct\"\n")
++    configuration = load(tmp_path, "[prefix_cache]\nmemory = \"4G\"\ndisk_transport = \"direct\"\nrow_percent = 60\nverify_transfers = true\n")
+     assert configuration.get("prefix_cache.memory") == Setting("4G", "[prefix_cache]")
+     assert configuration.directory("prefix_cache") is None
+-    assert configuration.prefix_cache_flags() == ["--prefix-cache-memory", "4G", "--prefix-cache-disk-transport", "direct"]
++    assert configuration.prefix_cache_flags() == ["--prefix-cache-memory", "4G", "--prefix-cache-disk-transport", "direct",
++                                                  "--prefix-cache-row-percent", "60", "--verify-host-cache-transfers"]
+     assert load(tmp_path, "").prefix_cache_flags() == []
++    with pytest.raises(UsageError, match="verify_transfers"):
++        load(tmp_path, '[prefix_cache]\nverify_transfers = "true"\n')
+     with pytest.raises(UsageError, match="prefix_cache disk_limit"):
+         load(tmp_path, "[prefix_cache]\ndisk_limit = \"lots\"\n")
+     with pytest.raises(UsageError, match="disk_transport"):
+         load(tmp_path, "[prefix_cache]\ndisk_transport = \"nvme\"\n")
++    for invalid in ("0", "100", "true", "\"60\""):
++        with pytest.raises(UsageError, match="row_percent"):
++            load(tmp_path, f"[prefix_cache]\nrow_percent = {invalid}\n")
+ 
+ 
+ def test_recipe_supplies_concurrency_when_the_file_is_silent(tmp_path):
+diff --git a/tests/cli/test_serve.py b/tests/cli/test_serve.py
+index 6b0c8aa..cca209a 100644
+--- a/tests/cli/test_serve.py
++++ b/tests/cli/test_serve.py
+@@ -5,6 +5,7 @@ import os
+ import socket
+ import sys
+ import types
++from contextlib import contextmanager
+ from dataclasses import replace
+ from pathlib import Path
+ 
+@@ -461,15 +462,25 @@ def test_listener_flags_override_configuration(host, tmp_path):
+     assert host["exec"][5:9] == ["--host", "127.0.0.1", "--port", str(port)]
+ 
+ 
+-def test_prefix_cache_settings_are_forwarded_only_when_set(host, tmp_path):
++def test_prefix_cache_settings_are_forwarded_only_when_set(host, tmp_path, monkeypatch):
++    package = tmp_path / "cached.safetensors"
++    package.write_bytes(b"cached")
++    @contextmanager
++    def cached_package(*args):
++        yield package
++    monkeypatch.setattr(runtime, "cached_package", cached_package)
++    host["prepared"] = types.SimpleNamespace(closed=True)
++    host["options"] = {}
+     assert run("qwen3.8-flash") == 0
+     assert not any(flag.startswith("--prefix-cache") for flag in host["exec"])
+     config = tmp_path / "config.toml"
+-    config.write_text('[prefix_cache]\nmemory = "8G"\ndisk_limit = "100G"\n[paths]\nprefix_cache = "~/records"\n')
++    config.write_text('[prefix_cache]\nmemory = "8G"\nrow_percent = 60\nverify_transfers = true\ndisk_limit = "100G"\n[paths]\nprefix_cache = "~/records"\n')
+     assert main(["run", "qwen3.8-flash", "--config", str(config), "--port", str(free_port())]) == 0
+     arguments = host["exec"]
+     assert arguments[arguments.index("--prefix-cache-disk") + 1] == str(tmp_path / "records")
+     assert arguments[arguments.index("--prefix-cache-memory") + 1] == "8G"
++    assert arguments[arguments.index("--prefix-cache-row-percent") + 1] == "60"
++    assert "--verify-host-cache-transfers" in arguments
+     assert arguments[arguments.index("--prefix-cache-disk-limit") + 1] == "100G"
+     assert "--prefix-cache-disk-transport" not in arguments
+ 

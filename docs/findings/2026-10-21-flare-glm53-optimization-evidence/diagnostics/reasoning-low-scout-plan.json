@@ -1,0 +1,54 @@
+{
+  "schema": "flare-policy-scout/v1",
+  "recorded_at": "2026-10-21T13:45:28.413132+00:00",
+  "scope": "Focused reasoning-policy quality and descriptive speed scout, not full serving comparison.",
+  "source": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "checkpoint": "dec48abd33efa73c3bb7c95b74eee10cad34f9be",
+  "template": {
+    "path": "glm53-upstream-chat-template.jinja",
+    "sha256": "0c4099f3382d6c92700dfb99725025360966fd73032f0ecf32377c0d9e6309c5"
+  },
+  "treatments": {
+    "default": {
+      "reasoning_effort": null,
+      "rendered_effort": "Max"
+    },
+    "low": {
+      "reasoning_effort": "low",
+      "rendered_effort": "Low"
+    }
+  },
+  "request_controls": {
+    "chat_template_kwargs": null,
+    "thinking_mode": "default",
+    "temperature": 1.0,
+    "top_p": 0.95,
+    "inference_seed": null
+  },
+  "controls": [
+    "Same pinned package and runtime for within-package policy comparison",
+    "Record actual prompt/cached tokens; independent cold and warm treatment per policy",
+    "Retain identical workload seed, prompts, output headroom and deterministic oracle; no equal-output assumption"
+  ],
+  "gates": [
+    "7 protocol checks",
+    "12 strict16 requests",
+    "96 natural canary requests",
+    "18 agentic observations",
+    "18 context observations",
+    "12 strict128 controls if time"
+  ],
+  "review": {
+    "reviewer": "/root/flare_trial_review",
+    "decision": "accept_with_conditions",
+    "findings": [
+      "Only exact low/high preserve intended value; other accepted effort strings render Max",
+      "enable_thinking=false inert for pinned template",
+      "chat_template_kwargs merges after top-level effort; must be null",
+      "Prefix bytes change with effort; cache treatment separate",
+      "Unseeded stochastic output and length differences are descriptive"
+    ]
+  },
+  "deadline": "2026-10-21T15:10:00Z",
+  "promoted": false
+}

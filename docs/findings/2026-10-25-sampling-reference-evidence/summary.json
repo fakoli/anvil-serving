@@ -1,0 +1,148 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "glm-sampling-reference-20261025-r2",
+  "complete": true,
+  "completion_scope": "The diagnostic campaign is closed and all planned stop/restoration steps were performed. Complete does not mean every gate passed: the kernel gate and strict functional restoration smoke failed.",
+  "execution": "stopped_at_kernel_gate",
+  "kernel_gate": "failed",
+  "boundary_failure_resolved": "unproven",
+  "candidate_weights_loaded": false,
+  "candidate_inference_requests": 0,
+  "promoted": false,
+  "promotion_authorized": false,
+  "ignis": "hold",
+  "restoration": "operational_verified_functional_failed",
+  "decision": {
+    "evidence_labels": ["functional"],
+    "decision_labels": ["no-promotion"],
+    "promotion_authorized": false,
+    "next_gate": "Treat the one-token kernel-policy failure and restored-incumbent JSON smoke failure as separate retained gaps. The stopped model probe is not automatically eligible for rerun."
+  },
+  "headline_results": [
+    {
+      "name": "forced_cases_passed",
+      "value": 8,
+      "planned": 8,
+      "evidence": "kernel-receipts.log"
+    },
+    {
+      "name": "ordinary_version_identical_rows",
+      "value": 271,
+      "planned": 272,
+    "evidence": "kernel-summary.json"
+    },
+    {
+      "name": "ordinary_policy_failed_rows",
+      "value": 1,
+      "planned": 272,
+      "evidence": "kernel-summary.json"
+    },
+    {
+      "name": "candidate_inference_requests",
+      "value": 0,
+      "evidence": "candidate-status.json"
+    }
+  ],
+  "gates": [
+    {
+      "name": "forced-logit-regression",
+      "status": "passed",
+      "evidence": "kernel-receipts.log"
+    },
+    {
+      "name": "ordinary-independent-reference",
+      "status": "failed",
+      "evidence": "kernel-summary.json"
+    },
+    {
+      "name": "tensor-peak",
+      "status": "passed",
+      "evidence": "kernel-summary.json"
+    },
+    {
+      "name": "end-to-end-boundary",
+      "status": "not_run"
+    },
+    {
+      "name": "operational-restoration",
+      "status": "passed",
+      "evidence": "restoration.json"
+    },
+    {
+      "name": "functional-restoration-smoke",
+      "status": "failed",
+      "evidence": "restoration-smoke.json"
+    }
+  ],
+  "measurement": {
+    "path": "synthetic CUDA kernel regression before model weights",
+    "ordinary_rows": 272,
+    "ordinary_cases": 8,
+    "forced_cases": 8,
+    "statistics": [],
+    "warm_cold_state": "JIT/cache state uncontrolled; no timing comparison"
+  },
+  "ordinary": {
+    "version_identical_rows": 271,
+    "version_difference_rows": 1,
+    "baseline_exact_reference_rows": 36,
+    "patched_exact_reference_rows": 35,
+    "failed_rows": 1,
+    "missing_oracle_tokens": 0,
+    "prefix_holes": 0,
+    "invalid_outputs": 0,
+    "input_mutations": 0
+  },
+  "failing_row": {
+    "seed": 58231,
+    "vocabulary": 154856,
+    "batch_rows": 64,
+    "row": 31,
+    "reference_and_baseline_kept_count": 114428,
+    "patched_kept_count": 114429,
+    "patched_extra_token": 30317,
+    "patched_extra_probability_mass": 2.0449949975313364e-06,
+    "upstream_count_envelope_passed": true,
+    "strict_local_no_worse_policy_passed": false
+  },
+  "resources": {
+    "peak_tensor_bytes": 170521600,
+    "peak_tensor_mib": 162.6220703125,
+    "tensor_peak_limit_bytes": 1073741824,
+    "candidate_oom_killed": false,
+    "post_exit_cgroup_observations": "unavailable"
+  },
+  "failures": [
+    "One patched ordinary row retained one more token than stock and the numerical reference, violating the predeclared per-row no-worse rule.",
+    "Candidate exited 1 before weights or inference."
+  ],
+  "limitations": [
+    "The reference is an independently implemented binary64 numerical convention, not an exact-real arithmetic proof.",
+    "Passing all forced cases does not establish the model-serving path or end-to-end reasoning-boundary behavior.",
+    "The one-token difference is within the upstream count-compatibility envelope but failed the stricter local acceptance policy.",
+    "No candidate weights, serving-worker trace, model inference, answer oracle, or performance measurement.",
+    "Exact operational restoration passed, but the sole restored-incumbent strict JSON smoke failed after emitting reasoning-like prose before the target object.",
+    "No matched pretrial smoke exists, so the functional-smoke failure is not evidence that the candidate caused a regression; the candidate never loaded weights.",
+    "Post-exit effective cgroup observations were unavailable; OOM-killed was false."
+  ],
+  "evidence": [
+    "kernel-receipts.log",
+    "kernel-summary.json",
+    "outcome-review.json",
+    "candidate-status.json",
+    "build.json",
+    "plan.json",
+    "reference-design.md",
+    "identity.json",
+    "source-freeze.json",
+    "restoration.json",
+    "closure.json",
+    "runtime-restored.json",
+    "router-restored.json",
+    "mode-restored.json",
+    "shared-memory-restored.json",
+    "gpus-restored.json",
+    "restoration-smoke.json",
+    "projection-ledger.json"
+  ]
+}

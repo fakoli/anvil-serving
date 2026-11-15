@@ -1,0 +1,258 @@
+{
+  "artifacts": [
+    {
+      "native_schema": "preflight/v2",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "checks",
+        "results",
+        "observations[].usage",
+        "observations[].seconds"
+      ],
+      "private_source_bytes": 20535,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "63411fc239252ad407006397f01bc14fb63b73183040db36f4df1417f466b0c9",
+      "public_bytes": 15545,
+      "public_path": "native/baseline-preflight.json",
+      "public_sha256": "e20bb20f635defdeb921a15433f7ad95dc18103684de96ffca436728344137eb",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "preflight/v2",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "checks",
+        "results",
+        "observations[].usage",
+        "observations[1].measured_prompt_tokens",
+        "observations[].seconds"
+      ],
+      "private_source_bytes": 2887,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "06ee7941a948f51feaedaa4db8cf516a5825bd872e517c986e2cd64026326da2",
+      "public_bytes": 2088,
+      "public_path": "native/baseline-context.json",
+      "public_sha256": "8d226f83811b832c231c0288d8e5a0614d71633999e5b1bd96dee042923d2fd4",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "multimodal-benchmark-evidence/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "requests",
+        "passed_attempts",
+        "failed_attempts",
+        "aggregates",
+        "attempts[].usage",
+        "attempts[].seconds"
+      ],
+      "private_source_bytes": 40778,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "f487def9fdff1de750f993ed1adf79ba7cf787024fcf26d85d498491bb7e1a0f",
+      "public_bytes": 36685,
+      "public_path": "native/baseline-vision18.json",
+      "public_sha256": "0fa471197bdd5788c74837bc481d53ca5123abdb6eddbb6f55ace0a7c34dd722",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.benchmark/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "completed",
+        "failed",
+        "performance_eligible",
+        "metrics",
+        "failures",
+        "request_timings"
+      ],
+      "private_source_bytes": 18764,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "f8271eedbcc0760505e5574bae4f42cae7778146fe41ca695ff2eeb34e139514",
+      "public_bytes": 18715,
+      "public_path": "native/baseline-capacity-c1-r1.json",
+      "public_sha256": "270e7091a327046b8a4e37fe0c0eb189447cf62116051f1da86ebec3fab68ea2",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.stability/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "status",
+        "rounds[].anchor.result.usage",
+        "rounds[].contender.result.usage",
+        "rounds[].anchor.result.ttft",
+        "rounds[].contender.result.ttft",
+        "retrieval_passed",
+        "runtime_passed",
+        "coverage_passed",
+        "performance_eligible"
+      ],
+      "private_source_bytes": 67648,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "30e659a3f1f0248f027d8a6f02b3d105255bc75b69f47a38dd04e9370e1695bc",
+      "public_bytes": 16081,
+      "public_path": "native/baseline-stability-r2.json",
+      "public_sha256": "cd56e013c1c81d0412a91074636bc882f47e3a5895da84e2791c716c1f66ff57",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.swe-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "state",
+        "official_grader_complete",
+        "summary",
+        "instances[].grader.resolved",
+        "stages[].status"
+      ],
+      "private_source_bytes": 36645,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "c86ef8d7146d7ecedfd68296c45be967f1979990478b02e88021d49a83fbb1c6",
+      "public_bytes": 25031,
+      "public_path": "native/baseline-swe5.json",
+      "public_sha256": "932445c37c7fba10108b1c197aec596af0edbf37041e730b74956989d372544b",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 37126,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "1ec6c258b53e0f04fb303dee27e7def0e0a4d86c1f02133728e5c9629265123f",
+      "public_bytes": 33327,
+      "public_path": "native/baseline-oracle8-r1.json",
+      "public_sha256": "cdcceceb2b8e97ec82c6f5d7db05601095a4f708185b0d83f41636220d753e88",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 37100,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "8d676357303f22fd9aba8d86d5b480b3e4c0a5d94307f4635236f2c3a97a0da1",
+      "public_bytes": 33323,
+      "public_path": "native/baseline-oracle8-r2.json",
+      "public_sha256": "8cae56e1f2c9c428f303dfbb0b3f1a3982fe2ba64566753b42021465f745ae30",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are present as empty strings",
+        "tool/history arrays retain length and item shape; confidential nested values are recursively sanitized",
+        "endpoint paths retain type with a synthetic loopback endpoint",
+        "container IDs retain type with a stable one-way redacted identifier",
+        "bound ports retain integer type with approved synthetic endpoint port 30000"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 37027,
+      "private_source_label": "retained-baseline-artifact",
+      "private_source_sha256": "e6f95f33516c3eb8659c5fc61c6a3635956d6785c0006f5f3466d80680638a59",
+      "public_bytes": 33322,
+      "public_path": "native/baseline-oracle8-r3.json",
+      "public_sha256": "f052beba6bd3eb4de69dad91e7942a400f6a796e80f50a7df61a4ddab24b7235",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    }
+  ],
+  "campaign_id": "2026-10-16-sglang-qwen-comparison",
+  "evidence_scope": "independently reviewed incumbent baseline native schema-preserving public projections",
+  "finalization": "deferred until campaign closure and independent public-artifact review; no artifact-manifest.json has been created",
+  "privacy_policy": "Private originals remain outside the repository. This ledger binds schema-preserving sanitized projections to private original SHA-256 values without disclosing private paths, endpoints, host/GPU UUIDs, account data, prompts, raw model output, or raw container identifiers.",
+  "public_identity": {
+    "endpoint": "127.0.0.1:30000",
+    "hardware": "NVIDIA RTX PRO 6000",
+    "host": "Primary Node",
+    "served_alias": "glm53-flash-baseline"
+  },
+  "schema": "anvil-serving.public-baseline-source-ledger/v1",
+  "served_name_disclosure": "The measured runtime alias is private; every occurrence is replaced with glm53-flash-baseline. baseline-public-configuration.json binds that public alias to exact public-safe model revision, runtime image digest, recipe and registry digests, engine, quantization, TP, context, and hardware, with field-level private-source SHA-256 references.",
+  "status": "terminal public projection ledger; campaign closure is recorded by the common artifact manifest and no-promotion decision summary",
+  "supporting_public_records": [
+    {
+      "private_source_bytes": 2380,
+      "private_source_label": "retained-final-recipe-status",
+      "private_source_sha256": "5136fffba2b333e4f4ad2a329bbfd93c73d3d3efc98f866523b11698893fe8e6",
+      "public_bytes": 2129,
+      "public_path": "baseline-public-configuration.json",
+      "public_sha256": "f153452ec57b044b6c829634e9a7ba3765557e5f3751c2829461ca472e67baf0",
+      "purpose": "public-safe exact configuration and served-name binding"
+    },
+    {
+      "public_bytes": 1688,
+      "public_path": "sanitization-provenance.json",
+      "public_sha256": "3dbaf041e31369c42847b169efeaed060f903a0f0dbab6ad481b2d4e51bb8d08",
+      "purpose": "disclosed schema-preserving redaction contract"
+    }
+  ]
+}

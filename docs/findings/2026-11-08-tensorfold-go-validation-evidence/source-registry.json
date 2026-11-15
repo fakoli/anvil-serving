@@ -1,0 +1,5 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [],
+  "basis": "Local pinned plans, selected native artifacts, managed owner readbacks and the versioned patch catalog; no external performance prior informed this focused check."
+}

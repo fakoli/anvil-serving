@@ -1,0 +1,54 @@
+{
+  "schema": "publication-transformations/v1",
+  "date": "2026-10-24",
+  "scope": "Publication copies only. Original experiment evidence is unchanged.",
+  "transformations": [
+    "Replace private observer and machine labels and runtime hostnames with generic labels.",
+    "Normalize Python import formatting where present; no executable behavior changes.",
+    "Update public provenance hashes; retain previous bindings."
+  ],
+  "files": [
+    {
+      "path": "diagnostics/final-monitoring.json",
+      "before_sha256": "d77b3c42b1130f0b6134df95763f949d24b9c37d26b81595590459a7819b8042",
+      "after_sha256": "f32fc0aa9183c7f89ed74f88e13732fad7f3e21046283c038b5091e6dccb7551",
+      "before_bytes": 23438,
+      "after_bytes": 23445
+    },
+    {
+      "path": "diagnostics/flare-control-monitoring-r2.json",
+      "before_sha256": "7161d2935705c1d5c31e5aae4f57aa491e9ef66543da0d4143bf7d3c8b856173",
+      "after_sha256": "b276d6c35a57b90b55f0fd2c54052b24e437bc467d17f40f01a0af4b83d8a27c",
+      "before_bytes": 23399,
+      "after_bytes": 23406
+    },
+    {
+      "path": "diagnostics/flare-instrumented-monitoring-r2.json",
+      "before_sha256": "4f406d8782fd12d0054d1b113d83c9de6dce4a6cbe330dfb96f972d8e272a520",
+      "after_sha256": "4709c79b6620caed1d868dbd17c67961d0e978c6c4b07f840eb95148c0fdbbfa",
+      "before_bytes": 22892,
+      "after_bytes": 22899
+    },
+    {
+      "path": "diagnostics/restored-monitoring-r2.json",
+      "before_sha256": "66a939e8e16e51de599e4aca367a335fd6e071c05de905e65bb97d39d3904070",
+      "after_sha256": "97ab8184df09c861c3bfd427f44df4b963c63e36ebb7f648a75cffa1d025a765",
+      "before_bytes": 23437,
+      "after_bytes": 23444
+    },
+    {
+      "path": "diagnostics/restored-monitoring.json",
+      "before_sha256": "f5467a095ef0f82cd894c86b2baff60f0d6962d6d71d85d309881b166309af54",
+      "after_sha256": "f3a06772f9a0f97875d4b62a811cc26f000bc848cb2f49e04b11ca3f8d74c643",
+      "before_bytes": 21556,
+      "after_bytes": 21563
+    },
+    {
+      "path": "provenance.json",
+      "before_sha256": "6d54daf4d3d3546dc5b91a7bd84e648788c17cb34c0406382651ce0e7b3fd8dd",
+      "after_sha256": "4535514044f4c00f5b0b42c9727450d2cec1bd20dcc60ef2022d4458c07034c8",
+      "before_bytes": 154218,
+      "after_bytes": 155411
+    }
+  ]
+}

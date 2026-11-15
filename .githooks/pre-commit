@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# pre-commit: keep the generated CLI-reference artifacts in sync with the
+# commit being made. Regenerates the inventory, the audit fixture, and the
+# generated docs index, then stages them so the commit is self-consistent
+# (a push of this commit will pass the docs-audit check as-is).
+#
+# Fail-closed: if the audit reports active legacy-reference violations the
+# update is refused and the commit is blocked — fix the violations first
+# (the same check gates CI).
+set -u
+
+# Only active in a checkout that has the audit script (other repos sharing
+# this hook directory are untouched).
+[ -f scripts/audit_cli_references.py ] || exit 0
+command -v python3 >/dev/null 2>&1 || {
+  echo "pre-commit: python3 not found; cannot sync the CLI reference inventory" >&2
+  exit 1
+}
+
+if ! python3 scripts/audit_cli_references.py --update >/dev/null; then
+  echo "pre-commit: CLI reference audit reported violations; resolve them before committing" >&2
+  exit 1
+fi
+
+for artifact in docs/CLI.md docs/CLI-REFERENCE-AUDIT.json tests/fixtures/cli_reference_audit/expected.json; do
+  [ -e "$artifact" ] && git add "$artifact"
+done
+exit 0

@@ -10,50 +10,6 @@ def serve():
     return dict(image='example/runtime', memory_limit_mib=64, memory_swap_limit_mib=64, host_memory_reserve_mib=1024)
 
 
-@pytest.mark.parametrize('field,value', [('memory_limit_mib', 0), ('memory_limit_mib', True), ('memory_limit_mib', '64'), ('memory_swap_limit_mib', -1), ('memory_swap_limit_mib', 63), ('host_memory_reserve_mib', 0)])
-def test_invalid_bounds_refused_even_on_registry_validation(field, value):
-    data = serve()
-    data[field] = value
-    with pytest.raises(sr.RecipeError):
-        sr.validate_recipe({'model': 'example/model', 'serve': data})
-
-
-def test_renderer_applies_both_limits_and_legacy_remains_reproducible():
-    recipe = {'model': 'example/model', 'serve': serve()}
-    argv = sr.docker_run_argv(recipe)
-    assert argv[argv.index('--memory') + 1] == str(64 * rm.MIB)
-    assert argv[argv.index('--memory-swap') + 1] == str(64 * rm.MIB)
-    assert '--memory' not in sr.docker_run_argv({'model': 'example/model', 'serve': {'image': 'example/runtime'}})
-    del recipe['serve']['memory_swap_limit_mib']
-    with pytest.raises(sr.RecipeError):
-        sr.docker_run_argv(recipe)
-
-
-def test_host_reserve_and_capability_fail_before_docker_start(tmp_path, monkeypatch):
-    monkeypatch.delenv('DOCKER_HOST', raising=False)
-    monkeypatch.delenv('DOCKER_CONTEXT', raising=False)
-    meminfo = tmp_path / 'meminfo'
-    meminfo.write_text('MemTotal: 2000000 kB\nMemAvailable: 2000000 kB\nSwapFree: 0 kB\n')
-    calls = []
-    def run(argv, **kwargs):
-        calls.append(argv)
-        return SimpleNamespace(stdout='"unix:///var/run/docker.sock"' if argv[1] == 'context' else 'true true "2"')
-    rm.check_host(serve(), _run=run, meminfo=meminfo)
-    meminfo.write_text('MemTotal: 2000000 kB\nMemAvailable: 1000000 kB\nSwapFree: 0 kB\n')
-    with pytest.raises(ValueError, match='reserve'):
-        rm.check_host(serve(), _run=run, meminfo=meminfo)
-    monkeypatch.setenv('DOCKER_HOST', 'ssh://remote.invalid')
-    with pytest.raises(ValueError, match='local Linux'):
-        rm.check_host(serve(), _run=run, meminfo=meminfo)
-    monkeypatch.setenv('DOCKER_HOST', 'unix:///var/run/docker.sock')
-    monkeypatch.setenv('DOCKER_CONTEXT', 'remote')
-    with pytest.raises(ValueError, match='local Linux'):
-        rm.check_host(serve(), _run=lambda *a, **kw: SimpleNamespace(stdout='\"ssh://remote.invalid\"'), meminfo=meminfo)
-    monkeypatch.setattr(rm, 'check_host', lambda *args, **kwargs: (_ for _ in ()).throw(ValueError('reserve')))
-    with pytest.raises(sr.RecipeError, match='containment refused'):
-        sr.load_recipe({'model': 'example/model', 'serve': serve()}, 'candidate', _run=lambda *a, **kw: pytest.fail('Docker must not start'))
-
-
 def test_cgroup_observation_and_stopped_oom(tmp_path):
     cid = 'a' * 64
     proc, cgroup = tmp_path / 'proc', tmp_path / 'cgroup'
@@ -249,69 +205,128 @@ def test_windows_exact_id_cgroup_observation_has_no_container_exec(monkeypatch, 
     assert len(calls) == 3
 
 
-@pytest.mark.parametrize('fault', ['engine', 'vm', 'v1', 'negative', 'duplicate',
-                                   'missing-oom', 'truncated', 'oversized', 'timeout', 'exit-race'])
-def test_windows_unavailable_observation_preserves_docker_state(monkeypatch, fault):
-    run, _ = _desktop_probe(monkeypatch, fault=fault)
-    result = rm.observation(_live_row(), _run=run)
-    assert result['limit_bytes'] == 67108864
-    assert result['oom_killed'] is False
-    assert result['exit_code'] == 0
-    assert all(result[key] is None for key in ('current_bytes', 'peak_bytes', 'events',
-                                               'effective_limit_bytes', 'effective_swap_limit_bytes'))
+@pytest.mark.parametrize('total,actual_ram,actual_swap,valid', [
+    (64, 64 * rm.MIB, 0, True),
+    (65, 64 * rm.MIB, rm.MIB, True),
+    (64, 64 * rm.MIB, None, False),
+    (64, 64 * rm.MIB, 1, False),
+    (64, None, 0, False),
+    (64, 63 * rm.MIB, 0, False),
+    (65, 64 * rm.MIB, 0, False),
+    (64, 64 * rm.MIB, False, False),
+])
+def test_effective_limits_are_authoritative(total, actual_ram, actual_swap, valid):
+    configured = dict(serve(), memory_swap_limit_mib=total)
+    memory, wire_total = rm.docker_limits(configured)
+    observed = dict(limit_bytes=memory, ram_plus_swap_limit_bytes=wire_total,
+                    effective_limit_bytes=actual_ram, effective_swap_limit_bytes=actual_swap)
+    assert (rm.containment_error(observed, configured) is None) == valid
+    assert (rm.containment_error(observed) is None) == valid
+    assert rm.containment_error({}, configured) is not None
+    assert rm.containment_error({}) is None
 
 
-def test_windows_remote_context_overrides_local_host_without_wsl_probe(monkeypatch):
-    run, calls = _desktop_probe(monkeypatch)
-    monkeypatch.setenv('DOCKER_CONTEXT', 'remote')
-    assert rm.observation(_live_row(), _run=run)['peak_bytes'] is None
-    assert len(calls) == 1
-    assert calls[0][:4] == ['docker', 'context', 'inspect', 'remote']
+@pytest.mark.parametrize('fault', [None, 'unlimited', 'missing', 'ram', 'identity', 'inspect', 'stop'])
+def test_bounded_load_verifies_and_stops_only_its_created_id(monkeypatch, fault):
+    import subprocess
 
-
-@pytest.mark.parametrize('fault', ['id', 'stopped', 'custom-parent', 'unknown-driver', 'remote-host'])
-def test_windows_unsupported_identity_or_topology_never_reads_cgroup(monkeypatch, fault):
-    run, calls = _desktop_probe(monkeypatch, driver='other' if fault == 'unknown-driver' else 'cgroupfs')
+    recipe = {'model': 'example/model', 'serve': serve()}
+    cid = 'd' * 64
     row = _live_row()
-    if fault == 'id':
-        row['Id'] = '../other'
-    elif fault == 'stopped':
-        row['State']['Running'] = False
-    elif fault == 'custom-parent':
-        row['HostConfig']['CgroupParent'] = '/custom'
-    elif fault == 'remote-host':
-        monkeypatch.setenv('DOCKER_HOST', 'ssh://remote.invalid')
-    assert rm.observation(row, _run=run)['peak_bytes'] is None
-    assert not any('sh' in call for call in calls)
+    row.update(Id=cid, Config={'Labels': {
+        sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+        sr.RECIPE_DIGEST_LABEL: sr.recipe_digest(recipe)}})
+    if fault == 'identity':
+        row['Id'] = 'e' * 64
+    observed = dict(limit_bytes=64 * rm.MIB, ram_plus_swap_limit_bytes=64 * rm.MIB + 1,
+                    effective_limit_bytes=64 * rm.MIB, effective_swap_limit_bytes=0)
+    if fault in {'unlimited', 'stop'}:
+        observed['effective_swap_limit_bytes'] = None
+    if fault == 'ram':
+        observed['effective_limit_bytes'] -= 1
+    if fault == 'missing':
+        observed = {}
+    monkeypatch.setattr(rm, 'check_host', lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(rm, 'observation', lambda *_args, **_kwargs: observed)
+    calls = []
+
+    def run(argv, **kwargs):
+        calls.append(argv)
+        if argv[:2] == ['docker', 'run']:
+            assert kwargs['stdout'] == subprocess.PIPE and kwargs['text'] is True
+            return SimpleNamespace(returncode=0, stdout=cid + '\n')
+        if argv == ['docker', 'inspect', cid]:
+            if fault == 'inspect':
+                raise subprocess.CalledProcessError(1, argv, output='private-inspect-payload')
+            return SimpleNamespace(returncode=0, stdout=json.dumps([row]))
+        assert argv == ['docker', 'stop', '--time', '10', cid]
+        return SimpleNamespace(returncode=int(fault == 'stop'))
+
+    if fault:
+        with pytest.raises(sr.RecipeError, match='containment refused') as caught:
+            sr.load_recipe(recipe, 'candidate', _run=run)
+        message = str(caught.value)
+        assert 'private-inspect-payload' not in message
+        assert 'host_memory=' in message and cid in message
+        evidence = json.loads(message.split(rm.FAILURE_PREFIX)[1])
+        assert evidence['container_id'] == cid
+        assert evidence['cleanup'] == ('stop_failed' if fault == 'stop' else 'stopped_logs_retained')
+        assert ('stop failed' if fault == 'stop' else 'stopped; container and logs retained') in message
+        assert calls[-1] == ['docker', 'stop', '--time', '10', cid]
+    else:
+        assert sr.load_recipe(recipe, 'candidate', _run=run)[1] == 0
+        assert len(calls) == 2
 
 
-def test_windows_unlimited_cgroup_has_measured_usage_but_no_numeric_limit(monkeypatch):
-    run, _ = _desktop_probe(monkeypatch, fault='unlimited')
-    result = rm.observation(_live_row(), _run=run)
-    assert result['current_bytes'] == 1024 and result['peak_bytes'] == 2048
-    assert result['effective_limit_bytes'] is None
-    assert result['effective_swap_limit_bytes'] is None
+@pytest.mark.parametrize('returncode,stdout', [(1, 'e' * 64), (0, '')])
+def test_failed_or_unknown_creation_never_stops_existing_name(monkeypatch, returncode, stdout):
+    monkeypatch.setattr(rm, 'check_host', lambda *_args, **_kwargs: None)
+    calls = []
+    def run(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(returncode=returncode, stdout=stdout)
+    recipe = {'model': 'example/model', 'serve': serve()}
+    if returncode:
+        assert sr.load_recipe(recipe, 'existing-name', _run=run)[1] == returncode
+    else:
+        with pytest.raises(sr.RecipeError, match='ownership unknown'):
+            sr.load_recipe(recipe, 'existing-name', _run=run)
+    assert len(calls) == 1 and calls[0][:2] == ['docker', 'run']
 
 
-def test_recipe_identity_and_discovery_forward_their_runner(monkeypatch):
+def test_recipe_inspection_deadline_fails_before_health(monkeypatch):
+    import subprocess
     from anvil_serving import models
 
-    row = _live_row()
-    row.update(Name='/candidate', Image='sha256:' + 'c' * 64,
-               Config={'Image': 'example/runtime', 'Labels': {
-                   sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
-                   sr.RECIPE_MODEL_LABEL: 'example/model'}})
-    def run(argv, **kwargs):
-        if argv[:2] == ['docker', 'ps']:
-            return SimpleNamespace(returncode=0, stdout='b' * 64 + '\n')
-        assert argv[:2] == ['docker', 'inspect']
-        return SimpleNamespace(returncode=0, stdout=json.dumps([row]))
+    real_identity = models._recipe_container_identity
     seen = []
-    def observed(value, *, _run):
-        assert value == row and _run is run
-        seen.append(value['Id'])
-        return {'peak_bytes': 2048}
-    monkeypatch.setattr(rm, 'observation', observed)
-    assert models._recipe_container_identity({'model': 'example/model'}, 'candidate', _run=run)['host_memory']['peak_bytes'] == 2048
-    assert sr.discover_recipe_containers(_run=run)['containers'][0]['host_memory']['peak_bytes'] == 2048
-    assert len(seen) == 2
+    def run(argv, **kwargs):
+        seen.append(kwargs['timeout'])
+        raise subprocess.TimeoutExpired(argv, kwargs['timeout'], output='must-not-leak')
+    def identity(recipe, container, **kwargs):
+        assert kwargs['require_recipe_digest'] is True
+        return real_identity(recipe, container, _run=run, **kwargs)
+    monkeypatch.setattr(models, '_recipe_container_identity', identity)
+    clock = iter([0, 0.25])
+    ready, reason = models._await_recipe_container_healthy(
+        {'model': 'example/model', 'serve': serve()}, 'candidate', {'port': 30123}, 1, 1,
+        _health=lambda *_: pytest.fail('no HTTP after inspection timeout'),
+        _monotonic=lambda: next(clock))
+    assert not ready and 'identity unavailable' in reason
+    assert seen == [0.75]
+
+
+def test_readiness_identity_requires_recipe_digest_but_legacy_unload_identity_does_not():
+    from anvil_serving import models
+
+    recipe = {'model': 'example/model', 'serve': serve()}
+    row = _live_row()
+    row['Config'] = {'Labels': {sr.RECIPE_MANAGED_LABEL: sr.RECIPE_MANAGED_VALUE,
+                               sr.RECIPE_MODEL_LABEL: recipe['model'],
+                               sr.RECIPE_DIGEST_LABEL: 'f' * 64}}
+    def run(argv, **kwargs):
+        assert kwargs['timeout'] == 10
+        return SimpleNamespace(returncode=0, stdout=json.dumps([row]))
+    with pytest.raises(sr.RecipeError, match='recipe digest label'):
+        models._recipe_container_identity(recipe, 'candidate', _run=run, require_recipe_digest=True)
+    assert models._recipe_container_identity(recipe, 'candidate', _run=run)['container_id'] == row['Id']

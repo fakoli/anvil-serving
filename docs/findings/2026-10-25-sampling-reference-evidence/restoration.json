@@ -1,0 +1,64 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "glm-sampling-reference-20261025-r2",
+  "mutation_required": true,
+  "status": "incomplete",
+  "verified": false,
+  "operational_restoration": {
+    "verified": true,
+    "scope": "Exact operational configuration, image, model, source, runtime template, tokenizer, launch, mounts, router configuration, exclusive mode, GPU ownership, and managed readiness were restored.",
+    "evidence": [
+      "closure.json",
+      "runtime-restored.json",
+      "router-restored.json",
+      "mode-restored.json",
+      "shared-memory-restored.json",
+      "gpus-restored.json"
+    ]
+  },
+  "functional_smoke": {
+    "status": "failed",
+    "requests": 1,
+    "evidence": "restoration-smoke.json",
+    "reason": "The response contained reasoning-like prose before the requested JSON object and failed strict JSON parsing. No matched pretrial smoke exists, so regression is unproven."
+  },
+  "starting_state": {
+    "captured": true,
+    "evidence": ["plan.json", "identity.json"]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": ["closure.json"],
+    "scope": "Operationally restored and idle; functional smoke failed."
+  },
+  "post_run_checks": [
+    {"check": "exact-operational-identity", "passed": true, "evidence": "runtime-restored.json"},
+    {"check": "router-ready-admitting-active-zero", "passed": true, "evidence": "router-restored.json"},
+    {"check": "exclusive-incumbent-mode-and-gpu-ownership", "passed": true, "evidence": "mode-restored.json"},
+    {"check": "engine-running-zero-waiting-zero", "passed": true, "evidence": "closure.json"},
+    {"check": "no-new-oom-kills", "passed": true, "evidence": "closure.json"},
+    {"check": "strict-json-functional-smoke", "passed": false, "evidence": "restoration-smoke.json"}
+  ],
+  "resources": {
+    "available_before_bytes": 71636434944,
+    "available_after_bytes": 71831248896,
+    "oom_delta": 0,
+    "swapin_pages_delta": 17,
+    "swapout_pages_delta": 27,
+    "restored_container_peak_bytes": 35670380544,
+    "restored_container_memory_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    }
+  },
+  "phase_gaps": [
+    "No sample was captured exactly between incumbent unload and candidate load; the first entry sample occurred during the synthetic gate.",
+    "Candidate cgroup final and peak values were unavailable after the deliberate startup assertion exit; Docker OOM-killed was false."
+  ],
+  "generation_smoke_sent": true,
+  "not_applicable_reason": null
+}

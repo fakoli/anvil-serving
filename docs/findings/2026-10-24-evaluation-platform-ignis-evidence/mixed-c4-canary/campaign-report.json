@@ -1,0 +1,417 @@
+{
+  "arms": [
+    {
+      "arm": "arm-1",
+      "jobs": {
+        "attempted": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "cancelled": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "completed": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "failed": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "planned": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "scored": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "submitted": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "unfinished": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        }
+      },
+      "samples": {
+        "attempted": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "cancelled": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "failed": {
+          "count": 1,
+          "known_count": 1,
+          "unknown_cells": 0
+        },
+        "planned": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "scored": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "submitted": {
+          "count": 4,
+          "known_count": 4,
+          "unknown_cells": 0
+        },
+        "unfinished": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        }
+      }
+    }
+  ],
+  "cells": [
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-1",
+      "evidence_status": "retained",
+      "identity_status": "verified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": true,
+      "native_aggregate_metrics": {},
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3670.878066914156,
+          "passed": true
+        }
+      ],
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 1,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 1,
+        "submitted": 1,
+        "unfinished": 0
+      },
+      "spec_sha256": "6c3e7345a5980a63c0aef2af457e4a47bd13a4680388fc811b4e0db9bd0d1e15",
+      "state": "completed",
+      "suite": "agentic",
+      "task": "task-1",
+      "telemetry_coverage": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-2",
+      "evidence_status": "retained",
+      "identity_status": "verified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": true,
+      "native_aggregate_metrics": {},
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4637.868266785517,
+          "passed": true
+        }
+      ],
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 1,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 1,
+        "submitted": 1,
+        "unfinished": 0
+      },
+      "spec_sha256": "a4bb4428025937cd951f4acb998dbc7049e131ef17e504725e9e767a2e582ccc",
+      "state": "completed",
+      "suite": "agentic",
+      "task": "task-2",
+      "telemetry_coverage": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-3",
+      "evidence_status": "retained",
+      "identity_status": "verified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": true,
+      "native_aggregate_metrics": {},
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 1,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 1,
+        "submitted": 1,
+        "unfinished": 0
+      },
+      "spec_sha256": "434abb772506cbc623fefc9eef1cb7870a88da08b8bcb60f8c829fd61a7a0ada",
+      "state": "completed",
+      "suite": "aider",
+      "task": "task-3",
+      "telemetry_coverage": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-4",
+      "evidence_status": "retained",
+      "identity_status": "verified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": true,
+      "native_aggregate_metrics": {},
+      "outcomes": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 1,
+        "cancelled": 0,
+        "failed": 1,
+        "planned": 1,
+        "scored": 1,
+        "submitted": 1,
+        "unfinished": 0
+      },
+      "spec_sha256": "55217056af386b63b912c6c9a8b9b5375bc864b5f59f6984dcef34265f71e04e",
+      "state": "completed",
+      "suite": "aider",
+      "task": "task-4",
+      "telemetry_coverage": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      }
+    }
+  ],
+  "comparisons": [],
+  "jobs": {
+    "attempted": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    }
+  },
+  "labels": "synthetic labels in manifest order; private identities omitted",
+  "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+  "promotion_authorized": false,
+  "repeats": [
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 1,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 1,
+      "task": "task-1"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 1,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 1,
+      "task": "task-2"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 1,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 1,
+      "task": "task-3"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 1,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 1,
+      "task": "task-4"
+    }
+  ],
+  "samples": {
+    "attempted": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 1,
+      "known_count": 1,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 4,
+      "known_count": 4,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    }
+  },
+  "schema": "anvil-serving.benchmark-campaign-report/v1",
+  "timing": {
+    "active_wall_seconds": 308.53438065899536,
+    "child_active_wall_seconds": 292.2098744949326,
+    "known_active_wall_seconds": 308.53438065899536,
+    "observed_job_overlap": 4,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 0,
+    "unknown_intervals": 0
+  }
+}

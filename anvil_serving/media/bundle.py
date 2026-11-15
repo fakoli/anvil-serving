@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 import re
 import shlex
 import subprocess
@@ -206,14 +208,26 @@ def inventory(
     version: str,
     *,
     lock_path: str | Path = DEFAULT_LOCK,
-    models_volume: str,
+    models_volume: str | None = None,
+    models_root: str | Path | None = None,
     runner: Runner = subprocess.run,
+    _lock: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return an exact, bounded inventory for one pinned workflow."""
 
-    volume = _named_volume(models_volume, "models volume")
-    lock = _read_lock(lock_path)
+    if (models_volume is None) == (models_root is None):
+        raise MediaError("media_bundle_invalid", "select exactly one model volume or host model root")
+    # Qualification shares its validated snapshot, so inventory cannot read a different lock.
+    lock = _read_lock(lock_path) if _lock is None else _lock
     workflow = _workflow(lock, workflow_id, version)
+    if models_root is not None:
+        root = Path(models_root).expanduser().resolve()
+        assets = [_host_asset_probe(root, model) for model in workflow["models"]]
+        return {"schema": "anvil-serving.media-bundle-inventory/v1",
+                "workflow": {"id": workflow_id, "version": version, "graphSha256": workflow["graph_sha256"]},
+                "modelsRoot": str(root), "rootExists": root.is_dir(), "assets": assets,
+                "ready": bool(assets) and all(item["state"] == "exact" for item in assets)}
+    volume = _named_volume(models_volume, "models volume")
     present = _volume_exists(volume, runner=runner)
     image = lock["staging"]["container"]
     assets = (
@@ -237,6 +251,39 @@ def inventory(
         "assets": assets,
         "ready": bool(assets) and all(item["state"] == "exact" for item in assets),
     }
+
+
+def _host_asset_probe(root: Path, model) -> dict:
+    target = _target(model["target"])
+    path = (root / target).resolve()
+    if not path.is_relative_to(root):
+        raise MediaError("media_bundle_invalid", "model target escapes the host model root")
+    result = {"target": target, "expectedBytes": model["size"],
+              "expectedSha256": model["sha256"], "state": "missing"}
+    try:
+        if not path.is_file():
+            return result
+        with path.open("rb") as source:
+            size = os.fstat(source.fileno()).st_size
+            if size != model["size"]:
+                result.update(observedBytes=size, state="mismatch")
+                return result
+            digest = hashlib.sha256()
+            remaining = size
+            while remaining:
+                data = source.read(min(1024 * 1024, remaining))
+                if not data:
+                    raise OSError("model asset changed during verification")
+                digest.update(data)
+                remaining -= len(data)
+            if source.read(1):
+                raise OSError("model asset changed during verification")
+            digest = digest.hexdigest()
+    except OSError as exc:
+        raise MediaError("media_bundle_inventory_failed", "host model asset is unreadable", status=503) from exc
+    result.update(observedBytes=size, observedSha256=digest,
+                  state="exact" if size == model["size"] and digest == model["sha256"] else "mismatch")
+    return result
 
 
 def _free_bytes(volume: str, image: str, *, runner: Runner) -> int:

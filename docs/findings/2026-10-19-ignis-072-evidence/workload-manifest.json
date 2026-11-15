@@ -1,0 +1,54 @@
+{
+  "deadline_transport_probe": {
+    "interpretation_limit": "Successful capped generation only. It does not cross the prior 120-second default or exercise the deadline-expiry reply path.",
+    "max_completion_tokens": 16384,
+    "observed_elapsed_seconds": 112.1200392980827,
+    "observed_finish_reason": "length"
+  },
+  "long_context": {
+    "actual_prompt_tokens": {
+      "needle": 100739,
+      "tools": 103256
+    },
+    "configured_context_tokens": 131072,
+    "original_attempt": "retained failed native evidence",
+    "rerun": "two observed probes passed"
+  },
+  "preflight": {
+    "c1_checks": [
+      "smoke",
+      "json",
+      "tools",
+      "streaming-tools",
+      "tool-result"
+    ],
+    "c8_requested_concurrency": 8,
+    "c8_workload": "shared-prefix tool batch",
+    "sampling": {
+      "temperature": 1.0,
+      "top_p": 0.95
+    },
+    "thinking_mode": "default"
+  },
+  "schema": "anvil-serving.ignis-workload-manifest/v1",
+  "scope": "Closed focused qualification packet; no promotion follows.",
+  "swe": {
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "max_completion_tokens": 16384,
+    "max_steps": 60,
+    "sampling": {
+      "temperature": 1.0,
+      "top_p": 0.95
+    },
+    "status": "terminal incomplete: attempted 5; graded 1; resolved 0; Django officially unresolved; four 60-step LimitsExceeded cases empty and ungraded",
+    "workers": 1,
+    "official_grader_complete": false
+  }
+}

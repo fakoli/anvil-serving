@@ -1,0 +1,19 @@
+{
+  "schema": "publication-transformations/v1",
+  "date": "2026-10-24",
+  "scope": "Publication copies only. Original experiment evidence is unchanged.",
+  "transformations": [
+    "Replace private observer and machine labels and runtime hostnames with generic labels.",
+    "Normalize Python import formatting where present; no executable behavior changes.",
+    "Update public provenance hashes; retain previous bindings."
+  ],
+  "files": [
+    {
+      "path": "reproduction/deadline_probe.py",
+      "before_sha256": "0d877c50e9176b74dc351b800fd20656b278f39531fdafc91a2154911d078af1",
+      "after_sha256": "b49ef26a075aa7e538055900a4a44988219e56a9be36853c514b05f2093b0a23",
+      "before_bytes": 3470,
+      "after_bytes": 3488
+    }
+  ]
+}

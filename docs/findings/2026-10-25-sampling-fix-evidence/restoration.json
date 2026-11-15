@@ -1,0 +1,100 @@
+{
+  "campaign_id": "glm-sampling-fix-20261025-r1",
+  "differences": [
+    "Expected new incumbent container generation after managed rollback.",
+    "Candidate remains exited for log retention; no candidate weights or inference.",
+    "Host swap counters increased by 3 input pages and 5 output pages (4096 bytes per page)."
+  ],
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "closure.json"
+    ],
+    "scope": "Readiness and exact runtime identity; no generation smoke."
+  },
+  "generation_smoke_sent": false,
+  "mutation_required": true,
+  "not_applicable_reason": null,
+  "post_run_checks": [
+    {
+      "check": "exact-original-image-and-model-revision",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "captured-source-template-tokenizer-bytes-equal",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "command-entrypoint-mounts-selected-environment-equal",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "router-configuration-unchanged",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "authenticated-router-ready-admitting-and-idle",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "engine-running-zero-and-waiting-zero",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "no-new-host-oom-kills",
+      "evidence": "closure.json",
+      "passed": true
+    },
+    {
+      "check": "restored-container-memory-events-zero",
+      "evidence": "closure.json",
+      "passed": true
+    }
+  ],
+  "resources": {
+    "all_captured_source_template_tokenizer_bytes_equal": true,
+    "authenticated_router_ready_admitting_idle": true,
+    "available_after_bytes": 71948771328,
+    "available_before_bytes": 71505248256,
+    "candidate_container": "retained_exited",
+    "cgroup_memory_peak_bytes": 33015083008,
+    "command_entrypoint_mounts_selected_env_equal": true,
+    "container_generation_changed": true,
+    "engine_running": 0,
+    "engine_waiting": 0,
+    "exact_original_image_model_revision": true,
+    "generation_smoke_sent": false,
+    "new_host_oom_kills": 0,
+    "restored_container_oom_events": {
+      "high": 0,
+      "low": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_group_kill": 0,
+      "oom_kill": 0
+    },
+    "router_config_unchanged": true,
+    "status": "verified",
+    "swap_page_bytes": 4096,
+    "swap_page_delta": {
+      "pswpin": 3,
+      "pswpout": 5
+    }
+  },
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "identity.json",
+      "plan.json"
+    ]
+  },
+  "status": "verified",
+  "verified": true
+}

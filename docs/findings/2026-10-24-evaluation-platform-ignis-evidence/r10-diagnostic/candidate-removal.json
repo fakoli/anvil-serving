@@ -1,0 +1,13 @@
+{
+  "original_error_message_sha256": "9502c666bb2b5dec9f6cb76f955eca876ff824c5003c77ebb67e4390a727dcfa",
+  "post_unload_error_code": "execution_failed",
+  "post_unload_interpretation": "Managed status returned no such object for the exact owned candidate.",
+  "post_unload_status_ok": false,
+  "schema": "anvil-serving.managed-removal-diagnostic/v1",
+  "scope": "Removal evidence only; incumbent restoration remains separate.",
+  "unload": {
+    "exit_code": 0,
+    "finished_at": "2026-10-25T08:09:21.664290+00:00",
+    "started_at": "2026-10-25T08:09:18.986214+00:00"
+  }
+}

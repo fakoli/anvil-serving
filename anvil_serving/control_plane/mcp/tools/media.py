@@ -9,9 +9,10 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Mapping
 
-from ....media.artifacts import ArtifactStore
+from ....media.artifacts import MAX_RANGE_BYTES, ArtifactStore
 from ....media.cli import DEFAULT_REGISTRY
 from ....media.comfyui import ComfyUIClient
+from ....media.downloads import ArtifactDownloadLinks
 from ....media.errors import MediaError
 from ....media.jobs import MediaJobStore
 from ....media.operations import MediaOperations
@@ -25,14 +26,17 @@ from ..security import CallerContext, require_scope
 
 
 _SERVICE_OVERRIDE: contextvars.ContextVar[
-    tuple[MediaOperations, ComfyUIClient | None] | None
+    tuple[MediaOperations, ComfyUIClient | None, str, ArtifactDownloadLinks | None] | None
 ] = contextvars.ContextVar("anvil_media_service_override", default=None)
 
 
 @contextmanager
-def service_context(operations: MediaOperations, backend: ComfyUIClient | None):
+def service_context(
+    operations: MediaOperations, backend: ComfyUIClient | None, *, public_origin: str = "",
+    download_links: ArtifactDownloadLinks | None = None,
+):
     """Bind one request to the gateway's shared durable media service."""
-    token = _SERVICE_OVERRIDE.set((operations, backend))
+    token = _SERVICE_OVERRIDE.set((operations, backend, public_origin, download_links))
     try:
         yield
     finally:
@@ -42,7 +46,7 @@ def service_context(operations: MediaOperations, backend: ComfyUIClient | None):
 def _services() -> tuple[MediaOperations, ComfyUIClient | None]:
     override = _SERVICE_OVERRIDE.get()
     if override is not None:
-        return override
+        return override[0], override[1]
     registry = os.environ.get("ANVIL_MEDIA_WORKFLOW_REGISTRY", str(DEFAULT_REGISTRY))
     state = os.environ.get(
         "ANVIL_MEDIA_STATE_DB",
@@ -123,6 +127,16 @@ def tool_media_workflow_validate(args: dict) -> dict:
     )
 
 
+def tool_media_workflow_prepare(args: dict) -> dict:
+    caller = require_scope("media:read")
+    operations, _ = _services()
+    return _translate(lambda: operations.workflow_prepare(
+        _str_arg(args, "workflow_id", required=True), _str_arg(args, "version", required=True),
+        args.get("parameters", {}), principal=caller.principal,
+        idempotency_key=_str_arg(args, "idempotency_key", required=True),
+        brief=args.get("brief"), quality_profile=_str_arg(args, "quality_profile", "")))
+
+
 def tool_media_workflow_run(args: dict) -> dict:
     caller = require_scope("media:submit")
     operations, backend = _services()
@@ -133,6 +147,7 @@ def tool_media_workflow_run(args: dict) -> dict:
     version = _str_arg(args, "version", required=True)
     requested_profile = _str_arg(args, "quality_profile", "")
     idempotency_key = _str_arg(args, "idempotency_key", required=True)
+    plan_digest = _str_arg(args, "plan_digest", "") or None
     request_parameters = copy.deepcopy(dict(parameters))
 
     def submit() -> dict:
@@ -144,6 +159,7 @@ def tool_media_workflow_run(args: dict) -> dict:
             idempotency_key=idempotency_key,
             backend=_backend(backend),
             quality_profile=requested_profile,
+            plan_digest=plan_digest,
         )
         job = result.get("job")
         if isinstance(job, dict) and job.get("state") == "awaiting_approval":
@@ -182,6 +198,8 @@ def tool_media_workflow_run(args: dict) -> dict:
                 "job_id": job_id,
                 "approval_transaction_id": transaction_id,
             }
+            if plan_digest:
+                result["resumeBundle"]["plan_digest"] = plan_digest
         return result
 
     return _translate(submit)
@@ -218,6 +236,27 @@ def tool_media_artifact_inspect(args: dict) -> dict:
 
     def inspect() -> dict:
         result = operations.artifact_inspect(artifact_id, principal=owner)
+        artifact = result["artifact"]
+        override = _SERVICE_OVERRIDE.get()
+        if override is not None and override[2] and owner == caller.principal:
+            artifact["downloadUrl"] = override[2].rstrip("/") + artifact["resource"]
+            artifact["requiresAuthentication"] = True
+            artifact["maxRangeBytes"] = MAX_RANGE_BYTES
+            if override[3] is not None:
+                artifact.update(override[3].issue(artifact))
+            if artifact["mediaType"] == "video/mp4":
+                result["_mcpContent"] = [{
+                    "type": "resource_link",
+                    "uri": artifact["downloadUrl"],
+                    "name": artifact_id + ".mp4",
+                    "mimeType": artifact["mediaType"],
+                    "size": artifact["byteLength"],
+                    "description": (
+                        "Scoped video download; opens directly until downloadExpiresAt."
+                        if not artifact["requiresAuthentication"] else
+                        "Video download; use the existing MCP credential in the Authorization header and bounded Range requests for larger files."
+                    ),
+                }]
         image_content = operations.artifacts.mcp_image_content(
             artifact_id,
             principal=owner,
@@ -265,6 +304,18 @@ FAMILY = ToolFamily(
             "Validate one exact named workflow against its configured worker.", _WORKFLOW,
             tool_media_workflow_validate, scope="media:read", required=("workflow_id", "version"),
         ),
+        "media_workflow_prepare": _tool(
+            "Compile a shot brief with the selected recipe, check owned references, and return exact runArguments. No job is submitted; backend readiness is checked separately.",
+            {**_WORKFLOW,
+             "parameters": {"type": "object", "additionalProperties": True, "maxProperties": 32},
+             "brief": {"type": "object", "additionalProperties": False, "maxProperties": 8,
+                       "properties": {name: {"type": "string", "maxLength": 4096} for name in
+                                      ("scene", "subjects", "action", "setting", "camera", "lighting", "style", "dialogue")}},
+             "quality_profile": {"type": "string", "minLength": 0, "maxLength": 128},
+             "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128}},
+            tool_media_workflow_prepare, scope="media:read",
+            required=("workflow_id", "version", "idempotency_key"),
+        ),
         "media_workflow_run": _tool(
             "Submit one allowlisted named workflow and return an opaque durable job.",
             {
@@ -276,6 +327,7 @@ FAMILY = ToolFamily(
                     "type": "string", "minLength": 0, "maxLength": 128,
                 },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
+                "plan_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
             },
             tool_media_workflow_run,
             scope="media:submit",
@@ -292,7 +344,7 @@ FAMILY = ToolFamily(
             tool_media_job_cancel, scope="media:cancel", required=("job_id",),
         ),
         "media_artifact_inspect": _tool(
-            "Inspect authenticated artifact metadata; eligible bounded images include native content, while video and oversized images remain resource-only.",
+            "Inspect owned artifact metadata and downloadUrl. Follow requiresAuthentication and downloadExpiresAt: signed URLs open directly; otherwise use the existing MCP credential in the Authorization header. Reusable credentials are never embedded in URLs. Eligible bounded images include native content; videos include resource links when the gateway origin is configured.",
             {"artifact_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
             tool_media_artifact_inspect, scope="media:read", required=("artifact_id",),
         ),

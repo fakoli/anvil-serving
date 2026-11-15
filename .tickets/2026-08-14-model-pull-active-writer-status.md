@@ -15,6 +15,14 @@ inspecting running Docker commands for `hf download` before starting the one
 managed pull. The model lifecycle remained under `anvil-serving models pull`;
 Docker was not used to download, stop, or modify anything.
 
+The 2026-10-16 QUASAR candidate campaign reproduced this gap: a managed pull
+showed no intermediate progress, so one bounded read-only Docker process query
+confirmed the owning download. Subsequent progress checks used managed cache
+inventory; all download, import, and candidate lifecycle mutations remained
+behind Anvil Serving commands. The fleet transfer also needed an authenticated,
+resumable native file transfer before managed hash verification and import.
+This observation does not close the active-writer status gap.
+
 ## Required behavior
 
 1. Add a typed read-only model-download status surface to the CLI and the

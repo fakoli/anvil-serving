@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-11-01-swift-tp1-gpu0",
+  "observed_at": "2026-11-02T01:08:00Z",
+  "sources": [
+    {
+      "id": "swift-publisher",
+      "url": "https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27b/tree/b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "published_or_observed": "observed 2026-11-01",
+      "observed_at": "2026-11-01T23:25:48Z",
+      "age_class": "current-revision",
+      "evidence_type": "official",
+      "hardware_runtime_relevance": "exact BF16 checkpoint and MTP/head/context guidance",
+      "decision_impact": "pins checkpoint and motivates local MTP comparison"
+    },
+    {
+      "id": "sglang-health-source",
+      "url": "https://github.com/sgl-project/sglang/blob/0bcd822377da7b5718e674eaf9c870d349424dd1/python/sglang/srt/entrypoints/http_server.py",
+      "published_or_observed": "observed 2026-11-01",
+      "observed_at": "2026-11-01T23:25:48Z",
+      "age_class": "current-revision",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "exact engine revision and health semantics",
+      "decision_impact": "local deep-generation evidence remains required"
+    },
+    {
+      "id": "historical-swift",
+      "url": "https://github.com/fakoli/anvil-serving/blob/269bc88e3cb84bd82d14d170058d1c1e493c71cc/docs/findings/2026-10-05-swift-96gb-baseline.md",
+      "published_or_observed": "observed 2026-11-01",
+      "observed_at": "2026-11-01T23:25:48Z",
+      "age_class": "historical",
+      "evidence_type": "local-historical",
+      "hardware_runtime_relevance": "different converted artifact/runtime",
+      "decision_impact": "reuses coding tasks but does not supply current BF16 proof"
+    }
+  ]
+}

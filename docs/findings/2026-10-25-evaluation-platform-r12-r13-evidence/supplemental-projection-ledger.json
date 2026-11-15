@@ -1,0 +1,233 @@
+{
+  "entries": [
+    {
+      "derivative_bytes": 120279,
+      "derivative_sha256": "338b6d636a6f5920d02ff662fd8ef83a75c1948769a052f6156bd931b71be481",
+      "original_private_bytes": 1042409,
+      "original_private_sha256": "21f74a35aa136e5955abd439d34303d428fcd1ea0d72ced313a33735579f5d5d",
+      "path": "r12-closure-and-cancellation.json",
+      "transformation": "Select audit rows and exact numeric/status/grade/drain facts; map run/batch IDs to manifest-order public IDs; omit activation, process/container/host IDs and private reference paths. Cancellation explanation is a separately bound independent source interpretation, not a new measurement."
+    },
+    {
+      "derivative_bytes": 120279,
+      "derivative_sha256": "338b6d636a6f5920d02ff662fd8ef83a75c1948769a052f6156bd931b71be481",
+      "original_private_bytes": 10534,
+      "original_private_sha256": "8ae6211a4eb892c4df32f461c65e709517b742f0753ad3c3620030a19e4dca0d",
+      "path": "r12-closure-and-cancellation.json",
+      "transformation": "Select audit rows and exact numeric/status/grade/drain facts; map run/batch IDs to manifest-order public IDs; omit activation, process/container/host IDs and private reference paths. Cancellation explanation is a separately bound independent source interpretation, not a new measurement."
+    },
+    {
+      "derivative_bytes": 120279,
+      "derivative_sha256": "338b6d636a6f5920d02ff662fd8ef83a75c1948769a052f6156bd931b71be481",
+      "original_private_bytes": 222247,
+      "original_private_sha256": "ca84b3ad9305c0cb9384e27fed55c55e3a513d1347685656733a356fc5b59fe4",
+      "path": "r12-closure-and-cancellation.json",
+      "transformation": "Select audit rows and exact numeric/status/grade/drain facts; map run/batch IDs to manifest-order public IDs; omit activation, process/container/host IDs and private reference paths. Cancellation explanation is a separately bound independent source interpretation, not a new measurement."
+    },
+    {
+      "derivative_bytes": 73199,
+      "derivative_sha256": "df64c351d4a2c89c5354f219e58a6d3e5b0b4f7117ed71903138bef197ba2f81",
+      "original_private_bytes": 63289,
+      "original_private_sha256": "551577d1483ecbd88fd2277eb5df1d96baacfe72e0c71cf25ac0658e3ac67ebe",
+      "path": "r13/campaign-report.json",
+      "transformation": "Remove only successful CLI envelopes; retain full native report object unchanged."
+    },
+    {
+      "derivative_bytes": 3580,
+      "derivative_sha256": "f6e7c7c23d1b27dc19f221b94c0bd71be446386f9043bce05e8f6d3d186a4421",
+      "original_private_bytes": 10681,
+      "original_private_sha256": "1403265bd0bef649cd6733a9b1b4cac5f29456183da787b850cfd2b15a9adf3c",
+      "path": "r13/admission-refusal.json",
+      "transformation": "Select exact failure/admission thresholds, later separately timestamped memory facts, absence and source order; omit full commands, registry/topology paths, GPU/container IDs and memory-snapshot digest. Exact refusal-time memory and allocation cause remain unknown."
+    },
+    {
+      "derivative_bytes": 3580,
+      "derivative_sha256": "f6e7c7c23d1b27dc19f221b94c0bd71be446386f9043bce05e8f6d3d186a4421",
+      "original_private_bytes": 2815,
+      "original_private_sha256": "53c796838c39c35e098080d17e77a2fcfe4cd06b18d7edda34a286a8a4882793",
+      "path": "r13/admission-refusal.json",
+      "transformation": "Select exact failure/admission thresholds, later separately timestamped memory facts, absence and source order; omit full commands, registry/topology paths, GPU/container IDs and memory-snapshot digest. Exact refusal-time memory and allocation cause remain unknown."
+    },
+    {
+      "derivative_bytes": 3580,
+      "derivative_sha256": "f6e7c7c23d1b27dc19f221b94c0bd71be446386f9043bce05e8f6d3d186a4421",
+      "original_private_bytes": 1243,
+      "original_private_sha256": "69979bb20672d9d32b69eed66c89124358372d3ba7de1558bd6c354420063ef8",
+      "path": "r13/admission-refusal.json",
+      "transformation": "Select exact failure/admission thresholds, later separately timestamped memory facts, absence and source order; omit full commands, registry/topology paths, GPU/container IDs and memory-snapshot digest. Exact refusal-time memory and allocation cause remain unknown."
+    },
+    {
+      "derivative_bytes": 35027,
+      "derivative_sha256": "870d256f9763d8a22818e5919e280363ab0a0d63242c6a040c02e6bd4cce13e6",
+      "original_private_bytes": 35905,
+      "original_private_sha256": "9ae727d0508d6a92afb93b7c7989a623320e2dcc48bf67b02539a89b9f80d2ab",
+      "path": "r13/frozen-population.json",
+      "transformation": "Retain all44 eligible and4 excluded original native matching keys, outcomes, budgets and source/model pins; replace baseline run IDs with R12 manifest-order cell IDs; omit private paths, candidate activation/endpoints/GPU UUIDs and executable prepared plans. Candidate paired measurement count derives from zero submissions."
+    },
+    {
+      "derivative_bytes": 35027,
+      "derivative_sha256": "870d256f9763d8a22818e5919e280363ab0a0d63242c6a040c02e6bd4cce13e6",
+      "original_private_bytes": 46564,
+      "original_private_sha256": "01c2960b832deb3ad9c6813bf1a04b44fe7f7e1cbcec901ef5b6a68a2a4ee175",
+      "path": "r13/frozen-population.json",
+      "transformation": "Retain all44 eligible and4 excluded original native matching keys, outcomes, budgets and source/model pins; replace baseline run IDs with R12 manifest-order cell IDs; omit private paths, candidate activation/endpoints/GPU UUIDs and executable prepared plans. Candidate paired measurement count derives from zero submissions."
+    },
+    {
+      "derivative_bytes": 35027,
+      "derivative_sha256": "870d256f9763d8a22818e5919e280363ab0a0d63242c6a040c02e6bd4cce13e6",
+      "original_private_bytes": 112056,
+      "original_private_sha256": "0eaf71e61cf267fde3d7644a94445e443f6d89a700c8f1f82e3d76a894b2421b",
+      "path": "r13/frozen-population.json",
+      "transformation": "Retain all44 eligible and4 excluded original native matching keys, outcomes, budgets and source/model pins; replace baseline run IDs with R12 manifest-order cell IDs; omit private paths, candidate activation/endpoints/GPU UUIDs and executable prepared plans. Candidate paired measurement count derives from zero submissions."
+    },
+    {
+      "derivative_bytes": 35027,
+      "derivative_sha256": "870d256f9763d8a22818e5919e280363ab0a0d63242c6a040c02e6bd4cce13e6",
+      "original_private_bytes": 222247,
+      "original_private_sha256": "ca84b3ad9305c0cb9384e27fed55c55e3a513d1347685656733a356fc5b59fe4",
+      "path": "r13/frozen-population.json",
+      "transformation": "Retain all44 eligible and4 excluded original native matching keys, outcomes, budgets and source/model pins; replace baseline run IDs with R12 manifest-order cell IDs; omit private paths, candidate activation/endpoints/GPU UUIDs and executable prepared plans. Candidate paired measurement count derives from zero submissions."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 139688,
+      "original_private_sha256": "e2a9528c7642b25e13c81935e1105778cb4a8fed9115b3290c0ca69a81c6d666",
+      "path": "summary.json",
+      "transformation": "Separate unchanged native count/timing objects by attempt, selected closure audit totals and admission outcome; never merge populations. Scoped final restoration added from separately bound final source and corrected Pi review; historical off failure remains open."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 1042409,
+      "original_private_sha256": "21f74a35aa136e5955abd439d34303d428fcd1ea0d72ced313a33735579f5d5d",
+      "path": "summary.json",
+      "transformation": "Separate unchanged native count/timing objects by attempt, selected closure audit totals and admission outcome; never merge populations. Scoped final restoration added from separately bound final source and corrected Pi review; historical off failure remains open."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 63289,
+      "original_private_sha256": "551577d1483ecbd88fd2277eb5df1d96baacfe72e0c71cf25ac0658e3ac67ebe",
+      "path": "summary.json",
+      "transformation": "Separate unchanged native count/timing objects by attempt, selected closure audit totals and admission outcome; never merge populations. Scoped final restoration added from separately bound final source and corrected Pi review; historical off failure remains open."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 10681,
+      "original_private_sha256": "1403265bd0bef649cd6733a9b1b4cac5f29456183da787b850cfd2b15a9adf3c",
+      "path": "summary.json",
+      "transformation": "Separate unchanged native count/timing objects by attempt, selected closure audit totals and admission outcome; never merge populations. Scoped final restoration added from separately bound final source and corrected Pi review; historical off failure remains open."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 46564,
+      "original_private_sha256": "01c2960b832deb3ad9c6813bf1a04b44fe7f7e1cbcec901ef5b6a68a2a4ee175",
+      "path": "summary.json",
+      "transformation": "Separate unchanged native count/timing objects by attempt, selected closure audit totals and admission outcome; never merge populations. Scoped final restoration added from separately bound final source and corrected Pi review; historical off failure remains open."
+    },
+    {
+      "derivative_bytes": 9399,
+      "derivative_sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+      "original_private_bytes": 16593,
+      "original_private_sha256": "41e5d98cb707c4213062dd0e2baf3cb4d0fd7ddebfd44a6fbb2bd886cad62143",
+      "path": "restoration-evidence.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 9399,
+      "derivative_sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+      "original_private_bytes": 9999,
+      "original_private_sha256": "e37c4732489c1421cb82a2907324ebdf56cf8c6b9188e84bbc7b3a8bd26113e7",
+      "path": "restoration-evidence.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 9399,
+      "derivative_sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+      "original_private_bytes": 10287,
+      "original_private_sha256": "c48e5164decfa7afabc2dba989550f2dc5aec7219f33b8d3b1e55b89e6777ee1",
+      "path": "restoration-evidence.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 9399,
+      "derivative_sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+      "original_private_bytes": 7781,
+      "original_private_sha256": "6f9261e57e0ee04c08387d7c24695ff7223eb3065672054afe4fe7edd90c0b91",
+      "path": "restoration-evidence.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 9399,
+      "derivative_sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+      "original_private_bytes": 950,
+      "original_private_sha256": "d4f9c7441c41c39fb7d9854822eb4a8dd21735c92e172fac66df7b2ef8e1ae11",
+      "path": "restoration-evidence.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 9399,
+      "derivative_sha256": "1a1bcb25d31f3914dd39c8424259ed47bda710077310982fc526f9f4efbcc20f",
+      "original_private_bytes": 950,
+      "original_private_sha256": "d4f9c7441c41c39fb7d9854822eb4a8dd21735c92e172fac66df7b2ef8e1ae11",
+      "path": "restoration-evidence.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 1982,
+      "derivative_sha256": "c167e25fa14074cd9336d57a24cfe5559d44b75a13028eca91af1d131013afc2",
+      "original_private_bytes": 16593,
+      "original_private_sha256": "41e5d98cb707c4213062dd0e2baf3cb4d0fd7ddebfd44a6fbb2bd886cad62143",
+      "path": "restoration.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 1982,
+      "derivative_sha256": "c167e25fa14074cd9336d57a24cfe5559d44b75a13028eca91af1d131013afc2",
+      "original_private_bytes": 10287,
+      "original_private_sha256": "c48e5164decfa7afabc2dba989550f2dc5aec7219f33b8d3b1e55b89e6777ee1",
+      "path": "restoration.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 1982,
+      "derivative_sha256": "c167e25fa14074cd9336d57a24cfe5559d44b75a13028eca91af1d131013afc2",
+      "original_private_bytes": 7781,
+      "original_private_sha256": "6f9261e57e0ee04c08387d7c24695ff7223eb3065672054afe4fe7edd90c0b91",
+      "path": "restoration.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 16593,
+      "original_private_sha256": "41e5d98cb707c4213062dd0e2baf3cb4d0fd7ddebfd44a6fbb2bd886cad62143",
+      "path": "summary.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 10287,
+      "original_private_sha256": "c48e5164decfa7afabc2dba989550f2dc5aec7219f33b8d3b1e55b89e6777ee1",
+      "path": "summary.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    },
+    {
+      "derivative_bytes": 6679,
+      "derivative_sha256": "edce9e0a09d55376101143679af14e1611631df56507e51f1120ac63b96f881c",
+      "original_private_bytes": 7781,
+      "original_private_sha256": "6f9261e57e0ee04c08387d7c24695ff7223eb3065672054afe4fe7edd90c0b91",
+      "path": "summary.json",
+      "transformation": "Select exact restoration/validation facts and preserve29 checks, R1 accessor false-negative/R2 offline correction and minimal-only acceptance. Omit commands, credential references, endpoints, mounts, private paths, container/GPU/generation IDs, raw prompt/read/reasoning/final text and raw SSE. Later monitoring byte-equality is a separately bound supplement, not a rewritten reviewer cutoff."
+    }
+  ],
+  "native_graph_validation_claimed": false,
+  "original_private_hashes_are_not_derivative_hashes": true,
+  "other_files": "README/source-registry/friction/publication-summary are after-attempt wrappers from linked supplemental/native facts. Scoped restoration is retained; R1 false-negative/R2 offline correction preserve the same single live invocation. Independent content review passed; final inventory and size approval are bound outside this bundle to avoid self-referential commitments.",
+  "schema": "anvil-serving.publication-derivative-ledger/v1",
+  "scope": "Supplemental selections and R13 refusal only. R12 complete projection has its separate v2 ledger and validation. These derivatives cannot revalidate native source chains."
+}

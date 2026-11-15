@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "at_unix": 1792653089.049709,
+  "candidate_absent": true,
+  "primary_ready_admitting": true,
+  "incumbent_container_id": "container-2",
+  "incumbent_image_id": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+  "gpu_compute_owned_by_incumbent": true,
+  "promoted": false,
+  "sources": [
+    {
+      "path": "final-restoration-checks.json",
+      "sha256": "5e671a9f42dad988d478a8b5637d8c5141150f721aefe7ad8663d058c167bbc5"
+    },
+    {
+      "path": "final-router-status.json",
+      "sha256": "51ce75a39a70394da9a5d6983892fa29ce2343abf68e39aa1bc54eb2f46aac03"
+    },
+    {
+      "path": "final-candidate-status.json",
+      "sha256": "c4775f9b86db322cb045ff9ca83361d34c9b7e25759a8a099a7f88512dcef9a9"
+    },
+    {
+      "path": "final-native.prom",
+      "sha256": "ab0bbe685ca1a03b43c853e13255124d40fec5533f10d4ea2d5e563cda654c76"
+    },
+    {
+      "path": "final-gpu-processes.json",
+      "sha256": "63f15ce0758b8b357d4a30010034b810b0c16e867d69a0c89224b4786556c1e9"
+    },
+    {
+      "path": "final-monitoring.json",
+      "sha256": "6dc5aa1791b486db07a3182e271f17fe5f5ffe41e8ae4593de02da4681f1a9da"
+    },
+    {
+      "path": "restoration-checks.json",
+      "sha256": "9a503e9cb59b3bcff84899bb184e09ef3572d3814cafd3779d89784c5fef40b2"
+    },
+    {
+      "path": "restored-direct-preflight.json",
+      "sha256": "e4cf139637745b58020567b6086ab8fc5feee25bae8bdec7665319862c31de11"
+    },
+    {
+      "path": "restored-routed-preflight.json",
+      "sha256": "6b68150051c21f3d8ede7ea8120a58db395ef4da5fbe4171266fbacf0f41c07a"
+    },
+    {
+      "path": "outage-end.json",
+      "sha256": "c0d5e36a296c867d61249498ed334941557ae8ed995d5178d34d5e7b1eb5847a"
+    }
+  ]
+}

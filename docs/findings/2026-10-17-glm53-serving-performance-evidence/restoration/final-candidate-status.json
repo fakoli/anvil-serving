@@ -1,0 +1,32 @@
+{
+  "command": "models recipes status nvidia/GLM-5.3-Flash-FP4-Local --container glm53-nvidia-fp4-local-ab-r2 --registry [PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml --transport local",
+  "context": {
+    "command": "models-recipes-status",
+    "command_host": "Primary Node",
+    "command_runtime": "primary-native",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "Primary Node",
+    "execution_runtime": "primary-container-runtime",
+    "gpu_role": "primary-compute-a",
+    "gpu_uuid": "GPU-REDACTED",
+    "overlay": null,
+    "resource": "primary-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "Primary Node",
+    "resource_runtime": "primary-container-runtime",
+    "target": null,
+    "topology": "Primary Node-reference",
+    "transport": "local"
+  },
+  "data": null,
+  "error": {
+    "class": "execution",
+    "code": "execution_failed",
+    "details": {},
+    "message": "recipe container 'glm53-nvidia-fp4-local-ab-r2' does not exist or cannot be inspected: error: no such object: glm53-nvidia-fp4-local-ab-r2"
+  },
+  "ok": false,
+  "warnings": []
+}

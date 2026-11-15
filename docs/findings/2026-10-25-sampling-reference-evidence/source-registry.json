@@ -1,0 +1,67 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "glm-sampling-reference-20261025-r2",
+  "observed_at": "2026-10-25",
+  "sources": [
+    {
+      "id": "upstream-fix-pr",
+      "url": "https://github.com/vllm-project/vllm/pull/58231",
+      "published_or_observed": "2026-10-19 merged; 2026-10-25 observed",
+      "observed_at": "2026-10-25",
+      "age_class": "current",
+      "evidence_type": "official pull request",
+      "hardware_runtime_relevance": "Defines the narrow probability-space mask fix and its forced-logit regression scope.",
+      "decision_impact": "Supplied the exact candidate production patch; did not replace the local kernel gate."
+    },
+    {
+      "id": "upstream-fix-commit",
+      "url": "https://github.com/vllm-project/vllm/commit/0a1276e5e3d9000488e7590cc0957edd709f2152",
+      "published_or_observed": "2026-10-25 observed",
+      "observed_at": "2026-10-25",
+      "age_class": "current",
+      "evidence_type": "official source",
+      "hardware_runtime_relevance": "Exact upstream two-file change and forced-logit tests.",
+      "decision_impact": "Pinned the imported production hunk and upstream test intent."
+    },
+    {
+      "id": "upstream-sort-reference",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/0a1276e5e3d9000488e7590cc0957edd709f2152/vllm/v1/sample/ops/topk_topp_sampler.py",
+      "published_or_observed": "2026-10-25 observed",
+      "observed_at": "2026-10-25",
+      "age_class": "current",
+      "evidence_type": "official source",
+      "hardware_runtime_relevance": "Official sorted top-p implementation at the fix commit.",
+      "decision_impact": "Informed, but did not substitute for, the independently specified binary64 oracle."
+    },
+    {
+      "id": "upstream-compatibility-tests",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm/0a1276e5e3d9000488e7590cc0957edd709f2152/tests/v1/sample/test_topk_topp_sampler.py",
+      "published_or_observed": "2026-10-25 observed",
+      "observed_at": "2026-10-25",
+      "age_class": "current",
+      "evidence_type": "official tests",
+      "hardware_runtime_relevance": "Provides the existing count-compatibility envelope for Triton versus sorted top-p.",
+      "decision_impact": "The failing row remained within this envelope, but the stricter predeclared local no-worse policy controlled admission."
+    },
+    {
+      "id": "upstream-known-exactness-gap",
+      "url": "https://github.com/vllm-project/vllm/issues/59964",
+      "published_or_observed": "2026-10-04 opened; 2026-10-25 observed",
+      "observed_at": "2026-10-25",
+      "age_class": "current",
+      "evidence_type": "official issue",
+      "hardware_runtime_relevance": "Documents split-search over-retention and nonminimal boundary behavior outside the narrow fix.",
+      "decision_impact": "Prevented treating exact-mask equality as the established upstream contract."
+    },
+    {
+      "id": "local-kernel-result",
+      "url": "kernel-summary.json",
+      "published_or_observed": "2026-10-25 local; 2026-10-26 UTC",
+      "observed_at": "2026-10-25",
+      "age_class": "current-runtime-pin",
+      "evidence_type": "local functional failed",
+      "hardware_runtime_relevance": "Synthetic fp32 kernel checks on one measured RTX PRO 6000 Blackwell Max-Q GPU.",
+      "decision_impact": "Failed the strict local gate and stopped candidate startup before weights."
+    }
+  ]
+}

@@ -1,0 +1,603 @@
+{
+  "blockers": [],
+  "cleanup": {
+    "ok": true,
+    "state": "removed",
+    "verification_exit_code": 1
+  },
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py"
+      ],
+      "completion_markers": [],
+      "cwd": null,
+      "id": "sm12x-mxfp8-bmm",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py"
+      ],
+      "completion_markers": [
+        "direct read: bit-exact OK",
+        "stream host node: bit-exact OK",
+        "CUDA graph capture + 3 replays: bit-exact OK"
+      ],
+      "cwd": "/opt/dsv41/source/patches/engram_disk",
+      "id": "engram-disk-standalone",
+      "kind": "standalone",
+      "source_paths": [
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py"
+      ],
+      "completion_markers": [
+        "two tables in one graph x20: bit-exact OK",
+        "table removed while the proxy runs: OK"
+      ],
+      "cwd": "/opt/dsv41/source/patches/engram_disk",
+      "id": "engram-disk-spin-standalone",
+      "kind": "standalone",
+      "source_paths": [
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py"
+      ],
+      "completion_markers": [],
+      "cwd": null,
+      "id": "engram-disk-vllm",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py"
+      ],
+      "completion_markers": [],
+      "cwd": "/opt/dsv41/source/patches/exl3_moe",
+      "id": "vllm-registration",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py",
+        "--deselect",
+        "tests/test_kernels_gpu.py::test_bench_decode_bandwidth",
+        "--deselect",
+        "tests/test_kernels_gpu.py::test_bench_decode_graph",
+        "--deselect",
+        "tests/test_mrow_gpu.py::test_bench_vs_exllamav3",
+        "--deselect",
+        "tests/test_smoe_gpu.py::test_bench_vs_coop"
+      ],
+      "completion_markers": [],
+      "cwd": "/opt/dsv41/source/patches/exl3_moe",
+      "id": "exl3-correctness",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py"
+      ]
+    }
+  ],
+  "dry_run": false,
+  "environment": {
+    "EXL3_INT8_GEMV": "0",
+    "EXL3_KERNEL_ARCH": "120",
+    "EXL3_RDMA_AR": "0",
+    "VLLM_PLUGINS": "exl3_moe"
+  },
+  "executed": true,
+  "exit_code": 0,
+  "gpu": {
+    "actual_compute_capability": [
+      12,
+      0
+    ],
+    "compute_capability": [
+      12,
+      0
+    ],
+    "device": {
+      "display_active": "Disabled",
+      "driver": "615.71.09",
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "total_mib": 97887,
+      "used_mib": 0
+    },
+    "idle_baseline_mib": 512
+  },
+  "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+  "image_id": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+  "logs_truncated": false,
+  "observed_at": "2026-10-15T21:39:41.953265+00:00",
+  "ok": true,
+  "resource_containment": {
+    "observed": {
+      "effective_environment": {
+        "TORCH_EXTENSIONS_DIR": "/tmp/torch_extensions",
+        "TRITON_CACHE_DIR": "/tmp/triton_cache"
+      },
+      "host_config": {
+        "CapDrop": [
+          "ALL"
+        ],
+        "Memory": 25769803776,
+        "MemorySwap": 25769803777,
+        "NanoCpus": 8000000000,
+        "NetworkMode": "none",
+        "PidsLimit": 1024,
+        "Privileged": false,
+        "ReadonlyRootfs": true,
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "Tmpfs": {
+          "/tmp": "rw,nosuid,nodev,exec,size=4g"
+        }
+      },
+      "mounts": [],
+      "ok": true
+    },
+    "requested": {
+      "cpus": 8,
+      "effective_swap": 0,
+      "extra_capabilities": false,
+      "host_mounts": false,
+      "memory_mib": 24576,
+      "network": "none",
+      "pids_limit": 1024,
+      "tmpfs": "/tmp:4g,exec"
+    }
+  },
+  "runner": {
+    "cgroups": {
+      "cpu.max": "800000 100000",
+      "memory.max": "25769803776",
+      "memory.swap.max": "0",
+      "pids.current": "36",
+      "pids.events": "max 0",
+      "pids.max": "1024"
+    },
+    "cgroups_after": {
+      "cpu.max": "800000 100000",
+      "memory.max": "25769803776",
+      "memory.swap.max": "0",
+      "pids.current": "37",
+      "pids.events": "max 0",
+      "pids.max": "1024"
+    },
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py",
+          "--junitxml=/tmp/sm12x-mxfp8-bmm.xml",
+          "-o",
+          "xfail_strict=true"
+        ],
+        "collection": {
+          "nodes": [
+            "test_sm12x_mxfp8_bmm.py::test_supported_on_this_gpu",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[1]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[2]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[6]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[8]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[64]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[512]",
+            "test_sm12x_mxfp8_bmm.py::test_decode_timing"
+          ],
+          "stderr": "",
+          "stdout": "test_sm12x_mxfp8_bmm.py::test_supported_on_this_gpu\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[1]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[2]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[6]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[8]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[64]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[512]\ntest_sm12x_mxfp8_bmm.py::test_decode_timing\n\n=============================== warnings summary ===============================\n../usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n8 tests collected in 5.90s\n"
+        },
+        "cwd": null,
+        "elapsed_seconds": 23.375881461019162,
+        "executed_modules": {
+          "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py": true
+        },
+        "exit_code": 0,
+        "id": "sm12x-mxfp8-bmm",
+        "state": null,
+        "stderr": "",
+        "stdout": "........                                                                 [100%]\n=============================== warnings summary ===============================\n../usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[1]\n  /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/quantization/utils/mxfp8_utils.py:237: UserWarning: Specified kernel cache directory could not be created! This disables kernel caching. Specified directory is /root/.cache/torch/kernels. This warning will appear only once per process. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/cuda/jit_utils.cpp:1504.)\n    descale = torch.exp2(scales.to(torch.float32) - 127.0)\n\n../usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475\n  /usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: could not create cache path /opt/dsv41/source/patches/tests/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/opt/dsv41/source/patches/tests/pytest-cache-files-lf1a5n8x'\n    config.cache.set(\"cache/nodeids\", sorted(self.cached_nodeids))\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n----------------- generated xml file: /tmp/sm12x-mxfp8-bmm.xml -----------------\n8 passed, 16 warnings in 21.31s\n",
+        "test_counts": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 8,
+          "xfails": 0,
+          "xpassed": 0
+        }
+      },
+      {
+        "argv": [
+          "python3",
+          "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py"
+        ],
+        "cwd": "/opt/dsv41/source/patches/engram_disk",
+        "elapsed_seconds": 17.375609626004007,
+        "exit_code": 0,
+        "id": "engram-disk-standalone",
+        "state": null,
+        "stderr": "",
+        "stdout": "direct read: bit-exact OK\nstream host node: bit-exact OK\nCUDA graph capture + 3 replays: bit-exact OK\nread    12 rows: p50 0.062 ms, p90 0.084 ms, max 0.100 ms\nread    48 rows: p50 0.065 ms, p90 0.076 ms, max 0.085 ms\nread   384 rows: p50 0.132 ms, p90 0.145 ms, max 0.153 ms\nread  1024 rows: p50 0.271 ms, p90 0.291 ms, max 34.095 ms\ncache hits 612, misses 298096\n"
+      },
+      {
+        "argv": [
+          "python3",
+          "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py"
+        ],
+        "cwd": "/opt/dsv41/source/patches/engram_disk",
+        "elapsed_seconds": 36.19031694100704,
+        "exit_code": 0,
+        "id": "engram-disk-spin-standalone",
+        "state": null,
+        "stderr": "",
+        "stdout": "   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\ncache 0: eager x2, graph x5, serve_rows bit-exact OK; stats [0, 4548], spin [7, 7094905, 2324542, 0]\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\ncache 4096: eager x2, graph x5, serve_rows bit-exact OK; stats [790, 3758], spin [7, 6199326, 1717702, 0]\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\ntwo tables in one graph x20: bit-exact OK\ntable removed while the proxy runs: OK\nrows   12 host node: p50    1028 us  p90    1315 us  max    2866 us\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\nrows   12 spin     : p50      64 us  p90      93 us  max     185 us  (proxy serve mean 27 us, max 59 us, errors 0)\nrows   12: spin p50 16.17x faster than the host node\nrows   48 host node: p50    1288 us  p90    1480 us  max    1688 us\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\nrows   48 spin     : p50     140 us  p90     173 us  max     304 us  (proxy serve mean 106 us, max 234 us, errors 0)\nrows   48: spin p50 9.18x faster than the host node\nrows   96 host node: p50    1324 us  p90    1467 us  max    1922 us\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\nrows   96 spin     : p50     238 us  p90     310 us  max     703 us  (proxy serve mean 218 us, max 652 us, errors 0)\nrows   96: spin p50 5.56x faster than the host node\nrows  384 host node: p50    1334 us  p90    1504 us  max    1679 us\n   mode: spin proxy + native AIO, O_DIRECT, 256 in flight, requests over 512 rows to the 256-thread pool\nrows  384 spin     : p50     737 us  p90     800 us  max    1790 us  (proxy serve mean 711 us, max 1746 us, errors 0)\nrows  384: spin p50 1.81x faster than the host node\n"
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py",
+          "--junitxml=/tmp/engram-disk-vllm.xml",
+          "-o",
+          "xfail_strict=true"
+        ],
+        "collection": {
+          "nodes": [
+            "test_engram_disk_vllm.py::test_engram_disk_matches_reference[0-1]",
+            "test_engram_disk_vllm.py::test_engram_disk_matches_reference[0-2]",
+            "test_engram_disk_vllm.py::test_engram_disk_matches_reference[0-4]",
+            "test_engram_disk_vllm.py::test_engram_disk_matches_reference[32-1]",
+            "test_engram_disk_vllm.py::test_engram_disk_matches_reference[32-2]",
+            "test_engram_disk_vllm.py::test_engram_disk_matches_reference[32-4]",
+            "test_engram_disk_vllm.py::test_engram_disk_prefetch_path"
+          ],
+          "stderr": "",
+          "stdout": "test_engram_disk_vllm.py::test_engram_disk_matches_reference[0-1]\ntest_engram_disk_vllm.py::test_engram_disk_matches_reference[0-2]\ntest_engram_disk_vllm.py::test_engram_disk_matches_reference[0-4]\ntest_engram_disk_vllm.py::test_engram_disk_matches_reference[32-1]\ntest_engram_disk_vllm.py::test_engram_disk_matches_reference[32-2]\ntest_engram_disk_vllm.py::test_engram_disk_matches_reference[32-4]\ntest_engram_disk_vllm.py::test_engram_disk_prefetch_path\n\n=============================== warnings summary ===============================\n../usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n7 tests collected in 5.96s\n"
+        },
+        "cwd": null,
+        "elapsed_seconds": 37.360293334000744,
+        "executed_modules": {
+          "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py": true
+        },
+        "exit_code": 0,
+        "id": "engram-disk-vllm",
+        "state": null,
+        "stderr": "",
+        "stdout": ".......                                                                  [100%]\n=============================== warnings summary ===============================\n../usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\n../usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475\n  /usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: could not create cache path /opt/dsv41/source/patches/tests/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/opt/dsv41/source/patches/tests/pytest-cache-files-dg6r9mie'\n    config.cache.set(\"cache/nodeids\", sorted(self.cached_nodeids))\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n---------------- generated xml file: /tmp/engram-disk-vllm.xml -----------------\n7 passed, 15 warnings in 35.02s\n",
+        "test_counts": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 7,
+          "xfails": 0,
+          "xpassed": 0
+        }
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py",
+          "--junitxml=/tmp/vllm-registration.xml",
+          "-o",
+          "xfail_strict=true"
+        ],
+        "collection": {
+          "nodes": [
+            "tests/test_vllm_registration.py::test_register_and_resolve",
+            "tests/test_vllm_registration.py::test_from_config_keeps_fp8_description",
+            "tests/test_vllm_registration.py::test_override_claims_only_our_checkpoints",
+            "tests/test_vllm_registration.py::test_routed_layer_index",
+            "tests/test_vllm_registration.py::test_head_method_only_for_lm_head[mxfp8]",
+            "tests/test_vllm_registration.py::test_head_method_only_for_lm_head[exl3]",
+            "tests/test_vllm_registration.py::test_drafter_dense_routing"
+          ],
+          "stderr": "",
+          "stdout": "tests/test_vllm_registration.py::test_register_and_resolve\ntests/test_vllm_registration.py::test_from_config_keeps_fp8_description\ntests/test_vllm_registration.py::test_override_claims_only_our_checkpoints\ntests/test_vllm_registration.py::test_routed_layer_index\ntests/test_vllm_registration.py::test_head_method_only_for_lm_head[mxfp8]\ntests/test_vllm_registration.py::test_head_method_only_for_lm_head[exl3]\ntests/test_vllm_registration.py::test_drafter_dense_routing\n\n7 tests collected in 2.36s\n"
+        },
+        "cwd": "/opt/dsv41/source/patches/exl3_moe",
+        "elapsed_seconds": 8.665460307965986,
+        "executed_modules": {
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py": true
+        },
+        "exit_code": 0,
+        "id": "vllm-registration",
+        "state": null,
+        "stderr": "",
+        "stdout": ".......                                                                  [100%]\n=============================== warnings summary ===============================\ntests/test_vllm_registration.py: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\n../../../../../usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475\n  /usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: cache could not write path /opt/dsv41/source/patches/exl3_moe/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/opt/dsv41/source/patches/exl3_moe/.pytest_cache/v/cache/nodeids'\n    config.cache.set(\"cache/nodeids\", sorted(self.cached_nodeids))\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n---------------- generated xml file: /tmp/vllm-registration.xml ----------------\n7 passed, 15 warnings in 6.39s\n",
+        "test_counts": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 7,
+          "xfails": 0,
+          "xpassed": 0
+        }
+      },
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py",
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py",
+          "--deselect",
+          "tests/test_kernels_gpu.py::test_bench_decode_bandwidth",
+          "--deselect",
+          "tests/test_kernels_gpu.py::test_bench_decode_graph",
+          "--deselect",
+          "tests/test_mrow_gpu.py::test_bench_vs_exllamav3",
+          "--deselect",
+          "tests/test_smoe_gpu.py::test_bench_vs_coop",
+          "--junitxml=/tmp/exl3-correctness.xml",
+          "-o",
+          "xfail_strict=true"
+        ],
+        "collection": {
+          "nodes": [
+            "tests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[2]",
+            "tests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[3]",
+            "tests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[4]",
+            "tests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[5]",
+            "tests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[6]",
+            "tests/test_exl3_ref_gpu.py::test_hadamard_matches_had_r_128",
+            "tests/test_exl3_ref_gpu.py::test_linear_matches_linear_exl3[1]",
+            "tests/test_exl3_ref_gpu.py::test_linear_matches_linear_exl3[4]",
+            "tests/test_exl3_ref_gpu.py::test_linear_matches_linear_exl3[8]",
+            "tests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[1]",
+            "tests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[2]",
+            "tests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[4]",
+            "tests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[8]",
+            "tests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[16]",
+            "tests/test_kernels_gpu.py::test_fused_path_matches_coop[1]",
+            "tests/test_kernels_gpu.py::test_fused_path_matches_coop[8]",
+            "tests/test_kernels_gpu.py::test_prefill_path_matches_reference",
+            "tests/test_kernels_gpu.py::test_prefill_deterministic_slots",
+            "tests/test_kernels_gpu.py::test_tp2_channel_split_sums_to_full[1]",
+            "tests/test_kernels_gpu.py::test_tp2_channel_split_sums_to_full[4]",
+            "tests/test_kernels_gpu.py::test_tp2_channel_split_sums_to_full[16]",
+            "tests/test_kernels_gpu.py::test_group_with_no_picks_passes_running_sum_through",
+            "tests/test_kernels_gpu.py::test_unrouted_slots_are_ignored",
+            "tests/test_kernels_gpu.py::test_cuda_graph_replay_is_bit_exact[1]",
+            "tests/test_kernels_gpu.py::test_cuda_graph_replay_is_bit_exact[8]",
+            "tests/test_sparse_attn_gpu.py::test_matches_reference[1-False]",
+            "tests/test_sparse_attn_gpu.py::test_matches_reference[1-True]",
+            "tests/test_sparse_attn_gpu.py::test_matches_reference[6-False]",
+            "tests/test_sparse_attn_gpu.py::test_matches_reference[6-True]",
+            "tests/test_sparse_attn_gpu.py::test_split_count_does_not_change_bits",
+            "tests/test_sparse_attn_gpu.py::test_dead_rows_skip",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[1-2]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[1-3]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[1-4]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[1-5]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[1-6]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[4-2]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[4-3]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[4-4]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[4-5]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[4-6]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[6-2]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[6-3]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[6-4]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[6-5]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[6-6]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[8-2]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[8-3]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[8-4]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[8-5]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[8-6]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[16-2]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[16-3]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[16-4]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[16-5]",
+            "tests/test_mrow_gpu.py::test_single_linear_matches_reference[16-6]",
+            "tests/test_mrow_gpu.py::test_group_with_offsets_and_k_split_matches_reference",
+            "tests/test_mrow_gpu.py::test_deterministic_and_graph_replay",
+            "tests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[1]",
+            "tests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[2]",
+            "tests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[6]",
+            "tests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[8]",
+            "tests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[16]",
+            "tests/test_mrow_gpu.py::test_grouped_3d_graph_replay_and_checks",
+            "tests/test_smoe_gpu.py::test_matches_reference[1]",
+            "tests/test_smoe_gpu.py::test_matches_reference[2]",
+            "tests/test_smoe_gpu.py::test_matches_reference[4]",
+            "tests/test_smoe_gpu.py::test_matches_reference[6]",
+            "tests/test_smoe_gpu.py::test_matches_reference[8]",
+            "tests/test_smoe_gpu.py::test_matches_reference[16]",
+            "tests/test_smoe_gpu.py::test_matches_coop_tp2[1]",
+            "tests/test_smoe_gpu.py::test_matches_coop_tp2[4]",
+            "tests/test_smoe_gpu.py::test_matches_coop_tp2[6]",
+            "tests/test_smoe_gpu.py::test_matches_coop_tp2[12]",
+            "tests/test_smoe_gpu.py::test_unrouted_and_empty_tokens",
+            "tests/test_smoe_gpu.py::test_dead_rows_leave_live_rows_bit_identical[1]",
+            "tests/test_smoe_gpu.py::test_dead_rows_leave_live_rows_bit_identical[3]",
+            "tests/test_smoe_gpu.py::test_dead_rows_leave_live_rows_bit_identical[5]",
+            "tests/test_smoe_gpu.py::test_expert_shared_by_many_tokens",
+            "tests/test_smoe_gpu.py::test_graph_replay_deterministic",
+            "tests/test_mhc_gpu.py::test_matches_tilelang_math[1]",
+            "tests/test_mhc_gpu.py::test_matches_tilelang_math[4]",
+            "tests/test_mhc_gpu.py::test_matches_tilelang_math[6]",
+            "tests/test_mhc_gpu.py::test_matches_tilelang_math[8]",
+            "tests/test_mhc_gpu.py::test_matches_tilelang_math[16]",
+            "tests/test_mhc_gpu.py::test_graph_replays_reset_counters",
+            "tests/test_mhc_gpu.py::test_timing_line",
+            "tests/test_router_gpu.py::test_logits[1-384-5120]",
+            "tests/test_router_gpu.py::test_logits[1-128-5120]",
+            "tests/test_router_gpu.py::test_logits[1-256-4096]",
+            "tests/test_router_gpu.py::test_logits[2-384-5120]",
+            "tests/test_router_gpu.py::test_logits[2-128-5120]",
+            "tests/test_router_gpu.py::test_logits[2-256-4096]",
+            "tests/test_router_gpu.py::test_logits[3-384-5120]",
+            "tests/test_router_gpu.py::test_logits[3-128-5120]",
+            "tests/test_router_gpu.py::test_logits[3-256-4096]",
+            "tests/test_router_gpu.py::test_logits[4-384-5120]",
+            "tests/test_router_gpu.py::test_logits[4-128-5120]",
+            "tests/test_router_gpu.py::test_logits[4-256-4096]",
+            "tests/test_router_gpu.py::test_logits[5-384-5120]",
+            "tests/test_router_gpu.py::test_logits[5-128-5120]",
+            "tests/test_router_gpu.py::test_logits[5-256-4096]",
+            "tests/test_router_gpu.py::test_logits[6-384-5120]",
+            "tests/test_router_gpu.py::test_logits[6-128-5120]",
+            "tests/test_router_gpu.py::test_logits[6-256-4096]",
+            "tests/test_router_gpu.py::test_logits[7-384-5120]",
+            "tests/test_router_gpu.py::test_logits[7-128-5120]",
+            "tests/test_router_gpu.py::test_logits[7-256-4096]",
+            "tests/test_router_gpu.py::test_logits[8-384-5120]",
+            "tests/test_router_gpu.py::test_logits[8-128-5120]",
+            "tests/test_router_gpu.py::test_logits[8-256-4096]",
+            "tests/test_router_gpu.py::test_logits_strided_rows",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-1]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-3]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-6]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-8]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-1]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-3]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-6]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-8]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-1]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-3]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-6]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-8]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-1]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-3]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-6]",
+            "tests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-8]",
+            "tests/test_router_gpu.py::test_topk_ties_nan_and_image_rows",
+            "tests/test_router_gpu.py::test_topk_cuda_graph_replay",
+            "tests/test_router_vllm_gpu.py::test_gate_is_ours",
+            "tests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[1]",
+            "tests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[4]",
+            "tests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[6]",
+            "tests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[8]",
+            "tests/test_router_vllm_gpu.py::test_larger_batches_fall_back"
+          ],
+          "stderr": "",
+          "stdout": "tests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[2]\ntests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[3]\ntests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[4]\ntests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[5]\ntests/test_exl3_ref_gpu.py::test_decode_bit_exact_vs_reconstruct[6]\ntests/test_exl3_ref_gpu.py::test_hadamard_matches_had_r_128\ntests/test_exl3_ref_gpu.py::test_linear_matches_linear_exl3[1]\ntests/test_exl3_ref_gpu.py::test_linear_matches_linear_exl3[4]\ntests/test_exl3_ref_gpu.py::test_linear_matches_linear_exl3[8]\ntests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[1]\ntests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[2]\ntests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[4]\ntests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[8]\ntests/test_kernels_gpu.py::test_coop_matches_reconstruct_reference[16]\ntests/test_kernels_gpu.py::test_fused_path_matches_coop[1]\ntests/test_kernels_gpu.py::test_fused_path_matches_coop[8]\ntests/test_kernels_gpu.py::test_prefill_path_matches_reference\ntests/test_kernels_gpu.py::test_prefill_deterministic_slots\ntests/test_kernels_gpu.py::test_tp2_channel_split_sums_to_full[1]\ntests/test_kernels_gpu.py::test_tp2_channel_split_sums_to_full[4]\ntests/test_kernels_gpu.py::test_tp2_channel_split_sums_to_full[16]\ntests/test_kernels_gpu.py::test_group_with_no_picks_passes_running_sum_through\ntests/test_kernels_gpu.py::test_unrouted_slots_are_ignored\ntests/test_kernels_gpu.py::test_cuda_graph_replay_is_bit_exact[1]\ntests/test_kernels_gpu.py::test_cuda_graph_replay_is_bit_exact[8]\ntests/test_sparse_attn_gpu.py::test_matches_reference[1-False]\ntests/test_sparse_attn_gpu.py::test_matches_reference[1-True]\ntests/test_sparse_attn_gpu.py::test_matches_reference[6-False]\ntests/test_sparse_attn_gpu.py::test_matches_reference[6-True]\ntests/test_sparse_attn_gpu.py::test_split_count_does_not_change_bits\ntests/test_sparse_attn_gpu.py::test_dead_rows_skip\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[1-2]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[1-3]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[1-4]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[1-5]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[1-6]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[4-2]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[4-3]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[4-4]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[4-5]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[4-6]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[6-2]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[6-3]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[6-4]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[6-5]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[6-6]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[8-2]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[8-3]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[8-4]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[8-5]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[8-6]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[16-2]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[16-3]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[16-4]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[16-5]\ntests/test_mrow_gpu.py::test_single_linear_matches_reference[16-6]\ntests/test_mrow_gpu.py::test_group_with_offsets_and_k_split_matches_reference\ntests/test_mrow_gpu.py::test_deterministic_and_graph_replay\ntests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[1]\ntests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[2]\ntests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[6]\ntests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[8]\ntests/test_mrow_gpu.py::test_grouped_3d_input_bit_exact[16]\ntests/test_mrow_gpu.py::test_grouped_3d_graph_replay_and_checks\ntests/test_smoe_gpu.py::test_matches_reference[1]\ntests/test_smoe_gpu.py::test_matches_reference[2]\ntests/test_smoe_gpu.py::test_matches_reference[4]\ntests/test_smoe_gpu.py::test_matches_reference[6]\ntests/test_smoe_gpu.py::test_matches_reference[8]\ntests/test_smoe_gpu.py::test_matches_reference[16]\ntests/test_smoe_gpu.py::test_matches_coop_tp2[1]\ntests/test_smoe_gpu.py::test_matches_coop_tp2[4]\ntests/test_smoe_gpu.py::test_matches_coop_tp2[6]\ntests/test_smoe_gpu.py::test_matches_coop_tp2[12]\ntests/test_smoe_gpu.py::test_unrouted_and_empty_tokens\ntests/test_smoe_gpu.py::test_dead_rows_leave_live_rows_bit_identical[1]\ntests/test_smoe_gpu.py::test_dead_rows_leave_live_rows_bit_identical[3]\ntests/test_smoe_gpu.py::test_dead_rows_leave_live_rows_bit_identical[5]\ntests/test_smoe_gpu.py::test_expert_shared_by_many_tokens\ntests/test_smoe_gpu.py::test_graph_replay_deterministic\ntests/test_mhc_gpu.py::test_matches_tilelang_math[1]\ntests/test_mhc_gpu.py::test_matches_tilelang_math[4]\ntests/test_mhc_gpu.py::test_matches_tilelang_math[6]\ntests/test_mhc_gpu.py::test_matches_tilelang_math[8]\ntests/test_mhc_gpu.py::test_matches_tilelang_math[16]\ntests/test_mhc_gpu.py::test_graph_replays_reset_counters\ntests/test_mhc_gpu.py::test_timing_line\ntests/test_router_gpu.py::test_logits[1-384-5120]\ntests/test_router_gpu.py::test_logits[1-128-5120]\ntests/test_router_gpu.py::test_logits[1-256-4096]\ntests/test_router_gpu.py::test_logits[2-384-5120]\ntests/test_router_gpu.py::test_logits[2-128-5120]\ntests/test_router_gpu.py::test_logits[2-256-4096]\ntests/test_router_gpu.py::test_logits[3-384-5120]\ntests/test_router_gpu.py::test_logits[3-128-5120]\ntests/test_router_gpu.py::test_logits[3-256-4096]\ntests/test_router_gpu.py::test_logits[4-384-5120]\ntests/test_router_gpu.py::test_logits[4-128-5120]\ntests/test_router_gpu.py::test_logits[4-256-4096]\ntests/test_router_gpu.py::test_logits[5-384-5120]\ntests/test_router_gpu.py::test_logits[5-128-5120]\ntests/test_router_gpu.py::test_logits[5-256-4096]\ntests/test_router_gpu.py::test_logits[6-384-5120]\ntests/test_router_gpu.py::test_logits[6-128-5120]\ntests/test_router_gpu.py::test_logits[6-256-4096]\ntests/test_router_gpu.py::test_logits[7-384-5120]\ntests/test_router_gpu.py::test_logits[7-128-5120]\ntests/test_router_gpu.py::test_logits[7-256-4096]\ntests/test_router_gpu.py::test_logits[8-384-5120]\ntests/test_router_gpu.py::test_logits[8-128-5120]\ntests/test_router_gpu.py::test_logits[8-256-4096]\ntests/test_router_gpu.py::test_logits_strided_rows\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-1]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-3]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-6]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-1.0-8]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-1]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-3]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-6]\ntests/test_router_gpu.py::test_topk_matches_routing[384-6-2.5-8]\ntests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-1]\ntests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-3]\ntests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-6]\ntests/test_router_gpu.py::test_topk_matches_routing[256-6-1.0-8]\ntests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-1]\ntests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-3]\ntests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-6]\ntests/test_router_gpu.py::test_topk_matches_routing[128-3-1.0-8]\ntests/test_router_gpu.py::test_topk_ties_nan_and_image_rows\ntests/test_router_gpu.py::test_topk_cuda_graph_replay\ntests/test_router_vllm_gpu.py::test_gate_is_ours\ntests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[1]\ntests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[4]\ntests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[6]\ntests/test_router_vllm_gpu.py::test_decode_rows_use_router_kernel[8]\ntests/test_router_vllm_gpu.py::test_larger_batches_fall_back\n\n136/142 tests collected (6 deselected) in 2.41s\n"
+        },
+        "cwd": "/opt/dsv41/source/patches/exl3_moe",
+        "elapsed_seconds": 185.99450836598407,
+        "executed_modules": {
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py": true,
+          "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py": true
+        },
+        "exit_code": 0,
+        "id": "exl3-correctness",
+        "state": null,
+        "stderr": "[rank0]:[W1015 21:45:15.146370559 ProcessGroupNCCL.cpp:1624] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())\n",
+        "stdout": "........................................................................ [ 52%]\n................................................................         [100%]\n=============================== warnings summary ===============================\ntests/test_sparse_attn_gpu.py::test_matches_reference[1-False]\n  /opt/dsv41/source/patches/exl3_moe/vllm_exl3_moe/sparse_attn.py:205: UserWarning: Specified kernel cache directory could not be created! This disables kernel caching. Specified directory is /root/.cache/torch/kernels. This warning will appear only once per process. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/cuda/jit_utils.cpp:1504.)\n    nope = (nope * torch.exp2(sb.float() - 127.0)[:, :, None]).reshape(-1, NOPE)\n\ntests/test_router_vllm_gpu.py: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\n../../../../../usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475\n  /usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: cache could not write path /opt/dsv41/source/patches/exl3_moe/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/opt/dsv41/source/patches/exl3_moe/.pytest_cache/v/cache/nodeids'\n    config.cache.set(\"cache/nodeids\", sorted(self.cached_nodeids))\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n---------------- generated xml file: /tmp/exl3-correctness.xml -----------------\n136 passed, 6 deselected, 16 warnings in 183.38s (0:03:03)\n",
+        "test_counts": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 136,
+          "xfails": 0,
+          "xpassed": 0
+        }
+      }
+    ],
+    "cuda": {
+      "capability": [
+        12,
+        0
+      ],
+      "device_count": 1
+    },
+    "ok": true,
+    "source_hashes": {
+      "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py": "b0429831d8e872aed2b07de48ce3864f2f549b46e13c0d2667d064a900e69be5",
+      "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py": "d137b5d625b175c0dd6344deab2c66d93e612f62cc3ddc37ac5e8ae847f5759f",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py": "8d7e18174813761e2f2034f10ed3be1149b4b437615f4bdda42a92b8e6d0e0d8",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py": "aaaf146fae3c3baade1da2cfb3c3c77bd39d9d8219416cd91c40cf6117ad6928",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py": "ce320bd3c5d9528d1524619b41549b3306fcb7e9291852bbaf609bd64fb65129",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py": "7314c09bc767026c7a49029d23dfe4d63eff32b7970caa8cb82637968eb3ca81",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py": "00eb344d428e23a61b495a54211d64a693c72fb6e5c4fe39cd3d4342cd8a337c",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py": "ec395d3a3a5e4f1cd5aed9b5c5fae0538e3c4ebf2bbcbeb4fdb09e92688437e8",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py": "752203d4749acb330b39f14c1312922b43aa62102a5a611a264698a65c9d60b3",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py": "f4e015cec535ec1f7b32de218cb2b603251093a10c277eff2fac4b28f11c79ec",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py": "ef56682e3fe44c25ed803a72d260493e07188924e6e1bb62a00676fe888293c1",
+      "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py": "b671520642b4eadfcdf30616713ff36d49716f3e956e314e64fd8001a738026d",
+      "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py": "b1c904eee0b2a73ee5975d898f54e921300b4fc9c0eeb100ed7c7a9de5f2eae8"
+    },
+    "tmp_mount": {
+      "executable": true,
+      "filesystem": "tmpfs",
+      "mount_options": "rw,nosuid,nodev,relatime",
+      "super_options": "rw,size=4194304k,inode64"
+    },
+    "torch_version": "2.13.0+cu130"
+  },
+  "runner_sha256": "1c9af5c4bce6b91f5841853c8546e7edcaa7c0609a0bd4f0e66f469ed5dabbef",
+  "schema": "anvil-serving.gpu-test-job/v1",
+  "spec_sha256": "035409b93b1bd99f22eb2c69933d0ce5e222fe94a1e2092e63aa9549314b564c",
+  "timed_out": false
+}

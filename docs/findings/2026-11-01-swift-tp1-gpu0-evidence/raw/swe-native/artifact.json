@@ -1,0 +1,164 @@
+{
+  "created_at": "2026-11-02T01:44:18.171668Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "base_url": "[LOOPBACK_ENDPOINT]",
+      "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    "finished_at": "2026-11-02T01:44:18.171577Z",
+    "started_at": "2026-11-02T00:55:57.114874Z",
+    "submitted_at": "2026-11-02T00:43:53.353247+00:00",
+    "worker": {
+      "id": "[PRIMARY_NODE]"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-11-02T01:44:18.162516Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": 262144,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "architecture": "x86_64",
+          "container_capable": true,
+          "free_disk_bytes": 634958655488,
+          "harness_assets": [],
+          "id": "[PRIMARY_NODE]",
+          "owned_output_writable": true,
+          "platform": "linux"
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co[REDACTED_PATH]sets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "alias": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+        },
+        "runtime": {
+          "reason": "not exposed by router preflight",
+          "status": "unavailable"
+        },
+        "served_model": {
+          "configured_context": 262144,
+          "id": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "[PRIMARY_NODE]"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "[QUALIFICATION_FINAL_CAMPAIGN]",
+        "profile": "scout",
+        "run_id": "[QUALIFICATION_FINAL_SWE_RUN]",
+        "spec_sha256": "76775258ce6e210fb657da389cbb83b28b582b0884a1ad1ff297b072b2e27560",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 10609,
+              "path": "evidence/0-assets.json",
+              "sha256": "705fc4c87244425518b079d4d8033489b02afc9f3748a3d0799fdb4c40516f2f"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2114,
+              "path": "evidence/0-preflight.json",
+              "sha256": "30b7f7e3367e8d21cec5020c631f4432ad9b98643be8c540c667363c83614da1"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 10044,
+              "path": "evidence/0-swe-canonical-retention.json",
+              "sha256": "0508e8e8fea9732d74d6a8de0948baf8c6d976e5ea2c72ea024399cc000b39d2"
+            }
+          ],
+          "name": "swe_canonical_retention",
+          "sequence": 2,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 182926,
+              "path": "evidence/2-swe.json",
+              "sha256": "f8809f0deac24d3f4e4d0b11260d7c9dc3d70ee42f8196ed9508f8ae2ec7d894"
+            }
+          ],
+          "name": "swe",
+          "sequence": 3,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 0.8,
+        "resolved": 4
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "[QUALIFICATION_FINAL_CAMPAIGN]",
+    "profile": "scout",
+    "run_id": "[QUALIFICATION_FINAL_SWE_RUN]",
+    "spec_sha256": "76775258ce6e210fb657da389cbb83b28b582b0884a1ad1ff297b072b2e27560",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

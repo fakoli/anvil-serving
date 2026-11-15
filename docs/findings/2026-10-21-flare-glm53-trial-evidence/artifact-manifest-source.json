@@ -1,0 +1,177 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-21-flare-glm53-trial",
+    "capability": "text",
+    "repository_revision": "80ad7e5c5de49221ba1e75fa133ef358af3e72e3",
+    "dirty_state": "uncommitted bounded preflight sampling and recipe admission/seccomp changes; retained source hashes",
+    "started_at": "2026-10-21T08:29:22Z",
+    "completed_at": "2026-10-21T09:36:00Z",
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "raw/scout-plan.json"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "raw/scout-plan.json",
+        "raw/scout-execution-priority.json",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration/Dockerfile.preparation",
+        "configuration/README.md",
+        "configuration/flare-config.toml",
+        "configuration/seccomp.json",
+        "configuration/serve-recipe.toml",
+        "raw/benchmark-source-verification.json"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "raw/benchmark-source-verification.json",
+        "raw/cache-inspection-review.json",
+        "raw/candidate-end.json",
+        "raw/candidate-export-memory-pressure.json",
+        "raw/candidate-final-absence.json",
+        "raw/candidate-final-unload.json",
+        "raw/candidate-package-identity.json",
+        "raw/candidate-r2-logs.json",
+        "raw/candidate-r3-preparation-summary.json",
+        "raw/candidate-r4-final-metrics.json",
+        "raw/candidate-r4-preparation-logs.json",
+        "raw/candidate-r4-resource-samples.jsonl",
+        "raw/candidate-runtime-samples.jsonl",
+        "raw/candidate-warm-final-logs.json",
+        "raw/candidate-warm-final-metrics.json",
+        "raw/candidate-warm-load-timing.json",
+        "raw/compile-worker-review.json",
+        "raw/flare-natural-ctx10240-c1.json",
+        "raw/flare-natural-ctx10240-c1.json.journal.jsonl",
+        "raw/flare-natural-ctx10240-c4.json",
+        "raw/flare-natural-ctx10240-c4.json.journal.jsonl",
+        "raw/flare-natural-ctx32768-c1.json",
+        "raw/flare-natural-ctx32768-c1.json.journal.jsonl",
+        "raw/flare-natural-ctx32768-c4.json",
+        "raw/flare-natural-ctx32768-c4.json.journal.jsonl",
+        "raw/flare-preflight.json",
+        "raw/flare-strict-ctx8192-c1.json",
+        "raw/flare-strict-ctx8192-c1.json.journal.jsonl",
+        "raw/flare-strict-ctx8192-c4.json",
+        "raw/flare-strict-ctx8192-c4.json.journal.jsonl",
+        "raw/flare-warm-preflight.json",
+        "raw/forward-compilation-review.json",
+        "raw/gpu-attempt-start.json",
+        "raw/incumbent-before-interruption.json",
+        "raw/incumbent-capacity-c1.json",
+        "raw/incumbent-capacity-c1.json.journal.jsonl",
+        "raw/incumbent-capacity-c4.json",
+        "raw/incumbent-capacity-c4.json.journal.jsonl",
+        "raw/incumbent-capacity-summary.json",
+        "raw/incumbent-final-status.json",
+        "raw/incumbent-natural-ctx10240-c1.json",
+        "raw/incumbent-natural-ctx10240-c1.json.journal.jsonl",
+        "raw/incumbent-natural-ctx10240-c4.json",
+        "raw/incumbent-natural-ctx10240-c4.json.journal.jsonl",
+        "raw/incumbent-natural-ctx32768-c1.json",
+        "raw/incumbent-natural-ctx32768-c1.json.journal.jsonl",
+        "raw/incumbent-natural-ctx32768-c4.json",
+        "raw/incumbent-natural-ctx32768-c4.json.journal.jsonl",
+        "raw/incumbent-preflight.json",
+        "raw/incumbent-runtime-samples.jsonl.gz",
+        "raw/no-compile-review.json",
+        "raw/process-lesson.json",
+        "raw/protected-manifest-verification.json",
+        "raw/restoration-final.json",
+        "raw/restore-final-apply.json",
+        "raw/restored-incumbent-preflight.json",
+        "raw/restored-routed-preflight.json",
+        "raw/router-restored-readmit.json",
+        "raw/router-restored-status.json",
+        "raw/scout-execution-priority.json",
+        "raw/scout-plan.json",
+        "raw/seccomp-review.json",
+        "graph-manifest.json",
+        "graphs/matrix.svg",
+        "graphs/graph-data.json"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "raw/restoration-final.json"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Retained sanitized campaign evidence; raw source references preserve their bounded scope."
+    }
+  ]
+}

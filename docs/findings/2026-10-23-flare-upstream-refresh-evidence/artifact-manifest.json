@@ -1,0 +1,442 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-23-flare-upstream-refresh",
+    "capability": "Flare current-upstream compatibility and cache diagnostics",
+    "repository_revision": "0b21d7f4883ac6f2b099df55813e8be06777b9df",
+    "dirty_state": "Compatibility commit and managed runtime bound; public product documentation worktree contains unrelated preserved edits.",
+    "started_at": "2026-10-24T04:58:42.719341+00:00",
+    "completed_at": "2026-10-24T05:28:51.048519+00:00",
+    "evidence_labels": [
+      "compatibility-only",
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "campaign-size-policy-review/v1",
+    "flare-current-baseline-boundary/v1",
+    "flare-current-baseline-summary/v1",
+    "flare-retained-frontend-inspection/v1",
+    "flare-upstream-current-phase/v2",
+    "flare-upstream-current-response-fixture/v2",
+    "flare-upstream-refresh-decision/v1",
+    "flare-upstream-refresh-plan/v1",
+    "flare-upstream-refresh-restoration-summary/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "6a5e3a450edc672e9f10d2d089206e151190ea54ebdd62961bd60ec4ec0aff55",
+          "bytes": 2138
+        },
+        {
+          "path": "report.md",
+          "sha256": "6eae567a50e6841f6ee6a72e29a5579933559977c565370cb11d03b3d6fa4611",
+          "bytes": 10588
+        },
+        {
+          "path": "alias-provenance.json",
+          "sha256": "977786add97445916dc659a422f01ed649a5b46b5e65cccdd1bf6b7a89701ee2",
+          "bytes": 20
+        },
+        {
+          "path": "provenance.json",
+          "sha256": "ba12f142efedb3e9ca59583648657c268e6826296191f65573d17885bf6df8bc",
+          "bytes": 1072313
+        },
+        {
+          "path": "publication-transformations.json",
+          "sha256": "1496929ce93f04f111937a8b2eedc862789fda0145840e41dde9f1ddc7e6d041",
+          "bytes": 1643
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "8eab99b026a4272e42baab63adb152bae679ef25f9809bc59c3066d6cc4a9624",
+          "bytes": 1458
+        },
+        {
+          "path": "upstream-review.md",
+          "sha256": "5c89f7b58fe4e33fe32a4e190bf92d4ca8e6489ac250532c786fd618502ffa2b",
+          "bytes": 14288
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "archives/harness.tar.gz",
+          "sha256": "6171a3ee0aa6e14a315547a36c9a913853e70065d4419c802493c5ce53e20523",
+          "bytes": 118728
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "da94fc4dd7c42cb04ff5274d7f2d8938e02c4d1fa5cd841a24a060ce3d2eaedd",
+          "bytes": 2138
+        },
+        {
+          "path": "reconstruction.md",
+          "sha256": "da0df73a0fa5d7e3a8146a7d6664674a0b5e078e7691ca78332ae2d5c42f096a",
+          "bytes": 2829
+        },
+        {
+          "path": "archives/source.tar.gz",
+          "sha256": "2d9c22ce06ab47fcb25dcd653418f22e4cbbab932f8c5e409347a9a149ce9dce",
+          "bytes": 130978
+        },
+        {
+          "path": "archives/build.tar.gz",
+          "sha256": "2aa31769489b851dcc91451ee4606764d3cb56f7d04e2d7e3e921b42604f8103",
+          "bytes": 74484
+        },
+        {
+          "path": "archives/runtime.tar.gz",
+          "sha256": "86e6c8070a5a68bfeb81bc8a43c8b388394f05b007ddba0df95b3a1e659dd0e2",
+          "bytes": 172736
+        },
+        {
+          "path": "archives/harness.tar.gz",
+          "sha256": "6171a3ee0aa6e14a315547a36c9a913853e70065d4419c802493c5ce53e20523",
+          "bytes": 118728
+        },
+        {
+          "path": "archives/review.tar.gz",
+          "sha256": "bc1a4406d08ba601eed88c4494fb4f378012c8db5bed21c9b186d072182c9ee8",
+          "bytes": 66162
+        },
+        {
+          "path": "archives/publication-method.tar.gz",
+          "sha256": "67d676493724c197f2a8b07903673aef1c9944801e0e5809ac83ad45533a243b",
+          "bytes": 9426
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "reconstruction.md",
+          "sha256": "da0df73a0fa5d7e3a8146a7d6664674a0b5e078e7691ca78332ae2d5c42f096a",
+          "bytes": 2829
+        },
+        {
+          "path": "recipe.toml",
+          "sha256": "96fd67e7d7f00feae0ac9d77e242386f53607ed3c046bed0d1690d03778369c0",
+          "bytes": 2799
+        },
+        {
+          "path": "legacy-glm-template-compat.diff",
+          "sha256": "90660b3b86a33383366c5d259b6eab05381541381bef127a5dea0fadf789359e",
+          "bytes": 7497
+        },
+        {
+          "path": "archives/source.tar.gz",
+          "sha256": "2d9c22ce06ab47fcb25dcd653418f22e4cbbab932f8c5e409347a9a149ce9dce",
+          "bytes": 130978
+        },
+        {
+          "path": "archives/build.tar.gz",
+          "sha256": "2aa31769489b851dcc91451ee4606764d3cb56f7d04e2d7e3e921b42604f8103",
+          "bytes": 74484
+        },
+        {
+          "path": "archives/runtime.tar.gz",
+          "sha256": "86e6c8070a5a68bfeb81bc8a43c8b388394f05b007ddba0df95b3a1e659dd0e2",
+          "bytes": 172736
+        },
+        {
+          "path": "archives/harness.tar.gz",
+          "sha256": "6171a3ee0aa6e14a315547a36c9a913853e70065d4419c802493c5ce53e20523",
+          "bytes": 118728
+        },
+        {
+          "path": "archives/review.tar.gz",
+          "sha256": "bc1a4406d08ba601eed88c4494fb4f378012c8db5bed21c9b186d072182c9ee8",
+          "bytes": 66162
+        },
+        {
+          "path": "archives/canonical-root.tar.gz",
+          "sha256": "c8513e157ec96fd62590a5bb50941164d23bdd582a6d14a8e63a9b3c1fd5d985",
+          "bytes": 39493
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "graph-cli-input.json",
+          "sha256": "65b181a500ccbaabce8bffb61f41c5daca9dc0d5f1c9aee6397140733031fa90",
+          "bytes": 404
+        },
+        {
+          "path": "graphs/replay-data.json",
+          "sha256": "6506eae7e8ec8c6a4f8957f52df2fb7b324200d4f65f5fb2001ffcfb401abd7c",
+          "bytes": 2083
+        },
+        {
+          "path": "graphs/replay.svg",
+          "sha256": "5c121e801198b23b35bd3bfac592c3beeec26ffa06d168fb6ccf34b60a1e2693",
+          "bytes": 3006
+        },
+        {
+          "path": "archives/current-baseline.tar.gz",
+          "sha256": "2a6adbef744c5ee16db5c4f90190a2328443cd3641653c6a251faca7e2172ff0",
+          "bytes": 6164
+        },
+        {
+          "path": "archives/canonical-00-fixtures.tar.gz",
+          "sha256": "3d0aff0376b6ef3cfab141c1090d13fa5f0d4688d84552e023fa27fadc9afdaa",
+          "bytes": 115120
+        },
+        {
+          "path": "archives/canonical-01-fixed1.tar.gz",
+          "sha256": "eba6ab975e06b2bc06352a223c53c27a1b96b2cd1696af8a49d249e519582cce",
+          "bytes": 1887087
+        },
+        {
+          "path": "archives/canonical-02-fixed1.tar.gz",
+          "sha256": "793e99bd89032f6d505104ae3646bad582adb73d8590fd10c916a63ddf5eabc5",
+          "bytes": 1886975
+        },
+        {
+          "path": "archives/canonical-03-fixed1.tar.gz",
+          "sha256": "da9e9fb93fef53898d7c916e727c387f4a0e900c8ccc6be0f2b49799b7fae667",
+          "bytes": 1887262
+        },
+        {
+          "path": "archives/canonical-04-small12.tar.gz",
+          "sha256": "b990c82298e1c16ecf5e843acf113007dcdd1b245d8e07c912bcc8264c264d48",
+          "bytes": 697625
+        },
+        {
+          "path": "archives/canonical-05-pageheavy.tar.gz",
+          "sha256": "2891dcb57a5e87b08f6c2dfc2a824bbb686a8bb6adbbf8a99c735a00e2695a54",
+          "bytes": 427710
+        },
+        {
+          "path": "archives/canonical-root.tar.gz",
+          "sha256": "c8513e157ec96fd62590a5bb50941164d23bdd582a6d14a8e63a9b3c1fd5d985",
+          "bytes": 39493
+        },
+        {
+          "path": "archives/current-baseline-driver6157110.tar.gz",
+          "sha256": "e2161f3e1c86f58f1141d274c5ce3e7060308425048939e06a6ab05d8138f19f",
+          "bytes": 18181
+        },
+        {
+          "path": "archives/current-baseline-monitorfix.tar.gz",
+          "sha256": "4535d62a5b2579bb42eed69ad63b3979f77623553b94bd4c9451e0a4990fd37e",
+          "bytes": 53379
+        },
+        {
+          "path": "archives/post-driver-restoration.tar.gz",
+          "sha256": "16f5cb4e41d5a8390e37ad3f2136768c8ba11095dd5a04e211640a45b88a6058",
+          "bytes": 5306
+        },
+        {
+          "path": "archives/post-driver-restoration-validated.tar.gz",
+          "sha256": "2767ceb1ce60eaf033e6473d6176afa1b344a22f9e5911ff5299a069f6ac446a",
+          "bytes": 6517
+        },
+        {
+          "path": "archives/accepted-summary.tar.gz",
+          "sha256": "1038eae321226d7156fb928ad47cc2dc32407679c295c716e42f405abaabf1a8",
+          "bytes": 3671594
+        },
+        {
+          "path": "archives/rejected-analysis.tar.gz",
+          "sha256": "3d8dea350bfbf91ccbec17a3fe9a0e91bbdebadece47dcad1a9fe079a7d97e80",
+          "bytes": 3671316
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "0d4983c14ed6b33a03624c274e1de7b6c5f438c5a50558af59977a3ceacb3a05",
+          "bytes": 2886
+        },
+        {
+          "path": "archives/source.tar.gz",
+          "sha256": "2d9c22ce06ab47fcb25dcd653418f22e4cbbab932f8c5e409347a9a149ce9dce",
+          "bytes": 130978
+        },
+        {
+          "path": "archives/build.tar.gz",
+          "sha256": "2aa31769489b851dcc91451ee4606764d3cb56f7d04e2d7e3e921b42604f8103",
+          "bytes": 74484
+        },
+        {
+          "path": "archives/runtime.tar.gz",
+          "sha256": "86e6c8070a5a68bfeb81bc8a43c8b388394f05b007ddba0df95b3a1e659dd0e2",
+          "bytes": 172736
+        },
+        {
+          "path": "archives/harness.tar.gz",
+          "sha256": "6171a3ee0aa6e14a315547a36c9a913853e70065d4419c802493c5ce53e20523",
+          "bytes": 118728
+        },
+        {
+          "path": "archives/review.tar.gz",
+          "sha256": "bc1a4406d08ba601eed88c4494fb4f378012c8db5bed21c9b186d072182c9ee8",
+          "bytes": 66162
+        },
+        {
+          "path": "archives/current-baseline.tar.gz",
+          "sha256": "2a6adbef744c5ee16db5c4f90190a2328443cd3641653c6a251faca7e2172ff0",
+          "bytes": 6164
+        },
+        {
+          "path": "archives/current-baseline-driver6157110.tar.gz",
+          "sha256": "e2161f3e1c86f58f1141d274c5ce3e7060308425048939e06a6ab05d8138f19f",
+          "bytes": 18181
+        },
+        {
+          "path": "archives/current-baseline-monitorfix.tar.gz",
+          "sha256": "4535d62a5b2579bb42eed69ad63b3979f77623553b94bd4c9451e0a4990fd37e",
+          "bytes": 53379
+        },
+        {
+          "path": "archives/post-driver-restoration.tar.gz",
+          "sha256": "16f5cb4e41d5a8390e37ad3f2136768c8ba11095dd5a04e211640a45b88a6058",
+          "bytes": 5306
+        },
+        {
+          "path": "archives/post-driver-restoration-validated.tar.gz",
+          "sha256": "2767ceb1ce60eaf033e6473d6176afa1b344a22f9e5911ff5299a069f6ac446a",
+          "bytes": 6517
+        },
+        {
+          "path": "archives/rejected-analysis.tar.gz",
+          "sha256": "3d8dea350bfbf91ccbec17a3fe9a0e91bbdebadece47dcad1a9fe079a7d97e80",
+          "bytes": 3671316
+        },
+        {
+          "path": "archives/publication-method.tar.gz",
+          "sha256": "67d676493724c197f2a8b07903673aef1c9944801e0e5809ac83ad45533a243b",
+          "bytes": 9426
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "cb9250327e1b335e45651a3d7e433ad75d47ab4e438af70d16dd5561319bbfdb",
+          "bytes": 543
+        },
+        {
+          "path": "archives/current-baseline.tar.gz",
+          "sha256": "2a6adbef744c5ee16db5c4f90190a2328443cd3641653c6a251faca7e2172ff0",
+          "bytes": 6164
+        },
+        {
+          "path": "archives/canonical-root.tar.gz",
+          "sha256": "c8513e157ec96fd62590a5bb50941164d23bdd582a6d14a8e63a9b3c1fd5d985",
+          "bytes": 39493
+        },
+        {
+          "path": "archives/current-baseline-driver6157110.tar.gz",
+          "sha256": "e2161f3e1c86f58f1141d274c5ce3e7060308425048939e06a6ab05d8138f19f",
+          "bytes": 18181
+        },
+        {
+          "path": "archives/current-baseline-monitorfix.tar.gz",
+          "sha256": "4535d62a5b2579bb42eed69ad63b3979f77623553b94bd4c9451e0a4990fd37e",
+          "bytes": 53379
+        },
+        {
+          "path": "archives/post-driver-restoration.tar.gz",
+          "sha256": "16f5cb4e41d5a8390e37ad3f2136768c8ba11095dd5a04e211640a45b88a6058",
+          "bytes": 5306
+        },
+        {
+          "path": "archives/post-driver-restoration-validated.tar.gz",
+          "sha256": "2767ceb1ce60eaf033e6473d6176afa1b344a22f9e5911ff5299a069f6ac446a",
+          "bytes": 6517
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "f5d4f885ff0d0892eb9c8e62b97c8de76b0ff0732210c2be09e9d971d7ca38de",
+          "bytes": 22708
+        },
+        {
+          "path": "decision-summary.json",
+          "sha256": "f5d4f885ff0d0892eb9c8e62b97c8de76b0ff0732210c2be09e9d971d7ca38de",
+          "bytes": 22708
+        },
+        {
+          "path": "final-results-review.md",
+          "sha256": "04f135b7cb97263aba9037675fc63cebee463ca55ea253ef62ff4a05b05ddc49",
+          "bytes": 7378
+        },
+        {
+          "path": "compatibility-pr-draft.md",
+          "sha256": "ffbb7bbdb39e45382e892ac84e2f9eb0ddc29c1dd1ad6909b7b8f8eee2152918",
+          "bytes": 3898
+        },
+        {
+          "path": "issue-draft.md",
+          "sha256": "b9f265142ea5d757ec06a9adaec3f4b96ffdf76cc61d47e54fc8483ed0c8404f",
+          "bytes": 5507
+        }
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate social publication copy requested; dated finding and native evidence are authoritative."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 4 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

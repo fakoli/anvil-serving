@@ -1,0 +1,54 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "reviewer": "flare_trial_review",
+  "request": "Bound simultaneous KV capacity for cap16 host32",
+  "gate_state": "measurement_in_progress",
+  "findings": [
+    {
+      "status": "confirmed",
+      "finding": "1532928 token pool =2994logicalpages*512. 17executionrows are separate;32snapshotrows alias those GPU page IDs. Host7314pages+52rows are offload capacity, not additional GPU capacity.",
+      "source": [
+        "helios/src/runtime_package/memory.rs:618-620,674-712,729-737",
+        "helios/src/runtime_package/cache_memory.rs:79-126"
+      ]
+    },
+    {
+      "status": "confirmed",
+      "finding": "After warm32kC4:1614unique pageIDs backed snapshot aliases,494checkpoint tail pages,886free; sum2994. Alias ranges may overlap, so multiplying a row range by32 overcounts.",
+      "evidence": "cap16-host32-ctx32768-c4-warm-after-metrics.prom"
+    },
+    {
+      "status": "confirmed",
+      "finding": "For prompt260000 +output8192 +MTP3 =268195 executionlimit. ceil(268195/512)+1draftpage=525/request;C4=2100,leaving894aftereviction. Warmstate886free requiresatleast1214occupiedpagesreclaimed.",
+      "source": [
+        "helios/src/scheduler.rs:1285-1306",
+        "helios/src/model.rs:287-307"
+      ]
+    },
+    {
+      "status": "plausible",
+      "finding": "Enough cached tails and snapshot aliases must be evictable and retired. Admission evicts snapshots; pinned prefixes,liveboundarysnapshots,pendingfences reduce usable capacity. Snapshot capture may be skipped rather than enlarging memory.",
+      "source": [
+        "helios/src/scheduler.rs:1014-1038,2303-2336",
+        "helios/src/scheduler/cache_memory.rs:23-70"
+      ]
+    }
+  ],
+  "unknowns": [
+    "Exact per-snapshot alias ranges/overlap",
+    "Current pinning/retirement state",
+    "Actual output lengths",
+    "Additional message-boundary snapshots"
+  ],
+  "recommendation": "Bounded feasibility probe only. Arithmetic supports C4 after eviction with894page slack, not proof of simultaneous completion.",
+  "counters_to_monitor": [
+    "free_kv_pages",
+    "cached_kv_pages",
+    "snapshot_backing_pages",
+    "free_snapshots",
+    "preemptions",
+    "admission_failures"
+  ],
+  "human_gate_required": false,
+  "promoted": false
+}

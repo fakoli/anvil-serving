@@ -1046,3 +1046,1588 @@ index bb9a32c..205216a 100644
  
    const password = process.env.PI_WEB_PASSWORD;
    if (!isWebPasswordEnabled(password)) {
+diff --git a/app/globals.css b/b/app/globals.css
+index 48509de..bce216d 100644
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -1922,11 +1922,11 @@ span.token.table {
+   .chat-input-textarea {
+     font-size: max(16px, var(--chat-content-font-size, 14px)) !important;
+   }
+ }
+ 
+-/* Push-to-talk voice input */
++/* Voice input (click-to-toggle dictation) */
+ @keyframes voice-rec-pulse {
+   0%,
+   100% {
+     opacity: 1;
+   }
+@@ -1946,5 +1946,43 @@ span.token.table {
+ }
+ 
+ .voice-transcribing-spin {
+   animation: voice-transcribing-spin 0.9s linear infinite;
+ }
++
++/* Live dictation wave in the message bar: per-bar phase comes from the CSS
++   animation; the container's --voice-wave-level custom property (0..1,
++   written from the mic analyser on each frame) scales the amplitude so the
++   bars follow the actual mic input level. */
++.voice-wave {
++  display: flex;
++  align-items: center;
++  gap: 2px;
++  height: 22px;
++  flex-shrink: 0;
++}
++
++.voice-wave span {
++  width: 2px;
++  height: 100%;
++  border-radius: 1px;
++  background: #ef4444;
++  transform-origin: center;
++  animation: voice-wave-bounce 1s ease-in-out infinite;
++}
++
++@keyframes voice-wave-bounce {
++  0%,
++  100% {
++    transform: scaleY(calc(0.18 + var(--voice-wave-level, 0) * 0.18));
++  }
++  50% {
++    transform: scaleY(calc(0.32 + var(--voice-wave-level, 0) * 0.68));
++  }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .voice-wave span {
++    animation: none;
++    transform: scaleY(calc(0.25 + var(--voice-wave-level, 0) * 0.75));
++  }
++}
+diff --git a/components/ChatInput.test.mjs b/b/components/ChatInput.test.mjs
+index b2a4178..67bf855 100644
+--- a/components/ChatInput.test.mjs
++++ b/components/ChatInput.test.mjs
+@@ -168,10 +168,108 @@ test("shows the follow-up shortcut in the button tooltip", () => {
+ 
+   assert.match(html, /title="Queue this message after the agent finishes \(Alt\/Option\+Enter\)"/);
+   assert.match(html, /aria-keyshortcuts="Alt\+Enter"/);
+ });
+ 
++test("condenses streaming composer controls into icon buttons with tooltips", () => {
++  const html = renderToStaticMarkup(
++    React.createElement(I18nProvider, null, React.createElement(ChatInput, {
++      onSend() {}, onAbort() {}, onSteer() {}, onFollowUp() {}, isStreaming: true,
++    })),
++  );
++
++  assert.match(html, /aria-label="Steer"/);
++  assert.match(html, /title="Interrupt the current run and inject this message now"/);
++  assert.doesNotMatch(html, />Steer<\/button>/);
++  assert.match(html, /aria-label="Follow-up"/);
++  assert.doesNotMatch(html, />Follow-up<\/button>/);
++  assert.match(html, /aria-label="Stop agent"/);
++  assert.doesNotMatch(html, />Stop<\/button>/);
++});
++
++test("condenses the idle Send button into an icon button", () => {
++  const html = renderToStaticMarkup(
++    React.createElement(I18nProvider, null, React.createElement(ChatInput, {
++      onSend() {}, onAbort() {}, isStreaming: false,
++    })),
++  );
++
++  assert.match(html, /aria-label="Send"/);
++  assert.doesNotMatch(html, />Send<\/button>/);
++});
++
++test("condenses the queued banner into a count chip and an icon recall button", () => {
++  const html = renderToStaticMarkup(
++    React.createElement(I18nProvider, null, React.createElement(ChatInput, {
++      onSend() {}, onAbort() {},
++      queuedMessages: { steering: ["one"], followUp: ["two"] },
++      onRecallQueue() {},
++    })),
++  );
++
++  assert.match(html, /title="Queued · 2"/);
++  assert.match(html, /aria-label="Queued · 2"/);
++  assert.match(html, />2<\/span>/);
++  assert.match(html, /aria-label="Recall to input"/);
++  assert.doesNotMatch(html, />Recall to input<\/button>/);
++});
++
++test("condenses the bash output-mode label into a compact chip", () => {
++  setDraft("voice-test-bash", { value: "!ls", images: [] });
++  const html = renderToStaticMarkup(
++    React.createElement(I18nProvider, null, React.createElement(ChatInput, {
++      onSend() {}, onAbort() {}, draftKey: "voice-test-bash",
++    })),
++  );
++  clearDraft("voice-test-bash");
++
++  assert.match(html, /title="Shell — output sent to model"/);
++  assert.match(html, />model<\/span>/);
++  assert.doesNotMatch(html, />output sent to model</);
++});
++
++test("wires click-to-toggle dictation with a discard stop button and a live wave", () => {
++  const text = readFileSync(new URL("./ChatInput.tsx", import.meta.url), "utf8");
++
++  // The mic button toggles: requesting cancels, recording stops, idle starts.
++  assert.match(text, /onClick=\{\(\) => \{\s*if \(voice\.state === "requesting"\) voice\.cancel\(\);\s*else if \(voice\.recording\) voice\.stop\(\);\s*else void voice\.start\(\);\s*\}\}/);
++  assert.match(text, /aria-pressed=\{voice\.recording\}/);
++  // Push-to-talk pointer/keyboard hold handlers are gone.
++  assert.doesNotMatch(text, /onPointerDown/);
++  assert.doesNotMatch(text, /onPointerUp/);
++  assert.doesNotMatch(text, /onPointerLeave/);
++
++  // While recording, a discard stop button and the live wave sit on the left
++  // side of the message bar, before the textarea.
++  const barIndex = text.indexOf('flexDirection: compact ? "column" : "row"');
++  const textareaIndex = text.indexOf("<textarea", barIndex);
++  assert.ok(barIndex > -1 && textareaIndex > barIndex);
++  const barPrefix = text.slice(barIndex, textareaIndex);
++  assert.match(barPrefix, /voice\.cancel\(\)/);
++  assert.match(barPrefix, /t\("chat\.voiceDiscard"\)/);
++  assert.match(barPrefix, /<VoiceWave levelRef=\{voice\.levelRef\} \/>/);
++
++  // The wave is driven by the hook's live mic level.
++  assert.match(text, /function VoiceWave/);
++  assert.match(text, /--voice-wave-level/);
++});
++
++test("voice dictation strings exist in every locale and hold-to-talk is gone", () => {
++  for (const locale of ["en", "zh-CN", "zh-TW"]) {
++    const text = readFileSync(new URL(`../lib/i18n/messages/${locale}.ts`, import.meta.url), "utf8");
++    assert.match(text, /"chat\.voiceDictation"/);
++    assert.match(text, /"chat\.voiceRequesting"/);
++    assert.match(text, /"chat\.voiceRecording"/);
++    assert.match(text, /"chat\.voiceDiscard"/);
++    assert.match(text, /"chat\.voiceTranscribing"/);
++    assert.match(text, /"chat\.voiceError"/);
++    assert.doesNotMatch(text, /"chat\.voiceHoldToTalk"/);
++    assert.match(text, /"chat\.outputModeLocal"/);
++    assert.match(text, /"chat\.outputModeModel"/);
++  }
++});
++
+ test("renders the upstream model error", () => {
+   const html = renderToStaticMarkup(
+     React.createElement(
+       I18nProvider,
+       null,
+@@ -273,11 +371,11 @@ test("renders the empty tool preset as Chat only", () => {
+ 
+   assert.match(html, /title="Change tool preset: Chat only"/);
+   assert.match(html, />Chat only<\/span>/);
+ });
+ 
+-test("renders the compact composer with the standard Send button and no session controls", () => {
++test("renders the compact composer with an icon-only Send button and no session controls", () => {
+   const html = renderToStaticMarkup(
+     React.createElement(
+       I18nProvider,
+       null,
+       React.createElement(ChatInput, {
+@@ -288,11 +386,12 @@ test("renders the compact composer with the standard Send button and no session
+       }),
+     ),
+   );
+ 
+   assert.match(html, /<textarea/);
+-  assert.match(html, />Send<\/button>/);
++  assert.match(html, /aria-label="Send"/);
++  assert.doesNotMatch(html, />Send<\/button>/);
+   assert.equal((html.match(/<button\b/g) ?? []).length, 1);
+   assert.doesNotMatch(html, /type="file"|Attach image|Change tool preset/);
+ });
+ 
+ test("shows and locks the optimistic model while a switch is pending", () => {
+diff --git a/components/ChatInput.tsx b/b/components/ChatInput.tsx
+index 74d97c0..bae7cc7 100644
+--- a/components/ChatInput.tsx
++++ b/components/ChatInput.tsx
+@@ -452,10 +452,55 @@ function QueuedMessageRow({ kind, text }: { kind: "steer" | "follow-up"; text: s
+       <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{text}</span>
+     </div>
+   );
+ }
+ 
++const VOICE_WAVE_BARS = 18;
++
++/**
++ * Live dictation wave for the message bar: thin bars bounce with per-bar
++ * phase while the container's --voice-wave-level custom property (written
++ * from the mic analyser on each frame) scales the amplitude, so the user
++ * can tell the mic is picking up sound.
++ */
++function VoiceWave({ levelRef }: { levelRef: React.RefObject<number> }) {
++  const containerRef = useRef<HTMLDivElement | null>(null);
++  useEffect(() => {
++    if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") return;
++    let raf = 0;
++    let smoothed = 0;
++    const tick = () => {
++      raf = window.requestAnimationFrame(tick);
++      const el = containerRef.current;
++      if (!el) return;
++      const target = Math.min(1, Math.max(0, levelRef.current));
++      smoothed = smoothed * 0.7 + target * 0.3;
++      el.style.setProperty("--voice-wave-level", smoothed.toFixed(3));
++    };
++    raf = window.requestAnimationFrame(tick);
++    return () => window.cancelAnimationFrame(raf);
++  }, [levelRef]);
++  return (
++    <div
++      ref={containerRef}
++      className="voice-wave"
++      aria-hidden="true"
++      style={{ "--voice-wave-level": 0 } as React.CSSProperties}
++    >
++      {Array.from({ length: VOICE_WAVE_BARS }, (_, i) => (
++        <span
++          key={i}
++          style={{
++            animationDelay: `${(-((i % 5) * 0.17)).toFixed(2)}s`,
++            animationDuration: `${(0.85 + (i % 3) * 0.12).toFixed(2)}s`,
++          }}
++        />
++      ))}
++    </div>
++  );
++}
++
+ function ModelNoticeBanner({ tone, title, body, onClose }: { tone: "error" | "warning"; title: string; body: string; onClose?: () => void }) {
+   const color = tone === "error" ? "239,68,68" : "234,179,8";
+   return (
+     <div
+       role="alert"
+@@ -573,10 +618,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
+   ));
+   const trimmedValue = value.trimStart();
+   const bashMode = attachedImages.length === 0 && trimmedValue.startsWith("!");
+   const bashExcluded = bashMode && trimmedValue.startsWith("!!");
++  const queuedCount = (queuedMessages?.steering.length ?? 0) + (queuedMessages?.followUp.length ?? 0);
+   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
+   const [slashActiveIndex, setSlashActiveIndex] = useState(0);
+   const [slashMenuMaxHeight, setSlashMenuMaxHeight] = useState<number | null>(null);
+   const [atQuery, setAtQuery] = useState<AtQueryMatch | null>(null);
+   const [atMenuOpen, setAtMenuOpen] = useState(false);
+@@ -861,11 +907,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+     if (textareaRef.current) {
+       textareaRef.current.style.height = "auto";
+     }
+   }, [clearImages, draftKey]);
+ 
+-  // ── Push-to-talk voice input ───────────────────────────────────────────
++  // ── Click-to-toggle voice dictation ────────────────────────────────────
+   // The mic button only renders when the server has PI_WEB_STT_URL set; the
+   // probe is fetched once per composer mount.
+   const [sttEnabled, setSttEnabled] = useState(false);
+   useEffect(() => {
+     if (compact) return;
+@@ -908,15 +954,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+   }, []);
+ 
+   const voice = useVoiceInput(insertTranscript);
+   const voiceTitle = voice.state === "recording"
+     ? t("chat.voiceRecording")
+-    : voice.state === "transcribing"
+-      ? t("chat.voiceTranscribing")
+-      : voice.state === "error"
+-        ? `${t("chat.voiceError")}${voice.error ? ` — ${voice.error}` : ""}`
+-        : t("chat.voiceHoldToTalk");
++    : voice.state === "requesting"
++      ? t("chat.voiceRequesting")
++      : voice.state === "transcribing"
++        ? t("chat.voiceTranscribing")
++        : voice.state === "error"
++          ? `${t("chat.voiceError")}${voice.error ? ` — ${voice.error}` : ""}`
++          : t("chat.voiceDictation");
+ 
+   useEffect(() => {
+     if (!draftKey || draftKeyRef.current !== draftKey) return;
+     setDraft(draftKey, {
+       value,
+@@ -1683,51 +1731,60 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+               alignItems: "center",
+               justifyContent: "space-between",
+               gap: 8,
+               padding: "2px 8px 4px 10px",
+             }}>
+-              <span style={{
+-                fontSize: 10,
+-                fontFamily: "var(--font-mono)",
+-                color: "var(--text-dim)",
+-                textTransform: "uppercase",
+-                letterSpacing: 0.4,
+-              }}>
+-                {t("chat.queued", { count: (queuedMessages?.steering.length ?? 0) + (queuedMessages?.followUp.length ?? 0) })}
++              <span
++                title={t("chat.queued", { count: queuedCount })}
++                aria-label={t("chat.queued", { count: queuedCount })}
++                style={{
++                  display: "inline-flex",
++                  alignItems: "center",
++                  gap: 4,
++                  fontSize: 10,
++                  fontFamily: "var(--font-mono)",
++                  color: "var(--text-dim)",
++                  letterSpacing: 0.4,
++                }}
++              >
++                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
++                  <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
++                  <line x1="14" y1="10" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
++                </svg>
++                {queuedCount}
+               </span>
+               {onRecallQueue && (
+                 <button
+                   onClick={onRecallQueue}
+-                   title={t("chat.recallTitle")}
++                  title={t("chat.recallTitle")}
++                  aria-label={t("chat.recall")}
+                   style={{
+                     display: "flex",
+                     alignItems: "center",
+-                    gap: 6,
+-                    padding: "4px 12px",
++                    justifyContent: "center",
++                    padding: "4px 8px",
+                     fontSize: 12,
+                     color: "var(--text)",
+                     background: "transparent",
+                     border: "1px solid var(--border)",
+                     borderRadius: 7,
+                     cursor: "pointer",
+                     transition: "background 0.12s, border-color 0.12s",
+-                    whiteSpace: "nowrap",
+                   }}
+                   onMouseEnter={(e) => {
+                     e.currentTarget.style.background = "var(--bg-hover)";
+                     e.currentTarget.style.borderColor = "color-mix(in srgb, var(--accent) 45%, var(--border))";
+                   }}
+                   onMouseLeave={(e) => {
+                     e.currentTarget.style.background = "transparent";
+                     e.currentTarget.style.borderColor = "var(--border)";
+                   }}
+                 >
+-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
++                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                     <polyline points="9 14 4 9 9 4" />
+                     <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+                   </svg>
+-                   {t("chat.recall")}
+                 </button>
+               )}
+             </div>
+             {queuedMessages?.steering.map((text, i) => (
+               <QueuedMessageRow key={`steer-${i}`} kind="steer" text={text} />
+@@ -2201,10 +2258,41 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+               padding: compact ? 0 : "10px 10px 10px 14px",
+               boxShadow: compact ? "none" : "0 1px 2px rgba(15,23,42,0.04), 0 8px 24px -12px rgba(15,23,42,0.10)",
+               transition: "border-color 0.15s, background 0.15s, box-shadow 0.15s",
+             } as React.CSSProperties}
+           >
++          {!compact && voice.recording && (
++            <>
++              <button
++                type="button"
++                onClick={() => voice.cancel()}
++                title={t("chat.voiceDiscard")}
++                aria-label={t("chat.voiceDiscard")}
++                style={{
++                  flexShrink: 0,
++                  alignSelf: "flex-end",
++                  display: "flex",
++                  alignItems: "center",
++                  justifyContent: "center",
++                  width: 30,
++                  height: 30,
++                  padding: 0,
++                  background: "rgba(239,68,68,0.12)",
++                  border: "1px solid rgba(239,68,68,0.4)",
++                  borderRadius: 8,
++                  color: "#ef4444",
++                  cursor: "pointer",
++                  transition: "background 0.12s, border-color 0.12s",
++                }}
++              >
++                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
++                  <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
++                </svg>
++              </button>
++              <VoiceWave levelRef={voice.levelRef} />
++            </>
++          )}
+           <textarea
+             ref={textareaRef}
+             className="chat-input-textarea"
+             aria-label={compact ? t("chat.quoteQuestion") : undefined}
+             value={value}
+@@ -2256,37 +2344,19 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+           />
+ 
+           {!compact && sttEnabled && voice.supported && (
+             <button
+               type="button"
+-              onPointerDown={(e) => {
+-                e.preventDefault();
+-                try {
+-                  e.currentTarget.setPointerCapture(e.pointerId);
+-                } catch {
+-                  // Pointer capture is best-effort; onPointerLeave covers release.
+-                }
+-                void voice.start();
+-              }}
+-              onPointerUp={() => voice.stop()}
+-              onPointerCancel={() => voice.stop()}
+-              onPointerLeave={() => {
+-                if (voice.recording) voice.stop();
++              onClick={() => {
++                if (voice.state === "requesting") voice.cancel();
++                else if (voice.recording) voice.stop();
++                else void voice.start();
+               }}
+-              onKeyDown={(e) => {
+-                if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+-                  e.preventDefault();
+-                  void voice.start();
+-                }
+-              }}
+-              onKeyUp={(e) => {
+-                if ((e.key === " " || e.key === "Enter") && !e.repeat) voice.stop();
+-              }}
+-              onContextMenu={(e) => e.preventDefault()}
+               disabled={voice.state === "transcribing"}
+               title={voiceTitle}
+               aria-label={voiceTitle}
++              aria-pressed={voice.recording}
+               style={{
+                 flexShrink: 0,
+                 alignSelf: "flex-end",
+                 display: "flex",
+                 alignItems: "center",
+@@ -2297,11 +2367,10 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+                 background: voice.recording ? "rgba(239,68,68,0.12)" : "none",
+                 border: `1px solid ${voice.recording ? "rgba(239,68,68,0.4)" : "var(--border)"}`,
+                 borderRadius: 8,
+                 color: voice.recording ? "#ef4444" : "var(--text-muted)",
+                 cursor: voice.state === "transcribing" ? "wait" : "pointer",
+-                touchAction: "none",
+                 userSelect: "none",
+                 WebkitUserSelect: "none",
+                 transition: "background 0.12s, border-color 0.12s, color 0.12s",
+               }}
+             >
+@@ -2325,63 +2394,65 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+               {onSteer && (
+                 <button
+                   onClick={() => sendQueued("steer")}
+                   disabled={!canQueueStreamingMessage}
+                   title={t("chat.steerHint")}
++                  aria-label={t("chat.steer")}
+                   style={{
+-                    display: "flex", alignItems: "center", gap: 5,
+-                    padding: "7px 12px",
++                    display: "flex", alignItems: "center", justifyContent: "center",
++                    padding: "7px 9px",
+                     background: canQueueStreamingMessage ? "rgba(234,179,8,0.12)" : "none",
+                     border: "1px solid rgba(234,179,8,0.35)",
+                     borderRadius: 8,
+                     color: canQueueStreamingMessage ? "rgba(180,130,0,1)" : "var(--text-dim)",
+                     cursor: canQueueStreamingMessage ? "pointer" : "not-allowed",
+                     fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
+                     transition: "background 0.12s",
+                   }}
+                 >
+-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
++                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                     <path d="M5 1 L9 5 L5 9" /><line x1="1" y1="5" x2="9" y2="5" />
+                   </svg>
+-                  {t("chat.steer")}
+                 </button>
+               )}
+               {onFollowUp && (
+                 <button
+                   onClick={() => sendQueued("followup")}
+                   disabled={!canQueueStreamingMessage}
+                   title={`${t("chat.followUpHint")} (${isMobile ? "Ctrl/Cmd+" : ""}Alt/Option+Enter)`}
++                  aria-label={t("chat.followUp")}
+                   aria-keyshortcuts={isMobile ? "Control+Alt+Enter Meta+Alt+Enter" : "Alt+Enter"}
+                   style={{
+-                    display: "flex", alignItems: "center", gap: 5,
+-                    padding: "7px 12px",
++                    display: "flex", alignItems: "center", justifyContent: "center",
++                    padding: "7px 9px",
+                     background: canQueueStreamingMessage ? "rgba(129,140,248,0.12)" : "none",
+                     border: "1px solid rgba(129,140,248,0.35)",
+                     borderRadius: 8,
+                     color: canQueueStreamingMessage ? "rgba(99,102,241,1)" : "var(--text-dim)",
+                     cursor: canQueueStreamingMessage ? "pointer" : "not-allowed",
+                     fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em",
+                     transition: "background 0.12s",
+                   }}
+                 >
+-                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
++                  <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                     <line x1="5" y1="1" x2="5" y2="6" /><polyline points="2.5 3.5 5 1 7.5 3.5" />
+                     <line x1="2" y1="9" x2="8" y2="9" />
+                   </svg>
+-                  {t("chat.followUp")}
+                 </button>
+               )}
+             </div>
+           ) : (
+             <button
+               onClick={handleSend}
+               disabled={!value.trim() && !attachedImages.length}
++              title={t("chat.send")}
++              aria-label={t("chat.send")}
+               style={{
+                 flexShrink: 0,
+                 alignSelf: "flex-end",
+-                display: "flex", alignItems: "center", gap: 6,
+-                padding: "7px 14px",
++                display: "flex", alignItems: "center", justifyContent: "center",
++                padding: "7px 10px",
+                 background: (value.trim() || attachedImages.length) ? "var(--accent)" : "var(--bg-panel)",
+                 border: "none",
+                 borderRadius: 8,
+                 color: (value.trim() || attachedImages.length) ? "var(--accent-contrast)" : "var(--text-dim)",
+                 cursor: (value.trim() || attachedImages.length) ? "pointer" : "not-allowed",
+@@ -2390,24 +2461,43 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+                 letterSpacing: "-0.01em",
+                 boxShadow: (value.trim() || attachedImages.length) ? "0 1px 3px color-mix(in srgb, var(--accent) 25%, transparent)" : "none",
+                 transition: "background 0.15s, box-shadow 0.15s",
+               }}
+             >
+-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
++              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                 <line x1="2" y1="7" x2="11" y2="7" />
+                 <polyline points="7.5 3 12 7 7.5 11" />
+               </svg>
+-              {t("chat.send")}
+             </button>
+           )}
+           </div>
+         </div>
+ 
+-        {/* Bash mode status label */}
++        {/* Bash mode status chip */}
+         {bashMode && (
+-          <div className="text-xs px-2 py-1" style={{ color: bashExcluded ? "var(--text-muted)" : "var(--accent)", marginTop: 4 }}>
+-             {t("chat.shell")} · {bashExcluded ? t("chat.outputLocal") : t("chat.outputModel")}
++          <div style={{ marginTop: 4, display: "flex", alignItems: "center" }}>
++            <span
++              title={`${t("chat.shell")} — ${bashExcluded ? t("chat.outputLocal") : t("chat.outputModel")}`}
++              aria-label={`${t("chat.shell")} — ${bashExcluded ? t("chat.outputLocal") : t("chat.outputModel")}`}
++              style={{
++                display: "inline-flex",
++                alignItems: "center",
++                gap: 4,
++                padding: "1px 8px",
++                fontSize: 10,
++                fontFamily: "var(--font-mono)",
++                color: bashExcluded ? "var(--text-muted)" : "var(--accent)",
++                border: "1px solid var(--border)",
++                borderRadius: 999,
++              }}
++            >
++              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
++                <polyline points="4 17 10 11 4 5" />
++                <line x1="12" y1="19" x2="20" y2="19" />
++              </svg>
++              {bashExcluded ? t("chat.outputModeLocal") : t("chat.outputModeModel")}
++            </span>
+           </div>
+         )}
+ 
+         {/* Bottom bar: left | center (context) | right */}
+         {!compact && <div style={{
+@@ -2486,20 +2576,18 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+                 }}
+                 style={{
+                   display: "flex",
+                   alignItems: "center",
+                   justifyContent: "center",
+-                  width: "100%",
++                  width: 32,
+                   height: 32,
+-                  padding: "8px 10px",
++                  padding: 0,
+                   background: "none",
+                   border: "none",
+                   borderRadius: 9,
+                   color: "var(--text-muted)",
+                   cursor: controlsMenuOpen ? "default" : "pointer",
+-                  fontSize: 12,
+-                  fontWeight: 500,
+                   visibility: controlsMenuOpen ? "hidden" : "visible",
+                   pointerEvents: controlsMenuOpen ? "none" : "auto",
+                   transition: "background 0.12s, color 0.12s",
+                 }}
+                 onMouseEnter={(e) => {
+@@ -2511,11 +2599,17 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+                   if (controlsMenuOpen) return;
+                   e.currentTarget.style.background = "none";
+                   e.currentTarget.style.color = "var(--text-muted)";
+                 }}
+               >
+-                {t("chat.moreControls")}
++                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
++                  <line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" />
++                  <line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" />
++                  <line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" />
++                  <line x1="1" y1="14" x2="7" y2="14" /><line x1="9" y1="8" x2="15" y2="8" />
++                  <line x1="17" y1="16" x2="23" y2="16" />
++                </svg>
+               </button>
+             )}
+             <div style={{
+               display: isMobile ? (controlsMenuOpen ? "flex" : "none") : "flex",
+               alignItems: "center",
+@@ -2764,14 +2858,15 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+             )}
+ 
+             {isStreaming && (
+               <button
+                 onClick={onAbort}
+-                 title={t("chat.stopAgent")}
++                title={t("chat.stopAgent")}
++                aria-label={t("chat.stopAgent")}
+                 style={{
+-                  display: "flex", alignItems: "center", gap: 6,
+-                  padding: "8px 14px",
++                  display: "flex", alignItems: "center", justifyContent: "center",
++                  padding: "8px 10px",
+                   height: 32,
+                   background: "rgba(239,68,68,0.08)",
+                   border: "1px solid rgba(239,68,68,0.3)",
+                   borderRadius: 9,
+                   color: "#ef4444",
+@@ -2781,14 +2876,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
+                   transition: "background 0.12s",
+                 }}
+                 onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.16)"; }}
+                 onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+               >
+-                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
++                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                   <rect x="1.5" y="1.5" width="7" height="7" rx="1.5" fill="currentColor" />
+                 </svg>
+-                 {t("chat.stop")}
+               </button>
+             )}
+ 
+             {onSoundToggle !== undefined && (
+               <button
+diff --git a/hooks/useVoiceInput.test.mjs b/b/hooks/useVoiceInput.test.mjs
+index e69de29..97f41e4 100644
+--- a/hooks/useVoiceInput.test.mjs
++++ b/hooks/useVoiceInput.test.mjs
+@@ -0,0 +1,444 @@
++import assert from "node:assert/strict";
++import { readFileSync } from "node:fs";
++import test from "node:test";
++import { Script } from "node:vm";
++import ts from "typescript";
++
++const hookSource = readFileSync(new URL("./useVoiceInput.ts", import.meta.url), "utf8");
++const hookCommonjs = ts.transpileModule(hookSource, {
++  compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS },
++}).outputText;
++
++// ── Minimal React hook runtime: re-renders on state updates, runs effects. ──
++function createHookRuntime() {
++  let hookIndex = 0;
++  let effectIndex = 0;
++  let pending = false;
++  const states = [];
++  const refs = [];
++  const memos = [];
++  const effects = [];
++
++  const depsEqual = (a, b) => {
++    if (a === b) return true;
++    if (!a || !b || a.length !== b.length) return false;
++    for (let i = 0; i < a.length; i += 1) if (!Object.is(a[i], b[i])) return false;
++    return true;
++  };
++
++  const React = {
++    useRef(initial) {
++      const i = hookIndex++;
++      if (!refs[i]) refs[i] = { current: initial };
++      return refs[i];
++    },
++    useState(initial) {
++      const i = hookIndex++;
++      if (!(i in states)) states[i] = typeof initial === "function" ? initial() : initial;
++      return [states[i], (value) => {
++        const next = typeof value === "function" ? value(states[i]) : value;
++        if (!Object.is(next, states[i])) {
++          states[i] = next;
++          pending = true;
++        }
++      }];
++    },
++    useCallback(fn, deps) {
++      const i = hookIndex++;
++      if (!memos[i] || !depsEqual(memos[i].deps, deps)) memos[i] = { fn, deps };
++      return memos[i].fn;
++    },
++    useEffect(fn, deps) {
++      const i = effectIndex++;
++      if (!effects[i] || !depsEqual(effects[i].deps, deps)) {
++        effects[i] = { deps, fn, cleanup: null, dirty: true };
++      }
++    },
++  };
++
++  function flushEffects() {
++    for (const slot of effects) {
++      if (!slot || !slot.dirty) continue;
++      slot.dirty = false;
++      if (slot.cleanup) {
++        slot.cleanup();
++        slot.cleanup = null;
++      }
++      const cleanup = slot.fn();
++      if (typeof cleanup === "function") slot.cleanup = cleanup;
++    }
++  }
++
++  return {
++    React,
++    render(hook) {
++      for (let i = 0; i < 25; i++) {
++        hookIndex = 0;
++        effectIndex = 0;
++        pending = false;
++        const result = hook(React);
++        flushEffects();
++        if (!pending) return result;
++      }
++      throw new Error("hook render did not settle");
++    },
++    unmount() {
++      for (const slot of effects) {
++        if (slot && slot.cleanup) {
++          slot.cleanup();
++          slot.cleanup = null;
++        }
++      }
++    },
++  };
++}
++
++const flush = () => new Promise((resolve) => setImmediate(resolve));
++
++/**
++ * Loads the real hook inside a VM sandbox with mocked browser APIs
++ * (getUserMedia, MediaRecorder, Web Audio, timers, fetch) and renders it
++ * through the minimal hook runtime, like a component would.
++ */
++function createHarness({ holdGetUserMedia = false } = {}) {
++  const state = {
++    rms: 0,
++    trackStopped: 0,
++    getUserMediaCalls: 0,
++    fetchCalls: [],
++    transcripts: [],
++    recorders: [],
++    audioContexts: [],
++  };
++
++  class MockMediaTrack {
++    stop() { state.trackStopped += 1; }
++  }
++  class MockMediaStream {
++    constructor() { this.tracks = [new MockMediaTrack()]; }
++    getTracks() { return this.tracks; }
++  }
++  class MockMediaRecorder {
++    static isTypeSupported(type) { return type === "audio/webm;codecs=opus"; }
++    constructor(stream) {
++      this.stream = stream;
++      this.state = "inactive";
++      this.mimeType = "audio/webm;codecs=opus";
++      this.ondataavailable = null;
++      this.onstop = null;
++      state.recorders.push(this);
++    }
++    start() { this.state = "recording"; }
++    stop() {
++      this.state = "inactive";
++      this.ondataavailable?.({ data: new Blob([new Uint8Array(2048)], { type: "audio/webm" }) });
++      this.onstop?.();
++    }
++  }
++  class MockAudioContext {
++    constructor() {
++      this.state = "running";
++      state.audioContexts.push(this);
++    }
++    createMediaStreamSource() { return { connect() {} }; }
++    createAnalyser() {
++      return { fftSize: 1024, getFloatTimeDomainData(buf) { buf.fill(state.rms); } };
++    }
++    close() {
++      this.state = "closed";
++      return Promise.resolve();
++    }
++  }
++
++  // Fake clock + timers so silence/max-duration windows are deterministic.
++  const timers = new Map();
++  let timerSeq = 1;
++  const clock = { now: 1_000_000 };
++  const setTimeout_ = (fn, ms) => {
++    const id = timerSeq++;
++    timers.set(id, { fn, at: clock.now + ms, every: null });
++    return id;
++  };
++  const clearTimeout_ = (id) => { timers.delete(id); };
++  const setInterval_ = (fn, ms) => {
++    const id = timerSeq++;
++    timers.set(id, { fn, at: clock.now + ms, every: ms });
++    return id;
++  };
++  const clearInterval_ = (id) => { timers.delete(id); };
++  function advance(ms) {
++    const target = clock.now + ms;
++    for (;;) {
++      let nextId = null;
++      let nextAt = Infinity;
++      for (const [id, timer] of timers) {
++        if (timer.at <= target && timer.at < nextAt) {
++          nextAt = timer.at;
++          nextId = id;
++        }
++      }
++      if (nextId === null) break;
++      const timer = timers.get(nextId);
++      clock.now = Math.max(clock.now, timer.at);
++      if (timer.every !== null) timer.at = clock.now + timer.every;
++      else timers.delete(nextId);
++      timer.fn();
++    }
++    clock.now = target;
++  }
++
++  // rAF queue: frames only run when the test pumps them.
++  const frames = new Map();
++  let frameSeq = 1;
++  const requestAnimationFrame_ = (fn) => {
++    const id = frameSeq++;
++    frames.set(id, fn);
++    return id;
++  };
++  const cancelAnimationFrame_ = (id) => { frames.delete(id); };
++  const pumpFrames = (n = 1) => {
++    for (let i = 0; i < n; i += 1) {
++      // One pump = one frame: callbacks queued during this frame run on the
++      // next pump, matching requestAnimationFrame's one-shot semantics.
++      const snapshot = [...frames.values()];
++      frames.clear();
++      for (const fn of snapshot) fn();
++    }
++  };
++
++  const mockBlobToWav = async (blob) => new Blob([await blob.arrayBuffer()], { type: "audio/wav" });
++
++  const runtime = createHookRuntime();
++  const sandbox = {
++    exports: {},
++    require(id) {
++      if (id === "react") return runtime.React;
++      if (id === "@/lib/audio-wav") return { blobToWav16kMono: mockBlobToWav };
++      throw new Error(`unexpected require: ${id}`);
++    },
++    Date: { now: () => clock.now },
++    setTimeout: setTimeout_,
++    clearTimeout: clearTimeout_,
++    setInterval: setInterval_,
++    clearInterval: clearInterval_,
++    requestAnimationFrame: requestAnimationFrame_,
++    cancelAnimationFrame: cancelAnimationFrame_,
++    AudioContext: MockAudioContext,
++    MediaRecorder: MockMediaRecorder,
++    Blob,
++    console,
++    fetch: async (url, opts) => {
++      state.fetchCalls.push({ url, opts });
++      return { ok: true, json: async () => ({ text: "hello world" }) };
++    },
++    navigator: {
++      mediaDevices: {
++        getUserMedia: () => {
++          state.getUserMediaCalls += 1;
++          if (holdGetUserMedia) {
++            // Permission prompt stays pending until the test resolves it.
++            return new Promise((resolve) => { state.resolveGetUserMedia = () => resolve(new MockMediaStream()); });
++          }
++          return Promise.resolve(new MockMediaStream());
++        },
++      },
++    },
++  };
++  sandbox.window = sandbox;
++
++  new Script(hookCommonjs).runInNewContext(sandbox);
++  const { useVoiceInput, SILENCE_TIMEOUT_MS } = sandbox.exports;
++
++  let api = null;
++  const render = () => {
++    api = runtime.render(() => useVoiceInput((text) => state.transcripts.push(text)));
++  };
++  render();
++
++  return {
++    state,
++    frames,
++    timers,
++    clock,
++    advance,
++    pumpFrames,
++    render,
++    unmount: () => runtime.unmount(),
++    get api() { return api; },
++    SILENCE_TIMEOUT_MS,
++  };
++}
++
++test("silence timeout is the configurable 10 second constant", () => {
++  const h = createHarness();
++  assert.equal(h.SILENCE_TIMEOUT_MS, 10_000);
++});
++
++test("click-to-toggle: start records, clicking the mic again stops and transcribes once via /api/stt", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  assert.equal(h.api.state, "recording");
++  assert.equal(h.api.recording, true);
++  assert.equal(h.state.recorders.length, 1);
++  assert.equal(h.state.recorders[0].state, "recording");
++
++  h.state.rms = 0.1;
++  h.advance(250); // watchdog tick marks the recording as containing speech
++  h.api.stop();
++  h.render();
++  assert.equal(h.api.state, "transcribing");
++
++  await flush();
++  await flush();
++  h.render();
++  assert.equal(h.api.state, "idle");
++  assert.equal(h.state.fetchCalls.length, 1);
++  assert.equal(h.state.fetchCalls[0].url, "/api/stt");
++  assert.equal(h.state.fetchCalls[0].opts.method, "POST");
++  assert.equal(h.state.fetchCalls[0].opts.headers["Content-Type"], "audio/wav");
++  assert.ok(h.state.fetchCalls[0].opts.body instanceof Blob);
++  assert.deepEqual(h.state.transcripts, ["hello world"]);
++});
++
++test("the left stop button's cancel discards the recording without transcribing", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0.2;
++  h.advance(250); // speech was captured
++  h.api.cancel();
++  h.render();
++  assert.equal(h.api.state, "idle");
++  await flush();
++  await flush();
++  assert.equal(h.state.fetchCalls.length, 0);
++  assert.equal(h.state.transcripts.length, 0);
++});
++
++test("a 10 second silent gap auto-stops and transcribes captured speech", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0.2;
++  h.advance(250); // speech
++  h.state.rms = 0;
++  h.advance(10_000); // continuous silence reaches the timeout
++  h.render();
++  await flush();
++  await flush();
++  h.render();
++  assert.equal(h.state.fetchCalls.length, 1);
++  assert.deepEqual(h.state.transcripts, ["hello world"]);
++  assert.equal(h.api.state, "idle");
++});
++
++test("silence auto-stop discards the recording when the user never spoke", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0;
++  h.advance(10_000);
++  h.render();
++  await flush();
++  await flush();
++  assert.equal(h.state.fetchCalls.length, 0);
++  assert.equal(h.state.transcripts.length, 0);
++  assert.equal(h.api.state, "idle");
++});
++
++test("explicit mic-button stop always transcribes, even without detected speech", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0;
++  h.advance(300); // past MIN_RECORDING_MS; the analyser never saw speech
++  h.api.stop();
++  h.render();
++  await flush();
++  await flush();
++  h.render();
++  assert.equal(h.state.fetchCalls.length, 1);
++  assert.deepEqual(h.state.transcripts, ["hello world"]);
++  assert.equal(h.api.state, "idle");
++});
++
++test("the max-duration auto-stop discards when the user never spoke", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0;
++  h.advance(300_000);
++  h.render();
++  await flush();
++  await flush();
++  assert.equal(h.state.fetchCalls.length, 0);
++  assert.equal(h.state.transcripts.length, 0);
++  assert.equal(h.api.state, "idle");
++});
++
++test("the 5 minute max-duration cap still stops and transcribes the recording", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0.2;
++  h.advance(299_000);
++  h.render();
++  assert.equal(h.api.state, "recording");
++  assert.equal(h.state.fetchCalls.length, 0);
++  h.advance(2_000);
++  h.render();
++  await flush();
++  await flush();
++  h.render();
++  assert.equal(h.state.fetchCalls.length, 1);
++  assert.equal(h.api.state, "idle");
++});
++
++test("clicking the mic while the permission prompt is pending cancels the request", async () => {
++  const h = createHarness({ holdGetUserMedia: true });
++  const startPromise = h.api.start();
++  h.render();
++  assert.equal(h.api.state, "requesting");
++  h.api.cancel();
++  h.state.resolveGetUserMedia();
++  await startPromise;
++  h.render();
++  await flush();
++  assert.equal(h.api.state, "idle");
++  assert.equal(h.state.recorders.length, 0);
++  assert.ok(h.state.trackStopped >= 1);
++});
++
++test("the live mic level drives levelRef for the wave animation", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  assert.equal(h.api.levelRef.current, 0);
++  h.state.rms = 0.1;
++  h.pumpFrames(4);
++  assert.ok(h.api.levelRef.current > 0);
++  assert.ok(h.api.levelRef.current <= 1);
++  h.state.rms = 0.2;
++  h.advance(250);
++  h.api.stop();
++  h.render();
++  await flush();
++  await flush();
++  assert.equal(h.frames.size, 0); // rAF level loop torn down after stop
++});
++
++test("unmount stops the mic stream, tears down the analyser and clears timers", async () => {
++  const h = createHarness();
++  await h.api.start();
++  h.render();
++  h.state.rms = 0.2;
++  h.unmount();
++  assert.ok(h.state.trackStopped >= 1);
++  assert.equal(h.state.audioContexts[0].state, "closed");
++  h.api.stop(); // must be a no-op after unmount
++  await flush();
++  await flush();
++  assert.equal(h.state.fetchCalls.length, 0);
++  assert.equal(h.state.transcripts.length, 0);
++});
+diff --git a/hooks/useVoiceInput.ts b/b/hooks/useVoiceInput.ts
+index c80a89f..4d794fe 100644
+--- a/hooks/useVoiceInput.ts
++++ b/hooks/useVoiceInput.ts
+@@ -3,14 +3,24 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { blobToWav16kMono } from "@/lib/audio-wav";
+ 
+ export type VoiceInputState = "idle" | "requesting" | "recording" | "transcribing" | "error";
+ 
+-/** Releases shorter than this are treated as accidental taps, not dictation. */
++/** Recordings shorter than this are treated as accidental clicks, not dictation. */
+ const MIN_RECORDING_MS = 250;
+-/** Hard cap on a single hold; the hook stops recording on its own past this. */
++/** Hard cap on a single dictation; the hook stops recording on its own past this. */
+ const MAX_RECORDING_MS = 5 * 60 * 1000;
++/**
++ * Continuous silence longer than this auto-stops the recording. Speech
++ * captured before the gap is transcribed; a recording where the user never
++ * spoke is discarded. Tunable via this single constant.
++ */
++export const SILENCE_TIMEOUT_MS = 10_000;
++/** RMS below which the analyser stream counts as silence. */
++const SILENCE_RMS_THRESHOLD = 0.01;
++/** How often the silence watchdog samples the analyser. */
++const SILENCE_POLL_MS = 250;
+ /** How long the error state (and its banner) stays visible before resetting. */
+ const ERROR_RESET_MS = 6000;
+ /** Recordings smaller than this cannot contain usable speech. */
+ const MIN_AUDIO_BYTES = 512;
+ 
+@@ -19,16 +29,22 @@ function pickRecorderMimeType(): string | undefined {
+   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+   return candidates.find((type) => MediaRecorder.isTypeSupported(type));
+ }
+ 
+ /**
+- * Push-to-talk dictation for the chat composer.
++ * Click-to-toggle dictation for the chat composer.
+  *
+- * `start()` requests the microphone and begins recording; `stop()` ends the
+- * recording, converts it to 16 kHz mono WAV in the browser and POSTs it to
+- * /api/stt. The recognized text is delivered through `onTranscript`. No
+- * streaming partials — the transcript arrives once, after release.
++ * `start()` requests the microphone and begins recording; clicking the mic
++ * again calls `stop()`, which ends the recording and converts it to 16 kHz
++ * mono WAV in the browser and POSTs it to /api/stt once. `cancel()` stops
++ * and discards the recording without transcribing. A Web Audio
++ * AnalyserNode watches the mic stream: a silent gap longer than
++ * SILENCE_TIMEOUT_MS auto-stops the recording — transcribed only if speech
++ * was captured, discarded when the user never spoke. The live input level
++ * is exposed through `levelRef` (0..1) so the composer can render a wave
++ * animation. No streaming partials — the final WAV is sent once, when
++ * recording ends.
+  */
+ export function useVoiceInput(onTranscript: (text: string) => void) {
+   const [state, setState] = useState<VoiceInputState>("idle");
+   const [error, setError] = useState<string | null>(null);
+   const [supported, setSupported] = useState(false);
+@@ -38,20 +54,37 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
+ 
+   const onTranscriptRef = useRef(onTranscript);
+   useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
+ 
+   const mountedRef = useRef(true);
++  /** True once the component unmounted (or the hook is otherwise torn down). */
++  const cancelledRef = useRef(false);
+   const recorderRef = useRef<MediaRecorder | null>(null);
+   const streamRef = useRef<MediaStream | null>(null);
+   const chunksRef = useRef<Blob[]>([]);
+   const startedAtRef = useRef(0);
+-  const stopRequestedRef = useRef(false);
+-  const cancelledRef = useRef(false);
++  /** Set when the user cancels during the permission/request phase. */
++  const cancelRequestedRef = useRef(false);
++  /** Set when the current recording must be discarded instead of transcribed. */
++  const discardRef = useRef(false);
++  /** Set when the user explicitly stopped via the mic button (always transcribes). */
++  const explicitStopRef = useRef(false);
++  /** True once the current recording captured speech above the silence threshold. */
++  const hasSpeechRef = useRef(false);
++  /** Smoothed mic input level (0..1) for the live wave animation. */
++  const levelRef = useRef(0);
+   /** True once the in-flight getUserMedia promise is being tracked for cleanup. */
+   const pendingStartRef = useRef(false);
+   const maxDurationTimerRef = useRef<number | null>(null);
+   const errorTimersRef = useRef<number[]>([]);
++  const audioCtxRef = useRef<AudioContext | null>(null);
++  const analyserRef = useRef<AnalyserNode | null>(null);
++  const analyserBufRef = useRef<Float32Array<ArrayBuffer> | null>(null);
++  const analyserByteBufRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
++  const levelRafRef = useRef<number | null>(null);
++  const silenceTimerRef = useRef<number | null>(null);
++  const lastVoiceAtRef = useRef(0);
+ 
+   useEffect(() => {
+     setSupported(typeof MediaRecorder !== "undefined" && !!navigator.mediaDevices?.getUserMedia);
+     return () => {
+       mountedRef.current = false;
+@@ -60,10 +93,15 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
+       // cancelledRef; pendingStartRef keeps the intent visible for debugging.
+       void pendingStartRef.current;
+       recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
+       streamRef.current?.getTracks().forEach((track) => track.stop());
+       if (maxDurationTimerRef.current !== null) window.clearTimeout(maxDurationTimerRef.current);
++      if (levelRafRef.current !== null) window.cancelAnimationFrame(levelRafRef.current);
++      if (silenceTimerRef.current !== null) window.clearInterval(silenceTimerRef.current);
++      const ctx = audioCtxRef.current;
++      audioCtxRef.current = null;
++      if (ctx && ctx.state !== "closed") void ctx.close().catch(() => {});
+       errorTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+     };
+   }, []);
+ 
+   const reportError = useCallback((message: string) => {
+@@ -75,10 +113,109 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
+       if (mountedRef.current) setState((current) => (current === "error" ? "idle" : current));
+     }, ERROR_RESET_MS);
+     errorTimersRef.current.push(timer);
+   }, []);
+ 
++  /** Stop the analyser, its rAF level loop and the silence watchdog. */
++  const teardownMicAnalysis = useCallback(() => {
++    if (levelRafRef.current !== null) {
++      window.cancelAnimationFrame(levelRafRef.current);
++      levelRafRef.current = null;
++    }
++    if (silenceTimerRef.current !== null) {
++      window.clearInterval(silenceTimerRef.current);
++      silenceTimerRef.current = null;
++    }
++    analyserRef.current = null;
++    analyserBufRef.current = null;
++    analyserByteBufRef.current = null;
++    levelRef.current = 0;
++    const ctx = audioCtxRef.current;
++    audioCtxRef.current = null;
++    if (ctx && ctx.state !== "closed") void ctx.close().catch(() => {});
++  }, []);
++
++  /**
++   * Attach a Web Audio AnalyserNode to the mic stream. It drives `levelRef`
++   * for the wave animation and auto-stops the recording after a silent gap
++   * of SILENCE_TIMEOUT_MS. Returns false when audio analysis is unavailable
++   * (the recording then behaves as if speech were captured).
++   */
++  const startMicAnalysis = useCallback((stream: MediaStream): boolean => {
++    try {
++      const Ctx = window.AudioContext
++        ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
++      if (!Ctx) return false;
++      const ctx = new Ctx();
++      if (ctx.state === "suspended") void ctx.resume().catch(() => {});
++      const source = ctx.createMediaStreamSource(stream);
++      const analyser = ctx.createAnalyser();
++      analyser.fftSize = 1024;
++      source.connect(analyser); // analyser only — never the destination (no echo)
++      audioCtxRef.current = ctx;
++      analyserRef.current = analyser;
++      analyserBufRef.current = new Float32Array(analyser.fftSize);
++      lastVoiceAtRef.current = Date.now();
++      let smoothed = 0;
++
++      const sample = (): number => {
++        const current = analyserRef.current;
++        const buf = analyserBufRef.current;
++        if (!current || !buf) return 0;
++        if (typeof current.getFloatTimeDomainData === "function") {
++          current.getFloatTimeDomainData(buf);
++        } else {
++          let bytes = analyserByteBufRef.current;
++          if (!bytes || bytes.length !== buf.length) {
++            bytes = new Uint8Array(buf.length);
++            analyserByteBufRef.current = bytes;
++          }
++          current.getByteTimeDomainData(bytes);
++          for (let i = 0; i < bytes.length; i += 1) buf[i] = (bytes[i] - 128) / 128;
++        }
++        let sum = 0;
++        for (let i = 0; i < buf.length; i += 1) sum += buf[i] * buf[i];
++        return Math.sqrt(sum / buf.length);
++      };
++
++      // rAF loop: live level for the wave animation (speech also marks the
++      // recording as containing speech).
++      const tick = () => {
++        const current = analyserRef.current;
++        if (!mountedRef.current || !current || !analyserBufRef.current) return;
++        levelRafRef.current = window.requestAnimationFrame(tick);
++        const rms = sample();
++        if (rms >= SILENCE_RMS_THRESHOLD) hasSpeechRef.current = true;
++        const smoothedNext = smoothed * 0.75 + rms * 0.25;
++        smoothed = smoothedNext;
++        levelRef.current = Math.min(1, smoothed * 8);
++      };
++      levelRafRef.current = window.requestAnimationFrame(tick);
++
++      // Watchdog: independent of rAF so background tabs still enforce the
++      // silence gap and the recording auto-stops on its own.
++      silenceTimerRef.current = window.setInterval(() => {
++        const recorder = recorderRef.current;
++        if (!recorder || recorder.state !== "recording") return;
++        const rms = sample();
++        if (rms >= SILENCE_RMS_THRESHOLD) {
++          hasSpeechRef.current = true;
++          lastVoiceAtRef.current = Date.now();
++          return;
++        }
++        if (Date.now() - lastVoiceAtRef.current >= SILENCE_TIMEOUT_MS) {
++          // Silent gap: auto-stop. onstop transcribes only if speech was
++          // captured, and discards when the user never spoke.
++          recorder.stop();
++        }
++      }, SILENCE_POLL_MS);
++      return true;
++    } catch {
++      return false;
++    }
++  }, []);
++
+   const transcribe = useCallback(async (blob: Blob) => {
+     setState("transcribing");
+     try {
+       const wav = await blobToWav16kMono(blob);
+       const response = await fetch("/api/stt", {
+@@ -99,78 +236,109 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
+     }
+   }, [reportError]);
+ 
+   const start = useCallback(async () => {
+     if (stateRef.current !== "idle" && stateRef.current !== "error") return;
+-    stopRequestedRef.current = false;
+-    cancelledRef.current = false;
++    cancelRequestedRef.current = false;
++    discardRef.current = false;
++    explicitStopRef.current = false;
++    hasSpeechRef.current = false;
++    levelRef.current = 0;
+     setState("requesting");
+     try {
+       pendingStartRef.current = true;
+       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+       pendingStartRef.current = false;
+-      if (cancelledRef.current) {
+-        // Released or unmounted while the permission prompt / device open was
+-        // in flight — the stream would otherwise keep running (mic LED on).
++      if (cancelledRef.current || cancelRequestedRef.current) {
++        // Unmounted, or the mic was clicked again while the permission prompt
++        // / device open was in flight — the stream would otherwise keep
++        // running (mic LED on).
+         stream.getTracks().forEach((track) => track.stop());
+         if (mountedRef.current) setState("idle");
+         return;
+       }
+       streamRef.current = stream;
++      const detectionActive = startMicAnalysis(stream);
++      // Without an analyser, assume speech so explicit stops still transcribe.
++      hasSpeechRef.current = !detectionActive;
+       const mimeType = pickRecorderMimeType();
+       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+       chunksRef.current = [];
+       recorder.ondataavailable = (event) => {
+         if (event.data.size > 0) chunksRef.current.push(event.data);
+       };
+       recorder.onstop = () => {
+         stream.getTracks().forEach((track) => track.stop());
+         streamRef.current = null;
++        teardownMicAnalysis();
+         if (maxDurationTimerRef.current !== null) {
+           window.clearTimeout(maxDurationTimerRef.current);
+           maxDurationTimerRef.current = null;
+         }
+         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
+         chunksRef.current = [];
+         recorderRef.current = null;
+-        if (cancelledRef.current || !mountedRef.current) {
++        if (cancelledRef.current || discardRef.current || !mountedRef.current) {
+           if (mountedRef.current) setState("idle");
+           return;
+         }
+         const elapsed = Date.now() - startedAtRef.current;
+         if (elapsed < MIN_RECORDING_MS || blob.size < MIN_AUDIO_BYTES) {
++          // Accidental click or empty capture — discard.
++          setState("idle");
++          return;
++        }
++        if (!explicitStopRef.current && !hasSpeechRef.current) {
++          // Auto-stopped (silent gap or max duration) and the user never
++          // spoke — discard instead of transcribing silence.
+           setState("idle");
+           return;
+         }
+         void transcribe(blob);
+       };
+       recorderRef.current = recorder;
+       startedAtRef.current = Date.now();
+       recorder.start();
+-      if (stopRequestedRef.current) {
+-        // Released before the recorder was ready — stop immediately; the
+-        // short-elapsed guard in onstop discards the clip.
++      if (cancelRequestedRef.current) {
++        // Mic clicked again before the recorder was ready — discard at once.
++        discardRef.current = true;
+         recorder.stop();
+       } else {
+         setState("recording");
+         maxDurationTimerRef.current = window.setTimeout(() => {
+           if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+         }, MAX_RECORDING_MS);
+       }
+     } catch (err) {
++      teardownMicAnalysis();
+       streamRef.current?.getTracks().forEach((track) => track.stop());
+       streamRef.current = null;
+       reportError(err instanceof Error ? err.message : String(err));
+     }
+-  }, [reportError, transcribe]);
++  }, [reportError, startMicAnalysis, teardownMicAnalysis, transcribe]);
+ 
++  /** Stop recording and transcribe the captured speech (mic button click). */
+   const stop = useCallback(() => {
+     const recorder = recorderRef.current;
+     if (recorder && recorder.state === "recording") {
+-      recorder.stop();
++      explicitStopRef.current = true;
++      recorder.stop(); // onstop transcribes the clip
+       return;
+     }
+-    if (stateRef.current === "requesting") stopRequestedRef.current = true;
++    if (stateRef.current === "requesting") cancelRequestedRef.current = true;
++  }, []);
++
++  /** Stop recording and discard it without transcribing (left stop button). */
++  const cancel = useCallback(() => {
++    if (stateRef.current === "requesting") {
++      cancelRequestedRef.current = true;
++      return;
++    }
++    const recorder = recorderRef.current;
++    if (recorder && recorder.state === "recording") {
++      discardRef.current = true;
++      recorder.stop();
++    }
+   }, []);
+ 
+-  return { state, error, supported, start, stop, recording: state === "recording" };
++  return { state, error, supported, start, stop, cancel, levelRef, recording: state === "recording" };
+ }
+diff --git a/lib/i18n/messages/en.ts b/b/lib/i18n/messages/en.ts
+index 82e959e..d34aec8 100644
+--- a/lib/i18n/messages/en.ts
++++ b/lib/i18n/messages/en.ts
+@@ -394,10 +394,12 @@ export const enLocale: LocalePlugin = {
+     "terminal.exited": "Terminal closed",
+     "terminal.error": "Connection error",
+     "terminal.exitCode": "Process exited with code {code}",
+     "chat.outputLocal": "output stays local",
+     "chat.outputModel": "output sent to model",
++    "chat.outputModeLocal": "local",
++    "chat.outputModeModel": "model",
+     "chat.configuredTools": "From settings.json defaultTools",
+     "chat.chatOnly": "Chat only",
+     "chat.readOnlyTools": "{count} read-only built-in tools",
+     "chat.builtInTools": "{count} built-in tools",
+     "chat.allBuiltInTools": "All built-in tools",
+@@ -411,13 +413,15 @@ export const enLocale: LocalePlugin = {
+     "chat.compact": "Compact",
+     "chat.stopAgent": "Stop agent",
+     "chat.stop": "Stop",
+     "chat.disableSound": "Disable completion sound",
+     "chat.enableSound": "Enable completion sound",
+-    "chat.voiceHoldToTalk": "Hold to dictate — release to transcribe",
+-    "chat.voiceRecording": "Recording… release to transcribe",
++    "chat.voiceDictation": "Click to dictate",
++    "chat.voiceRequesting": "Requesting microphone…",
++    "chat.voiceRecording": "Recording… click the mic to stop and transcribe",
+     "chat.voiceTranscribing": "Transcribing…",
++    "chat.voiceDiscard": "Stop and discard recording",
+     "chat.voiceError": "Voice input failed",
+     "chat.thinkingUseDefault": "Use pi default",
+     "chat.thinkingOff": "Reasoning off",
+     "chat.thinkingMinimal": "Minimal reasoning",
+     "chat.thinkingLow": "Low reasoning",
+diff --git a/lib/i18n/messages/zh-CN.ts b/b/lib/i18n/messages/zh-CN.ts
+index 84955c6..b2551e8 100644
+--- a/lib/i18n/messages/zh-CN.ts
++++ b/lib/i18n/messages/zh-CN.ts
+@@ -394,10 +394,12 @@ export const zhCNLocale: LocalePlugin = {
+     "terminal.exited": "终端已关闭",
+     "terminal.error": "连接错误",
+     "terminal.exitCode": "进程已退出，退出码 {code}",
+     "chat.outputLocal": "输出保留在本地",
+     "chat.outputModel": "输出发送给模型",
++    "chat.outputModeLocal": "本地",
++    "chat.outputModeModel": "模型",
+     "chat.configuredTools": "取自 settings.json 的 defaultTools",
+     "chat.chatOnly": "仅聊天",
+     "chat.readOnlyTools": "{count} 个只读内置工具",
+     "chat.builtInTools": "{count} 个内置工具",
+     "chat.allBuiltInTools": "全部内置工具",
+@@ -411,13 +413,15 @@ export const zhCNLocale: LocalePlugin = {
+     "chat.compact": "压缩",
+     "chat.stopAgent": "停止 Agent",
+     "chat.stop": "停止",
+     "chat.disableSound": "关闭完成提示音",
+     "chat.enableSound": "开启完成提示音",
+-    "chat.voiceHoldToTalk": "按住说话，松开转写",
+-    "chat.voiceRecording": "录音中…松开开始转写",
++    "chat.voiceDictation": "点击开始听写",
++    "chat.voiceRequesting": "正在请求麦克风…",
++    "chat.voiceRecording": "录音中…点击麦克风停止并转写",
+     "chat.voiceTranscribing": "转写中…",
++    "chat.voiceDiscard": "停止并丢弃录音",
+     "chat.voiceError": "语音输入失败",
+     "chat.thinkingUseDefault": "使用 pi 默认设置",
+     "chat.thinkingOff": "关闭推理",
+     "chat.thinkingMinimal": "最低限度推理",
+     "chat.thinkingLow": "低强度推理",
+diff --git a/lib/i18n/messages/zh-TW.ts b/b/lib/i18n/messages/zh-TW.ts
+index 9dfa724..8790a3c 100644
+--- a/lib/i18n/messages/zh-TW.ts
++++ b/lib/i18n/messages/zh-TW.ts
+@@ -394,10 +394,12 @@ export const zhTWLocale: LocalePlugin = {
+     "terminal.exited": "終端機已關閉",
+     "terminal.error": "連線錯誤",
+     "terminal.exitCode": "程序已結束，結束代碼 {code}",
+     "chat.outputLocal": "輸出保留在本地",
+     "chat.outputModel": "輸出會傳送給模型",
++    "chat.outputModeLocal": "本機",
++    "chat.outputModeModel": "模型",
+     "chat.configuredTools": "取自 settings.json 的 defaultTools",
+     "chat.chatOnly": "僅聊天",
+     "chat.readOnlyTools": "{count} 個只讀內建工具",
+     "chat.builtInTools": "{count} 個內建工具",
+     "chat.allBuiltInTools": "全部內建工具",
+@@ -411,13 +413,15 @@ export const zhTWLocale: LocalePlugin = {
+     "chat.compact": "壓縮",
+     "chat.stopAgent": "停止 Agent",
+     "chat.stop": "停止",
+     "chat.disableSound": "關閉完成提示音",
+     "chat.enableSound": "開啟完成提示音",
+-    "chat.voiceHoldToTalk": "按住說話，放開轉寫",
+-    "chat.voiceRecording": "錄音中…放開開始轉寫",
++    "chat.voiceDictation": "點擊開始聽寫",
++    "chat.voiceRequesting": "正在請求麥克風…",
++    "chat.voiceRecording": "錄音中…點擊麥克風停止並轉寫",
+     "chat.voiceTranscribing": "轉寫中…",
++    "chat.voiceDiscard": "停止並捨棄錄音",
+     "chat.voiceError": "語音輸入失敗",
+     "chat.thinkingUseDefault": "使用 pi 預設設定",
+     "chat.thinkingOff": "關閉推理",
+     "chat.thinkingMinimal": "最低程度推理",
+     "chat.thinkingLow": "低程度推理",

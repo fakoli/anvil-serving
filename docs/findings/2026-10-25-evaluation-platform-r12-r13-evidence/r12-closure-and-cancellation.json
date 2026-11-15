@@ -1,0 +1,3907 @@
+{
+  "all_transitive_references_match": true,
+  "batches": [
+    {
+      "batch": "batch-0001",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287343.683502947,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921279.4733493,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287359.9115567997,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.911346344277263,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1287306.0960716417,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287354.45765788,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.869732521940023,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1287292.6238577508,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287354.720220391,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000729458407,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1287294.720220199,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287359.672513415,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.885954443830997,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1287305.8035754624,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 12,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0002",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287398.893743313,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921325.4036877,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287404.7217770226,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.398046822985634,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1287360.8311530626,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287400.3238502406,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.366762703983113,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287354.4576569742,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287399.7202200938,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000546919182,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287354.7202202412,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287404.527412704,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.327778356382623,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1287360.6740817027,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 10,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0003",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287443.678374289,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921371.341688,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287449.52546618,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.52988164848648,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1287405.6256417944,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287446.3245935463,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.400078755803406,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287400.3238498818,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287444.7202203488,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000308966264,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287399.7202201656,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287449.3559775199,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.444427465787157,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1287405.4736026516,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 10,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0004",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287488.604088659,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921417.3382187,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287494.2887741008,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.356627607950941,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1287450.5015840011,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287492.3737903135,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.399285783292726,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287446.324593064,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287489.7202202622,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000359257683,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287444.7202201278,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287494.088611191,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.368527902523056,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1287450.3390445472,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 10,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0005",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287534.139877745,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921463.9056425,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287545.1085428619,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.99823770718649,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1287495.300582593,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287539.025419737,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.951234222389758,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287492.3737896841,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287534.7202201583,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000002561137,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287489.7202205206,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287544.8879433614,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.057841782225296,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1287495.1024120934,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 11,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0006",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287586.465237417,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921511.6359167,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287597.3990864502,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.401300342520699,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1287546.291628593,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287587.1914428985,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 17.198685774579644,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1287539.02541996,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287594.7202202664,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000343192369,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1287534.7202200668,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287597.1941957274,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.401864931918681,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1287546.0902697165,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 11,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0007",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287706.70907986,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921635.8296664,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287717.5137067072,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.981694368412718,
+          "reset_segments": 0,
+          "sample_count": 23,
+          "started_monotonic": 1287603.4122320747,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287710.824698178,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.62509844941087,
+          "reset_segments": 0,
+          "sample_count": 8,
+          "started_monotonic": 1287602.523855196,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287714.720220049,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.00000053900294,
+          "reset_segments": 0,
+          "sample_count": 9,
+          "started_monotonic": 1287594.7202201725,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287717.3108842496,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.954614156391472,
+          "reset_segments": 0,
+          "sample_count": 23,
+          "started_monotonic": 1287603.2776930928,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 23,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0008",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287958.42063456,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921898.1057198,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1287974.528511858,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.51532795955427,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1287722.9070112566,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1287973.1239987405,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.617886311374605,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1287710.824697668,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1287969.7202202035,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000277068466,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1287714.7202199914,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1287974.3937357632,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.51670741266571,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1287722.739695009,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 49,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0009",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288069.605373385,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922005.035283,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1288085.627688649,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.318881313083693,
+          "reset_segments": 0,
+          "sample_count": 22,
+          "started_monotonic": 1287980.0225148383,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1288080.0238488703,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.474502175115049,
+          "reset_segments": 0,
+          "sample_count": 8,
+          "started_monotonic": 1287973.1239983637,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1288074.7202208636,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000766478479,
+          "reset_segments": 0,
+          "sample_count": 8,
+          "started_monotonic": 1287969.7202202706,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1288085.4247152207,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.332102912478149,
+          "reset_segments": 0,
+          "sample_count": 22,
+          "started_monotonic": 1287979.8282274206,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 22,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0010",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288247.32434483,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922175.004387,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1288258.1058868335,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.350388762541115,
+          "reset_segments": 0,
+          "sample_count": 33,
+          "started_monotonic": 1288091.0271847236,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1288250.0238473443,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.702768180985004,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1288080.0238483802,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1288254.7202200145,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000447267666,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1288089.7202201418,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1288257.9152696806,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.351549843326211,
+          "reset_segments": 0,
+          "sample_count": 33,
+          "started_monotonic": 1288090.877837984,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 33,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0011",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288431.283987049,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922362.803697,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1288442.2712712677,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.192806052044034,
+          "reset_segments": 0,
+          "sample_count": 35,
+          "started_monotonic": 1288263.535665312,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1288437.924352519,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.695102864410728,
+          "reset_segments": 0,
+          "sample_count": 13,
+          "started_monotonic": 1288250.0238470554,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1288434.7202200245,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000434694812,
+          "reset_segments": 0,
+          "sample_count": 13,
+          "started_monotonic": 1288254.7202201977,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1288441.9870554442,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.1388458190485835,
+          "reset_segments": 0,
+          "sample_count": 35,
+          "started_monotonic": 1288263.4052649515,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 35,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0012",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288596.043232792,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922531.5473187,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1288612.3190543829,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.876853232039139,
+          "reset_segments": 0,
+          "sample_count": 32,
+          "started_monotonic": 1288448.3146828366,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1288606.6248360856,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.899392801336944,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1288437.9243521444,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1288599.720220758,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000361120328,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1288434.720220267,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1288612.099950627,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.796308906050399,
+          "reset_segments": 0,
+          "sample_count": 32,
+          "started_monotonic": 1288448.156542225,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 32,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0013",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288655.411981345,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922592.6499233,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1288671.5762622154,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.868743498111144,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1288613.5065581417,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1288668.3261814464,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.956038112053648,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1288606.6248354665,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1288659.7202204247,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.00000072340481,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1288599.7202198785,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1288671.2849261283,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.801035055657849,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1288613.358990583,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 12,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0014",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288920.343526298,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922853.903628,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1288931.1886029053,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.380482690175995,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1288680.2910342726,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1288928.7733284538,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.82242488837801,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1288668.3261814672,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1288929.720220848,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000735279173,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1288674.7202201323,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1288930.991809911,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.427718004211783,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1288680.0728579902,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 49,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0015",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289185.826325823,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923118.8293946,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289201.909529748,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.528275277931243,
+          "reset_segments": 0,
+          "sample_count": 50,
+          "started_monotonic": 1288944.7899740566,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289195.252592769,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.702977093169466,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1288928.7733276319,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289199.7202209635,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000946922228,
+          "reset_segments": 0,
+          "sample_count": 19,
+          "started_monotonic": 1288929.7202201046,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289201.7640867992,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.548408908536658,
+          "reset_segments": 0,
+          "sample_count": 50,
+          "started_monotonic": 1288944.529430375,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 50,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0016",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289241.136642816,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923166.8036346,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289246.8335094168,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.052119256462902,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1289203.3273013807,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289241.9238528013,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.965295906178653,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289195.252592786,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289244.7202202366,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000289874151,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289199.7202202852,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289246.6327931168,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.919345562811941,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1289203.132619481,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 10,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0017",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289286.32442285,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923215.6056442,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289292.0305894567,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.482032911852002,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1289248.1123074968,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289291.1823511675,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.716213864507154,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289241.923852642,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289289.7202204848,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.00000016274862,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289244.7202204724,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289291.8836605323,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.449816016014665,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1289247.9539118023,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 10,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0018",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289331.174989593,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923262.0037167,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289342.1148657717,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.011591998394579,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1289293.3973963899,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289336.956624338,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.352389925625175,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289291.1823503687,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289334.7202202037,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000230967999,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289289.7202202862,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289341.9441883601,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.031208783388138,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1289293.1541586758,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 11,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0019",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289382.090475814,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923307.803631,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289398.3010351055,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.840166254201904,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1289343.4876031696,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289382.9240460899,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.400194220244884,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289336.9566240776,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289394.7202207076,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000462401658,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1289334.7202203244,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289398.167031326,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.8768400030676275,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1289343.2259805163,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 12,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0020",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289438.291651056,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923370.3037002,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289449.4001329436,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.983521010028198,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1289399.6268239196,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289445.4239032883,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.699829630088061,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289398.9240887705,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289439.720220194,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000442611054,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289394.720220043,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289449.1102468444,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.854336919961497,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1289399.4584330209,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 11,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0021",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289490.827540231,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923416.3384476,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289501.6934956508,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.353431886993349,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1289450.805602712,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289491.5245626643,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.46589399361983,
+          "reset_segments": 0,
+          "sample_count": 4,
+          "started_monotonic": 1289445.423902922,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289499.72022029,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000001331791282,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1289439.7202202107,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289501.4456511703,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.376781476661563,
+          "reset_segments": 0,
+          "sample_count": 11,
+          "started_monotonic": 1289450.6036071088,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 11,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0022",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289630.621627165,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923556.9308128,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289636.151386938,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.590274671791121,
+          "reset_segments": 0,
+          "sample_count": 26,
+          "started_monotonic": 1289507.8113965127,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289633.200838614,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.692433682270348,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1289491.5245623887,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289634.7202198545,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000577187166,
+          "reset_segments": 0,
+          "sample_count": 10,
+          "started_monotonic": 1289499.7202200056,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289636.028031691,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.544348922325298,
+          "reset_segments": 0,
+          "sample_count": 26,
+          "started_monotonic": 1289507.6832480805,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 26,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0023",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289878.374070699,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923808.104148,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1289894.666071705,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.421310248086229,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1289641.8417149708,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289883.0742504955,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 17.35615578130819,
+          "reset_segments": 0,
+          "sample_count": 17,
+          "started_monotonic": 1289633.200838182,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289889.7202203197,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000001113396138,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1289634.7202200408,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1289894.4890433205,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.394536433974281,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1289641.6117468947,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 49,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0024",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289989.779572864,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923915.8036406,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290000.7950290765,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.986357154324651,
+          "reset_segments": 0,
+          "sample_count": 20,
+          "started_monotonic": 1289901.0972026289,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1289990.7652336836,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.809399640653282,
+          "reset_segments": 0,
+          "sample_count": 7,
+          "started_monotonic": 1289898.4245737186,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1289994.7202206755,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000585103408,
+          "reset_segments": 0,
+          "sample_count": 8,
+          "started_monotonic": 1289889.7202202468,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290000.544903086,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.884497305145487,
+          "reset_segments": 0,
+          "sample_count": 20,
+          "started_monotonic": 1289900.8868566386,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 20,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0025",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290086.917313578,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924025.8036668,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290102.938123869,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.127733033616096,
+          "reset_segments": 0,
+          "sample_count": 20,
+          "started_monotonic": 1290006.6035421751,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1290101.0238680798,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.639580918941647,
+          "reset_segments": 0,
+          "sample_count": 8,
+          "started_monotonic": 1289990.7652334003,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1290099.72022058,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000779749826,
+          "reset_segments": 0,
+          "sample_count": 8,
+          "started_monotonic": 1289994.7202201535,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290102.7571862557,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 6.165874993428588,
+          "reset_segments": 0,
+          "sample_count": 20,
+          "started_monotonic": 1290006.3920291122,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 20,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0026",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290279.960216097,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924212.9807463,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290296.1861816451,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.909612103132531,
+          "reset_segments": 0,
+          "sample_count": 37,
+          "started_monotonic": 1290109.3936944907,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1290287.958375888,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 17.101924112066627,
+          "reset_segments": 0,
+          "sample_count": 13,
+          "started_monotonic": 1290101.0238682076,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1290294.7202201018,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000701053068,
+          "reset_segments": 0,
+          "sample_count": 14,
+          "started_monotonic": 1290099.7202202717,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290295.9809554026,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.777997049503028,
+          "reset_segments": 0,
+          "sample_count": 37,
+          "started_monotonic": 1290109.1813677452,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 37,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0027",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290449.912936425,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924386.1050622,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290466.183736371,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.781138259219006,
+          "reset_segments": 0,
+          "sample_count": 32,
+          "started_monotonic": 1290302.5119167515,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1290461.0545036008,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 17.207747313426808,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1290287.95837546,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1290459.7202200296,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.00000567897223,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1290294.7202202124,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290465.986997507,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.6907642697915435,
+          "reset_segments": 0,
+          "sample_count": 32,
+          "started_monotonic": 1290302.3283764718,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 32,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0028",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290509.340254025,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924447.7733524,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290525.825401012,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.412087567150593,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1290467.7263088776,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1290522.8260521407,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.932969720102847,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1290461.0545036234,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1290519.7202200913,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.0000006002374,
+          "reset_segments": 0,
+          "sample_count": 5,
+          "started_monotonic": 1290459.72022015,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290525.6462376134,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.4721417429391295,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1290467.538431196,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 12,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0029",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290770.272072445,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924708.805352,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290786.5712725031,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.401723636779934,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1290534.9186746445,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1290783.9248569913,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.682885699905455,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1290522.8260522936,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1290774.7202198962,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.0000003289897,
+          "reset_segments": 0,
+          "sample_count": 18,
+          "started_monotonic": 1290519.7202201139,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290786.3700650136,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 5.400195380905643,
+          "reset_segments": 0,
+          "sample_count": 49,
+          "started_monotonic": 1290534.781068662,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 49,
+      "within_deadline": true
+    },
+    {
+      "batch": "batch-0030",
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290968.24084769,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924895.251217,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "release_valid": true,
+      "status": "closed",
+      "telemetry_complete": true,
+      "telemetry_coverage": {
+        "cgroup": {
+          "closed_monotonic": 1290973.7871240305,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 11.19967620051466,
+          "reset_segments": 0,
+          "sample_count": 33,
+          "started_monotonic": 1290800.6754788472,
+          "status": "measured"
+        },
+        "engine": {
+          "closed_monotonic": 1290971.7238939116,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 16.752456835703924,
+          "reset_segments": 0,
+          "sample_count": 12,
+          "started_monotonic": 1290799.2604804558,
+          "status": "measured"
+        },
+        "gpu": {
+          "closed_monotonic": 1290969.7202205625,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 15.000000225147232,
+          "reset_segments": 0,
+          "sample_count": 13,
+          "started_monotonic": 1290789.7202204117,
+          "status": "measured"
+        },
+        "host": {
+          "closed_monotonic": 1290973.6297709916,
+          "complete": true,
+          "failures": 0,
+          "max_gap_s": 11.171948909992352,
+          "reset_segments": 0,
+          "sample_count": 33,
+          "started_monotonic": 1290800.4189579557,
+          "status": "measured"
+        }
+      },
+      "telemetry_rows": 33,
+      "within_deadline": true
+    }
+  ],
+  "cancellation_diagnosis": {
+    "all_four_grades_unknown": true,
+    "cause": "arm traffic deadline exhausted; bounded cancellation finalized",
+    "drain_reserve_s": 120,
+    "foreground_state": "cancelled",
+    "independent_diagnosis_source_sha256": "8ae6211a4eb892c4df32f461c65e709517b742f0753ad3c3620030a19e4dca0d",
+    "last_batch_allowance_s": 243.03084447141737,
+    "last_batch_cancelled_cells": [
+      "job-0045",
+      "job-0046",
+      "job-0047",
+      "job-0048"
+    ],
+    "one_incomplete_cancellation_set": {
+      "cell": "job-0047",
+      "missing": [
+        "process.json",
+        "adapter-result.json",
+        "native grader result"
+      ]
+    },
+    "traffic_allowance_s": 123.03084447141737
+  },
+  "cells": [
+    {
+      "active_seconds": 53.22797169000842,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0001",
+      "cell": "job-0001",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287343.683502947,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921279.4733493,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1210.3746458888054,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 43.316528290044516,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0002",
+      "cell": "job-0002",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287398.893743313,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921325.4036877,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1694.828124716878,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 43.32463812804781,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0003",
+      "cell": "job-0003",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287443.678374289,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921371.341688,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1479.0646659675986,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 43.16837667510845,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0004",
+      "cell": "job-0004",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287488.604088659,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921417.3382187,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1890.7576848287135,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 49.236073937034234,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0005",
+      "cell": "job-0005",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287534.139877745,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921463.9056425,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2687.4283589422703,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 50.50937024690211,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0006",
+      "cell": "job-0006",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287586.465237417,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921511.6359167,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3976.878365268931,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 111.02247041999362,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0007",
+      "cell": "job-0007",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287706.70907986,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921635.8296664,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 248.8770553949289,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0008",
+      "cell": "job-0008",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1287958.42063456,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792921898.1057198,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 102.8934405320324,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0009",
+      "cell": "job-0009",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288069.605373385,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922005.035283,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 164.39498514705338,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0010",
+      "cell": "job-0010",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288247.32434483,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922175.004387,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 175.96538353292271,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0011",
+      "cell": "job-0011",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288431.283987049,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922362.803697,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 160.85497300093994,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0012",
+      "cell": "job-0012",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288596.043232792,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922531.5473187,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 57.154911293881014,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0013",
+      "cell": "job-0013",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288655.411981345,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922592.6499233,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4988.097242079675,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 57.28992463508621,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0013",
+      "cell": "job-0014",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288655.411981345,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922592.6499233,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 5097.7470928337425,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 57.01345359790139,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0013",
+      "cell": "job-0015",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288655.411981345,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922592.6499233,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3182.5785008259118,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 57.413149981061,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0013",
+      "cell": "job-0016",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288655.411981345,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922592.6499233,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 5514.810833148658,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 249.75217329896986,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0014",
+      "cell": "job-0017",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288920.343526298,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922853.903628,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2322.6091528777033,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 250.04948562500067,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0014",
+      "cell": "job-0018",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288920.343526298,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922853.903628,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3590.995820937678,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 247.52015920099802,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0014",
+      "cell": "job-0019",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288920.343526298,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922853.903628,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 247.83902207692154,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0014",
+      "cell": "job-0020",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1288920.343526298,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792922853.903628,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 253.4693237489555,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0015",
+      "cell": "job-0021",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289185.826325823,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923118.8293946,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 253.86718509206548,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0015",
+      "cell": "job-0022",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289185.826325823,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923118.8293946,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 254.00562795996666,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0015",
+      "cell": "job-0023",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289185.826325823,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923118.8293946,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 253.66851567290723,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0015",
+      "cell": "job-0024",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289185.826325823,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923118.8293946,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 1,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 42.68814151198603,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0016",
+      "cell": "job-0025",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289241.136642816,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923166.8036346,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1246.3025848846883,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 43.10921745793894,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0017",
+      "cell": "job-0026",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289286.32442285,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923215.6056442,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1724.3811152875423,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 47.96628955099732,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0018",
+      "cell": "job-0027",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289331.174989593,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923262.0037167,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1413.7747418135405,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 53.995918988017365,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0019",
+      "cell": "job-0028",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289382.090475814,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923307.803631,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 1908.597698668018,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 48.907236678060144,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0020",
+      "cell": "job-0029",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289438.291651056,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923370.3037002,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2235.0779199041426,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 50.12543283798732,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0021",
+      "cell": "job-0030",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289490.827540231,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923416.3384476,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3709.663546644151,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 125.09176890715025,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0022",
+      "cell": "job-0031",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289630.621627165,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923556.9308128,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 249.95971977105364,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0023",
+      "cell": "job-0032",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289878.374070699,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923808.104148,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 96.47365555819124,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0024",
+      "cell": "job-0033",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1289989.779572864,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792923915.8036406,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 93.41498686093837,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0025",
+      "cell": "job-0034",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290086.917313578,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924025.8036668,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 183.55766778299585,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0026",
+      "cell": "job-0035",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290279.960216097,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924212.9807463,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 160.4069919870235,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0027",
+      "cell": "job-0036",
+      "clients_stopped": true,
+      "concurrency": 1,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290449.912936425,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924386.1050622,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 56.42424394702539,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0028",
+      "cell": "job-0037",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290509.340254025,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924447.7733524,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3543.993494939059,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 56.70784131693654,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0028",
+      "cell": "job-0038",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290509.340254025,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924447.7733524,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4541.127003962174,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 56.94699190300889,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0028",
+      "cell": "job-0039",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290509.340254025,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924447.7733524,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 2003.4931187983602,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 57.26851983903907,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0028",
+      "cell": "job-0040",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290509.340254025,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924447.7733524,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 3501.7395860049874,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 250.46628295490518,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0029",
+      "cell": "job-0041",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290770.272072445,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924708.805352,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 4389.064148999751,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 249.8794471269939,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0029",
+      "cell": "job-0042",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290770.272072445,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924708.805352,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": 5437.090896302834,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 248.50098906783387,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0029",
+      "cell": "job-0043",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290770.272072445,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924708.805352,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": false,
+          "latency_sum_ms": null,
+          "passed": true
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 247.84512395993806,
+      "artifact_bound_execution": true,
+      "artifact_status": "completed",
+      "batch": "batch-0029",
+      "cell": "job-0044",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290770.272072445,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924708.805352,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": [
+        {
+          "attempted": true,
+          "failed": true,
+          "latency_sum_ms": null,
+          "passed": false
+        }
+      ],
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": null,
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "completed",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 168.82961322902702,
+      "artifact_bound_execution": true,
+      "artifact_status": "cancelled",
+      "batch": "batch-0030",
+      "cell": "job-0045",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290968.24084769,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924895.251217,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": null,
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": "missing_or_ambiguous_suite_evidence",
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "cancelled",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 169.18801772990264,
+      "artifact_bound_execution": true,
+      "artifact_status": "cancelled",
+      "batch": "batch-0030",
+      "cell": "job-0046",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290968.24084769,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924895.251217,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": null,
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": "missing_or_ambiguous_suite_evidence",
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "cancelled",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 169.82475167303346,
+      "artifact_bound_execution": true,
+      "artifact_status": "cancelled",
+      "batch": "batch-0030",
+      "cell": "job-0047",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290968.24084769,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924895.251217,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": null,
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": "missing_or_ambiguous_suite_evidence",
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "cancelled",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    },
+    {
+      "active_seconds": 169.49672640580684,
+      "artifact_bound_execution": true,
+      "artifact_status": "cancelled",
+      "batch": "batch-0030",
+      "cell": "job-0048",
+      "clients_stopped": true,
+      "concurrency": 4,
+      "drain": {
+        "collector_sha256": "149411a1f5c8bb8e96353ee20ab8fe6ba40c9e42c5e2c1244c02319feaee57f7",
+        "freshness_wait_s": 35,
+        "identity_contract": "generation-bound-observer/v1",
+        "sample": {
+          "observed_monotonic": 1290968.24084769,
+          "running_metric": 0.0,
+          "source_timestamp_seconds": 1792924895.251217,
+          "waiting_metric": 0.0
+        },
+        "status": "verified"
+      },
+      "execution_status": "closed",
+      "grade_samples": null,
+      "interval_telemetry_planes": {
+        "cgroup": "measured",
+        "engine": "measured",
+        "gpu": "measured",
+        "host": "measured"
+      },
+      "native_evidence_reason": "missing_or_ambiguous_suite_evidence",
+      "prepared_child_verified": true,
+      "repeat": 2,
+      "state": "cancelled",
+      "store_spec_matches": true,
+      "worker_group_stopped": true
+    }
+  ],
+  "changed_input_count": 0,
+  "derivative": true,
+  "errors": [],
+  "limitations": [
+    "Task grading failures are not infrastructure failures.",
+    "Physical absence does not repair a blocked/cancelling native receipt or unknown historical measurement interval.",
+    "This verifies retained incumbent closure and producer absence, not candidate activation, final restoration, promotion or comparative performance.",
+    "No live endpoint request was made; parent owns fresh serving/router activation observations."
+  ],
+  "observed_at": "2026-10-25T10:43:34.209187+00:00",
+  "schema": "t006-incumbent-final-closure-audit/v1",
+  "scope": "R12 incumbent closure audit; native references remain in the separate R12 full projection.",
+  "summary": {
+    "all_released_closures_valid": true,
+    "failed_grades": 6,
+    "graded": 44,
+    "immutable_two_snapshot_inputs": true,
+    "incumbent_job_states": {
+      "cancelled": 4,
+      "completed": 44
+    },
+    "measurement_complete": 44,
+    "passed": 38,
+    "producers_and_containers_absent": true,
+    "released_batches": 30,
+    "telemetry_rows": 712
+  },
+  "transitive_references_checked": 574,
+  "two_snapshot_input_count": 837
+}

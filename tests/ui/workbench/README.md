@@ -42,7 +42,3 @@ The author additionally exercised these flows through the CUA browser, compared
 production screenshots with approved Concept03, and corrected the mobile header
 and keyboard tab behavior. The standalone Playwright harness is source for the
 independent regression pass; it was not run as part of that CUA validation.
-
-Run `pytest tests/workbench/test_javascript_modules.py` to parse every shipped
-JavaScript file explicitly as ESM. This catches a syntax error in any eagerly
-imported view before it can prevent the whole application from booting.

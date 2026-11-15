@@ -1,0 +1,18 @@
+{
+  "native_tool_output": [
+    {
+      "text": "Script completed\nWall time 0.3 seconds\nOutput:\n",
+      "type": "input_text"
+    },
+    {
+      "text": "{\"chunk_id\":\"df3116\",\"wall_time_seconds\":0.000015424,\"exit_code\":0,\"original_token_count\":0,\"output\":\"\"}",
+      "type": "input_text"
+    },
+    {
+      "text": "{\"chunk_id\":\"d014c4\",\"wall_time_seconds\":0.00002077,\"exit_code\":0,\"original_token_count\":81,\"output\":\"free_before 589477679104 free_after 871557632000 difference 282079952896\\ncache_bytes_remaining 1479895970020\\nlocal-inference-lab/GLM-5.3-Flash-NVFP4-Spark ['a608241037e4c2565356bff7ca293f2133888f88']\\nlocal-inference-lab/Qwen3.8-Flash-Next-NVFP4 ['7c4f1bc1a2d6847e0cbc01ac6b823f00251de8dd']\\nlive_unchanged True running True\\n\"}",
+      "type": "input_text"
+    }
+  ],
+  "observed_at": "2026-10-06T06:50:50.494Z",
+  "schema": "anvil-serving.model-cache-cleanup-terminal/v1"
+}

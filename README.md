@@ -7,12 +7,13 @@
 > **Operate, qualify, and expose local AI capabilities through explicit contracts.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-1.5.0-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-2.0.2-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 [Get started](docs/GETTING-STARTED.md) ·
 [Choose a product journey](docs/PRODUCT-FAMILIES.md) ·
 [Browse benchmark evidence](docs/benchmarks/index.md) ·
+[Read voice model results](docs/benchmarks/voice-models.md) ·
 [Open the documentation](https://fakoli.github.io/anvil-serving/)
 
 </div>
@@ -147,11 +148,21 @@ selection.
 
 ## Quick start
 
-Python 3.11+ is the only Anvil runtime prerequisite. Model serves additionally
-need their declared engine: Docker and compatible hardware for container
-recipes, or an installed MLX service on Apple Silicon macOS. A single-host installation can stay
+Python 3.11+ is the only CLI prerequisite. On Windows, the native PowerShell
+CLI supports command discovery, offline configuration and topology work, and
+declared typed remote operations. Run service, router, controller, and
+accounting runtimes in Linux containers with Docker Desktop's Linux engine or
+inside Linux in WSL; native Windows deployment of those runtimes is
+unsupported. Model serves additionally need their declared engine: Docker and
+compatible hardware for container recipes, or an installed MLX service on
+Apple Silicon macOS. A single-host installation can stay
 entirely on loopback; the reference multi-device deployment also installs
 Tailscale and follows [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md).
+
+Windows operators connecting to an existing deployment can follow the
+[PowerShell client setup](docs/GETTING-STARTED.md#windows-client) without
+installing model engines or starting local services. The bring-up sequence
+below runs in the owning Linux environment, or on a supported macOS owner.
 
 ```bash
 pip install -e .
@@ -198,7 +209,7 @@ or typed MCP tools. The supervisor and serving engine are separate contracts:
 
 | Platform | Implemented serving path |
 | --- | --- |
-| Windows | Docker |
+| Windows host | Linux containers through Docker Desktop's Linux engine, or Linux in WSL |
 | macOS | Native MLX through launchd, or Docker |
 | Linux | Docker |
 | NeoCloud: Vast.ai, Runpod | Provider lifecycle TBD |
@@ -206,7 +217,7 @@ or typed MCP tools. The supervisor and serving engine are separate contracts:
 
 The new lifecycle has passed an isolated live macOS LaunchAgent smoke. Docker
 adapters have simulated supervisor tests; live Docker lifecycle qualification
-on Windows, macOS, and Linux remains pending.
+on Linux, macOS, and Windows hosts using a Linux runtime remains pending.
 
 After declaring the service and its topology owner in the private operator home:
 

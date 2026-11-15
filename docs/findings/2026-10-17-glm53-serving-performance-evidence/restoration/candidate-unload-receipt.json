@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "models",
+    "recipes",
+    "unload",
+    "nvidia/GLM-5.3-Flash-FP4-Local",
+    "--container",
+    "glm53-nvidia-fp4-local-ab-r2",
+    "--registry",
+    "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml",
+    "--transport",
+    "local",
+    "--confirm"
+  ],
+  "at": "2026-10-17T12:57:21.003113+00:00",
+  "returncode": 0,
+  "stderr": "",
+  "stdout": "unloaded recipe container 'glm53-nvidia-fp4-local-ab-r2'\n"
+}

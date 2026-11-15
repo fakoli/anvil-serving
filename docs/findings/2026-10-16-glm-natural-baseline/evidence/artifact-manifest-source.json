@@ -1,0 +1,141 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Partial public-safe campaign index.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Current local measurement provenance.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "workload-manifest.json",
+        "coding-amendment.md",
+        "coding-summary-final.json"
+      ],
+      "reason": "Timing controls and explicit coding amendment.",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": "Public-safe campaign plan.",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "configuration-identity.json",
+        "redaction-ledger.json",
+        "native/swe-redaction-bindings.json"
+      ],
+      "reason": "Sanitized incumbent identity and source-to-copy redaction bindings.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "timing-summary.json",
+        "timing-source-hashes.json",
+        "timing-summary-provenance.json",
+        "graph-manifest.json",
+        "graphs/timing-graph-data.json",
+        "graphs/timing-matrix.svg",
+        "native/natural-ctx8192-c1-r1.json",
+        "native/natural-ctx8192-c1-r2.json",
+        "native/natural-ctx8192-c1-r3.json",
+        "native/natural-ctx8192-c4-r1.json",
+        "native/natural-ctx8192-c4-r2.json",
+        "native/natural-ctx8192-c4-r3.json",
+        "native/natural-ctx32768-c1-r1.json",
+        "native/natural-ctx32768-c1-r2.json",
+        "native/natural-ctx32768-c1-r3.json",
+        "native/natural-ctx32768-c4-r1.json",
+        "native/natural-ctx32768-c4-r2.json",
+        "native/natural-ctx32768-c4-r3.json",
+        "native/cached-swe-r1.json",
+        "native/cached-swe-r1-official-grader.json",
+        "native/cached-swe-r1-campaign-evidence.json",
+        "native/cached-swe-r2.json",
+        "native/cached-swe-r2-official-grader.json",
+        "native/cached-swe-r2-campaign-evidence.json"
+      ],
+      "reason": "All timing artifacts, including the retained failure, deterministic timing graph pack, public-safe cached SWE R1/R2 stages, official grader reports, and campaign comparators. R2 is incomplete and unscored.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "errata.md",
+        "independent-r2-review.json"
+      ],
+      "reason": "Known protocol and resource limits.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Post-run continuity and actual model readiness verified without lifecycle mutation.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Explicit incomplete decision boundary.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "README.md",
+        "summary.json"
+      ],
+      "reason": "Closed public-safe baseline bundle; source finding is published with matching evidence.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "capability": "routed text natural-output baseline",
+    "completed_at": null,
+    "decision_labels": [
+      "current",
+      "no-promotion"
+    ],
+    "dirty_state": "clean frozen benchmark source",
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "id": "2026-10-16-glm-natural-baseline",
+    "promotion_authorized": false,
+    "repository_revision": "e267df90fdc7d6a99cc1904f8a4be466cf63d8ed",
+    "started_at": "2026-10-17T00:00:00Z"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.swe-run/v1"
+  ],
+  "output": "artifact-manifest.json",
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 10 MiB"
+}

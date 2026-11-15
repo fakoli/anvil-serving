@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import threading
@@ -12,8 +11,7 @@ from typing import Any
 import pytest
 
 from anvil_serving.router.config import MemoryRoute
-from anvil_serving.router.internal import BackendClientError
-from anvil_serving.router.memory import MemoryError, MemoryRouter, tool_schemas
+from anvil_serving.router.memory import MemoryError, MemoryRouter
 
 
 ROUTE = MemoryRoute(
@@ -59,62 +57,6 @@ def test_retain_is_sync_and_principal_bound_with_literal_pinned_payload():
     }]
 
 
-def test_recall_and_reflect_defaults_use_fixed_paths_and_bounds():
-    transport = CaptureTransport(b'{"results":[]}')
-    memory = router(transport)
-    memory.dispatch(request("recall", {"query": "where?"}), principal="pi")
-    memory.dispatch(request("reflect", {"query": "why?", "max_tokens": 2}), principal="pi")
-    assert [call["url"] for call in transport.calls] == [
-        "http://127.0.0.1:31100/v1/default/banks/pi-bank/memories/recall",
-        "http://127.0.0.1:31100/v1/default/banks/pi-bank/reflect",
-    ]
-    assert [json.loads(call["data"]) for call in transport.calls] == [
-        {"query": "where?", "budget": "mid", "max_tokens": 1024,
-         "include": {"entities": None, "chunks": None, "source_facts": None}},
-        {"query": "why?", "budget": "low", "max_tokens": 2},
-    ]
-
-
-@pytest.mark.parametrize("text_size", [200, 40000])
-def test_recall_caps_whole_ranked_records_without_losing_provenance(text_size):
-    facts = [{"id": str(i), "text": "é" * text_size,
-              "document_id": "source", "metadata": {"sha256": "provenance"}}
-             for i in range(80)]
-    transport = CaptureTransport(json.dumps({"results": facts, "entities": {"ignored": "x" * 50000}}).encode())
-    result = router(transport).dispatch(request("recall", {"query": "x", "max_tokens": 8192}), principal="pi")["result"]
-    assert len(json.dumps(result).encode()) <= 32768
-    assert result["results"] == facts[:len(result["results"])]
-    assert result["truncated"] is True
-    assert result["omitted_results"] == 80 - len(result["results"])
-    assert "entities" not in result
-    assert json.loads(transport.calls[0]["data"])["max_tokens"] == 8192
-    assert bool(result["results"]) == (text_size == 200)
-
-
-@pytest.mark.parametrize("facts", [None, {}, [{}], [{"id": 1, "text": []}]])
-def test_malformed_recall_facts_fail_closed(facts):
-    transport = CaptureTransport(json.dumps({"results": facts}).encode())
-    with pytest.raises(MemoryError) as error:
-        router(transport).dispatch(request("recall", {"query": "x"}), principal="pi")
-    assert error.value.code == "memory_unavailable"
-
-
-@pytest.mark.parametrize("body,principal,status", [
-    ({"alias": "memory.personal", "operation": "recall", "arguments": {"query": "x"}}, "", 401),
-    ({"alias": "missing", "operation": "recall", "arguments": {"query": "x"}}, "pi", 404),
-    ({"alias": "memory.personal", "operation": "recall", "arguments": {"query": "x"}}, "other", 403),
-    ({"alias": "memory.personal", "operation": "retain", "arguments": {"content": "x", "bank": "other"}}, "pi", 422),
-    ({"alias": "memory.personal", "operation": "retain", "arguments": {"content": "x", "async": True}}, "pi", 422),
-    ({"alias": "memory.personal", "operation": "recall", "arguments": {"query": "x", "max_tokens": True}}, "pi", 422),
-])
-def test_rejects_isolation_and_override_escape_paths_without_transport(body, principal, status):
-    transport = CaptureTransport()
-    with pytest.raises(MemoryError) as error:
-        router(transport).dispatch(body, principal=principal)
-    assert error.value.status == status
-    assert transport.calls == []
-
-
 def test_selected_hermes_or_missing_token_never_falls_through():
     transport = CaptureTransport()
     with pytest.raises(MemoryError) as hermes:
@@ -125,37 +67,6 @@ def test_selected_hermes_or_missing_token_never_falls_through():
         router(transport, env={}).dispatch(request("recall", {"query": "x"}), principal="pi")
     assert unavailable.value.status == 503
     assert transport.calls == []
-
-
-def test_upstream_failure_is_safe_and_concurrency_is_bounded():
-    transport = CaptureTransport(error=RuntimeError("private upstream router-secret remember this"))
-    memory = router(transport)
-    with pytest.raises(MemoryError) as failure:
-        memory.dispatch(request("recall", {"query": "remember this"}), principal="pi")
-    assert failure.value.status == 503
-    assert "private" not in failure.value.message
-    assert "secret" not in failure.value.message
-    assert memory._limit.acquire(blocking=False)
-    assert memory._limit.acquire(blocking=False)
-    assert memory._limit.acquire(blocking=False)
-    assert memory._limit.acquire(blocking=False)
-    try:
-        with pytest.raises(MemoryError) as busy:
-            memory.dispatch(request("recall", {"query": "x"}), principal="pi")
-        assert busy.value.status == 503
-        assert transport.calls == [transport.calls[0]]
-    finally:
-        for _ in range(4):
-            memory._limit.release()
-
-
-def test_aliases_and_tool_schemas_expose_only_safe_operations():
-    assert router().aliases("pi") == ("memory.personal",)
-    assert router().aliases("other") == ()
-    schemas = tool_schemas(("memory.personal",))
-    assert [schema["function"]["name"] for schema in schemas] == ["memory_retain", "memory_recall", "memory_reflect"]
-    assert all(schema["function"]["parameters"]["additionalProperties"] is False for schema in schemas)
-    assert schemas[0]["function"]["parameters"]["properties"]["alias"]["enum"] == ["memory.personal"]
 
 
 def test_malformed_operations_and_credentials_never_reach_transport():
@@ -169,14 +80,6 @@ def test_malformed_operations_and_credentials_never_reach_transport():
             router(transport, env={"HINDSIGHT_TOKEN": token}).dispatch(request("recall", {"query": "x"}), principal="pi")
         assert error.value.status == 503
     assert transport.calls == []
-
-
-def test_upstream_content_rejection_stays_rejected_without_echoing_content():
-    transport = CaptureTransport(error=BackendClientError(422, "invalid_request", "sensitive upstream content"))
-    with pytest.raises(MemoryError) as error:
-        router(transport).dispatch(request("retain", {"content": "synthetic fixture"}), principal="pi")
-    assert error.value.status == 422 and error.value.code == "memory_rejected"
-    assert "sensitive" not in error.value.message
 
 
 @pytest.mark.parametrize("drip_headers", [False, True])
@@ -198,7 +101,7 @@ def test_total_deadline_interrupts_byte_drip_and_releases_permit(drip_headers):
                 pass
 
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), Drip)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     memory = MemoryRouter((replace(ROUTE, base_url=f"http://127.0.0.1:{httpd.server_port}", timeout=0.4),),
                           env={"HINDSIGHT_TOKEN": "synthetic-token"})

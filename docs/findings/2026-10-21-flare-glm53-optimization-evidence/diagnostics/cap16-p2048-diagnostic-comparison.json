@@ -1,0 +1,31 @@
+{
+  "scope": "One matched diagnostic shape per size; seed1234,4096 generated tokens, fresh-prefix nonce differs and adds3 input tokens. Different sampled token trajectories remain; no causal general QoS or quality claim.",
+  "rows": [
+    {
+      "prefill_lines": 2048,
+      "p4096_max_client_gap_ms": 500.254041,
+      "p2048_max_client_gap_ms": 243.709155,
+      "p4096_prefill_seconds": 6.613189556,
+      "p2048_prefill_seconds": 6.71708318,
+      "p4096_actual_input": 32565,
+      "p2048_actual_input": 32568,
+      "counting_pass_p4096": false,
+      "counting_pass_p2048": false
+    },
+    {
+      "prefill_lines": 6144,
+      "p4096_max_client_gap_ms": 440.806413,
+      "p2048_max_client_gap_ms": 266.169583,
+      "p4096_prefill_seconds": 18.013589245,
+      "p2048_prefill_seconds": 21.332013472,
+      "p4096_actual_input": 101606,
+      "p2048_actual_input": 101609,
+      "counting_pass_p4096": false,
+      "counting_pass_p2048": true
+    }
+  ],
+  "sources": [
+    "cap16-fixed2-host32-mixed-prefill.json",
+    "cap16-p2048-fixed2-host32-mixed-prefill.json"
+  ]
+}

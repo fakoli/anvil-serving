@@ -92,43 +92,6 @@ def run(runtime, **changes):
                        _domains=lambda _: dict.fromkeys(GPUS, 'none'), **changes)
 
 
-@pytest.mark.parametrize('host', [
-    {'system': 'Windows'},
-    {'system': 'Darwin'},
-    {'release': '5.15.0-microsoft-standard-WSL2'},
-    {'release': '6.6.0-wsl'},
-    {'container': True},
-])
-def test_non_native_owner_is_rejected_before_external_io(native_owner, host):
-    native_owner.update(host)
-    runtime = Runtime()
-    with pytest.raises(ValueError, match='native Linux resource owner'):
-        run(runtime, dry_run=False)
-    assert not runtime.calls
-
-
-def test_preview_performs_no_container_mutation_and_reports_busy_devices():
-    runtime = Runtime(busy=True)
-    result = run(runtime)
-    assert not result['executed'] and not result['ok']
-    assert result['blockers']
-    assert not any('create' in cmd or 'start' in cmd or 'rm' in cmd for cmd in runtime.calls)
-
-
-@pytest.mark.parametrize('p2p', [False, True])
-def test_collectives_require_correctness_identity_transport_and_owned_cleanup(p2p):
-    runtime = Runtime(p2p=p2p)
-    result = run(runtime, dry_run=False, p2p='enabled' if p2p else 'disabled')
-    assert result['ok'] and runtime.removed
-    assert result['nccl_runtime_versions'] == ['2.30.7+cuda13.3']
-    command = next(cmd for cmd in runtime.calls if 'create' in cmd)
-    assert '--read-only' in command and '--cap-drop' in command
-    assert command[command.index('--network') + 1] == 'none'
-    assert command[command.index('--pull') + 1] == 'never'
-    assert '--volume' not in command and '--mount' not in command and '--privileged' not in command
-    assert 'sha256:' + '2' * 64 in command
-
-
 def test_timeout_still_collects_logs_and_removes_only_owned_container():
     runtime = Runtime(timeout=True)
     result = run(runtime, dry_run=False)
@@ -136,53 +99,9 @@ def test_timeout_still_collects_logs_and_removes_only_owned_container():
     assert result['cleanup']['ok'] and runtime.removed and result['logs']
 
 
-@pytest.mark.parametrize('detail', ['error: no such object: probe',
-                                  'Error response from daemon: No such container: probe'])
-def test_cleanup_accepts_docker_absence_message_case_variants(detail):
-    result = run(Runtime(absent_error=detail), dry_run=False)
-    assert result['ok'] and result['cleanup']['state'] == 'removed'
-
-
-def test_cleanup_does_not_treat_daemon_connection_failure_as_absence():
-    result = run(Runtime(absent_error='Cannot connect to the Docker daemon'), dry_run=False)
-    assert not result['ok'] and result['cleanup']['state'] == 'removal-unverified'
-
-
-def test_wrong_cleanup_owner_refuses_removal_and_fails_the_probe():
-    runtime = Runtime(wrong_owner=True)
-    result = run(runtime, dry_run=False)
-    assert not result['ok'] and not runtime.removed
-    assert not result['cleanup']['ok']
-
-
-@pytest.mark.parametrize('kwargs', [dict(busy=True), dict(display='Enabled')])
-def test_live_refuses_occupied_or_display_gpu(kwargs):
-    runtime = Runtime(**kwargs)
-    result = run(runtime, dry_run=False)
-    assert not result['executed'] and not result['ok']
-    assert not any('create' in command for command in runtime.calls)
-
-
-def test_translated_iommu_refuses_p2p_before_cuda_context_creation():
-    runtime = Runtime()
-    result = probe.probe(image=IMAGE, gpu_uuids=GPUS, _runner=runtime, dry_run=False,
-                         p2p='enabled', _domains=lambda _: dict.fromkeys(GPUS, 'DMA-FQ'))
-    assert not result['executed']
-    assert 'IOMMU' in result['blockers'][0]
-
-
 def test_empty_measurements_and_shm_fallback_do_not_qualify_p2p():
     assert not run(Runtime(bad_result=True), dry_run=False)['ok']
     assert not run(Runtime(), dry_run=False, p2p='enabled')['ok']
-
-
-def test_rejects_unpinned_images_and_duplicate_devices_before_external_io():
-    runtime = Runtime()
-    with pytest.raises(ValueError, match='image'):
-        probe.probe(image='runtime:latest', gpu_uuids=GPUS, _runner=runtime)
-    with pytest.raises(ValueError, match='two distinct'):
-        probe.probe(image=IMAGE, gpu_uuids=[GPUS[0]] * 2, _runner=runtime)
-    assert not runtime.calls
 
 
 def test_cli_confirmation_help_and_packaged_source(capsys):

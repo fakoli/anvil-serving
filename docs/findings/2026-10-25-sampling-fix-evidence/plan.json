@@ -1,0 +1,65 @@
+{
+  "candidate_changes": [
+    "exact upstream split-top-p fix",
+    "bounded forced-logit dispatch receipts",
+    "preweight kernel regression wrapper"
+  ],
+  "constants": [
+    "model and revision",
+    "all model flags and MTP3",
+    "GPU allocation and order",
+    "runtime/model cache volumes",
+    "TP2 and C4 capacity",
+    "request C1 64 reasoning / 512 total, max effort, temperature 0.6, top_p 0.95"
+  ],
+  "ignis": "hold",
+  "inference": {
+    "maximum_probe_invocations": 1,
+    "maximum_requests": 2,
+    "request_timeout_seconds": 120,
+    "retries": 0,
+    "second_case_only": "predeclared natural completion below boundary with correct first answer",
+    "total_window_seconds": 300
+  },
+  "interpretation": "Functional kernel/boundary result distinct from independent answer oracle. Trace synchronization forbids performance comparison. One end-to-end probe is diagnostic only.",
+  "kernel_gate": {
+    "child_timeout_seconds": 180,
+    "forced_cases": 8,
+    "ordinary_parity_cases": 4,
+    "tensor_peak_limit_bytes": 1073741824
+  },
+  "memory_phases": [
+    "starting incumbent",
+    "after image build",
+    "during candidate start",
+    "candidate ready",
+    "after request and drain",
+    "during incumbent restoration",
+    "restored incumbent"
+  ],
+  "prior_baseline": "2026-10-25-reasoning-probe/live-1",
+  "promoted": false,
+  "restore": "exact copied incumbent registry with managed mode leave or failed-entry rollback",
+  "schema": "sampling-fix-experiment/v1",
+  "status": "preparing",
+  "stop": [
+    "kernel regression fail",
+    "identity/launch/source mismatch",
+    "nonzero engine occupancy",
+    "memory pressure or OOM delta",
+    "probe stop condition"
+  ],
+  "trace_gate": {
+    "missing": "kernel_path_evidence=unknown; no adaptive rerun; restore incumbent",
+    "required": "fresh serving-worker receipt between readiness and request completion, exclude preweight regression child PID; rows=4, has_k=0, finite_min/max=1, token154842_finite_rows=forced_rows",
+    "scope": "Python dispatch-path evidence, not per-row kernel proof or timing"
+  },
+  "upstream_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+  "window": {
+    "candidate_startup_seconds": 900,
+    "request_seconds": 300,
+    "restoration_reserve_seconds": 1200,
+    "rule": "Stop candidate measurement by 20 minutes; restoration continues if needed to restore service and any overrun is reported.",
+    "target_seconds": 2700
+  }
+}

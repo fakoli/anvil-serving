@@ -1,0 +1,713 @@
+{
+  "campaign": "2026-10-06-mimo-qualification",
+  "entries": [
+    {
+      "private_sha256": "17fc1d653769d0adb001acdc059c78d751304868daeb2da949c14baad48cd510",
+      "private_source": "campaign/authorization.json",
+      "published_path": "authorization.json",
+      "published_sha256": "ffd937db1f72b957ce7d980b6fa9ce40acbf659098cc7d3556fa979e5a1635a7",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "fd1ff368c772b33b20a5a652de6a3a8969aa7323b2d36dcb685ef081e7078f9e",
+      "private_source": "campaign/baseline-agentic-a1-native.json",
+      "published_path": "baseline-agentic-a1-native.json",
+      "published_sha256": "e7a31ec6ff97729e8422cd3b59e802acfbb23b948644a60efbd38d85d018d152",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "4d238a81645940909bf47e3cb7177df3036c87deffe0dc3cc9e4da66c46ea3a1",
+      "private_source": "campaign/baseline-preflight.json",
+      "published_path": "baseline-preflight.json",
+      "published_sha256": "c7fd473afe5d4cdd24f7bbe1a5443a915b214fdd7541fe3ac9274d4b92d96d27",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "39e243859f4bdaf5ce186a6d2d449a2291ee6c0b3936f9395480f47b9ed29377",
+      "private_source": "campaign/baseline-swe-a1-native.json",
+      "published_path": "baseline-swe-a1-native.json",
+      "published_sha256": "9a56dd3a5a13feb111c698a12018c13524c7a2fd5ba534cd4971015654dceb29",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "a7c5a6cea815eb95e6fe56a09eaac57a613fd41c21117519109b664fc2148cc1",
+      "private_source": "campaign/campaign-no-go-review.json",
+      "published_path": "campaign-no-go-review.json",
+      "published_sha256": "5e18f65a1288913b21841266f6a7ba2e1fde77392591b3c2a8b76381456ed797",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "public review-record classification clarification",
+        "public protocol-label removal"
+      ]
+    },
+    {
+      "private_sha256": "0cbe827d07cc6bf4f8e42cf17f87446383f0d9edfa6e1723c35d24d0589fe79b",
+      "private_source": "operator-home/serves.glm53-abliterated-isolated-20261006.toml",
+      "published_path": "configs/glm53-abliterated-isolated-qualification.toml",
+      "published_sha256": "dcee8d123c2756baa733616fd3a4d465a1b950bdc7627e887d66f3330baa9eb6",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "da3060fb9e4a936e0332622829f279b20343e3f55d414f00c4bdc3179c292279",
+      "private_source": "operator-home/serve-recipes.glm53-abliterated-20261006.toml",
+      "published_path": "configs/glm53-abliterated-qualification.toml",
+      "published_sha256": "bd6fb1971a24609ee75f276d34138cebd9a73c7ea117fae2cd474820cf241c07",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "closure wording"
+      ]
+    },
+    {
+      "private_sha256": "bfce5bab91e66a1de64512f452d6fb47d0d8fb100101324ead80d2afcaebcf98",
+      "private_source": "operator-home/serves.mimo26-isolated-20261006.toml",
+      "published_path": "configs/mimo26-isolated-qualification.toml",
+      "published_sha256": "b627af81dd660b1599917218d96913163530007c3f5c25cb83416522308495e9",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "82479c99867531bfdef1319e6a80e05addc3ae228aed35e772803254e5217938",
+      "private_source": "operator-home/serve-recipes.mimo26-nospec-20261006.toml",
+      "published_path": "configs/mimo26-nospec-qualification.toml",
+      "published_sha256": "c5f2977e771852a8b0facea4db554d69812f99961d7fe0d8b7e3fa300ca5c1e6",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "038889f6f783bb8900b2d42a482f35b960aeb4a2754d2bec2731cf0a207858b9",
+      "private_source": "campaign/coverage-and-gaps.md",
+      "published_path": "coverage-and-gaps.md",
+      "published_sha256": "36991af70e86ffbf6caf91268e71116b8d92c904d3b91f8a0fbbea6658a7d8f6",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "publication closure status derived from final manifest"
+      ]
+    },
+    {
+      "private_sha256": "c9186374fadf922c67f1ea34a96b68557324980a7e0b23d8b2e170adecb54218",
+      "private_source": "campaign/friction-log.md",
+      "published_path": "friction-log.md",
+      "published_sha256": "c9186374fadf922c67f1ea34a96b68557324980a7e0b23d8b2e170adecb54218",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "46350bc47f461c6f7e3ab1ad49233c6cebd0da3ca62d0fb131e61ee05c7229ba",
+      "private_source": "campaign/full-suite-03b2c14e.json",
+      "published_path": "full-suite-03b2c14e.json",
+      "published_sha256": "a9b289357a1b18e382920564cb2f2c4b260d5dbb68bd3d54c99eea41a18fa023",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "497a1814bac394fc39f67c284d6cc11d89a04714800f7b541e461db92ad6bc2c",
+      "private_source": "campaign/full-suite-short-temp-03b2c14e.json",
+      "published_path": "full-suite-short-temp-03b2c14e.json",
+      "published_sha256": "c94e9e2eb9cd4f4492eff9923c2def2fd085771743bda8338b4ada0b3ed2719d",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "native temporary evidence path"
+      ]
+    },
+    {
+      "private_sha256": "5657a8c70b1205ea8ad874e767add3247badc996ef65a0189ff8916ffa2fbee6",
+      "private_source": "campaign/full-suite-short-temp-a6255695.json",
+      "published_path": "full-suite-short-temp-a6255695.json",
+      "published_sha256": "f1742312a5e916025a1874aa7499d68ebaf782f2b765c48a1d550d2cc971c070",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "native temporary evidence path"
+      ]
+    },
+    {
+      "private_sha256": "36fc9690e4b489d4c3456729f6ddfc6d0216ca06e54f1f757317d74aa6290c93",
+      "private_source": "campaign/glm53-abliterated-v84-dcp1-c4-r1-startup-logs-tail500.json",
+      "published_path": "glm53-abliterated-v84-dcp1-c4-r1-startup-logs-tail500.json",
+      "published_sha256": "3246f68e94dfcf93af091f9b97f3ea3e204abbb956746ec2e4d140f7e115795b",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "81b40f3d2110c9447be55fc6538fdce8fcc7a71cd9b5428053505dedd12b999e",
+      "private_source": "campaign/glm53-abliterated-v84-dcp1-c4-r1-startup-status.json",
+      "published_path": "glm53-abliterated-v84-dcp1-c4-r1-startup-status.json",
+      "published_sha256": "49247913d7d18b196e3a9b728cd29f2f6aa506ca0d584ef04878bd7e4f9dd614",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "operator container identifier"
+      ]
+    },
+    {
+      "private_sha256": "9c423f42f166aa0e06131edfeb3c0367b22102b15ee136bc8b7163f903d2d406",
+      "private_source": "campaign/mimo-r1-agentic-a1-native.json",
+      "published_path": "mimo-r1-agentic-a1-native.json",
+      "published_sha256": "39bfcedba6f639b2c14e8657c4d1f0119ecde2fa35d6a01182afb7b875128cbf",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "0e3f0cea7cc02f6eb743e2e130e703d0e3893a0ceb528f0f985605c4c72b58d0",
+      "private_source": "campaign/mimo-r1-agentic-greedy-v2-native.json",
+      "published_path": "mimo-r1-agentic-greedy-v2-native.json",
+      "published_sha256": "e1f50722d6a0fc0845a9092c6250a90635ea4eed97c6440c3b664dfec065d453",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "42c5314fbe23b415de30a54208ac62dec8153532b58a8e582eb25bba39f79ced",
+      "private_source": "campaign/mimo-r1-agentic-thinking-off-v3-native.json",
+      "published_path": "mimo-r1-agentic-thinking-off-v3-native.json",
+      "published_sha256": "2216e340d2def7bcabbb95002415856154b6ee0ff238b08e571c7254e335b3d3",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "f60cc021bd2e5a0b1270b4f145dbbde66caee6e855774c3e4098fe131edc2492",
+      "private_source": "campaign/mimo-r1-diagnostic-decision.json",
+      "published_path": "mimo-r1-diagnostic-decision.json",
+      "published_sha256": "8d173a85289fdd9945fc286787cfa85614c3160f4b83f91a2e2eb2e67036b4e2",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "26e739a7dfa7c82517794e409e0fb302401eef27b4a79e819e66e53c5db5cf03",
+      "private_source": "campaign/mimo-r1-preflight-disabled.json",
+      "published_path": "mimo-r1-preflight-disabled.json",
+      "published_sha256": "26e739a7dfa7c82517794e409e0fb302401eef27b4a79e819e66e53c5db5cf03",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "9a2ce0ce0c99aff02bd4c9fc7e2360249aae11165ff799283ed69342509525e4",
+      "private_source": "campaign/mimo-r1-preflight-enabled.json",
+      "published_path": "mimo-r1-preflight-enabled.json",
+      "published_sha256": "9a2ce0ce0c99aff02bd4c9fc7e2360249aae11165ff799283ed69342509525e4",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "fb32d58c8c5c13d84af78651bc6794ffc9165d56b80f920a478fedb8bbc96a59",
+      "private_source": "campaign/mimo-r1-preflight-native-a2.json",
+      "published_path": "mimo-r1-preflight-native-a2.json",
+      "published_sha256": "fb32d58c8c5c13d84af78651bc6794ffc9165d56b80f920a478fedb8bbc96a59",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "5931b3f4b6cbfcb7ed84784b4d52c0874b9a147825a5d3d074a4e5273f1f2bfc",
+      "private_source": "campaign/mimo-r1-raw-parallel-greedy-capture.json",
+      "published_path": "mimo-r1-raw-parallel-greedy-capture.json",
+      "published_sha256": "03960ab9c3e68574fe5bbad7462d0c85da04a7031fe3834faf1de0a005bff4ca",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "6008a394182b2d0fb5f88f78187c50496b8d5d4a75c7ccfb1aad2982db84fca6",
+      "private_source": "campaign/mimo-r1-raw-parallel-greedy-request.json",
+      "published_path": "mimo-r1-raw-parallel-greedy-request.json",
+      "published_sha256": "430955494de20fc1a290eaaab7316238393e02f87d59afff47fb9418d5525dbf",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "107f46dcfab65b48c5525123478ecd27465b769413165e8ae4f82652fc43cfce",
+      "private_source": "campaign/mimo-r1-raw-structured-thinking-off-capture.json",
+      "published_path": "mimo-r1-raw-structured-thinking-off-capture.json",
+      "published_sha256": "38d9df962b260b5e6a609f53615ca8a464694d225cb2d4ceea9325cca630a5ea",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "ac790fb10f7b4840d3f8608b2fc4f56e6ca3621beea12825dee5d5499d03bdd0",
+      "private_source": "campaign/mimo-r1-raw-structured-thinking-off-request.json",
+      "published_path": "mimo-r1-raw-structured-thinking-off-request.json",
+      "published_sha256": "42bd7af5baccaf8e447c8157029e7d6b1d15190c3f14fe446d473e2aea9ef157",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "1b67563414a338a8d6cca01ebb6e4b2bd1435a2988ff36291be0d16d5b34c137",
+      "private_source": "campaign/mimo-r1-swe-a1-native.json",
+      "published_path": "mimo-r1-swe-a1-native.json",
+      "published_sha256": "d0a18e19c0a49604d1bcb9a49677fe4be0535f4daa5d0b4afb6f602f5e2c6b5b",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "b58c541c56c8c7cc7c8bc94791d4459a7ce919feefef2dd9a6a56da5a6e59e5e",
+      "private_source": "campaign/model-cache-cleanup-terminal-tool-output.json",
+      "published_path": "model-cache-cleanup-free-space-derived.json",
+      "published_sha256": "3a0aadf7c7a502b8598143a7ceed9324710fb22040a3998197552e7de9928833",
+      "redaction": [
+        "unrelated inventory rows omitted; source hash retained"
+      ]
+    },
+    {
+      "private_sha256": "ebbf26077204038b5dc7afb81581b9f13a23861c550a74baf8d2662120f1b917",
+      "private_source": "campaign/model-cache-cleanup-native-stdout.json",
+      "published_path": "model-cache-cleanup-native-stdout.json",
+      "published_sha256": "45fb993c95d08cc42a3c3499f9521aec0a5659d99d9b67725d30d85e38325c96",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "Codex session metadata"
+      ]
+    },
+    {
+      "private_sha256": "a9019510d21d94dd033f56db319b734d68bcd76e7aa75e94307dd56216ed4fa6",
+      "private_source": "campaign/model-cache-cleanup-post-delete-verification.json",
+      "published_path": "model-cache-cleanup-post-delete-verification.json",
+      "published_sha256": "18af5ef9ab2f3b82492ec4ecd5e1f8780ae2970de6febe27693160aa54166a0d",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "b58c541c56c8c7cc7c8bc94791d4459a7ce919feefef2dd9a6a56da5a6e59e5e",
+      "private_source": "campaign/model-cache-cleanup-terminal-tool-output.json",
+      "published_path": "model-cache-cleanup-terminal-tool-output.json",
+      "published_sha256": "e5a193463b1ba3a0f1d51cdafc6386907f5ae2b49d7837c41d13952d6b8350a3",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "69849cbe8252cfda61bf122be776c4c02ceb7ede338be8bc0178064271c8a14e",
+      "private_source": "campaign/rejected-cache-cleanup-summary.json",
+      "published_path": "rejected-cache-cleanup-summary.json",
+      "published_sha256": "b712dcb5ddfe3e79c99ac32105bbb50602fce926b90f0724ecf358818aa54466",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "db1a5a8aa306dda4b24d37f0ee0454c97ef8cf7d9f28d9d8c2f1b089607bd005",
+      "private_source": "campaign/rejected-cache-post-delete-verification.json",
+      "published_path": "rejected-cache-post-delete-verification.json",
+      "published_sha256": "05b0dee2d7a1173feb292c2562518c20ee6ed2922c03a81d178aa4cd09624e9c",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "c62de5dccf4b9cf5be71207cda095211dd7be4c932efa27010dae6fc95b1444a",
+      "private_source": "campaign/rejected-mimo-cache-remove-native.json",
+      "published_path": "rejected-mimo-cache-remove-native.json",
+      "published_sha256": "552b5d012e35a4d43ce3e86382f02e0f13d1fb4e6fa2e831d0db29996d8f9af6",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "c4ea0cf7a2477853197b131d38ff82b04e59f9ce71151baeac0c4f7d35a8a39f",
+      "private_source": "campaign/rejected-uncensored-cache-remove-native.json",
+      "published_path": "rejected-uncensored-cache-remove-native.json",
+      "published_sha256": "36bca2f6b10a30bb3ea5710ea5c08a720cc1cdc9859266b0275f979f56387131",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "402fbc2e04ca4f1896e4de8026bdb38d5c4b64d774e25df7448c00b01ac78dcc",
+      "private_source": "campaign/restoration-cleanup-independent-review.json",
+      "published_path": "restoration-cleanup-independent-review.json",
+      "published_sha256": "01229db051ac067de7a981a89b066c71ced0a7871218df479ac7b4a2e8b63781",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "public review-record classification clarification",
+        "public protocol-label removal"
+      ]
+    },
+    {
+      "private_sha256": "91ccd988b1f75aa39405bb66b000f852336bb8452c3f1a1e26c41ea27ad7a911",
+      "private_source": "campaign/restoration-direct-preflight-native.json",
+      "published_path": "restoration-direct-preflight-native.json",
+      "published_sha256": "91ccd988b1f75aa39405bb66b000f852336bb8452c3f1a1e26c41ea27ad7a911",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "ce23f877d4234db5d36418726613dfc165c4cfd45d5954624e7b2494ec116585",
+      "private_source": "campaign/restoration-final-config-hashes.json",
+      "published_path": "restoration-final-config-hashes.json",
+      "published_sha256": "3d632494a4a1e7a0dd126ab32e98ba70b1ce79709c6298fdff126d0eb7cd0d5d",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "0c1c5aa578f50b852c7ac7c10cd9dff7c5edfcdbd1ad74c193ccd73ca462a9b2",
+      "private_source": "campaign/restoration-gpu-compute.json",
+      "published_path": "restoration-gpu-compute.json",
+      "published_sha256": "7bcf884f56045a29db9fb1a1ebca6df8febb149ddf0ce2dc62f8945f3cb138bc",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "50d44166a71ff0a9ebaca737a744c518c76a1095d48424c52efac04f922ed328",
+      "private_source": "campaign/restoration-mode-status.json",
+      "published_path": "restoration-mode-status.json",
+      "published_sha256": "fcd6ee47e1d0b2ea3cf8b63fce591884ee287a8c78f0f231371ecb84fcee9e93",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "549f752346d5f75ea6b976400323adf487853681ac7e5acf631b072fe3baf931",
+      "private_source": "campaign/restoration-pi-max-tool-turn.json",
+      "published_path": "restoration-pi-max-tool-turn.json",
+      "published_sha256": "f34f22d40d6d75a4850c60c645943c4011db614c214c9334f1da6920154b0677",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "663e656c633abf8922aae67bbac1fd9f58d0fa694f123f41bf3156406f8e38e4",
+      "private_source": "campaign/restoration-pi-thinking-off-a1.json",
+      "published_path": "restoration-pi-thinking-off-a1.json",
+      "published_sha256": "3f89eb048247754d9979ebc6e22ced3fb6140a9f0c87c584029601e6d6898e98",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "26ea0f4d7745a069819f62721fa338898d2b5f12f9bcba462178b995e3a6073c",
+      "private_source": "campaign/restoration-recipe-status.json",
+      "published_path": "restoration-recipe-status.json",
+      "published_sha256": "b5923492662a2e81ded547fe05bf86fb123afa22c545c400c05ef2209640182c",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "operator container identifier"
+      ]
+    },
+    {
+      "private_sha256": "bc81552e5434057b26c8e65c374e4049392f8812938b6c3bf57522650c20abc9",
+      "private_source": "campaign/restoration-routed-preflight-native.json",
+      "published_path": "restoration-routed-preflight-native.json",
+      "published_sha256": "bc81552e5434057b26c8e65c374e4049392f8812938b6c3bf57522650c20abc9",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "9bc0e530e6b7aa817ba145955915926ef1cac1d7307e50e56a60280363869c9e",
+      "private_source": "campaign/restoration-router-readmit.json",
+      "published_path": "restoration-router-readmit.json",
+      "published_sha256": "504cd59278245c86d94dedf06b57e722b2926b416e7238b628bc8a1ed6ba1ff6",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "b19cb93181a2b7a8ede69d8dd027945173ea088a9ab8aa3bd65ed753d5e639e1",
+      "private_source": "campaign/restoration-router-transition-after-readmit.json",
+      "published_path": "restoration-router-transition-after-readmit.json",
+      "published_sha256": "110d07fa9863adaeee08a1fadaf955b43dcf0f969614dab63824215340eae394",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "1d3b1ece5b3a85dee1b94aeaf9c646263e7b499276b1eba1a37e7bc892bac0be",
+      "private_source": "campaign/restoration-shared-memory.json",
+      "published_path": "restoration-shared-memory.json",
+      "published_sha256": "49f3ca184f27a1dd1e15d9f5a433e669fd049dc0fcf86c9bdbfe2597944cf1bd",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "c64ba0f9b7bf5ec46ca224b6b9a47a5a7dea53c5b1fe5925b0672e85a2964161",
+      "private_source": "campaign/restoration.json",
+      "published_path": "restoration.json",
+      "published_sha256": "df06d8cb614b62cfc0d3de209c48ad29ef1132ac5b01b6d1d78e80f121b46bab",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "92a95a32b9c71b35e6a8c2c1dcb38e70178c912c71e4f0ec9f8ead68b109a192",
+      "private_source": "campaign/source-registry.json",
+      "published_path": "source-registry.json",
+      "published_sha256": "7fa5105bf8d682e4ed6e79cd8a8d8eae60b9419c52cc2a205a3be6b27a9969be",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals",
+        "operator-local hostname"
+      ]
+    },
+    {
+      "private_sha256": "e989f92c013e977ecbffe4f5e839222c36cc3c3ad748f48f82a00986abb3591c",
+      "private_source": "campaign/summary.json",
+      "published_path": "summary.json",
+      "published_sha256": "9550edf5a39fceb9ab9cd137dea6220482dc040c5266028a55ea1d6e08951860",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "333b6e8a3c63aa5097de46c5d2dbde5ffe75675249347935813854c141a537b9",
+      "private_source": "campaign/uncensored-r1-agentic-a1-native.json",
+      "published_path": "uncensored-r1-agentic-a1-native.json",
+      "published_sha256": "4f1014e4824f285fd30f3b634d1cf5db7ec677cc7619972d6e958a69bd4db6ff",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943",
+      "private_source": "campaign/uncensored-r1-django-grade.json",
+      "published_path": "uncensored-r1-django-grade.json",
+      "published_sha256": "8df249d4acb1aefe0cf4a7b7c44c1479a1c6e94bb6170cb69d31765fbe5bb17f",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+      "private_source": "campaign/uncensored-r1-official-grade-combined.json",
+      "published_path": "uncensored-r1-official-grade-combined.json",
+      "published_sha256": "b2e4c296c9cbd73dcc49b0c8ebc39b37706bfe0097c680a50faba6080cfdd987",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "d3eb079d875a9a759ea4e7a2f7327b16714c348cdc0a0519b73d0d637825d4da",
+      "private_source": "campaign/uncensored-r1-preflight-native.json",
+      "published_path": "uncensored-r1-preflight-native.json",
+      "published_sha256": "7aba3bed5bc32abf87fd9eaec8ce9fcf7b97f08abbdabfd3e67ee115f0e1a96d",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "c7bf3d9a65df546184f31b46b6a64f026fb3d1d37604e314627cedb6b836d1d7",
+      "private_source": "campaign/uncensored-r1-pylint-grade.json",
+      "published_path": "uncensored-r1-pylint-grade.json",
+      "published_sha256": "7aabd9960ec6bf82314077113a1d4eb5c8d449c2b86f2433eb0800388a49e191",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "5e93cf8c8c5e498d267e6b4d42793f418433f26912a2f8bae901b6fd0edc3644",
+      "private_source": "campaign/uncensored-r1-swe-a1-native.json",
+      "published_path": "uncensored-r1-swe-a1-native.json",
+      "published_sha256": "f2a0563c7766d9de47f592bdb638f2aa7c34ce021e0c42d6aca76fec96954627",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    },
+    {
+      "private_sha256": "c6358c22c169b3b0c653faa4e2e837d53a810caf21ee32bc0f1c7df713ce6aa3",
+      "private_source": "campaign/workload-manifest.json",
+      "published_path": "workload-manifest.json",
+      "published_sha256": "c49d240964fbed99da5abacd5e34b2c7f5792040a2632fe2ab2ce9ebe96cf9ff",
+      "redaction": [
+        "operator identities",
+        "private paths",
+        "GPU UUIDs",
+        "private IPv4 literals"
+      ]
+    }
+  ],
+  "note": "Private-source hashes identify original evidence. Published hashes attest the redacted public bytes. Native inner digests remain original provenance and do not attest published-byte identity. The packet is complete; each ledger entry names the transformations applied to its published bytes.",
+  "schema": "anvil-serving.public-redaction-ledger/v1",
+  "status": "complete"
+}

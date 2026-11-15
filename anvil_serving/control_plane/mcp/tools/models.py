@@ -310,6 +310,40 @@ def _recipe_manage_expected(args: dict, snapshot: dict) -> None:
         raise ToolError("stale_preview", "Recipe registry, selected recipe, or running inventory changed; review again.")
 
 
+def _recipe_containment_failure(recipe, selected):
+    from .... import recipe_memory
+
+    if selected is None:
+        return None
+    observed = selected.get("host_memory") or {}
+    error = recipe_memory.containment_error(observed, recipe.get("serve"))
+    if error or selected.get("containment_error"):
+        evidence = recipe_memory.failure_evidence(selected.get("container_id"), "stop_failed", observed)
+        return {"container_id": evidence["container_id"] if evidence else None,
+                "host_memory": evidence["host_memory"] if evidence else {}}
+    return None
+
+
+def _recipe_failure_evidence(output):
+    """Forward only a known closed containment record, never CLI transcripts."""
+    from .... import recipe_memory
+
+    if not isinstance(output, str):
+        return None
+    for line in output.splitlines():
+        if line.startswith(recipe_memory.FAILURE_PREFIX) and len(line) <= 4096:
+            try:
+                value = json.loads(line[len(recipe_memory.FAILURE_PREFIX):])
+                if isinstance(value, dict):
+                    evidence = recipe_memory.failure_evidence(
+                        value.get("container_id"), value.get("cleanup"), value.get("host_memory"))
+                    if evidence is not None:
+                        return evidence
+            except ValueError:
+                pass
+    return None
+
+
 def tool_recipe_manage(args: dict) -> dict:
     """Preview or run one declared recipe load/unload through the canonical CLI."""
     from .... import models, serve_recipes
@@ -328,6 +362,9 @@ def tool_recipe_manage(args: dict) -> dict:
         with serve_recipes.registry_lock(registry_path):
             snapshot, recipe, selected = _recipe_manage_snapshot(registry_path, model, container)
             if action == "status":
+                failure = _recipe_containment_failure(recipe, selected)
+                if failure is not None:
+                    raise ToolError("recipe_containment_failed", "Recipe memory containment could not be verified.", failure)
                 return _ok({"applied": False, "dry_run": True, **snapshot,
                             "container_state": selected})
             if action == "load" and selected is not None:
@@ -360,17 +397,33 @@ def tool_recipe_manage(args: dict) -> dict:
             argv = [action, recipe["model"], "--registry", registry_path, "--container", container, "--confirm"]
             # Keep legacy CLI output out of the MCP response; it can contain
             # environment-derived detail and is not the typed postcondition.
-            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-                if admission:
-                    from .serves import tool_serves_manage
-                    result = tool_serves_manage({"action": "up", "manifest": admission["manifest"], "names": [admission["serve"]], "dry_run": False, "confirm": True, "timeout_seconds": 1800})
-                    returncode = result.get("data", {}).get("returncode", 1)
-                else:
-                    returncode = models._recipe_main(argv)
+            failure = None
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as errors:
+                try:
+                    if admission:
+                        from .serves import tool_serves_manage
+                        result = tool_serves_manage({"action": "up", "manifest": admission["manifest"], "names": [admission["serve"]], "dry_run": False, "confirm": True, "timeout_seconds": 1800})
+                        data = result.get("data", {})
+                        returncode = data.get("returncode", 1)
+                        failure = _recipe_failure_evidence(data.get("stderr"))
+                    else:
+                        returncode = models._recipe_main(argv)
+                        failure = _recipe_failure_evidence(errors.getvalue())
+                except ToolError as exc:
+                    returncode = exc.details.get("returncode", 1)
+                    if type(returncode) is not int or returncode == 0:
+                        returncode = 1
+                    failure = _recipe_failure_evidence(exc.details.get("stderr"))
             if returncode:
-                raise ToolError("recipe_lifecycle_failed", "The managed recipe lifecycle operation did not complete.", {"action": action, "returncode": returncode})
+                details = {"action": action, "returncode": returncode}
+                if failure is not None:
+                    details["containment"] = failure
+                raise ToolError("recipe_lifecycle_failed", "The managed recipe lifecycle operation did not complete.", details)
             post, current_recipe, current = _recipe_manage_snapshot(registry_path, recipe["model"], container)
             if action == "load":
+                failure = _recipe_containment_failure(current_recipe, current)
+                if failure is not None:
+                    raise ToolError("recipe_containment_failed", "Recipe memory containment failed after load.", failure)
                 passed = (current is not None and current.get("model") == current_recipe["model"]
                           and current.get("recipe_digest") == post["recipe_sha256"]
                           and current.get("registry_digest") == post["registry_sha256"])

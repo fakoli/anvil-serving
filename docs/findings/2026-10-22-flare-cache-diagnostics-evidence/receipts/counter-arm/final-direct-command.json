@@ -1,0 +1,29 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "eval",
+    "preflight",
+    "--base-url",
+    "http://127.0.0.1:39126/v1",
+    "--model",
+    "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+    "--checks",
+    "smoke,json,needle,tools,streaming-tools,tool-result,responses",
+    "--needle-ctx",
+    "8192",
+    "--tool-batch",
+    "20",
+    "--visible-answer-tokens",
+    "256",
+    "--reasoning-headroom-tokens",
+    "8192",
+    "--timeout",
+    "90",
+    "--confirm",
+    "--output",
+    "OPERATOR_PATH_fda255dd27e3/final-direct-preflight.json"
+  ],
+  "at": 1792664805.3558807
+}

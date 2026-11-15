@@ -1,0 +1,12 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "qwen3.8-flash-next",
+      "object": "model",
+      "owned_by": "ignis",
+      "max_model_len": 131072
+    }
+  ],
+  "status": "serving"
+}

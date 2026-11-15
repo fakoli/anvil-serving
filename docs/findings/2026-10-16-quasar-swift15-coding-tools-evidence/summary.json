@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.benchmark-public-summary/v1",
+  "campaign": "2026-10-16-quasar-swift15",
+  "decision": "no-promotion",
+  "promoted": false,
+  "recommendation": "needs_more_data",
+  "human_gate_required": true,
+  "tools": {
+    "quasar": "16/18",
+    "swift15": "18/18"
+  },
+  "coding": {
+    "quasar_list_pair": "119/123; 20/21",
+    "quasar_tuple_pair_sensitivity": "123/123; 21/21",
+    "swift15_both_readings": "120/123; 20/21"
+  },
+  "limits": [
+    "Seven-task synthetic coding fixture with ambiguous pair representation; no general ranking",
+    "No repository-level SWE result, long-context/vision qualification, or controlled performance population",
+    "No fixed seed; cache warmth and co-resident background activity not fully controlled",
+    "Only operator metadata redacted; complete native prompts, responses, reasoning, cases and grades are public",
+    "Installed harness source revision unavailable; 1.5.0 collection differs from dirty 1.2.1 helper/publication worktree"
+  ],
+  "evidence_label": "functional",
+  "default_recommendation": "keep-swift15",
+  "configured_concurrency": 4,
+  "request_concurrency": 1,
+  "context_tokens": 32768,
+  "restoration_verified": true
+}

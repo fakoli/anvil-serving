@@ -1,0 +1,21 @@
+{
+  "schema": "recipe-container-status/v1-public-projection",
+  "state": "exited",
+  "running": false,
+  "exit_code": 1,
+  "oom_killed": false,
+  "health": null,
+  "image_id": "sha256:67f0d352dc21a068fb310d2c4b06a08f66b7a798775f6f82c850cc0616eb20fc",
+  "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+  "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+  "weights_loaded": false,
+  "inference_requests": 0,
+  "post_exit_cgroup": {
+    "effective_memory_limit_bytes": null,
+    "effective_swap_limit_bytes": null,
+    "events": null,
+    "peak_bytes": null,
+    "status": "unavailable_after_exit"
+  },
+  "interpretation": "The kernel assertion is the primary failure. Unavailable post-exit cgroup observations are a secondary status limitation, not evidence of OOM or the cause of exit."
+}

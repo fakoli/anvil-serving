@@ -35,6 +35,7 @@ PACKAGE = "@agegr/pi-web"
 PACKAGE_BIN = "node_modules/@agegr/pi-web/bin/pi-web.js"
 UNIT_NAME = "anvil-pi-web.service"
 DEFAULT_VERSION = "0.9.0"
+_REVIEWED_BRIDGE_VERSIONS = ("0.9.2", "0.10.0")
 DEFAULT_PORT = 30141
 DEFAULT_IDLE_TIMEOUT_MS = 600_000
 MAX_IDLE_TIMEOUT_MS = 2_147_483_647
@@ -195,9 +196,9 @@ def pi_web_config(value: Mapping[str, object]) -> PiWebConfig:
         observer_token_env_file = _absolute_path(
             observer_token_env_file, "pi_web.observer_token_env_file",
         )
-        if bridge_source is None or version != "0.9.2":
+        if bridge_source is None or version not in _REVIEWED_BRIDGE_VERSIONS:
             raise PiWebError(
-                "pi_web.observer_token_env_file requires the reviewed Pi Web 0.9.2 bridge"
+                "pi_web.observer_token_env_file requires a reviewed Pi Web bridge"
             )
     return PiWebConfig(
         version=version,
@@ -357,6 +358,8 @@ def unit_content(
         f'Environment="PATH={_unit_value(node_bin_dir)}:/usr/local/bin:/usr/bin:/bin"',
         "Environment=PI_WEB_NO_OPEN=1",
         "Environment=PI_WEB_SKIP_VERSION_CHECK=1",
+        # Runtime Jiti transforms must not mutate the pinned npm artifact tree.
+        "Environment=JITI_FS_CACHE=false",
     ]
     if config.allowed_hosts:
         lines.append(f"Environment=PI_WEB_ALLOWED_HOSTS={','.join(config.allowed_hosts)}")
@@ -505,6 +508,34 @@ def service_state(
     }
 
 
+def _drift_state(root: Path) -> str:
+    """Compare the live artifact tree against the recorded install pin.
+
+    Returns "clean" (live tree matches the recorded artifact hash),
+    "drifted" (it does not), or "unknown" (no recorded pin to compare).
+    """
+    try:
+        rendered = _read_regular_private_file(root, "install-manifest.json")
+        manifest = json.loads(rendered) if rendered is not None else None
+    except (PiWebError, ValueError, UnicodeDecodeError, OSError):
+        return "unknown"
+    if not isinstance(manifest, dict):
+        return "unknown"
+    descriptor = manifest.get("bridge_install")
+    expected = descriptor.get("artifact_sha256") if isinstance(descriptor, dict) else None
+    version = manifest.get("version")
+    if not (isinstance(expected, str) and isinstance(version, str) and version):
+        return "unknown"
+    version_dir = root / version
+    if not version_dir.is_dir():
+        return "unknown"
+    try:
+        current = _artifact_tree_sha256(version_dir)
+    except (PiWebError, OSError):
+        return "unknown"
+    return "clean" if current == expected else "drifted"
+
+
 def status(config: PiWebConfig) -> dict[str, object]:
     """Read-only service state, installed pin, and loopback readiness."""
     root = install_root_for(config)
@@ -514,6 +545,7 @@ def status(config: PiWebConfig) -> dict[str, object]:
         "configured_version": config.version,
         "installed_version": _read_installed_version(root),
         "port": config.port,
+        "drift": _drift_state(root),
         "probe": probe(config.port, attempts=1),
     }
 

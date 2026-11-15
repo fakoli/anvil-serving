@@ -1,0 +1,205 @@
+{
+  "schema": "anvil-serving.ignis-tool-choice-followup/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "purpose": "Validate the documented request-level policy for a mandatory tool step without changing the Ignis runtime, model, recipe, or hardware profile.",
+  "identity": {
+    "runtime": "Ignis 0.8.0",
+    "runtime_image": "sha256:0226b62047113c219124ca4a02b1e52492402b44f5a3020db91e77756914b8cc",
+    "model": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+    "model_revision": "8d94db83cd8e58d6be31e796723e5e35b960638c",
+    "served_model": "qwen3.8-flash-next",
+    "hardware_profile": "rtxpro6000",
+    "runtime_changed_from_phase_one": false,
+    "model_changed_from_phase_one": false,
+    "harness_only_change": true,
+    "harness_change_boundary": "Added tool-choice, seed, exact oracle, and bounded transport-capture controls; reused the pre-existing thinking control.",
+    "harness_patch_sha256": "0c9b211fd6bf8d49493a2db46f5def4ebfe9a887d2470d8a74f6f37331b46206",
+    "oracle_revision": "tool-call/v2-exact-weather"
+  },
+  "controls": {
+    "temperature": 0.6,
+    "maximum_completion_tokens": 4608,
+    "per_request_timeout_seconds": 60,
+    "retries": 0,
+    "maximum_generation_requests": 16,
+    "maximum_sequential_phases": 10,
+    "seed_scope": "tool protocol requests only; smoke and JSON remained unseeded",
+    "required_policy_scope": "Request-level control for steps where a tool call is mandatory; not a global default for coding or autonomous-agent traffic."
+  },
+  "selection_rule": {
+    "predeclared": "Prefer required with default thinking if it passes; otherwise use required with thinking disabled if that cell passes; stop if neither passes.",
+    "selected_tool_choice": "required",
+    "selected_thinking": "default",
+    "selected_seed": 17,
+    "adaptive_retry": false
+  },
+  "stage_a": {
+    "requests": 3,
+    "sequential": true,
+    "passed": true,
+    "cells": [
+      {
+        "id": "auto-default",
+        "tool_choice": "auto",
+        "thinking": "default",
+        "seed": 17,
+        "http_status": 200,
+        "terminal_engine_request_id": 1,
+        "passed": true,
+        "tool_calls": 1,
+        "observation": "One valid get_weather(city='Oakland') call. This single seeded diagnostic does not rescore the earlier unseeded auto batch or establish auto reliability."
+      },
+      {
+        "id": "required-default",
+        "tool_choice": "required",
+        "thinking": "default",
+        "seed": 17,
+        "http_status": 200,
+        "terminal_engine_request_id": 2,
+        "passed": true,
+        "tool_calls": 1,
+        "observation": "One valid get_weather(city='Oakland') call."
+      },
+      {
+        "id": "required-no-thinking",
+        "tool_choice": "required",
+        "thinking": "disabled",
+        "seed": 17,
+        "http_status": 200,
+        "terminal_engine_request_id": 3,
+        "passed": true,
+        "tool_calls": 1,
+        "observation": "One valid get_weather(city='Oakland') call. The cell was not selected because the normal-thinking required cell already passed."
+      }
+    ]
+  },
+  "stage_b": {
+    "tool_choice": "required",
+    "thinking": "default",
+    "seed": 17,
+    "passed": true,
+    "named_checks_passed": 5,
+    "named_checks_total": 5,
+    "observations_passed": 9,
+    "observations_total": 9,
+    "checks": [
+      {
+        "name": "smoke",
+        "passed": true
+      },
+      {
+        "name": "json-prompt",
+        "passed": true
+      },
+      {
+        "name": "shared-prefix-tools",
+        "passed": true,
+        "observations_passed": 4,
+        "observations_total": 4
+      },
+      {
+        "name": "streaming-tool",
+        "passed": true
+      },
+      {
+        "name": "tool-result-continuation",
+        "passed": true
+      }
+    ],
+    "terminal_engine_request_ids": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "engine_correlation": "Complete terminal-event set retained for the isolated stage; concurrent request indices were not individually joined."
+  },
+  "stage_c": {
+    "tool_choice": "required",
+    "thinking": "default",
+    "seed": 18,
+    "passed": true,
+    "observations_passed": 4,
+    "observations_total": 4,
+    "terminal_engine_request_ids": [
+      13,
+      14,
+      15,
+      16
+    ],
+    "engine_correlation": "Complete terminal-event set retained for the isolated stage; concurrent request indices were not individually joined."
+  },
+  "accounting": {
+    "generation_requests": 16,
+    "terminal_engine_requests": 16,
+    "request_loss_observed": false,
+    "captured_tool_request_http_statuses": {
+      "count": 12,
+      "status": 200,
+      "scope": "Three stage-A requests, five captured stage-B non-streaming tool transports, and four stage-C requests. The other four successful observations do not retain literal HTTP status fields."
+    },
+    "all_sixteen_literal_http_200_supported": false
+  },
+  "request_transport": {
+    "tool": "get_weather",
+    "required_argument": "city",
+    "expected_city": "Oakland",
+    "stage_b_seed_17_tool_request_sha256": "2b6839522a28fa79c4674e7cc3e1e0d077339523b2b81a69c2c24bdf7025b347",
+    "stage_c_seed_18_tool_request_sha256": "90501bfcfe6c134d93fc5181aa6ff82b4c6e6e256148a6b949800826b6337441",
+    "captured_responses_truncated": false,
+    "raw_request_bodies_publicly_omitted": "The exact 400-line repeated synthetic system prefix is represented by request hashes to avoid duplicating low-value fixture text."
+  },
+  "resources_after_probes": {
+    "candidate_gpu_memory_mib": 96027,
+    "protected_second_gpu_memory_mib": 0,
+    "candidate_cgroup_peak_bytes": 44944740352,
+    "candidate_cgroup_oom_events": 0,
+    "host_mem_available_bytes": 61764468736,
+    "host_memory_pressure_avg10": 0.0,
+    "host_oom_counter": 3,
+    "boundary": "Post-probe GPU/host point snapshot plus managed cgroup lifetime peak; neither is a capacity or performance measurement."
+  },
+  "restoration": {
+    "status": "operationally-restored",
+    "exact_identity_fields_match": true,
+    "candidate_removed": true,
+    "router_custody_unchanged": true,
+    "router_readmitted": true,
+    "routed_smoke_passed": true,
+    "engine_idle_after_smoke": true,
+    "container_oom_events": 0,
+    "quality_scope": "One routed smoke; no full quality or strict-JSON claim.",
+    "evidence": "restoration.json and restoration-smoke-phase-two.json"
+  },
+  "interpretation": {
+    "supported_required_path_passed": true,
+    "normal_thinking_selected": true,
+    "phase_one_auto_result_changed": false,
+    "phase_one_auto_result": "3/4 unseeded shared-prefix tool calls under the older oracle",
+    "phase_two_seeded_auto_result": "1/1 diagnostic pass under the exact-weather oracle",
+    "engine_patch_applied": false,
+    "engine_or_model_bug_established": false,
+    "performance_claim_supported": false,
+    "capacity_claim_supported": false,
+    "coding_or_swe_claim_supported": false,
+    "promotion_supported": false
+  },
+  "private_evidence_hashes": {
+    "plan": "b25696215b1cc58d927f0eb1dbe0d157acbf7fab53a5ea95deb1ee7ce14b5fb7",
+    "stage_a_result": "b1015177240b588c0514508c9bfd3df97e775e63112116e9b99cbc1b9a5aa66e",
+    "selection": "890eb9ab82775f00c76a8f86d59099236fc22596ef88a8ce074e3a8a86e18821",
+    "selected_results": "9431566b5145821ebaf44a90d73d83425c52d9eaddc7ac08d6f56c91b6512fda",
+    "selected_full_native": "cb6f19976d49af4717115d497f32c7052171ffa71036ab8af114f0bec4bb5592",
+    "selected_repeat_native": "c002663b83b88a01dffa29b93e936b8b1fbca7c49612a5b2b4a8ff5c6dd9565b",
+    "candidate_status_after": "9e2122fa516e8d2c3ca77a5ba1f965c24c05ff347683272280563b0c428cb9b1",
+    "resources_after_probes": "9a8ba66f8692d96e57daa6cb2384e3ff19ecca4ca4a8cb70aebb8ae0d909145b",
+    "final_result": "53261439dd831130287b13212873adddb485a38a43606e6d0c2d8ca08bce51b5",
+    "final_restoration": "3a4c81fad580587221899dd88c6239a224cd31d8db511a7d4b7af5c88e6116e7"
+  },
+  "promoted": false
+}

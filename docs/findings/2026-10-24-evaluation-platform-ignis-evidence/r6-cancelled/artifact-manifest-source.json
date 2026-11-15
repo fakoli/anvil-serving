@@ -1,0 +1,133 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "cancelled-attempt-2",
+    "capability": "evaluation",
+    "repository_revision": "890d51987f40cf02cfa8822fcd9f456c419baa7c",
+    "source_sha256": "6fc9a0a5649cfcbb58fed7f2439037e13cc0bc0bc2bc95eb2b3a75084e9f43f2",
+    "attempt_source_dirty": false,
+    "submitted_at": "2026-10-25T02:16:18.720630Z",
+    "cancelled_at": "2026-10-25T02:50:55.431585Z",
+    "assembled_at": "2026-10-25T02:59:40.633061+00:00",
+    "status": "cancelled_partial_pilot",
+    "evidence_labels": [
+      "diagnostic-only",
+      "partial"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.aider-cancellation/v1",
+    "anvil-serving.aider-plan/v1",
+    "anvil-serving.aider-retention/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-campaign/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.campaign-execution/v1",
+    "anvil-serving.campaign-release/v1",
+    "anvil-serving.campaign-telemetry/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Post-abort index; no before-requests wrapper claim."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Previously pinned and read source entries only."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "projections/campaign-control-records-0001.jsonl",
+        "projections/child-evidence-records-0001.jsonl"
+      ],
+      "reason": "Frozen workload and prepared plans in reviewed derivatives; unrun/missing dispositions remain in ledger."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "projections/campaign-control-records-0001.jsonl"
+      ],
+      "reason": "Configured ordering, budgets, controls, state and released batches; planned is not measured."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "identity-control-map.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Configured safe identities and explicit private-to-public transformations."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "campaign-report.json",
+        "projections/aider-and-partial-records-0001.jsonl",
+        "projections/campaign-control-records-0001.jsonl",
+        "projections/child-evidence-records-0001.jsonl",
+        "projections/telemetry-records-0001.jsonl",
+        "projection-validation.json"
+      ],
+      "reason": "Native report and reviewed sanitized records, not exact original raw bytes; private originals remain authoritative."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "failure-diagnostic.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Two harness import failures, successful failed-child closure, subsequent cancellation and unknown interval; no model-quality claim."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "failure-diagnostic.json"
+      ],
+      "reason": "No model swap/restoration needed; separate later observations do not establish complete campaign interval or client restoration."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Incomplete diagnostic decision; no fabricated serving-comparison metrics or ranking."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Draft narrative and claim ledger; no publication or post claimed."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 16 MiB",
+  "closed_inventory": true,
+  "publication_admission": "No repository size exception or public-write approval asserted. The16MiB per-artifact finalizer bound is only a local processing limit; aggregate whole-campaign admission is separate."
+}

@@ -65,3 +65,13 @@ The [Voice LLM MLX dossier](../models/voice-llm-mlx.md) separates this Apple
 lane from Qwen3.8 results on other hardware. See the
 [dated finding](../../findings/2026-09-08-m4-max-voice-refresh.md) and its
 [sanitized evidence bundle](../../findings/2026-09-08-m4-max-voice-refresh-evidence/README.md).
+
+## 2026-10-06 English voice qualification
+
+The additional [quality-first English campaign](../../findings/2026-10-06-m4-max-voice-quality-qualification.md) measured direct same-host STT, TTS and LLM components on a40-core GPU M4 Max/48 GiB host. Native populations, recipes and failures are retained in the [evidence index](../../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/README.md) and [reconstruction contract](../../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md).
+
+All three STT arms fail a critical entity case despite canonical human WER 3.064/2.786/3.343%; paired intervals overlap zero. Kokoro and both Breeze q8 retries complete60/60; BF16 stops at59/60 and Fish at56/60 under resource gates. No human preference or actual playback qualification exists. LLM semantic counts are132/131/138/144/144 of 144 for4B/9B/cache0 27B off/low / medium; historical 36/33/36/33/31 of 36. All strict 8K capacity populations are ineligible. Stock27B startup is resource-rejected before inference. Private LLMcache0 is an unshipped free-buffer experiment, not an active-memory hard cap.
+
+The final point checks restore the original production config and four core PIDs, unload 13 noncore supervisors, complete a single zero-WER audio loop and two authenticated text-turn Realtime smokes. They do not newly qualify controls or prove continuous protected uptime, microphone/accent, blind naturalness, physical interruption or a100-turn / 1,200-second soak. Cache inventory reports two unsafe Kokoro snapshots and unverified completeness for all 12; it does not make the whole cache safe. No cache deletion or promotion occurred. Full macOS product tests returned31 failed / 9,808 passed / 687 skipped, not release green.
+
+[Parakeet](../models/parakeet.md#evidence-by-measurement-class) · [Qwen STT](../models/qwen3-asr-1.7b-mlx.md#evidence-by-measurement-class) · [Granite](../models/granite-speech-turboctc.md#evidence-by-measurement-class) · [Kokoro](../models/kokoro.md#evidence-by-measurement-class) · [Breeze](../models/breeze-tts2.md#evidence-by-measurement-class) · [Fish](../models/fish-s2-pro.md#evidence-by-measurement-class) · [LLM profiles](../models/voice-llm-mlx.md#evidence-by-measurement-class).

@@ -1,4 +1,7 @@
 docs/CLI-COMMAND-MANIFEST.json text eol=lf
+# The host publisher and container supervisor hash these exact implementation bytes.
+anvil_serving/media/memory_guard.py text eol=lf
+anvil_serving/media/worker_runtime.py text eol=lf
 # Recipe reports bind source bytes; preserve their hashes on Windows and Linux.
 docs/benchmarks/recipe-catalog.json text eol=lf
 docs/benchmarks/recipe-results.md text eol=lf
@@ -24,6 +27,10 @@ mcp_bridge/**/*.mjs text eol=lf
 anvil_serving/_hermes_skills/** text eol=lf
 examples/hermes/skills/** text eol=lf
 docs/findings/*-evidence/** -text
+# This hash-bound bundle retains native CRLF and trailing blank capture lines.
+docs/findings/2026-10-16-quasar-swift15-coding-tools-evidence/** whitespace=cr-at-eol,-blank-at-eof
+# The retained SSE wire capture ends with the required blank event delimiter.
+docs/findings/2026-10-13-full-qualification-evidence/native/public-native-draft-r6/qwen-schema-r1-numeric-string-stream-wire.txt whitespace=-blank-at-eof
 # This media artifact set also binds exact retained bytes in its manifest.
 docs/findings/2026-09-15-media-bringup/** -text
 # Kernel tune artifacts are byte-bound by their manifests. Disable checkout

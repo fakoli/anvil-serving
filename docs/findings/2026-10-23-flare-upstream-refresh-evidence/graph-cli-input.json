@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Native replay repetitions",
+  "charts": [
+    {
+      "metric": "cells.01-fixed1.median_ttft_ms",
+      "series": [
+        {
+          "label": "Current baseline",
+          "points": [
+            {
+              "artifact": "summary.json",
+              "x": "Repetition 1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

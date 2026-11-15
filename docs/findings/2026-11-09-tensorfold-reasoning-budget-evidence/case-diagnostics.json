@@ -1,0 +1,302 @@
+{
+  "schema": "anvil-serving.focused-quality-observations/v1",
+  "order": [
+    "max-1",
+    "low-1",
+    "low-2",
+    "max-2"
+  ],
+  "cells": [
+    {
+      "id": "max-1",
+      "effort": "max",
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 0.0,
+        "resolved": 0,
+        "selected": 1
+      },
+      "test_outcomes": [
+        false,
+        false
+      ],
+      "output_budget": {
+        "classification": "budget_exhausted",
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 0,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 16384,
+              "total_tokens": 17517
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 0,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1466,
+              "reasoning_tokens": 16384,
+              "total_tokens": 17850
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 161.395028,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "result": "jobs/max-1/aider/result.json",
+      "events": "jobs/max-1/aider/requests.jsonl"
+    },
+    {
+      "id": "low-1",
+      "effort": "low",
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      },
+      "test_outcomes": [
+        true
+      ],
+      "output_budget": {
+        "classification": null,
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 1020,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 1045,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 25,
+              "total_tokens": 2178
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 227,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 232,
+              "prompt_tokens": 1699,
+              "reasoning_tokens": 5,
+              "total_tokens": 1931
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 10.931951,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "result": "jobs/low-1/aider/result.json",
+      "events": "jobs/low-1/aider/requests.jsonl"
+    },
+    {
+      "id": "low-2",
+      "effort": "low",
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      },
+      "test_outcomes": [
+        true
+      ],
+      "output_budget": {
+        "classification": null,
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 614,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 620,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 6,
+              "total_tokens": 1753
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 249,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 254,
+              "prompt_tokens": 1293,
+              "reasoning_tokens": 5,
+              "total_tokens": 1547
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 9.567558,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "result": "jobs/low-2/aider/result.json",
+      "events": "jobs/low-2/aider/requests.jsonl"
+    },
+    {
+      "id": "max-2",
+      "effort": "max",
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 0.0,
+        "resolved": 0,
+        "selected": 1
+      },
+      "test_outcomes": [
+        false,
+        false
+      ],
+      "output_budget": {
+        "classification": "budget_exhausted",
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 0,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 16384,
+              "total_tokens": 17517
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 0,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1466,
+              "reasoning_tokens": 16384,
+              "total_tokens": 17850
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 149.949477,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "result": "jobs/max-2/aider/result.json",
+      "events": "jobs/max-2/aider/requests.jsonl"
+    }
+  ],
+  "results_by_effort": {
+    "max": {
+      "selected": 2,
+      "resolved": 0
+    },
+    "low": {
+      "selected": 2,
+      "resolved": 2
+    }
+  },
+  "transport_totals": {
+    "responses": 8,
+    "prompt_tokens": 10456,
+    "completion_tokens": 67687,
+    "reasoning_tokens": 65577
+  },
+  "unique_tasks": 1,
+  "temperature_followups": {
+    "run": false,
+    "reason": "Both Low controls produced passing answers without response-cap starvation; the frozen conditional follow-up was unnecessary. Temperature effects remain unmeasured."
+  }
+}

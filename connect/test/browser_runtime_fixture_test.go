@@ -49,9 +49,11 @@ const (
 	runtimeFixtureDefaultDurationSeconds = 20
 	runtimeFixtureExpiryIdleSeconds      = 150
 	runtimeFixtureExpiryDurationSeconds  = 180
-	runtimeFixtureExpirySessionSeconds   = 120
-	runtimeFixtureRestartConcurrent      = 3
-	runtimeFixtureRestartMaxConcurrent   = 5
+	// Runtime validation permits no shorter browser session. Keep this fixture
+	// at that floor so the expiry lane still proves real wall-clock revocation.
+	runtimeFixtureExpirySessionSeconds = 60
+	runtimeFixtureRestartConcurrent    = 3
+	runtimeFixtureRestartMaxConcurrent = 5
 )
 
 type runtimeFixtureProfile struct {

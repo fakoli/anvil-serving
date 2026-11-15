@@ -1,0 +1,2059 @@
+{
+  "entries": [
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "3075907c239fae7c91361e0bbd2c45191b13f00268b6d9b6ee63899899d343c3",
+      "path": "configuration/identity-mtp3-r4-final.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 1,
+        "host_identifier_pattern": 1,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 1
+      },
+      "sanitized_sha256": "6eafe5aa4dbd1ff41ba8742c7b632780c54f80af3a5cb50aa064c911d20a2ad9"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "75ee6918f289ce855ca196cfdedfa29ae572054441554e7c33977ebde4565b5f",
+      "path": "configuration/model-config.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "7718cd6bf3d6521d5550966d4ab8484fc81a01347d74b7e52163070f35ca7f35"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "b865f791d9b8f9828f3adfa257300fa7eee88aff880c1a1debe6083b0a472e3a",
+      "path": "configuration/mtp3-r4-final-allocation-admission.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 2,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 2,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 1,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 1
+      },
+      "sanitized_sha256": "660b1cb3288d5ead6652b88a24fabfcd3f0209dfbde5eb59dc095d73c253622a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "ac7d346bc3225f8a0207536caec52005650f5d42680c81c1d0183046cfa4319e",
+      "path": "plans/metrics-coverage-erratum-r4.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "56879d9bc3d519c63d27467b724598996e854225672d8b5669bb9081703abf33"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "1727e77b1ad3dc84b6a924f4622e2aefac195fa0217bfd6b47b1b6126dba65b2",
+      "path": "plans/run-plan-r4-summary-complete.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 5,
+        "operator_home_pattern": 2,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 4,
+        "host_identifier_pattern": 2,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 4,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "ff0e708048fc78254e9cde7b742e91a89fef3b043ee3d32be50a7ecd597cd9af"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "b4dfee071bd46dbb1a64495914919c08e122f67004636b965e90415c1365f2b6",
+      "path": "raw/agentic-native-evidence.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 2,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "d371015a8ee38b508febdb6b0a4ea9d1d7e97a544512c783142c30a6d262df98"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "186659de9599d05439b10f2fdffec337438d5b4b7ff0a6328453f2f75d68ff8d",
+      "path": "raw/agentic-pilot-native-evidence.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 2,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "f590c63432cf2de2e34ff9bbf8499208c92cb811b1f111f12e30b8d7ba0eb088"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "714ea8289f338cf94fa478e994a9f9c2fae5bfcd8c9b32d027ba344b5390cbe6",
+      "path": "raw/context-native-validation.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 3,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "bd58c48c0d99da5a7779baa1bd139439487146d6539b43bff15226aa7700c632"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "259776367af2763b07fc0314ebddfaf66df86a62d2aaa5ff5b2207fd4bc4bcd9",
+      "path": "raw/controls.jsonl",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 2,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 1,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 1
+      },
+      "sanitized_sha256": "f57f10a55495c0c197e38dfd7e7c5ac3280a511434691c2933d1dfda43dcec74"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "f607df2e5f1fd8b832d805858c45844515766b85b917c54923454eb388590f96",
+      "path": "raw/correlation.jsonl",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 2,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 1,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 1
+      },
+      "sanitized_sha256": "dd5413cd9866603b0cf84f7f686043c69a7e39fc78ed78273c4f4205d9242f78"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "c0ebef5b9e629dcc903364e860ed30d2cf555862ee9512c1895ea1d46d7ef1aa",
+      "path": "raw/images-validation.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 2,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "3f579dc50a493777c1af6bbae42053cd358c5890f7930965e14f5685142111ab"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "9de0c1921d6d06d17cd16af5ae8efdf626cec78821fcf3e8770c0e3e55080177",
+      "path": "raw/images.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "192434998f5653dc428e2e79cfe79b4858ed9039e0af08231f27407f71ac9a95"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "4b8489f96bc15b56eb8d6fc09dab1cc64a268da983287be36012beb160aefee3",
+      "path": "raw/mtp3-r4-summary.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "9658ed7204c85ac2e5d6abbeac9c771f1adb80f07f7dc5c8001b866496cab59c"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "cbdfef2b21193f000b3d84eef6f876e3764f80e444c2218fecfc3505fbc5cf55",
+      "path": "raw/mtp3-r5-rejection.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "23c72349b2e325f5f4b944629d95e56011ad73ada3b7866697f64116cbac9461"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "224938b3652d640f45ea316df8fa7d9f4a9d5612b6c9b3c89b0f4721bce5d12c",
+      "path": "raw/nospec-summary.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "6501e31c2306fba6e64362cc4ee5c1a1729eae7fff6045bdec0e5d81e79dcfd6"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "a65c98bed350985c44327186fb079c1c2c3d6d24f0682d955ba1da443202cb87",
+      "path": "raw/r4-comparison-decision.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "c0310b696d21219edf45289c86fdb52053c2e0cc1d5eb4aa86ffbf28343b7ff4"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "629c58e24fc6d527a6aba0e4d2f0b575f3c4ff86b2150a833f5467e709467870",
+      "path": "raw/strict-attempt2-adjudication.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "29486ce5d5832a0413b1e3f0eeb55c4860b3f955d85ed7640073ee3ea43be073"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "5bccd4fa8a7fc1c64533c175cbf49ee54ffc97294945c37da34f0b8bdb7a235a",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c1-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "2c009b47afaecc58a2c36b62696f4ab2e3af18163e70f254436b755fbf4cb2fc"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "052e659484c9212f912b6a38410b10d34e4994923f2526553d36334ba8c3ac2a",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c1-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "63a0ce59d10335b5ff962ce28c4c5840562357ae1090daec6bb93ce85e7a9d3a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "340a0f514ba4497fc0925f3f108f38b2042c881673ea482dc787b2427785abdc",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c1-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "462f543db6bcb64d74b00dcede801e68b7cad12baca394f312ff89b8885d445a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "5d60febb9cce1245e19ea30aff9dd003e9e9101905cf13d340fe60286f6a65b8",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c16-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "eb451af43ad2f3704015393defa94bcd5a7a979bb40a2dc64fb9aad5084b7a57"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "f82616bd7f861e1b30a81891368f6e8c5bd13b45056b6959a5ef998efe8e3e6c",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c16-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "9438ace736148df8ed6495f822b5ec05a5f17eef6f876b62fe1cebccb448542f"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "c5d8a5b7019ec8cf237fb2ba24252512ee5940dbeaf61410c7998cca61abe46c",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c16-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "55646d37889eeee7766a99dc9e5ca6012c50d23d3431714a9bd03bf996906d94"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "58581269a9ccce49d3ec962af8f05bad52e315e74a857c6cbd16f7c271d21ce8",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c2-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "dc92ca2293e9c4d44d96850cbd24fa203ad973fe8ca9be2677b9e6c7f9e4aced"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "03a4dff2d9cbfa519d944c2fb428bdec6b9c2dc16fc9d285e5f55dad4df17e5a",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c2-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "eb184ce73dc957c42f594d1c3ac81cbf0949fa9d6885da70d8c0cbc9d7346898"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "b524403e08fdff3b38b60b43565683a3099b4a7ea5927d8a1be4b2d4a4bc1ebb",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c2-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "91b1bbb6c7aed0516d72e27bc64ca1fac6bc57adb2fea108f5595dfa209e149d"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "aeacad3230e85c18e93accfe3b5b76f7aae6a44b4adfe8ea0ce812f60dc9220f",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c4-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "c026c624c141552e9e42439b8c5efe8e2e42dfbd795bf60d6c0e8528fb5a53a3"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "871bd6d4425e52fcc36c5e36412b1df8540923d407b6c49b90875ea69062dbf0",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c4-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "c19ba209fabe22401132407952439caab69d59f750451bd59120118a96e6ce50"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "8d85a4a84f938bcc300effd36a1a49093ea020d265270c44095366ebc1cc6eee",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c4-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "9fbf5f51338b45fba7ea892eb6e2d14571e28277fc7691c32a160dba94379d1b"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "8dbef1e5066dfaddf2242484f9a6a0d4c9af42183e0f21475b2bc211e781b6d3",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c8-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "664cb320cf38d3aff5011725ccd64235cfdf9fa122b529b5a8856d32bfb2eb67"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "0e4386e1a07f20c2133df610502e7c2dc45891b8b2a14c7202dfa7f04ef3bc09",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c8-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "d888f1a71f4753a32bd52448634c616521553d2ebcc03655684538931b13c78a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "bc4dc67846659044aa37a5c268cf0297a82b66156925ae7478deccacb778b706",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c8-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "da860291bde94bfabac1146f1bc7f7e2088d6a58b411350cbafed9d69be280b5"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "e21bed7e2836174b8ddf4b57da3f8b7d5753ef0a6d06a534a562c53be676ff70",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "f5cb4693aed0e37d179402ca09ee9fd080c126fbdba20e9e50150b0bb0ab1a35"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "8c9541920a4df2fe2696a2e139608e7958edb45e32dd021996b506217ae0f0de",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "26a14b609ffa26d5f739addac110b52cd864ff001697c8bb4227e832511bd24a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "381cff860b28bb69323a48752086cc41977c156d449cdb372b8c8564d1caa9f1",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "4488b663db4bd188661b6ae2c1cd242ceaa550277c6e2f44043671c5367d6d5c"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "729ecb72471a8693896d819454903bbcbcf5ae2c5ed68e4dbfa1c84501cd1c82",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c16-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "1dd261a5aa199fff337cca09bcfbc4b7e072d3326b9775d8b1da42f07a7575d3"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "10ab7d6ef59b528ec0b10d96e4c7fc54e501e8f81785bec682030fce322ebfb9",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c16-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "40231b2c654c2e0b2cdcfb11b431f5764d65b8f0ecc705deca8ac53eafac850c"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "ac214321ff5635551c34117e177ba8ed4bc7fab04cb5601e43be347fffc9099e",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c16-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e3f98f4d2aa34461c7f62d53fc052678c30c78b154dca0d79f142228f2ad6115"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "1e43422a89655f9b45f13455e130e8a79d13b323df63de35db6948853d6cb7a1",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e6ec6e2824ba890b8964f23626da56d45b95cf10c848a4b50bfc116c183af17a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "1ec5c7f45c243a363b1866fcf67a66f8809e5c25db45421678699e1a6763294f",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "1d995d371fa3c817a1e947324c0d023a1d37089d890b29a8826a15006c6fcd04"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "512040484fd30fa1abd09c3d20fba04c115f1e84652c2f675d840ab574dd2d72",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "a1c1a1ed48d105f917513ab087b0d15533180e10c21e321dd5caf7464cefa14e"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "33ceeeb7173126a94c3cc3a8e9e7d02388e5441c76eeecd80f8d4790170e7df5",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "305439dd655ac23882de54ccd4f8e55244802b17a97c5ddbaef1aa8834a58c5d"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "4bb86879194a0ba81a4090ca20434aac54c3fe4b9d748453f321f38627172761",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "bddfa4ab58e445afd5420cac29013bd241e172bb6deea8497db73936edb54aaf"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "2a082e2290ca423476d9168ff01fca5d1b40e0515e25f7a3119ca01f485b60a4",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "b89cf61c4e4844244d3d9ae3bd8fa8adb8830cf3e54ad6f3aa65dff2f59635ab"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "969855a5536f7cc9db429f54a351c2be32467ce0fa338205d65aa40e18300fc9",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "de9dcdca57bdfdeee566f9da21a5a23f19251bf47a852a5df1f7d554f5f0fde7"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "ed1d1f639f8eaa9ecd9ce93a98fad3f0e876d996d9f63e050d171f4103a3efd4",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "b0333c41ab4f5f547c1fc4facab21d2a4a9a6f8edcccfd34baf17ad18f9d2c38"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "f9e34c3831ebf652a6cf470003479a4d03d2dcdf28b423f5ece4b0a6f054482d",
+      "path": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "628dc8cd1b7af467d5761c1da63e9fa2a0c89c4d184bab0cc3d1139ef072181a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "47cb49597faa6312c526da60f3913733d928c481d55bfb5b03546b77de03b150",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c1-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "876747bfa2bb9e6179778c188fc410def85334fe582dbbd96afad930c90eaa1f"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "b955360b9a21ce3f341c5bd2549318a176bc4fa6d3c6d1badf04f263e5743bbe",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c1-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "a2c88f554ca162f30da69091a7e26ff6d1498077b894c1264ac9099951c45331"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "5eb16426b9a7ac6d3667e8429bfca68e4ab60ebcaf3a41145474f6da44104533",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c1-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e9c5e7d7cf426499e4dd0861eda0ad83a7122fda290f2d74ea750e7ed8341910"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "babb14a740c0fa4d99cb694621038554db5eb9cba6b0b6adb357f4888c6386a2",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c16-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "d793409e5b64b5251694182e0aac632a890556b12dcfb900601181bf1380bd8a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "78386e364dc79d9379418e7337212d4d0f2bf370c073be5bd3d442013858f43f",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c16-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "8ea6383fb9e8544fd10d28d593b25dfed1d51bd154d10a889b8b2a4a3904cba0"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "1fcf532e2ccfa3b23795ed71f84a3c0f31062a5a22297c9cf50d2f40b13b433b",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c16-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "f2584c287a930e7387f473e30de6bd98ce8c2d81588acb7d37cd2484329bcde4"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "04c3e57cb58311ab2143c688c12dcdd16c7118feb7db8158833904c922421c91",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c2-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "2d2bcfde09cd5cb31c31a60d6d9a3046ee2239d93d785b7a5f73e16cc8377df8"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "9ccdfa9961d2e25679f8ac70a0816ae4e952648e8459b4ce63a0de2ac7b44b8e",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c2-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "b7ea9e5f037a92d512eba91e6156824fdd61548aca92e2230ae99a8ff86f8803"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "51b67ce5c97d5b5c4a238bc95fadb3079bd3e98d7c84cec391e61606ea1517f3",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c2-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "fd004a8cbe00f898828519d058d0f0e7fc1bad1a6688738fcdb4562864c977a1"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "a5edcb13e32bf547f12950262ba588452595f8dfe37fa0535dd256d6d53dbb3a",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c4-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e6f3e45cbdbb997bc449f5e9c035bd0f62ff7f1cd025a43965636fbd4aa97d9c"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "dd3b63d83d42cc251aeb7c46dd63469d3ea77c0f6bbb7b1e3b9aae49e1195880",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c4-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "a22e48ab79e156e3dd48b706bbb24ee0850d043133c78bfbd0987e5622ee9a34"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "257321bc3f4f3bf7fb497c40533f424ef97970d75f66ba8bbb321c8ca1e44bbc",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c4-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "2370e397e4568e9790773b165d01a4f837fc575648fae42bccd0397f9fcdfec7"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "23cd5c9208b4feb4a4100a1926454850e6a4b66cf331a692174746af510a8fa8",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c8-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e9b4afd263fa237da352f56be97821f70381ec5190e3469abee862d362279fb3"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "3749e0f516ca9383e41d57ab8ab1579eb5c9c0cde8f32acc69f9497cffbf99e2",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c8-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "f454cda8c99f3e11deb36ba595fdf995d7b2763c1c5a18fe1f4d58e3b667259d"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "20df42914817569e1a5cfbdf3c88c1719806b1b9bb31ac07948f8f58e6c52b70",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx32768-c8-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "c64b63da600e04364d7017d568385106ff8827abf2a5d5b2d670e039afadab76"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "42c3b7c5d5a2946c48377920003e8c358906434e40d9264d6688fc9781fda759",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "d5e3d3ba91bfd056a80652ab9db634b5826c7a7a051c2d1d9cb0a6b7c91212bf"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "a17fa6c3f4dff5e6538ecfcd72afa05bcfb8400d341030c20203671697686422",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "883f55e49dd54fd4d9ee9c0bafa2f2466f95f175ff74ae998dc3b81e3276a040"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "e7a61e090b8e796a2b52776e81f552bdf39f4a3d87fe22015719db2ffbf4b9f8",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e26261716b91f416db441afe0177d1546a41b84fc49e6b887f25ede2f7ff132d"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "580372a15090bde8e4fa817bbe84ddedb51428a54fecc26bee2c2a25956a0317",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c16-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "ff67233557a644188241a5ac8a54018817594bef9604ad5118bd0797eef9188f"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "e6dce73e4205c5a3ab2d43de0fd31df5ebf27486a0c98358fc55f7b3713a10c1",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c16-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "ad279f7a0f027b8c4fca91a6674229b9e358b0df5103c221386e13f41cb54126"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "9d053358f8ec24c0c46d233a23971f1172cd4ef420ef25d9a7c7f5014ccf40b2",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c16-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "f4dd9a8c1fe3529493d73305e544f3a6ad39f48d7ab2d89e154c03bf0011d2b7"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "862d5924a3a0d1bda2634a9ce0eda364cd49e8bafd8903fa41160de1d5b206fb",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "4a1e3c5e9e56851d7cb1e98b9e871e3b4a0465ebfd74c8acd61f921c996a8ce8"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "e0750c94cfe7c5b93dafd7d8433e2b5674ceb5f7974eddc6d6559242eb3efb64",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "93f598f3a5fafd23432284b7664eeb96b9a6304f5acd2e22f30b6037eceba6be"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "14978bd4e1428a355b16db2bb3e1d594ddfc0cdce2c718d7b8ec368c34509fd4",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "52e8abd509c15004599a4d23251343624dd64e61c528b43f9281ead8e9563e77"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "4c0afad7966c2ccb6c6035b580ab8be716716102c9ff1ef00c8819d68a3e3711",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "9285eec76163dbd8ed70b804aec16240900f803b177b20dc27e85ae4fc25243c"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "fef88934e0cca4365a578083f19088855e75a359a6e76b4c2ff8b4d8e2524428",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "1c7c2cae3515648818c5217a6d0f6ba76e7ef3f96042834075a25a5f58d472d6"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "1f532ead8895e2766997e24b191d63fdac4e82f145033d433cb624f55059b2b8",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "41168c6d724fd2c100ec69c552d35981022d9aece6bd15cb3e3a6d3b07a005e6"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "059457291246ce20e3568c0c7e16f2cc072991a6a59d45affeccd32d151c3c0e",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "b86f2e1e61c44c21928d31c0a5ef0d997ef6264f8c59897a274382a7632e4147"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "ad2971d082e0e2f7accee3a17f0c8683ffbd4d98db19d60d66a135037b10f1df",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r2-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "e59274096668a5c5f8096f17c6d9f818927fca2c16a974ba16eb46cb95a1ce1b"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "4798aa8fd175e4e14d1c610c0c800f0058eb4fc170f65c83a95911d97bb3daa5",
+      "path": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r3-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "127\\.0\\.0\\.1": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 0,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 0,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 0
+      },
+      "sanitized_sha256": "38b3dccc4160a99e82c4fc37a8e2ffa7063c2d230f59f6c4631a712bcd24cf8f"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "96cdb74b4fb76c97c2a38c37b517e207117b3972149a6373201125d3134b29ca",
+      "path": "raw/context-native/evidence/0-assets.json",
+      "redaction_counts": {},
+      "sanitized_sha256": "96cdb74b4fb76c97c2a38c37b517e207117b3972149a6373201125d3134b29ca"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "40607f3192c5ea4b4eee3cba995c66de5d72c91d35d3d330bfcc9b9cdd6780cc",
+      "path": "raw/context-native/evidence/0-context.json",
+      "redaction_counts": {},
+      "sanitized_sha256": "40607f3192c5ea4b4eee3cba995c66de5d72c91d35d3d330bfcc9b9cdd6780cc"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "b816a89b6a460f9df9fcf251a18f845163e1fe3015d7945c04d204a7da823bdd",
+      "path": "raw/context-native/evidence/0-preflight.json",
+      "redaction_counts": {
+        "host_identifier_pattern": 2,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1
+      },
+      "sanitized_sha256": "ea811add5026ecf926ef6fc6a9cd08018c2c3d2232278567b46c3ac3d9b8c1af"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "aa6a1136e2bfb5076dd629eaceae42ebbefd78d58c4bb1b8a787d40e6e34c5a1",
+      "path": "raw/context-native/native-evidence.json",
+      "redaction_counts": {
+        "host_identifier_pattern": 2
+      },
+      "sanitized_sha256": "1ed655a0cffe0f56c0721fe499cd069e5507ecafe403d482bdfb5ad749649fab"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "9160ce79b203aff96227628dc5f8e80878f91741e109b689741bff60fe743216",
+      "path": "raw/context-native/artifact.json",
+      "redaction_counts": {
+        "host_identifier_pattern": 3,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1
+      },
+      "sanitized_sha256": "bc5eb548896ef8a8b26f36e7a88fd4228e117f5a1bd72cffa26b46cbc41d3eba"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "e90d75f58204266318dbcba6dbe01002274bf334fa2212f57d76e94d47c938b7",
+      "path": "raw/context-admission.json",
+      "redaction_counts": {
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "runtime:[QUALIFICATION_FINAL_ACTIVATION]": 2,
+        "runtime:[QUALIFICATION_FINAL_BINDING]": 1,
+        "runtime:[QUALIFICATION_FINAL_CONTAINER]": 1
+      },
+      "sanitized_sha256": "7d2075d613767e8c13141c0885a1926a0be0b6397ff5241604b7ba02f65a4594"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "3062295c5d3c100960b351352d4eea8a7502262fdced61865c09ebfc5ba9c214",
+      "path": "raw/swe-native/evidence/0-assets.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 4,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "minisweagent-[0-9a-f]+": 0,
+        "swift-gpu0-20261101": 1,
+        "swift-gpu0-20261101-swe-mtp3-r4": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "d4cee998532c18900b76b5fc840d4eb796d16d7507fb9a0510e0dc6ec47665ac"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "de2129cd6d389af78e8a6f058354cc7d0eb02c3743baa50cf25b552bac5101fc",
+      "path": "raw/swe-native/evidence/0-preflight.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 2,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "minisweagent-[0-9a-f]+": 0,
+        "swift-gpu0-20261101": 0,
+        "swift-gpu0-20261101-swe-mtp3-r4": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 2
+      },
+      "sanitized_sha256": "8415b3cec4c36cab8399558a96241dd547d5891af62c0ac5c94eda238fbfc95b"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "b4e2fcdf120af5d6f7341a58522dcd6792e24efcce571442a2d1342e531bd6a6",
+      "path": "raw/swe-native/evidence/0-swe-canonical-retention.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "minisweagent-[0-9a-f]+": 0,
+        "swift-gpu0-20261101": 0,
+        "swift-gpu0-20261101-swe-mtp3-r4": 26,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 26
+      },
+      "sanitized_sha256": "3db3b97cefcd8a4eadcba1b1e415b9bd4291da4ee4238dc2b38d832c9c310801"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "f19084db1d8d9c3eae85015cb42a5d1a18f3550cddc5f1b80c7e6ad6ec7cb079",
+      "path": "raw/swe-native/evidence/2-swe.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 34,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "minisweagent-[0-9a-f]+": 10,
+        "swift-gpu0-20261101": 8,
+        "swift-gpu0-20261101-swe-mtp3-r4": 10,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 3
+      },
+      "sanitized_sha256": "4a4eb874222b5f1ee9d205da8ff3b72b939961617294e050eb46d23c7d5289e0"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "104688d5e561f803ab82964da9c4b0381a5daecb751dd6a56d276cf7001b96d2",
+      "path": "raw/swe-native/native-evidence.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 2,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "minisweagent-[0-9a-f]+": 0,
+        "swift-gpu0-20261101": 1,
+        "swift-gpu0-20261101-swe-mtp3-r4": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 2
+      },
+      "sanitized_sha256": "b72f1c201aa271cb92fb6e4a3383a970b78fd37e3bed39d20037a65c89fb5ac6"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "9320153bf1292ceef5255adf0aa3d58eaffc282fe772b8c594972f60b120aebd",
+      "path": "raw/swe-native/artifact.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 3,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 1,
+        "minisweagent-[0-9a-f]+": 0,
+        "swift-gpu0-20261101": 2,
+        "swift-gpu0-20261101-swe-mtp3-r4": 2,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 3
+      },
+      "sanitized_sha256": "a4642a9aeefe5c609335190d7630af9ecf731226517e37b1273abe323cb6e27b"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "1796ae1f5b8992d7a8ed9d903df2e41015a8ee80cf4561a59b4b5ab8b67fa112",
+      "path": "raw/swe-native-validation.json",
+      "redaction_counts": {
+        "(?<=ID )[0-9a-f]{64}": 0,
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?": 0,
+        "minisweagent-[0-9a-f]+": 0,
+        "swift-gpu0-20261101": 0,
+        "swift-gpu0-20261101-swe-mtp3-r4": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "6abeefdb9ad33383f0123e95b647a6d62a537fe3ed8ef1ba50e89829d7254763"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "ec4a6142d65b249cdd0cadfd720546037164683a85401643ee5957a84e54f0fd",
+      "path": "raw/context-concurrent/prompt-0.txt",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "ec4a6142d65b249cdd0cadfd720546037164683a85401643ee5957a84e54f0fd"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "4a9c3fc0aa13a46be7b418db32631b47d1f6fd489e829fedce5fb289b03ca81f",
+      "path": "raw/context-concurrent/prompt-1.txt",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "4a9c3fc0aa13a46be7b418db32631b47d1f6fd489e829fedce5fb289b03ca81f"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "035c18eea90e70381eac822b3152af82ba52e95d424c16d81a67899a0640e5fd",
+      "path": "raw/context-concurrent/result.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "55b1bc198476a58c736b6c01174d194848c91bfe74718cd579d8df910f95f1ac"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "7a1ae101eff2de16904f33543755552c4b6d57b8a6863b9b7cc01128b79e2f98",
+      "path": "raw/context-concurrent/requests.jsonl",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 3,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 1,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 1,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 1,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 3
+      },
+      "sanitized_sha256": "c515f59aeb0ed5f140b557244ff599e035805267ab47411330615f0120fc9b74"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "9d6698c2570e9426bc439b93f295eba3157614316971a9695de813314e8e4b13",
+      "path": "raw/c2-evidence-amendment.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 3,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 1,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 1,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 1,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "4290ca7320aff354b7be5c14652e7e6a91d45eb73abec1363693be5a0603ca31"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "83816d9b69b64315381feb65cf541659813c4f06bd0b26091beb2ced0ca89b51",
+      "path": "raw/stability-serial-unique.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 7,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 10
+      },
+      "sanitized_sha256": "93def1dfc31e24149966680e8e8eda88840588abd46c77a1e52c6e735c3af3d3"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "9c7ec97c3112d65df00d6756acf3b58aec1b3a4da1dcb4bc3ec96eb8195b9c6b",
+      "path": "raw/stability-overlap-unique.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 3,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 6
+      },
+      "sanitized_sha256": "c82332c7c83b3ac04dc5496b9781ca5566a6f861abe5c580371f6999b2d7aad1"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "08f1fa383442f6c49ebedccf975e973eca154a79e441c77cdc98fa29f7aa5a08",
+      "path": "raw/independent-digest-c2-review.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 2,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "6a5e642b1898b6aec90e26e56bffb14cf6cf472987e4790256e1b9ccf1926d39"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "f339c2e30fff126d1ac57846f3ecfbaed3d66da737f5f9803ca39e763b49dc72",
+      "path": "raw/stability-overlap-unique-r2.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 7,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 10
+      },
+      "sanitized_sha256": "d006d64304b386a8056519ff7899d4abee70a680d61d57045eebdbcccc2f8368"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "1ca4bcf2a790e36454971ae568a4c90096ecda4230fa82302a404ee7e9e56497",
+      "path": "raw/stability-overlap-repeat-r2.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 7,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 10
+      },
+      "sanitized_sha256": "da26611b81d5eb89076a413f4eac936e0181de36344e07d3512fc0a2714b8247"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "7eb39b5aadf11edf088587effa2a108e28e8d9d70e901816061a7c01874d7099",
+      "path": "raw/stability-final-validation.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 3,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 3
+      },
+      "sanitized_sha256": "34727775bf55f1002cb08b7de482b35108d9d42a14e78f1f8563cdd8455ebda2"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "c6db965529bbf19d62fd13439ba79ac630f8508353a1d150283ae9ce38b3dff7",
+      "path": "raw/stability-observer-amendment.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 8,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "f7d79bcc1833943df6e681d0d3a195b7ebe5087024872fb87d5196471d2e5635"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "02348700eab0746c42fdc66af0b4f18f39e05a4e5b8eb3a342c57b7abc9bd925",
+      "path": "raw/independent-stability-observer-r3-review.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "1a1a0171f9b7ebe6ee9c5edaeb2bbce4f3dd04063b426a163229e90823394cc4"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "d10237760c766c0f24af8cfc79466df8e674f92e036c611e6f9474ae99087261",
+      "path": "raw/stability-observer-full-tests-r2-receipt.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 3,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 2,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "b9d0da19423ba9de52a83598d6cd9876885ad3c73e59f6cf74d595466b80d0ef"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "6a15e36816d6615a32b7ba61e76926f712a73775b4b1311cea596858f39c7355",
+      "path": "raw/stability-observer-full-tests-r2.log",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "/run/user/[0-9]+(?:/[^\\\"\\s]+)*": 0,
+        "host_identifier_pattern": 0
+      },
+      "sanitized_sha256": "86cbdd6eb6c5ab8d9105a5c70b71d2b36fc7660117e5ab14bb37633b01792a2f"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98",
+      "path": "raw/swe-native/evidence/swe-canonical/official-grader/official-grader-report.json",
+      "redaction_counts": {},
+      "sanitized_sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98"
+    },
+    {
+      "note": "public-safe staging binding derived from retained source-bound evidence",
+      "original_sha256": null,
+      "path": "raw/swe-native/official-grader-report-binding.json",
+      "redaction_counts": {},
+      "sanitized_sha256": "fe72a416a58fdaf75fedfd80b024ca4dcea3cbfe15353fde904931212c950c2a"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "9f8feade10bede1e91aeb24abb1019a87e022e2448f320239dc6dadf20bfa680",
+      "path": "raw/independent-stability-final-review.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "host_identifier_pattern": 0,
+        "session [0-9]+": 0
+      },
+      "sanitized_sha256": "f44154721cae44fa38b7cbbd1c6b613dd225210d60985d906ff53edcb96eef1e"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "a8c5f20f53befcefd67f6180f0af461bc32b6fab5c0c8e9345194f41abb8368a",
+      "path": "raw/independent-stability-source-binding-correction.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "host_identifier_pattern": 0,
+        "session [0-9]+": 2
+      },
+      "sanitized_sha256": "33e1191e803141360897d31fbee3cf44cc1d6ae3644aa42a0c0dfa080615e0d9"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "fb752c79206986fbc9a168a618bf074564a85020f92dd37ca66dde90c9ba91c5",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c1-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "67844e1c42efeffea4c69a9173ed923057a9284646c5d1ebe264b5d807128b2d"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "73fe96607ca3bb923126be17a0aea9ce14a5596eb729c5d9d2e33b295ded9978",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c16-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "de93a3e6341e1781ef9b4c9fffdf7c0bc746c4be81dc369b861964b22b9aad44"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "f242ee7f5a961f481415cd1ec6c882865fa81053a77e34b184588dce81319cd3",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c2-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "5b8bed8b8c73dc2f9080ebba152cb4cbcc20398229e3a29aba741f54d6ca0ca9"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "3e86b814f5f798021065ee6fcbeeabd5ac6838b01553caf8084b25f3ea356d35",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c4-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "696d3df0b452d6bdde59dde227fcd74b86e0fc73c871077c8bb4d5c7c47d7508"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "7c0ac9b65c1e014690411382679b4966381db5055b22e3ac50aa0c952d853fe9",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c8-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "ce44dadcc5b18bf061b63cd52a02e5cd0d6ce8ea8f041d974e28cb66b9277282"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "c72f15d8c2056af713d2ae57626ad4244650468d3f6b62612ea5a22ac8e10860",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c1-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "fbdaa33806e2ebd098d49fd7a1defface7e3d9768e366c1505909c8713284d04"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "38d6dc7f7ddac4f6a4c08a12985a2a5c757d578d416f33e71c63e1190a0ee0f8",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c16-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "d24ddb7ce4c2f79074fd6cd0c5090ba49db283bab3dafb85ea478277d4b3fb45"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "6c6a418c683f9bc169562f90a0237a539a3ba4b89a5c2a189c8086c55954230d",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c2-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "b6af1b256376cb4a29c054b3a58ebe77d10f96db13676bfeb7a9a8095618129f"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "d6e6565ab177467e1a797cf3188e74e769d5523c2d20906f7f64c9cf023edaf9",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c4-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "1febcf7366258041662c8f919993303533fbc9706721756e232bb8bb1387963e"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "24cc06c8317bbd71251063de03ce7d23f1073b9945a49a3dc4d8057148e35908",
+      "path": "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c8-r1-a1.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "13cc788fbf98acc8d53a2364d306003d484346de72454cfc13f66d27537284ef"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "e3afc866e2380130cc24daf9aa7bbabc0462cc2be23ce3ff26a1c470f7320e32",
+      "path": "raw/capacity-summary.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 1,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "4b3df4ad862e294e264b902ed0db997f07e7a90f71dd4e53c7ac5e120667ed98"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "59033f9c3601698ea3388a124fcb83e6eba8ede26fb2db3f03cc4170f0a48281",
+      "path": "raw/deep-health.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 1,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 1,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 1,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "78eeed8225b335a153d9753078fe62d539cc609a73de59479dfbc04c54349817"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "af9db9aea4f4688df5586137fafaeca86263f356469d6d63c53717d7f1a67fab",
+      "path": "raw/resource-final-validation.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 1,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 1,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 1,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "04cb0d564d3e3048cfbd6547734c85121e9edf8077c539ea12cd370d48ed014d"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": "e2dd11da48255bd8aa3c3cef785f479ca766ff2f029a863cedda0217f311eff7",
+      "path": "raw/resource-observation/binding.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 1,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 1,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 1,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 1,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 1
+      },
+      "sanitized_sha256": "9571b2d81358814d1756999cd4e1e6d88ab42ae4274d26ff86e1ad07103fd911"
+    },
+    {
+      "note": "public-safe derivative; original is retained outside this staging directory",
+      "original_sha256": "6444fee19b28d3e45509fa164d8131ad951fbc7a0bc56180c08832e4de4f4dee",
+      "path": "raw/resource-observation/result.json",
+      "redaction_counts": {
+        "/data(?:/[^\\\"\\s]+)*": 0,
+        "operator_home_pattern": 0,
+        "2cbe795b5dcfac7fcaa6c07fd54a18c2a21e4c35f3e66a4522af365e6406e2be": 0,
+        "6e96c67544625f72edbfcf8764c86ae09269801bec0c862345b7e98988819f17": 0,
+        "9bab27a808d0aac72e3f6fafad553cbbb79c81062487ca0f44afa040fd43ad3a": 0,
+        "GPU-[0-9a-f-]{36}": 0,
+        "host_identifier_pattern": 0,
+        "https?://(?:127\\.0\\.0\\.1|172\\.17\\.0\\.1):[0-9]+(?:/v1)?(?:/engine/[0-9a-f]+/metrics)?": 0,
+        "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4": 0
+      },
+      "sanitized_sha256": "c09b1ad57028bb337b9ba1d4197a6efe845f79a09aedc3c5edb20cdc95937430"
+    },
+    {
+      "note": "publication-staging-only import preparation; not an infrastructure registry declaration",
+      "original_sha256": null,
+      "path": "numerical-import-preparation-registry.json",
+      "redaction_counts": {},
+      "sanitized_sha256": "d58a95518b431ff5eeb5efd7ba4175305bec7e3176f6a4b0fc62653df795a7ea",
+      "publication_status": "withheld-private"
+    },
+    {
+      "note": "Public qualification derivative; operational context withheld and snapshot labels neutralized; original preserved privately.",
+      "original_sha256": null,
+      "path": "numerical-import-projection.json",
+      "redaction_counts": {},
+      "sanitized_sha256": "2e4ca9ac747e69f713f7db15b66114d12380a3bd9f2ebe0f7bf4f2da450ed62f"
+    }
+  ],
+  "schema": "anvil-serving.publication-redaction-ledger/v1"
+}

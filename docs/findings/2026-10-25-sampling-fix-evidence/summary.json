@@ -1,0 +1,120 @@
+{
+  "boundary_failure_resolved": "unproven",
+  "campaign_id": "glm-sampling-fix-20261025-r1",
+  "candidate_inference_requests": 0,
+  "candidate_weights_loaded": false,
+  "comparison_evidence": null,
+  "complete": true,
+  "completion_scope": "Closed diagnostic campaign and verified readiness restoration; kernel gate failed and candidate inference was not run.",
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional"
+    ],
+    "next_gate": "Capture the failing ordinary mask difference and probability mass against an independent reference before any proposed gate revision.",
+    "promotion_authorized": false
+  },
+  "elapsed_seconds": 627.1426916122437,
+  "evidence": [
+    "kernel-log-excerpt.json",
+    "kernel-cases.json",
+    "candidate-status.json",
+    "build.json",
+    "plan.json",
+    "identity.json",
+    "source-freeze.json",
+    "restoration.json",
+    "projection-ledger.json",
+    "closure.json"
+  ],
+  "execution": "stopped_at_kernel_gate",
+  "failures": [
+    "Ordinary-logit exact mask parity failed for vocabulary 154856, batch 64. Candidate exited 1."
+  ],
+  "forced_cases_passed": 6,
+  "forced_cases_planned": 8,
+  "forced_cases_unrun": 2,
+  "gates": [
+    {
+      "evidence": "kernel-cases.json",
+      "name": "forced-logit-regression",
+      "status": "partial"
+    },
+    {
+      "evidence": "kernel-log-excerpt.json",
+      "name": "ordinary-exact-parity",
+      "status": "failed"
+    },
+    {
+      "name": "end-to-end-boundary",
+      "status": "not_run"
+    },
+    {
+      "evidence": "restoration.json",
+      "name": "restoration",
+      "status": "passed"
+    }
+  ],
+  "headline_results": [
+    {
+      "evidence": "kernel-cases.json",
+      "name": "forced_cases_passed",
+      "planned": 8,
+      "value": 6
+    },
+    {
+      "evidence": "kernel-cases.json",
+      "name": "ordinary_parity_passed",
+      "planned": 4,
+      "value": 3
+    },
+    {
+      "evidence": "candidate-status.json",
+      "name": "candidate_inference_requests",
+      "value": 0
+    }
+  ],
+  "identity": {
+    "evidence": "identity.json",
+    "hardware": "One RTX PRO 6000 Blackwell Max-Q GPU; two reserved for planned TP2 serve",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local"
+  },
+  "ignis": "hold",
+  "kernel_gate": "failed",
+  "limitations": [
+    "Counts reconstructed from ordered execution and failure site; no final success receipt.",
+    "No mismatching-token count or probability-mass oracle retained; correctness of the ordinary difference is unknown.",
+    "No candidate weights, serving-worker boundary trace, end-to-end inference or performance comparison.",
+    "Peak tensor-memory assertion was not reached.",
+    "Public bundle assembled after run from privately retained plan/source/managed logs.",
+    "Restoration used authenticated readiness and exact identity checks; no generation smoke was sent."
+  ],
+  "measurement": {
+    "path": "synthetic kernel regression before model weights",
+    "sample_count": 10,
+    "sample_count_definition": "Six completed forced cases plus four ordinary comparisons, including the failure. No inference requests.",
+    "statistics": [],
+    "warm_cold_state": "JIT/cache condition uncontrolled; no timing comparison"
+  },
+  "metrics_coverage": {
+    "profile": "focused-functional-diagnostic",
+    "reason": "Preweight kernel correctness gate; performance and full serving comparison out of scope.",
+    "status": "not-applicable"
+  },
+  "ordinary_parity_failed": 1,
+  "ordinary_parity_passed": 3,
+  "ordinary_parity_planned": 4,
+  "promoted": false,
+  "promotion_authorized": false,
+  "restoration": "verified",
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "dtype": "float32",
+    "evidence": "plan.json",
+    "scope": "focused-functional-kernel-regression",
+    "seed": 58231,
+    "top_p": 0.95
+  }
+}

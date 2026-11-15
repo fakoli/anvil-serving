@@ -1,0 +1,427 @@
+{
+  "schema": "flare-cache-fix-diagnostic-causal-assessment/v1",
+  "scope": "Fixed-work serial one-token reverse replay only; manual closure assessment after all six arms closed",
+  "assessment": "diagnostic causal support",
+  "qualification": "not-qualified",
+  "diagnostic_only": true,
+  "performance_eligible": false,
+  "recommend_candidate": false,
+  "promoted": false,
+  "original_causal_proofs_preserved": true,
+  "pairs": [
+    {
+      "repetition": 1,
+      "order": [
+        "A",
+        "B"
+      ],
+      "arms": {
+        "A": {
+          "generation": "9ebbce9aee5e1b1406ace5dfb0a8519bb08a991a2acb835c7a1e9e3d91e9a3e5",
+          "rows_observed": 52.0,
+          "pages_observed": 7314.0,
+          "row_pressure_delta_prime_plus_replay": 112.0,
+          "evicted_records_delta_prime_plus_replay": 112.0,
+          "page_pressure_delta_prime_plus_replay": 0.0,
+          "eligible_completed_restores": 10,
+          "expected_measured_requests": 52,
+          "measured_counter_sums": {
+            "flare_prefill_tokens_total": {
+              "sum": 199468.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_generated_tokens_total": {
+              "sum": 52.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_cache_reused_tokens_total": {
+              "sum": 123585.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_reused_tokens_total": {
+              "sum": 76846.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetched_total": {
+              "sum": 10.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_store_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetch_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            }
+          },
+          "median_client_generated_ttft_seconds": 0.469982182
+        },
+        "B": {
+          "generation": "27a0b1665ca1b83ef28459b87e0fc28a984d5dfa8e3d7ab0a317e6e5a34b747e",
+          "rows_observed": 158.0,
+          "pages_observed": 2434.0,
+          "row_pressure_delta_prime_plus_replay": 0.0,
+          "evicted_records_delta_prime_plus_replay": 0.0,
+          "page_pressure_delta_prime_plus_replay": 0.0,
+          "eligible_completed_restores": 36,
+          "expected_measured_requests": 52,
+          "measured_counter_sums": {
+            "flare_prefill_tokens_total": {
+              "sum": 2.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_generated_tokens_total": {
+              "sum": 52.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_cache_reused_tokens_total": {
+              "sum": 123585.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_reused_tokens_total": {
+              "sum": 276312.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetched_total": {
+              "sum": 36.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_store_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetch_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            }
+          },
+          "median_client_generated_ttft_seconds": 0.0184942845
+        }
+      },
+      "complete_matched_population": 52,
+      "observed_ttft_reduction_percent": 96.06489666878477,
+      "assessment": "diagnostic causal support",
+      "interpretation": "Observed row allocation changed with the frozen share; row pressure and record eviction fell; clean completed eligible restores and host reuse increased while prefill fell; the complete one-token/work-matched population had lower median client first-token latency."
+    },
+    {
+      "repetition": 2,
+      "order": [
+        "B",
+        "A"
+      ],
+      "arms": {
+        "A": {
+          "generation": "c348cfd825ffb417c6dbcc07a704c23eeee9649eceae27be718c2ca3f5c78d55",
+          "rows_observed": 52.0,
+          "pages_observed": 7314.0,
+          "row_pressure_delta_prime_plus_replay": 112.0,
+          "evicted_records_delta_prime_plus_replay": 112.0,
+          "page_pressure_delta_prime_plus_replay": 0.0,
+          "eligible_completed_restores": 10,
+          "expected_measured_requests": 52,
+          "measured_counter_sums": {
+            "flare_prefill_tokens_total": {
+              "sum": 199468.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_generated_tokens_total": {
+              "sum": 52.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_cache_reused_tokens_total": {
+              "sum": 123585.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_reused_tokens_total": {
+              "sum": 76846.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetched_total": {
+              "sum": 10.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_store_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetch_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            }
+          },
+          "median_client_generated_ttft_seconds": 0.4649865935
+        },
+        "B": {
+          "generation": "cef77263594f6d7a11808738f13cb0d21c199a596ab425158e752155085592b7",
+          "rows_observed": 158.0,
+          "pages_observed": 2434.0,
+          "row_pressure_delta_prime_plus_replay": 0.0,
+          "evicted_records_delta_prime_plus_replay": 0.0,
+          "page_pressure_delta_prime_plus_replay": 0.0,
+          "eligible_completed_restores": 36,
+          "expected_measured_requests": 52,
+          "measured_counter_sums": {
+            "flare_prefill_tokens_total": {
+              "sum": 2.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_generated_tokens_total": {
+              "sum": 52.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_cache_reused_tokens_total": {
+              "sum": 123585.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_reused_tokens_total": {
+              "sum": 276312.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetched_total": {
+              "sum": 36.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_store_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetch_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            }
+          },
+          "median_client_generated_ttft_seconds": 0.0230748745
+        }
+      },
+      "complete_matched_population": 52,
+      "observed_ttft_reduction_percent": 95.03751832363314,
+      "assessment": "diagnostic causal support",
+      "interpretation": "Observed row allocation changed with the frozen share; row pressure and record eviction fell; clean completed eligible restores and host reuse increased while prefill fell; the complete one-token/work-matched population had lower median client first-token latency."
+    },
+    {
+      "repetition": 3,
+      "order": [
+        "A",
+        "B"
+      ],
+      "arms": {
+        "A": {
+          "generation": "ab38e3be9aabc91b9eb8b89aad49f9daba3b14d4ba6d9ab4b0033c6dd3520c3d",
+          "rows_observed": 52.0,
+          "pages_observed": 7314.0,
+          "row_pressure_delta_prime_plus_replay": 112.0,
+          "evicted_records_delta_prime_plus_replay": 112.0,
+          "page_pressure_delta_prime_plus_replay": 0.0,
+          "eligible_completed_restores": 10,
+          "expected_measured_requests": 52,
+          "measured_counter_sums": {
+            "flare_prefill_tokens_total": {
+              "sum": 199468.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_generated_tokens_total": {
+              "sum": 52.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_cache_reused_tokens_total": {
+              "sum": 123585.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_reused_tokens_total": {
+              "sum": 76846.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetched_total": {
+              "sum": 10.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_store_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetch_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            }
+          },
+          "median_client_generated_ttft_seconds": 0.46758528200000005
+        },
+        "B": {
+          "generation": "bc50119667dab51b34da8f48d0b86979ee08279a126ea537d966a9b28d41fb6e",
+          "rows_observed": 158.0,
+          "pages_observed": 2434.0,
+          "row_pressure_delta_prime_plus_replay": 0.0,
+          "evicted_records_delta_prime_plus_replay": 0.0,
+          "page_pressure_delta_prime_plus_replay": 0.0,
+          "eligible_completed_restores": 36,
+          "expected_measured_requests": 52,
+          "measured_counter_sums": {
+            "flare_prefill_tokens_total": {
+              "sum": 2.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_generated_tokens_total": {
+              "sum": 52.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_cache_reused_tokens_total": {
+              "sum": 123585.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_reused_tokens_total": {
+              "sum": 276312.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetched_total": {
+              "sum": 36.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_store_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            },
+            "flare_host_cache_fetch_failed_total": {
+              "sum": 0.0,
+              "contributing_count": 52,
+              "expected_count": 52
+            }
+          },
+          "median_client_generated_ttft_seconds": 0.020235973
+        }
+      },
+      "complete_matched_population": 52,
+      "observed_ttft_reduction_percent": 95.6722391018287,
+      "assessment": "diagnostic causal support",
+      "interpretation": "Observed row allocation changed with the frozen share; row pressure and record eviction fell; clean completed eligible restores and host reuse increased while prefill fell; the complete one-token/work-matched population had lower median client first-token latency."
+    }
+  ],
+  "limits": [
+    "All strict comparisons remain incomplete; this supplement does not replace initial false proofs.",
+    "Exact 128-token numerical equivalence failed; byte transfer and one-token output matches do not establish longer continuation fidelity.",
+    "r1-B strict monitoring proof has retained gaps; historical actual pretraffic readiness and exact-generation retained data provide supplemental provenance, not an original passing gate.",
+    "r2-B original restoration proof remains false; accepted later registration supplement is separate.",
+    "Sampled range counters are not complete event captures; endpoint counter deltas across prime52 plus measured52 supply the stated total, excluding preceding warmup.",
+    "No performance recommendation: repetition3 small12 and pageheavy regress beyond3%; decodeC4 work is unmatched.",
+    "No attribution of the protected regressions, kernel critical path, engine parity, universal split, full-context or concurrent full-window capacity."
+  ],
+  "evidence": [
+    {
+      "path": "analysis/final-causal-procedure.md",
+      "sha256": "00ec179ac00311b2257b2bb1d9c181a7816779a2366db134fd76e654a687d42c"
+    },
+    {
+      "path": "analysis/cache-causal-extraction.py",
+      "sha256": "03ab33f5d415b126263689db6efde87ce234f168517befbc829e1ef3b4f404fe"
+    },
+    {
+      "path": "analysis/cache-causal-observations.json",
+      "sha256": "38d7baef85e2e3c3f3f0719a33b2a3589520ebcfdbbd21d2d7912343fec0ac47"
+    },
+    {
+      "path": "analysis/descriptive.json",
+      "sha256": "2a7d15b0443c6f5e3124a10d46c2ff0ccaf3faea5fedafa1dcb383707a70eca9"
+    },
+    {
+      "path": "analysis/normalized-matrix.json",
+      "sha256": "5d47ecba13a6b7cc089ebe7fcb07018bcf94cc872e38190c30d1896bb6209143"
+    },
+    {
+      "path": "analysis/diagnostic-analysis.json",
+      "sha256": "0ca23252e62b7bfeb2b75c6679dcae201fde494f9574f020d56d48b0d0597c76"
+    },
+    {
+      "path": "analysis/final-analysis-execution.json",
+      "sha256": "d5c889748be28b61f2b078efb1c8997ca1f38e34a5dc4832da0dfa2579750bba"
+    },
+    {
+      "path": "review/cache-counter-semantics.md",
+      "sha256": "0726170485c1f321317ffbcb7615c97f5f3730d5606c39f73d3d0ef3d81326be"
+    },
+    {
+      "path": "review/final-matrix-review.md",
+      "sha256": "59f12a56a4e908d4e16fb0b158d2c4c5d0ae63012f5827677a3f94893e9b4f2e"
+    },
+    {
+      "path": "candidate-freeze.json",
+      "sha256": "699dd1fd898d492c284a0963418df4ef4bab77270128b709dc22e37a2932cf7f"
+    },
+    {
+      "path": "geometry.json",
+      "sha256": "ad58e99e3430fe3d01e3a94fe98dd01a223f75705a56b248e2e93414ac22f280"
+    },
+    {
+      "path": "runtime-pins.json",
+      "sha256": "3c70d6eaad08635e9b8f71d95217c9cf25581274fcf40d262942e31610282b17"
+    },
+    {
+      "path": "diagnostic-amendment.json",
+      "sha256": "b6be295ebe5e6e41de64ffa43d65990866479dbcaf2a1cf0183b6068f8e0c68a"
+    },
+    {
+      "path": "formal/r1-a/fixed-work/causal_chain.json",
+      "sha256": "f72279ff5e43f62522eeb73db2c4f069fd482fab3720b6a3981c1c76e497363e"
+    },
+    {
+      "path": "formal/r1-b/fixed-work/causal_chain.json",
+      "sha256": "f72279ff5e43f62522eeb73db2c4f069fd482fab3720b6a3981c1c76e497363e"
+    },
+    {
+      "path": "formal/r2-a/fixed-work/causal_chain.json",
+      "sha256": "f72279ff5e43f62522eeb73db2c4f069fd482fab3720b6a3981c1c76e497363e"
+    },
+    {
+      "path": "formal/r2-b/fixed-work/causal_chain.json",
+      "sha256": "f72279ff5e43f62522eeb73db2c4f069fd482fab3720b6a3981c1c76e497363e"
+    },
+    {
+      "path": "formal/r3-a/fixed-work/causal_chain.json",
+      "sha256": "f72279ff5e43f62522eeb73db2c4f069fd482fab3720b6a3981c1c76e497363e"
+    },
+    {
+      "path": "formal/r3-b/fixed-work/causal_chain.json",
+      "sha256": "f72279ff5e43f62522eeb73db2c4f069fd482fab3720b6a3981c1c76e497363e"
+    }
+  ]
+}

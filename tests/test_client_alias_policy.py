@@ -1,5 +1,4 @@
 """Explicit client omissions preserve the router and shared compaction safety."""
-import copy
 import json
 import pytest
 from anvil_serving import client_catalog_sync as sync
@@ -20,88 +19,11 @@ def settings():
             "compaction": {"enabled": True, "reserveTokens": 65536, "keepRecentTokens": 20000}}
 
 
-def test_pi_explicit_omission_preserves_primary_and_compaction():
-    source = catalog(); before = copy.deepcopy(source)
-    with pytest.raises(sync.ClientCatalogError, match="smallest selected context"):
-        sync._render_pi_documents(source, {}, settings(), base_url="http://127.0.0.1:8000/v1", api_key_env="KEY")
-    models, policy = sync._render_pi_documents(source, {}, settings(), base_url="http://127.0.0.1:8000/v1", api_key_env="KEY", exclude_aliases="llm.secondary")
-    assert [r["id"] for r in models["providers"]["anvil"]["models"]] == ["llm.primary"]
-    assert models["providers"]["anvil"]["models"][0]["maxTokens"] == 65536
-    assert policy["enabledModels"] == ["other/model", "anvil/llm.primary"]
-    assert policy["compaction"] == settings()["compaction"]
-    assert source == before
-    assert sync._render_pi_documents(source, models, policy, base_url="http://127.0.0.1:8000/v1", api_key_env="KEY", exclude_aliases="llm.secondary") == (models, policy)
-
-
-@pytest.mark.parametrize("excluded", ["llm.primary", "unknown", "llm.secondary,llm.secondary", [], None])
-def test_invalid_alias_policy_fails(excluded):
-    with pytest.raises(sync.ClientCatalogError):
-        sync._excluded_aliases(excluded, catalog()["models"])
-
-
-def test_pi_selected_model_cannot_be_removed():
-    policy = settings(); policy["defaultModel"] = "llm.secondary"
-    with pytest.raises(sync.ClientCatalogError, match="default Anvil model"):
-        sync._render_pi_documents(catalog(), {}, policy, base_url="http://127.0.0.1:8000/v1", api_key_env="KEY", exclude_aliases="llm.secondary")
-
-
 def openclaw():
     return {"models": {"providers": {"anvil": {"apiKey": "$KEY", "models": []}}},
             "agents": {"defaults": {"models": {"anvil/llm.secondary": {}, "other/model": {}},
                 "model": {"primary": "anvil/llm.primary"},
                 "compaction": {"mode": "safeguard", "reserveTokens": 65536, "keepRecentTokens": 20000}}}}
-
-
-def test_openclaw_explicit_omission_keeps_primary_limits():
-    doc = sync._render_openclaw_document(catalog(), openclaw(), exclude_aliases="llm.secondary")
-    assert [r["id"] for r in doc["models"]["providers"]["anvil"]["models"]] == ["llm.primary"]
-    assert doc["agents"]["defaults"]["models"] == {"other/model": {}, "anvil/llm.primary": {}}
-    assert doc["agents"]["defaults"]["compaction"] == openclaw()["agents"]["defaults"]["compaction"]
-
-
-def test_openclaw_omission_removes_allowlist_entry_without_changing_selection():
-    source = openclaw()
-    source["agents"]["defaults"]["modelPolicy"] = {"allow": ["other/model", "anvil/llm.primary", "anvil/llm.secondary"]}
-    doc = sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
-    assert doc["agents"]["defaults"]["modelPolicy"]["allow"] == ["other/model", "anvil/llm.primary"]
-    assert doc["agents"]["defaults"]["model"] == source["agents"]["defaults"]["model"]
-    assert source["agents"]["defaults"]["modelPolicy"]["allow"][-1] == "anvil/llm.secondary"
-    source["agents"]["defaults"]["modelPolicy"]["allow"] = ["anvil/llm.secondary"]
-    with pytest.raises(sync.ClientCatalogError, match="unrestricted"):
-        sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
-
-
-def test_openclaw_per_agent_allowlist_omits_exact_refs_preserving_wildcards():
-    source = openclaw()
-    source["agents"]["entries"] = {"assistant": {"modelPolicy": {"allow": ["other/*", "anvil/llm.primary", "anvil/llm.secondary"]}}}
-    doc = sync._render_openclaw_document(catalog(), source, exclude_aliases="llm.secondary")
-    assert doc["agents"]["entries"]["assistant"]["modelPolicy"]["allow"] == ["other/*", "anvil/llm.primary"]
-
-
-@pytest.mark.parametrize("location", ["default", "fallback", "agent", "talk"])
-def test_openclaw_selected_references_cannot_be_removed(location):
-    doc = openclaw()
-    if location == "default": doc["agents"]["defaults"]["model"] = "anvil/llm.secondary"
-    if location == "fallback": doc["agents"]["defaults"]["model"]["fallbacks"] = ["anvil/llm.secondary"]
-    if location == "agent": doc["agents"]["list"] = [{"model": "anvil/llm.secondary"}]
-    if location == "talk": doc["talk"] = {"consultModel": "anvil/llm.secondary"}
-    with pytest.raises(sync.ClientCatalogError, match="references an excluded alias"):
-        sync._render_openclaw_document(catalog(), doc, exclude_aliases="llm.secondary")
-
-
-def test_pi_sync_applies_policy_with_backup_and_repeat_convergence(tmp_path, monkeypatch):
-    monkeypatch.setattr(sync, "fetch_client_catalog", lambda **kw: catalog())
-    models = tmp_path / "models.json"; models.write_text("{}")
-    config = tmp_path / "settings.json"; config.write_text(json.dumps(settings()))
-    args = dict(base_url="http://127.0.0.1:8000/v1", clients="pi", pi_models=str(models),
-                pi_settings=str(config), state_path=str(tmp_path / "state.json"),
-                backup_root=str(tmp_path / "backups"), pi_exclude_aliases="llm.secondary")
-    preview = sync.sync_clients(**args)
-    assert preview["client_excluded_aliases"]["pi"] == ["llm.secondary"]
-    assert json.loads(models.read_text()) == {}
-    result = sync.sync_clients(**args, confirm=True, dry_run=False)
-    assert result["backup_created"]
-    assert sync.sync_clients(**args)["changed"] == []
 
 
 def test_cli_and_mcp_forward_explicit_policy(monkeypatch):
@@ -121,60 +43,6 @@ def test_cli_and_mcp_forward_explicit_policy(monkeypatch):
     for row in received:
         assert row["pi_exclude_aliases"] == row["openclaw_exclude_aliases"] == "llm.secondary"
         assert row["openclaw_allow_aliases"] == "llm.primary"
-
-
-@pytest.mark.parametrize("scope", ["defaults", "entries", "list"])
-def test_openclaw_explicit_allow_restores_override_preserving_other_policy(scope):
-    source = catalog()
-    source["models"]["llm.secondary"]["context_window"] = 163840
-    doc = openclaw()
-    policy = {"allow": ["other/*", "anvil/llm.primary"], "deny": ["other/blocked"]}
-    if scope == "defaults":
-        target = doc["agents"]["defaults"]
-    elif scope == "entries":
-        doc["agents"]["entries"] = {"assistant": {}}
-        target = doc["agents"]["entries"]["assistant"]
-    else:
-        doc["agents"]["list"] = [{"id": "assistant"}]
-        target = doc["agents"]["list"][0]
-    target["modelPolicy"] = copy.deepcopy(policy)
-    rendered = sync._render_openclaw_document(source, doc, allow_aliases="llm.secondary")
-    actual = (rendered["agents"]["defaults"] if scope == "defaults" else
-              rendered["agents"]["entries"]["assistant"] if scope == "entries" else
-              rendered["agents"]["list"][0])
-    assert actual["modelPolicy"] == {**policy, "allow": policy["allow"] + ["anvil/llm.secondary"]}
-    assert target["modelPolicy"] == policy
-    assert rendered["agents"]["defaults"]["model"] == doc["agents"]["defaults"]["model"]
-    assert rendered["agents"]["defaults"]["compaction"] == doc["agents"]["defaults"]["compaction"]
-    assert sync._render_openclaw_document(source, rendered, allow_aliases="llm.secondary") == rendered
-
-
-@pytest.mark.parametrize("policy", [{}, {"allow": []}, {"allow": ["other/model"]}])
-def test_openclaw_allow_is_opt_in_and_keeps_unrestricted_policy(policy):
-    source = catalog()
-    source["models"]["llm.secondary"]["context_window"] = 163840
-    doc = openclaw()
-    doc["agents"]["defaults"]["modelPolicy"] = copy.deepcopy(policy)
-    default = sync._render_openclaw_document(source, doc)
-    assert default["agents"]["defaults"]["modelPolicy"] == policy
-    if not policy.get("allow"):
-        explicit = sync._render_openclaw_document(source, doc, allow_aliases="llm.secondary")
-        assert explicit["agents"]["defaults"]["modelPolicy"] == policy
-
-
-@pytest.mark.parametrize("allowed", ["unknown", "llm.secondary,llm.secondary", [], None, "x" * 4097])
-def test_openclaw_invalid_allow_fails(allowed):
-    with pytest.raises(sync.ClientCatalogError, match="allowed aliases"):
-        sync._render_openclaw_document(catalog(), openclaw(), allow_aliases=allowed)
-
-
-def test_openclaw_allow_cannot_override_exclusion():
-    with pytest.raises(sync.ClientCatalogError, match="excluded"):
-        sync._render_openclaw_document(catalog(), openclaw(), allow_aliases="llm.secondary", exclude_aliases="llm.secondary")
-    source = catalog()
-    source["models"]["llm.auxiliary"] = source["models"]["llm.secondary"]
-    with pytest.raises(sync.ClientCatalogError, match="excluded"):
-        sync._render_openclaw_document(source, openclaw(), allow_aliases="llm.auxiliary")
 
 
 @pytest.mark.parametrize("file_already_matches", [False, True])

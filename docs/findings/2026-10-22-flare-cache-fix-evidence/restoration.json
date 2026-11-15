@@ -1,0 +1,238 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-22-flare-cache-fix",
+  "status": "verified_with_retained_exceptions",
+  "verified": true,
+  "mutation_required": true,
+  "promoted": false,
+  "performance_eligible": false,
+  "historical_state_only": true,
+  "windows": [
+    {
+      "name": "pilot",
+      "status": "verified",
+      "elapsed_minutes": null,
+      "detail": "Pilot restoration receipt retained.",
+      "sources": [
+        {
+          "path": "pilot-window-closeout.json",
+          "sha256": "b43136e634e5fbf26fc187a93ad043565025c3d36904bb12243c816712ba9917"
+        }
+      ]
+    },
+    {
+      "name": "audit",
+      "status": "verified",
+      "elapsed_minutes": 23.55321975549062,
+      "detail": "Audit-window restoration verified.",
+      "sources": [
+        {
+          "path": "audit-window-closeout.json",
+          "sha256": "0795e484a9129a20f48db09f8f5c04fa935704ab0bcadcdf37c9a1a629ab3a87"
+        },
+        {
+          "path": "audit-restored-readmit-r2.json",
+          "sha256": "07d8b0585bca6ec96357be6080f1f9d41f76a2bb2cfab563e96710a2da11a56c"
+        },
+        {
+          "path": "audit-restored-routed.json",
+          "sha256": "e196372cf8a17964c34da2970b6eb840044a59b65e03553b81256ded8ab3d8cc"
+        }
+      ]
+    },
+    {
+      "name": "formal-r1-a",
+      "status": "verified",
+      "elapsed_minutes": 55.71,
+      "detail": "Parent verification reached its second fresh monitoring observation.",
+      "sources": [
+        {
+          "path": "formal/r1-a/closeout.json",
+          "sha256": "da219675f328db150c8d3443965d069707bfcaaa9ac5f168c6ba2e1d8f783862"
+        },
+        {
+          "path": "formal/r1-a/parent-review.json",
+          "sha256": "f64aa8c7c4edc5fc05bbc0c194a888df46616de348ac4791ba1ce991ffc7326d"
+        },
+        {
+          "path": "formal/r1-a/restoration.json",
+          "sha256": "b4523d352df40a518218930fe24affea947c4d473bbbe40c923744ab87e4eda5"
+        },
+        {
+          "path": "analysis/readiness-history/r1-a/restoration.json",
+          "sha256": "e5025ee616bb357d9d76f22172a79f78d75a5b3ac5429bb3fa4bb6d24df73c71"
+        }
+      ]
+    },
+    {
+      "name": "formal-r1-b",
+      "status": "verified_with_runner_exit_unknown_and_monitoring_limit",
+      "elapsed_minutes": 53.0147,
+      "detail": "Native completion and restoration are retained; outer runner exit is unknown, original strict lane monitoring is 1/9, and historical pretraffic state is separately retained.",
+      "sources": [
+        {
+          "path": "formal/r1-b/closeout.json",
+          "sha256": "75b951b874421c6c5089630facbb8dcc684cbf6316ab5fd1f40235e98287a1ec"
+        },
+        {
+          "path": "formal/r1-b/parent-review.json",
+          "sha256": "a5148530114d8f428eea08ed6079fafe2f8d48b3db4ecf07bedf7fc0cfb51953"
+        },
+        {
+          "path": "formal/r1-b/restoration.json",
+          "sha256": "e2fad1666c50593564238f74f775566ca23c60c54e36f5a24bdf4a66189b0c5c"
+        },
+        {
+          "path": "analysis/readiness-history/r1-b/restoration.json",
+          "sha256": "eb520d64d16d7207ab4d224a1fe485a37b01a3afc76161b1b74faa31dc4dda4e"
+        },
+        {
+          "path": "analysis/r1-b-monitoring-limitations.md",
+          "sha256": "bb887d23d2bfdf7ec4c82a4df856dbf20455c8b38be0a5e9c7dae5143e412792"
+        }
+      ]
+    },
+    {
+      "name": "formal-r2-a",
+      "status": "verified",
+      "elapsed_minutes": 50.8709167,
+      "detail": "Closeout, parent review, restoration proof, and historical restoration readiness are retained.",
+      "sources": [
+        {
+          "path": "formal/r2-a/closeout.json",
+          "sha256": "12189f57c4d4faf35d2e31641cda5eb9c31544b9825d46ed6bdc9919231c90b1"
+        },
+        {
+          "path": "formal/r2-a/parent-review.json",
+          "sha256": "f5f41ed864e3049e7839cc54f0dfcc329d72d4a547c26a15d1f46763c0a2dcab"
+        },
+        {
+          "path": "formal/r2-a/restoration.json",
+          "sha256": "e16ef26a8a13749eeb39692c47577a5dd33557a02d26db5ccb3efcc37607485a"
+        },
+        {
+          "path": "analysis/readiness-history/r2-a/restoration.json",
+          "sha256": "a6840b1f9753c91b97a7aa74aad0dcbba6d04f8e23dee3b71393c996ef1f4448"
+        }
+      ]
+    },
+    {
+      "name": "formal-r2-b",
+      "status": "verified_with_false_default_proof_and_accepted_supplement",
+      "elapsed_minutes": 49.736,
+      "supplemental_elapsed_minutes": 54.9174,
+      "detail": "The original empty discovery receipt leaves the default restoration proof false. A separately retained matching-generation registration refresh was accepted later; it supplements and does not rewrite the false default proof.",
+      "sources": [
+        {
+          "path": "formal/r2-b/closeout.json",
+          "sha256": "853240ab5c9e0f31e0b6b15f11aade35239f7dcdea3a2d98e03e2759fcf5ac31"
+        },
+        {
+          "path": "formal/r2-b/parent-review.json",
+          "sha256": "186414ee22a0dd6c26dcb39da6cdbc596a338cd4633f3acead694dc47485b87c"
+        },
+        {
+          "path": "formal/r2-b/restoration.json",
+          "sha256": "044c38062ad67f500e251b872ae80b80a36e9fe81e5dc68b35dae21a2b80584e"
+        },
+        {
+          "path": "formal/r2-b/restoration-registration-refresh.json",
+          "sha256": "e1ff42cadd634bae0dae90813d6406af6c33044e24935e68bfee809932dbe539"
+        },
+        {
+          "path": "analysis/readiness-history/r2-b/restoration.json",
+          "sha256": "620d6371c6252a3d9eee25f2e9fae4f16e94ffc14d1bda499d8db8f389f9b72e"
+        }
+      ]
+    },
+    {
+      "name": "formal-r3-a",
+      "status": "verified",
+      "elapsed_minutes": 51.0379667,
+      "detail": "Closeout, parent review, restoration proof, and historical restoration readiness are retained.",
+      "sources": [
+        {
+          "path": "formal/r3-a/closeout.json",
+          "sha256": "41032f592a7c751ba856a38c59e77abd33ce78df42c81080df4138346eb07422"
+        },
+        {
+          "path": "formal/r3-a/parent-review.json",
+          "sha256": "437d32db82d381f66e291845c237860e9a1d49c4d8fdcd00aa0e28934a88974e"
+        },
+        {
+          "path": "formal/r3-a/restoration.json",
+          "sha256": "cce26598c2e1497dcc5154409dc3df27735dcfbd29a8dcbcb66eda0e41ac46be"
+        },
+        {
+          "path": "analysis/readiness-history/r3-a/restoration.json",
+          "sha256": "9142a662e3567f823b68043963ac9b318d5d6f3bd1f906da17e8b7798836dcd4"
+        }
+      ]
+    },
+    {
+      "name": "formal-r3-b",
+      "status": "verified",
+      "elapsed_minutes": 49.7004166683,
+      "verified_at_utc": "2026-10-23T04:32:41Z",
+      "generation": "1db407a5fd21a8dea8bfef788ce8534a75d40a48430af2062d4addcbea786cc7",
+      "detail": "Parent review retained direct and routed seven-group checks including 20-tool batches, plus two accepted monitoring observations 45 seconds apart; earlier failed polls remain retained.",
+      "sources": [
+        {
+          "path": "formal/r3-b/closeout.json",
+          "sha256": "e26b2809ba1bb2db971596644601882602a5a580cf782c35a60c2e75c8ed0cb5"
+        },
+        {
+          "path": "formal/r3-b/parent-review.json",
+          "sha256": "a299ad0afa050cb39614e98e47fb243c391431032137c6b3f8e44997443f766a"
+        },
+        {
+          "path": "formal/r3-b/restoration.json",
+          "sha256": "7d4ebba34f65aeba04c3e1ca6bfa66f5c2a728703b7824cfe9bdb3cd5d7afdc2"
+        },
+        {
+          "path": "analysis/readiness-history/r3-b/restoration.json",
+          "sha256": "4132dd7ba902909e69ad192f0b50bed4569a9ac0a1533d46c685f3b3565b63c1"
+        }
+      ]
+    },
+    {
+      "name": "failed-r2-b-pretraffic-1",
+      "status": "restored_after_zero_traffic_failure",
+      "elapsed_minutes": 8.94875,
+      "detail": "The zsh query-expansion failure occurred before formal warmups or targets; failed-window restoration receipts remain distinct from completed formal r2-B.",
+      "sources": [
+        {
+          "path": "failed-windows/r2-b-pretraffic-1/restore.json",
+          "sha256": "bd5ebab6bbd2d4cdf10c738abe69922b76241ed77f61855f0839e0c9de25fdfd"
+        },
+        {
+          "path": "failed-windows/r2-b-pretraffic-1/final-direct-preflight.json",
+          "sha256": "ed664b91a401f5e71008a11a6048a089d19f1035694824c47ec4d91a896c7dd1"
+        },
+        {
+          "path": "failed-windows/r2-b-pretraffic-1/final-routed-preflight.json",
+          "sha256": "2b9900fbbbf2b168f728ac5c2f130c0753fb0f5ccf5a8ae558cff35e55371611"
+        },
+        {
+          "path": "failed-windows/r2-b-pretraffic-1/window.json",
+          "sha256": "b4a5ac4d95df7d6c64c4b8871951ad2df560071b8802958bbd5f67722038dbf7"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "all_completed_formal_windows_restored": true,
+    "r3_b_direct_and_routed_checks_passed": true,
+    "r3_b_two_accepted_monitoring_observations": true,
+    "r2_b_default_restoration_proof_remains_false": true,
+    "r2_b_supplemental_registration_capture_accepted": true,
+    "failed_pretraffic_window_restored_without_formal_traffic": true,
+    "continuous_or_forever_health_not_established": true
+  },
+  "limitations": [
+    "Historical receipts verify recorded restoration state only; they do not establish continuous or future health.",
+    "Numerical acceptance and the independent-oracle, restore-fidelity, and causal gates remain false.",
+    "r1-B outer runner exit remains unknown; r1-B monitoring limitations remain retained.",
+    "r2-B supplemental registration evidence does not rewrite its original false restoration proof."
+  ]
+}

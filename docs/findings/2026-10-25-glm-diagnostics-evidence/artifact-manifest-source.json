@@ -1,0 +1,141 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human index of complete retained artifacts and limitations.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json",
+        "projection-ledger.json",
+        "supplemental-projection-ledger.json",
+        "projection-validation.json",
+        "size-exception.json"
+      ],
+      "reason": "Pinned local sources, explicit sanitization provenance and scoped publication exception.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "projections/campaign-control-records-0001.jsonl"
+      ],
+      "reason": "Pinned two-task corpus, selection, reference preparations and immutable child plans.",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "projections/campaign-control-records-0001.jsonl",
+        "coverage.json",
+        "budget-stop.json"
+      ],
+      "reason": "Eight planned supported cells, four blocked requested controls, preserved order and full-job budget refusal.",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "identity-control-map.json",
+        "validation.json",
+        "projections/child-evidence-records-0001.jsonl",
+        "projections/child-evidence-records-0002.jsonl",
+        "projections/child-evidence-records-0003.jsonl"
+      ],
+      "reason": "Sanitized identity commitments and native child proof projections. Original-private hashes do not authenticate derivative bytes.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "campaign-report.json",
+        "case-diagnostics.json",
+        "r12-replayed-report.json",
+        "rust-repair-excerpts.json",
+        "projections/aider-and-partial-records-0001.jsonl",
+        "projections/campaign-control-records-0001.jsonl",
+        "projections/child-evidence-records-0001.jsonl",
+        "projections/child-evidence-records-0002.jsonl",
+        "projections/child-evidence-records-0003.jsonl",
+        "projections/telemetry-records-0001.jsonl"
+      ],
+      "reason": "Native structured source projections, including task failures, unknown usage and unstarted populations.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "budget-stop.json",
+        "coverage.json"
+      ],
+      "reason": "Failures retained with bounded fix-forward dispositions and explicit deferrals.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Unchanged incumbent and independently checked request/process closure; no lifecycle mutation.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Authoritative diagnostic-only counts and caveats; no model-wide score or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "No social-copy package requested; the dated technical finding is the public report.",
+      "role": "publication-summary",
+      "status": "not-applicable"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "capability": "Focused coding quality diagnostics",
+    "completed_at": "2026-10-25T22:05:09.328065+00:00",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "Live executable source clean at recorded revision; subsequent changes are publication docs/generated docs plus removal of one unused test import, independently checked with 76 profile tests and whole-tree Ruff.",
+    "evidence_labels": [
+      "quality"
+    ],
+    "id": "glm-diagnostics-20261025-r1",
+    "promoted": false,
+    "promotion_authorized": false,
+    "repository_revision": "3e211eec5998998712acba85cf2d06ae4a49cd1a",
+    "started_at": "2026-10-25T21:38:25.332676+00:00"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.aider-plan/v1",
+    "anvil-serving.aider-retention/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-campaign-state/v1",
+    "anvil-serving.benchmark-campaign/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-harness-assets/v1",
+    "anvil-serving.benchmark-preflight/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.campaign-batch-closure/v1",
+    "anvil-serving.campaign-execution/v1",
+    "anvil-serving.campaign-release/v1",
+    "anvil-serving.campaign-telemetry/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 4 MiB"
+}

@@ -1,0 +1,8 @@
+{
+  "reviewer": "flare_trial_review",
+  "decision": "Reject MTP0 performance arm pending correctness",
+  "root": "Sampler INVALID_DISTRIBUTION covers nonfinite maximum logit,nonpositive/nonfinite mass,invalid sampled-token flag,out-of-range token. Logs cannot distinguish. Root-only sampling means TP mismatch is secondary.",
+  "supported": "RuntimeMTP0selection supported; new no-MTP export not first discriminator.",
+  "next": "One fresh exact tool-onlyC4retry; ifrepeat thenidenticalC1probe; onlyifnondeterministic comparefresh/replayedprefix. Stop there thiscampaign.",
+  "promoted": false
+}

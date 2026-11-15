@@ -1,0 +1,45 @@
+# Flare diagnostics wave 1
+
+Authorized October 21 Pacific; execution began October 22 UTC. Goal: identify scheduler, graph/rank, kernel and delivery costs under the same two 300 W GPUs, preserving evidence suitable for a local performance patch and later upstream review. No promotion or upstream submission is authorized by this campaign.
+
+## Frozen gates and matrix
+
+1. Confirm exact running incumbent, restore command/manifest/registry bytes, monitoring generation, GPU/driver/power, RAM and storage. Run offline fixture/oracle checks and the seven direct preflight groups. Retain initial failures.
+2. Build the retained scheduler-trace patch as an immutable managed image using two CPU cores and 8 GiB RAM, without inference interruption. Resolve authenticated trace, model-discovery and secret-mount handoff; independently test/review before swap.
+3. Pilot the existing capacity workload at nominal context 10240, C1/C4, 16 requests, max output 2048, temperature1, top_p0.95, reasoning max, seed42, unique prefixes. Use pilot elapsed time to choose fixed request counts targeting 120 seconds, rounded up to a multiple of concurrency, maximum256. Freeze counts before Flare traffic. Retain actual prompt/completion counts; nominal context is not measured token count. Natural variable-length output is a stack workload, not equal GPU work.
+4. Primary clean matrix: incumbent-before, unchanged Flare, instrumented Flare with detailed capture OFF, incumbent-after; C1/C4; three repetitions per cell; warmup separately. Use identical request counts/settings and deterministic request IDs per repetition. Each block hard bound600seconds; all declared requests must complete for comparison. Reverse-order incumbent control measures drift. 90-minute maximum model outage, with 20 minutes reserved for restoration; a failed gate stops expansion.
+5. Extended diagnostic lanes after core gates: nominal context32768 (actual input clamped by output headroom), C1/C4, unique versus repeated prefixes, 8 requests each, three repetitions if core exposure allows. These are additional coverage, not replacements for failing primary cells. Cold means fresh prefix, not cold model start; cached-token counters establish actual reuse.
+6. Live instrumentation qualification: one bounded 1-second scheduler capture under warmed load; require valid schema/clock bounds, both ranks, graph/shape identities, no dropped samples or invalid references. Then three short captures per C1/C4, separate from clean throughput. Trace overflow is incomplete evidence and requires a shorter new window. Capture native metrics before/after every block and client timing/journal for every attempt.
+7. Nsight Systems: bounded representative both-rank graph/kernel timeline and a separate hardware sample with unprofiled controls. Retain timing anchors and profiler overhead. Do not perform unsafe independent kernel replay of cooperative TP work. Nsight Compute component measurements follow only after exact kernel/shape attribution and an isolated correctness reproducer.
+8. Rank hypotheses by measured time and counterevidence. A performance patch needs one causally supported shared-code change, numerical/lifetime tests, and three matched same-weight Flare repetitions (>=5% primary gain, <=3% protected regression unless a revised criterion is recorded before new runs). If no patch is supported, publish that result and the next bounded experiment. Summed overlapping kernel times are not the critical path.
+9. Restore exact incumbent using retained managed lifecycle. Verify direct and authenticated routed preflight, mode ownership, GPU/shared memory, fresh monitoring generation and unchanged protected discovery files. Publish complete/failed/deferred coverage and promoted=false.
+
+## Retention contract
+
+This private directory is authoritative for the wave. Keep append-only attempt paths; never overwrite a failed run. Preserve source/dirty patch, image/source manifest, recipes and digests, package/model revisions, command previews/results, offline tests/reviewer decisions, request corpus/hashes/settings, client journals, native counters, Prometheus range snapshots with collector times, Grafana query acceptance, host CPU/RAM/PSI/I/O and GPU clocks/power/throttle telemetry, scheduler JSON, raw Nsight reports/SQLite and mapping tables, error/log excerpts and exact restoration receipts. Keys remain outside evidence and Git; no credential hashes, values, prompts or tokens in metric labels.
+
+Record capture loss, missing collectors, unmatched graphs and partial blocks explicitly. Compare matched successful populations only alongside all failures; do not rank a failing profile as an upgrade. Warmups, pilot, profiled and clean runs remain separate. Keep source verification, deployed image, live behavior, performance eligibility and promotion as separate states.
+
+## Repeatable operator path
+
+Reuse Anvil recipe lifecycle, preflight, capacity/stability, trace artifacts, retained restore and the existing observability/kernel-tuning skills. Add only demonstrated gaps to supported CLI/config, not a new plugin or ad hoc lifecycle script. The native installed CLI/controller has not received the trial worktree monitoring hooks: this campaign uses the reviewed trial checkout explicitly. Skill edits must be independently reviewed against a triggering case, a successful case, a non-applicable case and a fresh holdout before adoption.
+
+## Initial checks
+
+The incumbent identity still matches the retained restore target. Both GPUs are at300W. Offline fixture/oracle tests passed68/68. The seven direct incumbent preflight groups passed, including20/20 tools. Managed image build is active; baseline pilot has begun. Authentication integration and the final request counts remain admission prerequisites, not assumed completed.
+
+## Primary cache protocol frozen before measured blocks
+
+Pilot counts: C1=52, C4=160. Each arm first primes the entire per-concurrency corpus once (seeds4342/4642), then runs three repetitions on the same corpus. Unique means distinct per-request prefixes within a block; the repeated corpus is intentionally warm across measured repetitions. Actual cache counters determine observed reuse. This amendment prevents incidental cache state from being mislabeled as cold. Pilots remain separate and are not used as measured comparison blocks.
+
+## Measurement interpretation and retained friction
+
+The primary matrix is observational natural-output stack evidence, with variable completion lengths and no request-canary oracle. It is not strict controlled-decode qualification or proof of equal GPU work. The separate 1024-token native fixture fixes output length for Flare internal timing/observer overhead only; semantic quality remains outside that fixture. No adoption decision follows this wave alone. Capacity option/corpus/recipe file hashes are retained and checked before subsequent blocks; the prose plan predates the incumbent baseline, but the cryptographic config manifest was saved during baseline preparation, not before its first request. Do not label this as the formal scored serving-comparison admission protocol.
+
+The manual GPU snapshots in incumbent-before used the wrong bind address and retained URLError artifacts. Prometheus continuously scraped the actual GPU exporter; its range snapshot is the recovery source for that interval. Future snapshots use the verified Docker-gateway bind. A primed corpus is not necessarily resident: incumbent C1 measured block1 reports zero prefix-cache hits, so cache warmth is established by native counters only.
+
+Independent integration review initially held model identity, trace validation, secret-parent custody, the observer credential mount and stale CLI discovery. Those findings were corrected and rechecked before any candidate load. The scoped key requires the existing Flare serving authentication contract; public metrics remain unauthenticated. The complete-capture validator currently expects TP2 ranks 0 and 1.
+
+## Prospective amendment after first C4 failure
+
+Independent review accepted continuation of the original frozen diagnostic matrix after incumbent C4 request145 exhausted its2048-token budget in reasoning with no visible answer. This amendment is post-failure and recorded before any continuation request. No request is retried, replaced or given a larger budget. Complete only the originally declared repetitions; report attempted/failed denominators. A failed repetition makes its whole concurrency arm and overall ranking ineligible, even if later repetitions pass. Operational failures (identity, restart, containment/OOM, health, missing terminal metadata, undrained active/pending requests, power drift, instrumentation incompleteness) stop the arm. Before each subsequent block verify readable managed status, exact container/image/incarnation, zero work queued/running, healthy endpoint, no resource errors, unchanged frozen input hashes and both300W limits. The independent fixed-token fixture remains separate. Extended context/cache sweeps will not be expanded from this failed primary arm.

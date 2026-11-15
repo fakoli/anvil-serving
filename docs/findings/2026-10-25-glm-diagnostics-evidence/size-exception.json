@@ -1,0 +1,137 @@
+{
+  "aggregate_ceiling_bytes": 7340032,
+  "approving_reviewers": [
+    {
+      "decision": "approve exact 22-file payload and bounded three-file metadata exception",
+      "payload_bytes": 6587680,
+      "reviewer": "Independent GPT-5.6 Sol/high privacy and provenance reviewer",
+      "scope": "Updated exact source-registry and validation metadata independently approved; this campaign only."
+    }
+  ],
+  "final_exact_total_location": "The PR exception records the finalized total including this file and both manifests; self-hashes are intentionally excluded.",
+  "individual_exception": {
+    "bytes": 2524056,
+    "path": "projection-ledger.json",
+    "sha256": "2d7272089f0b42790444a89dfeb20a07efad52d203ca13d6b1fe9e26a577afb9"
+  },
+  "metadata_ceiling_bytes": 65536,
+  "other_artifacts_limit_bytes": 1048576,
+  "payload_files": [
+    {
+      "bytes": 2205,
+      "path": "README.md",
+      "sha256": "e27f5b4099f83f505cdac99c084f0addb77d069d506fa7cb71958e8b6d260fc3"
+    },
+    {
+      "bytes": 586,
+      "path": "budget-stop.json",
+      "sha256": "6bbc27a46f7d3e4b41a16e6405e18d75d17563eeb87618b979e50089f1fc30f6"
+    },
+    {
+      "bytes": 11292,
+      "path": "campaign-report.json",
+      "sha256": "a20e8400fe95dc126ab4a63b97722fc994865346d628db671dc15cc5ce3201b5"
+    },
+    {
+      "bytes": 14679,
+      "path": "case-diagnostics.json",
+      "sha256": "166d7625d651d1478e1318ad844880ef235afdcdb693af9463071bc8e8c75a00"
+    },
+    {
+      "bytes": 4261,
+      "path": "coverage.json",
+      "sha256": "666b84aa0eab99e2efd3d5d0598eedbe52cf6e8a89a8cbaaab76e61e1d80da89"
+    },
+    {
+      "bytes": 3036,
+      "path": "friction-log.md",
+      "sha256": "f9f8a595478eb6b1fc8e2806cf1eb152e90b6408810ed83caad7ed683a091150"
+    },
+    {
+      "bytes": 405,
+      "path": "identity-control-map.json",
+      "sha256": "8817b2012a780ad5b478e3f7355bc2619a89e773230a2cefd8e06ce19b66263f"
+    },
+    {
+      "bytes": 2524056,
+      "path": "projection-ledger.json",
+      "sha256": "2d7272089f0b42790444a89dfeb20a07efad52d203ca13d6b1fe9e26a577afb9"
+    },
+    {
+      "bytes": 2300,
+      "path": "projection-validation.json",
+      "sha256": "528be5abc2c72827049043d3747424df6079e425bdbe19f8f7a19aa8700b93dd"
+    },
+    {
+      "bytes": 679890,
+      "path": "projections/aider-and-partial-records-0001.jsonl",
+      "sha256": "f6fed063e34773ccda2b1c4248ea9bdc6d6ada4bd8c7a9831181b4aacbae12b2"
+    },
+    {
+      "bytes": 34389,
+      "path": "projections/campaign-control-records-0001.jsonl",
+      "sha256": "e4262cf833bb3ec6bc5035593aaa6c6c8b404e93bac3d279979b1f7d3e97d5f8"
+    },
+    {
+      "bytes": 931971,
+      "path": "projections/child-evidence-records-0001.jsonl",
+      "sha256": "1e3f7cefc02094a7ee4bfb70425bc5a4f706a2d56e1521a840cbcb51bb90df09"
+    },
+    {
+      "bytes": 929255,
+      "path": "projections/child-evidence-records-0002.jsonl",
+      "sha256": "d305c47ecb5f220eb1affff62b252f386d5b8b511c480e6615e4965ac3972675"
+    },
+    {
+      "bytes": 394419,
+      "path": "projections/child-evidence-records-0003.jsonl",
+      "sha256": "c41872995f54cde3739eb0e13ae06e84b5e8dde9e158ba1c56bf4d853485238c"
+    },
+    {
+      "bytes": 913127,
+      "path": "projections/telemetry-records-0001.jsonl",
+      "sha256": "ad87628a595e44e27a2d29ed9cbcd1e4a6ed2f10d372739b2ac171e3f0a78112"
+    },
+    {
+      "bytes": 123755,
+      "path": "r12-replayed-report.json",
+      "sha256": "82548eb5d976b9b2aefff08205cad0f818d8212dc6064273a1cc80adec9fd379"
+    },
+    {
+      "bytes": 1175,
+      "path": "restoration.json",
+      "sha256": "cc97facb2ebf8b47e0a6153de4f71b9f825fe60739a81c8ac7e210aaed05983f"
+    },
+    {
+      "bytes": 3268,
+      "path": "rust-repair-excerpts.json",
+      "sha256": "dec34891289e1b1585240986f1daaeee12ba8bfbcf32cf758a6fc7d4517d1e2d"
+    },
+    {
+      "bytes": 2810,
+      "path": "source-registry.json",
+      "sha256": "369bca02d5a7aac332e705ec2997565d9ad6258bad84edc6ffc566ae0ef533d2"
+    },
+    {
+      "bytes": 3298,
+      "path": "summary.json",
+      "sha256": "988ad1204bf70b9d4e4ba31c7fdd7d04a879b96118c8fa2a6fc488cbd5af2b9c"
+    },
+    {
+      "bytes": 6363,
+      "path": "supplemental-projection-ledger.json",
+      "sha256": "e9c14f7d804d3ff4b93c42ceab251579eb43e358a4afc0d9d932771c16c594a5"
+    },
+    {
+      "bytes": 1140,
+      "path": "validation.json",
+      "sha256": "f3adfba766c59c8a8157df6e93b983e5bd6d1b8eb49b6f10bafb700427806052"
+    }
+  ],
+  "payload_total_bytes": 6587680,
+  "policy": "ADR-0027",
+  "reason": "Complete native preparation/terminal/telemetry projections and per-field redaction provenance retain failed, unstarted and historical-cancelled populations. Reducing to headline survivors would remove audit context. Payload is bounded to this single closed campaign; prompts and reasoning remain excluded. No authenticated-free immutable external artifact store with a committed retention owner is configured for this packet. Repository retention keeps evidence reviewable with its source change.",
+  "schema": "benchmark-publication-size-exception/v1",
+  "scope": "Only the listed payload files plus this exception and the two artifact manifests. No other finding, future run or policy change.",
+  "status": "approved"
+}

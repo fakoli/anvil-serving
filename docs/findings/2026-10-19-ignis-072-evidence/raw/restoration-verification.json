@@ -1,0 +1,108 @@
+{
+  "schema": "anvil-serving.restoration-comparison/v1",
+  "evidence_type": "derived from protected before/after native receipts; public values are fingerprints, not native receipt copies",
+  "observed_at": "2026-10-20T03:22:30.364432+00:00",
+  "verified": true,
+  "comparisons": {
+    "router_container_id": {
+      "before_fingerprint": "9b39b31bac9c2f143418bc90db946ac725bed131e5650cb9f82e5b119907890d",
+      "after_fingerprint": "9b39b31bac9c2f143418bc90db946ac725bed131e5650cb9f82e5b119907890d",
+      "equal": true
+    },
+    "router_image_id": {
+      "before_fingerprint": "57d7e77ef72c472068460f79fa9d45e8fe17089960b232f86bbb018680e0fcf5",
+      "after_fingerprint": "57d7e77ef72c472068460f79fa9d45e8fe17089960b232f86bbb018680e0fcf5",
+      "equal": true
+    },
+    "router_image_reference": {
+      "before_fingerprint": "46510213e8b14d0bb3b00bbe40179ff71046e38835651cc81223ac04363904ed",
+      "after_fingerprint": "46510213e8b14d0bb3b00bbe40179ff71046e38835651cc81223ac04363904ed",
+      "equal": true
+    },
+    "router_mounts": {
+      "before_fingerprint": "56ef961bcebd6897903654b25c9e1597456e2d76c943e450be5287f4b35b52ac",
+      "after_fingerprint": "56ef961bcebd6897903654b25c9e1597456e2d76c943e450be5287f4b35b52ac",
+      "equal": true
+    },
+    "router_config": {
+      "before_fingerprint": "23c498b94dc92c5cadd9de61a154af08c8307100b2ea320d792dc6cfa56c4d3a",
+      "after_fingerprint": "23c498b94dc92c5cadd9de61a154af08c8307100b2ea320d792dc6cfa56c4d3a",
+      "equal": true
+    },
+    "serving_mode": {
+      "before_fingerprint": "61033aa4f7081ef38562901793bb150c6f5b019c19bfe158504efd189476aac2",
+      "after_fingerprint": "61033aa4f7081ef38562901793bb150c6f5b019c19bfe158504efd189476aac2",
+      "equal": true
+    },
+    "incumbent_identity": {
+      "before_fingerprint": "fa8e9bb85309bd2f494a473af8e652d0b5a79aff60b09cfa8e88eb75588795da",
+      "after_fingerprint": "fa8e9bb85309bd2f494a473af8e652d0b5a79aff60b09cfa8e88eb75588795da",
+      "equal": true
+    }
+  },
+  "post_run_checks": [
+    {
+      "name": "incumbent_runtime_identity",
+      "passed": true
+    },
+    {
+      "name": "restore-direct-preflight",
+      "passed": true
+    },
+    {
+      "name": "restore-routed-preflight",
+      "passed": true
+    },
+    {
+      "name": "router_custody",
+      "passed": true
+    },
+    {
+      "name": "router_config_hash",
+      "passed": true
+    },
+    {
+      "name": "serving_mode_unchanged",
+      "passed": true
+    },
+    {
+      "name": "candidate_containers_absent",
+      "passed": true
+    },
+    {
+      "name": "other_recipe_containers_unchanged",
+      "passed": true
+    },
+    {
+      "name": "route_admission_identity_restored",
+      "passed": true
+    },
+    {
+      "name": "memory_containment",
+      "passed": true
+    }
+  ],
+  "recipe_parity": {
+    "original_operator_registry_unchanged": true,
+    "runtime_serve_section_identical": true,
+    "original_registry_sha256": "caa39e8e67aa23ca5e836635f9a43b3aa8a825172db3b7a181d0517b4c0d0c67",
+    "restoration_registry_sha256": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+    "difference": "Explicit complete-cache verifier disabled after pinned-inspector managed inventory; runtime launch settings preserved."
+  },
+  "differences": [
+    "Incumbent container recreated; container identity changed as expected.",
+    "Restoration-only cache-verification setting and recipe labels differ; original operator registry and runtime serve settings preserved."
+  ],
+  "protected_originals": {
+    "restoration.json": "aa833f10a6db3ffe20ba85fe5ebe2d6490d1cf37773492a054c3c098961c21a3",
+    "baseline/router-status.json": "c5cd605faa5a448d10a8ea71cb307427b04cfc0d50a176bd49bf8778b0617c2c",
+    "raw/restore-router-status.json": "c5cd605faa5a448d10a8ea71cb307427b04cfc0d50a176bd49bf8778b0617c2c",
+    "baseline/router-mounted-sha256.txt": "bc3942ce648bd8fd53e892e89a3201d55d36ba38c5d82f35859ea751bf59d996",
+    "raw/restore-router-mounted-sha256.txt": "dd5d7e41da0d31dd7521ada151f6e42f4e20fd8dda5c14762c51c251a28f3905",
+    "baseline/mode.json": "7b50ff307e1209492e1b3dcf29676cc07824005695d4633e9c0b35a4c8c144e5",
+    "raw/restore-final-mode.json": "7b50ff307e1209492e1b3dcf29676cc07824005695d4633e9c0b35a4c8c144e5",
+    "baseline/running.json": "4574dc43b8e4860a2262dc11549334a5813497cb845fe81480ba6e9fd4432b7c",
+    "raw/restore-running.json": "9da32bb95a7e00225ac605c3f73aa92ec419f62948e81ac24fea13a94654fa94",
+    "validation/restoration-recipe-parity.json": "dbd88f444982edae9e117ae5fef968720778fb2a5013ec226c32820e7fb9b451"
+  }
+}

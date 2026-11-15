@@ -3,8 +3,11 @@ from __future__ import annotations
 import copy
 import json
 import os
+import subprocess
 import sys
+import threading
 import traceback
+from concurrent.futures import Future
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +35,7 @@ from anvil_serving.client_catalog_sync import (
 
 
 CONFIG_SHA = "a" * 64
+_UNSET = object()  # sentinel: "parameter not supplied" for _catalog media-limit injection
 
 
 def _trusted_test_clock() -> datetime:
@@ -181,7 +185,8 @@ class _Opener:
 
 
 class _HermesRunner:
-    def __init__(self, states):
+    def __init__(self, states, *, snapshot=False):
+        self.snapshot = snapshot
         self.states = states
         self.sets = []
         self.homes = []
@@ -205,7 +210,7 @@ class _HermesRunner:
                        for key in ("XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"))
             if not hasattr(self, "scratch_runners"):
                 self.scratch_runners = {}
-            runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states)))
+            runner = self.scratch_runners.setdefault(scratch, _HermesRunner(copy.deepcopy(self.states), snapshot=self.snapshot))
             profile = argv[2]
             path = Path(scratch) / "config.yaml" if profile == "default" else Path(scratch) / "profiles" / profile / "config.yaml"
             runner.states[profile] = yaml.safe_load(path.read_bytes())
@@ -217,6 +222,29 @@ class _HermesRunner:
             return result
         profile = argv[2]
         command = argv[3:]
+        if command == ["config", "get", "--catalog-snapshot"]:
+            assert self.snapshot, "snapshot transport must be explicitly enabled"
+            state = self.states[profile]
+            # Independent fixture for the six-field projected producer contract.
+            def pick(row, names):
+                return {key: row[key] for key in names if key in row}
+            def provider(row, custom=False):
+                value = pick(row, ("name", "model") if custom else ("default_model", "context_length"))
+                if "models" in row:
+                    value["models"] = {name: pick(detail, ("context_length",)) for name, detail in row["models"].items()}
+                if not custom and "chat_template_kwargs" in row.get("extra_body", {}):
+                    value["extra_body"] = {"chat_template_kwargs": None}
+                return value
+            values = {key: pick(state[key], names) for key, names in (
+                ("model", ("provider", "default", "context_length", "max_tokens")),
+                ("compression", ("enabled", "threshold", "target_ratio")),
+                ("auxiliary.vision", ("provider", "model", "context_length")),
+                ("auxiliary.compression", ("context_length",))) if key in state}
+            values["providers"] = {"anvil": provider(state["providers"]["anvil"])}
+            values["custom_providers"] = [provider(row, True) for row in state["custom_providers"]
+                if row["name"].casefold().startswith("anvil")]
+            return self._completed(stdout=json.dumps({"schema": "hermes-catalog-snapshot/v1",
+                "values": values, "missing": [key for key in client_catalog_sync.HERMES_PROFILE_KEYS if key not in values]}))
         if command[:2] == ["config", "get"]:
             key = command[2]
             if key not in self.states[profile]:
@@ -263,6 +291,126 @@ class _HermesRunner:
         if command == ["config", "check"]:
             return self._completed(stdout="valid")
         raise AssertionError("unexpected Hermes command: %r" % argv)
+
+
+def test_hermes_profile_reads_overlap_with_three_workers_and_keep_key_order():
+    keys = client_catalog_sync.HERMES_PROFILE_KEYS
+    barrier = threading.Barrier(3, timeout=5)
+    vision_done = threading.Event()
+    lock = threading.Lock()
+    calls, completed, workers = [], [], set()
+    active = peak = 0
+
+    def run(argv, **kwargs):
+        nonlocal active, peak
+        key = argv[5]
+        assert argv == ["hermes", "-p", "work", "config", "get", key, "--json"]
+        assert kwargs == {"capture_output": True, "text": True, "timeout": 7}
+        with lock:
+            calls.append(key)
+            workers.add(threading.current_thread())
+            active += 1
+            peak = max(peak, active)
+        try:
+            barrier.wait()
+            if key == "model":
+                assert vision_done.wait(5)
+            with lock:
+                completed.append(key)
+            if key == "auxiliary.vision":
+                vision_done.set()
+            return _HermesRunner._completed(stdout=json.dumps({"key": key}))
+        finally:
+            with lock:
+                active -= 1
+
+    result = client_catalog_sync._read_hermes_profile(
+        "hermes", "work", timeout_seconds=7, run=run)
+    assert len(calls) == 6 and set(calls) == set(keys)
+    assert peak == 3 and active == 0
+    assert completed.index("auxiliary.vision") < completed.index("model")
+    assert tuple(result) == keys
+    assert result == {key: {"key": key} for key in keys}
+    assert all(not worker.is_alive() for worker in workers)
+
+
+@pytest.mark.parametrize("key", client_catalog_sync.HERMES_PROFILE_KEYS)
+@pytest.mark.parametrize("invalid_json", [False, True])
+def test_hermes_profile_preserves_required_optional_and_json_errors(key, invalid_json):
+    def run(argv, **_kwargs):
+        return _HermesRunner._completed(
+            returncode=int(argv[5] == key and not invalid_json),
+            stdout="invalid JSON" if argv[5] == key and invalid_json else '{"value": 1}')
+
+    if invalid_json or key in {"model", "compression", "providers"}:
+        message = "invalid JSON for " if invalid_json else "has no readable "
+        with pytest.raises(ClientCatalogError, match=message + key):
+            client_catalog_sync._read_hermes_profile(
+                "hermes", "work", timeout_seconds=7, run=run)
+    else:
+        result = client_catalog_sync._read_hermes_profile(
+            "hermes", "work", timeout_seconds=7, run=run)
+        assert result[key] is None
+        assert all(value == {"value": 1} for name, value in result.items() if name != key)
+
+
+@pytest.mark.parametrize("failure", ["required", "json", "timeout", "missing"])
+def test_hermes_profile_failure_cancels_pending_and_joins_running_reads(monkeypatch, failure):
+    started = threading.Barrier(3, timeout=5)
+    release = threading.Event()
+    cancelled = threading.Event()
+    workers, errors = set(), []
+    lock = threading.Lock()
+    cancel = Future.cancel
+
+    def observe_cancel(future):
+        result = cancel(future)
+        if result:
+            cancelled.set()
+        return result
+
+    monkeypatch.setattr(Future, "cancel", observe_cancel)
+
+    def run(argv, **kwargs):
+        key = argv[5]
+        with lock:
+            workers.add(threading.current_thread())
+        if key in client_catalog_sync.HERMES_PROFILE_KEYS[:3]:
+            started.wait()
+        if key == "model":
+            if failure == "timeout":
+                raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+            if failure == "missing":
+                raise FileNotFoundError("synthetic missing command")
+            return _HermesRunner._completed(
+                returncode=int(failure == "required"), stdout="invalid JSON")
+        assert release.wait(5)
+        return _HermesRunner._completed(stdout="null")
+
+    def read():
+        try:
+            client_catalog_sync._read_hermes_profile(
+                "hermes", "work", timeout_seconds=7, run=run)
+        except Exception as error:
+            errors.append(error)
+
+    reader = threading.Thread(target=read)
+    reader.start()
+    try:
+        assert cancelled.wait(5)
+        assert reader.is_alive() and not errors
+    finally:
+        release.set()
+        reader.join(5)
+    assert not reader.is_alive()
+    assert all(not worker.is_alive() for worker in workers)
+    assert len(errors) == 1 and isinstance(errors[0], ClientCatalogError)
+    expected = {"required": "has no readable model", "json": "invalid JSON for model",
+                "timeout": "command failed for work", "missing": "command failed for work"}
+    assert expected[failure] in str(errors[0])
+    if failure == "timeout":
+        assert isinstance(errors[0].__cause__, subprocess.TimeoutExpired)
+        assert errors[0].__cause__.timeout == 7
 
 
 class _HermesMediaRunner:
@@ -409,6 +557,9 @@ def _catalog(
     primary_context=1_048_576,
     include_vision=True,
     secondary_efforts=None,
+    images_per_request=None,
+    raw_images_per_request=_UNSET,
+    raw_video_per_request=_UNSET,
 ):
     models = [
         ("primary", ["llm.primary"], primary_context, ["text"], True),
@@ -430,6 +581,13 @@ def _catalog(
         compat = {"supportsUsageInStreaming": True}
         if tier == "secondary" and secondary_efforts is not None:
             compat["supportedReasoningEfforts"] = secondary_efforts
+        limits = {"max_output_tokens": None if missing_output else 8192}
+        if images_per_request is not None:
+            limits["images_per_request"] = images_per_request
+        if raw_images_per_request is not _UNSET:
+            limits["images_per_request"] = raw_images_per_request
+        if raw_video_per_request is not _UNSET:
+            limits["video_per_request"] = raw_video_per_request
         rows.append({
             "object": "model_capabilities",
             "id": tier,
@@ -438,7 +596,7 @@ def _catalog(
             "modalities": modalities,
             "thinking": {"supported": reasoning},
             "compat": compat,
-            "limits": {"max_output_tokens": None if missing_output else 8192},
+            "limits": limits,
         })
     return (
         {
@@ -809,9 +967,23 @@ def test_native_catalog_batch_commits_pi_and_openclaw_installations_once(tmp_pat
     assert openclaw["models"]["providers"]["anvil"]["models"][0]["id"] == "llm.primary"
 
 
-def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch):
+@pytest.mark.parametrize("snapshot", [False, True])
+def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypatch, snapshot):
     options, targets, bindings, fence = _native_three_client_batch(
         tmp_path, monkeypatch, include_hermes=True)
+    options['hermes_snapshot'] = snapshot
+    options['hermes_run'].snapshot = snapshot
+    url_secret = 'https://user:synthetic-url-secret@example.test'
+    credentials = {'Cookie': 'synthetic-cookie-never-output', 'X-License': 'synthetic-license-never-output'}
+    for target in targets[3:]:
+        path = Path(target.hermes_config)
+        document = yaml.safe_load(path.read_bytes())
+        document['custom_providers'][-1]['extra_headers'] = credentials.copy()
+        document['providers'][url_secret] = {'default_model': 'cloud-model'}
+        if target.hermes_profile == 'default':
+            document['custom_providers'][-1]['model'] = url_secret
+        # Catalog writes preserve values; YAML presentation may normalize.
+        path.write_bytes(yaml.safe_dump(document, sort_keys=False).replace('\n', '\r\n').encode())
     for wrong in (replace(targets[3], hermes_profile="all"),
                   replace(targets[3], hermes_config=targets[4].hermes_config),
                   replace(targets[3], hermes_bin="hermes")):
@@ -822,6 +994,7 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
             *targets[:4], replace(targets[4], state_path=targets[3].state_path))})
     before = {target.hermes_profile: Path(target.hermes_config).read_bytes()
               for target in targets[3:]}
+    assert all(b'\r\n' in raw for raw in before.values())
     Path(targets[3].hermes_config).write_bytes(b"model: {}\nmodel: {}\n")
     with pytest.raises(ClientCatalogError, match="duplicate keys"):
         sync_client_catalog_batch(**options)
@@ -838,9 +1011,19 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
         f"target-{index}" for index in range(1, 6)]
     applied = sync_client_catalog_batch(**options, dry_run=False)
     assert [row["target_id"] for row in applied] == [f"target-{index}" for index in range(1, 6)]
+    assert url_secret not in json.dumps(applied) and url_secret not in json.dumps(fence.journal())
+    assert url_secret not in repr(options['hermes_run'].arguments)
+    if snapshot:
+        reads = [argv[3:] for argv in options['hermes_run'].arguments if argv[3:5] == ['config', 'get']]
+        assert reads and all(command == ['config', 'get', '--catalog-snapshot'] for command in reads)
+    assert "synthetic-secret-never-argv" not in json.dumps(applied)
+    assert "synthetic-secret-never-argv" not in json.dumps(fence.journal())
+    assert all(secret not in json.dumps(applied) and secret not in json.dumps(fence.journal())
+               for secret in credentials.values())
     assert options["hermes_run"].sets == []
     assert all("synthetic-secret-never-argv" not in repr(argv)
                for argv in options["hermes_run"].arguments)
+    assert all(secret not in repr(options["hermes_run"].arguments) for secret in credentials.values())
     assert all(argv[3:5] != ["config", "set"] for argv in options["hermes_run"].arguments)
     assert options["hermes_run"].homes
     assert all(home is not None and Path(home).name.startswith("anvil-hermes-render-")
@@ -848,8 +1031,93 @@ def test_native_catalog_batch_binds_distinct_hermes_profiles(tmp_path, monkeypat
     assert Path(targets[3].hermes_config).read_bytes() != before["default"]
     assert Path(targets[4].hermes_config).read_bytes() != before["anvil-primary"]
     assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())["custom_providers"][-1]["api_key"] == "synthetic-secret-never-argv"
+    assert all(yaml.safe_load(Path(target.hermes_config).read_bytes())['custom_providers'][-1]['extra_headers'] == credentials
+               for target in targets[3:])
+    assert all(url_secret in yaml.safe_load(Path(target.hermes_config).read_bytes())['providers']
+               for target in targets[3:])
+    assert yaml.safe_load(Path(targets[3].hermes_config).read_bytes())['custom_providers'][-1]['model'] == url_secret
     assert all(row["result"]["changed"] == [] for row in sync_client_catalog_batch(**options))
     assert set(fence.journal()["effects"]) == set(bindings)
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_snapshot_inspection_overlaps_targets_and_joins_before_unlock(tmp_path, monkeypatch, failure):
+    from anvil_serving.propagation_fencing import _HeldFiles
+
+    options, targets, bindings, fence = _native_three_client_batch(
+        tmp_path, monkeypatch, include_hermes=True)
+    options.update(hermes_snapshot=True, hermes_run_thread_safe=True, read_only="inspect")
+    options["hermes_run"].snapshot = True
+    before = {path: path.read_bytes() if path.exists() else None for _, path in bindings.values()}
+    first_wave, hermes_wave = threading.Barrier(3, timeout=5), threading.Barrier(2, timeout=5)
+    lock = threading.Lock()
+    active = peak = io_active = 0
+    completed = []
+    original, original_read = client_catalog_sync._sync_clients, _HeldFiles.read
+
+    def read(files, path, **kwargs):
+        nonlocal io_active
+        with lock:
+            io_active += 1
+            assert io_active == 1, "held-directory I/O must remain serialized"
+        try:
+            return original_read(files, path, **kwargs)
+        finally:
+            with lock:
+                io_active -= 1
+
+    def reconcile(**kwargs):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        try:
+            (hermes_wave if kwargs["clients"] == "hermes" else first_wave).wait()
+            if failure and kwargs["clients"] == "hermes" and kwargs["hermes_profiles"] == "default":
+                raise ClientCatalogError("synthetic inspection refusal")
+            return original(**kwargs)
+        finally:
+            with lock:
+                completed.append(kwargs["state_path"])
+                active -= 1
+
+    monkeypatch.setattr(_HeldFiles, "read", read)
+    monkeypatch.setattr(client_catalog_sync, "_sync_clients", reconcile)
+    if failure:
+        with pytest.raises(ClientCatalogError, match="synthetic inspection refusal"):
+            sync_client_catalog_batch(**options)
+    else:
+        results = sync_client_catalog_batch(**options)
+        assert [row["target_id"] for row in results] == [target.target_id for target in targets]
+        assert "synthetic-secret-never-argv" not in json.dumps(results)
+    assert peak == 3 and active == io_active == 0
+    assert sorted(completed) == sorted(target.state_path for target in targets)
+    assert before == {path: path.read_bytes() if path.exists() else None for _, path in bindings.values()}
+    assert all(not Path(home).exists() for home in options["hermes_run"].homes)
+    assert fence.journal() is None
+
+
+@pytest.mark.parametrize("mode", ["legacy", "opener", "runner", "preview", "apply"])
+def test_catalog_compatibility_and_mutation_paths_stay_on_caller_thread(tmp_path, monkeypatch, mode):
+    options, targets, _, _ = _native_three_client_batch(tmp_path, monkeypatch, include_hermes=True)
+    options["hermes_snapshot"] = mode != "legacy"
+    options["hermes_run_thread_safe"] = mode != "runner"
+    options["hermes_run"].snapshot = mode != "legacy"
+    if mode in {"legacy", "opener", "runner"}:
+        options["read_only"] = "inspect"
+    if mode == "opener":
+        options["opener"] = object()
+    if mode == "apply":
+        options["dry_run"] = False
+    caller, original = threading.current_thread(), client_catalog_sync._sync_clients
+
+    def reconcile(**kwargs):
+        assert threading.current_thread() is caller
+        return original(**kwargs)
+
+    monkeypatch.setattr(client_catalog_sync, "_sync_clients", reconcile)
+    assert [row["target_id"] for row in sync_client_catalog_batch(**options)] == [
+        target.target_id for target in targets]
 
 
 def test_native_hermes_rejects_aliases_and_redacts_parser_errors(tmp_path, monkeypatch):
@@ -1348,6 +1616,22 @@ def test_openclaw_only_accepts_current_safeguard_schema_without_pi(tmp_path):
     assert rendered["agents"]["defaults"]["compaction"] == payload["agents"]["defaults"]["compaction"]
 
 
+def test_openclaw_current_compaction_requires_positive_recent_budget(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    payload = json.loads(openclaw_path.read_text())
+    payload["agents"]["defaults"]["compaction"] = {
+        "mode": "safeguard",
+        "keepRecentTokens": 0,
+    }
+    openclaw_path.write_text(json.dumps(payload), encoding="utf-8")
+    before = openclaw_path.read_bytes()
+
+    with pytest.raises(ClientCatalogError, match="current compaction keepRecentTokens"):
+        _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))
+
+    assert openclaw_path.read_bytes() == before
+
+
 def test_pi_only_does_not_require_or_restart_openclaw(tmp_path):
     openclaw_path, _, _ = _write_inputs(tmp_path)
     openclaw_path.unlink()
@@ -1395,6 +1679,116 @@ def test_pi_only_seeds_missing_anvil_provider_from_router_contract(tmp_path):
     by_id = {row["id"]: row for row in provider["models"]}
     assert by_id["llm.primary"]["contextWindow"] == 262_144
     assert by_id["llm.primary"]["maxTokens"] == 8192
+
+
+def test_openclaw_rows_do_not_receive_pi_input_limits(tmp_path):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True,
+        dry_run=False,
+    )
+    openclaw = json.loads(openclaw_path.read_text())
+    for row in openclaw["models"]["providers"]["anvil"]["models"]:
+        assert "inputLimits" not in row
+    pi_models = json.loads(pi_models_path.read_text())
+    pi_rows = pi_models["providers"]["anvil"]["models"]
+    assert all(row["inputLimits"] == {"images": {"maxPerRequest": 8}} for row in pi_rows)
+
+
+def test_pi_sync_writes_declared_image_limit_into_input_limits(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in rendered["providers"]["anvil"]["models"]}
+    assert by_id["llm.primary"]["inputLimits"] == {"images": {"maxPerRequest": 8}}
+    assert by_id["llm.secondary"]["inputLimits"] == {"images": {"maxPerRequest": 8}}
+
+    # A second sync without the declaration removes the managed value.
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in rendered["providers"]["anvil"]["models"]}
+    assert "inputLimits" not in by_id["llm.primary"]
+    assert "inputLimits" not in by_id["llm.secondary"]
+
+
+def test_pi_sync_preserves_user_input_limits_around_managed_image_limit(tmp_path):
+    _, pi_models_path, _ = _write_inputs(tmp_path)
+    pi_models = json.loads(pi_models_path.read_text())
+    for row in pi_models["providers"]["anvil"]["models"]:
+        if row["id"] == "llm.primary":
+            row["inputLimits"] = {
+                "images": {"resize": {"maxWidth": 1568, "maxHeight": 1568}},
+                "maxRequestBytes": 3_000_000,
+            }
+    pi_models_path.write_text(json.dumps(pi_models), encoding="utf-8")
+
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog(images_per_request=4)),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    primary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["inputLimits"] == {
+        "images": {
+            "resize": {"maxWidth": 1568, "maxHeight": 1568},
+            "maxPerRequest": 4,
+        },
+        "maxRequestBytes": 3_000_000,
+    }
+
+    # Removing the declaration drops only the managed key, preserving the rest.
+    _run(
+        tmp_path,
+        clients="pi",
+        opener=_Opener(*_catalog()),
+        confirm=True,
+        dry_run=False,
+    )
+    rendered = json.loads(pi_models_path.read_text())
+    primary = next(
+        row for row in rendered["providers"]["anvil"]["models"]
+        if row["id"] == "llm.primary"
+    )
+    assert primary["inputLimits"] == {
+        "images": {"resize": {"maxWidth": 1568, "maxHeight": 1568}},
+        "maxRequestBytes": 3_000_000,
+    }
+
+
+def test_openclaw_catalog_replaces_stale_template_reasoning_format(tmp_path):
+    openclaw_path, _, _ = _write_inputs(tmp_path)
+    before = json.loads(openclaw_path.read_text())
+    before["models"]["providers"]["anvil"]["models"] = [{
+        "id": "llm.primary", "compat": {
+            "thinkingFormat": "qwen-chat-template", "supportsUsageInStreaming": True,
+        },
+    }]
+    openclaw_path.write_text(json.dumps(before))
+    _run(tmp_path, opener=_Opener(*_catalog()), confirm=True, dry_run=False)
+    rows = json.loads(openclaw_path.read_text())["models"]["providers"]["anvil"]["models"]
+    primary = next(row for row in rows if row["id"] == "llm.primary")
+    assert primary["compat"] == {"thinkingFormat": "openai", "supportsUsageInStreaming": True}
+    assert _run(tmp_path, opener=_Opener(*_catalog()))["changed"] == []
 
 
 def test_reasoning_effort_metadata_renders_openclaw_and_pi_maps(tmp_path):
@@ -1960,6 +2354,7 @@ mcp_servers:
         - media_workflow_list
         - media_workflow_show
         - media_workflow_validate
+        - media_workflow_prepare
         - media_workflow_run
         - media_job_status
         - media_job_cancel
@@ -1987,6 +2382,7 @@ mcp_servers:
                 "media_workflow_list",
                 "media_workflow_show",
                 "media_workflow_validate",
+                "media_workflow_prepare",
                 "media_workflow_run",
                 "media_job_status",
                 "media_job_cancel",
@@ -2185,6 +2581,83 @@ def test_pi_still_requires_explicit_compaction_reserve(tmp_path):
         _run(tmp_path, clients="pi", opener=_Opener(*_catalog()))
 
 
+def test_invalid_media_limits_are_rejected_before_write(tmp_path):
+    """Fail-closed: bool/float/negative/string media limits must never reach clients."""
+    paths = _write_inputs(tmp_path)
+    before = [path.read_bytes() for path in paths]
+    bad_values = [True, 8.0, -1, "eight"]
+    for value in bad_values:
+        with pytest.raises(ClientCatalogError, match="images_per_request"):
+            _run(
+                tmp_path,
+                opener=_Opener(*_catalog(raw_images_per_request=value)),
+                confirm=True,
+                dry_run=False,
+            )
+    for value in (True, 2.5, -3, "1"):
+        with pytest.raises(ClientCatalogError, match="video_per_request"):
+            _run(
+                tmp_path,
+                opener=_Opener(*_catalog(raw_video_per_request=value)),
+                confirm=True,
+                dry_run=False,
+            )
+    assert before == [path.read_bytes() for path in paths]
+
+
+@pytest.mark.parametrize("restored_limit", [None, 8])
+@pytest.mark.parametrize("preserve_siblings", [False, True])
+def test_pi_zero_image_limit_is_text_only_and_recovers(
+    tmp_path, restored_limit, preserve_siblings,
+):
+    openclaw_path, pi_models_path, _ = _write_inputs(tmp_path)
+    openclaw_before = openclaw_path.read_bytes()
+    # Seed all managed aliases before adding user-owned sibling fields.
+    _run(
+        tmp_path, clients="pi",
+        opener=_Opener(*_catalog(images_per_request=8)),
+        confirm=True, dry_run=False,
+    )
+    payload = json.loads(pi_models_path.read_text())
+    siblings = {"images": {"maxPerMessage": 2}, "maxRequestBytes": 3_000_000}
+    for row in payload["providers"]["anvil"]["models"]:
+        row["inputLimits"] = json.loads(json.dumps(siblings)) if preserve_siblings else {}
+        row["inputLimits"].setdefault("images", {})["maxPerRequest"] = 4
+    pi_models_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    for _ in range(2):
+        _run(
+            tmp_path, clients="pi",
+            opener=_Opener(*_catalog(images_per_request=0)),
+            confirm=True, dry_run=False,
+        )
+        payload = json.loads(pi_models_path.read_text())
+        for row in payload["providers"]["anvil"]["models"]:
+            assert row["input"] == ["text"]
+            # Pi's schema requires maxPerRequest >= 1; never serialize zero.
+            if preserve_siblings:
+                assert row["inputLimits"] == siblings
+            else:
+                assert "inputLimits" not in row
+    assert openclaw_path.read_bytes() == openclaw_before
+
+    _run(
+        tmp_path, clients="pi",
+        opener=_Opener(*_catalog(images_per_request=restored_limit)),
+        confirm=True, dry_run=False,
+    )
+    payload = json.loads(pi_models_path.read_text())
+    by_id = {row["id"]: row for row in payload["providers"]["anvil"]["models"]}
+    # The fixture's primary is text-only; only secondary advertises images.
+    assert by_id["llm.primary"]["input"] == ["text"]
+    assert "image" in by_id["llm.secondary"]["input"]
+    images = by_id["llm.secondary"].get("inputLimits", {}).get("images", {})
+    if restored_limit is None:
+        assert "maxPerRequest" not in images
+    else:
+        assert images["maxPerRequest"] == restored_limit
+
+
 def test_missing_output_or_incompatible_compaction_fails_before_write(tmp_path):
     paths = _write_inputs(tmp_path)
     before = [path.read_bytes() for path in paths]
@@ -2248,7 +2721,7 @@ def test_promotion_binding_matches_and_preserves_idempotency(tmp_path):
     for apply in (True, False):
         status, capabilities = _catalog()
         opener = _Opener(status, capabilities)
-        opener.payloads.extend([status] * (2 if apply else 1))
+        opener.payloads.extend(([status, status, capabilities] if apply else [status]))
         result = sync_clients(
             base_url="https://router.example.ts.net/v1", clients="pi",
             expected_config_sha256=CONFIG_SHA, confirm=apply, dry_run=not apply,
@@ -2330,7 +2803,7 @@ def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing
     def restarted():
         reloads.append(True)
         # The router changes only after the client write/service-refresh sequence.
-        opener.payloads.append({"config_sha256": final_hash})
+        opener.payloads.extend([{"config_sha256": final_hash}, capabilities])
         return 0
 
     before = (tmp_path / "models.json").read_bytes()
@@ -2351,6 +2824,33 @@ def test_promotion_drift_after_reload_never_certifies_success(tmp_path, existing
         assert json.loads(state_path.read_text()) == prior
     else:
         assert not state_path.exists()
+
+
+def test_hot_route_change_after_reload_never_certifies_config_hash_only_success(tmp_path):
+    _write_inputs(tmp_path)
+    status, capabilities = _catalog()
+    status.update(route_revision=4, effective_route_sha256="a" * 64)
+    capabilities.update(route_revision=4, effective_route_sha256="a" * 64)
+    opener = _Opener(status, capabilities)
+    opener.payloads.append(status)
+    changed_status = dict(status, route_revision=5, effective_route_sha256="b" * 64)
+    changed_capabilities = dict(capabilities, route_revision=5, effective_route_sha256="b" * 64)
+
+    def restarted():
+        opener.payloads.extend([changed_status, changed_capabilities])
+        return 0
+
+    with pytest.raises(ClientCatalogError, match="during client reconciliation"):
+        sync_clients(
+            base_url="https://router.example.ts.net/v1", clients="openclaw,pi",
+            expected_config_sha256=CONFIG_SHA, confirm=True, dry_run=False,
+            openclaw_config=str(tmp_path / "openclaw.json"),
+            pi_models=str(tmp_path / "models.json"), pi_settings=str(tmp_path / "settings.json"),
+            state_path=str(tmp_path / "state.json"), backup_root=str(tmp_path / "backups"),
+            restart_openclaw_on_change=True, restart=restarted,
+            refresh_openclaw_service=lambda: 0,
+            environ={"ANVIL_ROUTER_TOKEN": "test-token"}, opener=opener,
+        )
 
 
 def test_fenced_catalog_rejects_router_snapshot_that_differs_from_contract(tmp_path):

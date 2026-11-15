@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "GLM-5.3-Flash natural-output timing",
+  "subtitle": "Three repeat-level p50 observations per cell. Shared routed traffic; variable natural-output length. C1/8K r2 completed 19/20 and is conditional on successful requests; its failure is retained separately.",
+  "output": "graphs/timing-matrix.svg",
+  "data_output": "graphs/timing-graph-data.json",
+  "metric_semantics": {
+    "scope": "Natural-output observation; not controlled decode or stable tail latency.",
+    "failure": "C1/8K r2 has one retained no-visible-content failure; its p50 metrics cover 19 completed requests and its aggregate throughput is ineligible."
+  },
+  "charts": [
+    {"title": "8K end-to-end latency", "metric": "metrics.e2e_p50_ms", "x_label": "repeat", "y_label": "p50 milliseconds", "series": [
+      {"label": "C1", "points": [{"x":"r1","artifact":"native/natural-ctx8192-c1-r1.json"},{"x":"r2","artifact":"native/natural-ctx8192-c1-r2.json"},{"x":"r3","artifact":"native/natural-ctx8192-c1-r3.json"}]},
+      {"label": "C4", "points": [{"x":"r1","artifact":"native/natural-ctx8192-c4-r1.json"},{"x":"r2","artifact":"native/natural-ctx8192-c4-r2.json"},{"x":"r3","artifact":"native/natural-ctx8192-c4-r3.json"}]}
+    ]},
+    {"title": "32K end-to-end latency", "metric": "metrics.e2e_p50_ms", "x_label": "repeat", "y_label": "p50 milliseconds", "series": [
+      {"label": "C1", "points": [{"x":"r1","artifact":"native/natural-ctx32768-c1-r1.json"},{"x":"r2","artifact":"native/natural-ctx32768-c1-r2.json"},{"x":"r3","artifact":"native/natural-ctx32768-c1-r3.json"}]},
+      {"label": "C4", "points": [{"x":"r1","artifact":"native/natural-ctx32768-c4-r1.json"},{"x":"r2","artifact":"native/natural-ctx32768-c4-r2.json"},{"x":"r3","artifact":"native/natural-ctx32768-c4-r3.json"}]}
+    ]},
+    {"title": "8K time to first visible token", "metric": "metrics.ttft_p50_ms", "x_label": "repeat", "y_label": "p50 milliseconds", "series": [
+      {"label": "C1", "points": [{"x":"r1","artifact":"native/natural-ctx8192-c1-r1.json"},{"x":"r2","artifact":"native/natural-ctx8192-c1-r2.json"},{"x":"r3","artifact":"native/natural-ctx8192-c1-r3.json"}]},
+      {"label": "C4", "points": [{"x":"r1","artifact":"native/natural-ctx8192-c4-r1.json"},{"x":"r2","artifact":"native/natural-ctx8192-c4-r2.json"},{"x":"r3","artifact":"native/natural-ctx8192-c4-r3.json"}]}
+    ]},
+    {"title": "32K time to first visible token", "metric": "metrics.ttft_p50_ms", "x_label": "repeat", "y_label": "p50 milliseconds", "series": [
+      {"label": "C1", "points": [{"x":"r1","artifact":"native/natural-ctx32768-c1-r1.json"},{"x":"r2","artifact":"native/natural-ctx32768-c1-r2.json"},{"x":"r3","artifact":"native/natural-ctx32768-c1-r3.json"}]},
+      {"label": "C4", "points": [{"x":"r1","artifact":"native/natural-ctx32768-c4-r1.json"},{"x":"r2","artifact":"native/natural-ctx32768-c4-r2.json"},{"x":"r3","artifact":"native/natural-ctx32768-c4-r3.json"}]}
+    ]}
+  ]
+}

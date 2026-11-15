@@ -14,7 +14,7 @@ class ServiceError(ValueError):
 
 READ_ACTIONS = ("status", "discover", "capabilities", "logs")
 MUTATING_ACTIONS = ("adopt", "install", "up", "down", "restart", "enable", "disable")
-MODEL_ENGINES = frozenset({"mlx-lm", "mlx-vlm", "vllm", "sglang", "llama-cpp",
+MODEL_ENGINES = frozenset({"mlx-lm", "mlx-vlm", "mlx-audio", "vllm", "sglang", "llama-cpp",
                            "ollama", "lmstudio", "parakeet", "kokoro", "generic"})
 ENGINES = MODEL_ENGINES | {"none"}
 IDENTIFIER = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
@@ -35,9 +35,9 @@ def validate_platform(binding: dict, host_os: str) -> None:
         if host_os != "macos":
             raise ServiceError("unsupported_platform", "launchd requires the owning macOS host")
         legacy = binding.get("support") == "legacy" and engine in {"parakeet", "kokoro"}
-        if engine not in {"mlx-lm", "mlx-vlm", "none"} and not legacy:
+        if engine not in {"mlx-lm", "mlx-vlm", "mlx-audio", "none"} and not legacy:
             raise ServiceError("unsupported_engine", "native model serving requires MLX or an adopted legacy binding")
-    elif engine in {"mlx-lm", "mlx-vlm"}:
+    elif engine in {"mlx-lm", "mlx-vlm", "mlx-audio"}:
         raise ServiceError("unsupported_engine", "MLX requires native macOS execution")
 
 
@@ -47,7 +47,7 @@ def capabilities(host_os: str) -> dict:
         "host_os": host_os,
         "managers": ["launchd", "docker"] if host_os == "macos" else ["docker"]
         if host_os in {"windows", "linux"} else [],
-        "native_engines": ["mlx-lm", "mlx-vlm"] if host_os == "macos" else [],
+        "native_engines": ["mlx-lm", "mlx-vlm", "mlx-audio"] if host_os == "macos" else [],
         "actions": list(READ_ACTIONS + MUTATING_ACTIONS),
         "cloud": "not_implemented",
         "neocloud": "not_implemented",

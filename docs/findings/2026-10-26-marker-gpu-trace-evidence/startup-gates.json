@@ -1,0 +1,28 @@
+{
+  "marker": {
+    "schema": "marker-trace/v1",
+    "kind": "gpu_selftest",
+    "passed": true,
+    "steps": 2,
+    "original_logits_and_cache_equal": true,
+    "peak_tensor_bytes": 7447552,
+    "limit": "Synthetic selected tokens; does not test stochastic rejection sampling."
+  },
+  "sampling": {
+    "diagnostic_rows": 1,
+    "failed_native_batches": 0,
+    "failed_rows": 0,
+    "forced_cases": 8,
+    "ordinary_cases": 8,
+    "ordinary_rows": 272,
+    "passed": true,
+    "peak_tensor_bytes": 519289856,
+    "policy": "upstream-count-v1"
+  },
+  "projection": {
+    "native_source_sha256": "3eb30f6e358c875fa7014335ac1d968808189b6d3f5d319994c43d33d5df21c4",
+    "transformations": [
+      "Removed one private source filename only; all gate measurements are unchanged."
+    ]
+  }
+}

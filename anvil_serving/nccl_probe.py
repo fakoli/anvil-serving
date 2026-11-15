@@ -31,11 +31,17 @@ MARKER = 'ANVIL_NCCL_RESULT '
 MAX_LOG_CHARS = 256 * 1024
 
 
-def _run(argv, *, timeout=15, _runner=subprocess.run):
+def local_docker_env():
+    """Return Docker's fixed native-owner environment without remote context state."""
     env = os.environ.copy()
     # Pin the local system daemon even when the caller selected a remote context.
     env.pop('DOCKER_CONTEXT', None)
     env['DOCKER_HOST'] = 'unix:///var/run/docker.sock'
+    return env
+
+
+def _run(argv, *, timeout=15, _runner=subprocess.run):
+    env = local_docker_env()
     return _runner(argv, capture_output=True, text=True, timeout=timeout, env=env)
 
 
@@ -95,7 +101,7 @@ def _iommu_domains(devices):
     return result
 
 
-def _cleanup(name, run_id, *, _runner=subprocess.run):
+def _cleanup(name, run_id, *, label=LABEL, _runner=subprocess.run):
     """Remove only a container carrying this invocation's unpredictable label."""
     info = _run(DOCKER + ['inspect', '--format', '{{json .Config.Labels}}', name],
                 _runner=_runner)
@@ -104,7 +110,7 @@ def _cleanup(name, run_id, *, _runner=subprocess.run):
             return {'ok': True, 'state': 'absent'}
         return {'ok': False, 'error': info.stderr[:2000]}
     labels = json.loads(info.stdout)
-    if not isinstance(labels, dict) or labels.get(LABEL) != run_id:
+    if not isinstance(labels, dict) or labels.get(label) != run_id:
         return {'ok': False, 'error': 'cleanup refused: container ownership label differs'}
     result = _run(DOCKER + ['rm', '--force', name], _runner=_runner)
     if result.returncode:

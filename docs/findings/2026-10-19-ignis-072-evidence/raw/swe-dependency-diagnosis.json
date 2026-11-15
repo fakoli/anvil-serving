@@ -1,0 +1,54 @@
+{
+  "adapter_contract": {
+    "httpx": "0.28.1",
+    "litellm": "1.102.0",
+    "openai": "2.54.0",
+    "tenacity": "9.1.4"
+  },
+  "bounded_remediation": "Pin the adapter contract in the existing one-shot pip install and include it in the environment identity; regenerate assets before resubmission. Do not relax the adapter contract based only on this failure.",
+  "campaign": "ignis-072-qualification-20261019",
+  "environments": {
+    "failed_job": {
+      "cache_environment_id": "656cef6c79321ff3244984321b336422f2d5913dadd685f3e00241a4ed181190",
+      "difference_from_contract": {
+        "litellm": {
+          "expected": "1.102.0",
+          "observed": "1.102.1"
+        }
+      },
+      "observed_client_versions": {
+        "httpx": "0.28.1",
+        "litellm": "1.102.1",
+        "openai": "2.54.0",
+        "tenacity": "9.1.4"
+      },
+      "receipt_sha256": "23999d9dbc4d4b6cc76c138b394601513151c3e01090c398930ccd2339f43dc0"
+    },
+    "prior_compatible": {
+      "cache_environment_id": "0bc9301c810a0e8f810569f10c082a8a03cc81a7b87fbc0cdd868ce30c27ff93",
+      "observed_client_versions": {
+        "httpx": "0.28.1",
+        "litellm": "1.102.0",
+        "openai": "2.54.0",
+        "tenacity": "9.1.4"
+      },
+      "receipt_sha256": "0e7abe0d93aa407d3d72a0230cd809929b6d8a9363b72a479b07e691bec1faca"
+    }
+  },
+  "live_request_made": false,
+  "root_cause": {
+    "component": "anvil_serving.benchmarking.harnesses._prepare_swe_python_environment",
+    "finding": "It installed source adapters without exact client pins. The mini-swe source declares litellm >=1.75.5 and unpinned tenacity/openai, so a new environment could resolve 1.102.1 while the adapter requires 1.102.0. The cache identity omitted the adapter dependency contract; job-side inventory validation checked receipt consistency but not adapter compatibility."
+  },
+  "run_id": "ignis-072-swe5-20261019",
+  "schema": "anvil-serving.ignis-qualification.swe-dependency-diagnosis/v1",
+  "scope": "read-only diagnosis after stage failure; no model or endpoint request was made",
+  "stage_evidence": {
+    "observed": {
+      "attempted_instances": 0,
+      "failure": "swe_agent_adapter.verify_dependencies raised RuntimeError: unsupported pinned client dependency versions"
+    },
+    "path": "$RESEARCH_EVIDENCE",
+    "sha256": "14d17f7d96ee6d45ed36d9a0a0f84fce12a612fe3f27708ec7a4d7eda2a0d07e"
+  }
+}

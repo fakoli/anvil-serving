@@ -1,0 +1,448 @@
+{
+  "container_limits": {
+    "mem_limit": 8589934592,
+    "memswap_limit": 8589934592,
+    "nano_cpus": 4000000000,
+    "network_mode": "none",
+    "pids_limit": 512
+  },
+  "created_at": "2026-10-06T10:16:57.787218Z",
+  "dataset": "princeton-nlp/SWE-bench_Verified",
+  "dataset_snapshot": {
+    "files": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "root": "/srv/anvil-serving/operator-home/benchmark-harness-cache/swe-bench-verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data"
+  },
+  "endpoint": {
+    "base_url": "http://127.0.0.1:39133/v1",
+    "model": "glm53-abliterated-exl3-v84-fp8-tp2-dcp1-c4-327k-r1"
+  },
+  "failure": null,
+  "harnesses": {
+    "agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "grader_containment": {
+      "adapter_sha256": "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+      "receipt": "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/official-grader/containment.json",
+      "source_hashes": {
+        "swebench/harness/docker_build.py": "5278842b60a7d38256f95f93c915dc84de2b8b4f286e9baae1b19280f768e484",
+        "swebench/harness/run_evaluation.py": "6959f0b4e4eaf979771f529b88e3e9df1daa7fe86bc4291feec2e7d320bf7f2e"
+      }
+    },
+    "python_environment": {
+      "architecture": "x86_64",
+      "platform": "linux",
+      "python": {
+        "implementation": "CPython",
+        "version": "3.14.4"
+      },
+      "resolved_packages_sha256": "809336a2a74041fa07adad60eaca2208acd936f3728d2368d22f98657576a37a",
+      "schema": "anvil-serving.swe-python-environment/v1"
+    }
+  },
+  "image_observations": [],
+  "instances": [
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "prediction_sha256": "fd2d3e9ec537eb1b423d72fe926f3eb158a9c37298a2828633c3604100520b36",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-802d8c402e70af15",
+        "chatcmpl-81275c222d2ab320",
+        "chatcmpl-82017a4b1a6021c5",
+        "chatcmpl-8383955c266f8052",
+        "chatcmpl-838ded4bd0dabc8e",
+        "chatcmpl-872ce80e59e2a684",
+        "chatcmpl-87318becc941608a",
+        "chatcmpl-897cb8d640b9444f",
+        "chatcmpl-8ccff83d8a5c3130",
+        "chatcmpl-8ecff8de13d3c922",
+        "chatcmpl-8fc0c48da85a3cff",
+        "chatcmpl-912516967eeade4d",
+        "chatcmpl-91c993cde62f15aa",
+        "chatcmpl-9279ab336fe260ae",
+        "chatcmpl-956f6d234f3bef05",
+        "chatcmpl-97c283b62548814d",
+        "chatcmpl-97e279910cb1a74a",
+        "chatcmpl-987fbe8550469ac5",
+        "chatcmpl-9a0c6d862906249b",
+        "chatcmpl-9bb067bf6e38752d",
+        "chatcmpl-9e0d0d3f253c28e9",
+        "chatcmpl-9e1ddf70925d44d5",
+        "chatcmpl-9e3f2df35ed4faa8",
+        "chatcmpl-9fe8a2c3ad35a6a2",
+        "chatcmpl-a154171ffaaef3fa",
+        "chatcmpl-a4a555a526b3b689",
+        "chatcmpl-a813177de2cddc31",
+        "chatcmpl-aad806259c40f0c6",
+        "chatcmpl-aaec3ee1b56e2da0",
+        "chatcmpl-ab33919adc6e3ea9",
+        "chatcmpl-ae3f5d4b923d65b9",
+        "chatcmpl-aea03e6768183cde",
+        "chatcmpl-b4c115b261c77ea1",
+        "chatcmpl-b855f1c247f5b634",
+        "chatcmpl-bbbdcf7930e7c723",
+        "chatcmpl-bc02f2a379c4792b",
+        "chatcmpl-be2bcaffa95243a0",
+        "chatcmpl-bf24d9383fa1379a"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output/sphinx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json",
+        "sha256": "2dc8c29b29fd01ecbbac11b160ee83509c49fec4ec85be6f2b0cfbb2df48f6d8"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "sympy__sympy-12096",
+      "prediction_sha256": "922485d6a4e623caab6395c0f0d006ec60a7e21bdb0f600042acdc8f36fd49f1",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-810d14f5bdbae113",
+        "chatcmpl-861230a2d1d2499c",
+        "chatcmpl-8d4d3b0a5a489489",
+        "chatcmpl-9fc2f300bfaa3918",
+        "chatcmpl-a32f4e8f8abed4fe",
+        "chatcmpl-ac008c49b66a4724",
+        "chatcmpl-ae6c28e231c48334",
+        "chatcmpl-b28f7d11fe56f34f",
+        "chatcmpl-b3d2881084566afb",
+        "chatcmpl-b56e51e769c9c45b",
+        "chatcmpl-b5f3fd3a347392a4"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output/sympy__sympy-12096/sympy__sympy-12096.traj.json",
+        "sha256": "9e382d16c29c9db61689e98f592d096807c9ec5b793e5955e7bbc9278231bd9d"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "django__django-13512",
+      "prediction_sha256": "56293f34cabdd84bb662d630186316539dfef307584d4a82beca3dc638b7321c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-835acedf5e0fcd3b",
+        "chatcmpl-8a9b819173914865",
+        "chatcmpl-8c96b2eafc719b94",
+        "chatcmpl-93fdd338c9390e87",
+        "chatcmpl-9429d95259ea313b",
+        "chatcmpl-96df9b3508725fad",
+        "chatcmpl-992108fb5306e031",
+        "chatcmpl-9d25aa8a93983031",
+        "chatcmpl-a21ae219b64cdbe5",
+        "chatcmpl-a63c355ca45cab7a",
+        "chatcmpl-ab9704228fa62c80",
+        "chatcmpl-b2585262706ecdbf",
+        "chatcmpl-b85598ffd073683c",
+        "chatcmpl-bc363b323dbf7922",
+        "chatcmpl-bf1d292abd58c0e2"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output/django__django-13512/django__django-13512.traj.json",
+        "sha256": "a0854c4f9ff3c235e5aaf8ff16e32041e2f827ca3ef4bb291cdd0242994054e5"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": true,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pydata__xarray-4356",
+      "prediction_sha256": "062cb64d15c99d4a60840a0dfd556aba2c307e3742346599bf077199453bff18",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-82a7f648f9e00a30",
+        "chatcmpl-85efd924c0a2171b",
+        "chatcmpl-8794082805d64874",
+        "chatcmpl-88d4c5c67ad4ce57",
+        "chatcmpl-895ee8c5b3e03148",
+        "chatcmpl-8c65ba13e7072670",
+        "chatcmpl-8fa3cab125f19444",
+        "chatcmpl-966a2d5bd04bbc74",
+        "chatcmpl-9971294d03d3957c",
+        "chatcmpl-9cc8b58e935dc8d6",
+        "chatcmpl-9d65d749a803ce1d",
+        "chatcmpl-9dccf0c42600919b",
+        "chatcmpl-9f4f053276465915",
+        "chatcmpl-9f91fb4ac0fba8f5",
+        "chatcmpl-a01e1fa8ce064227",
+        "chatcmpl-a0c4fd6d05293010",
+        "chatcmpl-a3c644b8d26fd45d",
+        "chatcmpl-a6252fdd3eb0005a",
+        "chatcmpl-a64d9453184e00ce",
+        "chatcmpl-a73275dda771f4c7",
+        "chatcmpl-a7dad0def9b727c1",
+        "chatcmpl-abe13d0123abfd92",
+        "chatcmpl-ae395a9c0d19713a",
+        "chatcmpl-aee992ebfafbbb2f",
+        "chatcmpl-b37f884cd129db2f",
+        "chatcmpl-b4ffb8ee8ee1e45d",
+        "chatcmpl-bf9fe09d6a678873"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output/pydata__xarray-4356/pydata__xarray-4356.traj.json",
+        "sha256": "1e004499a23433e918a278e77af9d3839b05df00bfa4a584b955845e42865600"
+      }
+    },
+    {
+      "duration_s": null,
+      "exit_status": "Submitted",
+      "failure_class": null,
+      "grader": {
+        "completed": true,
+        "name": "swe-bench",
+        "report_sha256": "1c9ba6c446640cf2087cba5c90463f0bc304cec594567c0990df4d1684cc3451",
+        "resolved": false,
+        "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+      },
+      "instance_id": "pylint-dev__pylint-8898",
+      "prediction_sha256": "8ef10a5b6a4722c8dee811a895e5423e22bec7f6fc965afc5d6da5f9b803c89c",
+      "prompt_identity": {
+        "dataset": "princeton-nlp/SWE-bench_Verified",
+        "split": "test"
+      },
+      "request_ids": [
+        "chatcmpl-8005a0bafa419a97",
+        "chatcmpl-843569e431e4eea7",
+        "chatcmpl-85b3a160f8a1c2eb",
+        "chatcmpl-8817f918ca3414f8",
+        "chatcmpl-88cedbd3e8d9881d",
+        "chatcmpl-894ef7e3be1cded2",
+        "chatcmpl-8af8256955900ae5",
+        "chatcmpl-8ed25f710a27d2c8",
+        "chatcmpl-8f3cf8ac0d8ebfbd",
+        "chatcmpl-901440899cbd45a8",
+        "chatcmpl-904b02af0e8bbd30",
+        "chatcmpl-92695dd73c8d0adf",
+        "chatcmpl-92aa55787cf51fd3",
+        "chatcmpl-9515f588ad953b50",
+        "chatcmpl-963d37b1b000866b",
+        "chatcmpl-9968422d45f29bf8",
+        "chatcmpl-9cbbd40250fd3c01",
+        "chatcmpl-9cc025018eb6138c",
+        "chatcmpl-9d1705b40f165ad2",
+        "chatcmpl-9e604e815d978245",
+        "chatcmpl-9e709281c1ed6138",
+        "chatcmpl-a26ab47b71949af7",
+        "chatcmpl-a33ddaeb9032d847",
+        "chatcmpl-a360f43be80a1cbf",
+        "chatcmpl-a409af0ae67acd36",
+        "chatcmpl-a70d7a4002c5875f",
+        "chatcmpl-a909a0d419a2611f",
+        "chatcmpl-ad8a523e7aef617e",
+        "chatcmpl-adada791c94b8f94",
+        "chatcmpl-ae834c5f1e9186ca",
+        "chatcmpl-aedd6d0d34034488",
+        "chatcmpl-b5bed88449938457",
+        "chatcmpl-ba4c45df1cf8adcd",
+        "chatcmpl-bb2909f1e11b30f8",
+        "chatcmpl-be0925ba065561ec"
+      ],
+      "tokens": {
+        "completion_tokens": null,
+        "prompt_tokens": null,
+        "total_tokens": null
+      },
+      "trajectory": {
+        "path": "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output/pylint-dev__pylint-8898/pylint-dev__pylint-8898.traj.json",
+        "sha256": "dc09840e0fe7763e38e41096c35106e0784c69ff5470eaf72e9a66becb3f4aa3"
+      }
+    }
+  ],
+  "official_grader_complete": true,
+  "ownership_id": "mimo-qualification-20261006",
+  "paired_image_ids": null,
+  "plan_sha256": "65832aad4d45ae339b505707886f00ac22ffbf818e45f14b928ee831f7d7ac80",
+  "profile": "scout",
+  "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion."
+  },
+  "request_controls": {
+    "reasoning_effort": null,
+    "sampling": {
+      "temperature": {
+        "effective_request": 1.0,
+        "requested": 1.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "enabled"
+  },
+  "run_id": "mimoq-20261006-uncensored-r1-swe-a1",
+  "schema": "anvil-serving.swe-run/v1",
+  "selection": {
+    "instance_ids": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "kind": "explicit_instance_ids",
+    "sha256": "622934396fb97d950f803dfbb0791f6a398a5a6fe0fd94cc27b329f1a953cac4"
+  },
+  "split": "test",
+  "stages": [
+    {
+      "command": [
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/swe-python-environments/0bc9301c810a0e8f810569f10c082a8a03cc81a7b87fbc0cdd868ce30c27ff93/bin/python",
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/run/benchmarks/swebench.py",
+        "--output",
+        "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output",
+        "--model",
+        "openai/glm53-abliterated-exl3-v84-fp8-tp2-dcp1-c4-327k-r1",
+        "--subset",
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/swe-bench-verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data",
+        "--split",
+        "test",
+        "--filter",
+        "^(?:sphinx\\-doc__sphinx\\-9658|sympy__sympy\\-12096|django__django\\-13512|pydata__xarray\\-4356|pylint\\-dev__pylint\\-8898)$",
+        "--workers",
+        "1",
+        "--environment-class",
+        "docker",
+        "--config",
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/minisweagent/config/benchmarks/swebench.yaml",
+        "--config",
+        "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/anvil-swe-config.yaml"
+      ],
+      "duration_s": 752.90168,
+      "name": "agent",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "",
+      "stdout": "minisweagent: INFO: Results will be saved to                                    \n/srv/anvil-serving/operator-home/benchm\nark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mi\nni-output                                                                       \nLogging to '/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/mini-output/minisweagent.log'\nminisweagent: INFO: Loading dataset                                             \n/srv/anvil-serving/operator-home/benchm\nark-harness-cache/swe-bench-verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/da\nta, split test...                                                               \nminisweagent: INFO: Instance filter: 500 -> 5 instances                         \nminisweagent: INFO: Running on 5 instances...                                   \nminisweagent: INFO: Building agent config from specs:                           \n['/srv/anvil-serving/operator-home/benc\nhmark-harness-cache/mini-swe-agent/a83fcae82d2a08f0ee0c688f9d137b3566c097f8/src/\nminisweagent/config/benchmarks/swebench.yaml',                                  \n'/srv/anvil-serving/operator-home/bench\nmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/a\nnvil-swe-config.yaml']                                                          \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-092da926 -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512                                                                \ndocker.io/swebench/sweb.eval.x86_64.django_1776_django-13512:latest sleep 2h    \nminisweagent.environment: INFO: Started container minisweagent-092da926 with ID \n063c37671e73b8a0a684cbfd47dca733e3ac6de73fd577772e783e6672b1e7f1                \nminisweagent: INFO: Saved trajectory to                                         \n'/srv/anvil-serving/operator-home/bench\nmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/m\nini-output/django__django-13512/django__django-13512.traj.json'                 \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-82b87245 -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512                                                                \ndocker.io/swebench/sweb.eval.x86_64.pydata_1776_xarray-4356:latest sleep 2h     \nminisweagent.environment: INFO: Started container minisweagent-82b87245 with ID \ne3aff4b2265c17a116fb29b5712c19010113bb5d4b013f6874bade59d5beaa66                \nminisweagent: INFO: Saved trajectory to                                         \n'/srv/anvil-serving/operator-home/bench\nmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/m\nini-output/pydata__xarray-4356/pydata__xarray-4356.traj.json'                   \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-403207fb -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512                                                                \ndocker.io/swebench/sweb.eval.x86_64.pylint-dev_1776_pylint-8898:latest sleep 2h \nminisweagent.environment: INFO: Started container minisweagent-403207fb with ID \ne3840abf288fa4e7a6eafe7d41ca8de659a37c203e1b9faba5730d765dc4ccdc                \nminisweagent: INFO: Saved trajectory to                                         \n'/srv/anvil-serving/operator-home/bench\nmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/m\nini-output/pylint-dev__pylint-8898/pylint-dev__pylint-8898.traj.json'           \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-6d298ea4 -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512                                                                \ndocker.io/swebench/sweb.eval.x86_64.sphinx-doc_1776_sphinx-9658:latest sleep 2h \nminisweagent.environment: INFO: Started container minisweagent-6d298ea4 with ID \n0666023991f2f01d03f9040cac995383fc2f10b685833d72b82f4fa566d23336                \nminisweagent: INFO: Saved trajectory to                                         \n'/srv/anvil-serving/operator-home/bench\nmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/m\nini-output/sphinx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json'           \nminisweagent.environment: DEBUG: Starting container with command:               \n/usr/bin/docker run -d --name minisweagent-feb8b662 -w /testbed --platform      \nlinux/amd64 --network none --rm --memory 8g --memory-swap 8g --cpus 4           \n--pids-limit 512                                                                \ndocker.io/swebench/sweb.eval.x86_64.sympy_1776_sympy-12096:latest sleep 2h      \nminisweagent.environment: INFO: Started container minisweagent-feb8b662 with ID \n029984b1cee569163bf7eea312df4e362701bd1ff95ce85caa51f1e580360b86                \nminisweagent: INFO: Saved trajectory to                                         \n'/srv/anvil-serving/operator-home/bench\nmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/m\nini-output/sympy__sympy-12096/sympy__sympy-12096.traj.json'                     \n  Overall Progress ($0.00) \u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501 5/5 100% 0:12:31 eta: 0:00:00\n\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2533\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2513\n\u2503 Exit Status \u2503 Count \u2503 Most recent instances                                  \u2503\n\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2547\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2529\n\u2502 Submitted   \u2502     5 \u2502 sympy__sympy-12096, sphinx-doc__sphinx-9658,           \u2502\n\u2502             \u2502       \u2502 pylint-...                                             \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2534\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
+    },
+    {
+      "command": [
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/swe-python-environments/0bc9301c810a0e8f810569f10c082a8a03cc81a7b87fbc0cdd868ce30c27ff93/bin/python",
+        "/home/example/.codex/worktrees/066c/anvil-serving/anvil_serving/benchmarking/swe_grader_adapter.py",
+        "--grader-root",
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/swe-bench/f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+        "--adapter-sha256",
+        "23c56b27d62b79c39aca6dcfdd4c504030e241e3a6941620cdc6e947b9035a7b",
+        "--receipt",
+        "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/official-grader/containment.json",
+        "--",
+        "--dataset_name",
+        "/srv/anvil-serving/operator-home/benchmark-harness-cache/swe-bench-verified/c104f840cc67f8b6eec6f759ebc8b2693d585d4a/data",
+        "--split",
+        "test",
+        "--predictions_path",
+        "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/predictions.jsonl",
+        "--max_workers",
+        "1",
+        "--namespace",
+        "swebench",
+        "--run_id",
+        "mimoq-20261006-uncensored-r1-swe-a1",
+        "--timeout",
+        "1800",
+        "--report_dir",
+        "/srv/anvil-serving/operator-home/benchmark-runs/mimo-qualification-20261006/mimoq-20261006-uncensored-r1-swe-a1/work/official-grader",
+        "--instance_ids",
+        "sphinx-doc__sphinx-9658",
+        "sympy__sympy-12096",
+        "django__django-13512",
+        "pydata__xarray-4356",
+        "pylint-dev__pylint-8898"
+      ],
+      "duration_s": 118.014372,
+      "name": "official_grader",
+      "output_truncated": false,
+      "returncode": 0,
+      "status": "completed",
+      "stderr": "<frozen runpy>:128: RuntimeWarning: 'swebench.harness.run_evaluation' found in sys.modules after import of package 'swebench.harness', but prior to execution of 'swebench.harness.run_evaluation'; this may result in unpredictable behaviour\n\rEvaluation:   0%|          | 0/5 [00:00<?, ?it/s, error=0, \u2713=0, \u2716=0]\rEvaluation:   0%|          | 0/5 [00:19<?, ?it/s, \u2713=0, \u2716=1, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:19<01:17, 19.42s/it, \u2713=0, \u2716=1, error=0]\rEvaluation:  20%|\u2588\u2588        | 1/5 [00:42<01:17, 19.42s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [00:42<01:04, 21.54s/it, \u2713=1, \u2716=1, error=0]\rEvaluation:  40%|\u2588\u2588\u2588\u2588      | 2/5 [01:08<01:04, 21.54s/it, \u2713=1, \u2716=2, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [01:08<00:47, 23.67s/it, \u2713=1, \u2716=2, error=0]\rEvaluation:  60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 3/5 [01:26<00:47, 23.67s/it, \u2713=2, \u2716=2, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:26<00:21, 21.40s/it, \u2713=2, \u2716=2, error=0]\rEvaluation:  80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 4/5 [01:44<00:21, 21.40s/it, \u2713=3, \u2716=2, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:44<00:00, 20.31s/it, \u2713=3, \u2716=2, error=0]\rEvaluation: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 5/5 [01:44<00:00, 20.99s/it, \u2713=3, \u2716=2, error=0]\n",
+      "stdout": "Found 5 existing instance images. Will reuse them.\nRunning 5 instances...\nAll instances run.\nCleaning cached images...\nRemoved 0 images.\nTotal instances: 5\nInstances submitted: 5\nInstances completed: 5\nInstances incomplete: 0\nInstances resolved: 3\nInstances unresolved: 2\nInstances with empty patches: 0\nInstances with errors: 0\nUnstopped containers: 0\nUnremoved images: 5\nReport written to openai__glm53-abliterated-exl3-v84-fp8-tp2-dcp1-c4-327k-r1.mimoq-20261006-uncensored-r1-swe-a1.json\n"
+    }
+  ],
+  "state": "completed",
+  "summary": {
+    "attempted": 5,
+    "graded": 5,
+    "resolve_rate": 0.6,
+    "resolved": 3
+  },
+  "task_container_network": "none"
+}

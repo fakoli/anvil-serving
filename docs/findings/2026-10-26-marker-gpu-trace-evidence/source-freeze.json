@@ -1,0 +1,26 @@
+{
+  "schema": "marker-gpu-trace-source-freeze/v1",
+  "campaign_id": "2026-10-26-marker-gpu-trace",
+  "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+  "source_clean": true,
+  "frozen_artifacts": {
+    "experiment-plan.json": "383c1a90ea02d04b01da62f8f4d4e8fb7424fe4147f065d015d79a2655ffb539",
+    "candidate-recipe": "b3a7714d89a83f653ea7af2782c0bb26865b2b35b5a6486a320b9aa223d29370",
+    "incumbent-recipe": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5ed91b26df90",
+    "candidate-plan": "7cf6d4da223284b4c95fc65e122485f02a62068a09b1f2f26428a046c5748dff",
+    "incumbent-plan": "9e8494ca0f87395887232cba009893a306e850b8162b796faf7c5ed91b26df90",
+    "router-config": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+    "serve-boundary": "308f235e1b841ad70f14f6efcd65e242cc5eb73cafa70dde6a627811813831b4",
+    "serve-manifest": "c5fdb7e2b6987f9fca96a57029b9a52112212ce9ca05a7b7ea6206e2dd039854",
+    "full-recipe-diff": "a91d4de32e8481fc2fec6911175eaa36d9b7761e3e15dd3b7ed6ed6f2300cd5a",
+    "offline-checks": "ba640034c42cbbdc47774aae66022dfbccf5dc9c53a6f25bf2e4bfb849014157"
+  },
+  "allowed_post_start_change": "Candidate live_identity_verified could change from false to true only after retained runtime attestation.",
+  "projection": {
+    "native_source_sha256": "fa58acade9317c48129ef31a219c0bb10c5c34bfec56170cc7d524e3abaf4a89",
+    "transformations": [
+      "Replaced private file paths with stable public role labels.",
+      "Preserved every frozen SHA-256 value."
+    ]
+  }
+}

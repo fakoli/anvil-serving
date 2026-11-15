@@ -1,0 +1,222 @@
+{
+  "/health": {
+    "elapsed_seconds": 0.0055564530193805695,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization",
+      "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+      "connection": "close",
+      "content-length": "15",
+      "content-type": "application/json",
+      "date": "Tue, 20 Oct 2026 02:21:49 GMT"
+    },
+    "response": {
+      "status": "ok"
+    },
+    "status": 200
+  },
+  "/ready": {
+    "elapsed_seconds": 0.0005659639136865735,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization",
+      "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+      "connection": "close",
+      "content-length": "15",
+      "content-type": "application/json",
+      "date": "Tue, 20 Oct 2026 02:21:49 GMT"
+    },
+    "response": {
+      "status": "ok"
+    },
+    "status": 200
+  },
+  "/v1/config": {
+    "elapsed_seconds": 0.0008978329133242369,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization",
+      "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+      "connection": "close",
+      "content-length": "2716",
+      "content-type": "application/json",
+      "date": "Tue, 20 Oct 2026 02:21:49 GMT",
+      "ignis-model-status": "serving"
+    },
+    "response": {
+      "download": {
+        "catalog": null,
+        "enabled": false,
+        "endpoint": "https://huggingface.co",
+        "path": "./models"
+      },
+      "image": {
+        "condition_budget_tokens": 0,
+        "condition_floor_px": 512,
+        "max_condition_decodes": 1,
+        "max_condition_images": 10,
+        "max_condition_mipx": 16,
+        "max_n": 10,
+        "max_target_cells": 16800,
+        "min_condition_budget_tokens": 8191,
+        "prompt_enhancement": false,
+        "prompt_enhancer": "qwen3.8-27b",
+        "prompt_enhancer_max_tokens": 1024,
+        "queue_depth": 4,
+        "sizes": [
+          "2048x2048",
+          "2400x1792",
+          "1792x2400",
+          "2528x1696",
+          "1696x2528",
+          "2752x1536",
+          "1536x2752",
+          "1024x1024"
+        ]
+      },
+      "kv_disk": {
+        "bytes": null,
+        "path": "model"
+      },
+      "media": {
+        "qwen38": {
+          "allow_private_network": false,
+          "cache_mib": 1024
+        }
+      },
+      "model": {
+        "artifact": "/models/hub/models--gpillon--Qwen3.8-Flash-Next-trellis-a25-ignis/snapshots/f75e492c6d726537a4d4c85858bc91ee06a070ef/qwen3_8_flash_next_trellis_a25-v2.ninfer",
+        "decode_share": null,
+        "default_max_tokens": 38912,
+        "enable_thinking": true,
+        "host_margin_bytes": "4G",
+        "id": "qwen3.8-flash-next",
+        "idle_unload": 0,
+        "kv_format": "hq-e8-2b",
+        "loop_guard": "rewind",
+        "loop_guard_check_every": 250,
+        "loop_guard_clean": 400,
+        "loop_guard_holdback": 0,
+        "loop_guard_margin": 0,
+        "loop_guard_min_continuation": 512,
+        "loop_guard_min_kept": 1,
+        "loop_guard_normalize": true,
+        "loop_guard_nudge": "Wait, I'm starting to repeat myself. Let me stop and move on with what I already have.",
+        "loop_guard_nudge_again": "I keep repeating myself. I already have enough to write the answer, so I'll wrap up my reasoning now.",
+        "loop_guard_persist": 4,
+        "loop_guard_ratio": 265,
+        "loop_guard_raw_gate": 300,
+        "loop_guard_retries": 2,
+        "loop_guard_snap": 300,
+        "loop_guard_submit_wait": 60,
+        "loop_guard_window": 1000,
+        "max_context": 131072,
+        "prefill_chunk": 1024,
+        "reasoning_effort": null,
+        "rope_scaling": "auto",
+        "thinking_budget": 32768
+      },
+      "ngram": {
+        "persist": true,
+        "persist_path": "model",
+        "qwen38flashnext": {
+          "hot_bytes": "auto"
+        }
+      },
+      "reuse": {
+        "kv_host_pool_bytes": 0,
+        "prompt": true,
+        "retained_device": null,
+        "retained_host": null,
+        "retained_interactive_ttl": 300
+      },
+      "server": {
+        "bind": "0.0.0.0:30000",
+        "developer_message_policy": "inplace",
+        "expose": null,
+        "metrics": true,
+        "metrics_bind": "127.0.0.1:9464",
+        "request_timeout": 2400,
+        "socket_idle_close": 300,
+        "stream_timeout": 2400,
+        "system_message_policy": "merge",
+        "timeout_reply": "partial",
+        "ui": true
+      },
+      "spec": {
+        "backend": null,
+        "draft_head": null,
+        "draft_tokens": null,
+        "qwen38": {
+          "backend": "dflash2",
+          "draft_tokens": 7
+        },
+        "qwen38flashnext": {
+          "backend": "mtp",
+          "decode_lanes": 8,
+          "draft_rows": null,
+          "draft_tokens": 3
+        }
+      },
+      "switch": {
+        "allow_implicit": true,
+        "drain_timeout": 30,
+        "known_models": {}
+      },
+      "vision": {
+        "qwen38": {
+          "embedding_pool_mib": null,
+          "enabled": false,
+          "max_tokens": 32768
+        }
+      },
+      "vram": {
+        "allow_oversubscription": false,
+        "budget_bytes": null,
+        "headroom_bytes": "1536M",
+        "kv_pool_bytes": null,
+        "qwen38flashnext": {
+          "allow_expert_cache_below_floor": false,
+          "pinned_expert_bytes": 0
+        }
+      }
+    },
+    "status": 200
+  },
+  "/v1/models": {
+    "elapsed_seconds": 0.0004248879849910736,
+    "headers": {
+      "access-control-allow-headers": "Content-Type, Authorization",
+      "access-control-allow-methods": "GET, POST, PATCH, OPTIONS",
+      "access-control-allow-origin": "*",
+      "access-control-expose-headers": "ignis-stopped-by, ignis-model-status, Retry-After",
+      "connection": "close",
+      "content-length": "146",
+      "content-type": "application/json",
+      "date": "Tue, 20 Oct 2026 02:21:49 GMT"
+    },
+    "response": {
+      "data": [
+        {
+          "id": "qwen3.8-flash-next",
+          "kind": "text",
+          "max_model_len": 131072,
+          "object": "model",
+          "owned_by": "ignis"
+        }
+      ],
+      "object": "list",
+      "status": "serving"
+    },
+    "status": 200
+  },
+  "json_object": {
+    "elapsed_seconds": 0.0005326319951564074,
+    "response": "{\"error\":{\"code\":\"unsupported_value\",\"message\":\"response_format: structured output is not served, this server returns plain text only; send {\\\"type\\\": \\\"text\\\"} or omit it (GitHub #287)\",\"param\":\"response_format\",\"type\":\"invalid_request_error\"}}",
+    "status": 400
+  },
+  "passed": true
+}

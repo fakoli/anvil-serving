@@ -1,0 +1,68 @@
+{
+  "at": "2026-10-17T12:07:14.834026+00:00",
+  "counter_deltas": {
+    "generation": 0,
+    "prompt": 0,
+    "responses": 0
+  },
+  "files": [
+    {
+      "bytes": 84407,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/before-metrics.json",
+      "sha256": "ed0c4e9f73a603abe762e33ebfc3282afeebc42ca6d4ca750490a854ca479491"
+    },
+    {
+      "bytes": 5602,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/before-slow.json",
+      "sha256": "4bf449225a2a5ee02635be5659d558a7e8cd29a8de9fd1952dfae1911858ea0c"
+    },
+    {
+      "bytes": 84369,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/engine-metrics.jsonl",
+      "sha256": "755371dd090add93ff09b38ccf599dc3e39f63389111d3579923869a0904a646"
+    },
+    {
+      "bytes": 4980,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/slow.jsonl",
+      "sha256": "fc4c5e88e364658e534486b7c0c18c53fbaa9c1f91e85368699ebb91e2721e62"
+    },
+    {
+      "bytes": 2364,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/cell-summary.json",
+      "sha256": "6a126cbb30d21f00fffb2c08ead47070665e5c386e74f8f041d1b8281f6ab151"
+    },
+    {
+      "bytes": 84381,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/settle-metrics.jsonl",
+      "sha256": "18c86d12a178bcfffa3204c129c92d74db1db0288f3f7a3341b902de3ae944b0"
+    },
+    {
+      "bytes": 5602,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/after-slow.json",
+      "sha256": "03fb3712f59c133fa1dcadd583e36b177d40e1c7861a528a21c54aa3d6d1dd16"
+    },
+    {
+      "bytes": 84419,
+      "original": "telemetry/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1/after-metrics.json",
+      "sha256": "8ef937e5cad04d6024b55a87ea058a8a52b9135e7c815adf6b619a8050577fe0"
+    },
+    {
+      "bytes": 0,
+      "original": "logs/cells/diagnostic-baseline-controlled-ctx10240-c1-n1.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 2439,
+      "original": "logs/cells/diagnostic-baseline-controlled-ctx10240-c1-n1.stderr",
+      "sha256": "a987b0f5c7da7e7d3841bb788d85daf6b2bdd3c1933b5cebf4e322bf2d600f5b"
+    }
+  ],
+  "frozen_hashes": {
+    "plans/run-plan.json": "8d594ec0d5c5d431068ab41c26d3682b83205b9bef4b360ef1fef86a7e5f24da",
+    "telemetry/collector.py": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+    "telemetry/run_cell.py": "3a310a117d567e99149b689665a9edd35df2056a141a757364d8de12f13c1df4"
+  },
+  "reason": "CLI rejected missing output parent before any request; create parents only, frozen plan/source unchanged",
+  "redispatch_session": 52516,
+  "review_correction": "Original offline fixture did not prove output directory precreation; independently reviewed relocation recovery accepted."
+}

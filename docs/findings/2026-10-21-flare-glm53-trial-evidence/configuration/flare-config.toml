@@ -1,0 +1,13 @@
+[memory]
+reserve = "2G"
+[preparation]
+compile_workers = 2
+[prefix_cache]
+memory = "0"
+disk_limit = "0"
+[paths]
+hub_cache = "/root/.cache/huggingface/hub"
+kernel_cache = "/root/.cache/flare/kernels"
+package_cache = "/root/.cache/flare/packages"
+export_staging = "/root/.cache/flare/staging"
+cuda = "/usr/local/cuda"

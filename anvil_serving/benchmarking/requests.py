@@ -15,6 +15,17 @@ FILLER = "def helper_%d():\n    return compute(%d)  # routine specialist context
 CHARS_PER_TOKEN = 3.0
 DEFAULT_CTX_MARGIN = 1024
 VISIBLE_CONTENT_CAPTURE_LIMIT = 8192
+CAPACITY_PROMPT_CONTRACT_REVISION = "capacity-prompt-v1"
+
+
+def capacity_workload_identity(response_words):
+    """Describe the synthetic capacity prompt without changing its contract."""
+    return {
+        "prompt_contract_revision": CAPACITY_PROMPT_CONTRACT_REVISION,
+        "workload_kind": (
+            "synthetic-repeated-code" if response_words else "synthetic-summary"
+        ),
+    }
 
 
 def ctx_cap(max_model_len, max_tokens, margin=DEFAULT_CTX_MARGIN):
@@ -73,12 +84,17 @@ def make_prompt(
             if marker
             else f"\n# request {uniq}: summarize the above in one line."
         )
-    unique_header = (
-        f"# unique benchmark request {marker or uniq}\n" if unique_prefix else ""
-    )
+    unique_header = ""
+    if unique_prefix:
+        unique_identifier = marker or (
+            uniq if unique_prefix is True else unique_prefix
+        )
+        unique_header = f"# unique benchmark request {unique_identifier}\n"
     prefix = unique_header + shared_prefix
     if int(budget * chars_per_token) <= len(tail):
         raise ValueError("context target is too small for the benchmark prompt envelope")
+    if unique_prefix and int(budget * chars_per_token) < len(unique_header) + len(tail):
+        raise ValueError("context target is too small for the unique benchmark prefix")
     char_budget = int(budget * chars_per_token) - len(prefix) - len(tail) - 1
     if char_budget <= 0:
         return prefix[: max(0, int(budget * chars_per_token) - len(tail))] + tail
@@ -464,6 +480,7 @@ def stream_chat(base, model, prompt, key, max_tokens, timeout=900,
         "content_chunks": content_chunks,
         "reasoning_chunks": reasoning_chunks,
         "visible_content": "".join(visible_content_parts),
+        "visible_content_captured_chars": visible_content_chars,
         "visible_content_truncated": visible_content_truncated,
         "visible_content_capture_limit": VISIBLE_CONTENT_CAPTURE_LIMIT,
         "finish_reasons": finish_reasons,

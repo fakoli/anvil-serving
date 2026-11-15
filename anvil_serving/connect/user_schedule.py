@@ -41,12 +41,13 @@ def _installed_manager_file(path: Path) -> None:
         raise _invalid("Installed Connect manager verification failed.")
 
 
-def _release_manager(release_name: str) -> Path:
+def _release_manager(release_name: str, *, prefix: Path | None = None) -> Path:
     """Verify one immutable installer-owned manager release."""
     if _RELEASE.fullmatch(release_name) is None:
         raise _invalid("Installed Connect manager verification failed.")
-    release = _PREFIX / release_name
-    for path in (_PREFIX, _PREFIX / "releases", release, release / "bin"):
+    prefix = _PREFIX if prefix is None else prefix
+    release = prefix / release_name
+    for path in (prefix, prefix / "releases", release, release / "bin"):
         _installed_directory(path)
     target = release / "bin/anvil-connect-ctl"
     _installed_manager_file(target)
@@ -86,6 +87,114 @@ def _manager() -> Path:
     return target
 
 
+def _selected_manager() -> Path:
+    """Verify the selected release even when its installer prefix differs."""
+    manage._safe_root_ancestors(_MANAGER)
+    alias = _MANAGER.lstat()
+    if not stat.S_ISLNK(alias.st_mode) or alias.st_uid != 0:
+        raise _invalid("Installed Connect manager selection is unsafe.")
+    target = _MANAGER.resolve(strict=True)
+    if len(target.parents) < 4 or target.parts[-2:] != ("bin", "anvil-connect-ctl"):
+        raise _invalid("Installed Connect manager selection is invalid.")
+    prefix = target.parents[3]
+    release_name = str(target.parent.parent.relative_to(prefix))
+    if _release_manager(release_name, prefix=prefix) != target:
+        raise _invalid("Installed Connect manager selection is invalid.")
+    return target
+
+
+_BACKUP_PROPERTIES = (
+    "ActiveState", "SubState", "MainPID", "ControlPID", "Job", "Result", "ExecMainCode",
+    "ExecMainStatus", "ExecMainStartTimestampMonotonic", "InvocationID", "NeedDaemonReload",
+)
+
+
+def _backup_worker_state(runner) -> dict[str, str]:
+    observed = manage._run(runner, (manage._SYSTEMCTL, "show", "--property=" + ",".join(_BACKUP_PROPERTIES),
+                                   _SERVICE), manage._VALIDATE_TIMEOUT)
+    manage._fail(observed, "Authentication backup worker state is unavailable.")
+    rows = [line.split("=", 1) for line in observed.stdout.decode("utf-8").splitlines()]
+    if any(len(row) != 2 for row in rows) or len(rows) != len(_BACKUP_PROPERTIES):
+        raise _invalid("Authentication backup worker state is invalid.")
+    state = dict(rows)
+    if (set(state) != set(_BACKUP_PROPERTIES)
+            or any(not state[name].isdigit() for name in ("MainPID", "ControlPID", "ExecMainCode",
+                                                         "ExecMainStatus", "ExecMainStartTimestampMonotonic"))
+            or (state["InvocationID"] and not re.fullmatch("[a-f0-9]{32}", state["InvocationID"]))):
+        raise _invalid("Authentication backup worker state is invalid.")
+    return state
+
+
+def _idle_backup_worker(state: dict[str, str]) -> bool:
+    return (state["ActiveState"] in {"inactive", "failed"} and state["SubState"] in {"dead", "failed"}
+            and state["MainPID"] == state["ControlPID"] == "0" and not state["Job"]
+            and state["NeedDaemonReload"] == "no")
+
+
+def run_backup(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=None,
+               unit_root: str | Path = "/etc/systemd/system") -> dict:
+    """Run only the exact installed worker; its child owns the deployment lock."""
+    _require_root()
+    manager = _selected_manager()
+    data, root, backup = _manifest(manifest)
+    manifest_bytes = _regular(Path(manifest), 2 * 1024 * 1024)
+    manifest_digest = hashlib.sha256(manifest_bytes).hexdigest()
+    manager_digest = manage._digest(manager)
+    writable = tuple(sorted({root.parent, backup.parent, Path(data["gateway"]["state_directory"]).parent}, key=str))
+    expected = _service(manager, writable)
+    destination = Path(unit_root)
+    unit = destination / _SERVICE
+    manage._safe_root_ancestors(unit)
+    metadata = unit.lstat()
+    if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 or metadata.st_nlink != 1
+            or stat.S_IMODE(metadata.st_mode) != 0o644):
+        raise _invalid("Authentication backup worker ownership is invalid.")
+    manage._verify_unit(destination, _SERVICE, expected)
+    manage._unit_metadata(runner, destination, (_SERVICE,), present=True)
+    before = _backup_worker_state(runner)
+    if not _idle_backup_worker(before):
+        raise _invalid("Authentication backup worker is running, queued or needs a daemon reload.")
+    preview = manage._run(runner, (str(manager), "users", "backup", "--include-gateway", "--dry-run"), 20)
+    manage._fail(preview, "Installed authentication backup preview failed.")
+    receipt = manage._strict_json(preview.stdout, "Installed authentication backup preview is invalid.")
+    detail = receipt.get("data")
+    if (receipt.get("ok") is not True or not isinstance(detail, dict) or detail.get("applied") is not False
+            or detail.get("operation") != "backup" or detail.get("include_gateway") is not True):
+        raise _invalid("Installed authentication backup preview is invalid.")
+    result = {"schema": "anvil-connect.scheduled-backup/v1", "applied": False, "unit": _SERVICE,
+              "manager": str(manager), "manager_sha256": manager_digest, "manifest_sha256": manifest_digest,
+              "previous_invocation_id": before["InvocationID"], "completion_verified": False,
+              "impact": "Runs the installed full backup worker: briefly restarts Authelia, stops and restores the gateway, and applies backup retention. Existing gateway connections can disconnect."}
+    if not apply:
+        return result
+    # Recheck after the child preview; never retain a deployment lock while
+    # systemd waits for a child that acquires that same lock.
+    if (_selected_manager() != manager or manage._digest(manager) != manager_digest
+            or _regular(Path(manifest), 2 * 1024 * 1024) != manifest_bytes):
+        raise _invalid("Authentication backup selection changed during preparation.")
+    manage._verify_unit(destination, _SERVICE, expected)
+    manage._unit_metadata(runner, destination, (_SERVICE,), present=True)
+    current = _backup_worker_state(runner)
+    if not _idle_backup_worker(current) or current != before:
+        raise _invalid("Authentication backup worker changed during preparation.")
+    try:
+        # Killing a timed-out systemctl client does not stop the systemd worker.
+        manage._action(runner, (manage._SYSTEMCTL, "start", _SERVICE), 130,
+                       "Authentication backup worker did not finish successfully.")
+        after = _backup_worker_state(runner)
+        if (not _idle_backup_worker(after) or after["ActiveState"] != "inactive"
+                or after["Result"] != "success" or after["ExecMainCode"] != "1" or after["ExecMainStatus"] != "0"
+                or not after["InvocationID"] or after["InvocationID"] == before["InvocationID"]
+                or int(after["ExecMainStartTimestampMonotonic"]) <= int(before["ExecMainStartTimestampMonotonic"])):
+            raise manage.ManageError("Authentication backup worker completion is not verified.")
+    except BaseException as exc:
+        error = manage.ManageError("Backup worker may still be running or may have failed; inspect its state and retained backup receipts before retrying.", may_have_executed=True)
+        error.recovery = {**result, "recovery_hint": "Do not retry until the backup worker has stopped and its result and retained receipts have been inspected."}
+        raise error from exc
+    return {**result, "applied": True, "completion_verified": True, "invocation_id": after["InvocationID"],
+            "result": after["Result"], "exit_status": int(after["ExecMainStatus"])}
+
+
 def _manifest(path: str) -> tuple[dict, Path, Path]:
     if path != DEFAULT_MANIFEST:
         raise _invalid("Daily authentication backup scheduling is available only for the installed default manifest.")
@@ -107,7 +216,7 @@ def _service(manager: Path, writable: tuple[Path, ...], *, deletions: bool = Fal
     operation = ("process-deletions", "--confirm") if deletions else ("backup", "--include-gateway", "--confirm")
     command = " ".join(_unit_argument(value) for value in (str(manager), "users", *operation))
     return ("\n".join((
-        "[Unit]", "Description=Anvil Connect account deletion worker" if deletions else "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
+        "[Unit]", "Description=Anvil Connect account reconciliation worker" if deletions else "Description=Anvil Connect daily authentication backup", "After=network-online.target", "Wants=network-online.target", "",
         "[Service]", "Type=oneshot", "User=root", "Group=root", "UMask=0077", "NoNewPrivileges=true",
         "ProtectSystem=strict", "ProtectHome=true", "PrivateTmp=true", "ReadWritePaths=" + paths,
         "ExecStart=" + command, "TimeoutStartSec=120", "",
@@ -126,6 +235,10 @@ def _timer(*, deletions: bool = False) -> bytes:
 
 def _prior_service(current: bytes, desired: bytes) -> bool:
     """Accept only the prior generated service with a verified release manager."""
+    legacy = b"Description=Anvil Connect account deletion worker\n"
+    replacement = b"Description=Anvil Connect account reconciliation worker\n"
+    if replacement in desired and current.count(legacy) == 1:
+        current = current.replace(legacy, replacement, 1)
     start = desired.find(b"ExecStart=")
     if start < 0:
         raise AssertionError("generated service is missing ExecStart")
@@ -196,7 +309,7 @@ def schedule(manifest: str = DEFAULT_MANIFEST, *, apply: bool = False, runner=No
         "impact": "Daily backup briefly restarts Authelia, then stops and restores the native gateway while Caddy remains running.",
     }
     if deletions:
-        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Processes one authorized permanent account deletion per run.")
+        result.update(schema="anvil-connect.user-deletion-schedule/v1", action="deletion-schedule", calendar="every 10 seconds", persistent=False, impact="Reconciles opted-in native application roles and the Connect-operator group before independently processing one authorized permanent account deletion per run.")
         result.pop("retention_days")
         result.pop("retention_recent_copies")
     if not apply:

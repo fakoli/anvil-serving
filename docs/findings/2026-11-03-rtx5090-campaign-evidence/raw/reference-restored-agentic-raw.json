@@ -1,0 +1,6843 @@
+{
+  "data": {
+    "bytes": 171606,
+    "data": {
+      "observations": [
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            49
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "planning",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 6,
+              "finish_reason": "stop",
+              "latency_ms": 264.9616000126116,
+              "prompt_tokens": 49,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            49
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "planning",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 6,
+              "finish_reason": "stop",
+              "latency_ms": 95.11829999973997,
+              "prompt_tokens": 49,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            49
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "planning",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 6,
+              "finish_reason": "stop",
+              "latency_ms": 108.23820001678541,
+              "prompt_tokens": 49,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            31
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "reasoning",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": true,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 3,
+              "finish_reason": "stop",
+              "latency_ms": 89.95519997552037,
+              "prompt_tokens": 31,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            31
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "reasoning",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": true,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 3,
+              "finish_reason": "stop",
+              "latency_ms": 91.95070003625005,
+              "prompt_tokens": 31,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            31
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "reasoning",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": true,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 3,
+              "finish_reason": "stop",
+              "latency_ms": 93.27579999808222,
+              "prompt_tokens": 31,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            35
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "structured-edit",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 17,
+              "finish_reason": "stop",
+              "latency_ms": 150.09660000214353,
+              "prompt_tokens": 35,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            35
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "structured-edit",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 17,
+              "finish_reason": "stop",
+              "latency_ms": 154.903499991633,
+              "prompt_tokens": 35,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            35
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "structured-edit",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 17,
+              "finish_reason": "stop",
+              "latency_ms": 130.76079997699708,
+              "prompt_tokens": 35,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            375,
+            428,
+            480
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "tool-sequence",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "id": "T-17"
+              },
+              "name": "read_ticket"
+            },
+            {
+              "arguments": {
+                "path": "src/app.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 28,
+              "finish_reason": "tool_calls",
+              "latency_ms": 241.08740000519902,
+              "prompt_tokens": 375,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 183.14890004694462,
+              "prompt_tokens": 428,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "stop",
+              "latency_ms": 205.07750002434477,
+              "prompt_tokens": 480,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            375,
+            428,
+            480
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "tool-sequence",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "id": "T-17"
+              },
+              "name": "read_ticket"
+            },
+            {
+              "arguments": {
+                "path": "src/app.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 28,
+              "finish_reason": "tool_calls",
+              "latency_ms": 204.80040000984445,
+              "prompt_tokens": 375,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 193.0481999879703,
+              "prompt_tokens": 428,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "stop",
+              "latency_ms": 189.46610001148656,
+              "prompt_tokens": 480,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            375,
+            428,
+            480
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "tool-sequence",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "id": "T-17"
+              },
+              "name": "read_ticket"
+            },
+            {
+              "arguments": {
+                "path": "src/app.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 28,
+              "finish_reason": "tool_calls",
+              "latency_ms": 201.65310002630576,
+              "prompt_tokens": 375,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 180.82609999692068,
+              "prompt_tokens": 428,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "stop",
+              "latency_ms": 203.9690000237897,
+              "prompt_tokens": 480,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            293,
+            397
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "parallel-tools",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "path": "a.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "path": "b.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 52,
+              "finish_reason": "tool_calls",
+              "latency_ms": 349.26479996647686,
+              "prompt_tokens": 293,
+              "reasoning_chars": 0,
+              "tool_call_count": 2
+            },
+            {
+              "completion_tokens": 34,
+              "finish_reason": "stop",
+              "latency_ms": 231.03009996702895,
+              "prompt_tokens": 397,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            293,
+            397
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "parallel-tools",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "path": "a.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "path": "b.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 52,
+              "finish_reason": "tool_calls",
+              "latency_ms": 302.3980999714695,
+              "prompt_tokens": 293,
+              "reasoning_chars": 0,
+              "tool_call_count": 2
+            },
+            {
+              "completion_tokens": 34,
+              "finish_reason": "stop",
+              "latency_ms": 213.3938000188209,
+              "prompt_tokens": 397,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            293,
+            397
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "parallel-tools",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "path": "a.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "path": "b.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 52,
+              "finish_reason": "tool_calls",
+              "latency_ms": 303.3766000298783,
+              "prompt_tokens": 293,
+              "reasoning_chars": 0,
+              "tool_call_count": 2
+            },
+            {
+              "completion_tokens": 34,
+              "finish_reason": "stop",
+              "latency_ms": 213.41280004708096,
+              "prompt_tokens": 397,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            385,
+            437,
+            504
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "dependent-result",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "name": "Ada"
+              },
+              "name": "lookup_user"
+            },
+            {
+              "arguments": {
+                "id": "user-73",
+                "state": "active"
+              },
+              "name": "update_user"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 26,
+              "finish_reason": "tool_calls",
+              "latency_ms": 244.0377000020817,
+              "prompt_tokens": 385,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 41,
+              "finish_reason": "tool_calls",
+              "latency_ms": 228.74960000626743,
+              "prompt_tokens": 437,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 32,
+              "finish_reason": "stop",
+              "latency_ms": 210.56289999978617,
+              "prompt_tokens": 504,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            385,
+            437,
+            504
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "dependent-result",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "name": "Ada"
+              },
+              "name": "lookup_user"
+            },
+            {
+              "arguments": {
+                "id": "user-73",
+                "state": "active"
+              },
+              "name": "update_user"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 26,
+              "finish_reason": "tool_calls",
+              "latency_ms": 211.59939997596666,
+              "prompt_tokens": 385,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 41,
+              "finish_reason": "tool_calls",
+              "latency_ms": 227.34919999493286,
+              "prompt_tokens": 437,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 32,
+              "finish_reason": "stop",
+              "latency_ms": 224.676699959673,
+              "prompt_tokens": 504,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            385,
+            437,
+            504
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "dependent-result",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "name": "Ada"
+              },
+              "name": "lookup_user"
+            },
+            {
+              "arguments": {
+                "id": "user-73",
+                "state": "active"
+              },
+              "name": "update_user"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 26,
+              "finish_reason": "tool_calls",
+              "latency_ms": 214.44219996919855,
+              "prompt_tokens": 385,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 41,
+              "finish_reason": "tool_calls",
+              "latency_ms": 237.2740000137128,
+              "prompt_tokens": 437,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 32,
+              "finish_reason": "stop",
+              "latency_ms": 229.22189999371767,
+              "prompt_tokens": 504,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            321,
+            384,
+            468
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "tool-recovery-error",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "attempt": "1",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            },
+            {
+              "arguments": {
+                "attempt": "2",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 40,
+              "finish_reason": "tool_calls",
+              "latency_ms": 304.258199990727,
+              "prompt_tokens": 321,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 53,
+              "finish_reason": "tool_calls",
+              "latency_ms": 379.9623000086285,
+              "prompt_tokens": 384,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 29,
+              "finish_reason": "stop",
+              "latency_ms": 210.07260004989803,
+              "prompt_tokens": 468,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            321,
+            384,
+            468
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "tool-recovery-error",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "attempt": "1",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            },
+            {
+              "arguments": {
+                "attempt": "2",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 40,
+              "finish_reason": "tool_calls",
+              "latency_ms": 263.8091000262648,
+              "prompt_tokens": 321,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 53,
+              "finish_reason": "tool_calls",
+              "latency_ms": 376.1614999966696,
+              "prompt_tokens": 384,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 29,
+              "finish_reason": "stop",
+              "latency_ms": 218.84050004882738,
+              "prompt_tokens": 468,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            321,
+            384,
+            468
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "tool-recovery-error",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "attempt": "1",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            },
+            {
+              "arguments": {
+                "attempt": "2",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 40,
+              "finish_reason": "tool_calls",
+              "latency_ms": 248.77220002235845,
+              "prompt_tokens": 321,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 53,
+              "finish_reason": "tool_calls",
+              "latency_ms": 372.2694999887608,
+              "prompt_tokens": 384,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 29,
+              "finish_reason": "stop",
+              "latency_ms": 219.93329998804256,
+              "prompt_tokens": 468,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            547,
+            604,
+            663,
+            728,
+            787
+          ],
+          "oracle_revision": "9",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "debug-loop-v2",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            },
+            {
+              "arguments": {
+                "path": "calc.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "edit": "return a + b",
+                "path": "calc.py"
+              },
+              "name": "apply_edit"
+            },
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 262.5601000036113,
+              "prompt_tokens": 547,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 26,
+              "finish_reason": "tool_calls",
+              "latency_ms": 173.72019996400923,
+              "prompt_tokens": 604,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 42,
+              "finish_reason": "tool_calls",
+              "latency_ms": 248.9695999538526,
+              "prompt_tokens": 663,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 321.24549994478,
+              "prompt_tokens": 728,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 36,
+              "finish_reason": "stop",
+              "latency_ms": 275.5851999972947,
+              "prompt_tokens": 787,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            547,
+            604,
+            663,
+            728,
+            787
+          ],
+          "oracle_revision": "9",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "debug-loop-v2",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            },
+            {
+              "arguments": {
+                "path": "calc.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "edit": "return a + b",
+                "path": "calc.py"
+              },
+              "name": "apply_edit"
+            },
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 201.74580003367737,
+              "prompt_tokens": 547,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 26,
+              "finish_reason": "tool_calls",
+              "latency_ms": 186.96039996575564,
+              "prompt_tokens": 604,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 42,
+              "finish_reason": "tool_calls",
+              "latency_ms": 247.6156000047922,
+              "prompt_tokens": 663,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 321.34660001611337,
+              "prompt_tokens": 728,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 36,
+              "finish_reason": "stop",
+              "latency_ms": 266.9443999766372,
+              "prompt_tokens": 787,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [],
+          "history_prompt_tokens": [
+            547,
+            604,
+            663,
+            728,
+            787
+          ],
+          "oracle_revision": "9",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "debug-loop-v2",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            },
+            {
+              "arguments": {
+                "path": "calc.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "edit": "return a + b",
+                "path": "calc.py"
+              },
+              "name": "apply_edit"
+            },
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            }
+          ],
+          "turns": [
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 201.62260002689436,
+              "prompt_tokens": 547,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 26,
+              "finish_reason": "tool_calls",
+              "latency_ms": 175.01430003903806,
+              "prompt_tokens": 604,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 42,
+              "finish_reason": "tool_calls",
+              "latency_ms": 248.25780000537634,
+              "prompt_tokens": 663,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 27,
+              "finish_reason": "tool_calls",
+              "latency_ms": 333.84379994822666,
+              "prompt_tokens": 728,
+              "reasoning_chars": 0,
+              "tool_call_count": 1
+            },
+            {
+              "completion_tokens": 36,
+              "finish_reason": "stop",
+              "latency_ms": 265.6280000228435,
+              "prompt_tokens": 787,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            }
+          ],
+          "history_prompt_tokens": [
+            1706
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "context-recovery",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 7,
+              "finish_reason": "stop",
+              "latency_ms": 1484.5580999972299,
+              "prompt_tokens": 1706,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            }
+          ],
+          "history_prompt_tokens": [
+            1706
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "context-recovery",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 7,
+              "finish_reason": "stop",
+              "latency_ms": 1480.5821000481956,
+              "prompt_tokens": 1706,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            }
+          ],
+          "history_prompt_tokens": [
+            1706
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "context-recovery",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 7,
+              "finish_reason": "stop",
+              "latency_ms": 1499.9341000220738,
+              "prompt_tokens": 1706,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            }
+          ],
+          "history_prompt_tokens": [
+            29,
+            54,
+            79,
+            104,
+            129,
+            154,
+            179,
+            204,
+            229,
+            254,
+            279,
+            306,
+            333,
+            360,
+            387,
+            414,
+            441,
+            468,
+            495,
+            522,
+            549,
+            576,
+            603,
+            630,
+            657,
+            684,
+            711,
+            738,
+            765,
+            792,
+            819,
+            846,
+            873,
+            900,
+            927,
+            954,
+            981,
+            1008,
+            1035,
+            1062,
+            1089,
+            1116,
+            1143,
+            1170,
+            1197,
+            1224,
+            1251,
+            1278,
+            1305,
+            1332,
+            1359,
+            1386,
+            1413,
+            1440,
+            1467,
+            1494,
+            1521,
+            1548,
+            1575,
+            1602,
+            1629,
+            1656,
+            1683,
+            1710,
+            1727
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 0,
+          "scenario_id": "long-session",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 76.85949996812269,
+              "prompt_tokens": 29,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 112.7699000062421,
+              "prompt_tokens": 54,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 118.86469996534288,
+              "prompt_tokens": 79,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 156.25010000076145,
+              "prompt_tokens": 104,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 159.94600002886727,
+              "prompt_tokens": 129,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 192.8131000022404,
+              "prompt_tokens": 154,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 203.01349996589124,
+              "prompt_tokens": 179,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 242.01789998915046,
+              "prompt_tokens": 204,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 256.53469999087974,
+              "prompt_tokens": 229,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 286.6478000069037,
+              "prompt_tokens": 254,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 286.948399967514,
+              "prompt_tokens": 279,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 308.53330000536516,
+              "prompt_tokens": 306,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 330.75930003542453,
+              "prompt_tokens": 333,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 372.2754999762401,
+              "prompt_tokens": 360,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 394.667099986691,
+              "prompt_tokens": 387,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 393.9265999943018,
+              "prompt_tokens": 414,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 430.0224999897182,
+              "prompt_tokens": 441,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 436.90750002861023,
+              "prompt_tokens": 468,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 458.1892000278458,
+              "prompt_tokens": 495,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 491.8399000307545,
+              "prompt_tokens": 522,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 519.3678999785334,
+              "prompt_tokens": 549,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 522.1648999722674,
+              "prompt_tokens": 576,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 544.1503999754786,
+              "prompt_tokens": 603,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 580.4948000004515,
+              "prompt_tokens": 630,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 587.3283999972045,
+              "prompt_tokens": 657,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 608.7660000193864,
+              "prompt_tokens": 684,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 630.440799985081,
+              "prompt_tokens": 711,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 673.294399981387,
+              "prompt_tokens": 738,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 673.7067000358365,
+              "prompt_tokens": 765,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 695.3894000034779,
+              "prompt_tokens": 792,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 718.9584000152536,
+              "prompt_tokens": 819,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 755.8863000012934,
+              "prompt_tokens": 846,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 761.0233000013977,
+              "prompt_tokens": 873,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 783.9245999930426,
+              "prompt_tokens": 900,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 823.5082000028342,
+              "prompt_tokens": 927,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 850.4595999838784,
+              "prompt_tokens": 954,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 848.2690000091679,
+              "prompt_tokens": 981,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 869.9287000345066,
+              "prompt_tokens": 1008,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 925.3833999973722,
+              "prompt_tokens": 1035,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 930.9531999751925,
+              "prompt_tokens": 1062,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 951.8928999896161,
+              "prompt_tokens": 1089,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 976.8174000200815,
+              "prompt_tokens": 1116,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1012.2696000034921,
+              "prompt_tokens": 1143,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1031.9705000147223,
+              "prompt_tokens": 1170,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1040.0775999878533,
+              "prompt_tokens": 1197,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1065.19410002511,
+              "prompt_tokens": 1224,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1084.6208999864757,
+              "prompt_tokens": 1251,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1130.101700022351,
+              "prompt_tokens": 1278,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1128.5696999984793,
+              "prompt_tokens": 1305,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1175.7288000080734,
+              "prompt_tokens": 1332,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1172.824999957811,
+              "prompt_tokens": 1359,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1208.0976000288501,
+              "prompt_tokens": 1386,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1217.7261000033468,
+              "prompt_tokens": 1413,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1256.9697000435553,
+              "prompt_tokens": 1440,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1262.2162000043318,
+              "prompt_tokens": 1467,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1284.2124000308104,
+              "prompt_tokens": 1494,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1317.5031999708153,
+              "prompt_tokens": 1521,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1328.6891999887303,
+              "prompt_tokens": 1548,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1351.9683000049554,
+              "prompt_tokens": 1575,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1374.179099977482,
+              "prompt_tokens": 1602,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1396.537900029216,
+              "prompt_tokens": 1629,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1418.8910000375472,
+              "prompt_tokens": 1656,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1454.9948000349104,
+              "prompt_tokens": 1683,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1483.1827000016347,
+              "prompt_tokens": 1710,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 7,
+              "finish_reason": "stop",
+              "latency_ms": 1502.5125000393018,
+              "prompt_tokens": 1727,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            }
+          ],
+          "history_prompt_tokens": [
+            29,
+            54,
+            79,
+            104,
+            129,
+            154,
+            179,
+            204,
+            229,
+            254,
+            279,
+            306,
+            333,
+            360,
+            387,
+            414,
+            441,
+            468,
+            495,
+            522,
+            549,
+            576,
+            603,
+            630,
+            657,
+            684,
+            711,
+            738,
+            765,
+            792,
+            819,
+            846,
+            873,
+            900,
+            927,
+            954,
+            981,
+            1008,
+            1035,
+            1062,
+            1089,
+            1116,
+            1143,
+            1170,
+            1197,
+            1224,
+            1251,
+            1278,
+            1305,
+            1332,
+            1359,
+            1386,
+            1413,
+            1440,
+            1467,
+            1494,
+            1521,
+            1548,
+            1575,
+            1602,
+            1629,
+            1656,
+            1683,
+            1710,
+            1727
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 1,
+          "scenario_id": "long-session",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 76.38899999437854,
+              "prompt_tokens": 29,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 120.54889998398721,
+              "prompt_tokens": 54,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 117.77459998847917,
+              "prompt_tokens": 79,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 159.29979999782518,
+              "prompt_tokens": 104,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 175.61979999300092,
+              "prompt_tokens": 129,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 190.4287000070326,
+              "prompt_tokens": 154,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 202.9090999858454,
+              "prompt_tokens": 179,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 223.37019996484742,
+              "prompt_tokens": 204,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 263.2480000029318,
+              "prompt_tokens": 229,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 285.0510999560356,
+              "prompt_tokens": 254,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 287.09330002311617,
+              "prompt_tokens": 279,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 308.1079000257887,
+              "prompt_tokens": 306,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 329.6919999993406,
+              "prompt_tokens": 333,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 351.32570000132546,
+              "prompt_tokens": 360,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 372.50960001256317,
+              "prompt_tokens": 387,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 393.85009999386966,
+              "prompt_tokens": 414,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 415.29009997611865,
+              "prompt_tokens": 441,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 437.75350000942126,
+              "prompt_tokens": 468,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 481.79270001128316,
+              "prompt_tokens": 495,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 479.6689000213519,
+              "prompt_tokens": 522,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 501.1637000134215,
+              "prompt_tokens": 549,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 542.5143000320531,
+              "prompt_tokens": 576,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 547.3348000086844,
+              "prompt_tokens": 603,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 582.634299993515,
+              "prompt_tokens": 630,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 587.4115999904461,
+              "prompt_tokens": 657,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 609.2102999682538,
+              "prompt_tokens": 684,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 646.1130999960005,
+              "prompt_tokens": 711,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 673.9651000243612,
+              "prompt_tokens": 738,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 674.5043999981135,
+              "prompt_tokens": 765,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 711.4571999991313,
+              "prompt_tokens": 792,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 739.2221000045538,
+              "prompt_tokens": 819,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 742.1506000100635,
+              "prompt_tokens": 846,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 761.3349999883212,
+              "prompt_tokens": 873,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 783.3248000242747,
+              "prompt_tokens": 900,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 804.3445000075735,
+              "prompt_tokens": 927,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 842.7207000204362,
+              "prompt_tokens": 954,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 848.393100022804,
+              "prompt_tokens": 981,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 894.1248999908566,
+              "prompt_tokens": 1008,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 923.0243000201881,
+              "prompt_tokens": 1035,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 941.8259999947622,
+              "prompt_tokens": 1062,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 952.630199957639,
+              "prompt_tokens": 1089,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 975.2928999951109,
+              "prompt_tokens": 1116,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1009.3848999822512,
+              "prompt_tokens": 1143,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1035.9829000080936,
+              "prompt_tokens": 1170,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1066.8940999894403,
+              "prompt_tokens": 1197,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1078.8076000171714,
+              "prompt_tokens": 1224,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1094.7976000024937,
+              "prompt_tokens": 1251,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1123.8575999741443,
+              "prompt_tokens": 1278,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1130.2444000029936,
+              "prompt_tokens": 1305,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1154.7795999795198,
+              "prompt_tokens": 1332,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1192.1934999991208,
+              "prompt_tokens": 1359,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1195.8661999669857,
+              "prompt_tokens": 1386,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1234.5316000282764,
+              "prompt_tokens": 1413,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1240.6249000341631,
+              "prompt_tokens": 1440,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1262.4710000236519,
+              "prompt_tokens": 1467,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1300.810899992939,
+              "prompt_tokens": 1494,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1306.506900000386,
+              "prompt_tokens": 1521,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1330.4485999979079,
+              "prompt_tokens": 1548,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1354.073700029403,
+              "prompt_tokens": 1575,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1374.7338999528438,
+              "prompt_tokens": 1602,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1396.072199975606,
+              "prompt_tokens": 1629,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1437.6268000341952,
+              "prompt_tokens": 1656,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1444.2313000326976,
+              "prompt_tokens": 1683,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1463.6787999770604,
+              "prompt_tokens": 1710,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 7,
+              "finish_reason": "stop",
+              "latency_ms": 1518.9140000147745,
+              "prompt_tokens": 1727,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        },
+        {
+          "answer_sha256": "[private fingerprint withheld]",
+          "failure": null,
+          "failure_class": null,
+          "full_history": [
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "assistant"
+            },
+            {
+              "content": "[text withheld]",
+              "role": "user"
+            }
+          ],
+          "history_prompt_tokens": [
+            29,
+            54,
+            79,
+            104,
+            129,
+            154,
+            179,
+            204,
+            229,
+            254,
+            279,
+            306,
+            333,
+            360,
+            387,
+            414,
+            441,
+            468,
+            495,
+            522,
+            549,
+            576,
+            603,
+            630,
+            657,
+            684,
+            711,
+            738,
+            765,
+            792,
+            819,
+            846,
+            873,
+            900,
+            927,
+            954,
+            981,
+            1008,
+            1035,
+            1062,
+            1089,
+            1116,
+            1143,
+            1170,
+            1197,
+            1224,
+            1251,
+            1278,
+            1305,
+            1332,
+            1359,
+            1386,
+            1413,
+            1440,
+            1467,
+            1494,
+            1521,
+            1548,
+            1575,
+            1602,
+            1629,
+            1656,
+            1683,
+            1710,
+            1727
+          ],
+          "oracle_revision": "8",
+          "passed": true,
+          "reasoning_present": false,
+          "repetition": 2,
+          "scenario_id": "long-session",
+          "schema": "anvil-serving.agentic-observation/v1",
+          "stages": {
+            "final_answer": {
+              "passed": true
+            },
+            "history": {
+              "passed": true
+            },
+            "protocol": {
+              "passed": true
+            },
+            "reasoning": {
+              "applicable": false,
+              "passed": true
+            },
+            "recovery": {
+              "passed": true
+            },
+            "result_incorporation": {
+              "passed": true
+            }
+          },
+          "tool_calls": [],
+          "turns": [
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 76.31510001374409,
+              "prompt_tokens": 29,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 96.85680002439767,
+              "prompt_tokens": 54,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 142.14930002344772,
+              "prompt_tokens": 79,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 138.76120001077652,
+              "prompt_tokens": 104,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 183.98570001590997,
+              "prompt_tokens": 129,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 180.96289999084547,
+              "prompt_tokens": 154,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 202.88589998381212,
+              "prompt_tokens": 179,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 238.69760002708063,
+              "prompt_tokens": 204,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 254.54069999977946,
+              "prompt_tokens": 229,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 266.0945999668911,
+              "prompt_tokens": 254,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 287.03819995280355,
+              "prompt_tokens": 279,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 310.8107000007294,
+              "prompt_tokens": 306,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 355.56380002526566,
+              "prompt_tokens": 333,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 350.9226000169292,
+              "prompt_tokens": 360,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 390.0445000035688,
+              "prompt_tokens": 387,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 393.79190001636744,
+              "prompt_tokens": 414,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 426.2597000342794,
+              "prompt_tokens": 441,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 457.60610001161695,
+              "prompt_tokens": 468,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 473.83929998613894,
+              "prompt_tokens": 495,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 500.8335000020452,
+              "prompt_tokens": 522,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 501.1868000146933,
+              "prompt_tokens": 549,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 542.9343999712728,
+              "prompt_tokens": 576,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 545.0694999890402,
+              "prompt_tokens": 603,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 588.0621999967843,
+              "prompt_tokens": 630,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 592.3005999648012,
+              "prompt_tokens": 657,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 634.3177999951877,
+              "prompt_tokens": 684,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 643.1494999560528,
+              "prompt_tokens": 711,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 676.8416999839246,
+              "prompt_tokens": 738,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 688.7422000290826,
+              "prompt_tokens": 765,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 696.0488999611698,
+              "prompt_tokens": 792,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 717.9832000401802,
+              "prompt_tokens": 819,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 739.3805000465363,
+              "prompt_tokens": 846,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 762.3964999802411,
+              "prompt_tokens": 873,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 785.4678999865428,
+              "prompt_tokens": 900,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 805.244599992875,
+              "prompt_tokens": 927,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 845.8703000214882,
+              "prompt_tokens": 954,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 873.0417000479065,
+              "prompt_tokens": 981,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 871.1418000166304,
+              "prompt_tokens": 1008,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 906.6111999563873,
+              "prompt_tokens": 1035,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 934.0069000027142,
+              "prompt_tokens": 1062,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 976.4722000109032,
+              "prompt_tokens": 1089,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 984.5459000207484,
+              "prompt_tokens": 1116,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 996.469600009732,
+              "prompt_tokens": 1143,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1039.214999997057,
+              "prompt_tokens": 1170,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1065.4511000029743,
+              "prompt_tokens": 1197,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1065.4822999495082,
+              "prompt_tokens": 1224,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1084.8619000171311,
+              "prompt_tokens": 1251,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1126.8739000079222,
+              "prompt_tokens": 1278,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1128.6104999599047,
+              "prompt_tokens": 1305,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1150.692800001707,
+              "prompt_tokens": 1332,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1173.361399967689,
+              "prompt_tokens": 1359,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1196.1480000172742,
+              "prompt_tokens": 1386,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1240.4008999583311,
+              "prompt_tokens": 1413,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1239.626099995803,
+              "prompt_tokens": 1440,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1271.6954000061378,
+              "prompt_tokens": 1467,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1287.6228000386618,
+              "prompt_tokens": 1494,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1306.8074000184424,
+              "prompt_tokens": 1521,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1351.5056999749504,
+              "prompt_tokens": 1548,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1352.334700000938,
+              "prompt_tokens": 1575,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1385.6619000434875,
+              "prompt_tokens": 1602,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1396.4610999682918,
+              "prompt_tokens": 1629,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1434.3212000094354,
+              "prompt_tokens": 1656,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1441.5985000086948,
+              "prompt_tokens": 1683,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 2,
+              "finish_reason": "stop",
+              "latency_ms": 1464.2483000061475,
+              "prompt_tokens": 1710,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            },
+            {
+              "completion_tokens": 7,
+              "finish_reason": "stop",
+              "latency_ms": 1505.5975000141189,
+              "prompt_tokens": 1727,
+              "reasoning_chars": 0,
+              "tool_call_count": 0
+            }
+          ],
+          "visible_answer": "[text withheld]"
+        }
+      ],
+      "passed": true,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 0.0,
+            "requested": 0.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": null,
+            "requested": null,
+            "sent": false
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "request_ids": [],
+      "scenario_contracts": [
+        {
+          "oracle_revision": "9",
+          "replaces": "debug-loop",
+          "scenario_id": "debug-loop-v2"
+        }
+      ],
+      "schema": "anvil-serving.agentic-suite-run/v1",
+      "summary": {
+        "attempted": 30,
+        "pass_rate": 1.0,
+        "passed": 30,
+        "required_pass_rate": 0.7
+      }
+    },
+    "path": "evidence/0-agentic.json",
+    "sha256": "[private fingerprint withheld]"
+  },
+  "ok": true
+}

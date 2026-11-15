@@ -1,0 +1,7 @@
+{
+  "at": 1792661834.304971,
+  "reviewer": "independent GPT-5.6 Sol high, existing flare_trial_review agent",
+  "gate": "conditional_accept",
+  "decode": "old-image B, fourteen frozen cells, per-cell140s hard process-group bound plus240s reserve, exclusive names/receipts; refreshed execution-source-r2 receipt",
+  "counter": "StoreStats field placement and gauge fixtures corrected; unchanged eviction policy. R3 memory/index/slab/metrics, releasebuild+version required. disk0 only. Composite compile checked, runtime tests blocked by io_uring EPERM; no broad-suite pass claim. Startup must show new gauges with free<=total."
+}

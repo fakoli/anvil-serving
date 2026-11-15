@@ -1,0 +1,42 @@
+{
+  "schema": "anvil-serving.evaluation-pilot-failure-diagnostic/v1",
+  "attempt": "cancelled-attempt-1",
+  "source_revision": "6b26ed55285480cd731ae7771f41eea917382f02",
+  "scope": "Harness startup before first Aider preflight or suite execution; six preceding native cases completed. This is not a model-quality result.",
+  "original_error": {
+    "code": "campaign_watchdog_unavailable",
+    "message": "bounded supervisor did not acknowledge custody",
+    "logged_at": "2026-10-25T01:57:03.509975Z",
+    "durable_state_after_logged_error": "running"
+  },
+  "offline_reproduction": {
+    "verification_succeeded": true,
+    "verify_child_seconds": 2.544058426981792,
+    "environment_digest_seconds": 2.4700786259490997,
+    "ack_timeout_seconds": 2,
+    "observed_at": "2026-10-25T02:03:25.091724+00:00",
+    "scope": "Exact cancelled specification and unchanged prepared environment; no verification checks skipped.",
+    "limitation": "Original supervisor stderr was discarded; an additional contemporaneous exception cannot be excluded."
+  },
+  "terminal_recovery": {
+    "method": "managed campaign cancellation",
+    "state": "cancelled",
+    "finished_at": "2026-10-25T02:02:02.782251Z",
+    "worker_terminated": true,
+    "campaign_closure": "blocked",
+    "campaign_engine_drain": "unknown",
+    "campaign_telemetry_complete": false,
+    "reason": "Cancellation process did not supply the endpoint credential and its activation recheck failed. The underlying activation error was not retained; the incomplete campaign closure remains unchanged."
+  },
+  "separate_post_cancel_observation": {
+    "observed_wall": 1792893954.911858,
+    "source_timestamp_seconds": 1792893940.803731,
+    "metrics": {
+      "running_metric": 0.0,
+      "waiting_metric": 0.0
+    },
+    "scope": "Fresh operational observation after cancellation; does not change or repair the frozen incomplete campaign closure receipt."
+  },
+  "provenance": "Selected nonsecret facts transcribed from independently reviewed private status/log, cancellation and offline timing receipts. Credential-referencing source objects are excluded from the public bundle and from public source commitments.",
+  "promoted": false
+}

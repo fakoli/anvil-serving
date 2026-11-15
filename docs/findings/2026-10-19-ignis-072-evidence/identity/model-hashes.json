@@ -1,0 +1,14 @@
+[
+  {
+    "bytes": 1037905920,
+    "file": "qwen3_8_flash_next_mtp_3p0-v2.ninfer",
+    "matches": true,
+    "sha256": "432fe5c0838027047c5b46c4fde526f3d3ef3d126f00fed1213921f8705988d2"
+  },
+  {
+    "bytes": 71760711680,
+    "file": "qwen3_8_flash_next_trellis_a25-v2.ninfer",
+    "matches": true,
+    "sha256": "12e3b265b0678ba935a4b05d1b612ba4b68b3a96c3026d818ad65838985fd864"
+  }
+]

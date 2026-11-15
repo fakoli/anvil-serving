@@ -1,0 +1,98 @@
+{
+  "failure_lines": [
+    "File \"kernel_regression.py\", line 36, in main",
+    "assert torch.equal(before, after), \"Ordinary-logit exact mask parity failed\"",
+    "AssertionError: Ordinary-logit exact mask parity failed",
+    "CalledProcessError: kernel_regression.py returned non-zero exit status 1"
+  ],
+  "final_success_receipt_present": false,
+  "schema": "anvil-serving.sanitized-kernel-log-excerpt/v1",
+  "source_tool_ok": true,
+  "trace_events": [
+    {
+      "checks": 2,
+      "event": 1,
+      "forced_finite_max": 1,
+      "forced_finite_min": 1,
+      "forced_rows": 4,
+      "has_k": 0,
+      "rows": 4,
+      "split_mask_completed": 1,
+      "splits": 32,
+      "step_rounds": 5,
+      "token_154842_finite_rows": -1,
+      "vocab": 131072
+    },
+    {
+      "checks": 3,
+      "event": 2,
+      "forced_finite_max": 1,
+      "forced_finite_min": 1,
+      "forced_rows": 4,
+      "has_k": 0,
+      "rows": 4,
+      "split_mask_completed": 1,
+      "splits": 32,
+      "step_rounds": 5,
+      "token_154842_finite_rows": -1,
+      "vocab": 131072
+    },
+    {
+      "checks": 5,
+      "event": 3,
+      "forced_finite_max": 1,
+      "forced_finite_min": 1,
+      "forced_rows": 64,
+      "has_k": 0,
+      "rows": 64,
+      "split_mask_completed": 1,
+      "splits": 2,
+      "step_rounds": 5,
+      "token_154842_finite_rows": -1,
+      "vocab": 131072
+    },
+    {
+      "checks": 6,
+      "event": 4,
+      "forced_finite_max": 1,
+      "forced_finite_min": 1,
+      "forced_rows": 64,
+      "has_k": 0,
+      "rows": 64,
+      "split_mask_completed": 1,
+      "splits": 2,
+      "step_rounds": 5,
+      "token_154842_finite_rows": -1,
+      "vocab": 131072
+    },
+    {
+      "checks": 8,
+      "event": 5,
+      "forced_finite_max": 1,
+      "forced_finite_min": 1,
+      "forced_rows": 4,
+      "has_k": 0,
+      "rows": 4,
+      "split_mask_completed": 1,
+      "splits": 32,
+      "step_rounds": 5,
+      "token_154842_finite_rows": 4,
+      "vocab": 154856
+    },
+    {
+      "checks": 9,
+      "event": 6,
+      "forced_finite_max": 1,
+      "forced_finite_min": 1,
+      "forced_rows": 4,
+      "has_k": 0,
+      "rows": 4,
+      "split_mask_completed": 1,
+      "splits": 32,
+      "step_rounds": 5,
+      "token_154842_finite_rows": 4,
+      "vocab": 154856
+    }
+  ],
+  "trace_process_role": "preweight regression child; not a serving worker"
+}

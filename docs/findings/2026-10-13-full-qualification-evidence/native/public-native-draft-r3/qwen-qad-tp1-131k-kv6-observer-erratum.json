@@ -1,0 +1,8 @@
+{
+  "first_native_smoke": "passed0.991s; nativeartifactpreserved",
+  "observed_at": "2026-10-13T18:10:13.654877+00:00",
+  "observer_error": "Comparedcompletev1/modelsobject includingdynamiccreatedandpermissionID; assertfailedafterrequestbeforememorywrite. Lostfirstrequestscopedsamples; doNOTclaimthatartifactretained",
+  "repair": "Compareonlyid/root/max_model_len; persistcollectorbeforeassert; oneextraR2shortsmokeforretainedaccountingbefore13allowedchecks; noquality/perfrank",
+  "retained_lifetime_counters": "readyandpostonesmokebothallmax/oom/kill0; identity/CIDsame; earlygatecontainsnoswap",
+  "schema_version": "validation-observer-erratum/v1"
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "anvil-serving.public-quality-configuration/v1",
+  "observation_date": "2026-11-09",
+  "model": {
+    "repository": "Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold",
+    "revision": "76c0b5173166d2795dd48860f45d8224817f894c",
+    "served_identity": "served-model-1",
+    "served_identity_is_synthetic": true
+  },
+  "runtime": {
+    "engine": "TensorFold",
+    "image_digest": "sha256:a3f640bf24ade689f926f54dd32cfbd752da70845f18cf1d12adf0c176617a36",
+    "upstream_commit": "f350cd3ea253a042e205746928271f9d8f71a82d",
+    "author_recipe_commit": "0a5297c912e118490b8bb3734d9e20107df7f6f2",
+    "author_patch_count_unchanged": 101,
+    "anvil_patch_count": 6,
+    "owned_patch_manifest": "https://github.com/fakoli/anvil-serving/blob/0f55c039bc5661e51421d0b65c51186155abffa7/configs/runtime-patches/tensorfold/f350cd3e-anvilkvpartsv1/manifest.toml",
+    "source_tree": "1c7fffb5975b3cc2e4a6c57b05b37f9c04e04cf6"
+  },
+  "hardware": {
+    "host": "Primary Node",
+    "os": "native Linux",
+    "gpus": 2,
+    "gpu_model": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_capacity_class_gb_each": 96,
+    "tensor_parallel_size": 2,
+    "client_topology": "co-resident"
+  },
+  "configured_serving_policy": {
+    "weights": "EXL3 4bpw; dense q8; BF16 head",
+    "kv": "FP8 paged KV",
+    "context_tokens": 327680,
+    "admission_limit": 4,
+    "max_output_tokens": 32768,
+    "thinking": true,
+    "reasoning_effort": "high",
+    "numeric_thinking_budget_default": 0,
+    "thinking_reserve_default": 0,
+    "drafter": "DFlash2,4-bit",
+    "serving_memory_limit_gib": 48,
+    "cache_policy": "existing RAM and conversation-disk cache preserved; uncontrolled warm state",
+    "kv_sharding": true,
+    "conversation_disk_cache_gib": 8,
+    "router_soft_default_reasoning_effort": "max"
+  },
+  "requested_job_controls": {
+    "reasoning_effort_order": [
+      "max",
+      "low",
+      "max"
+    ],
+    "thinking_mode": "default",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "concurrency": 1,
+    "completion_cap_per_response_including_reasoning": 16384,
+    "deadline_s_per_job": 600,
+    "max_model_calls_per_job": 12,
+    "max_retries": 0,
+    "max_coding_attempts_per_task": 2,
+    "thinking_budget_tokens_by_job": [
+      8192,
+      null,
+      8192
+    ]
+  },
+  "historical_boundary": "The same checkpoint uses the later partition-aware telemetry image and sharded-KV baseline. The original Max/Low matrix remains historical; no cross-day causal performance comparison is qualified.",
+  "custody": "Existing user requests coexist underC4. Before owned submit waiting0/running<=2; complete successful accounting and workerexit gate the next owned job. No global-idle or exclusive-counter claim.",
+  "oracle": {
+    "aider_revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+    "polyglot_revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f",
+    "image_id": "sha256:174d85341f24c4c6d3f41793a3a92d2d3626a86e8797151db5dcab8696645b58",
+    "selected_receipt_sha256": "7054074e8d74b4754965ad759b6e74e4fa07fafd674a4241217fd75a5f97f9f2",
+    "strict_python_environment_sha256": "f7112105d6365d197c0a7db4efeaccd8a39aa079068f147fab983fb03b4513b1"
+  },
+  "software_rollout": "source-delivery.json and deployment.json",
+  "runtime_validation_status": "complete; local functional control evidence with mixed one-task Max quality"
+}

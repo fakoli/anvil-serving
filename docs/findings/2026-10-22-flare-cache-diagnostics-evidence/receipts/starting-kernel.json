@@ -1,0 +1,15 @@
+{
+  "at": 1792660066.2105196,
+  "argv": [
+    "journalctl",
+    "-k",
+    "--since",
+    "10 minutes ago",
+    "--no-pager",
+    "-o",
+    "short-iso"
+  ],
+  "returncode": 0,
+  "stdout": "",
+  "stderr": ""
+}

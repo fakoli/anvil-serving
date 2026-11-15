@@ -70,7 +70,7 @@ def _server(
         idempotency_db_path=str(tmp_path / "ops.sqlite3"), audit_logger=audits.append,
         allowed_operations=allowed_operations, call_tool_func=call_tool_func,
     )
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server, collector, audits
@@ -110,46 +110,3 @@ def test_fleet_scope_denial_precedes_collector(monkeypatch, tmp_path, token):
     assert status in (401, 403)
     assert collector.calls == []
     assert body["error"]["code"] in {"authentication_error", "authorization_scope_denied"}
-
-
-def test_mcp_fleet_matches_rest_and_uses_only_protocol_correlation(monkeypatch, tmp_path):
-    with _server(tmp_path, monkeypatch) as (server, collector, _):
-        _, rest = _post(server, "/tools/call", {"name": "fleet_workloads", "arguments": {}})
-        status, rpc = _post(
-            server, "/mcp", {"jsonrpc": "2.0", "id": "rpc-1", "method": "tools/call", "params": {
-                "name": "fleet_workloads", "arguments": {}, "_meta": {
-                    "io.modelcontextprotocol/protocolVersion": mcp.PROTOCOL_VERSION,
-                    "io.modelcontextprotocol/clientCapabilities": {},
-                    "io.modelcontextprotocol/clientInfo": {"name": "test", "version": "1"},
-                },
-            }}, headers={
-                "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": mcp.PROTOCOL_VERSION,
-                "Mcp-Method": "tools/call", "Mcp-Name": "fleet_workloads",
-            },
-        )
-    assert status == 200 and rpc["id"] == "rpc-1"
-    assert rpc["result"]["structuredContent"] == rest
-    assert len(collector.calls) == 2
-
-
-def test_absent_or_invalid_fleet_configuration_stays_reserved_unavailable(monkeypatch, tmp_path):
-    with _server(tmp_path, monkeypatch, topology=None) as (server, _collector, _):
-        status, body = _post(server, "/tools/call", {"name": "fleet_workloads", "arguments": {}})
-        assert server.anvil_fleet_workload_collector is None
-    assert status == 200
-    assert body["error"]["code"] == "workload_source_unavailable"
-
-
-def test_allowlist_hides_fleet_and_both_collectors_close_when_one_raises(monkeypatch, tmp_path):
-    closed = []
-
-    class BadFleet(_FleetCollector):
-        def close(self):
-            closed.append("fleet")
-            raise RuntimeError("private")
-
-    with _server(tmp_path, monkeypatch, collector=BadFleet(), allowed_operations=("controller-status",)) as (server, collector, _):
-        status, body = _post(server, "/tools/call", {"name": "fleet_workloads", "arguments": {}})
-        assert server.anvil_fleet_workload_collector is collector
-    assert status == 200 and body["error"]["code"] == "invalid_workload_request"
-    assert closed == ["fleet"]

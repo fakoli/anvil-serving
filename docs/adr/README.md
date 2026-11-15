@@ -63,3 +63,6 @@ people and the chat logs.
 | [0041](0041-initial-media-workflows-and-policy.md) | Initial media workflows and bounded operating policy | Accepted for implementation |
 | [0042](0042-anvil-serving-product-family-boundary.md) | Anvil Serving is one umbrella with six explicit product families | Accepted |
 | [0043](0043-colocated-tunnel-fast-path.md) | Co-located connector tunnel fast-path over loopback | Proposed |
+| [0045](0045-media-recipe-planning.md) | Media recipes compile briefs into bounded execution requests | Accepted |
+| [0046](0046-scoped-live-route-reconfiguration.md) | Scoped live route reconfiguration without restarting the gateway | Accepted for implementation |
+| [0047](0047-gateway-socket-recovery.md) | Recover gateway crash sockets under exclusive ownership | Accepted for implementation |

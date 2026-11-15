@@ -1,0 +1,13 @@
+{
+  "head": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "patch_sha256": "a049239165bfebc3f3f9d19f51d62bce01a0c7cd1762602507cb0d55807ce337",
+  "files": {
+    "docs/performance-work.md": "f00a973aabed2c4f7432cb2c5374990f4e53c2dfbb9eb414393e4526cf8fb26c",
+    "helios/src/server.rs": "e55c7b2c9213bb15fb8f211f029c5b07c7ca32b60d0f44878927f7eed1486200",
+    "helios/src/server/dashboard.rs": "d3889a418a2c7d2449bfdb8d38d57a056b7dd070748f542ae3db1445b117809a",
+    "helios/src/server/dashboard/scheduler.rs": "6b955bf4db7f1d41226bd64f2498cf3ff4481fd34f2dc792627c1e486f71db44",
+    "helios/src/server/metrics/scheduler.rs": "d460c10f89a60a81e50f55404fb65e7a458ab653469d4f1a39e3616077539583",
+    "helios/src/server/scheduler_trace.rs": "b441672fa247815a6c9d62efb8bc1284941cdeff70df6310f0ec2842d44c790e"
+  },
+  "submitted_upstream": false
+}

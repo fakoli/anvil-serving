@@ -1,0 +1,9 @@
+{
+  "schema": "anvil-serving.deadline-probe-fixture-result/v1",
+  "mode": "offline-fixture",
+  "fixture_sha256": "c6c90c15851e7f1e53edf517767005e86b641e6ac98d49dac69f4f15b5cb98f8",
+  "http_contract_passed": false,
+  "validation_error": "missing choices",
+  "passed": true,
+  "scope": "offline malformed-response robustness only; no engine request was sent"
+}

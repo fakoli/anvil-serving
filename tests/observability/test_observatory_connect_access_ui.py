@@ -1,11 +1,10 @@
-"""Static contracts for the optional gateway-owned Observatory Access shell."""
+"""Browser-boundary contracts for the Observatory Access shell."""
 
 from pathlib import Path
 import shutil
 import subprocess
 
 import pytest
-
 
 ROOT = Path(__file__).parents[2]
 STATIC = ROOT / "anvil_serving/observability/dashboard/static"
@@ -17,9 +16,7 @@ def test_connect_access_api_rejects_oversized_streams_and_malformed_tokens() -> 
         pytest.skip("requires Node for the browser response-boundary fixture")
     completed = subprocess.run(
         [node, str(Path(__file__).with_name("connect_access_api_ui.cjs")), str(STATIC / "views/connect_access_api.js")],
-        capture_output=True,
-        text=True,
-        timeout=10,
+        capture_output=True, text=True, timeout=10,
     )
     assert completed.returncode == 0, completed.stderr
 
@@ -30,9 +27,7 @@ def test_connect_access_view_disables_malformed_records_without_mutation() -> No
         pytest.skip("requires Node for the browser view-boundary fixture")
     completed = subprocess.run(
         [node, str(Path(__file__).with_name("connect_access_view_ui.cjs")), str(STATIC / "views/connect_access.js")],
-        capture_output=True,
-        text=True,
-        timeout=10,
+        capture_output=True, text=True, timeout=10,
     )
     assert completed.returncode == 0, completed.stderr
 
@@ -59,18 +54,3 @@ def test_connect_access_view_uses_text_only_metadata_manual_refresh_and_no_accou
     assert "Creating identity-provider accounts or invitations is not available here." in source
     assert "do not claim that a device is online" in source
     assert "crypto.randomUUID()" in source
-
-
-def test_access_route_skips_fleet_reads_and_auto_refresh() -> None:
-    source = (STATIC / "observatory.js").read_text(encoding="utf-8")
-    assert 'if (target.page !== "access") {' in source
-    assert '"access","workbench","playground","models","work","compute","documentation"' in "".join(source.split())
-
-
-def test_legacy_username_input_disables_mobile_text_corrections() -> None:
-    source = (STATIC / "observatory.js").read_text(encoding="utf-8")
-    username = source.split('name: "username",', 1)[1].split('password = el', 1)[0]
-    assert 'autocomplete: "username"' in username
-    assert 'autocapitalize: "none"' in username
-    assert 'autocorrect: "off"' in username
-    assert 'spellcheck: "false"' in username

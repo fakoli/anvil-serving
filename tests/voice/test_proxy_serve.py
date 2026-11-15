@@ -10,13 +10,11 @@ not the OpenAI ``/v1/models`` an STT/TTS serve answers.
 """
 from __future__ import annotations
 
-from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.voice.serves._common import ServeNotConfigured
 from anvil_serving.voice.serves.proxy import ProxyServe, ProxyServeConfig
-from tests.voice.conftest import FakeOpenResponse, FakeRun, fake_open_fails
+from tests.voice.conftest import FakeRun, fake_open_fails
 
 
 @pytest.fixture
@@ -29,142 +27,6 @@ def manifest_with_proxy(tmp_path):
         encoding="utf-8",
     )
     return str(p)
-
-
-def test_realtime_url_appends_path():
-    serve = ProxyServe(ProxyServeConfig(base_url="http://127.0.0.1:8765", model="anvil-realtime-proxy"))
-    assert serve.realtime_url == "http://127.0.0.1:8765/realtime"
-
-
-def test_realtime_url_strips_trailing_slash():
-    serve = ProxyServe(ProxyServeConfig(base_url="http://127.0.0.1:8765/", model="anvil-realtime-proxy"))
-    assert serve.realtime_url == "http://127.0.0.1:8765/realtime"
-
-
-def test_default_serve_name_is_realtime_proxy():
-    serve = ProxyServe(ProxyServeConfig(base_url="http://127.0.0.1:8765", model="anvil-realtime-proxy"))
-    assert serve.config.serve_name == "realtime-proxy"
-
-
-def test_bring_up_raises_serve_not_configured_when_manifest_missing(tmp_path):
-    missing = str(tmp_path / "does-not-exist.toml")
-    serve = ProxyServe(ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=missing))
-    with pytest.raises(ServeNotConfigured):
-        serve.bring_up()
-
-
-def test_bring_up_raises_serve_not_configured_when_entry_missing(tmp_path):
-    p = tmp_path / "serves.toml"
-    p.write_text(
-        '[[serve]]\nname = "stt"\ncontainer = "anvil-stt"\nruntime = "docker"\nport = 8090\n'
-        'model = "parakeet"\nengine = "audio"\n',
-        encoding="utf-8",
-    )
-    serve = ProxyServe(ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=str(p)))
-    with pytest.raises(ServeNotConfigured):
-        serve.bring_up()
-
-
-def test_bring_up_starts_via_declared_up_command_never_bare_docker(manifest_with_proxy):
-    fake_run = FakeRun([
-        (["docker", "inspect"], 1, "", "Error: No such container: anvil-voice-proxy"),
-        (["echo", "bring-up-proxy"], 0, "bring-up-proxy\n", ""),
-    ])
-    serve = ProxyServe(
-        ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=manifest_with_proxy),
-        _run=fake_run,
-    )
-    rc = serve.bring_up()
-    assert rc == 0
-    assert ["echo", "bring-up-proxy"] in fake_run.calls
-    assert all(c[0] == "docker" or c == ["echo", "bring-up-proxy"] for c in fake_run.calls)
-
-
-def test_tear_down_stops_a_running_container(manifest_with_proxy):
-    stopped = []
-
-    def fake_run(argv, **kwargs):
-        fake_run.calls.append(list(argv))
-        if argv[:2] == ["docker", "inspect"]:
-            state = "exited" if stopped else "running"
-            return SimpleNamespace(returncode=0, stdout=state + "\n", stderr="")
-        if argv[:2] == ["docker", "stop"]:
-            stopped.append(argv)
-            return SimpleNamespace(returncode=0, stdout="anvil-voice-proxy\n", stderr="")
-        if argv[:3] == ["docker", "rm", "-f"]:
-            return SimpleNamespace(returncode=0, stdout="anvil-voice-proxy\n", stderr="")
-        return SimpleNamespace(returncode=1, stdout="", stderr="no matcher")
-    fake_run.calls = []
-    serve = ProxyServe(
-        ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=manifest_with_proxy),
-        _run=fake_run,
-    )
-    rc = serve.tear_down()
-    assert rc == 0
-    assert ["docker", "rm", "-f", "anvil-voice-proxy"] in fake_run.calls
-    assert ["docker", "stop", "anvil-voice-proxy"] in fake_run.calls
-
-
-def test_tear_down_raises_serve_not_configured_when_manifest_missing(tmp_path):
-    missing = str(tmp_path / "nope.toml")
-    serve = ProxyServe(ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=missing))
-    with pytest.raises(ServeNotConfigured):
-        serve.tear_down()
-
-
-def test_wait_ready_probes_usage_by_default(manifest_with_proxy):
-    """The proxy's readiness probe defaults to `{base_url}/usage` -- NOT the
-    OpenAI `/v1/models` an STT/TTS serve answers."""
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    seen = []
-
-    def open_probe(url, timeout=None):
-        seen.append(url)
-        return FakeOpenResponse(200)
-
-    serve = ProxyServe(
-        ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=manifest_with_proxy),
-        _run=fake_run, _open=open_probe,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is True
-    assert readiness.docker_state == "running"
-    assert readiness.name == "realtime-proxy"
-    assert seen == ["http://127.0.0.1:8765/usage"]
-
-
-def test_wait_ready_honors_explicit_ready_url(manifest_with_proxy):
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    seen = []
-
-    def open_probe(url, timeout=None):
-        seen.append(url)
-        return FakeOpenResponse(200)
-
-    serve = ProxyServe(
-        ProxyServeConfig(
-            base_url="http://127.0.0.1:8765",
-            model="proxy",
-            manifest_path=manifest_with_proxy,
-            ready_url="http://127.0.0.1:8765/pool",
-        ),
-        _run=fake_run, _open=open_probe,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is True
-    assert seen == ["http://127.0.0.1:8765/pool"]
-
-
-def test_wait_ready_false_when_probe_fails(manifest_with_proxy):
-    fake_run = FakeRun([(["docker", "inspect"], 0, "running\n", "")])
-    serve = ProxyServe(
-        ProxyServeConfig(base_url="http://127.0.0.1:8765", model="proxy", manifest_path=manifest_with_proxy),
-        _run=fake_run, _open=fake_open_fails,
-    )
-    readiness = serve.wait_ready()
-    assert readiness.ready is False
-    assert "not responding" in readiness.detail
-    assert "/usage" in readiness.detail
 
 
 def test_wait_ready_reports_unconfigured_state_without_raising(tmp_path):

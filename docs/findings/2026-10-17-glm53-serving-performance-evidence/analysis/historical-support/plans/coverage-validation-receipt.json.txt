@@ -1,0 +1,44 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: plans/coverage-validation-receipt.json
+Original SHA256: bf5c4df45d5c7faef473665cb10861e26680902b6c4d7cf0c5c1dec30d90c59f
+Original bytes: 1743
+
+{
+  "command": [
+    "PYTHONPATH=[PRIVATE_OPERATOR_ROOT]/.codex/worktrees/bae0/anvil-serving",
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "analysis/assemble_partial_coverage.py",
+    "--root",
+    ".",
+    "--output",
+    "analysis/partial-serving-comparison-evidence.json",
+    "--validate"
+  ],
+  "exit_code": 0,
+  "frozen_plan": {
+    "bytes": 10864,
+    "path": "plans/comparison-plan.json",
+    "sha256": "0f02f75f15f527f00c58bf46f16dcc1b523df98af50e38b0045e728fa87c3ea0"
+  },
+  "schema": "private-coverage-validation-receipt/v2",
+  "sources": {
+    "assemble_partial_coverage.py": {
+      "bytes": 9485,
+      "path": "analysis/assemble_partial_coverage.py",
+      "sha256": "7c389d6d1fd9d28968d2a364e004da447c9476eaf075f274e2305229cdbb0f81"
+    },
+    "project_cell.py": {
+      "bytes": 32375,
+      "path": "analysis/project_cell.py",
+      "sha256": "3f9e95edc0c1669193f5abe62eab9497ef32aa91c16b17a2662c8409329488f7"
+    }
+  },
+  "stderr": "",
+  "stdout": "{\"accepted_cells\": [\"baseline-natural-ctx10240-c1\", \"baseline-natural-ctx10240-c2\", \"baseline-natural-ctx10240-c4\", \"baseline-natural-ctx163840-c1\", \"baseline-natural-ctx163840-c2\", \"baseline-natural-ctx40960-c1\", \"baseline-natural-ctx40960-c2\", \"baseline-natural-ctx40960-c4\"], \"artifact\": \"[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/analysis/partial-serving-comparison-evidence.json\", \"missing_required_metrics\": 578, \"status\": \"partial\"}\n",
+  "validated_artifact": {
+    "bytes": 344164,
+    "path": "analysis/partial-serving-comparison-evidence.json",
+    "sha256": "805d680e813584ec8ebae08b6175ad4d69eb428e11abf269c5e68df9b18d18e8"
+  },
+  "validated_at_utc": "2026-10-17T11:41:22.689218Z"
+}

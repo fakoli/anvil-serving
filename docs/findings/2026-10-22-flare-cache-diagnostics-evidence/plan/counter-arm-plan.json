@@ -1,0 +1,17 @@
+{
+  "at": 1792661940.3053842,
+  "window": "second bounded window only after incumbent restoration/readmission in first window",
+  "budget_seconds": 5400,
+  "stop_experiment_seconds": 4200,
+  "scope": "counter-only fresh process, same32GiB host pool, disk0; match A prime/reverse and B prime/forward; no performance promotion",
+  "image": "sha256:aa74f31ae8a97387ecf14af5b334222ba858ca540241d45a9eccdbae0054c0fc",
+  "primary": [
+    "c-prime forward52 fresh",
+    "c-reverse reverse52 exact prior"
+  ],
+  "conditional_if_reserve_allows": [
+    "fresh D prime52, forward52"
+  ],
+  "hypothesis": "rowpressure increases while freepages remain; pagepressure distinguishes bottleneck; compaction and eviction counts identify path",
+  "build_exclusions": "21 disk/composite runtime I/O tests io_uring EPERM; memory-only live scope;37 applicable CPU tests passed,2ignoredGPU tests"
+}

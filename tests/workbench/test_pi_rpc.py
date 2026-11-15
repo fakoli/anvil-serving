@@ -37,8 +37,7 @@ class _Process:
 
 def _client(process: _Process, tmp_path: Path) -> PiRpcClient:
     return PiRpcClient(
-        ("pi", "--mode", "rpc"),
-        cwd=tmp_path / "checkout",
+        ("pi", "--mode", "rpc"), cwd=tmp_path / "checkout",
         environment={"PI_CODING_AGENT_DIR": str(tmp_path / "agent")},
         process_factory=lambda *_args, **_kwargs: process,
         read_chunk=lambda instance, _size: instance.chunks.pop(0) if instance.chunks else b"",
@@ -59,12 +58,8 @@ def test_commands_are_jsonl_and_response_is_distinct_from_events(tmp_path: Path)
     client = _client(process, tmp_path)
     client.start()
     command_id = client.prompt("inspect contract")
-    sent = json.loads(process.stdin.writes[-1])
-    assert sent == {"id": command_id, "type": "prompt", "message": "inspect contract"}
-    process.chunks.append(
-        (json.dumps({"type": "response", "id": command_id, "command": "prompt", "success": True}) + "\n"
-         + json.dumps({"type": "tool_execution_start", "toolName": "read"}) + "\n").encode()
-    )
+    assert json.loads(process.stdin.writes[-1]) == {"id": command_id, "type": "prompt", "message": "inspect contract"}
+    process.chunks.append((json.dumps({"type": "response", "id": command_id, "command": "prompt", "success": True}) + "\n" + json.dumps({"type": "tool_execution_start", "toolName": "read"}) + "\n").encode())
     events = client.poll()
     assert [event.kind for event in events] == ["tool"]
     assert client.take_response(command_id).ok is True
@@ -75,11 +70,7 @@ def test_extension_reply_uses_official_request_id_and_no_fake_command_ack(tmp_pa
     client = _client(process, tmp_path)
     client.start()
     client.extension_response("request-1", {"confirmed": True})
-    assert json.loads(process.stdin.writes[-1]) == {
-        "id": "request-1",
-        "type": "extension_ui_response",
-        "confirmed": True,
-    }
+    assert json.loads(process.stdin.writes[-1]) == {"id": "request-1", "type": "extension_ui_response", "confirmed": True}
 
 
 def test_runner_exit_is_detected_and_close_terminates_live_process(tmp_path: Path) -> None:

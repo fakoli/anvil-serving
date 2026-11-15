@@ -1,0 +1,915 @@
+{
+  "agentic": {
+    "budget": {
+      "chat_template_kwargs": {
+        "enable_thinking": true
+      },
+      "reasoning_effort": null,
+      "sampling": {
+        "temperature": {
+          "effective_request": 1.0,
+          "requested": 1.0,
+          "sent": true
+        },
+        "top_p": {
+          "effective_request": 0.95,
+          "requested": 0.95,
+          "sent": true
+        }
+      },
+      "thinking_mode": "enabled"
+    },
+    "cases": [
+      {
+        "expected": {
+          "final": "inspect -> patch -> test",
+          "final_kind": "normalized_exact",
+          "final_terms": [],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "result_markers": [],
+          "scenario_id": "planning",
+          "tool_calls": [],
+          "tool_mode": "none"
+        },
+        "expected_sha256": "19f6fb809905d7d0d0ff6d6728c194bb6e717d27462f516d2a480ee92d2e1a1d",
+        "scenario": {
+          "injected_results": [],
+          "messages": [
+            {
+              "content": "Return the following workflow on one line, with arrows and no headings, additional punctuation, or other text:\ninspect -> patch -> test",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "planning",
+          "scenario_type": "planning",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": []
+        },
+        "scenario_sha256": "cf95ab72be0361fc6911b910cd6286abbed6e46043e3c76b8e79959edb95f9c1"
+      },
+      {
+        "expected": {
+          "final": "42",
+          "final_kind": "normalized_exact",
+          "final_terms": [],
+          "reasoning_required": true,
+          "recovery_required": false,
+          "result_markers": [],
+          "scenario_id": "reasoning",
+          "tool_calls": [],
+          "tool_mode": "none"
+        },
+        "expected_sha256": "69e210855cfa95cde16d06372ac98178266cdb07399e51373b1c59d44f62350e",
+        "scenario": {
+          "injected_results": [],
+          "messages": [
+            {
+              "content": "A build has 7 groups of 6 tests. Return only the total number of tests.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "reasoning",
+          "scenario_type": "reasoning",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": []
+        },
+        "scenario_sha256": "34c3cb986f14efa4f43c3c76688d3d0a1ee3c6db7e707b23e5665b243e1be751"
+      },
+      {
+        "expected": {
+          "final": {
+            "file": "app.py",
+            "line": 12,
+            "value": 45
+          },
+          "final_kind": "exact_json",
+          "final_terms": [],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "result_markers": [],
+          "scenario_id": "structured-edit",
+          "tool_calls": [],
+          "tool_mode": "none"
+        },
+        "expected_sha256": "1e0f5b0280cb3fe5212ec62384cf3ecacaf76e62fd1a0e158dccc63f3515d3a3",
+        "scenario": {
+          "injected_results": [],
+          "messages": [
+            {
+              "content": "Return only JSON describing an edit: {\"file\":\"app.py\",\"line\":12,\"value\":45}.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "structured-edit",
+          "scenario_type": "structured-edit",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": []
+        },
+        "scenario_sha256": "191d475f28ffa864f5888877fe4057e7908086c31463ad8c76c9ac02cee03f68"
+      },
+      {
+        "expected": {
+          "final": "FILE-READY",
+          "final_kind": "contains_markers",
+          "final_terms": [],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "result_markers": [
+            "FILE-READY"
+          ],
+          "scenario_id": "tool-sequence",
+          "tool_calls": [
+            {
+              "arguments": {
+                "id": "T-17"
+              },
+              "name": "read_ticket"
+            },
+            {
+              "arguments": {
+                "path": "src/app.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "tool_mode": "sequential"
+        },
+        "expected_sha256": "a7448cfbf6b41567bcd6797ff14962d411a3f2060ea8135f40fd96591784470c",
+        "scenario": {
+          "injected_results": [
+            {
+              "result": {
+                "path": "src/app.py"
+              },
+              "tool": "read_ticket"
+            },
+            {
+              "result": {
+                "marker": "FILE-READY"
+              },
+              "tool": "read_file"
+            }
+          ],
+          "messages": [
+            {
+              "content": "Read ticket T-17, then read the file named by the ticket. Include the file result's exact marker in your final answer.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "tool-sequence",
+          "scenario_type": "tool-sequence",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": [
+            {
+              "function": {
+                "description": "Deterministic fixture tool read_ticket.",
+                "name": "read_ticket",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            },
+            {
+              "function": {
+                "description": "Deterministic fixture tool read_file.",
+                "name": "read_file",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            }
+          ]
+        },
+        "scenario_sha256": "32cfd831ec4227c10660c9b313168663b687d7c3b38bff46c7482d600d1097fc"
+      },
+      {
+        "expected": {
+          "final": "A-OK | B-OK",
+          "final_kind": "contains_markers",
+          "final_terms": [],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "result_markers": [
+            "A-OK",
+            "B-OK"
+          ],
+          "scenario_id": "parallel-tools",
+          "tool_calls": [
+            {
+              "arguments": {
+                "path": "a.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "path": "b.py"
+              },
+              "name": "read_file"
+            }
+          ],
+          "tool_mode": "parallel"
+        },
+        "expected_sha256": "f99d75eba6bdab0d6642c9c41a41deb7378bb4f648b07c673cefde1b6c8e6cea",
+        "scenario": {
+          "injected_results": [
+            {
+              "result": {
+                "marker": "A-OK",
+                "path": "a.py"
+              },
+              "tool": "read_file"
+            },
+            {
+              "result": {
+                "marker": "B-OK",
+                "path": "b.py"
+              },
+              "tool": "read_file"
+            }
+          ],
+          "messages": [
+            {
+              "content": "Read a.py and b.py independently, then report both markers.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "parallel-tools",
+          "scenario_type": "parallel-tools",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": [
+            {
+              "function": {
+                "description": "Deterministic fixture tool read_file.",
+                "name": "read_file",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            }
+          ]
+        },
+        "scenario_sha256": "4024a34b740929bc639164fbae2942254304f21d954150e0cd1eb2f46bc27d98"
+      },
+      {
+        "expected": {
+          "final": "UPDATED-73",
+          "final_kind": "contains_markers",
+          "final_terms": [],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "result_markers": [
+            "UPDATED-73"
+          ],
+          "scenario_id": "dependent-result",
+          "tool_calls": [
+            {
+              "arguments": {
+                "name": "Ada"
+              },
+              "name": "lookup_user"
+            },
+            {
+              "arguments": {
+                "id": "user-73",
+                "state": "active"
+              },
+              "name": "update_user"
+            }
+          ],
+          "tool_mode": "sequential"
+        },
+        "expected_sha256": "6c5034223c5888654d1e2ab7cafac4b13c6d69a5acc60f09bcfb20c37783e694",
+        "scenario": {
+          "injected_results": [
+            {
+              "result": {
+                "id": "user-73"
+              },
+              "tool": "lookup_user"
+            },
+            {
+              "result": {
+                "status": "UPDATED-73"
+              },
+              "tool": "update_user"
+            }
+          ],
+          "messages": [
+            {
+              "content": "Look up user Ada, then update that exact user to active. Include the update result's exact status string in your final answer.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "dependent-result",
+          "scenario_type": "dependent-result",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": [
+            {
+              "function": {
+                "description": "Deterministic fixture tool lookup_user.",
+                "name": "lookup_user",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            },
+            {
+              "function": {
+                "description": "Deterministic fixture tool update_user.",
+                "name": "update_user",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "state": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "state"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            }
+          ]
+        },
+        "scenario_sha256": "1156501de4cbd22cc59280ba8cf77aedaa8f937545130245c3ed01a32142900f"
+      },
+      {
+        "expected": {
+          "final": "BUILD-OK",
+          "final_kind": "contains_markers",
+          "final_terms": [],
+          "reasoning_required": false,
+          "recovery_required": true,
+          "recovery_result": "error",
+          "result_markers": [
+            "BUILD-OK"
+          ],
+          "scenario_id": "tool-recovery-error",
+          "tool_calls": [
+            {
+              "arguments": {
+                "attempt": "1",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            },
+            {
+              "arguments": {
+                "attempt": "2",
+                "id": "B-9"
+              },
+              "name": "fetch_build"
+            }
+          ],
+          "tool_mode": "sequential"
+        },
+        "expected_sha256": "4869acab5be4dcc12b33175c68ed4cad88f6aef51a267a1d0a3accada23059c7",
+        "scenario": {
+          "injected_results": [
+            {
+              "result": {
+                "error": "temporary"
+              },
+              "tool": "fetch_build"
+            },
+            {
+              "result": {
+                "marker": "BUILD-OK",
+                "status": "passed"
+              },
+              "tool": "fetch_build"
+            }
+          ],
+          "messages": [
+            {
+              "content": "Fetch build B-9. If the result is unusable, retry once safely. Include the successful result's exact marker in your final answer.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "tool-recovery-error",
+          "scenario_type": "tool-recovery",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": [
+            {
+              "function": {
+                "description": "Deterministic fixture tool fetch_build.",
+                "name": "fetch_build",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "attempt": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "attempt"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            }
+          ]
+        },
+        "scenario_sha256": "98083f0c7096a280d610f044745d9ca5c21476d9d645213d419695a07f83da4b"
+      },
+      {
+        "expected": {
+          "final": "tests pass",
+          "final_kind": "contains_terms",
+          "final_terms": [
+            "pass"
+          ],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "result_markers": [],
+          "result_terms": [
+            "pass"
+          ],
+          "scenario_id": "debug-loop",
+          "tool_calls": [
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            },
+            {
+              "arguments": {
+                "path": "calc.py"
+              },
+              "name": "read_file"
+            },
+            {
+              "arguments": {
+                "edit": "return a + b",
+                "path": "calc.py"
+              },
+              "name": "apply_edit"
+            },
+            {
+              "arguments": {
+                "scope": "unit"
+              },
+              "name": "run_tests"
+            }
+          ],
+          "tool_mode": "sequential"
+        },
+        "expected_sha256": "08fe6a649f3a2c13f099bb0e54bd09493434d4d906e685501d9d032739cf782f",
+        "scenario": {
+          "injected_results": [],
+          "messages": [
+            {
+              "content": "This deterministic fixture's function must return the sum of its inputs a and b. Run unit tests, inspect the failing file, apply the one-line fix, and rerun unit tests. Make exactly those four tool calls in that order, one per turn; do not call extra tools or inspect other files. After the second test result, report whether the tests pass.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "debug-loop",
+          "scenario_type": "debug-loop",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": [
+            {
+              "function": {
+                "description": "Deterministic fixture tool run_tests.",
+                "name": "run_tests",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "scope": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "scope"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            },
+            {
+              "function": {
+                "description": "Deterministic fixture tool read_file.",
+                "name": "read_file",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            },
+            {
+              "function": {
+                "description": "Deterministic fixture tool apply_edit.",
+                "name": "apply_edit",
+                "parameters": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "edit": {
+                      "description": "The complete replacement source line, as literal text without a trailing newline. Do not supply a diff, Markdown fences, or a description of the change.",
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "edit"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "function"
+            }
+          ]
+        },
+        "scenario_sha256": "596e72b6e66f49defd4fd66e1d8b64d6e277fae6dbc4e55436d5e8aae7e7a349"
+      },
+      {
+        "expected": {
+          "final": "SESSION-8841",
+          "final_kind": "normalized_exact",
+          "final_terms": [],
+          "history": [
+            {
+              "content": "Remember private session code SESSION-8841.",
+              "role": "user"
+            },
+            {
+              "content": "Turn 0: remember neutral note 0.",
+              "role": "user"
+            },
+            {
+              "content": "noted 0",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 1: remember neutral note 1.",
+              "role": "user"
+            },
+            {
+              "content": "noted 1",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 2: remember neutral note 2.",
+              "role": "user"
+            },
+            {
+              "content": "noted 2",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 3: remember neutral note 3.",
+              "role": "user"
+            },
+            {
+              "content": "noted 3",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 4: remember neutral note 4.",
+              "role": "user"
+            },
+            {
+              "content": "noted 4",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 5: remember neutral note 5.",
+              "role": "user"
+            },
+            {
+              "content": "noted 5",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 6: remember neutral note 6.",
+              "role": "user"
+            },
+            {
+              "content": "noted 6",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 7: remember neutral note 7.",
+              "role": "user"
+            },
+            {
+              "content": "noted 7",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 8: remember neutral note 8.",
+              "role": "user"
+            },
+            {
+              "content": "noted 8",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 9: remember neutral note 9.",
+              "role": "user"
+            },
+            {
+              "content": "noted 9",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 10: remember neutral note 10.",
+              "role": "user"
+            },
+            {
+              "content": "noted 10",
+              "role": "assistant"
+            },
+            {
+              "content": "Return only the private session code.",
+              "role": "user"
+            }
+          ],
+          "reasoning_required": false,
+          "recovery_required": false,
+          "require_token_growth": false,
+          "result_markers": [],
+          "scenario_id": "context-recovery",
+          "tool_calls": [],
+          "tool_mode": "none"
+        },
+        "expected_sha256": "2a691c9894f6598ad686a7f8e8833904d505415b7791968c426855e6e7346bd7",
+        "scenario": {
+          "injected_results": [],
+          "messages": [
+            {
+              "content": "Remember private session code SESSION-8841.",
+              "role": "user"
+            },
+            {
+              "content": "Turn 0: remember neutral note 0.",
+              "role": "user"
+            },
+            {
+              "content": "noted 0",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 1: remember neutral note 1.",
+              "role": "user"
+            },
+            {
+              "content": "noted 1",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 2: remember neutral note 2.",
+              "role": "user"
+            },
+            {
+              "content": "noted 2",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 3: remember neutral note 3.",
+              "role": "user"
+            },
+            {
+              "content": "noted 3",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 4: remember neutral note 4.",
+              "role": "user"
+            },
+            {
+              "content": "noted 4",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 5: remember neutral note 5.",
+              "role": "user"
+            },
+            {
+              "content": "noted 5",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 6: remember neutral note 6.",
+              "role": "user"
+            },
+            {
+              "content": "noted 6",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 7: remember neutral note 7.",
+              "role": "user"
+            },
+            {
+              "content": "noted 7",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 8: remember neutral note 8.",
+              "role": "user"
+            },
+            {
+              "content": "noted 8",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 9: remember neutral note 9.",
+              "role": "user"
+            },
+            {
+              "content": "noted 9",
+              "role": "assistant"
+            },
+            {
+              "content": "Turn 10: remember neutral note 10.",
+              "role": "user"
+            },
+            {
+              "content": "noted 10",
+              "role": "assistant"
+            },
+            {
+              "content": "Return only the private session code.",
+              "role": "user"
+            }
+          ],
+          "scenario_id": "context-recovery",
+          "scenario_type": "context-recovery",
+          "schema": "anvil-serving.agentic-scenario/v1",
+          "tools": []
+        },
+        "scenario_sha256": "cc358eeb4082808c237a0ad407aaf9c1c79e84a85fb8819c9e1df047f9fe403e"
+      }
+    ],
+    "profile_controls": {
+      "adapters": [],
+      "cases": [
+        "planning",
+        "reasoning",
+        "structured-edit",
+        "tool-sequence",
+        "parallel-tools",
+        "dependent-result",
+        "tool-recovery",
+        "debug-loop",
+        "context-recovery"
+      ],
+      "max_completion_tokens": 8192,
+      "max_steps": 24,
+      "repetitions": 2,
+      "requirements": {
+        "min_free_disk_bytes": 5368709120
+      },
+      "scoring": {
+        "pass_rate_floor": 0.75
+      },
+      "timeout_s": 7200
+    },
+    "repetitions": 2
+  },
+  "gates": {
+    "agentic_all_pass": 18,
+    "swe_case_count": 5,
+    "swe_min_resolved": 4
+  },
+  "oracle_revision": "7",
+  "schema": "anvil-serving.qualification-workload-manifest/v1",
+  "selection_rule": "Same frozen five SWE Verified instances and nine deterministic scenarios for each target; no task/oracle substitution.",
+  "swe": {
+    "container_limits": {
+      "mem_limit": 8589934592,
+      "memswap_limit": 8589934592,
+      "nano_cpus": 4000000000,
+      "network_mode": "none",
+      "pids_limit": 512
+    },
+    "dataset": "princeton-nlp/SWE-bench_Verified",
+    "dataset_file_hashes": {
+      "test-00000-of-00001.parquet": "a45b1fe4e2f0c8390b2b2938ac83e92ed5979000856808f3679c07812e9e6dcd"
+    },
+    "dataset_revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+    "harness_agent": {
+      "name": "mini-swe-agent",
+      "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+    },
+    "harness_grader": {
+      "name": "swe-bench",
+      "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9"
+    },
+    "instances": [
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096",
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898"
+    ],
+    "profile_controls": {
+      "adapters": [
+        "mini-swe-agent",
+        "swe-bench",
+        "swe-bench-verified",
+        "worker-base"
+      ],
+      "cases": [
+        "swe-verified"
+      ],
+      "instance_limit": 5,
+      "max_completion_tokens": 16384,
+      "max_steps": 60,
+      "repetitions": 1,
+      "requirements": {
+        "container_required": true,
+        "min_free_disk_bytes": 53687091200
+      },
+      "scoring": {
+        "pass_rate_floor": 0.4
+      },
+      "timeout_s": 21600
+    },
+    "request_controls": {
+      "reasoning_effort": null,
+      "sampling": {
+        "temperature": {
+          "effective_request": 1.0,
+          "requested": 1.0,
+          "sent": true
+        },
+        "top_p": {
+          "effective_request": 0.95,
+          "requested": 0.95,
+          "sent": true
+        }
+      },
+      "thinking_mode": "enabled"
+    },
+    "split": "test",
+    "task_container_network": "none"
+  }
+}

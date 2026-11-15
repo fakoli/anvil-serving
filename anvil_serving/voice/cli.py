@@ -37,6 +37,7 @@ pool is usable when it is not.
 import argparse
 import copy
 import dataclasses
+import hashlib
 import ipaddress
 import json
 import math
@@ -69,6 +70,7 @@ from . import bridge as voice_bridge
 from . import config as voice_config
 from . import corpus as voice_corpus
 from . import stt_benchmark
+from . import tts_benchmark
 from .realtime.app import build_realtime_server_from_manifest
 from .realtime.ws import serve_forever_in_background
 from .realtime_service import ProxyProcessConfig, RealtimeProxyProcessService
@@ -604,6 +606,52 @@ def _load_stt_benchmark_config(args):
         return None, None, str(exc)
 
 
+def _load_tts_benchmark_config(args):
+    """Resolve a TTS-only overlay, preserving declared WAV benchmark format."""
+    try:
+        path = getattr(args, "tts_candidate_overlay", None)
+        overlay = _load_candidate_overlay(path)
+        identity = {}
+        if overlay is not None:
+            overlay = copy.deepcopy(overlay)
+            metadata = overlay.pop("tts_benchmark", {})
+            if not isinstance(metadata, dict) or set(metadata) - {"identity"}:
+                raise voice_config.ConfigError("[tts_benchmark] accepts only an identity table")
+            identity = metadata.get("identity", {})
+            allowed = {"served_name", "checkpoint", "revision", "runtime", "runtime_version",
+                       "image", "image_digest", "hardware", "quantization"}
+            if not isinstance(identity, dict) or set(identity) - allowed:
+                raise voice_config.ConfigError("[tts_benchmark.identity] contains unsupported keys")
+            if any(not isinstance(value, str) or not value.strip() for value in identity.values()):
+                raise voice_config.ConfigError("[tts_benchmark.identity] values must be non-empty strings")
+            voice_config._reject_secret_literals(identity)
+            voice = overlay.get("voice", overlay)
+            if not isinstance(voice, dict) or set(voice) != {"tts"} or not isinstance(voice["tts"], dict):
+                raise voice_config.ConfigError("TTS candidate overlay must contain only [voice.tts] plus optional [tts_benchmark.identity]")
+            if "voice" in overlay and set(overlay) != {"voice"}:
+                raise voice_config.ConfigError("TTS candidate overlay contains unsupported top-level tables")
+            overlay = {"voice": {"tts": voice["tts"]}}
+        candidate = getattr(args, "candidate", None)
+        if not candidate and path:
+            candidate = os.path.splitext(os.path.basename(path))[0] or None
+        resolved = voice_config.resolve_manifest(
+            args.config, profile=getattr(args, "profile", None), candidate_overlay=overlay,
+            candidate=candidate, tts_benchmark=True,
+        )
+        configuration = {"profile": resolved.profile, "candidate": resolved.candidate}
+        for label, source in (("manifest", resolved.data.get("_manifest_path")), ("candidate_overlay", path)):
+            if source:
+                with open(source, "rb") as stream:
+                    raw = stream.read(voice_config.MAX_MANIFEST_BYTES + 1)
+                if len(raw) > voice_config.MAX_MANIFEST_BYTES:
+                    raise voice_config.ConfigError("TTS benchmark configuration exceeds byte limit")
+                configuration[label + "_sha256"] = hashlib.sha256(raw).hexdigest()
+                configuration[label + "_path_sha256"] = hashlib.sha256(os.path.abspath(source).encode("utf-8")).hexdigest()
+        return resolved, identity, configuration, None
+    except (voice_config.ConfigError, OSError) as exc:
+        return None, None, None, str(exc)
+
+
 def _load_benchmark_config(args):
     """Resolve benchmark config with profile/candidate overlays and preserve identity."""
     return _load_resolved_config(args)
@@ -677,8 +725,10 @@ def _write_benchmark_evidence(path: str, evidence: dict) -> str:
             f.write("\n")
             f.flush()
             os.fsync(f.fileno())
-        os.replace(temporary, target)
-        temporary = None
+        # Hard-link publication exposes the complete, fsynced file atomically
+        # and fails with FileExistsError if another attempt owns this path.
+        # The temporary file is on the same filesystem as its destination.
+        os.link(temporary, target)
     finally:
         if temporary is not None:
             try:
@@ -1667,6 +1717,9 @@ def cmd_run(args):
 
 def cmd_benchmark(args):
     scope = getattr(args, "scope", "end-to-end")
+    if scope != "tts" and any(getattr(args, key, None) for key in ("audio_out", "tts_candidate_overlay")):
+        print("voice benchmark: --audio-out and --tts-candidate-overlay require --scope tts", file=sys.stderr)
+        return 2
     input_wav = getattr(args, "input_wav", None)
     reference_text = getattr(args, "reference_text", None)
     if scope != "end-to-end" and (input_wav or reference_text is not None):
@@ -1694,6 +1747,8 @@ def cmd_benchmark(args):
             return 2
     if scope == "stt":
         return _cmd_stt_benchmark(args)
+    if scope == "tts":
+        return _cmd_tts_benchmark(args)
     if scope == "audio" and any(
         getattr(args, name, None)
         for name in (
@@ -1773,6 +1828,45 @@ def cmd_benchmark(args):
             return 1
         print("voice benchmark: evidence written %s" % evidence_target)
     print(voice_benchmark.to_json(result))
+    return 0
+
+
+def _cmd_tts_benchmark(args):
+    if any(getattr(args, name, None) for name in (
+        "candidate_overlay", "candidate_base_url", "candidate_model", "candidate_api_key_env",
+        "stt_candidate_overlay", "auto_language_probes",
+    )):
+        print("voice benchmark: --scope tts accepts TTS configuration and --tts-candidate-overlay; LLM/STT candidate options are invalid", file=sys.stderr)
+        return 2
+    for option in ("corpus", "audio_out", "evidence_out"):
+        if not getattr(args, option, None):
+            print("voice benchmark: --scope tts requires --%s" % option.replace("_", "-"), file=sys.stderr)
+            return 2
+    resolved, identity, configuration, error = _load_tts_benchmark_config(args)
+    if error:
+        print("voice benchmark: %s" % error, file=sys.stderr)
+        return 2
+    try:
+        evidence_target = _resolve_evidence_output_path(args.evidence_out)
+        assert evidence_target is not None
+        evidence = tts_benchmark.run_tts_benchmark(
+            args.corpus, config=_stage_config(resolved.data["voice"]["tts"], TTSStageConfig),
+            audio_out=args.audio_out, repetitions=args.repetitions, concurrency=args.concurrency,
+            expected_cases=getattr(args, "expected_cases", None),
+            endpoint_identity=identity, config_identity=configuration,
+        )
+        _write_benchmark_evidence(evidence_target, evidence)
+    except (voice_config.ConfigError, tts_benchmark.TTSBenchmarkError) as exc:
+        print("voice benchmark: %s" % exc, file=sys.stderr)
+        return 2
+    except Exception as exc:  # no binary response or secret-bearing network details in CLI logs
+        print("voice benchmark: TTS evidence could not be completed (%s)" % type(exc).__name__, file=sys.stderr)
+        return 1
+    print("voice benchmark: TTS evidence written")
+    print(voice_benchmark.to_json(evidence))
+    if not evidence["complete"]:
+        print("voice benchmark: run incomplete; see failures in evidence", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -1871,6 +1965,9 @@ def cmd_corpus(args):
             synthesize=synthesize,
             transcode_flac=voice_corpus.ffmpeg_transcoder(ffmpeg),
             download_dir=args.download_dir,
+            human_cases_per_split=args.human_cases_per_split,
+            synthetic_cases=args.synthetic_cases,
+            exclude_manifest=args.exclude_manifest,
         )
     except (voice_corpus.CorpusError, OSError, urllib.error.URLError) as exc:
         print("voice corpus prepare: %s" % exc, file=sys.stderr)
@@ -2277,6 +2374,11 @@ def build_parser():
     add_config(sp)
     add_profile(sp)
     sp.add_argument("--out", required=True, help="new directory for the prepared corpus")
+    sp.add_argument("--human-cases-per-split", type=int, default=12,
+                    help="human cases in each LibriSpeech split, balanced across durations (multiples of 3, 3 through 300)")
+    sp.add_argument("--synthetic-cases", type=int, default=6,
+                    help="number of fixed Kokoro phrases to generate (0 through 6); 0 performs no TTS requests")
+    sp.add_argument("--exclude-manifest", help="validated corpus JSONL whose source identities and audio hashes must be excluded")
     sp.add_argument(
         "--download-dir",
         help="archive cache outside the corpus output; defaults beside --out",
@@ -2293,14 +2395,14 @@ def build_parser():
         help="optional exact case count gate",
     )
 
-    sp = sub.add_parser("benchmark", help="benchmark voice or a multi-sample STT corpus")
+    sp = sub.add_parser("benchmark", help="benchmark voice or a multi-sample STT/TTS corpus")
     add_config(sp)
     add_profile(sp)
     sp.add_argument(
         "--scope",
-        choices=("end-to-end", "audio", "stt"),
+        choices=("end-to-end", "audio", "stt", "tts"),
         default="end-to-end",
-        help="benchmark the full turn, an audio loop, or a reusable STT corpus",
+        help="benchmark the full turn, an audio loop, or a reusable STT/TTS corpus",
     )
     sp.add_argument(
         "--candidate",
@@ -2335,18 +2437,21 @@ def build_parser():
         "--reference-text",
         help="verbatim transcript for --input-wav; required with it for --scope end-to-end",
     )
-    sp.add_argument("--corpus", help="STT corpus JSONL manifest for --scope stt")
+    sp.add_argument("--corpus", help="versioned JSONL corpus for --scope stt or tts")
+    sp.add_argument("--audio-out", help="new directory outside Git for original responses and normalized WAVs; required for --scope tts")
+    sp.add_argument("--tts-candidate-overlay", help="TTS-only TOML overlay applied after the selected profile for --scope tts")
+    sp.add_argument("--expected-cases", type=int, help="optional exact corpus case count gate for --scope tts")
     sp.add_argument(
         "--repetitions",
         type=int,
         default=3,
-        help="warm repetitions per corpus case for --scope stt (1 through 20)",
+        help="warm repetitions per STT/TTS corpus case (1 through 20)",
     )
     sp.add_argument(
         "--concurrency",
         type=int,
         default=1,
-        help="parallel STT requests for --scope stt (1 through 32)",
+        help="parallel STT requests (1 through 32); --scope tts requires 1",
     )
     sp.add_argument(
         "--stt-candidate-overlay",

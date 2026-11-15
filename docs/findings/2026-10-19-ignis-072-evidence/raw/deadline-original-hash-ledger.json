@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.public-copy-provenance/v1",
+  "scope": "Protected original versus redacted public copy hash mapping.",
+  "artifacts": {
+    "deadline-contract.json": {
+      "protected_original_sha256": "1f10454c7307b7e3a4d4f45c4cf2f740371601c1e0513e56219c329a38fd0a88",
+      "public_copy_sha256": "176a20c9358d2285b0231d1c476d3d6adc1654440261e39abb857dc04abb8fb3",
+      "public_copy": "raw/deadline-contract.json"
+    },
+    "deadline-server-logs.json": {
+      "protected_original_sha256": "c0988f11eb07c3a68facd3e3ac3aa39e12e9c94b05c4d4ea0cb522401c8b4174",
+      "public_copy_sha256": "cdda9cd5d976694dd9fabaaf5cb6b100c87fd1489f55d2f61e4b1a1769cd142f",
+      "public_copy": "raw/deadline-server-logs.json"
+    },
+    "deadline-server-status.json": {
+      "protected_original_sha256": "1a8672b3d2e02c352c3e59600efe9792fef9f6aa68ebe42586ad88256f6dcd38",
+      "public_copy_sha256": "13a428e8943a70f9839ac1d393e0760b4ea66867050551ae8c4dc80526537bac",
+      "public_copy": "raw/deadline-server-status.json"
+    },
+    "deadline-unload.json": {
+      "protected_original_sha256": "6ff2b84e70d03c5e682f4b6afebab7f53c5780167662126a49e9b7d6cac13422",
+      "public_copy_sha256": "a07ed86d297373ff9f01bcd02694326611c4f4861b193fd04e35859b4ed08330",
+      "public_copy": "raw/deadline-unload.json"
+    }
+  }
+}

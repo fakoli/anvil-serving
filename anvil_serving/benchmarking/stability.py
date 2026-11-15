@@ -56,7 +56,7 @@ def validate_scenario(value):
                 "anchor_tokens", "contender_tokens", "anchor_max_tokens",
                 "contender_max_tokens", "rounds", "mode", "prefix_mode",
                 "timeout_seconds", "run_timeout_seconds", "managed_container"}
-    optional = {"api_key_env", "chat_template_kwargs", "reasoning_effort", "temperature"}
+    optional = {"api_key_env", "chat_template_kwargs", "reasoning_effort", "temperature", "top_p"}
     if not isinstance(value, dict) or not required <= value.keys() or value.keys() - required - optional:
         raise ValueError("scenario has missing or unknown fields")
     if value["schema"] != SCENARIO_SCHEMA:
@@ -109,6 +109,11 @@ def validate_scenario(value):
     temp = value.get("temperature", 0.0)
     if type(temp) not in (int, float) or not math.isfinite(temp) or not 0 <= temp <= 2:
         raise ValueError("temperature must be finite and between 0 and 2")
+    top_p = value.get("top_p")
+    if top_p is not None and (
+        type(top_p) not in (int, float) or not math.isfinite(top_p) or not 0 < top_p <= 1
+    ):
+        raise ValueError("top_p must be finite and between 0 (exclusive) and 1")
     return value
 
 
@@ -196,6 +201,7 @@ def new_evidence(config, output):
     evidence = {"schema": EVIDENCE_SCHEMA, "scenario": config,
                 "scenario_sha256": fingerprint(config), "started_at": utc_now(),
                 "status": "running", "rounds": [], "promoted": False,
+                "overlap_contract": "contender-stream-active/v1",
                 "configuration_identity": "unverified", "identity_observations": [],
                 "scheduler_overlap": "not_measured", "performance_eligible": False}
     atomic_write_json(output, evidence)
@@ -256,18 +262,27 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
                         if "response_headers_at" in contender and "first_output" not in contender and "end" not in contender:
                             pair["anchor_output_during_contender_response_wait"] = True
                             pair.setdefault("overlap_output_at", now)
+                        if "first_output" in contender and "end" not in contender:
+                            pair["anchor_output_during_contender_active"] = True
+                            pair.setdefault("active_overlap_output_at", now)
                     event.set()
                     if first:
                         save()
 
         validation_failure = "protocol_error"
         try:
+            request_kwargs = {
+                "timeout": config["timeout_seconds"],
+                "chat_template_kwargs": config.get("chat_template_kwargs"),
+                "reasoning_effort": config.get("reasoning_effort"),
+                "temperature": config.get("temperature", 0.0),
+                "observer": observe,
+                "deadline_seconds": config["timeout_seconds"],
+            }
+            if "top_p" in config:
+                request_kwargs["top_p"] = config["top_p"]
             result = stream(config["base_url"], config["model"], prompt, key,
-                            config[role + "_max_tokens"], timeout=config["timeout_seconds"],
-                            chat_template_kwargs=config.get("chat_template_kwargs"),
-                            reasoning_effort=config.get("reasoning_effort"),
-                            temperature=config.get("temperature", 0.0), observer=observe,
-                            deadline_seconds=config["timeout_seconds"])
+                            config[role + "_max_tokens"], **request_kwargs)
             with lock:
                 row["result"] = result
             if (not isinstance(result, dict) or row.get("malformed_chunks")
@@ -314,6 +329,7 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
             check_identity(f"round_{index}_before")
             salt = f"{run_salt}:{0 if config['prefix_mode'] == 'repeat' else index}"
             pair = {"index": index, "anchor": {}, "contender": {},
+                    "anchor_output_during_contender_active": False,
                     "anchor_output_during_contender_response_wait": False}
             evidence["rounds"].append(pair)
             evidence["stage"] = "tokenization"
@@ -341,7 +357,7 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
             pair["runtime_passed"] = all(pair[r].get("status") == "completed" for r in ("anchor", "contender"))
             pair["coverage_passed"] = (pair["runtime_passed"]
                                        and all(pair[r].get("usage_verified") for r in ("anchor", "contender"))
-                                       and (config["mode"] == "serial" or pair["anchor_output_during_contender_response_wait"]))
+                                       and (config["mode"] == "serial" or pair["anchor_output_during_contender_active"]))
             pair["retrieval_passed"] = all(pair[r].get("retrieval_passed") is True for r in ("anchor", "contender"))
             pair["failure_classes"] = sorted({c for r in ("anchor", "contender")
                                                for c in pair[r].get("failure_classes", [])})

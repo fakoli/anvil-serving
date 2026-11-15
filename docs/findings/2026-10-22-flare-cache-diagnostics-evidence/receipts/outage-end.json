@@ -1,0 +1,24 @@
+{
+  "at": 1792663175.5461924,
+  "first_window_restored": true,
+  "direct_passed": true,
+  "routed_passed": true,
+  "monitoring_checks_passed": 20,
+  "route_config_unchanged": {
+    "OPERATOR_PATH_72fc2a9c500f/restore-original-recipe.toml": true,
+    "OPERATOR_PATH_c06ed5b080af/router.toml": true,
+    "OPERATOR_PATH_645ea4fbd90f/operator-topology.toml": true,
+    "OPERATOR_PATH_74a5523f4cc1/recipe-monitoring.json": true
+  },
+  "incumbent_container_id": "container-17",
+  "incumbent_reconstructed": true,
+  "reason": "recipe unload removed original container; exact recipe reload rebuilt autotune state",
+  "promoted": false,
+  "evidence": [
+    "restore1-direct-preflight.json",
+    "restore1-routed-preflight.json",
+    "restore1-monitoring.json",
+    "restore1-final-router.json",
+    "restore1-candidate-status.json"
+  ]
+}

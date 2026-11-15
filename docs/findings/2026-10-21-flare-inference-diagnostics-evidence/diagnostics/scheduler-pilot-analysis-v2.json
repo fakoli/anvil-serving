@@ -1,0 +1,123 @@
+{
+  "source": "instrumented-scheduler-pilot-c4-trace.json",
+  "sha256": "1c07220e553a6c8a3c7733ae5e913ba77d9d077d60c3a5661def0708a2fe201a",
+  "analyzer_sha256": "705850323742f76da327ed5ea04c0bbf8f0c948c928e65aff863196521891c4f",
+  "complete": true,
+  "samples": 44,
+  "duration_ns": 1000316772,
+  "excluded_boundary_samples": 0,
+  "anchor_bracket_ns": [
+    961,
+    1299
+  ],
+  "utc_offset_envelope_ns": [
+    1792649134257652813,
+    1792649134257654143
+  ],
+  "groups": [
+    {
+      "graph": {
+        "index": 6,
+        "name": "speculative4x3",
+        "name_truncated": false,
+        "kind": "Speculative",
+        "batch_capacity": 4,
+        "token_capacity": 3,
+        "prefill_capacity": 0,
+        "packed_token_capacity": 0
+      },
+      "queued": false,
+      "physical_lanes": 4,
+      "samples": 44,
+      "metrics": {
+        "rank_0_gpu_ms": {
+          "n": 44,
+          "min": 20.002111,
+          "p50": 22.6825285,
+          "p95": 24.099297,
+          "max": 24.45632
+        },
+        "rank_1_gpu_ms": {
+          "n": 44,
+          "min": 20.001888,
+          "p50": 22.6739205,
+          "p95": 24.108576,
+          "max": 24.448704
+        },
+        "max_rank_gpu_ms": {
+          "n": 44,
+          "min": 20.002111,
+          "p50": 22.6825285,
+          "p95": 24.108576,
+          "max": 24.45632
+        },
+        "wall_ms": {
+          "n": 44,
+          "min": 20.061354,
+          "p50": 22.728775499999998,
+          "p95": 24.15502,
+          "max": 24.500308
+        },
+        "rank_interval_spread_ms": {
+          "n": 44,
+          "min": 3.3e-05,
+          "p50": 0.0047355,
+          "p95": 0.019873,
+          "max": 0.060798
+        },
+        "selection_to_commit_us": {
+          "n": 44,
+          "min": 2.309,
+          "p50": 2.8745000000000003,
+          "p95": 6.283,
+          "max": 7.713
+        },
+        "commit_to_observation_ms": {
+          "n": 44,
+          "min": 20.079545,
+          "p50": 22.7546925,
+          "p95": 24.164252,
+          "max": 24.510943
+        },
+        "prior_observation_age_ms": {
+          "n": 44,
+          "min": 0.00715,
+          "p50": 0.0104815,
+          "p95": 0.021453,
+          "max": 0.024425
+        },
+        "retained_shape_cost_ms": {
+          "n": 44,
+          "min": 20.60652,
+          "p50": 22.4858595,
+          "p95": 23.437076,
+          "max": 23.526819
+        },
+        "measured_cost_over_retained": {
+          "n": 44,
+          "min": 0.8726881361009281,
+          "p50": 1.025506184624593,
+          "p95": 1.0808916297093645,
+          "max": 1.0884623986725595
+        }
+      },
+      "missing_prior_observations": 0,
+      "nonpositive_retained_cost_samples": 0,
+      "freshness": [
+        "Fresh"
+      ],
+      "origins": [
+        "Ordinary"
+      ]
+    }
+  ],
+  "limits": [
+    "One bounded observational window; no causal bottleneck or overhead claim",
+    "Rank intervals overlap and are not summed; interval spread is not synchronization wait",
+    "Wall minus GPU time is not pure CPU overhead",
+    "retained_ns is a previous shape-cost observation, not the submitted-plan estimate",
+    "Request handles are physical slots/generations, not HTTP request IDs",
+    "Graph dimensions are capacities, not executed token counts",
+    "Runtime/source identity must be joined from recipe, build and incarnation receipts"
+  ]
+}

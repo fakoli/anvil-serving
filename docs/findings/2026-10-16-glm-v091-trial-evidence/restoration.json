@@ -1,0 +1,29 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-16-glm-v091-trial",
+  "status": "restored",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "identity": "original GLM recipe status captured before the candidate trial"
+  },
+  "ending_state": {
+    "captured": true,
+    "same_container_image_model_revision": true,
+    "router_admitting": true,
+    "zero_oom_events": true,
+    "candidate_r1_absent": true,
+    "candidate_r2_absent": true
+  },
+  "differences": [
+    "Candidate R1 and R2 recipe containers were removed through the managed recipe surface.",
+    "No public alias, route mapping, client contract, or persistent provider setting changed."
+  ],
+  "post_run_checks": [
+    {"name": "direct preflight", "passed": true, "result": "6/6"},
+    {"name": "routed preflight", "passed": true, "result": "6/6"},
+    {"name": "actual Pi read turn", "passed": true, "agent_settled": true, "persistent_provider_changes": false},
+    {"name": "primary router closing receipt", "passed": true, "state": "admitting", "ready": true}
+  ],
+  "verified": true
+}

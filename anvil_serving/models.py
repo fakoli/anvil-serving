@@ -2,8 +2,8 @@
 
 Sub-actions:
   * ``sync`` — scan HF caches + model dirs, pull cards, build the catalog (-> `_sync.py`).
-  * ``pull`` — download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it's ready
-    to serve natively (see ``pull_main`` / ``build_pull_argv`` below).
+  * ``pull`` — download a Hugging Face repo into a named Docker volume or an
+    explicit native cache (see ``pull_main`` / ``build_pull_argv`` below).
   * ``recipe`` — manage recorded serve recipes and candidate containers;
     benchmark ``--recipe-out`` remains the evidence-producing generate path.
 
@@ -17,7 +17,10 @@ import os
 import argparse
 import fnmatch
 import glob
+import io
+import hashlib
 from contextlib import contextmanager
+from contextlib import redirect_stdout, redirect_stderr
 from importlib import resources
 import json
 import math
@@ -31,11 +34,15 @@ import tomllib
 import sys
 import urllib.parse
 import urllib.request
+from pathlib import Path
 from datetime import datetime, timezone
 from . import config
+from . import docker_images
 from . import guard
 from . import host as host_ops
 from . import model_cache_native
+from . import model_cache_volume
+from . import model_pull_native
 from . import paths
 from . import serve_recipes
 from .service_runtime.operations import execute as _service_execute
@@ -56,12 +63,199 @@ DEFAULT_CATALOG_DIR = "model-library"
 LIFECYCLE_READINESS_TIMEOUT_SECONDS = 600
 LIFECYCLE_READINESS_POLL_SECONDS = 2
 DEFAULT_PULL_HEADROOM_BYTES = 5 * 1024**3
+MIB = 1024**2
 _REPO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$")
 _REVISION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+_IMMUTABLE_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
+_DOCKER_VOLUME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _RECIPE_CONTAINER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _RECIPE_MANAGED_LABEL = serve_recipes.RECIPE_MANAGED_LABEL
 _RECIPE_MODEL_LABEL = serve_recipes.RECIPE_MODEL_LABEL
 _RECIPE_REVISION_LABEL = serve_recipes.RECIPE_REVISION_LABEL
+_CONFIG_PATH_KEY_RE = re.compile(r"(?:^|[_\-.])(?:cache|path|dir|root|mount|volume)(?:$|[_\-.])")
+_KNOWN_DOCKER_MOUNT_TYPES = frozenset({"bind", "volume", "tmpfs", "npipe", "cluster"})
+_RECIPE_LOG_CAPTURE_BYTES = 1024 * 1024
+_RECIPE_LOG_CAPTURE_SECONDS = 15
+
+
+def _paths_overlap(first, second):
+    try:
+        return os.path.commonpath((str(first), str(second))) in {str(first), str(second)}
+    except ValueError:
+        return False
+
+
+def _canonical_config_path(value, *, base=None, allow_relative=False):
+    """Return lexical and resolved absolute forms for conservative cache overlap checks."""
+    if not isinstance(value, str) or not value or "$" in value:
+        raise ValueError("operator configuration contains an unresolved path")
+    expanded = os.path.expanduser(value)
+    if value.startswith("~") and expanded == value:
+        raise ValueError("operator configuration contains an unresolved path")
+    candidate = Path(expanded)
+    if not candidate.is_absolute():
+        if not allow_relative or base is None:
+            raise ValueError("operator configuration contains an unresolved relative path")
+        candidate = Path(base) / candidate
+    candidate = Path(os.path.abspath(candidate))
+    try:
+        return candidate, Path(os.path.realpath(candidate))
+    except OSError as exc:
+        raise ValueError("operator configuration path audit is incomplete") from exc
+
+
+def _native_cache_guards(cache_dir, config_home, *, non_model_root_views=(), _run=subprocess.run):
+    """Fail closed when Docker or current operator configuration may use a native cache."""
+    cache = Path(os.path.abspath(os.path.expanduser(cache_dir)))
+    cache_forms = (cache, Path(os.path.realpath(cache)))
+    home = Path(os.path.abspath(os.path.expanduser(config_home)))
+    if not home.is_dir() or home.is_symlink():
+        raise ValueError("native cache config home must be a plain existing directory")
+    dependency_errors = docker_images._live_archive_dependency_errors(home, runner=_run)
+    if dependency_errors:
+        raise ValueError("operator configuration dependency audit is incomplete: %s" % dependency_errors[0])
+    try:
+        listed = _run(["docker", "container", "ls", "--all", "--quiet", "--no-trunc"],
+                      capture_output=True, text=True)
+    except OSError as exc:
+        raise ValueError("Docker container audit is unavailable: %s" % exc) from exc
+    if listed.returncode:
+        raise ValueError("Docker container audit failed: %s" % (listed.stderr or listed.stdout).strip())
+    containers = [line.strip() for line in listed.stdout.splitlines() if line.strip()]
+    declared_root_views = tuple(non_model_root_views)
+    if len(set(declared_root_views)) != len(declared_root_views):
+        raise ValueError("declared non-model root-view container IDs must be unique")
+    if any(not isinstance(container_id, str) or not re.fullmatch(r"[0-9a-f]{64}", container_id)
+           for container_id in declared_root_views):
+        raise ValueError("declared non-model root-view container ID must be a full 64-character lowercase hex ID")
+    if len(set(containers)) != len(containers):
+        raise ValueError("Docker container audit returned incomplete inventory")
+    if not set(declared_root_views).issubset(containers):
+        raise ValueError("declared non-model root-view container is absent from the Docker inventory")
+    if containers:
+        inspected = _run(["docker", "container", "inspect", *containers], capture_output=True, text=True)
+        if inspected.returncode:
+            raise ValueError("Docker container mount audit failed: %s" % (inspected.stderr or inspected.stdout).strip())
+        try:
+            rows = json.loads(inspected.stdout)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Docker container mount audit returned invalid JSON") from exc
+        if not isinstance(rows, list) or len(rows) != len(containers):
+            raise ValueError("Docker container mount audit returned incomplete inventory")
+        found = set()
+        validated_root_views = set()
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get("Id"), str) or row["Id"] not in containers:
+                raise ValueError("Docker container mount audit returned invalid container identity")
+            container_id = row["Id"]
+            if container_id in found:
+                raise ValueError("Docker container mount audit returned incomplete inventory")
+            found.add(container_id)
+            is_declared_root_view = container_id in declared_root_views
+            if is_declared_root_view:
+                host_config = row.get("HostConfig")
+                if not isinstance(host_config, dict):
+                    raise ValueError("declared non-model root-view container lacks HostConfig")
+                device_requests = host_config.get("DeviceRequests")
+                if device_requests is not None and (
+                    not isinstance(device_requests, list) or device_requests
+                ):
+                    raise ValueError("declared non-model root-view container has GPU device requests")
+            mounts = row.get("Mounts")
+            if not isinstance(mounts, list):
+                raise ValueError("Docker container mount audit omitted mounts")
+            for mount in mounts:
+                if not isinstance(mount, dict) or not isinstance(mount.get("Type"), str) or not isinstance(mount.get("Source"), str):
+                    raise ValueError("Docker container mount audit returned invalid mount")
+                if mount["Type"] not in _KNOWN_DOCKER_MOUNT_TYPES:
+                    raise ValueError("Docker container mount audit returned unknown mount type")
+                if mount["Type"] != "bind":
+                    continue
+                if not mount["Source"] or not os.path.isabs(mount["Source"]):
+                    raise ValueError("Docker bind mount source is not an absolute path")
+                source = Path(mount["Source"])
+                source_forms = (source, Path(os.path.realpath(source)))
+                overlaps_cache = any(_paths_overlap(cache_form, source_form)
+                                     for cache_form in cache_forms for source_form in source_forms)
+                if not overlaps_cache:
+                    continue
+                is_declared_readonly_root = (
+                    is_declared_root_view
+                    and mount["Source"] == os.path.sep
+                    and mount.get("RW") is False
+                    and isinstance(mount.get("Destination"), str)
+                    and bool(mount["Destination"])
+                    and os.path.isabs(mount["Destination"])
+                )
+                if is_declared_readonly_root:
+                    validated_root_views.add(container_id)
+                    continue
+                raise ValueError("native cache is referenced by a running or stopped Docker container")
+        if found != set(containers) or validated_root_views != set(declared_root_views):
+            raise ValueError("Docker container mount audit returned incomplete or invalid declared root-view inventory")
+    def walk_error(exc):
+        raise ValueError("operator configuration audit is incomplete") from exc
+
+    for current, dirs, files in os.walk(home, followlinks=False, onerror=walk_error):
+        retained = []
+        for name in dirs:
+            if name in docker_images._NON_OPERATIONAL_CONFIG_DIRS or (name == "recovered-configs" and Path(current) == home):
+                continue
+            if (Path(current) / name).is_symlink():
+                raise ValueError("operator configuration audit is incomplete")
+            retained.append(name)
+        dirs[:] = retained
+        for name in files:
+            path = Path(current) / name
+            if path.suffix.lower() not in {".toml", ".json", ".yaml", ".yml"}:
+                continue
+            try:
+                unsafe = path.is_symlink() or path.stat().st_size > docker_images.MAX_CONFIG_BYTES
+            except OSError as exc:
+                raise ValueError("operator configuration audit is incomplete") from exc
+            if unsafe:
+                raise ValueError("operator configuration audit is incomplete")
+            try:
+                raw = path.read_text(encoding="utf-8")
+            except OSError as exc:
+                raise ValueError("operator configuration audit is incomplete") from exc
+            try:
+                if path.suffix.lower() == ".json":
+                    value = json.loads(raw)
+                elif path.suffix.lower() == ".toml":
+                    value = tomllib.loads(raw)
+                else:
+                    if docker_images._yaml_requires_compose_validation(path, raw):
+                        value = docker_images._compose_config_payload(
+                            path, runner=_run, timeout=docker_images.DEFAULT_TIMEOUT_SECONDS,
+                        )
+                    else:
+                        value = docker_images._standalone_yaml_config_payload(
+                            path, raw, runner=_run, timeout=docker_images.DEFAULT_TIMEOUT_SECONDS,
+                        )
+            except (OSError, json.JSONDecodeError, tomllib.TOMLDecodeError) as exc:
+                raise ValueError("operator configuration audit is incomplete") from exc
+            candidates = []
+            for field, configured in docker_images._walk_config_strings(value):
+                if _CONFIG_PATH_KEY_RE.search(field.lower()):
+                    candidates.extend(_canonical_config_path(
+                        configured, base=path.parent, allow_relative=True,
+                    ))
+                elif docker_images._is_manifest_path(field, document=value):
+                    candidates.extend(_canonical_config_path(
+                        configured, base=path.parent, allow_relative=True,
+                    ))
+            if path.suffix.lower() in {".yaml", ".yml"}:
+                try:
+                    for source in docker_images._compose_bind_sources(value, config_path=path):
+                        candidates.extend(_canonical_config_path(
+                            str(source), base=path.parent, allow_relative=True,
+                        ))
+                except OSError as exc:
+                    raise ValueError("operator configuration audit is incomplete") from exc
+            if any(_paths_overlap(cache_form, configured)
+                   for cache_form in cache_forms for configured in candidates):
+                raise ValueError("native cache is referenced by current operator configuration")
 
 # Shared by both embedded helper scripts below (spliced in, not run directly —
 # they're `python -c` payloads, not importable modules).
@@ -81,14 +275,100 @@ def tree_bytes(path):
     return total
 """
 
+_NATIVE_STAGE_IMPORT_HELPER = r"""
+import hashlib
+import json
+import os
+from pathlib import Path, PurePosixPath
+import sys
+
+cache_text, stage_text, repo_id, revision, filename, expected_sha = sys.argv[1:7]
+cache = Path(cache_text)
+stage = Path(stage_text)
+owner, repo = repo_id.split("/", 1)
+
+def directory(path, label, create=False):
+    if path.is_symlink() or (path.exists() and not path.is_dir()):
+        raise SystemExit(label + " must be a real directory")
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    if path.is_symlink() or not path.is_dir():
+        raise SystemExit(label + " must be a real directory")
+    return path
+
+directory(cache, "cache")
+directory(stage, "staging root")
+stage_root = stage.resolve(strict=True)
+source_parent = stage_root
+for component in PurePosixPath(filename).parts[:-1]:
+    source_parent = directory(source_parent / component, "staged artifact parent")
+source = source_parent / PurePosixPath(filename).name
+if source.is_symlink() or not source.is_file() or stage_root not in source.resolve(strict=True).parents:
+    raise SystemExit("staged artifact is not a regular file")
+
+hub = directory(cache / "hub", "cache hub", create=True)
+root = directory(hub / ("models--" + owner + "--" + repo), "repository cache", create=True)
+blobs = directory(root / "blobs", "cache blobs", create=True)
+snapshots = directory(root / "snapshots", "cache snapshots", create=True)
+snapshot = directory(snapshots / revision, "cache snapshot", create=True)
+blob = blobs / expected_sha
+
+def digest(path):
+    hasher = hashlib.sha256()
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(1024 * 1024), b""):
+            hasher.update(block)
+    return hasher.hexdigest()
+
+if blob.exists():
+    if blob.is_symlink() or not blob.is_file() or digest(blob) != expected_sha:
+        raise SystemExit("existing cache blob does not match the expected SHA256")
+else:
+    partial = blobs / ("." + expected_sha + ".anvil-partial")
+    if partial.exists() or partial.is_symlink():
+        raise SystemExit("native import partial path already exists")
+    try:
+        with source.open("rb") as reader, partial.open("xb") as writer:
+            hasher = hashlib.sha256()
+            for block in iter(lambda: reader.read(1024 * 1024), b""):
+                hasher.update(block)
+                writer.write(block)
+        if hasher.hexdigest() != expected_sha:
+            raise SystemExit("staged artifact SHA256 does not match Hugging Face metadata")
+        os.replace(partial, blob)
+    finally:
+        if partial.exists() and not partial.is_symlink() and partial.is_file():
+            partial.unlink()
+
+target_parent = snapshot
+for component in PurePosixPath(filename).parts[:-1]:
+    target_parent = directory(target_parent / component, "snapshot artifact parent", create=True)
+target = target_parent / PurePosixPath(filename).name
+if target.exists() or target.is_symlink():
+    if not target.is_symlink() or target.resolve(strict=False) != blob:
+        raise SystemExit("selected snapshot path already exists with different content")
+else:
+    temporary = target.with_name("." + target.name + ".anvil-link")
+    temporary.unlink(missing_ok=True)
+    temporary.symlink_to(os.path.relpath(blob, target.parent))
+    os.replace(temporary, target)
+
+print(json.dumps({"repo_id": repo_id, "revision": revision, "filename": filename,
+                  "sha256": expected_sha, "bytes": blob.stat().st_size}, sort_keys=True))
+"""
+
 _VOLUME_CACHE_HELPER = r"""
+import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import sys
 
 action, cache_text, repo_id, revision = sys.argv[1:5]
+if action not in {"report", "plan-remove"}:
+    raise SystemExit("legacy Docker cache helper is read-only")
 cache = Path(cache_text)
 owner, repo = repo_id.split("/", 1)
 root = cache / "hub" / ("models--" + owner + "--" + repo)
@@ -120,6 +400,39 @@ def referenced_blobs(excluded=""):
                         pass
     return used
 
+def blob_content_hash(path, expected):
+    if len(expected) == 64:
+        digest = hashlib.sha256()
+    elif len(expected) == 40:
+        digest = hashlib.sha1()
+        digest.update(("blob %d\0" % path.stat().st_size).encode("ascii"))
+    else:
+        return None
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest() == expected
+
+def selected_snapshot_partial_references(partials):
+    references = {item: [] for item in partials}
+    if not snapshot_path or not snapshot_path.is_dir():
+        return references
+    for base, _dirs, files in os.walk(snapshot_path, followlinks=False):
+        for name in files:
+            item = Path(base) / name
+            if not item.is_symlink():
+                continue
+            try:
+                target = item.resolve(strict=True)
+            except OSError:
+                continue
+            if target in references:
+                references[target].append(str(item.relative_to(snapshot_path)))
+    return references
+
 snapshot = snapshot_id()
 snapshot_path = root / "snapshots" / snapshot if snapshot else None
 incomplete = list(root.rglob("*.incomplete")) if root.exists() else []
@@ -132,6 +445,46 @@ if snapshot_path and snapshot_path.is_dir():
                 broken.append(str(item))
 
 before = tree_bytes(root)
+partial_references = selected_snapshot_partial_references(incomplete)
+partial_details = []
+blobs = root / "blobs"
+for item in incomplete:
+    try:
+        stat = item.lstat()
+        relative = str(item.relative_to(root))
+    except OSError:
+        partial_details.append({"path": str(item), "classification": "uninspectable"})
+        continue
+    match = re.fullmatch(r"([0-9a-f]{64}|[0-9a-f]{40})(?:\.([0-9a-f]{8}))?\.incomplete", item.name)
+    expected = match.group(1) if match else ""
+    counterpart = blobs / expected if expected else blobs / item.name
+    counterpart_relative = str(counterpart.relative_to(root))
+    regular_counterpart = False
+    hash_matches = False
+    try:
+        regular_counterpart = (
+            item.parent == blobs
+            and stat.st_mode & 0o170000 == 0o100000
+            and counterpart.is_file()
+            and not counterpart.is_symlink()
+        )
+        if regular_counterpart:
+            hash_matches = blob_content_hash(counterpart, expected) is True
+    except OSError:
+        regular_counterpart = False
+        hash_matches = False
+    references = partial_references.get(item, [])
+    harmless = bool(regular_counterpart and hash_matches and not references)
+    partial_details.append({
+        "path": relative,
+        "bytes": stat.st_size,
+        "expected_blob_name": expected or None,
+        "counterpart_path": counterpart_relative,
+        "counterpart_regular": regular_counterpart,
+        "counterpart_hash_matches": hash_matches,
+        "selected_snapshot_references": references,
+        "classification": "stale_completed_counterpart" if harmless else "unresolved",
+    })
 report = {
     "repo_id": repo_id,
     "revision": revision or "main",
@@ -140,10 +493,14 @@ report = {
     "repo_bytes": before,
     "free_bytes": shutil.disk_usage(cache).free,
     "incomplete_count": len(incomplete),
+    "incomplete_files": partial_details,
+    "stale_completed_incomplete_count": sum(
+        item["classification"] == "stale_completed_counterpart" for item in partial_details
+    ),
     "broken_symlink_count": len(broken),
 }
 
-if action in {"plan-remove", "remove"} and report["snapshot_exists"]:
+if action == "plan-remove" and report["snapshot_exists"]:
     snapshots = [
         item for item in (root / "snapshots").iterdir()
         if item.is_dir()
@@ -159,37 +516,6 @@ if action in {"plan-remove", "remove"} and report["snapshot_exists"]:
                 if blob.is_file() and blob not in remaining:
                     reclaimable += blob.stat().st_size
     report["reclaimable_bytes"] = reclaimable
-
-if action == "remove" and report["snapshot_exists"]:
-    shutil.rmtree(snapshot_path)
-    refs = root / "refs"
-    if refs.is_dir():
-        for ref in list(refs.rglob("*")):
-            if ref.is_file():
-                try:
-                    if ref.read_text(encoding="utf-8").strip() == snapshot:
-                        ref.unlink()
-                except (OSError, UnicodeError):
-                    pass
-    remaining_snapshots = [
-        item for item in (root / "snapshots").iterdir()
-        if item.is_dir()
-    ] if (root / "snapshots").is_dir() else []
-    if not remaining_snapshots:
-        shutil.rmtree(root)
-    else:
-        remaining = referenced_blobs()
-        blobs = root / "blobs"
-        if blobs.is_dir():
-            for blob in list(blobs.iterdir()):
-                if blob.is_file() and blob not in remaining:
-                    blob.unlink()
-    after = tree_bytes(root)
-    report.update({
-        "repo_bytes_after": after,
-        "reclaimed_bytes": max(0, before - after),
-        "snapshot_exists_after": bool(snapshot_path.exists()),
-    })
 
 print(json.dumps(report, sort_keys=True))
 """
@@ -314,9 +640,27 @@ def is_real_catalog_entry(entry):
     return bool(entry.get("model_type")) or entry.get("format") in ("safetensors", "GGUF")
 
 
+def _pull_memory_limits(memory_mib=None, memory_swap_mib=None):
+    """Validate optional Docker pull ceilings and return their byte values."""
+    if memory_mib is None and memory_swap_mib is None:
+        return None
+    if memory_mib is None or memory_swap_mib is None:
+        raise ValueError("--memory-mib and --memory-swap-mib must be provided together")
+    if (
+        isinstance(memory_mib, bool) or not isinstance(memory_mib, int) or memory_mib <= 0
+        or isinstance(memory_swap_mib, bool) or not isinstance(memory_swap_mib, int)
+        or memory_swap_mib <= 0
+    ):
+        raise ValueError("--memory-mib and --memory-swap-mib must be positive integers")
+    if memory_swap_mib < memory_mib:
+        raise ValueError("--memory-swap-mib must be greater than or equal to --memory-mib")
+    return memory_mib * MIB, memory_swap_mib * MIB
+
+
 def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
                     revision=None, include=None, exclude=None,
-                    token_env=DEFAULT_PULL_TOKEN_ENV):
+                    token_env=DEFAULT_PULL_TOKEN_ENV,
+                    memory_mib=None, memory_swap_mib=None):
     """Construct the ``docker run …`` argv that downloads ``repo_id`` into the
     NAMED docker ``volume`` by running ``hf download`` INSIDE the container.
 
@@ -333,8 +677,12 @@ def build_pull_argv(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAG
         the token VALUE never appears on argv. Pass ``None`` only for an explicitly
         unauthenticated pull.
     """
-    argv = ["docker", "run", "--rm",
-            "-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
+    argv = ["docker", "run", "--rm"]
+    limits = _pull_memory_limits(memory_mib, memory_swap_mib)
+    if limits is not None:
+        memory_bytes, swap_bytes = limits
+        argv += ["--memory", str(memory_bytes), "--memory-swap", str(swap_bytes)]
+    argv += ["-v", f"{volume}:{HF_CACHE_MOUNTPOINT}"]
     if token_env:
         # `-e HF_TOKEN` (no `=value`) tells docker to read HF_TOKEN from ITS OWN
         # environment — which is the child env we set in run_pull. The secret is
@@ -446,6 +794,231 @@ def _hf_repo_bytes(
     return total
 
 
+def _native_stage_metadata(repo_id, revision, include, *, _open=urllib.request.urlopen):
+    """Resolve one immutable LFS artifact for the native Windows staging path."""
+    if not _REPO_ID_RE.fullmatch(repo_id):
+        raise ValueError("repository must be an exact OWNER/REPO id")
+    if not _IMMUTABLE_REVISION_RE.fullmatch(revision or ""):
+        raise ValueError("--native-stage requires a full 40-character lowercase commit revision")
+    if not _safe_hf_filename(include):
+        raise ValueError("--native-stage requires --include to be one safe literal repository path")
+    endpoint = "https://huggingface.co/api/models/%s/revision/%s?blobs=true" % (
+        urllib.parse.quote(repo_id, safe="/"),
+        urllib.parse.quote(revision, safe=""),
+    )
+    request = urllib.request.Request(
+        endpoint,
+        headers={"Accept": "application/json", "User-Agent": "anvil-serving-model-pull"},
+    )
+    try:
+        with _open(request, timeout=30) as response:
+            payload = json.loads(response.read(8 * 1024 * 1024))
+    except Exception as exc:
+        raise ValueError("could not resolve immutable Hugging Face artifact metadata: %s" % exc) from exc
+    if not isinstance(payload, dict) or payload.get("sha") != revision:
+        raise ValueError("Hugging Face metadata did not confirm the requested immutable revision")
+    siblings = payload.get("siblings")
+    if not isinstance(siblings, list):
+        raise ValueError("Hugging Face metadata did not include a file inventory")
+    selected = [item for item in siblings if isinstance(item, dict) and item.get("rfilename") == include]
+    if len(selected) != 1:
+        raise ValueError("Hugging Face metadata did not resolve exactly one selected artifact")
+    artifact = selected[0]
+    lfs = artifact.get("lfs")
+    sha256 = lfs.get("sha256") if isinstance(lfs, dict) else None
+    metadata_size = lfs.get("size") if isinstance(lfs, dict) else None
+    sibling_size = artifact.get("size")
+    if metadata_size is not None and (
+        isinstance(metadata_size, bool) or not isinstance(metadata_size, int) or metadata_size <= 0
+    ):
+        raise ValueError("selected artifact has no positive LFS byte size in Hugging Face metadata")
+    if sibling_size is not None and (
+        isinstance(sibling_size, bool) or not isinstance(sibling_size, int) or sibling_size <= 0
+    ):
+        raise ValueError("selected artifact has no positive sibling byte size in Hugging Face metadata")
+    if metadata_size is not None and sibling_size is not None and metadata_size != sibling_size:
+        raise ValueError("selected artifact has conflicting LFS size metadata")
+    size = metadata_size or sibling_size
+    if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        raise ValueError("selected artifact has no immutable LFS SHA256 in Hugging Face metadata")
+    if not isinstance(size, int) or size <= 0:
+        raise ValueError("selected artifact has no positive byte size in Hugging Face metadata")
+    return {"revision": revision, "filename": include, "sha256": sha256, "size": size}
+
+
+def _safe_hf_filename(value):
+    if not isinstance(value, str) or not value or "\\" in value:
+        return False
+    if any(character in {"*", "?", "[", ":", "<", ">", '"', "|", "\\"} for character in value):
+        return False
+    parts = value.split("/")
+    reserved = {"CON", "PRN", "AUX", "NUL"}
+    reserved.update("COM%d" % number for number in range(1, 10))
+    reserved.update("LPT%d" % number for number in range(1, 10))
+    return all(
+        part not in {"", ".", ".."}
+        and not part.endswith((".", " "))
+        and not any(ord(character) < 32 for character in part)
+        and part.split(".", 1)[0].upper() not in reserved
+        for part in parts
+    )
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _native_stage_target(stage_dir, filename):
+    if not stage_dir:
+        raise ValueError("--native-stage requires a directory")
+    if not _safe_hf_filename(filename):
+        raise ValueError("selected artifact path is unsafe for native staging")
+    root = os.path.abspath(os.path.expanduser(stage_dir))
+    if "," in root:
+        raise ValueError("--native-stage path cannot contain commas")
+    os.makedirs(root, exist_ok=True)
+    if not os.path.isdir(root):
+        raise ValueError("--native-stage must name a directory")
+    root = os.path.realpath(root)
+    target_parent = root
+    for component in filename.split("/")[:-1]:
+        target_parent = os.path.join(target_parent, component)
+        if os.path.exists(target_parent) and not os.path.isdir(target_parent):
+            raise ValueError("selected artifact parent is not a directory")
+        os.makedirs(target_parent, exist_ok=True)
+        target_parent = os.path.realpath(target_parent)
+        try:
+            contained = os.path.commonpath((root, target_parent)) == root
+        except ValueError:
+            contained = False
+        if not contained:
+            raise ValueError("selected artifact path escapes --native-stage through a link")
+    target = os.path.join(target_parent, filename.rsplit("/", 1)[-1])
+    if os.path.lexists(target) and os.path.islink(target):
+        raise ValueError("selected staged artifact must not be a link")
+    return root, target
+
+
+def preflight_native_stage(stage_dir, filename, expected_bytes):
+    """Fail closed when the Windows staging filesystem cannot hold the artifact."""
+    root, target = _native_stage_target(stage_dir, filename)
+    existing = os.path.getsize(target) if os.path.isfile(target) else 0
+    free = shutil.disk_usage(root).free
+    missing = max(0, int(expected_bytes) - existing)
+    if free < missing:
+        raise ValueError(
+            "insufficient native staging space: need %d bytes, have %d free" % (missing, free)
+        )
+    return {"stage_dir": root, "expected_bytes": int(expected_bytes), "staged_bytes": existing,
+            "missing_bytes": missing, "free_bytes": free}
+
+
+def preflight_native_import(
+    repo_id, revision, expected_bytes, *, volume=DEFAULT_PULL_VOLUME,
+    image=DEFAULT_PULL_IMAGE, headroom_bytes=DEFAULT_PULL_HEADROOM_BYTES,
+    _run=subprocess.run,
+):
+    """Reserve the entire selected artifact: repo totals do not prove this blob exists."""
+    report = _volume_cache_report(
+        "report", repo_id, revision, volume=volume, image=image, _run=_run
+    )
+    free = int(report.get("free_bytes") or 0)
+    required = int(expected_bytes) + int(headroom_bytes)
+    if free < required:
+        raise ValueError(
+            "insufficient Docker-volume space: need %d bytes (%d artifact + %d headroom), have %d free"
+            % (required, int(expected_bytes), int(headroom_bytes), free)
+        )
+    return {
+        **report,
+        "expected_bytes": int(expected_bytes), "cached_repo_bytes": 0,
+        "missing_bytes": int(expected_bytes), "headroom_bytes": int(headroom_bytes),
+        "required_free_bytes": required, "space_ok": True,
+    }
+
+
+def build_native_stage_import_argv(
+    stage_dir, repo_id, revision, filename, sha256, *,
+    volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
+):
+    """Build the offline Docker import from a read-only native staging directory."""
+    interpreter_shim = (
+        'if command -v python3 >/dev/null 2>&1; then exec python3 "$@"; '
+        'elif command -v python >/dev/null 2>&1; then exec python "$@"; '
+        'else echo "model cache image has no python interpreter" >&2; exit 127; fi'
+    )
+    return [
+        "docker", "run", "--rm", "--network", "none",
+        "--mount", "type=volume,source=%s,target=%s" % (volume, HF_CACHE_MOUNTPOINT),
+        "--mount", "type=bind,source=%s,target=/anvil-stage,readonly" % stage_dir,
+        "--entrypoint", "sh", image,
+        "-c", interpreter_shim,
+        "anvil-native-stage-import",
+        "-c", _NATIVE_STAGE_IMPORT_HELPER,
+        HF_CACHE_MOUNTPOINT, "/anvil-stage", repo_id, revision, filename, sha256,
+    ]
+
+
+def run_native_stage_pull(
+    repo_id, revision, filename, sha256, stage_dir, *,
+    volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
+    _run=subprocess.run,
+):
+    """Resume via Windows curl.exe, verify SHA256, then import into a named cache volume."""
+    if not _REPO_ID_RE.fullmatch(repo_id):
+        raise ValueError("repository must be an exact OWNER/REPO id")
+    if not _IMMUTABLE_REVISION_RE.fullmatch(revision or ""):
+        raise ValueError("native staging requires a full 40-character lowercase commit revision")
+    if not _safe_hf_filename(filename):
+        raise ValueError("native staging requires one safe literal repository path")
+    if not isinstance(sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", sha256):
+        raise ValueError("native staging requires an LFS SHA256")
+    if not _DOCKER_VOLUME_RE.fullmatch(volume or ""):
+        raise ValueError("--volume must be a named Docker volume")
+    if not image or image.startswith("-"):
+        raise ValueError("--image must be a Docker image reference")
+    root, target = _native_stage_target(stage_dir, filename)
+    if not os.path.isfile(target) or _sha256_file(target) != sha256:
+        url = "https://huggingface.co/%s/resolve/%s/%s" % (
+            urllib.parse.quote(repo_id, safe="/"),
+            urllib.parse.quote(revision, safe=""),
+            urllib.parse.quote(filename, safe="/"),
+        )
+        curl = [
+            "curl.exe", "--disable", "--http1.1", "--tlsv1.2", "--tls-max", "1.2",
+            "--fail", "--location", "--proto", "=https", "--proto-redir", "=https",
+            "--continue-at", "-", "--output", target, url,
+        ]
+        try:
+            result = _run(curl)
+        except OSError as exc:
+            raise ValueError("could not run curl.exe for native staging: %s" % exc) from exc
+        if getattr(result, "returncode", result) != 0:
+            raise ValueError("native curl.exe staging failed; rerun the same command to resume")
+    if not os.path.isfile(target) or _sha256_file(target) != sha256:
+        raise ValueError("native staged artifact SHA256 does not match Hugging Face metadata")
+    argv = build_native_stage_import_argv(
+        root, repo_id, revision, filename, sha256, volume=volume, image=image,
+    )
+    try:
+        result = _run(argv, capture_output=True, text=True)
+    except OSError as exc:
+        raise ValueError("could not import native staged artifact into Docker volume: %s" % exc) from exc
+    if result.returncode != 0:
+        raise ValueError(
+            "native staged artifact import failed: %s"
+            % (result.stderr or result.stdout or "docker returned non-zero").strip()
+        )
+    try:
+        return json.loads((result.stdout or "").strip().splitlines()[-1])
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise ValueError("native staged artifact import returned invalid JSON") from exc
+
+
 def _volume_cache_report(
     action,
     repo_id,
@@ -455,14 +1028,35 @@ def _volume_cache_report(
     image=DEFAULT_PULL_IMAGE,
     _run=subprocess.run,
 ):
+    if action not in {"report", "plan-remove"}:
+        raise ValueError("legacy Docker cache helper is read-only")
+    if not _DOCKER_VOLUME_RE.fullmatch(volume) or not image or image.startswith("-"):
+        raise ValueError("cache report requires a named Docker volume and image reference")
+    mount = "type=volume,source=%s,target=%s,readonly" % (volume, HF_CACHE_MOUNTPOINT)
+    if action == "plan-remove":
+        # Unlike acquisition preflight, cleanup preview must not create a cache.
+        # Bind the daemon's existing mountpoint: Docker refuses a missing bind
+        # source, including removal between inspection and helper creation.
+        inspected = model_cache_volume._run(["volume", "inspect", volume], runner=_run, timeout=30)
+        try:
+            rows = json.loads(inspected.stdout)
+            row, = rows
+            source = row["Mountpoint"]
+            if (row["Name"] != volume or not isinstance(source, str)
+                    or not source.startswith("/") or "," in source
+                    or any(ord(c) < 32 or ord(c) == 127 for c in source)):
+                raise ValueError("invalid volume mountpoint")
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ValueError("cache preview requires an existing daemon volume mountpoint") from exc
+        mount = "type=bind,source=%s,target=%s,readonly" % (source, HF_CACHE_MOUNTPOINT)
     interpreter_shim = (
         'if command -v python3 >/dev/null 2>&1; then exec python3 "$@"; '
         'elif command -v python >/dev/null 2>&1; then exec python "$@"; '
         'else echo "model cache image has no python interpreter" >&2; exit 127; fi'
     )
     argv = [
-        "docker", "run", "--rm",
-        "-v", "%s:%s" % (volume, HF_CACHE_MOUNTPOINT),
+        "docker", "run", "--rm", "--network", "none",
+        "--mount", mount,
         "--entrypoint", "sh",
         image,
         "-c", interpreter_shim,
@@ -474,7 +1068,9 @@ def _volume_cache_report(
         revision or "",
     ]
     try:
-        result = _run(argv, capture_output=True, text=True)
+        result = _run(argv, capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("named model cache inspection timed out") from exc
     except OSError as exc:
         raise ValueError("could not inspect named model cache volume: %s" % exc) from exc
     if result.returncode != 0:
@@ -717,11 +1313,40 @@ def verify_pull(
     )
     if not report.get("snapshot_exists"):
         raise ValueError("download returned success but the requested snapshot is absent")
-    if report.get("incomplete_count"):
-        raise ValueError(
-            "download returned success but %s incomplete cache file(s) remain"
-            % report["incomplete_count"]
-        )
+    incomplete_count = report.get("incomplete_count")
+    if not isinstance(incomplete_count, int) or isinstance(incomplete_count, bool) or incomplete_count < 0:
+        raise ValueError("named model cache inspection returned invalid incomplete-file metadata")
+    if incomplete_count:
+        partials = report.get("incomplete_files")
+        if not isinstance(partials, list) or len(partials) != incomplete_count:
+            raise ValueError(
+                "download returned success but incomplete cache file metadata is absent"
+            )
+        harmless = 0
+        for partial in partials:
+            if not isinstance(partial, dict):
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+            expected_keys = {
+                "path", "bytes", "expected_blob_name", "counterpart_path", "counterpart_regular",
+                "counterpart_hash_matches", "selected_snapshot_references", "classification",
+            }
+            if set(partial) != expected_keys:
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+            if partial["classification"] == "stale_completed_counterpart":
+                if not (isinstance(partial["expected_blob_name"], str)
+                        and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", partial["expected_blob_name"])
+                        and partial["counterpart_regular"] is True
+                        and partial["counterpart_hash_matches"] is True
+                        and partial["selected_snapshot_references"] == []):
+                    raise ValueError("download returned success but incomplete cache metadata is inconsistent")
+                harmless += 1
+            elif partial["classification"] != "unresolved":
+                raise ValueError("download returned success but incomplete cache metadata is invalid")
+        if harmless != incomplete_count:
+            raise ValueError(
+                "download returned success but %s incomplete cache file(s) remain"
+                % incomplete_count
+            )
     if report.get("broken_symlink_count"):
         raise ValueError(
             "download returned success but %s snapshot link(s) are broken"
@@ -734,6 +1359,7 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
              revision=None, include=None, exclude=None,
              token_env=DEFAULT_PULL_TOKEN_ENV,
              token_file=DEFAULT_PULL_TOKEN_FILE,
+             memory_mib=None, memory_swap_mib=None,
              dry_run=False, _run=subprocess.call, _environ=None):
     """Build and (unless ``dry_run``) execute the ``docker run … hf download`` argv.
 
@@ -776,8 +1402,15 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
             )
             return 2
     environ = os.environ if _environ is None else _environ
-    argv = build_pull_argv(repo_id, volume=volume, image=image, revision=revision,
-                           include=include, exclude=exclude, token_env=token_env)
+    try:
+        argv = build_pull_argv(
+            repo_id, volume=volume, image=image, revision=revision,
+            include=include, exclude=exclude, token_env=token_env,
+            memory_mib=memory_mib, memory_swap_mib=memory_swap_mib,
+        )
+    except ValueError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
 
     child_env = dict(environ)
     if token_env and not dry_run:
@@ -808,6 +1441,14 @@ def run_pull(repo_id, volume=DEFAULT_PULL_VOLUME, image=DEFAULT_PULL_IMAGE,
         print("image: %s" % image)
         print("include: %s" % (include or "(all files)"))
         print("exclude: %s" % (exclude or "(none)"))
+        limits = _pull_memory_limits(memory_mib, memory_swap_mib)
+        if limits is None:
+            print("Docker memory ceilings: unbounded (legacy default)")
+        else:
+            print(
+                "Docker memory ceilings: requested memory=%d bytes; memory-plus-swap=%d bytes"
+                % limits
+            )
         if token_env:
             print("token environment variable: %s" % token_env)
             print(
@@ -929,19 +1570,82 @@ def load_model_catalog(catalog_dir=None):
     }
 
 
-def pull_main(argv):
+def pull_result(argv):
+    """Typed dispatcher result for native pulls; preserve Docker's legacy output."""
+    if argv and argv[0] == "pull":
+        argv = argv[1:]
+    if not any(token == "--cache-dir" or token.startswith("--cache-dir=") for token in argv):
+        return pull_main(argv)
+    reports = []
+    stdout, stderr = io.StringIO(), io.StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        rc = pull_main(argv, _result_sink=reports)
+    report = reports[-1] if reports else None
+    return CommandResult(
+        data=report,
+        error=OperatorError(
+            (report or {}).get("error") or stderr.getvalue().strip() or "model pull failed",
+            code="model_pull_failed", details={"pull_exit_code": rc},
+        ) if rc else None,
+        human_stdout=stdout.getvalue(), human_stderr=stderr.getvalue(),
+    )
+
+
+def _native_pull_main(args, *, result_sink=None):
+    """Keep native acquisition independent from Docker and WSL host policies."""
+    if args.volume is not None or args.image is not None:
+        print("--volume and --image are only supported with Docker pulls", file=sys.stderr)
+        return 2
+    if args.expected_bytes is not None:
+        print("native pulls require exact remote inventory; --expected-bytes is Docker-only", file=sys.stderr)
+        return 2
+    if not args.dry_run and not guard.confirmation_authorized():
+        print("native model pull apply requires the dispatcher --confirm gate", file=sys.stderr)
+        return 3
+    token = None
+    if not args.dry_run and not args.no_token:
+        try:
+            token = _pull_token(args.token_env, args.token_file, os.environ)
+        except ValueError:
+            print("could not resolve declared model-pull credential source", file=sys.stderr)
+            return 2
+        if not token:
+            print("declared model-pull credential source is empty; configure it or pass --no-token", file=sys.stderr)
+            return 2
+    environ = dict(os.environ)
+    if args.no_token:
+        environ.pop(args.token_env, None)
+    try:
+        report = model_pull_native.pull(
+            args.repo_id, args.revision, args.cache_dir,
+            hf_executable=args.hf_executable, include=args.include, exclude=args.exclude,
+            token=token, no_token=args.no_token,
+            headroom_bytes=round(args.headroom_gib * 1024**3),
+            evidence_out=args.evidence_out, dry_run=args.dry_run, xet=args.xet, _environ=environ,
+        )
+    except (model_pull_native.NativePullError, OSError) as exc:
+        message = str(exc) if isinstance(exc, model_pull_native.NativePullError) else "native model pull filesystem operation failed"
+        report = {"schema_version": "native-model-pull/v1", "backend": "native",
+                  "status": "refused", "exit_code": 4, "error": message}
+    if result_sink is not None:
+        result_sink.append(report)
+    print(json.dumps(report, indent=2, sort_keys=True))
+    return report["exit_code"]
+
+
+def pull_main(argv, *, _result_sink=None):
     ap = argparse.ArgumentParser(
         prog="anvil-serving models pull",
-        description="Download a Hugging Face repo INTO A NAMED DOCKER VOLUME so it "
-                    "is ready to serve natively. On Windows+WSL2+Docker, serving "
-                    "weights from a C:/ bind mount reads over 9P (~15 MB/s, "
-                    "18-90 min loads); a named docker volume is ext4-native inside "
-                    "WSL2 (no 9P) and loads in seconds (CLAUDE.md gotcha #15). The "
-                    "download runs `hf download` INSIDE a container with the volume "
-                    "mounted at the HF cache, so bytes land on native ext4.\n\n"
+        description="Download a Hugging Face repository into a named Docker volume "
+                    "or an explicit native Hugging Face cache. Native --cache-dir "
+                    "requires an exact 40-character commit and an installed hf "
+                    "executable; it verifies selected files against public hashes "
+                    "without Docker or serving lifecycle actions.\n\n"
                     "Examples:\n"
                     "  anvil-serving models pull openai/gpt-oss-120b --dry-run\n"
-                    "  anvil-serving models pull openai/gpt-oss-120b --confirm",
+                    "  anvil-serving models pull openai/gpt-oss-120b --confirm\n"
+                    "  anvil-serving models pull OWNER/REPO --revision 40_HEX_COMMIT "
+                    "--cache-dir /operator/model-cache/hub --no-token --dry-run",
         epilog="`hf download` is resumable/idempotent (it skips complete files). "
                "gotcha #12: a concurrent/interrupted download to the same cache "
                "can deadlock on .cache/huggingface/.gitignore.lock ('Still waiting "
@@ -950,28 +1654,38 @@ def pull_main(argv):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument("repo_id", help="Hugging Face repo id, e.g. openai/gpt-oss-120b")
-    ap.add_argument("--volume", default=DEFAULT_PULL_VOLUME,
-                    help="named docker volume to pull into (default: %(default)s; "
+    ap.add_argument("--volume", default=None,
+                    help="named docker volume to pull into (default: vllm-hfcache; "
                          "ext4-native inside WSL2 — avoids the 9P bind-mount tax)")
-    ap.add_argument("--image", default=DEFAULT_PULL_IMAGE,
+    ap.add_argument("--image", default=None,
                     help="container image that ships the `hf` CLI; the download runs "
-                         "inside it (default: %(default)s)")
+                         "inside it (default: vllm/vllm-openai:nightly)")
+    ap.add_argument("--cache-dir", metavar="PATH",
+                    help="native HF home containing hub/ or direct hub cache; no Docker")
+    ap.add_argument("--hf-executable", metavar="PATH",
+                    help="native installed hf executable (default: discover hf on PATH)")
+    ap.add_argument("--evidence-out", metavar="FILE",
+                    help="native JSON receipt at a new file outside the hub cache; otherwise retained beside it")
     ap.add_argument("--revision", default=None,
-                    help="git revision/branch/tag to download (passed to `hf download`)")
+                    help="git revision/branch/tag for Docker; exact 40 lowercase hex commit for native")
     ap.add_argument("--include", default=None,
                     help="glob of files to include (passed to `hf download`)")
     ap.add_argument("--exclude", default=None,
                     help="glob of files to exclude (passed to `hf download`)")
+    ap.add_argument(
+        "--native-stage", metavar="DIR",
+        help="stage one exact public LFS artifact with Windows curl.exe, verify its SHA256, then import it into the named Docker volume",
+    )
     ap.add_argument("--token-env", default=DEFAULT_PULL_TOKEN_ENV, metavar="ENV",
                     help="name of an env var holding an HF token; its value is "
-                         "forwarded into the container as HF_TOKEN by reference "
+                         "forwarded to the downloader as HF_TOKEN by reference "
                          "(never inlined on the command line). If the variable is "
                          "not exported, it is read from --token-file.")
     ap.add_argument("--token-file", default=DEFAULT_PULL_TOKEN_FILE, metavar="PATH",
                     help="dotenv file used when --token-env is not already exported "
                          "(default: %(default)s)")
     ap.add_argument("--no-token", action="store_true",
-                    help="pull explicitly without forwarding HF_TOKEN")
+                    help="pull without HF_TOKEN; native also strips inherited HF tokens and disables saved-token use")
     ap.add_argument(
         "--expected-bytes",
         type=int,
@@ -983,39 +1697,129 @@ def pull_main(argv):
         default=DEFAULT_PULL_HEADROOM_BYTES / 1024**3,
         help="free space retained after the estimated download (default: %(default)s GiB)",
     )
+    ap.add_argument("--xet", action="store_true",
+                    help="native only: opt into Xet with owned scratch on --cache-dir's filesystem")
+    ap.add_argument(
+        "--memory-mib",
+        type=int,
+        help="Docker only: requested container memory ceiling in MiB; requires --memory-swap-mib",
+    )
+    ap.add_argument(
+        "--memory-swap-mib",
+        type=int,
+        help="Docker only: requested container memory-plus-swap ceiling in MiB; requires --memory-mib",
+    )
     ap.add_argument("--dry-run", action="store_true",
-                    help="print the docker command that WOULD run, then exit")
+                    help="preview without writes/downloads; native reads public inventory and local storage")
     a = ap.parse_args(argv)
-    operation = "models pull"
-    try:
-        policy = host_ops.load_cache_reclaim_policy()
-    except host_ops.HostConfigError as exc:
-        print("[anvil-serving] %s" % exc, file=sys.stderr)
-        return 2
     if a.expected_bytes is not None and a.expected_bytes <= 0:
         print("[anvil-serving] --expected-bytes must be positive", file=sys.stderr)
         return 2
     if not math.isfinite(a.headroom_gib) or a.headroom_gib < 0:
         print("[anvil-serving] --headroom-gib must be a finite nonnegative number", file=sys.stderr)
         return 2
+    try:
+        _pull_memory_limits(a.memory_mib, a.memory_swap_mib)
+    except ValueError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
+    if a.native_stage is not None and a.cache_dir is not None:
+        print("--native-stage and --cache-dir are mutually exclusive", file=sys.stderr)
+        return 2
+    if a.native_stage is not None and a.memory_mib is not None:
+        print("--memory-mib and --memory-swap-mib are not supported with --native-stage", file=sys.stderr)
+        return 2
+    if a.cache_dir is not None:
+        if a.memory_mib is not None:
+            print("--memory-mib and --memory-swap-mib are only supported with Docker pulls", file=sys.stderr)
+            return 2
+        return _native_pull_main(a, result_sink=_result_sink)
+    if a.hf_executable is not None or a.evidence_out is not None or a.xet:
+        print("--hf-executable, --evidence-out, and --xet require native --cache-dir", file=sys.stderr)
+        return 2
+    a.volume = a.volume or DEFAULT_PULL_VOLUME
+    a.image = a.image or DEFAULT_PULL_IMAGE
+    operation = "models pull"
+    try:
+        policy = host_ops.load_cache_reclaim_policy()
+    except host_ops.HostConfigError as exc:
+        print("[anvil-serving] %s" % exc, file=sys.stderr)
+        return 2
+    native = bool(a.native_stage)
+    if native:
+        if not a.no_token:
+            print("[anvil-serving] --native-stage supports public artifacts only; pass --no-token", file=sys.stderr)
+            return 2
+        if a.exclude:
+            print("[anvil-serving] --native-stage does not support --exclude", file=sys.stderr)
+            return 2
+        if not _REPO_ID_RE.fullmatch(a.repo_id):
+            print("[anvil-serving] repository must be an exact OWNER/REPO id", file=sys.stderr)
+            return 2
+        if not _IMMUTABLE_REVISION_RE.fullmatch(a.revision or ""):
+            print("[anvil-serving] --native-stage requires a full 40-character lowercase commit revision", file=sys.stderr)
+            return 2
+        if not _safe_hf_filename(a.include):
+            print("[anvil-serving] --native-stage requires --include to be one safe literal repository path", file=sys.stderr)
+            return 2
+        if not _DOCKER_VOLUME_RE.fullmatch(a.volume or ""):
+            print("[anvil-serving] --volume must be a named Docker volume", file=sys.stderr)
+            return 2
+        if not a.image or a.image.startswith("-"):
+            print("[anvil-serving] --image must be a Docker image reference", file=sys.stderr)
+            return 2
+        if a.dry_run:
+            print("MODEL ARTIFACT NATIVE-STAGE PLAN")
+            print("repository: %s" % a.repo_id)
+            print("revision: %s" % a.revision)
+            print("include: %s" % a.include)
+            print("native stage: %s" % os.path.abspath(os.path.expanduser(a.native_stage)))
+            print("volume: %s" % a.volume)
+            print("image: %s" % a.image)
+            print("token source: disabled (--no-token required)")
+            print("ordered actions: resolve immutable LFS metadata; check Docker-volume space; resume curl.exe download; verify SHA256; import through a read-only bind; verify the exact snapshot")
+            print("deferred until apply: metadata/space probes, curl.exe, Docker execution, and snapshot verification")
+            print("recovery: rerun the same command; curl.exe resumes the staged file")
+            print("rollback: none automatic; imported cache bytes remain until explicitly removed")
+            host_ops.render_cache_reclaim_plan(policy, operation)
+            return 0
+    native_metadata = None
     if not a.dry_run:
         try:
-            token = _pull_token(
-                None if a.no_token else a.token_env,
-                a.token_file,
-                os.environ,
-            )
-            preflight = preflight_pull(
-                a.repo_id,
-                a.revision,
-                volume=a.volume,
-                image=a.image,
-                include=a.include,
-                exclude=a.exclude,
-                token=token,
-                expected_bytes=a.expected_bytes,
-                headroom_bytes=round(a.headroom_gib * 1024**3),
-            )
+            if native:
+                native_metadata = _native_stage_metadata(a.repo_id, a.revision, a.include)
+                if a.expected_bytes is not None and a.expected_bytes != native_metadata["size"]:
+                    raise ValueError("--expected-bytes does not match immutable LFS metadata")
+                native_stage = preflight_native_stage(
+                    a.native_stage, a.include, native_metadata["size"]
+                )
+                token = None
+                expected_bytes = native_metadata["size"]
+            else:
+                token = _pull_token(
+                    None if a.no_token else a.token_env,
+                    a.token_file,
+                    os.environ,
+                )
+                expected_bytes = a.expected_bytes
+            if native:
+                preflight = preflight_native_import(
+                    a.repo_id, a.revision, expected_bytes,
+                    volume=a.volume, image=a.image,
+                    headroom_bytes=round(a.headroom_gib * 1024**3),
+                )
+            else:
+                preflight = preflight_pull(
+                    a.repo_id,
+                    a.revision,
+                    volume=a.volume,
+                    image=a.image,
+                    include=a.include,
+                    exclude=a.exclude,
+                    token=token,
+                    expected_bytes=expected_bytes,
+                    headroom_bytes=round(a.headroom_gib * 1024**3),
+                )
         except ValueError as exc:
             print("[anvil-serving] model pull preflight refused: %s" % exc, file=sys.stderr)
             return 4
@@ -1030,11 +1834,37 @@ def pull_main(argv):
                 preflight["headroom_bytes"],
             )
         )
+        if native:
+            print(
+                "[anvil-serving] native stage space gate passed: expected=%d staged=%d "
+                "missing=%d free=%d bytes"
+                % (
+                    native_stage["expected_bytes"], native_stage["staged_bytes"],
+                    native_stage["missing_bytes"], native_stage["free_bytes"],
+                )
+            )
     before = None if a.dry_run else host_ops.capture_cache_before(policy)
-    rc = run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
-                  include=a.include, exclude=a.exclude,
-                  token_env=None if a.no_token else a.token_env,
-                  token_file=a.token_file, dry_run=a.dry_run)
+    if native:
+        try:
+            imported = run_native_stage_pull(
+                a.repo_id, a.revision, a.include, native_metadata["sha256"],
+                a.native_stage, volume=a.volume, image=a.image,
+            )
+        except ValueError as exc:
+            print("[anvil-serving] native staged model pull failed: %s" % exc, file=sys.stderr)
+            return 4
+        print(
+            "[anvil-serving] native staged artifact imported: %s (%d bytes)"
+            % (imported["filename"], int(imported["bytes"]))
+        )
+        rc = 0
+    else:
+        rc = run_pull(a.repo_id, volume=a.volume, image=a.image, revision=a.revision,
+                      include=a.include, exclude=a.exclude,
+                      token_env=None if a.no_token else a.token_env,
+                      token_file=a.token_file,
+                      memory_mib=a.memory_mib, memory_swap_mib=a.memory_swap_mib,
+                      dry_run=a.dry_run)
     if rc == 0 and not a.dry_run:
         try:
             verification = verify_pull(
@@ -1067,19 +1897,35 @@ def pull_main(argv):
 
 
 def cache_remove_main(argv):
-    """Remove a Docker snapshot or preview one native cache snapshot safely."""
+    """Preview Docker revisions; remove only through guarded native/volume paths."""
     ap = argparse.ArgumentParser(
         prog="anvil-serving models cache remove",
         description=(
-            "Plan or remove exactly one Hugging Face repository revision from a "
-            "named Docker cache volume. Unreferenced blobs are collected and the "
-            "post-delete snapshot absence is verified."
+            "Plan or remove one exact Hugging Face repository revision from a Docker "
+            "cache volume or guarded native cache. Docker revision apply is refused; "
+            "use guarded whole-cache discard on the daemon host. Native apply requires --cache-dir, "
+            "--config-home, and confirmation. Unreferenced blobs are collected and "
+            "the post-delete snapshot absence is verified."
         ),
     )
     ap.add_argument("repo_id", help="exact Hugging Face repository id (OWNER/REPO)")
     ap.add_argument("--revision", required=True, help="exact cached commit or ref")
     ap.add_argument("--volume", default=None)
-    ap.add_argument("--cache-dir", help="native Hugging Face cache root; dry-run planning only")
+    ap.add_argument("--cache-dir", help="native Hugging Face cache root")
+    ap.add_argument("--config-home", help="authoritative operator config home; required for native apply")
+    ap.add_argument("--discard-volume", action="store_true",
+                    help="remove one proven dedicated local cache volume; requires --volume")
+    ap.add_argument("--expected-volume-fingerprint",
+                    help="SHA-256 fingerprint from the dedicated-volume preview")
+    ap.add_argument("--writers-quiesced", action="store_true",
+                    help="attest that the resource owner stopped native cache writers")
+    ap.add_argument("--auxiliary-caches-reviewed", action="store_true",
+                    help="attest that the fingerprinted generated HF cache inventory was reviewed")
+    ap.add_argument(
+        "--non-model-root-view", action="append", default=[], metavar="CONTAINER_ID",
+        help=("full container ID the caller declares as a non-model read-only root observation; "
+              "native apply validates it before allowing that root bind"),
+    )
     ap.add_argument("--image", default=DEFAULT_PULL_IMAGE)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--confirm", action="store_true", help=argparse.SUPPRESS)
@@ -1097,19 +1943,55 @@ def cache_remove_main(argv):
     if args.cache_dir and args.volume:
         print("--volume and --cache-dir are mutually exclusive", file=sys.stderr)
         return 2
+    if not args.discard_volume and (args.expected_volume_fingerprint or args.writers_quiesced or args.auxiliary_caches_reviewed):
+        print("dedicated-volume fingerprint and cache attestations require --discard-volume", file=sys.stderr)
+        return 2
+    if args.config_home and not args.cache_dir and not args.discard_volume:
+        print("--config-home is only supported with native --cache-dir or --discard-volume removal", file=sys.stderr)
+        return 2
+    if args.non_model_root_view and not args.cache_dir and not args.discard_volume:
+        print("--non-model-root-view is only supported with native --cache-dir or --discard-volume removal", file=sys.stderr)
+        return 2
+    if args.discard_volume:
+        if args.cache_dir:
+            print("--discard-volume is only supported with a named Docker --volume", file=sys.stderr)
+            return 2
+        if not args.volume:
+            print("--discard-volume requires an explicit named --volume", file=sys.stderr)
+            return 2
+        if not args.config_home:
+            print("--discard-volume requires --config-home", file=sys.stderr)
+            return 2
+        if args.image != DEFAULT_PULL_IMAGE:
+            print("--image is not used with --discard-volume", file=sys.stderr)
+            return 2
+        apply = not args.dry_run and (args.confirm or guard.confirmation_authorized())
+        if not args.dry_run and not apply:
+            print("dedicated volume removal requires --dry-run or --confirm", file=sys.stderr)
+            return 3
+        if apply and not args.expected_volume_fingerprint:
+            print("dedicated volume removal apply requires --expected-volume-fingerprint", file=sys.stderr)
+            return 2
+        if apply and not args.writers_quiesced:
+            print("dedicated volume removal apply requires --writers-quiesced", file=sys.stderr)
+            return 2
+        try:
+            result = model_cache_volume.remove(
+                args.repo_id, args.revision, args.volume, args.config_home,
+                expected_fingerprint=args.expected_volume_fingerprint,
+                writers_quiesced=args.writers_quiesced, confirm=apply,
+                auxiliary_caches_reviewed=args.auxiliary_caches_reviewed,
+                non_model_root_views=args.non_model_root_view,
+                dry_run=args.dry_run,
+            )
+        except model_cache_volume.ModelCacheVolumeError as exc:
+            print("dedicated volume removal failed: %s" % exc, file=sys.stderr)
+            return 1
+        print(json.dumps(result, sort_keys=True))
+        return 0 if result.get("outcome") in {"preview", "removed"} else 1
     if args.cache_dir:
         if args.image != DEFAULT_PULL_IMAGE:
             print("--image is only supported with Docker cache removal", file=sys.stderr)
-            return 2
-        if args.confirm:
-            print(
-                "native cache removal apply is unsupported: native cache ownership and "
-                "deletion safety are not implemented; use --dry-run to inspect the plan",
-                file=sys.stderr,
-            )
-            return 2
-        if not args.dry_run:
-            print("native cache removal is preview-only; pass --dry-run", file=sys.stderr)
             return 2
         try:
             plan = model_cache_native.removal_plan(args.cache_dir, args.repo_id, args.revision)
@@ -1124,11 +2006,48 @@ def cache_remove_main(argv):
         print("exclusive blobs: %s" % len(plan["exclusive_blob_names"]))
         print("shared blobs: %s" % len(plan["shared_blob_names"]))
         print("estimated reclaimable bytes: %s" % plan["reclaimable_bytes"])
-        print("apply: unsupported for native cache ownership and deletion safety")
+        if args.dry_run:
+            print("DRY-RUN: no cache bytes removed")
+            return 0
+        if not (args.confirm or guard.confirmation_authorized()):
+            print("apply requires the same command with --confirm", file=sys.stderr)
+            return 3
+        if not args.config_home:
+            print("native cache removal apply requires --config-home", file=sys.stderr)
+            return 2
+        try:
+            _native_cache_guards(
+                args.cache_dir, args.config_home,
+                non_model_root_views=args.non_model_root_view,
+            )
+            if args.non_model_root_view:
+                print("caller declared non-model read-only root observations: %s" %
+                      ", ".join(args.non_model_root_view))
+            result = model_cache_native.remove(
+                args.cache_dir, args.repo_id, args.revision, expected_plan=plan,
+            )
+        except (ValueError, model_cache_native.NativeCacheError) as exc:
+            print("native model cache removal failed: %s" % exc, file=sys.stderr)
+            return 1
+        if result["outcome"] == "already-absent":
+            print("snapshot is already absent; nothing to remove")
+            return 0
+        print("removed %s@%s; reclaimed %s bytes" % (
+            args.repo_id, args.revision, plan["reclaimable_bytes"],
+        ))
         return 0
     volume = args.volume or DEFAULT_PULL_VOLUME
     if any(separator in volume for separator in ("/", "\\", ":")):
         print("--volume must be a named Docker volume", file=sys.stderr)
+        return 2
+    if not args.dry_run and (args.confirm or guard.confirmation_authorized()):
+        print(
+            "legacy Docker revision removal is disabled: it cannot audit ownership or fence writers. "
+            "Use models cache remove --cache-dir PATH --config-home HOME for a directly accessible "
+            "native cache, or models cache discard --volume NAME --config-home HOME on the daemon host "
+            "when the entire cache is retired.",
+            file=sys.stderr,
+        )
         return 2
     try:
         plan = _volume_cache_report(
@@ -1151,35 +2070,9 @@ def cache_remove_main(argv):
     if not plan.get("snapshot_exists"):
         print("snapshot is already absent; nothing to remove")
         return 0
-    apply = not args.dry_run and (args.confirm or guard.confirmation_authorized())
-    if not apply:
-        print("DRY-RUN: no cache bytes removed")
-        print("apply requires the same command with --confirm")
-        return 0 if args.dry_run else 3
-    try:
-        result = _volume_cache_report(
-            "remove",
-            args.repo_id,
-            args.revision,
-            volume=volume,
-            image=args.image,
-        )
-    except ValueError as exc:
-        print("model cache removal failed: %s" % exc, file=sys.stderr)
-        return 1
-    if result.get("snapshot_exists_after"):
-        print("model cache removal failed: snapshot still exists", file=sys.stderr)
-        return 5
-    print(
-        "removed %s@%s; reclaimed %d bytes; %d repository bytes remain"
-        % (
-            args.repo_id,
-            args.revision,
-            int(result.get("reclaimed_bytes") or 0),
-            int(result.get("repo_bytes_after") or 0),
-        )
-    )
-    return 0
+    print("DRY-RUN: no cache bytes removed")
+    print("Docker revision previews are read-only; use guarded native removal or whole-cache discard")
+    return 0 if args.dry_run else 3
 
 
 def cache_inventory_main(argv):
@@ -1489,7 +2382,8 @@ def _native_service_options(parser):
                         help="native service operation deadline in seconds")
 
 
-def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
+def _recipe_container_identity(recipe, container, *, _run=subprocess.run, timeout=10,
+                               require_recipe_digest=False):
     """Return a fail-closed identity for one container created by recipe load."""
     if not _RECIPE_CONTAINER_RE.fullmatch(container):
         raise serve_recipes.RecipeError(
@@ -1502,7 +2396,10 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
             text=True,
             encoding="utf-8",
             errors="replace",
+            timeout=timeout,
         )
+    except subprocess.TimeoutExpired:
+        raise serve_recipes.RecipeError("recipe container identity inspection timed out") from None
     except OSError as exc:
         raise serve_recipes.RecipeError(
             "cannot inspect recipe container %r: %s" % (container, exc)
@@ -1535,11 +2432,14 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         mismatches.append("model label")
     if expected_revision and observed_revision != expected_revision:
         mismatches.append("revision label")
+    if require_recipe_digest and labels.get(serve_recipes.RECIPE_DIGEST_LABEL) != serve_recipes.recipe_digest(recipe):
+        mismatches.append("recipe digest label")
     if mismatches:
         raise serve_recipes.RecipeError(
             "container %r is not owned by the selected recipe (%s mismatch)"
             % (container, ", ".join(mismatches))
         )
+    host_memory = serve_recipes.recipe_memory.observation(row, _run=_run)
     return {
         "schema": "recipe-container-status/v1",
         "container": container,
@@ -1551,7 +2451,8 @@ def _recipe_container_identity(recipe, container, *, _run=subprocess.run):
         "state": state.get("Status"),
         "running": bool(state.get("Running")),
         "health": ((state.get("Health") or {}).get("Status")),
-        "host_memory": serve_recipes.recipe_memory.observation(row, _run=_run),
+        "host_memory": host_memory,
+        "containment_error": serve_recipes.recipe_memory.containment_error(host_memory, recipe.get("serve")),
     }
 
 
@@ -1562,7 +2463,7 @@ def _await_recipe_container_healthy(
     timeout,
     poll_interval,
     *,
-    _identity=_recipe_container_identity,
+    _identity=None,
     _health=None,
     _sleep=time.sleep,
     _monotonic=time.monotonic,
@@ -1574,10 +2475,26 @@ def _await_recipe_container_healthy(
     deadline = _monotonic() + timeout
     last_state = None
     while True:
-        identity = _identity(recipe, container)
+        try:
+            if _identity is None:
+                remaining = deadline - _monotonic()
+                if remaining <= 0:
+                    return False, last_state
+                identity = _recipe_container_identity(
+                    recipe, container, timeout=min(10, remaining), require_recipe_digest=True)
+                if _monotonic() >= deadline:
+                    return False, "recipe container identity deadline expired"
+            else:
+                identity = _identity(recipe, container)
+        except serve_recipes.RecipeError:
+            return False, "recipe container identity unavailable"
         last_state = identity.get("state")
         if last_state not in {"created", "restarting", "running"}:
             return False, last_state
+        containment_error = serve_recipes.recipe_memory.containment_error(
+            identity.get("host_memory") or {}, recipe.get("serve"))
+        if containment_error:
+            return False, containment_error
         if _health(serve["port"], serve.get("health", "/health")) == 200:
             return True, last_state
         now = _monotonic()
@@ -1625,33 +2542,17 @@ def _recipe_container_logs(
         argv += ["--since", since]
     argv.append(identity["container_id"])
     try:
-        completed = _run(
-            argv,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
+    except serve_recipes.RecipeError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read recipe container logs: %s" % exc
+        ) from None
     except OSError as exc:
         raise serve_recipes.RecipeError(
             "cannot read recipe container logs: %s" % exc
         ) from None
-    def selected(value):
-        if not needles:
-            return value
-        return "".join(
-            line
-            for line in value.splitlines(keepends=True)
-            if any(needle in line.casefold() for needle in needles)
-        )
-
-    stdout = selected(completed.stdout or "")
-    stderr = selected(completed.stderr or "")
-    if stdout:
-        _write_console_text(sys.stdout, stdout)
-    if stderr:
-        _write_console_text(sys.stderr, stderr)
-    return completed.returncode
+    _render_recipe_container_logs(returncode, stdout, stderr, needles)
+    return returncode
 
 
 def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
@@ -1675,6 +2576,100 @@ def _recheck_discovered_recipe_container(identity, *, _run=subprocess.run):
             "recipe container identity changed after selection; rediscover and retry"
         )
     return current
+
+
+def _bounded_recipe_log_capture(argv, *, _run=subprocess.run):
+    """Capture recipe logs with a combined byte bound before retaining text."""
+    if _run is not subprocess.run:
+        completed = _run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        stdout, stderr = completed.stdout or "", completed.stderr or ""
+        if len(stdout.encode("utf-8")) + len(stderr.encode("utf-8")) > _RECIPE_LOG_CAPTURE_BYTES:
+            raise serve_recipes.RecipeError("recipe container logs exceed the capture byte limit")
+        return completed.returncode, stdout, stderr
+    from .service_runtime.docker import _bounded_log_capture
+    from .service_runtime.contracts import ServiceError
+    try:
+        result = _bounded_log_capture(argv, timeout=_RECIPE_LOG_CAPTURE_SECONDS)
+    except ServiceError as exc:
+        raise serve_recipes.RecipeError("recipe log capture failed: " + exc.code) from exc
+    return result.returncode, result.stdout, result.stderr
+
+
+def _render_recipe_container_logs(returncode, stdout, stderr, needles):
+    """Emit bounded, redacted log text while keeping Docker failures on stderr."""
+    def selected(value):
+        if not needles:
+            return value
+        return "".join(
+            line
+            for line in value.splitlines(keepends=True)
+            if any(needle in line.casefold() for needle in needles)
+        )
+
+    selected_stdout = selected(stdout or "")
+    selected_stderr = selected(stderr or "")
+    separator = "\n" if selected_stdout and selected_stderr and not selected_stdout.endswith(("\n", "\r")) else ""
+    combined = str(redact(selected_stdout + separator + selected_stderr))
+    if combined:
+        _write_console_text(sys.stderr if returncode else sys.stdout, combined)
+
+
+def collect_discovered_recipe_container_logs(
+    container,
+    *,
+    tail=200,
+    since=None,
+    until=None,
+    timestamps=False,
+    _run=subprocess.run,
+):
+    """Return bounded lines and the revalidated recipe-container identity for evidence callers."""
+    if not isinstance(container, str) or not _RECIPE_CONTAINER_RE.fullmatch(container):
+        raise serve_recipes.RecipeError("recipe container selector is invalid")
+    if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= 1000:
+        raise serve_recipes.RecipeError("tail must be from 1 through 1000")
+    if not isinstance(timestamps, bool):
+        raise serve_recipes.RecipeError("timestamps must be boolean")
+    parsed = []
+    for value in (since, until):
+        if value is None:
+            parsed.append(None)
+            continue
+        try:
+            instant = datetime.fromisoformat(value.replace("Z", "+00:00")) if isinstance(value, str) else None
+        except ValueError:
+            instant = None
+        if instant is None or instant.tzinfo is None or instant.utcoffset() is None:
+            raise serve_recipes.RecipeError("log interval must contain an RFC3339 timestamp")
+        parsed.append(instant)
+    if parsed[0] is not None and parsed[1] is not None and parsed[1] < parsed[0]:
+        raise serve_recipes.RecipeError("log interval end precedes start")
+    def bounded_run(argv, **kwargs):
+        kwargs["timeout"] = min(kwargs.get("timeout", _RECIPE_LOG_CAPTURE_SECONDS), _RECIPE_LOG_CAPTURE_SECONDS)
+        return _run(argv, **kwargs)
+    identity = serve_recipes.select_recipe_container(
+        serve_recipes.discover_recipe_containers(_run=bounded_run), container=container,
+    )
+    current = _recheck_discovered_recipe_container(identity, _run=bounded_run)
+    argv = ["docker", "logs", "--tail", str(tail)]
+    if since is not None:
+        argv.extend(("--since", since))
+    if until is not None:
+        argv.extend(("--until", until))
+    if timestamps:
+        argv.append("--timestamps")
+    argv.append(current["container_id"])
+    returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
+    if returncode:
+        raise serve_recipes.RecipeError("cannot read recipe container logs")
+    lines = [str(redact(line)) for line in (stdout.splitlines() + stderr.splitlines())[-tail:]]
+    return {
+        "lines": lines,
+        "observed_runtime": {key: current.get(key) for key in (
+            "container", "container_id", "image_digest", "revision", "recipe_digest", "registry_digest",
+        )} | {"manager": "docker", "observed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"), "runtime_interval_continuity": "unknown"},
+        "bounds": {"tail_lines": tail, "capture_byte_limit": _RECIPE_LOG_CAPTURE_BYTES, "truncation": "unknown"},
+    }
 
 
 def _discovered_recipe_container_logs(
@@ -1714,34 +2709,17 @@ def _discovered_recipe_container_logs(
         argv += ["--since", since]
     argv.append(current["container_id"])
     try:
-        completed = _run(
-            argv,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
+        returncode, stdout, stderr = _bounded_recipe_log_capture(argv, _run=_run)
+    except serve_recipes.RecipeError as exc:
+        raise serve_recipes.RecipeError(
+            "cannot read recipe container logs: %s" % exc
+        ) from None
     except OSError as exc:
         raise serve_recipes.RecipeError(
             "cannot read recipe container logs: %s" % exc
         ) from None
-
-    def selected(value):
-        if not needles:
-            return value
-        return "".join(
-            line
-            for line in value.splitlines(keepends=True)
-            if any(needle in line.casefold() for needle in needles)
-        )
-
-    stdout = selected(completed.stdout or "")
-    stderr = selected(completed.stderr or "")
-    if stdout:
-        _write_console_text(sys.stdout, stdout)
-    if stderr:
-        _write_console_text(sys.stderr, stderr)
-    return completed.returncode
+    _render_recipe_container_logs(returncode, stdout, stderr, needles)
+    return returncode
 
 
 def _write_console_text(stream, value):
@@ -1800,6 +2778,11 @@ def _recipe_container_unload(
         raise serve_recipes.RecipeError(
             "recipe container identity changed after selection; rediscover and retry"
         )
+    from . import recipe_monitoring
+    try:
+        recipe_monitoring.withdraw(container=container)
+    except (ValueError, OSError, TypeError) as exc:
+        raise serve_recipes.RecipeError("monitoring withdrawal failed before unload") from exc
     completed = _run(
         ["docker", "rm", "-f", current["container_id"]],
         capture_output=True,
@@ -1858,6 +2841,11 @@ def _discovered_recipe_container_unload(
     ):
         return 3
     current = _recheck_discovered_recipe_container(identity, _run=_run)
+    from . import recipe_monitoring
+    try:
+        recipe_monitoring.withdraw(container=current["container"])
+    except (ValueError, OSError, TypeError) as exc:
+        raise serve_recipes.RecipeError("monitoring withdrawal failed before unload") from exc
     completed = _run(
         ["docker", "rm", "-f", current["container_id"]],
         capture_output=True,
@@ -2227,7 +3215,7 @@ def _recipe_main(argv):
                 if a.recipe_action == "status":
                     identity = _recipe_container_identity(recipe, a.container)
                     print(json.dumps(identity, indent=2, sort_keys=True))
-                    return 0
+                    return int(bool(identity.get("containment_error")))
                 if a.recipe_action == "logs":
                     return _recipe_container_logs(
                         recipe,
@@ -2254,7 +3242,7 @@ def _recipe_main(argv):
             )
             if a.recipe_action == "status":
                 print(json.dumps(identity, indent=2, sort_keys=True))
-                return 0
+                return int(bool(identity.get("containment_error")))
             if a.recipe_action == "logs":
                 return _discovered_recipe_container_logs(
                     identity,
@@ -2535,6 +3523,12 @@ def _recipe_main(argv):
                 cleanup = host_ops.prepare_native_kv_offload_shared_memory()
                 host_ops.render_vllm_offload_shared_memory(cleanup)
             return 1
+        from . import recipe_monitoring
+        try:
+            recipe_monitoring.publish(recipe, a.container, registry_digest=selected_registry_digest)
+        except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+            print("recipe is running but monitoring registration failed; metrics remain withheld", file=sys.stderr)
+            return 1
         if cache_policy["enabled"]:
             result = host_ops.automatic_cache_reclaim(
                 cache_policy, before, operation="models recipes load",
@@ -2803,7 +3797,7 @@ def main(argv):
     argv = list(argv)
     ap = argparse.ArgumentParser(
         prog="anvil-serving models",
-        description="Model catalog, Hugging Face volume pulls, and recorded serve recipes.",
+        description="Model catalog, Hugging Face artifact pulls, and recorded serve recipes.",
     )
     sub = ap.add_subparsers(dest="action", required=True)
 
@@ -2826,7 +3820,7 @@ def main(argv):
     sync.add_argument("--dry-run", action="store_true",
                       help="resolve sources and preview catalog writes without scanning or writing")
 
-    sub.add_parser("pull", help="download a Hugging Face repo into a named Docker volume")
+    sub.add_parser("pull", help="download a Hugging Face repo into Docker or a native cache")
     sub.add_parser("recipe", help="create, inspect, edit, delete, or load serve recipes")
     sub.add_parser("cache", help="model cache inspection and cleanup helpers")
     sub.add_parser("score", help="rank models for roles from benchmark evidence")
@@ -2834,6 +3828,9 @@ def main(argv):
     if argv and argv[0] == "pull":
         return pull_main(argv[1:])
     if argv and argv[0] == "recipe":
+        if len(argv) > 1 and argv[1] == "prepare":
+            from . import flare_package_prepare
+            return flare_package_prepare.main(argv[2:])
         return _recipe_main(argv[1:])
     if argv and argv[0] == "cache":
         if len(argv) > 1 and argv[1] == "inventory":

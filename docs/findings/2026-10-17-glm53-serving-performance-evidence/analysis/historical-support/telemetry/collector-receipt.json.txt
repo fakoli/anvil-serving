@@ -1,0 +1,31 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: telemetry/collector-receipt.json
+Original SHA256: 4bbd1cd60f884aa236a974972e89a235ae14396489feaae583bf682e53440313
+Original bytes: 1120
+
+{
+  "cgroup_source": "managed models recipes status --json",
+  "collector": {
+    "path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/telemetry/collector.py",
+    "self_test_argv": [
+      "python3",
+      "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/telemetry/collector.py",
+      "--self-test"
+    ],
+    "sha256": "20116d81e8095f2df947c132ab5500e3dd16d907f092e9954330fb7dc06a1657"
+  },
+  "created_at_unix_ns": 1792235121995554841,
+  "gpu_argv": [
+    "nvidia-smi",
+    "--query-gpu=index,uuid,name,memory.total,memory.used,memory.free,utilization.gpu,power.draw,temperature.gpu",
+    "--format=csv,noheader,nounits"
+  ],
+  "host_memory_path": "/proc/meminfo",
+  "limitations": [
+    "GPU fallback is read-only nvidia-smi because managed host gpus is inventory-only.",
+    "Warmup telemetry GPU/host memory coverage is incomplete and remains excluded."
+  ],
+  "schema": "telemetry-collector-receipt/v1",
+  "status": "fixture_baseline_delta_live_status_gpu_host_validation_passed",
+  "updated_at_unix_ns": 1792235215390092378
+}

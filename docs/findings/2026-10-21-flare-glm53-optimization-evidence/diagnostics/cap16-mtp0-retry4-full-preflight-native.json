@@ -1,0 +1,327 @@
+{
+  "base_url": "http://127.0.0.1:39130/v1",
+  "budget": {
+    "max_completion_tokens": 8448,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "smoke",
+    "json",
+    "needle",
+    "tools",
+    "streaming-tools",
+    "tool-result",
+    "responses"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` returns the total of all elements in `xs`.\n\nIf you can't use the built-in (e.g., for an exercise), a one-liner alternative is:\n\n```python\n__import__(\"functools\").reduce(lambda a, b: a + b, xs, 0)\n```",
+      "content_chars": 260,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` returns the total of all elements in `xs`.\n\nIf you can't use the built-in (e.g., for an exercise), a one-liner alternative is:\n\n```python\n_",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1227,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The obvious answer is:\n\n```python\nsum(xs)\n```\n\nThat's the canonical, idiomatic Python one-liner. T",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 3.338,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 399,
+        "prompt_tokens": 28,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 427
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 229,
+      "reasoning_excerpt": "The user is asking me to return ONLY a JSON object with specific content: {\"language\":\"python\",\"ok\":true}. No prose.\n\nThis is a simple, benign request. They want a raw JSON output with no additional t",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.551,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 62,
+        "prompt_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 9
+        },
+        "total_tokens": 92
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    },
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 168,
+      "reasoning_excerpt": "The user is asking me to extract the launch code from the text. I can see it clearly stated in the middle of the repeated text: \"The launch code is ZEBRA-42917-QUARTZ.\"",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 1.252,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 58,
+        "prompt_tokens": 6803,
+        "prompt_tokens_details": {
+          "cached_tokens": 9
+        },
+        "total_tokens": 6861
+      },
+      "validation_detail": "needle present"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 165,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland and explicitly asked me to use the tool. I have a get_weather function available. Let me call it with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 0.589,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4967
+        },
+        "total_tokens": 5016
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 172,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland and explicitly asked me to use the tool. I have a get_weather function available. Let me call it with \"Oakland\" as the city.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 0.615,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 52,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4967
+        },
+        "total_tokens": 5019
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 172,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland and explicitly asked me to use the tool. I have a get_weather function available. Let me call it with \"Oakland\" as the city.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 0.615,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 52,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4967
+        },
+        "total_tokens": 5019
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 172,
+      "reasoning_excerpt": "The user is asking about the weather in Oakland and explicitly asked me to use the tool. I have a get_weather function available. Let me call it with \"Oakland\" as the city.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 0.621,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 52,
+        "prompt_tokens": 4967,
+        "prompt_tokens_details": {
+          "cached_tokens": 4967
+        },
+        "total_tokens": 5019
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content_chars": 0,
+      "content_excerpt": "",
+      "event_count": 32,
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 122,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I should use the get_weather tool with the city parameter set to \"Oakland\".",
+      "reasoning_field": "stream_delta",
+      "reasoning_tokens": null,
+      "seconds": 0.37,
+      "sse_done": true,
+      "test": "streaming-tools",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 166,
+        "prompt_tokens_details": {
+          "cached_tokens": 152
+        },
+        "total_tokens": 206
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 122,
+      "reasoning_excerpt": "The user wants to know the weather in Oakland. I should use the get_weather tool with the city parameter set to \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.32,
+      "test": "tool-result-initial",
+      "usage": {
+        "completion_tokens": 40,
+        "prompt_tokens": 166,
+        "prompt_tokens_details": {
+          "cached_tokens": 166
+        },
+        "total_tokens": 206
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "OAKLAND 72F",
+      "content_chars": 11,
+      "content_excerpt": "OAKLAND 72F",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 166,
+      "reasoning_excerpt": "The user is asking me to reply exactly \"OAKLAND 72F\" using the tool result. The tool result showed temperature_f: 72 and city Oakland. So they want a specific format.",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.537,
+      "test": "tool-result-continuation",
+      "usage": {
+        "completion_tokens": 49,
+        "prompt_tokens": 70,
+        "prompt_tokens_details": {
+          "cached_tokens": 9
+        },
+        "total_tokens": 119
+      },
+      "validation_detail": "tool result retained"
+    },
+    {
+      "content_chars": 5,
+      "content_excerpt": "READY",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 198,
+      "reasoning_excerpt": "The user is asking me to reply with exactly \"READY\". This is a simple instruction to test or set up something. I should comply with this request exactly as stated - just reply with the word \"READY\".",
+      "reasoning_field": "reasoning_text",
+      "reasoning_tokens": null,
+      "response_status": "completed",
+      "seconds": 0.405,
+      "test": "responses",
+      "usage": {
+        "input_tokens": 16,
+        "input_tokens_details": {
+          "cached_tokens": 9
+        },
+        "output_tokens": 45,
+        "total_tokens": 61
+      },
+      "validation_detail": "completed exact READY"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "3.3s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 Python's built-\" finish='stop' visible=260 reasoning_chars=1227 reasoning_tokens=None",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=229 reasoning_tokens=None",
+      "name": "structured JSON",
+      "passed": true
+    },
+    {
+      "detail": "1.3s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=168 reasoning_tokens=None",
+      "name": "needle @ ~8192 ctx",
+      "passed": true
+    },
+    {
+      "detail": "4/4 clean (sample: 0.6s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=165 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x4",
+      "passed": true
+    },
+    {
+      "detail": "0.4s done=True events=32 valid tool_call get_weather(city='Oakland') finish='tool_calls'",
+      "name": "streaming tool call",
+      "passed": true
+    },
+    {
+      "detail": "0.9s tool result retained finish='stop' visible=11 reasoning_chars=166 reasoning_tokens=None",
+      "name": "tool-result continuation",
+      "passed": true
+    },
+    {
+      "detail": "0.4s status='completed' output='READY' reasoning_chars=198",
+      "name": "Responses API subset",
+      "passed": true
+    }
+  ],
+  "sampling": {
+    "temperature": 1.0
+  },
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

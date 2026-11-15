@@ -1,0 +1,27 @@
+# Isolated qualification: no router_tier or profile is declared.
+# Managed mode drains the existing r11 tier and restores it on leave/failure.
+[[gpu_roles]]
+id = "compute-a"
+vram_mib = 97887
+reserve_mib = 0
+
+[[gpu_roles]]
+id = "compute-b"
+vram_mib = 97887
+reserve_mib = 0
+
+[[serve]]
+name = "tp2-mimo26-lil-nospec-327k-c4-r1"
+container = "mimo26-lil-tp2-nospec-327k-c4-r1"
+runtime = "docker"
+port = 39132
+model = "mimo26-flash-lil-tp2-nospec-327k-c4-r1"
+engine = "vllm"
+gpu_roles = ["compute-a", "compute-b"]
+vram_mib = 97887
+residency = "on-demand"
+operating_mode = "dual-gpu-exclusive"
+tensor_parallel_size = 2
+health = "/v1/models"
+groups = ["mimo26-isolated-nospec-c4"]
+up = "/srv/anvil-serving/.venv/bin/python -m anvil_serving.cli models recipes load XiaomiMiMo/MiMo-V2.6-Flash-RL --registry {dir}/serve-recipes.mimo26-nospec-20261006.toml --container mimo26-lil-tp2-nospec-327k-c4-r1 --gpu-device GPU-COMPUTE-A,GPU-COMPUTE-B --transport local --confirm"

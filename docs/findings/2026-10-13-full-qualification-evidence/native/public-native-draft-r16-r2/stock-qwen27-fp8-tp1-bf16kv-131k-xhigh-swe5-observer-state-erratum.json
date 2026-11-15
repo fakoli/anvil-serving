@@ -1,0 +1,25 @@
+{
+  "schema": "anvil-serving.evidence-erratum/v1",
+  "observed_at": "2026-10-13T23:21:23.730864+00:00",
+  "cause": "Watcher used nativejob status instead of actual state; nativeSWEjob started normally, observerR2 child erroredKeyError after2samples.",
+  "correction": "Read actual state key, exactsame managedjob/run/container continue; observerR3 only, no resubmit/restart/spec/model/harness changes.",
+  "limits": [
+    "Monitoring gap between R2 termination and R3 firstsample is disclosed; cumulative cgroup peak/max/OOM/swap counters remain observable, transient host/GPU reserve acrossgap unproven.",
+    "Submission-previewusagefailure produced no modelcases/score."
+  ],
+  "run_id": "public-run-004",
+  "sources": [
+    {
+      "path": "private-evidence-path-008",
+      "sha256": "4919b314f2b4063bd83cef1741b138e98a0ac49b5d4fbdb6a2d1f655865e7845"
+    },
+    {
+      "path": "private-evidence-path-010",
+      "sha256": "443034816926a1e8b54efaf0aab4ac6b94b88944a70789b38f150bf0fe901615"
+    },
+    {
+      "path": "private-evidence-path-009",
+      "sha256": "23cb813fdba4f9938175d35c346b8c148c1b4b1b6871a550363d7e67e45778e1"
+    }
+  ]
+}

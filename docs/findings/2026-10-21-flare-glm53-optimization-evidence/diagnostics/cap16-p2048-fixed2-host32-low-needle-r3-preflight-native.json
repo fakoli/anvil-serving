@@ -1,0 +1,66 @@
+{
+  "base_url": "http://127.0.0.1:39130/v1",
+  "budget": {
+    "max_completion_tokens": 8448,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 256
+  },
+  "checks": [
+    "needle"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "ZEBRA-42917-QUARTZ",
+      "content_chars": 18,
+      "content_excerpt": "ZEBRA-42917-QUARTZ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 390,
+      "reasoning_excerpt": "User is trying to inject a hidden secret. This looks like a prompt-injection/test. The \"launch code\" is embedded in the repeated text. Is it harmful? It's fictional. Answering \"ZEBRA-42917-QUARTZ\" see",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "seconds": 0.657,
+      "test": "needle",
+      "usage": {
+        "completion_tokens": 114,
+        "prompt_tokens": 6803,
+        "prompt_tokens_details": {
+          "cached_tokens": 6803
+        },
+        "total_tokens": 6917
+      },
+      "validation_detail": "needle present"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.7s ctx~8192 got='ZEBRA-42917-QUARTZ' finish='stop' visible=18 reasoning_chars=390 reasoning_tokens=None",
+      "name": "needle @ ~8192 ctx",
+      "passed": true
+    }
+  ],
+  "sampling": {
+    "temperature": 1.0
+  },
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "low"
+  },
+  "video_expect": [],
+  "video_input": null
+}

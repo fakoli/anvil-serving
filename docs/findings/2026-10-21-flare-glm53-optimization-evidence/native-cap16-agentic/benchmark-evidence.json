@@ -1,0 +1,110 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-10-21T12:08:07.908787Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 1048576,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+    },
+    "hardware": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 1614427230208,
+      "harness_assets": [],
+      "id": "primary-node",
+      "owned_output_writable": true,
+      "platform": "linux"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "alias": "glm53-flare-47581cca-tp2-c4-mtp3"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 1048576,
+      "id": "glm53-flare-47581cca-tp2-c4-mtp3"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "primary-node"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "flare-opt-20261021",
+    "profile": "scout",
+    "run_id": "flare-opt-cap16-oracle8-t1-r1",
+    "spec_sha256": "1833b55a61262eb00a86d652d7aab0721299040a17b3eaf7f9a5b06acb345bd0",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 551,
+          "path": "evidence/0-assets.json",
+          "sha256": "f7ef17648f9669345bc094288ab3c093d04433607836eec342d55c273957f874"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 1997,
+          "path": "evidence/0-preflight.json",
+          "sha256": "f37ef4936cb1bb049411f23a2dd58ff8c4a4d61295cf9b2d95c7b656534196d1"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 37734,
+          "path": "evidence/0-agentic.json",
+          "sha256": "16ad729a89063f7ae65054f74ee93a6ce5a1fa05eb274a47955db2d44f8fa96f"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 18,
+    "pass_rate": 1.0,
+    "passed": 18,
+    "required_pass_rate": 0.75
+  }
+}

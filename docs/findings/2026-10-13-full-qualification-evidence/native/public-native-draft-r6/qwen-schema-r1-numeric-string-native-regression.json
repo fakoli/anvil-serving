@@ -1,0 +1,24 @@
+{
+  "observations": [
+    {
+      "arguments": {
+        "zip": "98101"
+      },
+      "finish_reason": "tool_calls",
+      "mode": "complete",
+      "passed": true,
+      "tool_call_count": 1
+    },
+    {
+      "arguments": {
+        "zip": "98101"
+      },
+      "finish_reason": "tool_calls",
+      "mode": "stream",
+      "passed": true,
+      "tool_call_count": 1
+    }
+  ],
+  "schema_version": "numeric-string-native-regression/v1",
+  "status": "passed"
+}

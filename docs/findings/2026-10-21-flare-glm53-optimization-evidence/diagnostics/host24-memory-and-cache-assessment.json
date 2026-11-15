@@ -1,0 +1,58 @@
+{
+  "cells": [
+    [
+      "cap16-host24-ctx10240-c1-cold.json",
+      12,
+      0,
+      0.0011717733111551616
+    ],
+    [
+      "cap16-host24-ctx10240-c1-warm.json",
+      12,
+      0,
+      0.9998047129235907
+    ],
+    [
+      "cap16-host24-ctx10240-c4-cold.json",
+      12,
+      0,
+      0.0011717733111551616
+    ],
+    [
+      "cap16-host24-ctx10240-c4-warm.json",
+      12,
+      0,
+      1.0
+    ],
+    [
+      "cap16-host24-ctx32768-c1-cold.json",
+      12,
+      0,
+      0.0003926230499169998
+    ],
+    [
+      "cap16-host24-ctx32768-c1-warm.json",
+      12,
+      0,
+      0.999934563855887
+    ],
+    [
+      "cap16-host24-ctx32768-c4-cold.json",
+      12,
+      0,
+      0.0003926230499169998
+    ],
+    [
+      "cap16-host24-ctx32768-c4-warm.json",
+      12,
+      0,
+      0.9999709174454958
+    ]
+  ],
+  "requests_completed": 96,
+  "requests_failed": 0,
+  "warm_min_cached_fraction": 0.9998047129235907,
+  "observed_cgroup_peak_bytes": 2222796800,
+  "observed_min_host_memavailable_bytes": 69175336960,
+  "note": "Memory samples bracket workloadcells; notcontinuous. Hostcacheconfigured24GiB notsameasphysicalallocation orcgroupcharge."
+}

@@ -481,6 +481,20 @@ def _redirect_uri(value: Any, path: str) -> str:
     return text
 
 
+def _native_redirect_uri(value: Any, path: str) -> str:
+    """Accept an exact reverse-DNS private-use scheme and single-slash path."""
+    text = _string(value, path)
+    match = re.fullmatch(r"([a-z][a-z0-9.-]*):(/.*)", text)
+    if match is None or re.fullmatch(r"/[A-Za-z0-9._~!$&'()+,;=:@/-]+", match.group(2)) is None:
+        raise _error(path, "must be a canonical native redirect URI")
+    try:
+        _host(match.group(1), path)
+        _canonical_nonroot_path(match.group(2), path)
+    except ManifestError as exc:
+        raise _error(path, "must be a canonical native redirect URI") from exc
+    return text
+
+
 def _external_redirect(value: Any, path: str) -> tuple[str, str]:
     """Accept one fixed external browser redirect endpoint and its host."""
     text = _string(value, path)
@@ -629,6 +643,7 @@ def _authelia_secret_files(auth: dict[str, Any]) -> list[str]:
     """Return every protected Authelia input, including optional OIDC clients."""
     return [value for key, value in auth.items() if key.endswith("_file")] + [
         client["client_secret_file"] for client in auth.get("additional_oidc_clients", [])
+        if not client.get("public", False)
     ] + ([auth["smtp"]["password_file"]] if "smtp" in auth else [])
 
 
@@ -637,7 +652,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     _reject_literal_credentials(value)
     root_fields = {"schema", "binary", "components", "config_root", "environment_files", "gateway", "connectors", "clients", "caddy", "authelia"}
     if isinstance(value, dict):
-        root_fields.update({"service_user", "service_identities", "service_limits"}.intersection(value))
+        root_fields.update({"service_user", "service_identities", "service_limits", "memory", "application_role_bindings"}.intersection(value))
     raw = _mapping(value, "$", root_fields)
     if raw["schema"] != SCHEMA:
         raise _error("$.schema", f"must equal {SCHEMA}")
@@ -694,8 +709,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         item_path = f"$.gateway.gateway.resources[{index}]"
         identity_fields = {"identity_key_env", "identity_key_id"}
         identity_present = identity_fields.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
-        display_present = {"display_name"} if isinstance(resource_raw, dict) and "display_name" in resource_raw else set()
-        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | identity_present | display_present)
+        optional_fields = {"display_name", "operator_only"}.intersection(resource_raw) if isinstance(resource_raw, dict) else set()
+        item = _mapping(resource_raw, item_path, {"connector", "tunnel_address", "rule"} | identity_present | optional_fields)
         resource = {
             "connector": _ident(item["connector"], item_path + ".connector"),
             "tunnel_address": _loopback(item["tunnel_address"], item_path + ".tunnel_address"),
@@ -705,6 +720,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             if resource["rule"]["access"] != "browser":
                 raise _error(item_path + ".display_name", "requires browser access")
             resource["display_name"] = _display_name(item["display_name"], item_path + ".display_name")
+        if "operator_only" in item:
+            if type(item["operator_only"]) is not bool or resource["rule"]["access"] != "browser":
+                raise _error(item_path + ".operator_only", "requires a boolean on a browser resource")
+            resource["operator_only"] = item["operator_only"]
         if resource["rule"]["native_auth"] == "signed-identity":
             if identity_present != identity_fields:
                 raise _error(item_path, "signed-identity requires identity_key_env and identity_key_id")
@@ -785,6 +804,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
             if type(raw_admin["user_deletion"]) is not bool:
                 raise _error("$.gateway.gateway.browser_administration.user_deletion", "must be boolean")
             browser_administration["user_deletion"] = raw_admin["user_deletion"]
+    if any(resource.get("operator_only", False) for resource in resources) and browser_administration is None:
+        raise _error("$.gateway.gateway.resources", "operator_only requires browser_administration operators")
     gateway_embedded = {"schema": embedded["schema"], "listen": gateway_listen, "max_concurrent": _positive(embedded["max_concurrent"], "$.gateway.gateway.max_concurrent", 512), "resources": sorted(resources, key=lambda r: r["rule"]["id"])}
     if "portal_host" in embedded:
         gateway_embedded["portal_host"] = _host(embedded["portal_host"], "$.gateway.gateway.portal_host")
@@ -1050,6 +1071,8 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         caddy["origin_proxy"] = origin_proxy
 
     authelia_fields = {"service_name", "host", "listen", "state_directory", "users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file"}
+    if isinstance(raw["authelia"], dict) and "reset_link_lifespan_seconds" in raw["authelia"]:
+        authelia_fields.add("reset_link_lifespan_seconds")
     if isinstance(raw["authelia"], dict) and "webauthn" in raw["authelia"]:
         authelia_fields.add("webauthn")
     if isinstance(raw["authelia"], dict) and "additional_oidc_clients" in raw["authelia"]:
@@ -1064,6 +1087,10 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         authelia_fields.add("smtp")
     authelia_raw = _mapping(raw["authelia"], "$.authelia", authelia_fields)
     authelia = {key: _secret_file(authelia_raw[key], "$.authelia." + key) for key in ("users_file", "client_secret_file", "session_secret_file", "storage_encryption_key_file", "identity_validation_secret_file", "oidc_hmac_secret_file", "oidc_rsa_private_key_file")}
+    if "reset_link_lifespan_seconds" in authelia_raw:
+        authelia["reset_link_lifespan_seconds"] = _positive(
+            authelia_raw["reset_link_lifespan_seconds"], "$.authelia.reset_link_lifespan_seconds", 86400
+        )
     authelia_name = _ident(authelia_raw["service_name"], "$.authelia.service_name")
     if authelia_name != "anvil-connect-authelia":
         raise _error("$.authelia.service_name", "must equal anvil-connect-authelia")
@@ -1111,19 +1138,40 @@ def validate_manifest(value: Any) -> dict[str, Any]:
         client_ids = {gateway["oidc"]["client_id"]}
         for index, raw_client in enumerate(raw_clients):
             path = f"$.authelia.additional_oidc_clients[{index}]"
-            client = _mapping(raw_client, path, {"client_id", "client_name", "client_secret_file", "redirect_uris"})
+            client_fields = {"client_id", "client_name", "client_secret_file", "redirect_uris"}
+            if not isinstance(raw_client, dict) or set(raw_client) - client_fields - {"groups_scope", "public", "token_endpoint_auth_method"}:
+                raise _error(path, "has unknown keys")
+            public = raw_client.get("public", False)
+            if type(public) is not bool:
+                raise _error(path + ".public", "must be a boolean")
+            auth_method = raw_client.get("token_endpoint_auth_method")
+            if "token_endpoint_auth_method" in raw_client and (public or not isinstance(auth_method, str) or auth_method not in {"client_secret_basic", "client_secret_post"}):
+                raise _error(path + ".token_endpoint_auth_method", "requires a confidential client and client_secret_basic or client_secret_post")
+            if public:
+                if "client_secret_file" in raw_client:
+                    raise _error(path, "public clients must omit client_secret_file")
+                client_fields.remove("client_secret_file")
+            groups_scope = raw_client.get("groups_scope", False)
+            client = _mapping({key: value for key, value in raw_client.items() if key not in {"groups_scope", "public", "token_endpoint_auth_method"}}, path, client_fields)
             client_id = _client_id(client["client_id"], path + ".client_id")
             if client_id in client_ids:
                 raise _error(path + ".client_id", "must be unique including the Connect client")
             client_ids.add(client_id)
-            redirects = [_redirect_uri(item, path + ".redirect_uris") for item in _list(client["redirect_uris"], path + ".redirect_uris", 16)]
+            redirect_validator = _native_redirect_uri if public else _redirect_uri
+            redirects = [redirect_validator(item, path + ".redirect_uris") for item in _list(client["redirect_uris"], path + ".redirect_uris", 16)]
             if len(redirects) != len(set(redirects)):
                 raise _error(path + ".redirect_uris", "contains duplicate redirect URIs")
+            if type(groups_scope) is not bool:
+                raise _error(path + ".groups_scope", "must be a boolean")
             additional_clients.append({
                 "client_id": client_id,
                 "client_name": _device_label(client["client_name"], path + ".client_name"),
-                "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
+                **({"public": True} if public else {
+                    "client_secret_file": _secret_file(client["client_secret_file"], path + ".client_secret_file"),
+                }),
                 "redirect_uris": sorted(redirects),
+                "groups_scope": groups_scope,
+                **({"token_endpoint_auth_method": auth_method} if auth_method is not None else {}),
             })
         authelia["additional_oidc_clients"] = sorted(additional_clients, key=lambda client: client["client_id"])
     secret_files = _authelia_secret_files(authelia)
@@ -1145,12 +1193,78 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if issuer_host != authelia["host"]:
         raise _error("$.gateway.oidc.issuer", "must equal the managed Authelia HTTPS host")
     for client in authelia.get("additional_oidc_clients", []):
+        if client.get("public", False):
+            continue
         secret_file = client["client_secret_file"]
         if (secret_file == config_root or secret_file.startswith(config_root + "/")
                 or secret_file == authelia["state_directory"] or secret_file.startswith(authelia["state_directory"] + "/")):
             raise _error("$.authelia.additional_oidc_clients", "client secret files must be outside rendered output and Authelia state")
 
     result = {"schema": SCHEMA, "binary": binary, "components": components, "config_root": config_root, "environment_files": environment_files, "gateway": gateway, "connectors": connectors, "clients": clients, "caddy": caddy, "authelia": authelia}
+    if "memory" in raw:
+        memory = _mapping(raw["memory"], "$.memory", {"base_url", "auth_file", "access_file", "default_banks", "shared_banks", "reader_gid"} | ({"router"} if isinstance(raw["memory"], dict) and "router" in raw["memory"] else set()))
+        from .memory_backend import origin
+        try:
+            base_url = origin(memory["base_url"])
+        except ValueError:
+            raise _error("$.memory.base_url", "must name a credential-free private HTTP origin") from None
+        access_file = _abs_path(memory["access_file"], "$.memory.access_file")
+        auth_file = _abs_path(memory["auth_file"], "$.memory.auth_file")
+        overrides = memory["default_banks"]
+        if (type(overrides) is not dict or len(overrides) > 4096
+                or any(type(user) is not str or not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,63}", user)
+                       or type(bank) is not str or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", bank)
+                       for user, bank in overrides.items())):
+            raise _error("$.memory.default_banks", "must map usernames to existing shared bank identifiers")
+        if auth_file == access_file or access_file.startswith(config_root + "/"):
+            raise _error("$.memory", "policy must be outside rendered output and separate from credentials")
+        shared = memory["shared_banks"]
+        if type(shared) is not dict or len(shared) > 4096:
+            raise _error("$.memory.shared_banks", "must map usernames to explicit shared operation grants")
+        for user, banks in shared.items():
+            if (type(user) is not str or not re.fullmatch(r"[a-z0-9][a-z0-9_.-]{0,63}", user) or type(banks) is not dict
+                    or len(banks) > 127 or any(type(bank) is not str
+                        or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", bank)
+                        or type(ops) is not list or not ops or any(type(op) is not str
+                            or op not in {"retain", "recall", "reflect", "list", "detail", "invalidate", "restore"} for op in ops)
+                        or len(ops) != len(set(ops)) for bank, ops in banks.items())):
+                raise _error("$.memory.shared_banks", "invalid shared bank operation grant")
+        if any(bank not in shared.get(user, {}) for user, bank in overrides.items()):
+            raise _error("$.memory.default_banks", "default bank requires an explicit shared operation grant")
+        if type(memory["reader_gid"]) is not int or not 0 <= memory["reader_gid"] <= _MAX_LINUX_ID:
+            raise _error("$.memory.reader_gid", "must be a numeric Linux reader group")
+        result["memory"] = {"base_url": base_url, "access_file": access_file,
+                            "auth_file": auth_file, "default_banks": dict(overrides),
+                            "shared_banks": copy.deepcopy(shared), "reader_gid": memory["reader_gid"]}
+        if "router" in memory:
+            from .user_memory_key import validate
+            result["memory"]["router"] = validate(memory["router"])
+    if "application_role_bindings" in raw:
+        bindings = _list(raw["application_role_bindings"], "$.application_role_bindings", 16)
+        declared = {item["rule"]["id"]: item["rule"] for item in resources}
+        normalized_bindings = []
+        seen_bindings = set()
+        for index, value in enumerate(bindings):
+            path = f"$.application_role_bindings[{index}]"
+            item = _mapping(value, path, {"resource", "adapter_path", "adapter_sha256", "configuration_path", "configuration_sha256"})
+            resource = _ident(item["resource"], path + ".resource")
+            rule = declared.get(resource, {})
+            if resource in seen_bindings or rule.get("access") != "browser" or rule.get("native_auth") != "passthrough":
+                raise _error(path + ".resource", "must name a unique browser passthrough resource")
+            seen_bindings.add(resource)
+            entry = {"resource": resource}
+            for stem in ("adapter", "configuration"):
+                filename = _abs_path(item[stem + "_path"], path + "." + stem + "_path")
+                digest = item[stem + "_sha256"]
+                if type(digest) is not str or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                    raise _error(path, "requires exact lowercase SHA256 digests")
+                if filename == config_root or filename.startswith(config_root + "/"):
+                    raise _error(path, "adapter inputs must be outside rendered output")
+                entry.update({stem + "_path": filename, stem + "_sha256": digest})
+            if not entry["adapter_path"].endswith(".py") or entry["adapter_path"] == entry["configuration_path"]:
+                raise _error(path, "requires a Python adapter and distinct configuration file")
+            normalized_bindings.append(entry)
+        result["application_role_bindings"] = sorted(normalized_bindings, key=lambda entry: entry["resource"])
     _validate_local_tunnels(result)
     if service_identities is None:
         result["service_user"] = service_user

@@ -8,9 +8,13 @@ serve/recipe lifecycle that owns those declarations.
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
+import signal
 import subprocess
+import threading
+import time
 from collections.abc import Callable, Mapping
 from typing import Any
 from urllib.parse import urlsplit
@@ -24,6 +28,8 @@ _TIMEOUT_SECONDS = 15
 _MAX_OUTPUT_BYTES = 1024 * 1024
 _MAX_LOG_TAIL = 5_000
 _MAX_DISCOVERED = 128
+_MAX_LABEL_KEY_LENGTH = 128
+_MAX_LABEL_VALUE_LENGTH = 256
 _CONTAINER_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}\Z")
 _CONTAINER_ID = re.compile(r"[0-9a-f]{64}\Z")
 _IMAGE_ID = re.compile(r"sha256:[0-9a-f]{64}\Z")
@@ -31,13 +37,98 @@ _OWNERSHIP_LABEL = RECIPE_MANAGED_LABEL
 _OWNERSHIP_VALUE = RECIPE_MANAGED_VALUE
 _VALID_STARTUP_POLICIES = frozenset(("always", "unless-stopped", "no"))
 _ENABLED_STARTUP_POLICIES = frozenset(("always", "unless-stopped"))
+_RETAINED_INSPECT_FORMAT = (
+    '{"Id":{{json .Id}},"Name":{{json .Name}},"Image":{{json .Image}},'
+    '"RestartCount":{{json .RestartCount}},'
+    '"State":{"Status":{{json .State.Status}},"Running":{{json .State.Running}},'
+    '"Pid":{{json .State.Pid}},"Paused":{{json .State.Paused}},'
+    '"Restarting":{{json .State.Restarting}},"Dead":{{json .State.Dead}},'
+    '"StartedAt":{{json .State.StartedAt}},"FinishedAt":{{json .State.FinishedAt}},'
+    '"HealthStatus":{{if .State.Health}}{{json .State.Health.Status}}{{else}}null{{end}}},'
+    '"Config":{"Labels":{{json .Config.Labels}},"User":{{json .Config.User}},'
+    '"WorkingDir":{{json .Config.WorkingDir}},'
+    '"HealthcheckDeclared":{{if .Config.Healthcheck}}true{{else}}false{{end}}},'
+    '"HostConfig":{"RestartPolicy":{{json .HostConfig.RestartPolicy}},'
+    '"ReadonlyRootfs":{{json .HostConfig.ReadonlyRootfs}},'
+    '"Privileged":{{json .HostConfig.Privileged}},"CapAdd":{{json .HostConfig.CapAdd}},'
+    '"CapDrop":{{json .HostConfig.CapDrop}},"SecurityOpt":{{json .HostConfig.SecurityOpt}},'
+    '"NetworkMode":{{json .HostConfig.NetworkMode}},"PidMode":{{json .HostConfig.PidMode}},'
+    '"IpcMode":{{json .HostConfig.IpcMode}},"UTSMode":{{json .HostConfig.UTSMode}},'
+    '"Devices":{{json .HostConfig.Devices}},"PortBindings":{{json .HostConfig.PortBindings}}},'
+    '"Mounts":{{json .Mounts}}}'
+)
+
+
+def _bounded_log_capture(argv: list[str], *, timeout: float = _TIMEOUT_SECONDS) -> subprocess.CompletedProcess[str]:
+    """Read one interval log command without retaining more than 1 MiB."""
+    if timeout <= 0:
+        raise ServiceError("timeout", "Docker log command deadline expired")
+    try:
+        process = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, start_new_session=os.name != "nt")
+    except OSError as exc:
+        raise ServiceError("supervisor_unreachable", "Docker is unavailable while reading service logs") from exc
+    output = bytearray()
+    overflow, read_error = threading.Event(), threading.Event()
+
+    def drain():
+        try:
+            while True:
+                chunk = process.stdout.read1(min(65536, _MAX_OUTPUT_BYTES - len(output) + 1))
+                if not chunk:
+                    return
+                if len(output) + len(chunk) > _MAX_OUTPUT_BYTES:
+                    overflow.set()
+                    return
+                output.extend(chunk)
+        except OSError:
+            read_error.set()
+
+    def stop():
+        try:
+            if os.name != "nt":
+                os.killpg(process.pid, signal.SIGKILL)
+            elif process.poll() is None:
+                process.kill()
+        except ProcessLookupError:
+            pass
+
+    reader = threading.Thread(target=drain, daemon=True)
+    deadline = time.monotonic() + timeout
+    reader.start()
+    try:
+        while reader.is_alive() and time.monotonic() < deadline:
+            reader.join(min(.05, max(0, deadline - time.monotonic())))
+        if overflow.is_set():
+            raise ServiceError("output_too_large", "Docker log output exceeds the safety bound")
+        if read_error.is_set():
+            raise ServiceError("log_read_failed", "Docker log pipe could not be read")
+        if reader.is_alive():
+            raise ServiceError("timeout", "Docker log command timed out")
+        try:
+            process.wait(timeout=max(0, deadline - time.monotonic()))
+        except subprocess.TimeoutExpired as exc:
+            raise ServiceError("timeout", "Docker log command timed out") from exc
+        return subprocess.CompletedProcess(argv, process.returncode, output.decode("utf-8", "replace"), "")
+    finally:
+        if process.poll() is None or reader.is_alive():
+            stop()
+        try:
+            process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            stop()
+        reader.join(.25)
+        if not reader.is_alive():
+            process.stdout.close()
 
 
 class Adapter:
     """Read Docker state and construct commands without executing mutations."""
 
-    def __init__(self, *, run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run):
+    def __init__(self, *, run: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+                 capture: Callable[[list[str]], subprocess.CompletedProcess[str]] | None = None):
         self._run = run
+        self._capture = capture or _bounded_log_capture
 
     def verify_context(self) -> None:
         """Refuse Docker CLI operations that would target a remote daemon."""
@@ -68,6 +159,8 @@ class Adapter:
 
     def inspect(self, binding: Mapping[str, Any]) -> dict[str, Any]:
         """Return a bounded observation after verifying the declared identity."""
+        if binding.get("retained_container") is True:
+            return self._inspect_retained(binding)
         container = _container(binding)
         result = self._command(["docker", "inspect", container])
         if result is None:
@@ -98,8 +191,30 @@ class Adapter:
             "manager": "docker",
         }
 
+    def _inspect_retained(self, binding: Mapping[str, Any]) -> dict[str, Any]:
+        """Inspect only the closed, nonsecret projection of one pinned incarnation."""
+        identity = _retained_container_id(binding)
+        result = self._command(["docker", "inspect", "--format", _RETAINED_INSPECT_FORMAT, identity])
+        if result is None:
+            raise ServiceError("supervisor_unreachable", "Docker is unavailable for retained-container custody")
+        if result.returncode:
+            raise ServiceError("identity_mismatch", "the pinned retained container is absent or inaccessible")
+        row = _retained_inspection(result.stdout)
+        return _retained_observation(binding, row)
+
     def describe(self, binding: Mapping[str, Any]) -> dict[str, Any]:
         """Describe only declared, non-secret identity and policy metadata."""
+        if binding.get("retained_container") is True:
+            return {
+                "manager": "docker",
+                "container": _container(binding),
+                "identity": _retained_container_id(binding),
+                "image_id": _image_id(binding),
+                "retained_container": True,
+                "definition_sha256": binding["definition_sha256"],
+                "engine_hint": "none",
+                "ports": [],
+            }
         labels = _identity_labels(binding)
         policy = _startup_policy(binding)
         return {
@@ -113,6 +228,24 @@ class Adapter:
 
     def plan(self, binding: Mapping[str, Any], action: str, observed: Mapping[str, Any]) -> list[list[str]]:
         """Plan one idempotent supervisor action using an inspected immutable ID."""
+        if binding.get("retained_container") is True:
+            if action not in {"up", "down"}:
+                raise ServiceError("unsupported_action", "retained containers support only exact start and stop")
+            if observed.get("registered") is not True or observed.get("identity") != _retained_container_id(binding):
+                raise ServiceError("identity_mismatch", "retained-container action requires its pinned incarnation")
+            if type(observed.get("running")) is not bool:
+                raise ServiceError("unknown_state", "retained-container running state is unknown")
+            if observed.get("custody_sha256") != _retained_custody_sha256(binding):
+                raise ServiceError("identity_mismatch", "retained-container custody changed")
+            if action == "up":
+                if observed["running"]:
+                    raise ServiceError("no_transition", "retained container is already running")
+                return [["docker", "start", observed["identity"]]]
+            if not observed["running"]:
+                raise ServiceError("no_transition", "retained container is already stopped")
+            return [[
+                "docker", "stop", "--timeout", str(binding["shutdown_grace_seconds"]), observed["identity"]
+            ]]
         if action not in {"up", "down", "restart", "enable", "disable"}:
             raise ServiceError("unsupported_action", "unsupported Docker service action")
         registered = observed.get("registered")
@@ -141,7 +274,16 @@ class Adapter:
             return [] if enabled is True else [["docker", "update", "--restart", _enable_policy(binding), identity]]
         return [] if enabled is False else [["docker", "update", "--restart", "no", identity]]
 
-    def logs(self, binding: Mapping[str, Any], tail: int) -> list[str]:
+    def logs(
+        self,
+        binding: Mapping[str, Any],
+        tail: int,
+        *,
+        since: str | None = None,
+        until: str | None = None,
+        timestamps: bool = False,
+        expected_identity: str | None = None,
+    ) -> list[str]:
         """Read a bounded number of logs after an exact identity reinspection."""
         if isinstance(tail, bool) or not isinstance(tail, int) or not 1 <= tail <= _MAX_LOG_TAIL:
             raise ServiceError("invalid_tail", "Docker log tail must be an integer from 1 through 5000")
@@ -149,7 +291,17 @@ class Adapter:
         identity = observed.get("identity")
         if observed.get("registered") is not True or not isinstance(identity, str):
             raise ServiceError("missing", "declared Docker container is not registered")
-        result = self._command(["docker", "logs", "--tail", str(tail), identity])
+        if expected_identity is not None and identity != expected_identity:
+            raise ServiceError("identity_changed", "declared Docker container changed before interval log collection")
+        command = ["docker", "logs", "--tail", str(tail)]
+        if since is not None:
+            command.extend(("--since", since))
+        if until is not None:
+            command.extend(("--until", until))
+        if timestamps:
+            command.append("--timestamps")
+        command.append(identity)
+        result = self._capture(command) if (since is not None or until is not None or timestamps) else self._command(command)
         if result is None:
             raise ServiceError("supervisor_unreachable", "Docker is unavailable while reading service logs")
         if result.returncode:
@@ -232,6 +384,143 @@ def _container(binding: Mapping[str, Any]) -> str:
     return value
 
 
+def _retained_container_id(binding: Mapping[str, Any]) -> str:
+    value = binding.get("container_id")
+    if not isinstance(value, str) or not _CONTAINER_ID.fullmatch(value):
+        raise ServiceError("invalid_binding", "retained container requires one immutable container ID")
+    return value
+
+
+def _canonical_sha256(value: Any) -> str:
+    raw = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _retained_inspection(output: str | None) -> Mapping[str, Any]:
+    try:
+        row = json.loads(output or "")
+    except json.JSONDecodeError as exc:
+        raise ServiceError("malformed_response", "retained Docker inspection returned invalid JSON") from exc
+    if not isinstance(row, Mapping):
+        raise ServiceError("malformed_response", "retained Docker inspection returned invalid metadata")
+    return row
+
+
+def _retained_custody_sha256(binding: Mapping[str, Any]) -> str:
+    return _canonical_sha256({
+        "container": binding.get("container"),
+        "container_id": binding.get("container_id"),
+        "image_id": binding.get("image_id"),
+        "identity_labels": binding.get("identity_labels"),
+        "restart_count": binding.get("restart_count"),
+        "restart_policy": binding.get("restart_policy"),
+        "restart_maximum_retry_count": binding.get("restart_maximum_retry_count"),
+        "writable_mounts_sha256": binding.get("writable_mounts_sha256"),
+        "security_projection_sha256": binding.get("security_projection_sha256"),
+        "shutdown_grace_seconds": binding.get("shutdown_grace_seconds"),
+        "healthcheck_required": binding.get("healthcheck_required"),
+        "healthcheck_sha256": binding.get("healthcheck_sha256"),
+        "definition_sha256": binding.get("definition_sha256"),
+    })
+
+
+def _retained_observation(binding: Mapping[str, Any], row: Mapping[str, Any]) -> dict[str, Any]:
+    if row.get("Id") != _retained_container_id(binding):
+        raise ServiceError("identity_mismatch", "retained Docker incarnation changed")
+    if not isinstance(row.get("Name"), str) or row["Name"].lstrip("/") != _container(binding):
+        raise ServiceError("identity_mismatch", "retained Docker name changed")
+    if row.get("Image") != _image_id(binding):
+        raise ServiceError("identity_mismatch", "retained Docker image changed")
+    config = row.get("Config")
+    labels = config.get("Labels") if isinstance(config, Mapping) else None
+    if not isinstance(labels, Mapping) or dict(labels) != _identity_labels(
+        binding, allow_empty_values=True
+    ):
+        raise ServiceError("identity_mismatch", "retained Docker labels changed")
+    if config.get("HealthcheckDeclared") is not True:
+        raise ServiceError("identity_mismatch", "retained Docker healthcheck is not declared")
+    restart_count = row.get("RestartCount")
+    if isinstance(restart_count, bool) or restart_count != binding.get("restart_count"):
+        raise ServiceError("identity_mismatch", "retained Docker restart count changed")
+    host = row.get("HostConfig")
+    policy = host.get("RestartPolicy") if isinstance(host, Mapping) else None
+    if not isinstance(policy, Mapping) or set(policy) != {"Name", "MaximumRetryCount"}:
+        raise ServiceError("malformed_response", "retained Docker restart policy is malformed")
+    if (policy.get("Name") or "no") != binding.get("restart_policy") or policy.get("MaximumRetryCount") != binding.get("restart_maximum_retry_count"):
+        raise ServiceError("identity_mismatch", "retained Docker restart policy changed")
+    mounts = row.get("Mounts")
+    if not isinstance(mounts, list) or any(not isinstance(mount, Mapping) for mount in mounts):
+        raise ServiceError("malformed_response", "retained Docker mounts are malformed")
+    writable = []
+    mount_fields = ("Type", "Name", "Source", "Destination", "Driver", "RW", "Mode", "Propagation")
+    for mount in mounts:
+        if mount.get("RW") is True:
+            writable.append({key: mount.get(key) for key in mount_fields})
+        elif mount.get("RW") is not False:
+            raise ServiceError("malformed_response", "retained Docker mount access is unknown")
+    writable.sort(key=lambda value: json.dumps(value, sort_keys=True, separators=(",", ":")))
+    if _canonical_sha256(writable) != binding.get("writable_mounts_sha256"):
+        raise ServiceError("identity_mismatch", "retained Docker writable mounts changed")
+    if not isinstance(config, Mapping) or not isinstance(host, Mapping):
+        raise ServiceError("malformed_response", "retained Docker security metadata is absent")
+    security = {
+        "config": {key: config.get(key) for key in ("User", "WorkingDir")},
+        "host_config": {key: host.get(key) for key in (
+            "ReadonlyRootfs", "Privileged", "CapAdd", "CapDrop", "SecurityOpt", "NetworkMode",
+            "PidMode", "IpcMode", "UTSMode", "Devices", "PortBindings",
+        )},
+    }
+    if _canonical_sha256(security) != binding.get("security_projection_sha256"):
+        raise ServiceError("identity_mismatch", "retained Docker security projection changed")
+    state = row.get("State")
+    if not isinstance(state, Mapping) or type(state.get("Running")) is not bool:
+        raise ServiceError("malformed_response", "retained Docker state is malformed")
+    for key in ("Paused", "Restarting", "Dead"):
+        if type(state.get(key)) is not bool:
+            raise ServiceError("malformed_response", "retained Docker state flags are malformed")
+        if state[key]:
+            raise ServiceError("unknown_state", "retained Docker container is not in a stable physical state")
+    running = state["Running"]
+    pid = state.get("Pid")
+    if running and (not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0):
+        raise ServiceError("malformed_response", "running retained Docker container has no physical PID")
+    if not running and pid not in {0, None}:
+        raise ServiceError("malformed_response", "stopped retained Docker container still has a physical PID")
+    status = _safe_state(state.get("Status"))
+    if (running and status != "running") or (not running and status not in {"created", "exited"}):
+        raise ServiceError("unknown_state", "retained Docker physical state is incoherent")
+    health_status = state.get("HealthStatus")
+    if health_status is not None and (not isinstance(health_status, str) or len(health_status) > 64):
+        raise ServiceError("malformed_response", "retained Docker health state is malformed")
+    started_at = _retained_timestamp(state.get("StartedAt"))
+    finished_at = _retained_timestamp(state.get("FinishedAt"))
+    return {
+        "registered": True,
+        "running": running,
+        "enabled": binding.get("restart_policy") != "no",
+        "pid": pid if running else None,
+        "state": status,
+        "identity": row["Id"],
+        "manager": "docker",
+        "retained_container": True,
+        "custody_sha256": _retained_custody_sha256(binding),
+        "writable_mounts_sha256": binding["writable_mounts_sha256"],
+        "security_projection_sha256": binding["security_projection_sha256"],
+        "restart_count": restart_count,
+        "health_status": health_status if running else "not_running",
+        "started_at": started_at,
+        "finished_at": finished_at,
+    }
+
+
+def _retained_timestamp(value: Any) -> str:
+    """Validate Docker's bounded RFC3339 timestamp without interpreting host time."""
+    if (not isinstance(value, str) or len(value) > 64
+            or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,30})?Z", value) is None):
+        raise ServiceError("malformed_response", "retained Docker lifecycle timestamp is malformed")
+    return value
+
+
 def _context_endpoint(output: str | None, *, expected_name: str | None = None) -> str:
     try:
         rows = json.loads(output or "")
@@ -290,13 +579,22 @@ def _image_id(binding: Mapping[str, Any]) -> str:
     return value
 
 
-def _identity_labels(binding: Mapping[str, Any]) -> dict[str, str]:
+def _identity_labels(
+    binding: Mapping[str, Any], *, allow_empty_values: bool = False
+) -> dict[str, str]:
     values = binding.get("identity_labels")
     if not isinstance(values, Mapping) or not values:
         raise ServiceError("invalid_binding", "Docker binding requires identity labels")
     labels: dict[str, str] = {}
     for key, value in values.items():
-        if not isinstance(key, str) or not isinstance(value, str) or not key or not value:
+        if (
+            not isinstance(key, str)
+            or not key
+            or len(key) > _MAX_LABEL_KEY_LENGTH
+            or not isinstance(value, str)
+            or len(value) > _MAX_LABEL_VALUE_LENGTH
+            or (not allow_empty_values and not value)
+        ):
             raise ServiceError("invalid_binding", "Docker identity labels must be non-empty strings")
         labels[key] = value
     return dict(sorted(labels.items()))

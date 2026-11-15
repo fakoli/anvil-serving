@@ -1,0 +1,109 @@
+{
+  "completeness": "failed",
+  "created_at": "2026-10-20T03:10:11.060770Z",
+  "evidence_kind": "measured",
+  "failure": {
+    "class": "resource_exhaustion",
+    "code": "budget_exhausted",
+    "message": "benchmark suite did not complete"
+  },
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 131072
+    },
+    "dataset": {
+      "name": "princeton-nlp/SWE-bench_Verified",
+      "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+      "split": "test"
+    },
+    "hardware": {
+      "gpu": "1x RTX PRO 6000 Blackwell Max-Q",
+      "vram_mib_per_gpu": 97887
+    },
+    "harnesses": {
+      "mini-swe-agent": {
+        "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8"
+      }
+    },
+    "image": {
+      "reference": "ghcr.io/gpillon/ignis@sha256:440563a1fc52db29cc9a51442093a03c05a70d377d8f9f61e119f42fbd1665db"
+    },
+    "model": {
+      "artifact_sha256": "12e3b265b0678ba935a4b05d1b612ba4b68b3a96c3026d818ad65838985fd864",
+      "mtp_artifact": "qwen3_8_flash_next_mtp_3p0-v2.ninfer",
+      "mtp_artifact_sha256": "432fe5c0838027047c5b46c4fde526f3d3ef3d126f00fed1213921f8705988d2",
+      "repository": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+      "revision": "f75e492c6d726537a4d4c85858bc91ee06a070ef"
+    },
+    "runtime": {
+      "engine": "Ignis",
+      "version": "0.7.2"
+    },
+    "served_model": {
+      "configured_context": 131072,
+      "id": "qwen3.8-flash-next"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "local-benchmark"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "ignis-072-qualification-20261019",
+    "profile": "scout",
+    "run_id": "ignis-072-swe5-20261019-r2",
+    "spec_sha256": "761ccce08e803bbf41797ddb528106d563e88c48dd504673180e9dc15b94964c",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 9891,
+          "path": "evidence/0-assets.json",
+          "sha256": "12e70a7235f38ff5559847f50b786304b7d81473067fbc091c9c5638a456fcf7"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 1971,
+          "path": "evidence/0-preflight.json",
+          "sha256": "792f7f31f75cd9d7237c788a59da5ce37937308f0fec5e835142b7a0fcd01639"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 660161,
+          "path": "evidence/2-swe.json",
+          "sha256": "033fd7dc5a249ff8c19006a8ed8b358f7d6d80a0562e3829570ea06c22b53911"
+        }
+      ],
+      "name": "swe",
+      "sequence": 2,
+      "status": "failed"
+    }
+  ],
+  "summary": {
+    "attempted": true,
+    "completed": false
+  }
+}

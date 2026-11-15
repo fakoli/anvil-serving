@@ -256,6 +256,30 @@ func (m *Manager) InspectHuman(principal string) (Human, error) {
 			}
 		}
 	}
+	return m.inspectHuman(principal)
+}
+
+// InspectOperator reads only a currently configured browser administrator.
+// The deletion-facing InspectHuman path remains unable to inspect operators,
+// so this does not weaken their immutable deletion protection.
+func (m *Manager) InspectOperator(principal string) (Human, error) {
+	if !config.ValidHumanID(principal) || m.administration == nil {
+		return Human{}, ErrDenied
+	}
+	found := false
+	for _, operator := range m.administration.Operators {
+		if principal == operator {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return Human{}, ErrDenied
+	}
+	return m.inspectHuman(principal)
+}
+
+func (m *Manager) inspectHuman(principal string) (Human, error) {
 	var human Human
 	err := m.state.View(func(tx *store.Tx) error {
 		if err := tx.Get("principals", principal, &human); errors.Is(err, store.ErrMissing) {

@@ -208,6 +208,17 @@ retain the model's actual replies in history, and require strictly increasing
 endpoint-reported prompt-token counts. A single prefilled transcript cannot be
 reported as a multi-turn endurance pass.
 
+**Tool-choice preflight policy, 2026-10-26.** New exact-weather tool checks use
+the versioned `tool-call/v2-exact-weather` oracle: exactly one complete expected
+function call, JSON-object arguments with a non-empty expected city, and API
+`finish_reason: "tool_calls"`. Ordinary prose, a missing or partial call, a
+wrong function, malformed arguments, or a wrong city fails. The request policy
+is part of the measurement identity: `auto` leaves the call decision to the
+model, while `required` tests a workflow step whose contract mandates a tool
+call. Results from those policies are not pooled, and a passing seeded
+follow-up does not retroactively rescore an older unseeded result or earlier
+oracle. Historical findings keep the validator and policy they actually ran.
+
 **Long-context tool gate.** The `long-tools` preflight check calibrates a real
 tool request and passes only when endpoint usage reports at least 100,000
 actual prompt tokens, the model selects the expected tool, and its arguments
@@ -219,6 +230,146 @@ grader emits a report for the exact explicitly selected instance. Agent,
 dataset, image, prediction, grader, and model reasoning-control identities
 remain bound in the artifact.
 See [the durable job workflow](context-agentic-swe.md).
+
+## Experiment purpose and failure attribution
+
+Keep product-budget evaluation, external benchmark reproduction, and failure
+diagnosis separate. A five-task regression scout is not a population estimate.
+The packaged scout's call/completion limits are deliberate operating budgets;
+an upstream harness default does not silently replace them. Compare the same
+selected tasks, harness revision, effective controls, retry policy and grader.
+Report first-attempt success separately from retry-inclusive success, including
+the extra time and tokens. Retain every attempt in the end-to-end denominator.
+
+New SWE results retain additive per-instance `diagnostics`: the upstream exit,
+prediction presence/byte count/hash, and official grading outcome. New
+`LimitsExceeded` exits use `budget_exhausted` while keeping the run incomplete
+and its gate failed. The enclosing cross-suite evidence uses its stable
+`resource_exhaustion` class and retains `budget_exhausted` as the code; the native
+SWE stage retains the more specific cause. The exit alone does not distinguish call, cost or time
+limits. Repeated format errors identify output-cap exhaustion only when retained
+single-choice responses support that diagnosis. An observed patch is not a
+submitted or correct patch; diagnostics never recover or submit one. Historical
+records keep their original failure classes and scores.
+
+The original `debug-loop` remains Oracle revision 8. To select the corrected
+contract in an agentic job, use `parameters.case_ids: ["debug-loop-v2"]` in the
+existing job specification with a profile that includes `debug-loop` (scout or
+deep). This is an explicit selection, not a new default. The v2 prompt and tool
+schema both disclose `scope="unit"`; its observations identify revision 9.
+Artifacts containing the new case retain `scenario_contracts`, including both
+revisions if both cases were selected. Scenario and expected revision must
+agree. The corrected contract is prospective; it does not rescore old failures.
+
+New capacity reports declare `workload_identity` with
+`prompt_contract_revision: "capacity-prompt-v1"` and either
+`synthetic-repeated-code` (positive `response_words`) or `synthetic-summary`
+(zero `response_words`). These identify existing prompts, not new benchmarks.
+`observe` does not change a repeated-word prompt into a natural workload, and a
+synthetic summary does not establish daily task quality. Comparison and replica
+aggregation reject unlike identities and mixing an identified workload with a
+legacy unidentified one. Legacy-only comparisons retain their prior meaning.
+
+`unique_prefix_namespace` separately identifies how unique-cache prompt headers
+are constructed. The declared unique-cache scheme is
+`capacity-v1:seed-request-index`; shared-cache artifacts use null. The seed itself
+remains per-run provenance. Comparison and aggregation validate the namespace
+against cache mode, retain declared metadata, and reject mixing declared and
+legacy unidentified unique-cache populations. Shared-cache null and absence both
+mean no unique prefix. Historical absence is never filled in with a guessed
+unique scheme. Report catalogs keep the existing `unique_prefix_namespace` key.
+
+Successful timing rows also retain bounded finish reasons, terminal observation,
+capture limit and captured character count. Missing historical metadata stays
+unknown. These observations do not relax output/canary eligibility: a received
+response is not necessarily a clean completion, and truncated capture cannot
+prove stream isolation. Strict finalist requirements remain unchanged. Natural
+task timing, exact instruction following and stream isolation need separately
+declared workloads before they can support separate conclusions.
+
+These contracts can be tested with synthetic traces and fake callers. Passing
+those tests establishes harness behavior, not corrected model accuracy,
+real-engine cancellation, production throughput or promotion readiness.
+
+### Aider grades, lifecycle and diagnostic observations
+
+The campaign report keeps a retained cancelled Aider task's `raw_task_grades`
+separate from job state, accepted samples, comparisons and measurement
+eligibility. The grade reuses the native two-attempt oracle only when the
+retention hashes, frozen prepared plan, endpoint and exact task selection
+match. Missing, corrupt, contradictory or mismatched evidence stays unknown.
+A retained pass does not turn a cancelled job into a completed measurement;
+a retained negative grade remains visible. Historical accepted populations
+and outcomes retain their original meaning.
+
+`raw_task_grade_diagnostics` is independent of the grade. It reports observed
+output truncation, bounded Go/Rust compilation-failure signals and the native
+context-exhaustion counter when valid. A missing signal is unknown, not proof
+of absence. Valid observations without a terminal event retain partial
+coverage; invalid or contradictory terminal records make diagnostics
+unavailable without discarding an independently valid grade.
+
+The bounded request sidecar retains allowlisted `finish_reason` values and
+nullable prompt, completion, total and reasoning token usage. `length` is an
+observed output-truncation signal; it does not establish input-context
+exhaustion. Missing or malformed usage remains null, never zero. Reasoning
+usage is retained only when supplied, with valid nested completion details
+preferred over a valid top-level count. Do not infer missing counts by
+subtraction. Contained-command diagnostics retain status, timeout and bounded
+compiler signatures, not command output or generated text, and do not change
+the test oracle. Buffered Aider responses do not measure true TTFT or
+token-arrival timing.
+
+### SWE retry timing and server-log coverage
+
+New SWE plans bind the observation adapter's hash, the pinned mini-SWE source,
+and supported client dependency versions. The adapter runs inside the existing
+harness environment. It observes mini-SWE's agent retries and the OpenAI SDK's
+HTTP attempts separately, preserving request parameters, retry decisions and
+backoff calculations. A dependency mismatch fails before agent execution;
+changing that supported environment requires separate validation.
+
+Agent and grader stages retain UTC start/end times and monotonic duration.
+`request_observations` contains ordered metadata for each logical query, task,
+step, agent attempt and HTTP attempt, including available status, typed errors,
+planned retry delay and terminal outcome. HTTP, router, model-response and
+engine request IDs are distinct namespaces. The existing aggregate
+`request_ids` stays available; per-instance `request_observation_sequences`
+indexes the ordered observations. Buffered stdout/stderr does not supply retry
+event timestamps. Wall-clock precision does not prove clock synchronization.
+
+The bounded `swe-request-events.jsonl` sidecar lives in the owned run directory,
+outside disposable work, so flushed observations survive cancellation cleanup.
+Its reader distinguishes missing, invalid, incomplete and truncated capture.
+The 2,000-event and 1 MiB bounds limit diagnostic coverage; they do not change
+the benchmark budget. Old artifacts are never assigned reconstructed timings.
+
+For a future authorized run, add one explicit target to the existing SWE job's
+`parameters` before freezing the specification:
+
+```json
+"server_log": {"recipe_container": "candidate", "tail": 1000}
+```
+
+Use `service` instead of `recipe_container` for a declared managed service.
+The worker requests timestamped logs for the actual agent interval through the
+managed owner and immutable container identity. It retains only recognized
+event metadata, including available admission, refusal, timeout, disconnect,
+cancellation acknowledgement and lane-release observations. A cancellation
+acknowledgement does not establish lane release. Raw log text, prompts, response
+bodies and arbitrary headers are excluded from this new capture.
+
+Log evidence separates successful collection from interval completeness. It
+records requested bounds, observed timestamps, the identity observed at
+collection, limits and errors. Rotation, continuity and clock offsets stay
+unknown when the owner cannot establish them. Timestamp ordering across output
+streams has explicit tie and clock limitations. A startup snapshot, empty log
+result or absent event cannot establish complete coverage. Omitting the target
+records `not_requested`; the worker never guesses a service from its endpoint.
+
+Offline fixtures validate capture behavior only. Real-engine cancellation,
+retry causes and model quality still require a separately authorized runtime
+experiment with retained interval evidence.
 
 ## Evaluation pipeline
 
@@ -306,7 +457,10 @@ measured, is qualified, or is deployed.
 
 ## Required publication record
 
-Every new benchmark finding should preserve:
+Every new benchmark finding must preserve the following fields for every
+claimed serving comparison. A focused smoke or quality-only finding may state a
+narrower scope and why performance was not remeasured; it must not claim a full
+comparison.
 
 | Area | Required fields |
 |---|---|
@@ -316,9 +470,19 @@ Every new benchmark finding should preserve:
 | Memory recipe | weight quantization, KV dtype, GPU utilization, served context, KV capacity, admission cap, default and effective per-device reserve, waiver scope/rationale, startup and post-representative-workload free VRAM |
 | Generation recipe | sampling settings, thinking control, reasoning headroom, visible-answer allowance, MTP/speculative settings |
 | Workload | suite revision, prompt length, request count, concurrency, cache policy, expected answer protocol |
-| Results | completion and performance-eligibility count, TTFT, effective prefill, generation duration, decode rate, TPOT/legacy mean-ITL proxy, E2E, token counts, throughput class or bounds, output adherence, quality attempts, truncations and failures |
+| Results | completion and performance-eligibility count; effective prefill; TTFO and visible TTFT when separately observable; generation duration, decode rate, TPOT/legacy mean-ITL proxy, E2E, aggregate output throughput; actual input/output counts and distributions; requested and observed concurrency/occupancy; sample counts and p50/p95; output adherence, quality attempts, truncations, OOM/admission, and other failures |
 | Provenance | observed date, source dates, age class, raw artifact links, checksums or run lineage when available |
-| Decision | candidate role, caveats, gate status, and whether any human-approved promotion occurred |
+| Decision | candidate role, caveats, gate status, `metrics_coverage` states, and whether any human-approved promotion occurred |
+
+Retain a content-bound frozen plan for the profile × workload × context ×
+requested-concurrency matrix before requests, then state each required metric as `measured`, `configured`,
+`estimated`, `blocked`, or `not_collected`. Only retained observations are
+measured. In particular, engine-reported KV token pools are runtime allocation
+estimates. A full-context concurrency calculation from them is a separately
+labeled estimate, not observed occupancy or simultaneous capacity. A full serving comparison is complete only when every required metric
+in every frozen cell is measured; failed or physically blocked cells remain
+valuable evidence but limit the claim to the completed scope. See
+[repeatable campaigns](repeatable-campaigns.md) for failure disposition.
 
 Use `127.0.0.1` in local endpoint examples. Credentials belong in environment
 resolution only and must be redacted from artifacts.
@@ -364,7 +528,8 @@ anvil-serving eval benchmark evidence compare FIRST.json SECOND.json --format js
 
 This summary surface omits prompts, full responses, reasoning text, and arbitrary
 stored command/method text; bounds recursive scans and artifact sizes; and flags
-material workload differences before displaying rows.
+material workload differences before displaying rows. `evidence show` is fail-closed:
+validation errors return a nonzero exit and no usable evidence result.
 It replaces ad hoc `find`/`rg` plus JSON extraction for routine evidence
 navigation. Comparison is fail-closed: missing controls or provenance make the
 result non-comparable, and the command exits non-zero unless the operator passes
@@ -401,3 +566,7 @@ Then:
 The benchmark guide should summarize evidence, never silently upgrade its
 confidence. A one-pass calibration stays one-pass; an operator-observed result
 without a retained artifact stays incomplete; a failed load remains a failure.
+
+## Natural-output observational baseline
+
+The 2026-10-16 GLM comparison uses variable natural output through a shared router. Completion tokens may include reasoning tokens, and 20 requests per cell do not establish stable p99 latency. See [the dated finding](../findings/2026-10-16-glm-natural-baseline.md).

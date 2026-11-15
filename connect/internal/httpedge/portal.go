@@ -81,6 +81,10 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		}
 		return
 	}
+	if !b.permitsResource(resource.declaration, admitted.Principal) {
+		browserFailure(w, http.StatusForbidden)
+		return
+	}
 	switch r.URL.Path {
 	case home:
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -98,14 +102,14 @@ func (b *Browser) portalRoute(w http.ResponseWriter, r *http.Request, resource b
 		}
 		for _, candidate := range b.resources {
 			rule := candidate.declaration.Rule
-			item := portalService{ID: rule.ID, URL: "https://" + rule.Host + rule.PathPrefix, Role: human.ApplicationRoles[rule.ID], ManagedRole: rule.NativeAuth == "signed-identity"}
+			item := portalService{ID: rule.ID, URL: "https://" + rule.Host + rule.PathPrefix, Role: human.ApplicationRoles[rule.ID], ManagedRole: candidate.declaration.ManagesApplicationRole()}
 			if candidate.declaration.DisplayName != nil {
 				item.Name = *candidate.declaration.DisplayName
 			}
-			if granted[rule.ID] {
+			if granted[rule.ID] && b.permitsResource(candidate.declaration, admitted.Principal) {
 				services = append(services, item)
 			}
-			if adminPath != "" {
+			if adminPath != "" && !candidate.declaration.RequiresOperator() {
 				choices = append(choices, portalService{ID: rule.ID, Name: item.Name, ManagedRole: item.ManagedRole})
 			}
 		}

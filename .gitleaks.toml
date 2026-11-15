@@ -3,6 +3,49 @@ title = "anvil-serving secret scan"
 [extend]
 useDefault = true
 
+# Exact non-secret pair labels, each checked against both frozen arm cell IDs.
+[[allowlists]]
+description = "GLM comparison matrix pair identifiers"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-10-17-glm53-serving-performance-evidence/plans/prompt-reconstruction-review\.json$''']
+regexes = [
+  '''^\s*"pair_key": "capacity-edge-ctx310272-c1",?$''',
+  '''^\s*"pair_key": "capacity-edge-ctx310272-c2",?$''',
+  '''^\s*"pair_key": "capacity-edge-ctx310272-c4",?$''',
+  '''^\s*"pair_key": "natural-ctx10240-c1",?$''',
+  '''^\s*"pair_key": "natural-ctx10240-c2",?$''',
+  '''^\s*"pair_key": "natural-ctx10240-c4",?$''',
+  '''^\s*"pair_key": "natural-ctx40960-c1",?$''',
+  '''^\s*"pair_key": "natural-ctx40960-c2",?$''',
+  '''^\s*"pair_key": "natural-ctx40960-c4",?$''',
+  '''^\s*"pair_key": "natural-ctx163840-c1",?$''',
+  '''^\s*"pair_key": "natural-ctx163840-c2",?$''',
+  '''^\s*"pair_key": "natural-ctx163840-c4",?$''',
+  '''^\s*"pair_key": "warmup-ctx10240-c1",?$''',
+  '''^\s*"pair_key": "warmup-ctx163840-c1",?$''',
+  '''^\s*"pair_key": "warmup-edge-ctx310272-c1",?$''',
+]
+
+# Exact hashes in the frozen Apple voice evidence. Scope each exception to
+# its provenance field, value and source path; adjacent credentials still fail.
+[[allowlists]]
+description = "Pinned MLX-LM tokenizer source fingerprint in cache diagnostics"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-06-m4-max-voice-quality-qualification-evidence/projections/mlx_lm_runtime_cache0_v[12]_identity\.json$''']
+regexes = ['''tokenizer_utils\.py[^\r\n]{0,8}ecb52655e86ff6d6db6a657601ece11f195e85971482eb2d0f40c20de17eb4c5["']?''']
+
+[[allowlists]]
+description = "Frozen blind-listening schedule file fingerprint"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-06-m4-max-voice-quality-qualification-evidence/projections/tts-listening-schedule-amendment-01\.json$''']
+regexes = ['''original_reveal_key_sha256[^\r\n]{0,8}3cd47d23e898c5efddfc2e20ab82092fc74a1458e18a318a151e705132a4ae11["']?''']
+
 # Public/synthetic values used to prove redaction and validation behavior.
 # Keep these value-specific: never allowlist an entire test directory.
 [[allowlists]]
@@ -38,6 +81,14 @@ condition = "AND"
 regexTarget = "line"
 paths = ['''(^|/)docs/findings/2026-08-02-deepseek-v4-flash-0731-primary-promotion\.md$''']
 regexes = ['''MAX_NUM_SEQS=16''']
+
+[[allowlists]]
+description = "Exact pinned MiMo tokenizer fingerprint in diagnostic captures"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/artifacts/2026-10-06-mimo-qualification/mimo-r1-raw-(parallel-greedy|structured-thinking-off)-capture\.json$''']
+regexes = ['''tokenizer_sha256[^\r\n]{0,8}ff15eb925890d6b71b5160de4b846fbd13178438ab463b38ecc953e8cd1dcb3e["']?''']
 
 [[allowlists]]
 description = "RFC 6455 sample WebSocket nonce"
@@ -94,3 +145,144 @@ regexes = [
   '''^65c6e7eaba7c681149fd0150c98cdc126120df2980bcaedafaa24e60adb93648$''',
   '''^f2ceb712ed0de1dd723ebc54f93e22374f403512d405472b82ebd95f12ca2393$''',
 ]
+
+# Exact non-secret source fingerprint, verified against the pinned build context.
+[[allowlists]]
+description = "Flare token span source fingerprint in diagnostic build manifest"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-21-flare-inference-diagnostics-evidence/configuration/image-source-manifest\.json$''']
+regexes = ['''530d9fd145fa2e81e80d20175771ceee5e4ed8fd4656adc34844e758a1991b79''']
+
+# Exact source-file digests from the closed Flare cache diagnostics.
+
+[[allowlists]]
+description = "Verified Flare diagnostic source fingerprint 1"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-diagnostics-evidence/receipts/cache-counter-source(-r2)?\.json$''']
+regexes = ['''^\s*"helios/src/server/token_spans\.rs": "530d9fd145fa2e81e80d20175771ceee5e4ed8fd4656adc34844e758a1991b79",?$''']
+
+[[allowlists]]
+description = "Verified Flare diagnostic source fingerprint 2"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-diagnostics-evidence/receipts/(counter-arm/)?frozen-inputs(-draft|-r2-superseded)?\.json$''']
+regexes = ['''^\s*"OPERATOR_PATH_9cf57ef8d6dd/recipe_secrets\.py": "2b6799329fc3f95f3df860ee557b9b0df6c297e46ef1ea59816f7a909367e204",?$''']
+
+# Independently verified publication false positives; exact path and content only.
+
+[[allowlists]]
+description = "Flare cache-fix exact source fingerprint"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-fix-evidence/build-source-manifest(-v2)?\.json$''']
+regexes = ['''^token_spans\.rs": "530d9fd145fa2e81e80d20175771ceee5e4ed8fd4656adc34844e758a1991b79"$''']
+
+[[allowlists]]
+description = "Flare cache-fix exact warmup review prose"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = ['''(^|/)docs/findings/2026-10-22-flare-cache-fix-evidence/review/decode-warmup-audit-review\.md$''']
+regexes = ['''^token each, approximately8k/16k/29k $''']
+
+# Exact token-sequence and tokenizer fingerprints from the frozen Mia captures.
+# Match the field and digest; an adjacent credential is never excepted.
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 1"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-v1\-models\.json$''',
+]
+regexes = ['''^tokenizer_sha256":"19e773648cb4e65de8660ea6365e10acca112d42a854923df93db4a6f333a82d"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 2"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-long\-map\.json$''',
+]
+regexes = ['''^token_sha256":"dc95ab1e0677d339c9433307b1f44b54931a184fa2f4780f7089cbb658196ef0"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 3"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-baseline\-chat\-completions\-whole\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-chat\-completions\-whole\.json$''',
+]
+regexes = ['''^token_sha256":"b9007ab6c4290f557ff88be8f8ce743a2f3d8576bf5ff1d91f9bd710cabcbe1e"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 4"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-cold\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-restarted\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-warm\.json$''',
+]
+regexes = ['''^token_sha256":"979ef32ec0990990af7845af90f5a140ba8f1e8c2416651a6bd4b8ec9d3fd826"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 5"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-cold\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-restarted\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/candidate\-cache\-warm\.json$''',
+]
+regexes = ['''^token_sha256":"c9af562caf1dc18fe2e2d60db189058eee84fd5811b09cc8c0ed7858bf97e67a"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 6"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\-control\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\-extras\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\-repeat\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-scores128\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-wave\-0\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-wave\-1\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-wave\-plain\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/logprobs\-first\.json$''',
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/logprobs\-repeat\.json$''',
+]
+regexes = ['''^token_sha256":"a094669ab5ded1a54b55bfbbc495ccdc73ef5f4fbf86f711c6bab63421760014"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 7"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/extended\-candidate\-post\-wave\-plain\.json$''',
+]
+regexes = ['''^token_sha256":"2e91c4d977c1f294c8ce772a3e28d635d75a0afe7752ea15c8d1d72cc3f20690"$''']
+
+[[allowlists]]
+description = "Frozen Mia token fingerprint 8"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''(^|/)docs/findings/2026\-11\-13\-tensorfold\-mia\-runtime\-functional\-evidence/raw/tool\-guard\-false\.json$''',
+]
+regexes = ['''^token_sha256":"a18e0299cbe3ff5bd42d4585f2d205e41e4aece0e16206eeb552e81deeb54915"$''']

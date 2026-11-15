@@ -1,0 +1,57 @@
+{
+  "entries": [
+    {
+      "derivative_bytes": 73199,
+      "derivative_sha256": "08b8173679e9e75b6aea567d57dbf4f8e933e15f623bde73126df72219a5a07c",
+      "original_private_sha256": "cacf6d20e528acbbecc98be2a546e08a6f3c4b881a310bc1886c8faba7729fa2",
+      "path": "campaign-report.json",
+      "transformation": "Only CLI envelopes removed; full native object unchanged."
+    },
+    {
+      "derivative_bytes": 1010,
+      "derivative_sha256": "1662c5a60d832e169b23d33baa2b42ecafa19fd5a77895a4fe2688377bc1358a",
+      "original_private_sha256": "bbb1532a163ce9df0fb5c502547f5ac4d1b60adfadef8b756ba5948e59e78f8e",
+      "path": "frozen-identity.json",
+      "transformation": "Selected exact source/manifest/count/budget metadata plus bound effective memory limits; private paths omitted."
+    },
+    {
+      "derivative_bytes": 734,
+      "derivative_sha256": "2bd04e97ec8cbe6c0e4a45332792331f4a275c0ded06d157e54f5b4948f6da41",
+      "original_private_sha256": "1e9890f3223f50cf01afad64b6ce346be74e5d96e2cd2282138964297bb2183d",
+      "path": "candidate-containment-snapshot.json",
+      "transformation": "Exact host-memory and status fields; added explicit startup-only scope."
+    },
+    {
+      "derivative_bytes": 2455,
+      "derivative_sha256": "3a70aeecad7fb749966fb3be9cf7d17965bafb03a0498de82a092c65932c2eb9",
+      "original_private_sha256": "ec062c02df1f2532e385214fa928161a244da5d17f65a48648dc19f2370fdcbb",
+      "path": "startup-events.json",
+      "transformation": "Five selected native events; artifact/private directory paths omitted and error location generalized."
+    },
+    {
+      "derivative_bytes": 2282,
+      "derivative_sha256": "5d9ce81fac4a7cf6e0da74fa8ac0642fae9a30f2fc9a7f423436e6733a2d838f",
+      "original_private_sha256": "52fe4b0f002c47e0716e867381bca3fafcf9f0c817a2be296a7bf7bd1fc8e8da",
+      "path": "restoration-failed-attempt.json",
+      "transformation": "Select only attempted incumbent, omitting unrelated container and private IDs/paths; correlate load/unload receipts."
+    },
+    {
+      "derivative_bytes": 4726,
+      "derivative_sha256": "78d9c55cd4a6f87fd37c1c630c6e4e9c05ee029c6d74e9cec224c429d62913e3",
+      "original_private_sha256": "81eb0c66f943b2b0e1dc13ecc1b00959f7e2a5d84961ce78865bac98e6955af4",
+      "path": "final-restoration-evidence.json",
+      "transformation": "Selected exact restore/probe/failed-client facts; private IDs, topology, mounts and commands omitted."
+    },
+    {
+      "derivative_bytes": 2345,
+      "derivative_sha256": "e9c71f3cc596265e95a4a86803ce0d4a39410455bed240e7fb67f22620dcb247",
+      "original_private_sha256": "3a9a282a9f5be279f577afe425c25d194ae6dac265c696816395f6a7eb2b19e9",
+      "path": "pi-validation.json",
+      "transformation": "Both native attempts unchanged; superseded private receipt path omitted. Exact final text retained."
+    }
+  ],
+  "native_graph_validation_claimed": false,
+  "original_private_hashes_are_not_derivative_hashes": true,
+  "other_files": "After-attempt wrappers and selected metadata from source registry; no before-request creation timestamp or full restoration acceptance claim.",
+  "schema": "anvil-serving.publication-derivative-ledger/v1"
+}

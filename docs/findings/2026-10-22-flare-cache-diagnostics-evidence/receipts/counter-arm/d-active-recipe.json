@@ -1,0 +1,20 @@
+{
+  "bound_port": 39130,
+  "container": "glm53-flare-cache-counters",
+  "container_id": "container-9",
+  "engine": "flare-47581cca",
+  "generation": "c7877b9f5df2c0fe2a978ee6e8b3cd2018a08d21bcd123f8ffb7c2811d4af628",
+  "gpu_selection": [
+    "synthetic-id-14c581c315ea",
+    "synthetic-id-d013185ea964"
+  ],
+  "image_digest": "sha256:aa74f31ae8a97387ecf14af5b334222ba858ca540241d45a9eccdbae0054c0fc",
+  "metrics_contract": "flare",
+  "model": "glm53-flare-47581cca-tp2-c4-mtp3",
+  "recipe_digest": "867061065409fac7d414497fcc206eccd49ec93cfaf295ad9f177ed14cfe682d",
+  "registry_digest": "0b1e6d5d995f37c4e9fbc1c11e3fefaf4f14a083bb65206bd0ef4da909483273",
+  "schema": "recipe-monitoring/v1",
+  "started_at": "2026-10-22T10:10:09.235738436Z",
+  "state": "active",
+  "updated": 1792663945.4958878
+}

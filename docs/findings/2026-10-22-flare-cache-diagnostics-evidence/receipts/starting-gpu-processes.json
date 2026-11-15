@@ -1,0 +1,11 @@
+{
+  "at": 1792660066.1912167,
+  "argv": [
+    "nvidia-smi",
+    "--query-compute-apps=gpu_uuid,pid,process_name,used_gpu_memory",
+    "--format=csv,noheader"
+  ],
+  "returncode": 0,
+  "stdout": "synthetic-id-14c581c315ea, 2879496, VLLM::Worker_TP1_DCP1, 96442 MiB\nGPU-synthetic-id-f2505531ad94, 2878697, VLLM::Worker_TP0_DCP0, 96440 MiB\n",
+  "stderr": ""
+}

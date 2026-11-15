@@ -6,7 +6,93 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Native Connect gateway restarts preserve exact refused Unix socket leftovers
+  under exclusive authority ownership before rebinding, while refusing active
+  listeners, unsafe custody and unknown liveness.
+
 ### Added
+
+- Media artifact inspection returns authenticated download URLs and native MP4
+  resource links, with explicit bounded-range metadata for larger downloads.
+- Opt-in artifact-scoped, expiring read links support direct browser video
+  playback, HEAD and bounded streaming of full files and single byte ranges.
+  Reusable MCP credentials remain outside URLs.
+
+## [2.0.2] - 2026-10-27
+
+### Fixed
+
+- Interrupted current-stop recovery can finish the ownership handoff for the
+  exact already-running successor without recreating the router. Recovery
+  validates the protected receipt, closed admission generation, zero local
+  work counts, and unchanged container, image and configuration bindings.
+- Repeating recovery after a completed ownership handoff is read-only.
+  Recreate and rollback requests against a running successor fail closed;
+  reopening admission still requires its separate authorization.
+
+### Upgrade notes
+
+- Install the updated CLI to obtain the recovery command. Rebuild managed
+  router/controller images when updating those installed package versions.
+  This release does not change routes, models or admission policy.
+
+## [2.0.1] - 2026-10-26
+
+### Fixed
+
+- Router recovery accepts valid read-only mounted configuration files with a
+  custom basename while retaining path, mount and custody validation.
+- Standalone Connect manager bundles include the shared paths module, restoring
+  structured edge-status diagnostics instead of an import failure.
+- Benchmark campaign duration tests use a deterministic clock and a bounded
+  floating-point comparison; production accounting is unchanged.
+
+### Upgrade notes
+
+- Rebuild the router/controller artifacts and standalone Connect manager to
+  install their fixes. Installing the CLI alone does not replace running
+  services, change routes, or promote a model.
+
+## [2.0.0] - 2026-10-26
+
+### Added
+
+- Repeatable engine qualification with context, agentic, Aider and SWE jobs,
+  pinned dependency images, retained request/failure evidence, output-budget
+  validation and observer coverage. Published Flare, Ignis and vLLM comparison
+  reports retain incomplete results and do not imply model promotion.
+- Instrumented router maintenance, protected runtime configuration snapshots,
+  exact-predecessor rollback after a completed stop, and retained ownership
+  evidence for recovery.
+- Native client propagation with explicit owner contracts, session and catalog
+  custody, bounded workers, schema-migration recovery and secret-reference
+  preservation.
+- Named ComfyUI media workflows and MCP tools with principal-bound artifacts,
+  qualification, cancellation and explicit release profiles.
+- Caller-owned bounded video artifact handoff for named media workflows.
+- A Windows RAM/commit heartbeat and scoped worker supervisor, including
+  protected login registration, stale-signal refusal and bounded sharing retries.
+
+- Guarded `models cache discard` for an entirely retired native Linux model
+  directory or Docker volume, including incomplete downloads and shared-blob
+  layouts. Apply binds the reviewed inventory and operator configuration to an
+  exact fingerprint, audits consumers and locks twice, and reports uncertain
+  or partial outcomes without retrying deletion.
+
+- Public `/v1/models` discovery entries now advertise declared per-request
+  media limits (`images_per_request`, `video_per_request`) so OpenAI-compatible
+  clients can budget image payloads without authenticated capability calls or
+  backend probing.
+- Pi client catalog sync now carries the router-declared `images_per_request`
+  limit into `~/.pi/agent/models.json` as `inputLimits.images.maxPerRequest`,
+  preserving user-set `inputLimits` fields and removing the managed value when
+  the router stops declaring it. An explicit zero disables Pi's image input
+  modality and removes the numeric cap (Pi requires positive numeric caps).
+  Note: `maxPerRequest` is a *managed* key —
+  hand-editing it in models.json is overwritten by the next sync; other
+  `inputLimits` fields (image resize bounds, etc.) are preserved.
 
 - Principal-bound supplemental Hindsight memory through bounded REST and MCP
   routes, with device-key grants, fixed bank bindings and no backend fallback.
@@ -14,6 +100,56 @@ All notable changes to this project are documented here. The format is based on
   existing Codex, Pi, Hermes, OpenClaw and Claude memory stores.
 - Explicit propagation-owner preview mode with pinned whole-fleet readback and
   capability discovery that omits and refuses every effect operation.
+
+### Fixed
+
+- Canonical router, controller and dashboard images use pinned Python 3.13 and
+  checksum-verified SQLite 3.54.1. A network-isolated build smoke exercises
+  native WAL conversion and key-store writes as the service user, preventing
+  publication of source whose canonical image silently lacks the required API.
+- Buffered router responses preserve code indentation and whitespace. Benchmark
+  child hooks use the selected checkout; budget-limited Aider/SWE jobs preserve
+  ungraded outcomes instead of implying a scored failure or successful run.
+- Managed recipes retain terminal startup state and stderr-only logs, enforce
+  zero-swap containment, support non-root caches and native Xet downloads, and
+  retain bounded unload errors.
+- Workbench user isolation, multiplexer ingress bounds, stale Connect sockets,
+  closed broker startup, native OIDC authority and per-user memory enrollment.
+- WAL accounting and recovery use bounded checkpoints, fenced truncation and
+  fail-closed runtime checks.
+- Dedicated and whole-cache consumer checks now include native memory mappings, working
+  directories and executables as well as open file descriptors. Configuration
+  audits also recognize cache identities embedded in commands and arguments.
+- Legacy Docker cache reporting uses read-only mounts, disabled networking and
+  bounded subprocesses; cleanup previews cannot create a missing volume.
+
+### Changed
+
+- **BREAKING:** `router status --json` now returns a structured object in
+  `data` instead of a rendered JSON string. Consumers must read the object
+  directly rather than decoding `data` a second time.
+- **BREAKING:** selective Docker `models cache remove --volume ... --confirm`
+  now refuses before invoking Docker. Its unguarded deletion helper was removed.
+  Use guarded native `--cache-dir` revision removal, dedicated
+  `--discard-volume`, or `models cache discard` on the storage owner. Docker
+  Desktop and remote daemons have no destructive helper fallback.
+
+### Upgrade notes
+
+- Review the cache-removal change above before upgrading automation. Existing
+  operator homes are not rewritten by a package upgrade; merge required
+  configuration changes explicitly rather than rerunning `init` over them.
+- Protected router configuration export is opt-in for existing controllers:
+  update the controller image, add the dedicated snapshot volume, and allow
+  `router_config_export`. Remote exports require a protected output path; see
+  the [router configuration export guide](https://fakoli.github.io/anvil-serving/cli/router/).
+- Python 3.11 remains supported for the CLI. Opt-in router WAL accounting needs
+  the newer SQLite connection APIs and a qualified SQLite build; build the
+  router image from this release and retain database backups before state
+  migrations. The package release does not publish a prebuilt container image.
+- Publishing this release does not deploy services, alter routes, migrate
+  native client state or promote a benchmark candidate. The separately
+  versioned Connect client keeps its own release line.
 
 ## [1.5.0] - 2026-09-26
 
@@ -2591,7 +2727,10 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/fakoli/anvil-serving/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/fakoli/anvil-serving/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/fakoli/anvil-serving/compare/v1.5.0...v2.0.0
 [1.5.0]: https://github.com/fakoli/anvil-serving/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/fakoli/anvil-serving/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fakoli/anvil-serving/compare/v1.2.1...v1.3.0

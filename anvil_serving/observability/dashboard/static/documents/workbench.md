@@ -119,6 +119,37 @@ grant. A wildcard grant alone is insufficient. Host Pi retains its native
 history and filesystem authority; this declaration does not make it a confined
 task runner. Its origin must differ from the dashboard origin.
 
+### Native mobile session clients
+
+The reviewed `0.10.0` bridge exposes `/api/mobile-pi` for personal clients using
+existing host sessions. It reuses Pi Web's session owner and RPC registry.
+The facade permits session summaries, saved context/earlier pages, runtime
+state, SSE events, and only `prompt`/`abort` commands with UUID request IDs.
+It rejects arbitrary agent commands, unsafe IDs, unknown fields/query keys,
+and oversized bodies. Prompt text is limited to 32 KiB of UTF-8, and command
+bodies to 64 KiB. Duplicate request receipts are bounded and in memory;
+clients must not automatically retry commands after an uncertain response.
+
+Expose this prefix as a dedicated Connect **API** resource with GET/POST and
+`native_auth: "delegate-bearer"`. Issue a separate resource-scoped device key.
+The connector's `token_env` must name the service's existing
+`PI_WEB_WORKBENCH_BRIDGE_TOKEN` in the connector's own protected environment
+reference. The native bridge token and provider secrets remain on the host.
+Declare the API hostname in Pi Web's `allowed_hosts` and retain normal TLS.
+Browser cookies and the Workbench iframe identity are not the mobile API's
+authentication contract.
+
+Attach SSE and refresh saved context/state on reconnect; the stream has
+heartbeat comments but no replay cursor. An alive runtime is not necessarily
+busy. Backgrounding a mobile observer leaves the host run active; Stop must
+explicitly send abort and reconcile owner state. Pending extension input
+requires interaction in native Pi Web. Mobile error events remove raw prompt
+exceptions, extension paths, and extension error details.
+
+The managed unit declares `JITI_FS_CACHE=false`. This prevents generated
+runtime caches from mutating the artifact verified by the installer; integrity
+checks still cover the complete installed tree.
+
 ### Native project navigation
 
 For project/thread navigation and native run discovery, enable the packaged

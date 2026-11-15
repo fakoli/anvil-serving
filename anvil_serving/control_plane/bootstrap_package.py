@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import io
-import stat
 import zipfile
 
-from ..fleet_bootstrap import BootstrapContractError, BootstrapErrorCode
+from ..fleet_bootstrap import BootstrapContractError, BootstrapErrorCode, _zip_info
 
 
 MAX_RECEIVER_SOURCE_BYTES = 256 * 1024
 MAX_RECEIVER_ZIPAPP_BYTES = 1024 * 1024
-_DOS_EPOCH = (1980, 1, 1, 0, 0, 0)
 _MAIN_SOURCE = (
     b"from anvil_serving.control_plane.bootstrap_shim import main\n"
     b"raise SystemExit(main())\n"
@@ -43,16 +41,6 @@ def _validated_source(value: object) -> bytes:
     except (SyntaxError, UnicodeError, ValueError):
         raise _invalid_source() from None
     return value
-
-
-def _zip_info(name: str) -> zipfile.ZipInfo:
-    info = zipfile.ZipInfo(name, date_time=_DOS_EPOCH)
-    info.compress_type = zipfile.ZIP_STORED
-    info.create_system = 3
-    info.external_attr = (stat.S_IFREG | 0o600) << 16
-    info.extra = b""
-    info.comment = b""
-    return info
 
 
 def build_receiver_zipapp(validator_source: bytes, receiver_source: bytes) -> bytes:

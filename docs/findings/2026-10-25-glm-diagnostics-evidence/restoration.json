@@ -1,0 +1,34 @@
+{
+  "capabilities_unchanged": true,
+  "closure_audit_private_original": {
+    "bytes": 14972,
+    "sha256": "d681fc61b5565199c9dd8b5bc83c08441b2faeb102fd67a798b153ac4f6766d0"
+  },
+  "engine_running_after": 0,
+  "engine_waiting_after": 0,
+  "gpu_utilization_percent_after": [
+    0,
+    0
+  ],
+  "host_oom_counter_delta": 0,
+  "identity_unchanged": true,
+  "ignis_run_started": false,
+  "mutation": "none; serving lifecycle and configuration remained unchanged",
+  "owned_processes_absent": true,
+  "promoted": false,
+  "schema": "benchmark-restoration/v1",
+  "scope": "Six campaign-owned jobs and unchanged incumbent; no fleet-wide idleness assertion.",
+  "serving_cgroup_oom_delta": 0,
+  "source_head": "3e211eec5998998712acba85cf2d06ae4a49cd1a",
+  "status": "verified",
+  "window": {
+    "authorized_seconds_including_cleanup": 2700,
+    "campaign_command_seconds": 1562.195361359045,
+    "last_postcheck_utc": "2026-10-25T22:05:09.328065+00:00",
+    "next_required_seconds": 780,
+    "remaining_active_seconds": 575.216,
+    "start_utc": "2026-10-25T21:38:25.332676+00:00",
+    "stop_reason": "campaign_budget_exceeded",
+    "through_postcheck_seconds": 1603.995389
+  }
+}

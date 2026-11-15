@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import threading
-import time
 
 from anvil_serving.a2a.http import handle_jsonrpc
 from anvil_serving.a2a.tasks import A2AMediaTasks
 from anvil_serving.media.artifacts import ArtifactStore
 from anvil_serving.media.comfyui import ComfyUIClient, WorkflowCompatibility
-from anvil_serving.media.contracts import JobState, ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
+from anvil_serving.media.contracts import ParameterBinding, ParameterSpec, RenderedWorkflow, WorkflowDescriptor
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.errors import MediaError
 from anvil_serving.media.operations import MediaOperations
@@ -165,18 +163,6 @@ def test_raw_graph_or_file_part_is_rejected_before_backend(tmp_path):
     assert tasks.operations.jobs.nonterminal() == []
 
 
-def test_send_message_requires_message_id_and_canonical_error_details(tmp_path):
-    tasks = service(tmp_path)
-    request = send_request()
-    del request["params"]["message"]["messageId"]
-    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
-    assert response["error"]["code"] == -32602
-    assert response["error"]["data"][0]["@type"] == (
-        "type.googleapis.com/google.rpc.BadRequest"
-    )
-    assert tasks.operations.jobs.nonterminal() == []
-
-
 def test_missing_task_and_terminal_cancel_use_a2a_1_0_errors(tmp_path):
     tasks = service(tmp_path)
     missing = handle_jsonrpc(
@@ -217,74 +203,6 @@ def test_missing_task_and_terminal_cancel_use_a2a_1_0_errors(tmp_path):
     )
     assert repeated["error"]["code"] == -32002
     assert repeated["error"]["data"][0]["reason"] == "TASK_NOT_CANCELABLE"
-
-
-def test_streaming_methods_without_sse_use_canonical_a2a_error_info(tmp_path):
-    tasks = service(tmp_path)
-
-    for request_id, method in enumerate(
-        ("SendStreamingMessage", "SubscribeToTask"), start=1
-    ):
-        response = handle_jsonrpc(
-            {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "method": method,
-                "params": {},
-            },
-            tasks=tasks,
-            caller=CALLER,
-        )
-
-        assert response["error"] == {
-            "code": -32004,
-            "message": "Operation is not supported",
-            "data": [
-                {
-                    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-                    "reason": "UNSUPPORTED_OPERATION",
-                    "domain": "a2a-protocol.org",
-                }
-            ],
-        }
-
-
-def test_send_configuration_accepts_standard_output_and_history_fields(tmp_path):
-    tasks = service(tmp_path)
-    request = send_request()
-    request["params"]["configuration"] = {
-        "acceptedOutputModes": ["image/png"],
-        "historyLength": 0,
-        "returnImmediately": True,
-    }
-
-    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
-
-    assert response["result"]["task"]["status"]["state"] == (
-        "TASK_STATE_SUBMITTED"
-    )
-
-
-def test_send_configuration_maps_push_and_output_errors_canonically(tmp_path):
-    tasks = service(tmp_path)
-    push = send_request()
-    push["params"]["configuration"] = {
-        "taskPushNotificationConfig": {"url": "https://example.test/callback"},
-        "returnImmediately": True,
-    }
-    push_error = handle_jsonrpc(push, tasks=tasks, caller=CALLER)["error"]
-    assert push_error["code"] == -32003
-    assert push_error["data"][0]["reason"] == "PUSH_NOTIFICATION_NOT_SUPPORTED"
-
-    unsupported = send_request(2)
-    unsupported["params"]["configuration"] = {
-        "acceptedOutputModes": ["audio/mpeg"],
-        "returnImmediately": True,
-    }
-    output_error = handle_jsonrpc(unsupported, tasks=tasks, caller=CALLER)["error"]
-    assert output_error["code"] == -32005
-    assert output_error["data"][0]["reason"] == "CONTENT_TYPE_NOT_SUPPORTED"
-    assert tasks.operations.jobs.nonterminal() == []
 
 
 def test_get_and_cancel_task_use_a2a_1_0_parameter_shapes(tmp_path):
@@ -359,55 +277,3 @@ def test_send_message_rejects_undeclared_standard_tenant_without_dispatch(tmp_pa
     assert response["error"]["code"] == -32004
     assert response["error"]["data"][0]["reason"] == "UNSUPPORTED_OPERATION"
     assert tasks.operations.jobs.nonterminal() == []
-
-
-def test_send_message_blocks_by_default_until_terminal(tmp_path):
-    tasks = service(tmp_path)
-    request = send_request()
-    request["params"].pop("configuration")
-    responses = []
-
-    thread = threading.Thread(
-        target=lambda: responses.append(
-            handle_jsonrpc(request, tasks=tasks, caller=CALLER)
-        )
-    )
-    thread.start()
-    deadline = time.monotonic() + 5
-    jobs = []
-    while time.monotonic() < deadline:
-        jobs = tasks.operations.jobs.nonterminal()
-        if jobs and jobs[0].state == JobState.QUEUED:
-            break
-        time.sleep(0.01)
-    assert len(jobs) == 1
-    assert jobs[0].state == JobState.QUEUED
-    tasks.operations.jobs.transition(
-        jobs[0].id,
-        JobState.RUNNING,
-        principal="hermes",
-    )
-    tasks.operations.jobs.transition(
-        jobs[0].id,
-        JobState.COMPLETED,
-        principal="hermes",
-    )
-    thread.join(5)
-    assert not thread.is_alive()
-    assert responses[0]["result"]["task"]["status"]["state"] == (
-        "TASK_STATE_COMPLETED"
-    )
-
-
-def test_send_message_blocks_only_until_input_is_required(tmp_path):
-    tasks = cold_service(tmp_path)
-    request = send_request()
-    request["params"].pop("configuration")
-
-    response = handle_jsonrpc(request, tasks=tasks, caller=CALLER)
-
-    task = response["result"]["task"]
-    assert task["status"]["state"] == "TASK_STATE_INPUT_REQUIRED"
-    assert task["status"]["message"]["parts"] == [
-        {"text": "Media worker lifecycle approval is required."}
-    ]

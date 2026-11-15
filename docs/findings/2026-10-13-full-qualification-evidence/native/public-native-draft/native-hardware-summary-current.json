@@ -1,0 +1,34 @@
+{
+  "cpu": {
+    "Architecture": "x86_64",
+    "CPU(s)": "36",
+    "Core(s) per socket": "18",
+    "Model name": "Intel(R) Xeon(R) 654",
+    "Socket(s)": "1",
+    "Thread(s) per core": "2"
+  },
+  "gpu_source": "native nvidia-smi readback at2026-10-13T14:15UTC;no UUID recorded inthispublic-safe summary",
+  "gpus": [
+    {
+      "compute_capability": "12.0",
+      "driver_version": "615.71.09",
+      "max_power_limit_w": 325,
+      "name": "NVIDIA RTX PRO6000 Blackwell Max-Q Workstation Edition",
+      "ordinal": 0,
+      "power_limit_w": 300,
+      "vram_mib": 97887
+    },
+    {
+      "compute_capability": "12.0",
+      "driver_version": "615.71.09",
+      "max_power_limit_w": 325,
+      "name": "NVIDIA RTX PRO6000 Blackwell Max-Q Workstation Edition",
+      "ordinal": 1,
+      "power_limit_w": 300,
+      "vram_mib": 97887
+    }
+  ],
+  "kernel": "7.0.0-38-generic",
+  "observed_at": "2026-10-13T14:15:37.963307+00:00",
+  "ram_bytes": 134164500480
+}

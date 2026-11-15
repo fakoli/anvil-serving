@@ -1,0 +1,224 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-control-c1-r1.json",
+              "artifact_sha256": "790a5d7d02eca805e01b7fe41449a8effef7f32ebacd1eaf5b39980b1bf6aa70",
+              "value": 114.57743556630048,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-control-c1-r2.json",
+              "artifact_sha256": "377119f1b48274c400a346d9f5745fa40f9472da05073a2915c6486d173980b2",
+              "value": 113.88358598515796,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-control-c1-r3.json",
+              "artifact_sha256": "c4ee314a72a5ceb9d305af3f6d5602fc9e0b3830bee97aeebb6f3cf7c6428cef",
+              "value": 114.76398017408174,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-instrumented-c1-r1.json",
+              "artifact_sha256": "b8f8617038aae2171da8be797fe735e1b848fa5fb21bd7e51040bb5d2c993a20",
+              "value": 113.82384248197808,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c1-r2.json",
+              "artifact_sha256": "10c4cea1b439e6b980fc3869f075a78b17fe2d9a91c66db97686d4b4a1f768be",
+              "value": 113.29667923112537,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c1-r3.json",
+              "artifact_sha256": "83c415b7172cac9f530cb4607c6863f0ddf87c6fe0023178bc05ad2af9ef8b67",
+              "value": 114.99014244378516,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "C1: Aggregate completion throughput",
+      "x_label": "Repetition",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-control-c1-r1.json",
+              "artifact_sha256": "790a5d7d02eca805e01b7fe41449a8effef7f32ebacd1eaf5b39980b1bf6aa70",
+              "value": 2189.544945023954,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-control-c1-r2.json",
+              "artifact_sha256": "377119f1b48274c400a346d9f5745fa40f9472da05073a2915c6486d173980b2",
+              "value": 2131.2407180666924,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-control-c1-r3.json",
+              "artifact_sha256": "c4ee314a72a5ceb9d305af3f6d5602fc9e0b3830bee97aeebb6f3cf7c6428cef",
+              "value": 2011.644673999399,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-instrumented-c1-r1.json",
+              "artifact_sha256": "b8f8617038aae2171da8be797fe735e1b848fa5fb21bd7e51040bb5d2c993a20",
+              "value": 2019.771832972765,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c1-r2.json",
+              "artifact_sha256": "10c4cea1b439e6b980fc3869f075a78b17fe2d9a91c66db97686d4b4a1f768be",
+              "value": 2011.7093609878793,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c1-r3.json",
+              "artifact_sha256": "83c415b7172cac9f530cb4607c6863f0ddf87c6fe0023178bc05ad2af9ef8b67",
+              "value": 2115.0715600233525,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "C1: Median visible TTFT",
+      "x_label": "Repetition",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-control-c4-r1.json",
+              "artifact_sha256": "86f93853d2a5cfa7c3032ee83c06f0979ef4c853cb6c0ab2fb62b827bfc29449",
+              "value": 144.3457693961347,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-control-c4-r2.json",
+              "artifact_sha256": "b17b9ac6a04d75d93840240767f1e5092d4242f1470df1d3306289cb3cd4d71b",
+              "value": 147.3808690767324,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-control-c4-r3.json",
+              "artifact_sha256": "59e1abf3589a57a0d6791e23cdafd17c250e3b2362804764df5d01c15d8c4d9f",
+              "value": 148.25192956929055,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-instrumented-c4-r1.json",
+              "artifact_sha256": "59018f6c1f42856fcc0dd36e1a48219296395190f6c309a0fc09cc90ea5230ac",
+              "value": 144.89659746977972,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c4-r2.json",
+              "artifact_sha256": "34bf7ba82d631ecc1a9b28f3b6760a757fd826d53ab2d91698f56ef4470372ef",
+              "value": 147.75386427861855,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c4-r3.json",
+              "artifact_sha256": "a37c808825880aa5af20c620afbcf75df59e92463b1624f602d8e6082d277eb2",
+              "value": 145.08041248240352,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "C4: Aggregate completion throughput",
+      "x_label": "Repetition",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-control-c4-r1.json",
+              "artifact_sha256": "86f93853d2a5cfa7c3032ee83c06f0979ef4c853cb6c0ab2fb62b827bfc29449",
+              "value": 6692.41088302806,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-control-c4-r2.json",
+              "artifact_sha256": "b17b9ac6a04d75d93840240767f1e5092d4242f1470df1d3306289cb3cd4d71b",
+              "value": 6918.457592022605,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-control-c4-r3.json",
+              "artifact_sha256": "59e1abf3589a57a0d6791e23cdafd17c250e3b2362804764df5d01c15d8c4d9f",
+              "value": 6873.991836910136,
+              "x": "r3"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "artifact": "capacity/flare-instrumented-c4-r1.json",
+              "artifact_sha256": "59018f6c1f42856fcc0dd36e1a48219296395190f6c309a0fc09cc90ea5230ac",
+              "value": 6872.495774994604,
+              "x": "r1"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c4-r2.json",
+              "artifact_sha256": "34bf7ba82d631ecc1a9b28f3b6760a757fd826d53ab2d91698f56ef4470372ef",
+              "value": 6793.6773230321705,
+              "x": "r2"
+            },
+            {
+              "artifact": "capacity/flare-instrumented-c4-r3.json",
+              "artifact_sha256": "a37c808825880aa5af20c620afbcf75df59e92463b1624f602d8e6082d277eb2",
+              "value": 6785.473134019412,
+              "x": "r3"
+            }
+          ]
+        }
+      ],
+      "title": "C4: Median visible TTFT",
+      "x_label": "Repetition",
+      "y_label": "ms"
+    }
+  ],
+  "metric_semantics": {},
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Same model package/settings; variable outputs. Not causal tracing overhead or qualification.",
+  "title": "Flare executable-image observations with detailed capture OFF"
+}

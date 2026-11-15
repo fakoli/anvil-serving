@@ -1,0 +1,36 @@
+{
+  "interpretation": {
+    "child_threads_are_not_baseline": true,
+    "current_wait_cause_claimed": false,
+    "exact_peak_claimed": false,
+    "max_event_observed": true,
+    "pids_limit_reached": true
+  },
+  "limits": [
+    "The 512 current value is a single snapshot at the cap, not an exact peak.",
+    "The observed sleeping state does not identify a wait cause.",
+    "The 473 child-thread value is not a baseline process count or a causal attribution."
+  ],
+  "observation": {
+    "cgroup": {
+      "pids.current": "512",
+      "pids.events": "max 1",
+      "pids.max": "512"
+    },
+    "child_process": {
+      "name": "python3",
+      "state": "S (sleeping)",
+      "threads": "473"
+    }
+  },
+  "schema": "anvil-serving.gpu-test-pids-observation/v1",
+  "scope": "One read-only cgroup/process snapshot while the r3 spin command was active. It records containment saturation, not an exact peak, causal diagnosis, or wait-state measurement.",
+  "source": {
+    "cgroup_basename": "deepseek-stage2-r3-spin-cgroup.json",
+    "cgroup_observed_at": "2026-10-15T20:34:27.488550+00:00",
+    "cgroup_sha256": "b9a02e197cc80191e182b2e70d8caf506de3beed3340063789a269a1442cb855",
+    "process_status_basename": "deepseek-stage2-r3-spin-process-status.json",
+    "process_status_observed_at": "2026-10-15T20:34:01.181308+00:00",
+    "process_status_sha256": "2cf3f864246a24a9c15dbb46dc08f2fd448cbef3fc290b8b9b75c44b01e0d0be"
+  }
+}

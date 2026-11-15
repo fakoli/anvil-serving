@@ -1,0 +1,64 @@
+{
+  "configured_context_from_native_log": 131072,
+  "gpu": "[redacted-gpu-uuid], 72129 MiB, 97887 MiB, 0 %\n[redacted-gpu-uuid], 0 MiB, 97887 MiB, 0 %\n",
+  "health": {
+    "issues": [],
+    "status": "healthy"
+  },
+  "models": {
+    "data": [
+      {
+        "created": 1791915850,
+        "id": "b5526babe907141a0750f265a5a2a5cf414f5a64",
+        "logging": null,
+        "meta": {
+          "n_ctx": null,
+          "n_ctx_train": 1048576,
+          "n_embd": 4096,
+          "n_vocab": 129280,
+          "size": 0
+        },
+        "object": "model",
+        "owned_by": "tabbyAPI",
+        "parameters": null
+      }
+    ],
+    "object": "list"
+  },
+  "native_provenance_line": "anvil-runtime-provenance exllamav3=1.6.1+cu132.torch2.11.0 torch=2.11.0+cu130 transformers=5.19.0 tabby_source_revision=a3fed43efae3b18ec6181618d6a4a66153a9d14e common/config_models.py=e46af37311587951d71b1919563878a82bd6328521c7d0c83151e797fa2625ef endpoints/OAI/types/chat_completion.py=a68328f10f3ba947df205cad22fcb8c2d452818398930d35be7d1a528145858f endpoints/OAI/utils/chat_completion.py=aed57e2e669bf70c877431f2acc1b4083730d970fa48ab0c4104b701f68f6ca4",
+  "observed_at": "2026-10-13T18:24:10.133402+00:00",
+  "registry_sha256": "c0e82ce4ad1cff68e67e820c0a1995d877853cec3e3e9bf8b3a4a0a249169f95",
+  "schema_version": "deepseek-native-ready-gates/v1",
+  "status": {
+    "container": "qualification-deepseek-v4-exl3-204-tp1-131k",
+    "container_id": "<redacted-runtime-identifier>",
+    "containment_error": null,
+    "health": null,
+    "host_memory": {
+      "current_bytes": 31185514496,
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "exit_code": 0,
+      "limit_bytes": 55834574848,
+      "oom_killed": false,
+      "peak_bytes": 31958245376,
+      "ram_plus_swap_limit_bytes": 55834574849
+    },
+    "image": "ghcr.io/theroyallab/tabbyapi:cu13@sha256:bafb7fae72ce586d6292db1947b7190b2165c43aed2bf15f879cf603637ed826",
+    "image_id": "sha256:bafb7fae72ce586d6292db1947b7190b2165c43aed2bf15f879cf603637ed826",
+    "model": "qualification/deepseek-v4-flash-0731-exl3-204-tp1-131k",
+    "revision": "b5526babe907141a0750f265a5a2a5cf414f5a64",
+    "running": true,
+    "schema": "recipe-container-status/v1",
+    "state": "running"
+  },
+  "training_context_is_not_configured": "modelsmeta n_ctx_train1M/n_ctxnull, doNOTuseasactualcapacity"
+}

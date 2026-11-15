@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anvil-serving"
-version = "1.5.0"
+version = "2.0.2"
 description = "Operate, qualify, and expose local AI capabilities across serving, gateway, evidence, voice, media, and fleet workflows."
 readme = "README.md"
 license = "MIT"
@@ -79,6 +79,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
     "py.typed",
     "_scaffold_templates/*",
     "_node/*.mjs",
+    "_node/*.txt",
     "_gpu_sharing_probe/*.yml",
     "_gpu_sharing_probe/gpu-sharing/*.cu",
     "_nccl_probe/*.py.txt",
@@ -105,10 +106,14 @@ source = ["anvil_serving"]
 
 [tool.coverage.report]
 show_missing = true
+fail_under = 70
+precision = 2
 
 [tool.ruff]
 target-version = "py311"
 line-length = 100
+# Retained, sanitized producer snapshots are documentary evidence, not live code.
+extend-exclude = ["docs/findings/2026-10-17-glm53-serving-performance-evidence"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F"]

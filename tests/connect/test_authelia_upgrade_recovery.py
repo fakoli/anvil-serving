@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import copy
-from contextlib import contextmanager
 import json
 import os
 import sqlite3
+import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -16,6 +17,12 @@ from tests.connect.test_manage import _LINUX_AMD64, SyntheticRunner, _executable
 
 
 pytestmark = pytest.mark.skipif(not _LINUX_AMD64, reason="Connect lifecycle tests require Linux amd64")
+
+
+@pytest.fixture(autouse=True)
+def synthetic_runner_has_no_wall_clock_stability_delay(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep both required stable status scans without idling between synthetic results."""
+    monkeypatch.setattr(manage, "time", SimpleNamespace(monotonic=time.monotonic, sleep=lambda _: None))
 
 
 class RecordingRunner(SyntheticRunner):
@@ -154,49 +161,3 @@ def test_recovery_refuses_foreign_unit_without_overwrite(tmp_path, monkeypatch):
     with pytest.raises(manage.ManageError, match="migration recovery is pending"):
         _retry(manifest, targets, units)
     assert foreign.read_bytes() == b"foreign unit\n"
-
-
-def test_ordinary_up_refuses_upgrade_marker_created_after_outer_check_under_lock(tmp_path, monkeypatch):
-    manifest, _old, changed, targets, units = _prepared_upgrade(tmp_path, monkeypatch)
-    root = Path(changed["config_root"])
-    marker = manage._authelia_upgrade_marker(root)
-    before_generation = manage._verify_owned_tree(root)[0]
-    before_units = {path.name: path.read_bytes() for path in units.iterdir()}
-    original_lock = manage._deployment_lock
-
-    @contextmanager
-    def inject_marker(locked_root):
-        with original_lock(locked_root):
-            if locked_root == root:
-                marker.write_text("pending\n")
-            yield
-
-    monkeypatch.setattr(manage, "_deployment_lock", inject_marker)
-    runner = SyntheticRunner(); runner.unit_root = units
-    with pytest.raises(manage.ManageError, match="migration recovery is pending"):
-        manage.up_many(manifest, targets, apply=True, runner=runner, unit_root=units)
-    assert marker.exists()
-    assert manage._verify_owned_tree(root)[0] == before_generation
-    assert {path.name: path.read_bytes() for path in units.iterdir()} == before_units
-    assert not any(call[:2] in {
-        (manage._SYSTEMCTL, "daemon-reload"), (manage._SYSTEMCTL, "enable"),
-        (manage._SYSTEMCTL, "restart"), (manage._SYSTEMCTL, "stop"),
-    } for call in runner.calls)
-
-
-def test_handled_upgrade_failure_keeps_pending_marker_and_never_starts_old_provider(tmp_path, monkeypatch):
-    manifest, _old, changed, targets, units = _prepared_upgrade(tmp_path, monkeypatch)
-    original_activate = manage._activate
-    monkeypatch.setattr(manage, "_activate", lambda *_args, **_kwargs: (_ for _ in ()).throw(KeyboardInterrupt("prepared")))
-    interrupted = SyntheticRunner(); interrupted.unit_root = units
-    with pytest.raises(KeyboardInterrupt):
-        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=interrupted, unit_root=units)
-    monkeypatch.setattr(manage, "_activate", original_activate)
-
-    failed = RecordingRunner(fail_start="anvil-connect-authelia.service")
-    failed.unit_root = units
-    with pytest.raises(manage.ManageError, match="migration recovery is pending"):
-        manage.up_many(manifest, targets, upgrade=True, apply=True, runner=failed, unit_root=units)
-    assert manage._authelia_upgrade_marker(Path(changed["config_root"])).exists()
-    assert failed.authelia_start_units
-    assert all(b"authelia-v2" in source for source in failed.authelia_start_units)

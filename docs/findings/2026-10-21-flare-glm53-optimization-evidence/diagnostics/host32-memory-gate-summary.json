@@ -1,0 +1,111 @@
+{
+  "snapshots": [
+    [
+      "cap16-host32-ctx10240-c4-cold-after-host-memory.json",
+      60943659008,
+      36166750208,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx10240-c4-warm-after-host-memory.json",
+      60786991104,
+      36167024640,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx32768-c4-cold-after-host-memory.json",
+      60951744512,
+      36203065344,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx32768-c4-warm-after-host-memory.json",
+      60999065600,
+      36210130944,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx10240-c1-cold-after-host-memory.json",
+      60683010048,
+      36210409472,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx10240-c1-warm-after-host-memory.json",
+      60881252352,
+      36210409472,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx32768-c1-cold-after-host-memory.json",
+      60502831104,
+      36210409472,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ],
+    [
+      "cap16-host32-ctx32768-c1-warm-after-host-memory.json",
+      60908298240,
+      36210700288,
+      {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      }
+    ]
+  ],
+  "minimum_available_bytes": 60502831104,
+  "maximum_peak_bytes": 36210700288,
+  "continuous_collection": false
+}

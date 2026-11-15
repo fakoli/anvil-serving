@@ -1,0 +1,179 @@
+{
+  "schema": "replacement-workload-and-plan/v1",
+  "campaign": "2026-10-15-replacement-full",
+  "frozen_plan_sha256": "460fea54c828c506ea57ec44cdb9e1a170f0906b181b867f771682b42a044eaa",
+  "executed_plan_bindings": [
+    {
+      "source_basename": "glm-swe5-r2.json",
+      "source_sha256": "69d442ff1c35fb9f9ad63cfabef0b144de2dfd4029607660998f161252e7c84c",
+      "suite": "swe",
+      "served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "timeout_s": 21600,
+      "parameters": {
+        "instance_ids": [
+          "sphinx-doc__sphinx-9658",
+          "sympy__sympy-12096",
+          "django__django-13512",
+          "pydata__xarray-4356",
+          "pylint-dev__pylint-8898"
+        ],
+        "profile_contract": {
+          "instance_limit": 5,
+          "max_completion_tokens": 16384,
+          "max_steps": 60
+        },
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "reasoning_effort": "max",
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "source_basename": "mimo-r4-swe5.json",
+      "source_sha256": "105f85857b3583ae6ef1b912c11714b7d9d4315b8e50daa5b6d06863d60cb1fb",
+      "suite": "swe",
+      "served_model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r4",
+      "timeout_s": 21600,
+      "parameters": {
+        "instance_ids": [
+          "sphinx-doc__sphinx-9658",
+          "sympy__sympy-12096",
+          "django__django-13512",
+          "pydata__xarray-4356",
+          "pylint-dev__pylint-8898"
+        ],
+        "profile_contract": {
+          "instance_limit": 5,
+          "max_completion_tokens": 16384,
+          "max_steps": 60
+        },
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "thinking_mode": "default"
+      }
+    },
+    {
+      "source_basename": "mimo-r5-greedy-swe5.json",
+      "source_sha256": "7673b7e131ab74a7aadb7c94bdaee77f91cf860cf2d61e9187bbc53e0d6a7c46",
+      "suite": "swe",
+      "served_model": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy",
+      "timeout_s": 21600,
+      "parameters": {
+        "instance_ids": [
+          "sphinx-doc__sphinx-9658",
+          "sympy__sympy-12096",
+          "django__django-13512",
+          "pydata__xarray-4356",
+          "pylint-dev__pylint-8898"
+        ],
+        "profile_contract": {
+          "instance_limit": 5,
+          "max_completion_tokens": 16384,
+          "max_steps": 60
+        },
+        "campaign_acceptance": {
+          "campaign_gate": "replacement-swe5-initial-coding/v1",
+          "denominator_change_is_failure": true,
+          "minimum_resolved": 4,
+          "missing_errored_empty_or_truncated_is_failure": true,
+          "note": "SWE retains its established 4/5 plus Django/Pylint sentinel gate; the 100% oracle8 gate applies to agentic runs only.",
+          "required_attempts": 5,
+          "required_sentinel_instances": [
+            "django__django-13512",
+            "pylint-dev__pylint-8898"
+          ]
+        },
+        "temperature": 0.0,
+        "top_p": 0.95,
+        "thinking_mode": "default",
+        "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+        "profile_file_sha256": "59b8a4907019f2edf89548c4edcc99d276261d214a4791ceabaedc453e573cd2"
+      }
+    },
+    {
+      "source_basename": "mistral-r3-agentic18-r1.json",
+      "source_sha256": "4be368d9d43396536978db21ced04eff40e6b172158887bf025c8156cb28b06e",
+      "suite": "agentic",
+      "served_model": "mistral35-fp8kv-tp2-c4-262k-r3",
+      "timeout_s": 7200,
+      "parameters": {
+        "profile_contract": {
+          "campaign_acceptance": {
+            "aggregate_required_attempts": 54,
+            "aggregate_required_passes": 54,
+            "all_three_rounds_required": true,
+            "campaign_gate": "oracle8-agentic-reliability/v1",
+            "container_identity_must_bind_before_submission": true,
+            "denominator_change_is_failure": true,
+            "missing_partial_harness_or_transport_failure_is_failure": true,
+            "packaged_floor_is_not_campaign_acceptance": true,
+            "packaged_scout_pass_rate_floor": 0.75,
+            "required_attempts": 18,
+            "required_pass_rate": 1.0,
+            "required_passes": 18,
+            "strict_scorer_unchanged": true
+          },
+          "case_limit_semantics": "not-set",
+          "cases": [
+            "planning",
+            "reasoning",
+            "structured-edit",
+            "tool-sequence",
+            "parallel-tools",
+            "dependent-result",
+            "tool-recovery",
+            "debug-loop",
+            "context-recovery"
+          ],
+          "expected_observations": 18,
+          "instrument_sha256": "1f40041cbf13275ef3635f514fb8b23cbf23504778f79c1a02b0aeb2211132f6",
+          "max_completion_tokens": 8192,
+          "max_steps": 24,
+          "oracle_revision": "8",
+          "repetitions": 2,
+          "strict_scorer_unchanged": true
+        },
+        "campaign_acceptance": {
+          "aggregate_required_attempts": 54,
+          "aggregate_required_passes": 54,
+          "all_three_rounds_required": true,
+          "campaign_gate": "oracle8-agentic-reliability/v1",
+          "container_identity_must_bind_before_submission": true,
+          "denominator_change_is_failure": true,
+          "missing_partial_harness_or_transport_failure_is_failure": true,
+          "packaged_floor_is_not_campaign_acceptance": true,
+          "packaged_scout_pass_rate_floor": 0.75,
+          "required_attempts": 18,
+          "required_pass_rate": 1.0,
+          "required_passes": 18,
+          "strict_scorer_unchanged": true
+        },
+        "temperature": 0.7,
+        "top_p": 0.95,
+        "reasoning_effort": "high",
+        "thinking_mode": "default",
+        "oracle_revision": "8",
+        "instrument_sha256": "1f40041cbf13275ef3635f514fb8b23cbf23504778f79c1a02b0aeb2211132f6",
+        "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6",
+        "profile_file_sha256": "59b8a4907019f2edf89548c4edcc99d276261d214a4791ceabaedc453e573cd2"
+      }
+    }
+  ],
+  "gates": {
+    "agentic": "54/54 across3fresh18-observation rounds; mandatory first failure prunes remaining profile",
+    "swe5": "at least4/5 assigned plus Django and Pylint sentinels; missing/empty/errored/truncated remain in5denominator",
+    "finalist": "all protocol/nativequality/context90/vision/capacity/stability gates; noOOM/corruption/unexplainedloss",
+    "heldout": "10pairedtasks; at least2additional resolutions and zero regression on GLM-resolvedtasks; unrun unless first gates pass",
+    "role": "327680 configured tokens,C4 admission,image8; lowercontext tradeoff notapproved",
+    "resources": "4096MiB GPU reserve per card,12288MiBhostreserve,100GiBdiskreserve; boundedmanagedRAM/swap"
+  },
+  "boundaries": [
+    "Native per-model generation controls differ intentionally; this is a deployable-profile comparison, not a sampling-matched causal experiment.",
+    "Protocol preflight uses deterministicT0 and is distinct from native intelligence policy.",
+    "GLM and MiMor4 olderoracle7 evidence is historical for comparison; two MiMor4 planning failures are instruction-ambiguous and its fenced-JSON failure remainsgenuine.",
+    "Oracle8 changes only explicitASCIIarrowinstruction and revision; scorer/expectedanswers unchanged.",
+    "SWE5 is an existing regression set, not heldout general-intelligence evidence.",
+    "C4admission does not promise4simultaneousfullcontextwindows.",
+    "Configured maxima are not measured full-context coverage."
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.gpu-restoration-public/v1",
+  "count": 2,
+  "product": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+  "uuid_values_omitted": true,
+  "private_receipt_sha256": "f03eb15394ebbd99792c2fb0324475c5a50688b2b384acb8f28a074ad8ce54ff"
+}

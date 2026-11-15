@@ -1,0 +1,34 @@
+{
+  "schema": "glm-natural-baseline-public-plan/v1",
+  "campaign_id": "2026-10-16-glm-natural-baseline",
+  "source_commit": "e267df90fdc7d6a99cc1904f8a4be466cf63d8ed",
+  "source_tree": "c058067eebba5fcdeb4c48bc9b36402d3553dee3",
+  "authority": "Current-model baseline only; no model, router, or serving mutation.",
+  "timing": {
+    "measurement_protocol": "capacity-v4-reasoning",
+    "contexts_nominal_tokens": [8192, 32768],
+    "concurrency": [1, 4],
+    "requests_per_cell": 20,
+    "repetitions": 3,
+    "cache_mode": "unique",
+    "response_words": 0,
+    "controlled_output_policy": "observe",
+    "sampling": {
+      "temperature": 0.6,
+      "top_p": 0.95,
+      "reasoning_effort": "max",
+      "max_tokens": 16384
+    },
+    "interpretation": "Natural-output observation only; output length is variable and no stable p99 claim is allowed."
+  },
+  "coding": {
+    "population": "five pre-existing pinned tasks, two serial repeats",
+    "grader": "pinned independent SWE-bench grader",
+    "max_steps": 60,
+    "max_output_tokens": 16384,
+    "concurrency": 1,
+    "interpretation": "Repeatability observation, not a fresh held-out SWE score or an incumbent acceptance gate."
+  },
+  "traffic": "shared router; workload snapshot unavailable; no isolation claim",
+  "promotion_authorized": false
+}

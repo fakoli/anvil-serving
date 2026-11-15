@@ -1,0 +1,149 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "closed_inventory": true,
+  "campaign": {
+    "id": "2026-10-16-glm-v091-trial",
+    "capability": "LLM qualification",
+    "repository_revision": "4c8b73ed0e09c70f3b4015a675cc243c4d86949a",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "rejected",
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "dirty_state": "Source clean at launch; campaign documentation and one CLI-gap ticket added after testing",
+    "started_at": "2026-10-16T05:13:17.935982+00:00",
+    "completed_at": "2026-10-16T07:56:28.851481+00:00"
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.agentic/v1",
+    "anvil-serving.swe-run/v1",
+    "anvil-serving.benchmark-result/v1",
+    "multimodal-benchmark-evidence/v1",
+    "campaign-sampled-gpu-reserve/v1",
+    "recipe-container-status/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human evidence map and claim boundary"
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "sanitization-provenance.json",
+        "native/sanitization-map.json"
+      ],
+      "reason": "Dated upstream inputs and protected-source provenance"
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-and-plan.md"
+      ],
+      "reason": "Pinned workload, media and harness identities; native files retain fixture hashes"
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "workload-and-plan.md",
+        "coverage-and-gaps.md",
+        "matched-baseline-review.md",
+        "artifact-manifest-source.json"
+      ],
+      "reason": "Frozen gates, sequence and independently reviewed admitted-control boundary; shared references bind the same bytes"
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration-and-identity.md"
+      ],
+      "reason": "Exact model/runtime, configuration and reconstruction boundary"
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/baseline-disabled-thinking-preflight.json",
+        "native/candidate-disabled-thinking-preflight.json",
+        "native/gpu-reserve.json",
+        "native/oracle-attempts.json",
+        "native/r1-final-absence.json",
+        "native/r1-oracle-t0-r1-native.json",
+        "native/r1-oracle-t0-r2-native.json",
+        "native/r1-oracle-t0-r3-native.json",
+        "native/r1-oracle-t1-native.json",
+        "native/r1-preflight-full.json",
+        "native/r1-swe-cancelled-native.json",
+        "native/r1-t0-context-full.json",
+        "native/r1-t0-vision-full.json",
+        "native/r2-context-full.json",
+        "native/r2-final-absence.json",
+        "native/r2-oracle-r1-native.json",
+        "native/r2-oracle-r2-native.json",
+        "native/r2-oracle-r3-native.json",
+        "native/r2-preflight-full.json",
+        "native/r2-swe-native.json",
+        "native/r2-vision-full.json",
+        "native/restoration-direct-preflight-full.json",
+        "native/restoration-pi-receipt.json",
+        "native/restoration-routed-preflight-full.json",
+        "native/restored-baseline-swe-native.json",
+        "native/restored-context-full.json",
+        "native/restored-control-final-status.json",
+        "native/restored-gpu-reserve.json",
+        "native/restored-oracle-r1-native.json",
+        "native/restored-oracle-r2-native.json",
+        "native/restored-oracle-r3-native.json",
+        "native/restored-vision-full.json",
+        "native/router-primary-control-end.json",
+        "native/swe-evidence.json"
+      ],
+      "reason": "Native preserved evidence plus explicitly labeled derivative summaries; duplicate views are not independent observations"
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Failed configurations, policy stops and deferred CLI gap"
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Exact original restoration and post-run acceptance; supporting native artifacts retained in raw-run-evidence"
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Bounded results and no-promotion decision"
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No compact public communication or external post requested"
+    }
+  ]
+}

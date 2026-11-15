@@ -1,0 +1,133 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-26-marker-gpu-trace",
+  "complete": true,
+  "identity": {
+    "source_commit": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "source_clean_before_lifecycle": true,
+    "candidate_image": "sha256:789be89fc1f16c28673fad1dbb539974f7d363c6c04ee1372a22fd12b21090d3",
+    "runtime_source": "local-inference-lab/vllm@8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+    "upstream_patch": "0a1276e5e3d9000488e7590cc0957edd709f2152"
+  },
+  "workload": {
+    "question": "For each accepted second reasoning-close marker, was its exact verification row budget-forced or sampled without a budget force?",
+    "maximum_probe_invocations": 1,
+    "maximum_requests": 2,
+    "retries": 0,
+    "reasoning_budget_tokens": 64,
+    "maximum_completion_tokens": 512,
+    "requested_concurrency": 1,
+    "temperature": 0.6,
+    "top_p": 0.95
+  },
+  "measurement": {
+    "path": "synthetic actual-CUDA preweight gates followed conditionally by one route-derived direct online C1 probe",
+    "warm_cold_state": "not a performance population; synchronized tracing and startup state retained only as diagnostic context",
+    "sample_count": 1,
+    "statistics": []
+  },
+  "gates": [
+    {
+      "gate": "actual_cuda_preweight_marker_selftest",
+      "status": "passed",
+      "evidence": "startup-gates.json"
+    },
+    {
+      "gate": "sampling_upstream_count",
+      "status": "passed",
+      "evidence": "startup-gates.json"
+    },
+    {
+      "gate": "complete_worker_trace_native_response_reconciliation",
+      "status": "unknown",
+      "evidence": "trace-result.json"
+    },
+    {
+      "gate": "exact_incumbent_operational_restoration",
+      "status": "passed",
+      "evidence": "restoration.json"
+    },
+    {
+      "gate": "strict_json_functional_restoration",
+      "status": "failed",
+      "evidence": "baseline-smoke.json and restoration-smoke.json"
+    }
+  ],
+  "headline_results": [
+    {
+      "metric": "native_candidate_requests",
+      "value": 1,
+      "unit": "requests",
+      "boundary": "zero retries"
+    },
+    {
+      "metric": "native_completion_tokens",
+      "value": 75,
+      "unit": "tokens",
+      "boundary": "64 reasoning tokens; one close token at zero-based index 64"
+    },
+    {
+      "metric": "answer_oracle",
+      "value": true,
+      "unit": "boolean",
+      "boundary": "exact answer 9567,1085,10652"
+    },
+    {
+      "metric": "worker_trace_tokens_per_rank",
+      "value": 76,
+      "unit": "tokens",
+      "boundary": "first 75 match native response; trace-only suffix token 1654"
+    }
+  ],
+  "failures": [
+    {
+      "gate": "complete_worker_trace_native_response_reconciliation",
+      "status": "unknown",
+      "reason": "GPU committed token sequence differs from native response"
+    }
+  ],
+  "limitations": [
+    "No second reasoning-close marker reproduced, so the target second-marker provenance question was not exercised.",
+    "The matching budget store for the only observed close is supplemental because complete trace/native reconciliation failed.",
+    "Synchronized tracing excludes every performance claim.",
+    "One correct response is not broad model-quality or KV-cache evidence.",
+    "Operational restoration passed, but functional acceptance remains incomplete because strict JSON failed before and after and the baseline raw response was not retained.",
+    "Router custody is verified; router configuration byte parity is not claimed because mounted configuration bytes were not separately captured before the trial."
+  ],
+  "decision": {
+    "evidence_labels": ["functional"],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "offline post-stop reconciliation contract and a separately frozen repetition study"
+  },
+  "evidence": [
+    "request.json",
+    "response.json",
+    "probe-result.json",
+    "trace-result.json",
+    "marker-trace-summary.json",
+    "candidate-attestation.json",
+    "runtime-candidate-before.json",
+    "runtime-candidate-after.json",
+    "startup-gates.json",
+    "build.json",
+    "serving-worker-traces.json",
+    "independent-pre-live-review.json",
+    "independent-live-review.json",
+    "independent-restoration-review.json",
+    "restoration.json",
+    "closure.json",
+    "runtime-before.json",
+    "runtime-restored.json",
+    "router-restored.json",
+    "router-transition-restored.json",
+    "mode-restored.json",
+    "resources-final.json",
+    "baseline-smoke.json",
+    "restoration-smoke.json"
+  ],
+  "metrics_coverage": null,
+  "comparison_evidence": null
+}

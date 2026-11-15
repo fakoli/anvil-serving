@@ -1,0 +1,64 @@
+{
+  "campaign_id": "2026-10-26-flash-next-engine-qualification",
+  "differences": [
+    "Router configuration revision aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225 is restored at admitting generation 38.",
+    "Router runtime image differs from the original image: reviewed incumbent-runtime overlay with PR #704 whitespace fix (image ID suffix DE213).",
+    "Remote-memory terminal status remains UNKNOWN and drained is false.",
+    "No free compute GPU remains because both GPUs are assigned exclusively to the restored GLM incumbent."
+  ],
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "final-restoration-evidence.json",
+      "glm-restoration-direct-preflight.json",
+      "glm-restoration-routed-preflight.json"
+    ],
+    "note": "Exact prior evaluation routes/output caps and the pinned GLM incumbent are restored; router runtime uses the reviewed PR #704 overlay."
+  },
+  "mutation_required": true,
+  "not_applicable_reason": null,
+  "post_run_checks": [
+    {
+      "name": "direct preflight",
+      "result": "5/5 checks",
+      "status": "passed"
+    },
+    {
+      "name": "routed preflight",
+      "result": "5/5 checks",
+      "status": "passed"
+    },
+    {
+      "name": "Pi real read-tool turn",
+      "result": "one exact-answer turn",
+      "status": "passed"
+    },
+    {
+      "name": "candidate absence",
+      "status": "passed"
+    },
+    {
+      "name": "Prometheus identity and drain",
+      "result": "restored model and generation match; running=0, waiting=0",
+      "status": "passed"
+    },
+    {
+      "name": "resource and memory safety",
+      "result": "zero shared-memory files; no OOM events; cgroup peak 38.087 GiB; host available 77.35 GiB",
+      "status": "passed"
+    },
+    {
+      "name": "supplementary shared recall",
+      "result": "fresh recall succeeded after an earlier connection error; bank content not published",
+      "status": "passed_provisional"
+    }
+  ],
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "starting_state": {
+    "captured": true,
+    "evidence": [],
+    "note": "Starting-state receipts remain in private campaign evidence; this public record binds the exact restored router configuration and GLM identity."
+  },
+  "status": "verified",
+  "verified": true
+}

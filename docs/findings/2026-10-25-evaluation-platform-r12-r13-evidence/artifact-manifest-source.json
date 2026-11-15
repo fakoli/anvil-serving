@@ -1,0 +1,120 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Human index of separately retained attempts and their limitations.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json",
+        "supplemental-projection-ledger.json"
+      ],
+      "reason": "Local sources and explicit private-original/derivative distinction.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "projections/campaign-control-records-0001.jsonl",
+        "projections/child-evidence-records-0001.jsonl"
+      ],
+      "reason": "R12 native workload projections; R13 full workload/plans remain private and are not claimed complete.",
+      "role": "workload-manifest",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "projections/campaign-control-records-0001.jsonl",
+        "projections/child-evidence-records-0001.jsonl",
+        "r13/frozen-population.json"
+      ],
+      "reason": "R12 prepared plans plus separate prospective44/4 eligibility and bounded R13 configured controls; no complete R13 plan projection.",
+      "role": "run-plan",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "identity-control-map.json",
+        "r13/frozen-population.json"
+      ],
+      "reason": "Configured model/runtime/source identity; candidate was never created.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "projections/aider-and-partial-records-0001.jsonl",
+        "projections/campaign-control-records-0001.jsonl",
+        "projections/child-evidence-records-0001.jsonl",
+        "projections/telemetry-records-0001.jsonl",
+        "campaign-report.json",
+        "r13/campaign-report.json",
+        "projection-ledger.json",
+        "projection-validation.json",
+        "r12-closure-and-cancellation.json"
+      ],
+      "reason": "R12 full projection and separate unexecuted R13 native report; derivative hashes do not validate private native chains.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "r13/admission-refusal.json",
+        "r12-closure-and-cancellation.json"
+      ],
+      "reason": "Keep cancellation unknowns and pre-create admission refusal.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json",
+        "restoration-evidence.json"
+      ],
+      "reason": "Exact incumbent restoration and routed checks plus explicit minimal-thinking Pi acceptance. Historical thinking-off failure remains open; no fleet-global drain claim.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Separate attempt outcomes and verified scoped restoration; no model comparison or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Derivative public copy; exact restoration verified and independent content review passed.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "quality",
+      "compatibility-only"
+    ],
+    "id": "evaluation-platform-r12-r13",
+    "promotion_authorized": false,
+    "repository_revision": "c0ce1d0633939eaf686bbd1e9e59241f6a0534aa"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-evidence/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 16 MiB"
+}

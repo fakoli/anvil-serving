@@ -1,0 +1,27 @@
+{
+  "command": "models recipes load Qwen/Qwen3.8-27B-FP8 --registry [REDACTED_PATH] --container public-runtime-001 --gpu-device public-gpu-001 --confirm --transport local",
+  "context": {
+    "command": "models-recipes-load",
+    "command_host": "Primary Node",
+    "command_runtime": "[REDACTED_RUNTIME]",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "Primary Node",
+    "execution_runtime": "[REDACTED_RUNTIME]",
+    "gpu_role": "public-compute-role-001",
+    "gpu_uuid": "public-gpu-001",
+    "overlay": null,
+    "resource": "dark-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "Primary Node",
+    "resource_runtime": "[REDACTED_RUNTIME]",
+    "target": null,
+    "topology": "Primary Node",
+    "transport": "local"
+  },
+  "data": "loading recipe 'Qwen/Qwen3.8-27B-FP8' as container 'public-runtime-001'\n$ docker run -d --memory 55834574848 --memory-swap 55834574849 --name public-runtime-001 --gpus device=public-gpu-001 --label io.anvil-serving.managed-by=models-recipes --label io.anvil-serving.recipe.model=Qwen/Qwen3.8-27B-FP8 --label io.anvil-serving.recipe.digest=6137c5bb668905bee6d954ed2dceff4eca96ace0f3912605a82969d5f068a63a --label io.anvil-serving.recipe.native-kv-offload=false --label io.anvil-serving.recipe.registry-digest=4e610f1eaa0dd9add7c364ce15c797d92fd5fd8198b5a104f2f092aadb044baf --label io.anvil-serving.recipe.revision=017b9c7af6b5689d5dd426a76e0bc077eb5ca20a -e CUDA_VISIBLE_DEVICES=public-gpu-001 -e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 -e HF_HUB_DISABLE_IMPLICIT_TOKEN=1 -e CUDA_DEVICE_ORDER=PCI_BUS_ID -e OMP_NUM_THREADS=4 -e TRITON_CACHE_DIR=/cache/triton -e TORCHINDUCTOR_CACHE_DIR=/cache/torchinductor -v [REDACTED_PATH] --mount type=volume,source=campaign-qwen27-jit,target=/cache -p 127.0.0.1:39157:39157 --ipc host --ulimit memlock=-1 --ulimit stack=67108864 --entrypoint python3 lmsysorg/sglang@sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262 -m sglang.launch_server --model-path /root/.cache/huggingface --served-model-name qwen38-27b-fp8-tp1-131k-c1-nospec --tp 1 --attention-backend flashinfer --kv-cache-dtype fp8_e4m3 --mamba-ssm-dtype float32 --chunked-prefill-size 2048 --max-running-requests 1 --context-length 131072 --mem-fraction-static 0.90 --reasoning-parser qwen3 --tool-call-parser qwen3_coder --host 100.64.0.10 --port 39157 --enable-metrics\nnext: preflight before trusting this serve: anvil-serving eval preflight --base-url http://127.0.0.1:39157/v1 --model qwen38-27b-fp8-tp1-131k-c1-nospec --confirm\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

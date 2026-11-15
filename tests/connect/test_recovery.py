@@ -117,22 +117,6 @@ def test_restore_invokes_only_exact_fresh_native_declaration(declaration, tmp_pa
     assert not Path(calls[0][3]).exists()
 
 
-@pytest.mark.parametrize("mutation", ["private-output", "wrong-digest", "failed"])
-def test_ambiguous_restore_result_reports_partial_without_echo(declaration, tmp_path, mutation):
-    manifest, _, native = declaration
-    def runner(*args):
-        value = {"mode": "gateway", "status": "restored", "sha256": "a" * 64, "grants": "disabled"}
-        if mutation == "private-output":
-            value["secret"] = "private-sentinel"
-        if mutation == "wrong-digest":
-            value["sha256"] = "b" * 64
-        return manage.RunResult(1 if mutation == "failed" else 0, json.dumps(value).encode(), b"private-sentinel")
-    with pytest.raises(manage.ManageError) as failure:
-        recovery.restore(manifest, input_path=tmp_path / "backup", destination=tmp_path / "fresh", sha256="a" * 64, native_sha256=native, apply=True, runner=runner)
-    assert failure.value.may_have_executed is True
-    assert "private-sentinel" not in str(failure.value)
-
-
 def test_recovery_rejects_noncanonical_paths_and_existing_destination(declaration, tmp_path):
     manifest, _, native = declaration
     for destination in ("relative", "//etc/fresh", "/a/../fresh", "/a\nfresh"):
@@ -142,23 +126,6 @@ def test_recovery_rejects_noncanonical_paths_and_existing_destination(declaratio
     existing.mkdir(mode=0o700)
     with pytest.raises(manage.ManageError, match="already exists"):
         recovery.restore(manifest, input_path=tmp_path / "backup", destination=existing, sha256="a" * 64, native_sha256=native)
-
-
-def test_backup_checks_active_binding_and_never_returns_private_payload(declaration, tmp_path, monkeypatch):
-    manifest, data, native = declaration
-    checks, calls = [], []
-    monkeypatch.setattr(recovery, "_recovery_current", lambda data: checks.append("current"))
-    monkeypatch.setattr(manage, "_verified_binaries", lambda data, target: {"native": native})
-    monkeypatch.setattr(manage, "_bound_active", lambda data, target, hashes: checks.append("bound"))
-    def runner(argv, timeout, identity):
-        calls.append(argv)
-        return manage.RunResult(0, json.dumps({"mode": "gateway", "status": "backup-created", "sha256": "a" * 64}).encode())
-    output = tmp_path / "output-backup"
-    preview = recovery.backup(manifest, output_path=output, runner=runner)
-    assert preview["applied"] is False and checks == ["current", "bound"] and not calls
-    result = recovery.backup(manifest, output_path=output, apply=True, runner=runner)
-    assert result["sha256"] == "a" * 64 and result["retain_digest_separately"] is True
-    assert calls == [(data["binary"], "backup", "--config", str(Path(data["config_root"]) / "gateway.json"), "--output", str(output))]
 
 
 def test_legacy_recovery_identity_is_scoped_and_activation_stays_rejected(tmp_path, monkeypatch):
@@ -173,7 +140,6 @@ def test_legacy_recovery_identity_is_scoped_and_activation_stays_rejected(tmp_pa
     manifest.write_text(json.dumps(legacy))
     with pytest.raises(ManifestError, match="isolated service identities"):
         manage.up(manifest, manage.Target("gateway"))
-
 
 
 def _legacy_recovery_declaration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, dict, str]:

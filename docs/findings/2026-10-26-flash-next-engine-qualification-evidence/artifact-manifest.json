@@ -1,0 +1,276 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "capability": "local-model-quality-and-context",
+    "completed_at": "2026-10-26T18:50:20Z",
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "dirty_state": "final public-safe evidence assembled in an uncommitted worktree",
+    "evidence_labels": [
+      "functional",
+      "quality",
+      "historical-invalid"
+    ],
+    "id": "2026-10-26-flash-next-engine-qualification",
+    "promotion_authorized": false,
+    "repository_revision": "mixed source: a5ccb7454ad49f47e5a953b130696fff69cdb829 applies to vLLM and Flare only; Ignis Git revision unknown, retained source-content SHA-256 daf9d724d6513c488667740e0e4db2ecc5e4ec6fad58b6fb2cac1694e101f83a",
+    "started_at": null
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark/v1",
+    "official-grader/schema_version-2",
+    "preflight/v2",
+    "anvil-serving.benchmark-restoration-evidence/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "8e71a3f68cd12bce238e488229c9c4a1f97ca5fc1897fd70f1c2295b30db5f94",
+          "bytes": 6025
+        },
+        {
+          "path": "coverage-and-gaps.md",
+          "sha256": "85b4dde1d5a176f322e4694778bfe45364beb2ba4ef04c2fd6b227dd98581d6a",
+          "bytes": 2468
+        }
+      ],
+      "reason": "Final human index and request-to-evidence coverage."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "906c3a1fb52697c7169c4369ae75db0c90052e29e6a0014830ae8d09475bfa2e",
+          "bytes": 182
+        }
+      ],
+      "reason": "No external prior was used; empty source registry retained."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "No complete sanitized suite/corpus workload manifests are retained as public artifacts; bounded outcomes and denominators remain in the finding."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "Frozen per-suite run plans are not retained as public artifacts; the campaign did not produce a controlled serving comparison."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "ignis-context-benchmark-result.json",
+          "sha256": "fb04eca59f8abdcd2303139349fd6ac4435893462ca324171b88a78b60392781",
+          "bytes": 18191
+        },
+        {
+          "path": "vllm-context-benchmark-result.json",
+          "sha256": "826254d1d3eebecaaa38a01cca2756c86684be81643ca6163e3db1fb178b4d14",
+          "bytes": 18389
+        },
+        {
+          "path": "flare-context-benchmark-result.json",
+          "sha256": "e75befe00ec993c613a539439ac0a048a6d595b3c292df9a5b838485f7d9484d",
+          "bytes": 19333
+        }
+      ],
+      "reason": "Native context results retain model, runtime, recipe, and context identities."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "ignis-agentic-campaign-report.json",
+          "sha256": "7dc7954b72944610a62d82216079731fcaca3bcaf6bb21623a3c55e73e9186cd",
+          "bytes": 14954
+        },
+        {
+          "path": "ignis-aider-campaign-report-a.json",
+          "sha256": "e2ce45fe9151a6d0a9397ed4aa87843698d2aed1149d190c8c106cc8de18ae9b",
+          "bytes": 9442
+        },
+        {
+          "path": "ignis-aider-campaign-report-b.json",
+          "sha256": "3e25f8844bf54715ece6eb6b524e603116b185a62696ecfa0904029e16d6714d",
+          "bytes": 9427
+        },
+        {
+          "path": "ignis-swe-benchmark-result.json",
+          "sha256": "9e7b17a60880d1abe76f6b1ed397bfcc15027eaace3c9757756b777c608143c3",
+          "bytes": 5389
+        },
+        {
+          "path": "ignis-swe-official-grader-summary.json",
+          "sha256": "c57fbe66e3048cd24d119d0672b5429fe4aa1cbd78d9a8124ba0b33e36b657e0",
+          "bytes": 753
+        },
+        {
+          "path": "vllm-agentic-campaign-report.json",
+          "sha256": "9cf62216630eff0c4cdb886da167e0a35ed46d60f0259814e1df1f0da8aeefa4",
+          "bytes": 14957
+        },
+        {
+          "path": "vllm-aider-campaign-report-a.json",
+          "sha256": "b7720aa5973e965c00dda373119b46cedca318d4abfffb743d2dc9312d5a4970",
+          "bytes": 9442
+        },
+        {
+          "path": "vllm-aider-campaign-report-b.json",
+          "sha256": "ecf5911a88da9f08d1eac9953cf5c6ba09517fc787af189b5d61cc554e4f18e5",
+          "bytes": 9425
+        },
+        {
+          "path": "vllm-swe-benchmark-result.json",
+          "sha256": "a03f1ae73742d7f19c53c3b419c8168707ffd0f78072548870c91be3f873edf6",
+          "bytes": 5584
+        },
+        {
+          "path": "vllm-swe-official-grader-summary.json",
+          "sha256": "9a08c6837970e6a5e2726c0f3dc5015238f5b6e4fc8dae916039f79e007bdf37",
+          "bytes": 751
+        },
+        {
+          "path": "flare-agentic-campaign-report.json",
+          "sha256": "ff0fc5d3746e43219883786aa484f633424407adad810ba9cb552c233371672d",
+          "bytes": 14958
+        },
+        {
+          "path": "flare-aider-campaign-report-a.json",
+          "sha256": "d3bc3254a950e5a6827e4a6e1c9b79628804259f7d201b9f88488b89ab782d79",
+          "bytes": 9443
+        },
+        {
+          "path": "flare-aider-campaign-report-b.json",
+          "sha256": "4a2c6f369f8e45a542373f8a5f952b8afc2cbc493ca3160f3a76bf87b1b217ce",
+          "bytes": 9428
+        },
+        {
+          "path": "flare-swe-benchmark-result.json",
+          "sha256": "6975a9d1dc6fc3e8db78f8c4b302ae3a818bbb30a8589d788b33e1196e012158",
+          "bytes": 6635
+        },
+        {
+          "path": "flare-swe-official-grader-summary.json",
+          "sha256": "2bd540fd9846744d0aa55b8e6e24f73abb14858f79dcd40d7e5d1ab2a825f66a",
+          "bytes": 698
+        },
+        {
+          "path": "ignis-context-benchmark-result.json",
+          "sha256": "fb04eca59f8abdcd2303139349fd6ac4435893462ca324171b88a78b60392781",
+          "bytes": 18191
+        },
+        {
+          "path": "vllm-context-benchmark-result.json",
+          "sha256": "826254d1d3eebecaaa38a01cca2756c86684be81643ca6163e3db1fb178b4d14",
+          "bytes": 18389
+        },
+        {
+          "path": "flare-context-benchmark-result.json",
+          "sha256": "e75befe00ec993c613a539439ac0a048a6d595b3c292df9a5b838485f7d9484d",
+          "bytes": 19333
+        },
+        {
+          "path": "vllm-serving-c1-native-capacity-result.json",
+          "sha256": "d1deaf465cf4d2c4430ca0cebd4dd6b227c2a14a37264c96d75d19d29d8b369d",
+          "bytes": 20188
+        },
+        {
+          "path": "flare-serving-c1-native-capacity-result.json",
+          "sha256": "ba505c746bf7f4d84fcb3339ae903a12b4c2427a5f6099ccba38f113d5872eda",
+          "bytes": 24175
+        }
+      ],
+      "reason": "Sanitized native campaign reports and native capacity records, including failed and incomplete outcomes."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "66b79a192ab00f4f9b0c58cb211f3a6bca98f4273d281f9283e291c15b95f281",
+          "bytes": 4175
+        },
+        {
+          "path": "flare-c1-offline-reconciliation.md",
+          "sha256": "24d081e2b5cc9e51a383925bf164d5605cb8e758e843a58203afc4151292f777",
+          "bytes": 3286
+        },
+        {
+          "path": "campaign-state.json",
+          "sha256": "7ddc5328af024e693a3e5c7eb5ef95c8b19c83eee82f17f8b2339aa69406ba34",
+          "bytes": 2847
+        }
+      ],
+      "reason": "Final campaign state, failure reconciliation, router attribution caveat, and restoration friction are retained."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "2e936e3c6b6262de7bdc2d90e70d4acb9ac36f3bc21b556d3dd4a2be0455ef3d",
+          "bytes": 2281
+        },
+        {
+          "path": "final-restoration-evidence.json",
+          "sha256": "b6f63100de4759f717a5c382b3c99a33d9d06c0526a8789085f2d76bdea13710",
+          "bytes": 6667
+        },
+        {
+          "path": "glm-restoration-direct-preflight.json",
+          "sha256": "068669e4079d28070e8b54b093b04311b4c94d31b603028de01f5ef11a1461bd",
+          "bytes": 7349
+        },
+        {
+          "path": "glm-restoration-routed-preflight.json",
+          "sha256": "4cd689de913959cc99db9e7e6cb7f05292b440734562c1471bdea347daa520f2",
+          "bytes": 6766
+        }
+      ],
+      "reason": "Exact route/cap and incumbent restoration with local post-run checks; runtime-image difference and scope limits explicit."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "95701c5e26b9ea7034f9fdb5e358ee742b56f383eea8719a6278e16be787e5c0",
+          "bytes": 5809
+        }
+      ],
+      "reason": "Final no-promotion decision and qualification limits derived from retained evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "b7acf7e522ee7cf314d8d8edecb050ce08a41e321fe6601fd7c2e9e0c55821d4",
+          "bytes": 5527
+        }
+      ],
+      "reason": "Final derivative copy and claim ledger."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

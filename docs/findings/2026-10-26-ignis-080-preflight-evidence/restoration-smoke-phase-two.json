@@ -1,0 +1,75 @@
+{
+  "base_url": "http://127.0.0.1:8000/v1",
+  "budget": {
+    "max_completion_tokens": 4608,
+    "reasoning_headroom_tokens": 4096,
+    "visible_answer_tokens": 512
+  },
+  "checks": [
+    "smoke"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "llm.primary",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nPython's built-in `sum()` does exactly this. If you want alternatives:\n\n```python\n# Using functools.reduce\nfrom functools import reduce\nreduce(lambda a, b: a + b, xs, 0)\n\n# Manual loop (as a one-liner via a lambda)\n(lambda xs: __import__(\"functools\").reduce(lambda a, b: a + b, xs, 0))(xs)\n```\n\nBut `sum(xs)` is the idiomatic choice — it's fast, readable, and handles empty lists (returning `0`).",
+      "content_chars": 419,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nPython's built-in `sum()` does exactly this. If you want alternatives:\n\n```python\n# Using functools.reduce\nfrom functools import reduce\nreduce(lambda a, b: a + b, xs, 0)\n\n# Manu",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 500,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is to use the built-in `sum()` function:\n\n```python\nsum(xs)\n```\n\nThat's it ",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": 120,
+      "seconds": 1.735,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 243,
+        "completion_tokens_details": {
+          "reasoning_tokens": 120
+        },
+        "prompt_tokens": 28,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 271
+      },
+      "validation_detail": "contains sum("
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "1.7s got=\"```python\\nsum(xs)\\n```\\n\\nPython's built-in `sum()` d\" finish='stop' visible=419 reasoning_chars=500 reasoning_tokens=120",
+      "name": "smoke (short coding)",
+      "passed": true
+    }
+  ],
+  "sampling": {
+    "temperature": 0.6
+  },
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "tool_choice": {
+    "mode": "auto",
+    "oracle_revision": "tool-call/v2-exact-weather",
+    "raw_sse_capture": "unsupported",
+    "transport_capture": "disabled"
+  },
+  "video_expect": [],
+  "video_input": null
+}

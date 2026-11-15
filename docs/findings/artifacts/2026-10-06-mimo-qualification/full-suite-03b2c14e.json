@@ -1,0 +1,35 @@
+{
+  "command": [
+    "/srv/anvil-serving/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/",
+    "-x",
+    "-q",
+    "--basetemp",
+    "/tmp/anvil-serving-pytest-lvhfvphm"
+  ],
+  "cwd": "/home/example/.codex/worktrees/066c/anvil-serving",
+  "exit_code": 1,
+  "finished_at": "2026-10-06T08:29:12.117516+00:00",
+  "interpreter": "/srv/anvil-serving/.venv/bin/python",
+  "pytest_args": [
+    "tests/",
+    "-x",
+    "-q"
+  ],
+  "run_id": "271a7d5c-e2e0-4ceb-ab96-485edd072796",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "03b2c14e4b1dfc4eb4b0c2b3a72ffd76b564b502",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "03b2c14e4b1dfc4eb4b0c2b3a72ffd76b564b502",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-10-06T08:28:48.380884+00:00",
+  "state": "failed"
+}

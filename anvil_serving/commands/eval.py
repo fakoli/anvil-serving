@@ -1,5 +1,6 @@
 """Command declarations for the eval family."""
 
+from ..benchmarking.profiles import PROFILE_NAMES
 from .family import command_family
 from .common import CONFIRM_OPTIONS
 from .spec import CommandNode, _node, _handler, _option, _remote, _resource_node
@@ -11,7 +12,10 @@ _JOB_READ_OPTIONS = (
 
 
 def _benchmark_suite(name: str, summary: str) -> CommandNode:
-    common_remote = {"fixed": (("suite", name),)}
+    # A 256 KiB spec plus 1 MiB retained logs is returned twice by operation status.
+    common_remote = {"fixed": (("suite", name),), "max_response_bytes": 4 * 1024 * 1024}
+    # --dry-run is inherited from the suite's plan surface.
+    confirm_options = tuple(option for option in CONFIRM_OPTIONS if "--dry-run" not in option.flags)
     return _node(
         name,
         summary,
@@ -19,10 +23,11 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
             "anvil_serving.benchmarking.jobs_cli", argv_prefix=(name, "plan")
         ),
         options=(
+            _option("--dry-run", summary="Inspect the plan without requests or writes."),
             _option(
                 "--profile",
                 summary="Versioned benchmark profile.",
-                value_name="smoke|scout|deep",
+                value_name="|".join(sorted(PROFILE_NAMES)),
             ),
             _option(
                 "--observed-context",
@@ -37,7 +42,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=CONFIRM_OPTIONS + (
+                options=confirm_options + (
                     _option("--run-id", summary="Portable benchmark run identifier.", value_name="ID"),
                     _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
                     _option("--offline", summary="Require exact assets to exist in cache."),
@@ -77,6 +82,25 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                     allowed=("run_id", "ownership_id"),
                 ),
             ),
+            *(() if name != "swe" else (_resource_node(
+                "images",
+                "Preview or prepare only the frozen SWE task images from one job specification.",
+                "anvil_serving.benchmarking.jobs_cli",
+                role="evaluation",
+                mutation="mutate",
+                options=confirm_options + (
+                    _option("--spec", summary="Frozen SWE job specification JSON file.", value_name="PATH"),
+                    _option(
+                        "--worker",
+                        summary="Local worker ID named by the frozen specification.",
+                        value_name="ID",
+                    ),
+                    _option("--min-free-bytes", summary="Required free disk reserve (minimum 100 GiB).", value_name="BYTES"),
+                ),
+                argv_prefix=(name, "images"),
+                forward_confirm_flag=True,
+                execution_host_os=("linux",),
+            ),)),
             _resource_node(
                 "cleanup",
                 f"Clean only the owned work directory for a {name} benchmark run.",
@@ -84,7 +108,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 role="evaluation",
                 mutation="mutate",
                 options=_JOB_READ_OPTIONS
-                + CONFIRM_OPTIONS
+                + confirm_options
                 + (
                     _option("--ownership-id", summary="Benchmark ownership identifier.", value_name="ID"),
                 ),
@@ -102,6 +126,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 options=(
+                    _option("--spec", summary="Client-side benchmark job specification JSON file (exclusive with --spec-json).", value_name="PATH"),
                     _option(
                         "--spec-json",
                         summary="Portable benchmark job specification JSON.",
@@ -126,7 +151,8 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=CONFIRM_OPTIONS + (
+                options=confirm_options + (
+                    _option("--spec", summary="Client-side benchmark job specification JSON file (exclusive with --spec-json).", value_name="PATH"),
                     _option(
                         "--spec-json",
                         summary="Portable benchmark job specification JSON.",
@@ -180,7 +206,7 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 "anvil_serving.benchmarking.jobs_cli",
                 role="evaluation",
                 mutation="mutate",
-                options=_JOB_READ_OPTIONS + CONFIRM_OPTIONS,
+                options=_JOB_READ_OPTIONS + confirm_options,
                 argv_prefix=(name, "cancel"),
                 remote_operation=_remote(
                     "benchmark_job_cancel",
@@ -205,12 +231,43 @@ def _benchmark_suite(name: str, summary: str) -> CommandNode:
                 remote_operation=_remote(
                     "benchmark_job_artifact",
                     allowed=("run_id", "path"),
-                    **common_remote,
+                    # A 1 MiB evidence file can expand sixfold through JSON escaping.
+                    **{**common_remote, "max_response_bytes": 8 * 1024 * 1024},
                 ),
             ),
         ),
         docs_anchor="docs/cli/eval.md#benchmark",
     )
+
+
+def _campaign() -> CommandNode:
+    children = []
+    for action, summary in (
+        ("plan", "Validate explicit campaign cells without writes or traffic."),
+        ("prepare", "Prepare actual assets and freeze child specifications."),
+        ("run", "Run one frozen arm with bounded C1 or C4 batches."),
+        ("report", "Report independent scores and matched populations."),
+        ("cancel", "Persist cancellation and stop only campaign-owned children."),
+    ):
+        options = (
+            (_option("--spec", summary="Explicit ordered campaign specification JSON.", value_name="PATH"),)
+            if action in {"plan", "prepare"} else
+            (_option("--ownership-id", summary="Campaign owner (or configured ANVIL_BENCHMARK_OWNERSHIP_ID).", value_name="ID"),)
+        )
+        if action == "run":
+            options += (_option("--arm", summary="One frozen arm to run in the foreground.", value_name="ID"),)
+        if action == "prepare":
+            options += (_option("--offline", summary="Require prepared dependencies in cache."),)
+        common = {"options": options, "docs_anchor": "docs/benchmarks/context-agentic-swe.md#frozen-campaigns"}
+        if action in {"prepare", "run", "cancel"}:
+            common["options"] += (_option("--confirm", summary="Confirm the campaign operation.", requires_confirmation=True),)
+            children.append(_resource_node(action, summary, "anvil_serving.benchmarking.campaigns_cli",
+                role="evaluation", mutation="mutate", argv_prefix=(action,), forward_confirm_flag=True, **common))
+        else:
+            children.append(_node(action, summary,
+                handler=_handler("anvil_serving.benchmarking.campaigns_cli", argv_prefix=(action,)), **common))
+    return _node("campaign", "Prepare and execute frozen batches over durable benchmark jobs.",
+                 children=tuple(children), docs_anchor="docs/benchmarks/context-agentic-swe.md#frozen-campaigns")
 
 
 @command_family(category="Quality loop")
@@ -219,6 +276,33 @@ def commands() -> CommandNode:
         "eval",
         "Run quality evaluation workflows.",
         children=(
+            _resource_node(
+                "reasoning-limit-probe",
+                "Preview or execute an isolated, bounded reasoning-boundary diagnostic.",
+                "anvil_serving.reasoning_probe",
+                role="evaluation", mutation="mutate", argv_prefix=(),
+                forward_confirm_flag=True,
+                options=(
+                    _option("--router-config", summary="Unchanged source router configuration.", value_name="PATH"),
+                    _option("--plan", summary="Frozen two-case probe plan.", value_name="PATH"),
+                    _option("--boundary-config", summary="Verified model, configuration hash and marker IDs.", value_name="PATH"),
+                    _option("--output", summary="New private evidence directory.", value_name="PATH"),
+                    _option("--confirm", summary="Send the bounded probe; omission previews offline.", requires_confirmation=True),
+                ),
+                docs_anchor="docs/benchmarks/reasoning-limit-probe.md",
+            ),
+            _resource_node(
+                "reasoning-limit-inspect",
+                "Read pinned GLM runtime hashes and tokenizer markers without inference.",
+                "anvil_serving.reasoning_probe_runtime",
+                role="model-serve", argv_prefix=(), execution_host_os=("linux",),
+                options=(
+                    _option("--registry", summary="Managed recipe registry.", value_name="PATH"),
+                    _option("--container", summary="Exact running recipe container.", value_name="NAME"),
+                    _option("--plan", summary="Frozen runtime pins.", value_name="PATH"),
+                ),
+                docs_anchor="docs/benchmarks/reasoning-limit-probe.md",
+            ),
             _resource_node(
                 "usage",
                 "Write usage and role summaries from recorded sessions.",
@@ -244,7 +328,11 @@ def commands() -> CommandNode:
                         "model",
                         "api_key_env",
                         "needle_ctx",
+                        "temperature",
                         "tool_batch",
+                        "tool_choice_mode",
+                        "seed",
+                        "capture_tool_transport",
                         "checks",
                         "image_path",
                         "image_expect",
@@ -253,6 +341,7 @@ def commands() -> CommandNode:
                         "video_expect",
                         "no_thinking",
                         "thinking_mode",
+                        "force_nonempty_content",
                         "reasoning_effort",
                         "reasoning_evidence",
                         "visible_answer_tokens",
@@ -326,6 +415,7 @@ def commands() -> CommandNode:
                 "benchmark",
                 "Run or import benchmark evidence.",
                 children=(
+                    _campaign(),
                     _node(
                         "jev",
                         "Replay selected evidence through a shadow Jev pilot.",
@@ -358,6 +448,12 @@ def commands() -> CommandNode:
                     ),
                     _benchmark_suite(
                         "swe", "Run pinned repository problem-solving benchmarks."
+                    ),
+                    _benchmark_suite(
+                        "aider", "Run pinned Aider Polyglot edits with contained tests."
+                    ),
+                    _benchmark_suite(
+                        "performance", "Run pinned LIL or AIPerf performance measurements."
                     ),
                     _resource_node(
                         "capacity",

@@ -1,0 +1,53 @@
+{
+  "campaign": "ignis-072-qualification-20261019",
+  "candidate": {
+    "context_tokens": 131072,
+    "model": "qwen3.8-flash-next",
+    "model_revision": "f75e492c6d726537a4d4c85858bc91ee06a070ef",
+    "runtime_image": "ghcr.io/gpillon/ignis@sha256:440563a1fc52db29cc9a51442093a03c05a70d377d8f9f61e119f42fbd1665db"
+  },
+  "model_files": [
+    {
+      "bytes": 1037905920,
+      "file": "qwen3_8_flash_next_mtp_3p0-v2.ninfer",
+      "matches": true,
+      "sha256": "432fe5c0838027047c5b46c4fde526f3d3ef3d126f00fed1213921f8705988d2"
+    },
+    {
+      "bytes": 71760711680,
+      "file": "qwen3_8_flash_next_trellis_a25-v2.ninfer",
+      "matches": true,
+      "sha256": "12e3b265b0678ba935a4b05d1b612ba4b68b3a96c3026d818ad65838985fd864"
+    }
+  ],
+  "schema": "anvil-serving.ignis-campaign-identity/v1",
+  "status": "closed; SWE terminal evidence retained",
+  "swe_budget": {
+    "max_steps": 60,
+    "workers": 1,
+    "max_completion_tokens": 16384
+  },
+  "swe_endpoint": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "qwen3.8-flash-next"
+  },
+  "swe_request_controls": {
+    "temperature": 1.0,
+    "top_p": 0.95
+  },
+  "swe_selection": [
+    "sphinx-doc__sphinx-9658",
+    "sympy__sympy-12096",
+    "django__django-13512",
+    "pydata__xarray-4356",
+    "pylint-dev__pylint-8898"
+  ],
+  "swe_spec_schema": "anvil-serving.benchmark-job-spec/v1",
+  "swe_terminal_summary": {
+    "attempted": 5,
+    "graded": 1,
+    "resolved": 0,
+    "official_grader_complete": false,
+    "artifact": "raw/swe-r2/artifact.json"
+  }
+}

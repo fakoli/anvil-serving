@@ -20,7 +20,7 @@ from .transports import _urlopen_no_proxy_no_redirect
 
 
 SCHEMA_VERSION = 1
-SUPPORTED_ADAPTERS = ("anvil-json-v1",)
+SUPPORTED_ADAPTERS = ("anvil-json-v1", "tensorfold-prometheus-v1")
 _MAX_RESPONSE_BYTES = 256 * 1024
 _ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
 _CAPABILITY = re.compile(r"^[a-z][a-z0-9_-]{0,79}$")
@@ -116,7 +116,8 @@ def inspect_adapter(
     if not 0 < timeout <= 60:
         raise ValueError("timeout must be between 0 and 60 seconds")
     env = os.environ if environment is None else environment
-    headers = {"Accept": "application/json"}
+    prometheus = config.adapter == "tensorfold-prometheus-v1"
+    headers = {"Accept": "text/plain" if prometheus else "application/json"}
     secret = ""
     if config.auth_env:
         secret = (env.get(config.auth_env) or "").strip()
@@ -132,7 +133,14 @@ def inspect_adapter(
             raise ValueError("collector response body must be bytes")
         if len(raw) > _MAX_RESPONSE_BYTES:
             raise ValueError("collector response exceeds 256 KiB")
-        payload = json.loads(raw.decode("utf-8"))
+        telemetry = None
+        if prometheus:
+            from .tensorfold_telemetry import parse_metrics
+
+            telemetry = parse_metrics(raw.decode("utf-8"))
+            payload = {"status": "ok", "capabilities": telemetry["capabilities"]}
+        else:
+            payload = json.loads(raw.decode("utf-8"))
         if not isinstance(payload, Mapping):
             raise TypeError("collector response must be an object")
         reported = payload.get("capabilities")
@@ -153,6 +161,7 @@ def inspect_adapter(
                 "authentication": "bearer-env" if config.auth_env else "none-loopback",
                 "available_capabilities": available,
                 "missing_capabilities": missing,
+                **({"telemetry": telemetry} if telemetry is not None else {}),
             },
             secrets=(secret,),
         )

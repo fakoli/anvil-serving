@@ -1,0 +1,225 @@
+{
+  "base_url": "http://127.0.0.1:30000/v1",
+  "budget": {
+    "max_completion_tokens": 9216,
+    "reasoning_headroom_tokens": 8192,
+    "visible_answer_tokens": 1024
+  },
+  "checks": [
+    "tools"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "qwen3.8-flash-next",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 1,
+      "seconds": 0.997,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 5,
+      "seconds": 1.067,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 6,
+      "seconds": 1.066,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 3,
+      "seconds": 1.07,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 0,
+      "seconds": 1.073,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 7,
+      "seconds": 1.065,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 4,
+      "seconds": 1.069,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    },
+    {
+      "content": "",
+      "content_chars": 0,
+      "content_excerpt": "",
+      "finish_reason": "tool_calls",
+      "passed": true,
+      "reasoning_chars": 100,
+      "reasoning_excerpt": "The user wants the weather in Oakland using the tool. I should call get_weather with city \"Oakland\".",
+      "reasoning_field": "reasoning_content",
+      "reasoning_tokens": null,
+      "request_index": 2,
+      "seconds": 1.072,
+      "test": "tools",
+      "usage": {
+        "completion_tokens": 51,
+        "prompt_tokens": 5521,
+        "prompt_tokens_details": {
+          "cached_tokens": 5519
+        },
+        "total_tokens": 5572
+      },
+      "validation_detail": "valid tool_call get_weather(city='Oakland')"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "8/8 clean (sample: 1.0s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=100 reasoning_tokens=None)",
+      "name": "shared-prefix tool batch x8",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": null
+  },
+  "video_expect": [],
+  "video_input": null
+}

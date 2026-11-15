@@ -8,6 +8,12 @@ Run `eval preflight` before benchmarking a new serve or changed engine recipe.
 It checks the explicit endpoint and served-model identifier without changing
 the gateway's alias map.
 
+Use `--temperature 1` when the endpoint requires nonzero sampling. The default
+is 0; finite values from 0 through 2 are accepted. Every probe uses the selected
+value, and both the dry-run plan and result record it under `sampling`.
+The control-plane `preflight_probe` MCP tool accepts the same `temperature`
+range and forwards it to this command.
+
 With `--output`, failed request attempts remain in the `preflight/v2`
 `observations` list with `status: request_failed`, `passed: false`, elapsed
 `seconds`, `error_type`, and `error_message`. The shared operator redactor
@@ -33,6 +39,27 @@ anvil-serving eval preflight `
   --long-tool-ctx 131072 `
   --confirm
 ```
+
+For models whose native template requires it during reasoning-plus-tool calls,
+`--force-nonempty-content` requires `--thinking-mode enabled` and sends the
+typed `chat_template_kwargs` pair. The preflight artifact and dry-run plan
+retain that requested pair; a successful request remains endpoint evidence,
+not proof that a different model family honors the same control.
+
+For a bounded tool-protocol diagnosis, `--tool-choice-mode required` applies
+only to requests expected to emit `get_weather`; the tool-result continuation
+is deliberately unforced so it must produce its final text normally. `auto` is
+the default. `--seed` accepts a signed 64-bit value and applies to tool-protocol
+requests only; the artifact records that scope. `--capture-tool-transport` is
+an explicit opt-in that saves up to 1 MiB of each nonstreaming tool response,
+its exact request JSON, HTTP status, hashes, and whitelisted request-ID headers.
+It never records authorization headers. Raw SSE transport capture is unsupported
+and is labeled as such in streaming-tool evidence. Client-side capture cannot
+correlate a terminal engine event; it records that limitation rather than
+inventing one. Captured bodies can contain prompts or echoed content: retain
+them as protected operator evidence and complete a privacy review before any
+publication. Tool-call results use the recorded `tool-call/v2-exact-weather`
+oracle; older artifacts retain their historical oracle and are not rescored.
 
 ## Routed client evaluation
 
@@ -239,6 +266,80 @@ than SSH. The complete specification, profile costs, evidence semantics, and
 examples are in [Context, agentic, and SWE benchmark jobs](../benchmarks/context-agentic-swe.md).
 
 ## Benchmark evidence
+
+For durable benchmark jobs, put `"budget_mode": "deployment"` in the saved
+specification's `parameters` when qualifying the deployed output allowance,
+then run the usual `eval benchmark aider preflight --spec job.json` (or the
+selected suite's preflight). The worker repeats this shared gate before
+inference. Deployment mode rejects an unknown endpoint output cap, a profile
+completion cap that differs from it, or unknown context headroom. It never
+raises or clamps the pinned profile's budget automatically.
+
+The default `"budget_mode": "fixed"` preserves historical profiles and labels
+them `fixed_budget_diagnostic`; a 16K diagnostic against a 32K endpoint does not
+qualify the endpoint's full output allowance. Both modes reject output budgets
+that leave no prompt context and unsupported reasoning efforts when the
+selected model advertises its supported efforts. Missing reasoning metadata is
+not proof that the server honors the requested effort.
+
+Preflight records reasoning effort separately from the total output cap,
+remaining prompt capacity, and effective job deadline. `max` reasoning effort
+is not a numeric reasoning reservation: output tokens include reasoning and
+visible output. Actual prompt fit still requires per-request token counts;
+completion within the deadline requires workload-specific timing evidence.
+Record `finish_reason=length` as generation-limit exhaustion alongside the independent
+task grade, not as proof of a coding-quality regression. A changed budget needs
+a separately identified run; do not rewrite historical results or retry until
+a desired grade appears.
+
+For a known input bound, save `"prompt_tokens": N` in `parameters`. Preflight
+rejects a declared prompt plus output cap that exceeds the configured context;
+this declaration does not measure later prompts. It reports the profile and
+effective deadlines, transport-call/retry limits and Aider's two permitted
+coding attempts separately. Transport calls include retries and other model
+calls, so their limit is not an attempt count. Unknown prompt fit and deadline
+adequacy remain explicit warnings; no reasoning-token or answer reserve is
+implied.
+
+Aider results retain `output_budget` independently of the task grades and
+global budget. A `length` finish is classified as `budget_exhausted` with
+`scope="response_generation_limit"`; it does not uniquely identify the output
+cap as the cause. `output_cap_reached` compares reported completion tokens with
+the configured cap when both are known. `visible_tokens` remains null because
+completion minus reasoning tokens is not a measured visible-answer count;
+that subtraction is separately named `non_reasoning_tokens`. Responses are
+not attributed to a task or coding attempt without a trustworthy binding.
+
+To reuse an exact qualified Aider oracle, put its prior preparation receipt
+and SHA-256 in the saved job specification:
+
+```json
+{
+  "parameters": {
+    "aider_oracle": {
+      "receipt_path": "/srv/benchmarks/prior/aider/preparation/receipt.json",
+      "sha256": "<SHA-256 of the exact prior receipt>"
+    }
+  }
+}
+```
+
+Submit the complete saved specification with
+`anvil-serving eval benchmark aider submit --spec job.json --confirm`.
+The worker and campaign preparation use the same selection. Standalone
+`eval benchmark aider prepare` also accepts `--aider-oracle-receipt` and
+`--aider-oracle-receipt-sha256`. Selection verifies the immutable image, full
+package inventory, source/tasks and build inputs, then runs a fresh six-language
+starter/reference oracle with the current adapter. It does not pull, retag or
+rebuild the selected image. The original receipt remains unchanged; a new
+receipt binds the current adapter and qualification separately, including on
+later reuse after an adapter update. Different historical package inventories
+remain different environments.
+
+Managed isolated Python probes use `-I -B`; isolated mode ignores an inherited
+bytecode environment setting. Prepared-environment validation still hashes all
+files, including bytecode and interpreter bytes. Added bytecode or changed
+source fails validation instead of being excluded from custody.
 
 Run preflight before a benchmark and retain artifact identity, endpoint, served model, hardware,
 engine, quantization, context, concurrency, failures, and caveats. Evaluation never changes a

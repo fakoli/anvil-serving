@@ -1,0 +1,321 @@
+diff --git a/zig/src/core/engine_status.zig b/zig/src/core/engine_status.zig
+index ffc9aacc..b48790d7 100644
+--- a/zig/src/core/engine_status.zig
++++ b/zig/src/core/engine_status.zig
+@@ -37,6 +37,7 @@ pub const Status = struct {
+     /// A backend whose KV pool is sharded over its ranks (GLM's TF_GLM_KV_SHARD): its parts' pages and counters,
+     /// /health's `kv_shard` and /metrics' `tensorfold:kv_shard_*`; null: none.
+     kv_parts: ?KvParts = null,
++    anvil_timing: ?@import("lanes").anvil_telemetry.Timing = null,
+     kv_allocation: ?@import("lanes").anvil_telemetry.KvAllocation = null,
+ 
+     pub const PromptCache = struct { states: u64 = 0, bytes: u64 = 0 };
+diff --git a/zig/src/core/lane_host.zig b/zig/src/core/lane_host.zig
+index 58393b41..0f7ad104 100644
+--- a/zig/src/core/lane_host.zig
++++ b/zig/src/core/lane_host.zig
+@@ -74,6 +74,7 @@ pub const LaneHost = struct {
+     learner: ?api.Learner = null, // the family's Sliding Weights learner; null: learn requests are refused
+     lessons: std.ArrayList(Lesson) = .empty, // learn requests waiting for an idle engine
+     lesson_open: bool = false, // the learner holds a begun job (engine thread only)
++    anvil_timing: lanes.anvil_telemetry.Timing = .{},
+     admissions: u64 = 0, // jobs admitted so far: each job's `seq`
+     memory_lanes: ?usize = null, // lanes the backend had memory for at its last LaneMemory, until a job ends
+     warm_quiet: u64 = 0, // ns a warm pass waits for other work before its first chunk (0: none), set by its family
+@@ -186,6 +187,7 @@ pub const LaneHost = struct {
+             h.gpa.destroy(job);
+             return error.Busy;
+         };
++        h.anvil_timing.arrivals += 1;
+         h.wake.signal(h.io);
+     }
+ 
+@@ -203,6 +205,14 @@ pub const LaneHost = struct {
+     }
+ 
+     pub fn emit(job: *Job, event: Event) void {
++        if (event == .tokens and event.tokens.len > 0 and job.first_token_ns == null) {
++            const h = job.host;
++            const now = std.Io.Clock.awake.now(h.io).toNanoseconds();
++            job.first_token_ns = now;
++            h.lock();
++            h.anvil_timing.token(job.prefill_started_ns, now);
++            h.unlock();
++        }
+         job.sink.event(job.sink.ctx, job.id, &event);
+     }
+ 
+@@ -353,6 +363,17 @@ pub const LaneHost = struct {
+         return (job.request.max_tokens == 0 and h.info_.warm_turns) or lone.fits(h, job);
+     }
+ 
++    /// Record immediately before the backend's first prefill launch, never at stream setup.
++    pub fn notePrefillStart(h: *LaneHost, job: *Job) void {
++        if (job.prefill_started_ns != null) return;
++        const admitted = job.admitted_ns orelse return;
++        const now = std.Io.Clock.awake.now(h.io).toNanoseconds();
++        job.prefill_started_ns = now;
++        h.lock();
++        h.anvil_timing.prefill(admitted, now);
++        h.unlock();
++    }
++
+     /// A set-up job into the engine: a warm pass, the lone driver, the fill queue, or its own prompt pass.
+     pub fn launch(h: *LaneHost, job: *Job, began: i96) bool {
+         const r = job.request;
+@@ -362,6 +383,7 @@ pub const LaneHost = struct {
+             h.filling.append(h.gpa, job) catch return h.drop(job, "out of memory");
+             return true;
+         }
++        h.notePrefillStart(job);
+         h.core.addStreamCommitted(&job.stream, .{ .ptr = job, .call = firstCommitted }) catch |e| return h.failedPass(job, e);
+         h.prefilled(job, began);
+         if (r.embedding != null) return @import("lane_embeddings.zig").complete(h, job);
+@@ -383,6 +405,7 @@ pub const LaneHost = struct {
+         const job = h.filling.items[at];
+         const first = !job.fill_began;
+         job.fill_began = true;
++        h.notePrefillStart(job);
+         const done = h.core.fillStreamCommitted(&job.stream, first, .{ .ptr = job, .call = firstCommitted }) catch |e| {
+             _ = switch (e) {
+                 error.Cancelled => h.cancel(job),
+@@ -449,6 +472,7 @@ pub const LaneHost = struct {
+     fn warmPass(h: *LaneHost, job: *Job, began: i96) bool {
+         const be = h.core.backend;
+         if (h.cache) |store| if (job.marks.len == 0 and (job.request.untaught or store.rules.lookahead > 0)) return h.cancel(job); // it would keep nothing
++        h.notePrefillStart(job);
+         be.prefill(&job.stream) catch |e| { // a yield ends it like a cancel: what it prefilled is kept
+             if (e != error.Cancelled and e != error.Yielded) return h.drop(job, h.words(e));
+             be.release(&job.stream);
+diff --git a/zig/src/core/lane_host_admit.zig b/zig/src/core/lane_host_admit.zig
+index 67e527c1..94bae709 100644
+--- a/zig/src/core/lane_host_admit.zig
++++ b/zig/src/core/lane_host_admit.zig
+@@ -92,6 +92,7 @@ pub fn many(h: *LaneHost) bool {
+     var streams: [lanes.Engine.max_together]*lanes.Stream = undefined;
+     for (jobs[0..n], 0..) |job, i| streams[i] = &job.stream;
+     var errs: [lanes.Engine.max_together]?anyerror = undefined;
++    for (jobs[0..n]) |job| h.notePrefillStart(job);
+     h.core.addStreams(streams[0..n], errs[0..n]);
+     for (jobs[0..n], began[0..n], errs[0..n]) |job, at, err| {
+         if (err) |e| {
+diff --git a/zig/src/core/lane_host_lone.zig b/zig/src/core/lane_host_lone.zig
+index 89285f6b..93ba64a0 100644
+--- a/zig/src/core/lane_host_lone.zig
++++ b/zig/src/core/lane_host_lone.zig
+@@ -68,6 +68,7 @@ pub fn run(h: *LaneHost, job: *Job, began: i96, resumed: bool) bool {
+         }
+     };
+     var context: Hooks.Context = .{ .host = h };
++    if (!resumed) h.notePrefillStart(job);
+     const paused = lone.run(lone.ctx, &job.stream, .{ .ctx = &context, .committed = Hooks.committed, .yield = Hooks.yield, .resumed = resumed, .prefill_yield = Hooks.prefillYield });
+     h.lone_job = null;
+     const handed = paused catch |e| {
+diff --git a/zig/src/core/lane_host_status.zig b/zig/src/core/lane_host_status.zig
+index 7fc1ad5e..4ad84cd5 100644
+--- a/zig/src/core/lane_host_status.zig
++++ b/zig/src/core/lane_host_status.zig
+@@ -33,6 +33,7 @@ pub fn read(ctx: *anyopaque, out: *api.Status, stream_tokens: []u32) void {
+         .prompt_cache = h.cache_status,
+         .kv_parts = h.kv_status,
+         .kv_allocation = h.kv_allocation_status,
++        .anvil_timing = h.anvil_timing,
+     };
+     fillTotals(h, out);
+ }
+diff --git a/zig/src/core/lane_job.zig b/zig/src/core/lane_job.zig
+index 15a7540c..f9b6891a 100644
+--- a/zig/src/core/lane_job.zig
++++ b/zig/src/core/lane_job.zig
+@@ -24,6 +24,8 @@ pub const Job = struct {
+     prefill_sent: bool = false, // a lone driver's prefilled event went out
+     fill_began: bool = false, // its first prompt chunk ran
+     submitted: i96 = 0,
++    prefill_started_ns: ?i96 = null,
++    first_token_ns: ?i96 = null,
+     admitted_ns: ?i96 = null, // first admission only, retained if a background pass later yields
+     fill_wait: usize = 0, // chunk choices it has waited since admission or its last chunk
+     began: i96 = 0,
+@@ -42,7 +44,10 @@ pub const Job = struct {
+ 
+     /// Record first admission once, including a family planner and a background pass that later yields.
+     pub fn noteAdmission(job: *Job) void {
+-        if (job.admitted_ns == null) job.admitted_ns = std.Io.Clock.awake.now(job.host.io).toNanoseconds();
++        if (job.admitted_ns != null) return;
++        const now = std.Io.Clock.awake.now(job.host.io).toNanoseconds();
++        job.admitted_ns = now;
++        job.host.anvil_timing.admit(job.submitted, now);
+     }
+ 
+     /// The words the cache names this request's states by.
+diff --git a/zig/src/core/lane_rounds.zig b/zig/src/core/lane_rounds.zig
+index 86b8a43d..0a0cd5a3 100644
+--- a/zig/src/core/lane_rounds.zig
++++ b/zig/src/core/lane_rounds.zig
+@@ -131,6 +131,7 @@ fn round(h: *LaneHost, rd: Rounds) bool {
+                 jobs[n] = job;
+                 n += 1;
+             }
++            for (jobs[0..n]) |job| h.notePrefillStart(job);
+             if (n > 0) h.core.pieces(list[0..n]) catch |e| {
+                 for (jobs[0..n], 0..) |job, i| {
+                     const seen = for (jobs[0..i]) |previous| {
+@@ -145,6 +146,7 @@ fn round(h: *LaneHost, rd: Rounds) bool {
+         did = true;
+         const job: *Job = @ptrFromInt(piece.key);
+         if (job.stream.finished) continue;
++        h.notePrefillStart(job);
+         h.core.piece(&job.stream, piece.start, piece.end, piece.save) catch |e| {
+             dropPiece(h, job, h.words(e));
+         };
+diff --git a/zig/src/core/lanes/anvil_telemetry.zig b/zig/src/core/lanes/anvil_telemetry.zig
+index 2758515f..51ad1172 100644
+--- a/zig/src/core/lanes/anvil_telemetry.zig
++++ b/zig/src/core/lanes/anvil_telemetry.zig
+@@ -27,3 +27,81 @@ test "global decode KV validates pages and promises, not prompt-cache bytes" {
+     bad.free_pages = 10;
+     try std.testing.expect(!bad.valid());
+ }
++
++/// Upper edges shared by the request and time-to-first-token histograms; +Inf is added when rendered.
++pub const buckets = [_]f64{ 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0 };
++pub const tpot_buckets = [_]f64{ 0.0025, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0 };
++
++pub fn HistogramType(comptime edges: []const f64) type {
++    return struct {
++        pub const bucket_edges = edges;
++        counts: [edges.len + 1]u64 = @splat(0),
++        total: f64 = 0,
++        n: u64 = 0,
++
++        pub fn observe(h: *@This(), raw: f64) void {
++            const value = @max(0, raw);
++            h.n += 1;
++            h.total += value;
++            for (edges, 0..) |edge, i| if (value <= edge) {
++                h.counts[i] += 1;
++                return;
++            };
++            h.counts[edges.len] += 1;
++        }
++    };
++}
++
++pub const Histogram = HistogramType(&buckets);
++pub const TpotHistogram = HistogramType(&tpot_buckets);
++
++
++/// Boundary populations, observed exactly once when reached, on the engine's monotonic clock.
++pub const Timing = struct {
++    arrivals: u64 = 0,
++    admissions: u64 = 0,
++    prefill_started: u64 = 0,
++    first_tokens: u64 = 0,
++    arrival_to_admission: Histogram = .{},
++    admission_to_prefill: Histogram = .{},
++    prefill_to_first_token: Histogram = .{},
++
++    pub fn admit(t: *Timing, arrival: i96, admission: i96) void {
++        t.admissions += 1;
++        t.arrival_to_admission.observe(seconds(admission - arrival));
++    }
++    pub fn prefill(t: *Timing, admission: i96, started: i96) void {
++        t.prefill_started += 1;
++        t.admission_to_prefill.observe(seconds(started - admission));
++    }
++    pub fn token(t: *Timing, started: ?i96, first: i96) void {
++        t.first_tokens += 1;
++        if (started) |at| t.prefill_to_first_token.observe(seconds(first - at));
++    }
++};
++fn seconds(ns: i96) f64 {
++    return @as(f64, @floatFromInt(@max(0, ns))) / 1e9;
++}
++
++test "Anvil timing idle C1 C4 and cancellation preserve bounded boundary populations" {
++    var t: Timing = .{};
++    try std.testing.expectEqual(@as(u64, 0), t.arrival_to_admission.n);
++    for ([_]usize{ 1, 4 }) |count| {
++        for (0..count) |_| {
++            t.arrivals += 1;
++            t.admit(0, 10_000_000);
++            t.prefill(10_000_000, 60_000_000);
++            t.token(60_000_000, 160_000_000);
++        }
++    }
++    t.arrivals += 1; // cancelled before admission: no made-up boundary
++    t.admit(0, 1_000_000_000);
++    try std.testing.expectEqual(@as(u64, 6), t.arrival_to_admission.n);
++    try std.testing.expectEqual(@as(u64, 5), t.admission_to_prefill.n);
++    try std.testing.expectEqual(@as(u64, 5), t.prefill_to_first_token.n);
++    try std.testing.expectEqual(@as(u64, 5), t.arrival_to_admission.counts[0]);
++    var h: Histogram = .{};
++    h.observe(301);
++    try std.testing.expectEqual(@as(u64, 1), h.counts[buckets.len]);
++    try std.testing.expectEqual(@as(f64, 301), h.total);
++}
+diff --git a/zig/src/server/metrics.zig b/zig/src/server/metrics.zig
+index 1346f7dc..2e816173 100644
+--- a/zig/src/server/metrics.zig
++++ b/zig/src/server/metrics.zig
+@@ -5,32 +5,10 @@ const resident = @import("process_resident.zig");
+ const api = @import("engine_api");
+ 
+ const prefix = "tensorfold:";
+-/// Upper edges shared by the request and time-to-first-token histograms; +Inf is added when rendered.
+-pub const buckets = [_]f64{ 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0 };
+-pub const tpot_buckets = [_]f64{ 0.0025, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.025, 0.03, 0.04, 0.05, 0.075, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0 };
+-
+-fn HistogramType(comptime edges: []const f64) type {
+-    return struct {
+-        pub const bucket_edges = edges;
+-        counts: [edges.len + 1]u64 = @splat(0),
+-        total: f64 = 0,
+-        n: u64 = 0,
+-
+-        pub fn observe(h: *@This(), raw: f64) void {
+-            const value = @max(0, raw);
+-            h.n += 1;
+-            h.total += value;
+-            for (edges, 0..) |edge, i| if (value <= edge) {
+-                h.counts[i] += 1;
+-                return;
+-            };
+-            h.counts[edges.len] += 1;
+-        }
+-    };
+-}
+-
+-pub const Histogram = HistogramType(&buckets);
+-pub const TpotHistogram = HistogramType(&tpot_buckets);
++pub const buckets = api.anvil_telemetry.buckets;
++pub const tpot_buckets = api.anvil_telemetry.tpot_buckets;
++pub const Histogram = api.anvil_telemetry.Histogram;
++pub const TpotHistogram = api.anvil_telemetry.TpotHistogram;
+ 
+ /// Counters of finished requests; gauges are read from the engine at scrape time.
+ pub const Metrics = struct {
+@@ -171,6 +149,7 @@ pub const Metrics = struct {
+         const live = streams[0..@min(status.streams, streams.len)];
+         try anvilStreams(w, status, live);
+         try anvilKv(w, status.kv_allocation);
++        if (status.anvil_timing) |timing| try anvilTiming(w, timing);
+         try family(w, "kv_cache_usage_ratio", "gauge", "Tokens in a stream cache divided by that stream's context window.");
+         try pools(w, "kv_cache_usage_ratio", "pool", live, window);
+         try gauge(w, "mtp_drafted_total", "counter", "Draft tokens verified on finished requests.", snap.drafted);
+@@ -236,6 +215,15 @@ test "Anvil stream ABI preserves idle, C1, C4 and incomplete observations" {
+     try std.testing.expect(std.mem.indexOf(u8, out.written(), "tensorfold:anvil_streams_active ") == null);
+ }
+ 
++fn anvilTiming(w: *std.Io.Writer, t: api.anvil_telemetry.Timing) !void {
++    try histogram(w, "anvil_arrival_to_admission_seconds", "Engine submit to first admission seconds; recorded at admission.", t.arrival_to_admission);
++    try histogram(w, "anvil_admission_to_prefill_seconds", "First admission to first prefill launch seconds; recorded at prefill start.", t.admission_to_prefill);
++    try histogram(w, "anvil_prefill_to_first_token_seconds", "First prefill launch to first generated token seconds, including reasoning.", t.prefill_to_first_token);
++    inline for (.{ "arrivals", "admissions", "prefill_started", "first_tokens" }) |name| {
++        try gauge(w, "anvil_" ++ name ++ "_total", "counter", "Engine requests that reached the named boundary since process start.", @field(t, name));
++    }
++}
++
+ fn anvilKv(w: *std.Io.Writer, allocation: ?api.anvil_telemetry.KvAllocation) !void {
+     const available = if (allocation) |k| k.valid() else false;
+     try gauge(w, "anvil_kv_allocation_available", "gauge", "One only when complete logical decode-KV page allocation is available.", @intFromBool(available));

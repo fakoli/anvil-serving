@@ -1,0 +1,7 @@
+{
+  "client_id": "native-example",
+  "client_name": "Native Example",
+  "public": true,
+  "redirect_uris": ["app.example.connect.ios:/oauth/callback"],
+  "groups_scope": true
+}

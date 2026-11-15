@@ -1,0 +1,45 @@
+{
+  "actual_swap_bytes": 0,
+  "context_tokens_configured": 32768,
+  "evidence": [
+    {
+      "path": "raw/deepseek-tp2-32k-load.json",
+      "sha256": "5952ecdb3775d5688d554d462726ce2499414bceb5347d8f39f32ec9595a97bc"
+    },
+    {
+      "path": "raw/deepseek-tp2-32k-native-ready-gates.json",
+      "sha256": "0088b84e498278f8f130f0be55005c0e9b2586c25eca416c57c370a793b86097"
+    },
+    {
+      "path": "raw/deepseek-tp2-preflight-32k-low-native.json",
+      "sha256": "db8a7ae293e609d60a3d9f942a928ba700cb91da575a6fe4ec5c96cb62a30cbb"
+    },
+    {
+      "path": "raw/deepseek-tp2-preflight-32k-low-memory.json",
+      "sha256": "f1e8bdd9bef19131951a469ca527f398d9a1f8a87eb082a72216ba5c6fae3dcb"
+    },
+    {
+      "path": "raw/deepseek-tp1-131k-low-swe5-native.json",
+      "sha256": "4f43cb7bb3b65a415ca060b7a3f128daab6a1c9367a9aca8cd1f6f2612b1312c"
+    },
+    {
+      "path": "raw/deepseek-tp1-131k-low-swe5-independent-forensics.json",
+      "sha256": "232a7ce8100d205c59313f598129aa829edc2dff40368278f5a938edff458d8b"
+    }
+  ],
+  "host_peak_bytes": 55834574848,
+  "limits": [
+    "Shortfunctionalcompatibilityonly; no32Kfullprompt/perfrank/newSWE orqualityrank.",
+    "Coldstartupfilecache reached52GiBceiling; noOOM/swap; doNOTclaimminimumRAMorunpressuredstartup.",
+    "TP1max1/5 andlow2/5/incomplete failedstrictqualityfloor; no131KTP2/deep25/3rdeffort/precisionexpansion.",
+    "NativeTPbackendrequestedandtensorparallel reportedbyruntime; coreExLsourceGitrevisionunexposed."
+  ],
+  "native_functional_observations": 13,
+  "observed_at": "2026-10-13T19:50:04.186817+00:00",
+  "passed": true,
+  "post_functional_events": "low 0\nhigh 0\nmax 1305\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0",
+  "promoted": false,
+  "schema_version": "contained-compatibility-decision/v1",
+  "startup_max_events": 1305,
+  "tensor_parallel_size": 2
+}

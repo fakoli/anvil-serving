@@ -1,0 +1,213 @@
+{
+  "manifest": {
+    "bytes": 5060715,
+    "files": [
+      {
+        "bytes": 11480,
+        "path": "swe-plan.json",
+        "sha256": "c8a8f6c3a4ba6e2ace05ff4579e7719c113507d5b9eafaa898532ecad3a43ebe"
+      },
+      {
+        "bytes": 662,
+        "path": "anvil-swe-config.yaml",
+        "sha256": "b920ec645cbccd3c698670391fef89036fac217ff1d8b688265ef25fbe9db21b"
+      },
+      {
+        "bytes": 5173,
+        "path": "predictions.jsonl",
+        "sha256": "ab4afbc5628d5d3050c2ca93b3f8fc29b1756dff75ba43e509a41fc98ca787c9"
+      },
+      {
+        "bytes": 4915,
+        "path": "mini-output/minisweagent.log",
+        "sha256": "9d4c0af5f5d0d8fe284b79871c5ddeba4c344ffc913b2c5f714719758c22970c"
+      },
+      {
+        "bytes": 83033,
+        "path": "mini-output/astropy__astropy-12907/astropy__astropy-12907.traj.json",
+        "sha256": "b5ad7cbe27d8548f0917ee5323f26a6d871b56f617a5227cca8086010db4cbe5"
+      },
+      {
+        "bytes": 5410,
+        "path": "mini-output/preds.json",
+        "sha256": "9ed61afdc17941304bbf93eec2853f24ae32da786f51930a5c57ec014440ec15"
+      },
+      {
+        "bytes": 196,
+        "path": "mini-output/exit_statuses_1793580960.1850486.yaml",
+        "sha256": "23defe5722d80980e3143e8dd73f1090ee504ea4d63227f861116297e6208715"
+      },
+      {
+        "bytes": 82474,
+        "path": "mini-output/django__django-10097/django__django-10097.traj.json",
+        "sha256": "51fa7d0fe85931ded434bb02d47730966c2d44a1afd35b095059925bf88e25b3"
+      },
+      {
+        "bytes": 95814,
+        "path": "mini-output/matplotlib__matplotlib-13989/matplotlib__matplotlib-13989.traj.json",
+        "sha256": "9c1c9fa41e61c7f059901c7eff20f64986cdada6a3b1661cfe10324d314da08a"
+      },
+      {
+        "bytes": 114789,
+        "path": "mini-output/scikit-learn__scikit-learn-10297/scikit-learn__scikit-learn-10297.traj.json",
+        "sha256": "70a2e9f45fef4a7e783afb07c71f90fc4f533f691ee59875a7aa2498f570b6dc"
+      },
+      {
+        "bytes": 76250,
+        "path": "mini-output/sympy__sympy-11618/sympy__sympy-11618.traj.json",
+        "sha256": "9b2bb41cfefd716d95ae855d5acbea9a9f247bd2db60211ab4e45c56b9496b06"
+      },
+      {
+        "bytes": 1469,
+        "path": "official-grader/containment.json",
+        "sha256": "69d74f305257955d62df2913f0b65e28ec84f4940d40b6895ed012d9e106ad79"
+      },
+      {
+        "bytes": 4452,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/astropy__astropy-12907/run_instance.log",
+        "sha256": "5a401467fbba288dc40d43926e1721470ce2d94954e9631ebd7b04be9224c0ac"
+      },
+      {
+        "bytes": 504,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/astropy__astropy-12907/patch.diff",
+        "sha256": "7f233cc776d064f8e1d7d39bf0a846434e59d14cc07ac33aab803b7b758ee755"
+      },
+      {
+        "bytes": 2123,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/astropy__astropy-12907/eval.sh",
+        "sha256": "229f462fcbdcae232228507f9491b8538c5aeaeede709c5fc822b586245d9460"
+      },
+      {
+        "bytes": 467013,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/astropy__astropy-12907/test_output.txt",
+        "sha256": "d7d524e2deea122cfa40a7c3aff803ac3444e4f1cdc30aa8662cdbf22a405384"
+      },
+      {
+        "bytes": 2123,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/astropy__astropy-12907/report.json",
+        "sha256": "fe3f3bddc9631279d3babf7270913070d91e9207c3468bd947823aee3e7b1b86"
+      },
+      {
+        "bytes": 143522,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/django__django-10097/run_instance.log",
+        "sha256": "1c5bb18b5d58da230d498a223c11ecca5100ba3f375eb162cfdc074e13e230cd"
+      },
+      {
+        "bytes": 597,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/django__django-10097/patch.diff",
+        "sha256": "f7bcd3300d17c9797ff1be1c81e92fe737cd85fad8cb3491a4bbd62a7acc459c"
+      },
+      {
+        "bytes": 2166,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/django__django-10097/eval.sh",
+        "sha256": "6c1635c7dd7a9f8ad723934c5aaf8c95f8930c1902e76492bd9e3b6015a8c132"
+      },
+      {
+        "bytes": 2821812,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/django__django-10097/test_output.txt",
+        "sha256": "e4e94029648bec77e3b25d67e3741993fee486f2c746574ad00ce8df6f58bba6"
+      },
+      {
+        "bytes": 178154,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/django__django-10097/report.json",
+        "sha256": "698946a05a543dd6f8fe866d1017c138d7ea5a9c3e2be740390dde35272b2776"
+      },
+      {
+        "bytes": 32239,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/matplotlib__matplotlib-13989/run_instance.log",
+        "sha256": "a9591a683e4c0ca43c6526992889810feed80ef2a1bb066cecf09fb1fd86a6f6"
+      },
+      {
+        "bytes": 480,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/matplotlib__matplotlib-13989/patch.diff",
+        "sha256": "da299aaf089064efb91ffbd52a4f7981171fea58c6b3c6727b6eeb2dd46ee769"
+      },
+      {
+        "bytes": 1166,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/matplotlib__matplotlib-13989/eval.sh",
+        "sha256": "50724c4127a83538b94b22313d3b0009dd49073361ffb2b7f4ddfb665ead15da"
+      },
+      {
+        "bytes": 469089,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/matplotlib__matplotlib-13989/test_output.txt",
+        "sha256": "30d3edd569b0b80372f5fa9725055f448e53d6061b37272fef2885ce40ba47e3"
+      },
+      {
+        "bytes": 37811,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/matplotlib__matplotlib-13989/report.json",
+        "sha256": "3c0a469268633c19f2abafda771f811d30a20a1289288a4a21849ee3a9e60843"
+      },
+      {
+        "bytes": 7667,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/scikit-learn__scikit-learn-10297/run_instance.log",
+        "sha256": "577c1bd0706c02962d399c1aeb639e86e7f33c169b96698b89677b7e5e2947b3"
+      },
+      {
+        "bytes": 1551,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/scikit-learn__scikit-learn-10297/patch.diff",
+        "sha256": "619f7f4df05d7fac06f97b2ad1b3dc0b552e70feed3d63d86346ea209ce9c12a"
+      },
+      {
+        "bytes": 2908,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/scikit-learn__scikit-learn-10297/eval.sh",
+        "sha256": "fd3b9040a63ab761b0ce55a57a883a1f86cd34273e871b8740639ff45dd858ae"
+      },
+      {
+        "bytes": 287263,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/scikit-learn__scikit-learn-10297/test_output.txt",
+        "sha256": "1efdd55bad0f19fc63cdf4f9e8d577291acd834b8d7f8951a78f38dd51f8793e"
+      },
+      {
+        "bytes": 3380,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/scikit-learn__scikit-learn-10297/report.json",
+        "sha256": "86ec11cb4757760be7d3e93ea34c7807df48a449a193ee09bd254274d5bbd827"
+      },
+      {
+        "bytes": 4766,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/sympy__sympy-11618/run_instance.log",
+        "sha256": "a6bed037497687b3481f4ac19239984db39dc361fdf67bc209d9fb66098f468e"
+      },
+      {
+        "bytes": 1230,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/sympy__sympy-11618/patch.diff",
+        "sha256": "74050e75ea44d1016abaa84207632d6f154fba20e13d0840f59e2f164c9f6cb8"
+      },
+      {
+        "bytes": 1174,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/sympy__sympy-11618/eval.sh",
+        "sha256": "48d97b2961099fadccbcf8db0ec3f78d96272493c567bd5ca9e51851daaad046"
+      },
+      {
+        "bytes": 103336,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/sympy__sympy-11618/test_output.txt",
+        "sha256": "57ad8774dd876bfc400e0ad97b02de394c456cc0459d4b811c7add1f2e9f7488"
+      },
+      {
+        "bytes": 849,
+        "path": "official-grader/logs/run_evaluation/[QUALIFICATION_FINAL_SWE_RUN]/openai__[QUALIFICATION_FINAL_MODEL_ALIAS]/sympy__sympy-11618/report.json",
+        "sha256": "7485a1551216cd300d021130fe1a02c18beff797442e30a93a62470b77265fd9"
+      },
+      {
+        "bytes": 962,
+        "path": "official-grader/openai__[QUALIFICATION_FINAL_MODEL_ALIAS].[QUALIFICATION_FINAL_SWE_RUN].json",
+        "sha256": "80247ed7fab1b77d6bf6556553b1c80e326bbdceb26f314ab901c594dc106e98"
+      },
+      {
+        "bytes": 713,
+        "path": "paired-image-ids.json",
+        "sha256": "f853e5c17a6ffaa8acb4af8bc75d28913bbdf66b5ffc0074c130c1483033e614"
+      }
+    ],
+    "missing": [],
+    "schema": "anvil-serving.swe-canonical-retention/v1",
+    "source": "work",
+    "state": "retained"
+  },
+  "manifest_reference": {
+    "bytes": 9967,
+    "path": "evidence/swe-canonical/manifest.json",
+    "sha256": "db6a71dba6bbe28eb06c678ca92b72bd9e36071fd9072d7e0ded80637d24c118"
+  },
+  "reused": false,
+  "state": "retained"
+}

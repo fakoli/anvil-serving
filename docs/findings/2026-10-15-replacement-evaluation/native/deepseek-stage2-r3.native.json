@@ -1,0 +1,308 @@
+{
+  "blockers": [],
+  "cleanup": {
+    "ok": true,
+    "state": "removed",
+    "verification_exit_code": 1
+  },
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py"
+      ],
+      "completion_markers": [],
+      "cwd": null,
+      "id": "sm12x-mxfp8-bmm",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py"
+      ],
+      "completion_markers": [
+        "direct read: bit-exact OK",
+        "stream host node: bit-exact OK",
+        "CUDA graph capture + 3 replays: bit-exact OK"
+      ],
+      "cwd": "/opt/dsv41/source/patches/engram_disk",
+      "id": "engram-disk-standalone",
+      "kind": "standalone",
+      "source_paths": [
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py"
+      ],
+      "completion_markers": [
+        "two tables in one graph x20: bit-exact OK",
+        "table removed while the proxy runs: OK"
+      ],
+      "cwd": "/opt/dsv41/source/patches/engram_disk",
+      "id": "engram-disk-spin-standalone",
+      "kind": "standalone",
+      "source_paths": [
+        "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py"
+      ],
+      "completion_markers": [],
+      "cwd": null,
+      "id": "engram-disk-vllm",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py"
+      ],
+      "completion_markers": [],
+      "cwd": "/opt/dsv41/source/patches/exl3_moe",
+      "id": "vllm-registration",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py"
+      ]
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "pytest",
+        "-q",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py",
+        "--deselect",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py::test_bench_decode_bandwidth",
+        "--deselect",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py::test_bench_decode_graph",
+        "--deselect",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py::test_bench_vs_exllamav3",
+        "--deselect",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py::test_bench_vs_coop"
+      ],
+      "completion_markers": [],
+      "cwd": "/opt/dsv41/source/patches/exl3_moe",
+      "id": "exl3-correctness",
+      "kind": "pytest",
+      "source_paths": [
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py",
+        "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py"
+      ]
+    }
+  ],
+  "dry_run": false,
+  "environment": {
+    "EXL3_INT8_GEMV": "0",
+    "EXL3_KERNEL_ARCH": "120",
+    "EXL3_RDMA_AR": "0",
+    "VLLM_PLUGINS": "exl3_moe"
+  },
+  "executed": true,
+  "exit_code": 0,
+  "gpu": {
+    "actual_compute_capability": [
+      12,
+      0
+    ],
+    "compute_capability": [
+      12,
+      0
+    ],
+    "device": {
+      "display_active": "Disabled",
+      "driver": "615.71.09",
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "total_mib": 97887,
+      "used_mib": 0
+    },
+    "idle_baseline_mib": 512
+  },
+  "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+  "image_id": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+  "logs_truncated": false,
+  "observed_at": "2026-10-15T20:25:06.111009+00:00",
+  "ok": false,
+  "resource_containment": {
+    "observed": {
+      "host_config": {
+        "CapDrop": [
+          "ALL"
+        ],
+        "Memory": 25769803776,
+        "MemorySwap": 25769803777,
+        "NanoCpus": 8000000000,
+        "NetworkMode": "none",
+        "PidsLimit": 512,
+        "Privileged": false,
+        "ReadonlyRootfs": true,
+        "SecurityOpt": [
+          "no-new-privileges"
+        ],
+        "Tmpfs": {
+          "/tmp": "rw,nosuid,nodev,exec,size=4g"
+        }
+      },
+      "mounts": [],
+      "ok": true
+    },
+    "requested": {
+      "cpus": 8,
+      "effective_swap": 0,
+      "extra_capabilities": false,
+      "host_mounts": false,
+      "memory_mib": 24576,
+      "network": "none",
+      "tmpfs": "/tmp:4g,exec"
+    }
+  },
+  "runner": {
+    "cgroups": {
+      "cpu.max": "800000 100000",
+      "memory.max": "25769803776",
+      "memory.swap.max": "0"
+    },
+    "commands": [
+      {
+        "argv": [
+          "python3",
+          "-m",
+          "pytest",
+          "-q",
+          "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py",
+          "--junitxml=/tmp/sm12x-mxfp8-bmm.xml",
+          "-o",
+          "xfail_strict=true"
+        ],
+        "collection": {
+          "nodes": [
+            "test_sm12x_mxfp8_bmm.py::test_supported_on_this_gpu",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[1]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[2]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[6]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[8]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[64]",
+            "test_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[512]",
+            "test_sm12x_mxfp8_bmm.py::test_decode_timing"
+          ],
+          "stderr": "",
+          "stdout": "test_sm12x_mxfp8_bmm.py::test_supported_on_this_gpu\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[1]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[2]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[6]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[8]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[64]\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[512]\ntest_sm12x_mxfp8_bmm.py::test_decode_timing\n\n=============================== warnings summary ===============================\n../usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n8 tests collected in 6.03s\n"
+        },
+        "cwd": null,
+        "elapsed_seconds": 22.63422766001895,
+        "executed_modules": {
+          "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py": true
+        },
+        "exit_code": 0,
+        "id": "sm12x-mxfp8-bmm",
+        "state": null,
+        "stderr": "",
+        "stdout": "........                                                                 [100%]\n=============================== warnings summary ===============================\n../usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: 14 warnings\n  /usr/local/lib/python3.12/dist-packages/torch/jit/_script.py:365: DeprecationWarning: `torch.jit.script_method` is deprecated. Please switch to `torch.compile` or `torch.export`.\n    warnings.warn(\n\ntest_sm12x_mxfp8_bmm.py::test_matches_bf16_emulation[1]\n  /usr/local/lib/python3.12/dist-packages/vllm/model_executor/layers/quantization/utils/mxfp8_utils.py:237: UserWarning: Specified kernel cache directory could not be created! This disables kernel caching. Specified directory is /root/.cache/torch/kernels. This warning will appear only once per process. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/cuda/jit_utils.cpp:1504.)\n    descale = torch.exp2(scales.to(torch.float32) - 127.0)\n\n../usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475\n  /usr/local/lib/python3.12/dist-packages/_pytest/cacheprovider.py:475: PytestCacheWarning: could not create cache path /opt/dsv41/source/patches/tests/.pytest_cache/v/cache/nodeids: [Errno 30] Read-only file system: '/opt/dsv41/source/patches/tests/pytest-cache-files-r5b69h11'\n    config.cache.set(\"cache/nodeids\", sorted(self.cached_nodeids))\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n----------------- generated xml file: /tmp/sm12x-mxfp8-bmm.xml -----------------\n8 passed, 16 warnings in 20.63s\n",
+        "test_counts": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 8,
+          "xfails": 0,
+          "xpassed": 0
+        }
+      },
+      {
+        "argv": [
+          "python3",
+          "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py"
+        ],
+        "cwd": "/opt/dsv41/source/patches/engram_disk",
+        "elapsed_seconds": 17.332908215990756,
+        "exit_code": 0,
+        "id": "engram-disk-standalone",
+        "state": null,
+        "stderr": "",
+        "stdout": "direct read: bit-exact OK\nstream host node: bit-exact OK\nCUDA graph capture + 3 replays: bit-exact OK\nread    12 rows: p50 0.059 ms, p90 0.081 ms, max 0.206 ms\nread    48 rows: p50 0.060 ms, p90 0.072 ms, max 0.143 ms\nread   384 rows: p50 0.131 ms, p90 0.142 ms, max 0.155 ms\nread  1024 rows: p50 0.263 ms, p90 0.279 ms, max 17.793 ms\ncache hits 610, misses 298098\n"
+      },
+      {
+        "argv": [
+          "python3",
+          "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py"
+        ],
+        "cwd": "/opt/dsv41/source/patches/engram_disk",
+        "elapsed_seconds": 2650.651728933037,
+        "exit_code": -15,
+        "id": "engram-disk-spin-standalone",
+        "state": "deadline",
+        "stderr": "",
+        "stdout": ""
+      }
+    ],
+    "cuda": {
+      "capability": [
+        12,
+        0
+      ],
+      "device_count": 1
+    },
+    "error": "command failed",
+    "ok": false,
+    "source_hashes": {
+      "/opt/dsv41/source/patches/engram_disk/test_engram_disk.py": "b0429831d8e872aed2b07de48ce3864f2f549b46e13c0d2667d064a900e69be5",
+      "/opt/dsv41/source/patches/engram_disk/test_engram_disk_spin.py": "d137b5d625b175c0dd6344deab2c66d93e612f62cc3ddc37ac5e8ae847f5759f",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_exl3_ref_gpu.py": "8d7e18174813761e2f2034f10ed3be1149b4b437615f4bdda42a92b8e6d0e0d8",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_kernels_gpu.py": "aaaf146fae3c3baade1da2cfb3c3c77bd39d9d8219416cd91c40cf6117ad6928",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_mhc_gpu.py": "ce320bd3c5d9528d1524619b41549b3306fcb7e9291852bbaf609bd64fb65129",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_mrow_gpu.py": "7314c09bc767026c7a49029d23dfe4d63eff32b7970caa8cb82637968eb3ca81",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_router_gpu.py": "00eb344d428e23a61b495a54211d64a693c72fb6e5c4fe39cd3d4342cd8a337c",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_router_vllm_gpu.py": "ec395d3a3a5e4f1cd5aed9b5c5fae0538e3c4ebf2bbcbeb4fdb09e92688437e8",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_smoe_gpu.py": "752203d4749acb330b39f14c1312922b43aa62102a5a611a264698a65c9d60b3",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_sparse_attn_gpu.py": "f4e015cec535ec1f7b32de218cb2b603251093a10c277eff2fac4b28f11c79ec",
+      "/opt/dsv41/source/patches/exl3_moe/tests/test_vllm_registration.py": "ef56682e3fe44c25ed803a72d260493e07188924e6e1bb62a00676fe888293c1",
+      "/opt/dsv41/source/patches/tests/test_engram_disk_vllm.py": "b671520642b4eadfcdf30616713ff36d49716f3e956e314e64fd8001a738026d",
+      "/opt/dsv41/source/patches/tests/test_sm12x_mxfp8_bmm.py": "b1c904eee0b2a73ee5975d898f54e921300b4fc9c0eeb100ed7c7a9de5f2eae8"
+    },
+    "tmp_mount": {
+      "executable": true,
+      "filesystem": "tmpfs",
+      "mount_options": "rw,nosuid,nodev,relatime",
+      "super_options": "rw,size=4194304k,inode64"
+    },
+    "torch_version": "2.13.0+cu130"
+  },
+  "runner_sha256": "7f0acf94f3a1cf25e59982d1fdc7f914454276742756b8a96699ac0c782dbb73",
+  "schema": "anvil-serving.gpu-test-job/v1",
+  "spec_sha256": "cc55a883941cfe1089b3012f303e897f625bcfe02e03f871a5037264132e7774",
+  "timed_out": false
+}

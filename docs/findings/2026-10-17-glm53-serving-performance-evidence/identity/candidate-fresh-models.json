@@ -1,0 +1,30 @@
+{
+  "data": [
+    {
+      "created": 1792240580,
+      "id": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "max_model_len": 327680,
+      "object": "model",
+      "owned_by": "vllm",
+      "parent": null,
+      "permission": [
+        {
+          "allow_create_engine": false,
+          "allow_fine_tuning": false,
+          "allow_logprobs": true,
+          "allow_sampling": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "created": 1792240580,
+          "group": null,
+          "id": "modelperm-a5d6d6bc8e2b69cf",
+          "is_blocking": false,
+          "object": "model_permission",
+          "organization": "*"
+        }
+      ],
+      "root": "/root/.cache/huggingface/hub/models--nvidia--GLM-5.3-Flash-FP4-Local/snapshots/76348ddb2be2e35e39ecfc00e75dc07703f4f3d5"
+    }
+  ],
+  "object": "list"
+}

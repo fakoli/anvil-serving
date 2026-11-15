@@ -195,7 +195,7 @@ never print the resolved config value while checking it.
 The native `mcp.servers` layout and the client's wire protocol are separate
 compatibility gates. The bridge test suite exercises the exact
 `@modelcontextprotocol/sdk` `1.29.0` generation bundled by OpenClaw
-`2026.7.1-2`, plus a modern SDK `2.0.0` client. The controller remains
+`2026.7.1-2`, plus a modern SDK `2.3.0` client. The controller remains
 modern-only in both cases.
 
 The example controller includes Docker-compatible router, serve, voice,

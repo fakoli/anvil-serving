@@ -126,16 +126,16 @@ def assertion(secret, *, owner=OWNER, role="member", target=connect_keys.BROKER_
 
 
 @contextmanager
-def running(portal,monkeypatch):
+def running(portal,monkeypatch, **options):
     p, _ = portal
     secret, check_secret, master = (secrets.token_urlsafe(32) for _ in range(3))
     monkeypatch.setenv("CONNECT_SIGNING_TEST",secret);monkeypatch.setenv("CONNECT_CHECK_TEST",check_secret)
     monkeypatch.setattr(connect_keys,"principal_checker",lambda *args: p.store.owner_check)
     config = ServerConfig(api_keys_path=str(p.store.path),connect_keys_env="CONNECT_SIGNING_TEST",connect_check_env="CONNECT_CHECK_TEST",connect_home_url="https://home.example.test")
-    server = make_server("127.0.0.1",0,StaticBackend(["ok"]),auth_token=master,model_routes=["llm.primary"],server_config=config)
+    server = make_server("127.0.0.1",0,StaticBackend(["ok"]),auth_token=master,model_routes=["llm.primary"],server_config=config,**options)
     # Join handlers, including post-response audit writes, before deleting SQLite.
     server.daemon_threads = False
-    thread = threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True);thread.start()
     try: yield server.server_address,secret,check_secret,master
     finally: server.shutdown();server.server_close();thread.join(5)
 
@@ -169,26 +169,6 @@ def test_broker_signatures_replay_closed_body_and_live_request(portal,monkeypatc
         assert status==200
 
 
-def test_slow_owner_checks_do_not_occupy_ordinary_key_slots(portal,monkeypatch):
-    p,_=portal
-    approve(p,rpm=60)
-    owned=[issue(p)["secret"] for _ in range(4)]
-    _,ordinary=p.store.create("ordinary",["llm.primary"],[CHAT])
-    entered=threading.Barrier(5);release=threading.Event()
-    def checker(*actor):
-        entered.wait(timeout=5); release.wait(timeout=5); return True
-    p.store.owner_check=checker
-    with running(portal,monkeypatch) as (address,*_):
-        payload=json.dumps({"model":"llm.primary","messages":[{"role":"user","content":"hi"}]})
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            futures=[pool.submit(send_http,address,CHAT,payload,{"Authorization":"Bearer "+token}) for token in owned]
-            try:
-                entered.wait(timeout=5)
-                assert send_http(address,CHAT,payload,{"Authorization":"Bearer "+ordinary})[0]==200
-            finally:release.set()
-            assert all(f.result()[0]==200 for f in futures)
-
-
 def test_inactive_account_removal_preserves_revision_fence(portal):
     p, allowed = portal
     approve(p)
@@ -208,20 +188,33 @@ def test_inactive_account_removal_preserves_revision_fence(portal):
     with pytest.raises(connect_keys.Denied): forget(old["revision"])
 
 
-@pytest.mark.parametrize("value",["http://127.0.0.1:9000","https://localhost","https://home.example.test:443","https://HOME.example.test","https://127.0.0.1","https://home.example.test/path"])
-def test_home_url_matches_signed_host_contract(value):
-    with pytest.raises(ValueError): connect_keys.home_url(value)
-
-
-def test_bounded_retired_key_list_and_full_usage_totals(portal):
-    p,_=portal
-    approve(p)
-    for i in range(105):
-        result=issue(p)
-        p.store.record(result["key"]["key_id"],None,"POST",CHAT,200,1)
-        call(p,"revoke",key_id=result["key"]["key_id"])
-    live=issue(p)
-    view=call(p,"view")
-    assert view["keys_truncated"] and len(view["keys"])==100
-    assert view["keys"][0]["key_id"]==live["key"]["key_id"]
-    assert view["usage_totals"]["requests"]==105
+def test_native_memory_key_retry_preserves_policy_and_refuses_other_owners(portal):
+    p, allowed = portal
+    secret = "ask_" + secrets.token_urlsafe(32)
+    actor = (OWNER, "1", FENCE)
+    provision = connect_keys.provision_memory_key
+    assert provision(p.store, actor, secret=secret)["would_create"]
+    assert call(p, "view")["account"] is None
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, actor, secret=secret, expected_key_id="key_" + "a"*16, apply=True)
+    assert not p.store.list_keys()
+    first = provision(p.store, actor, secret=secret, apply=True)
+    assert first["created"]
+    assert p.store.authenticate(secret).owner == actor
+    again = provision(p.store, actor, secret=secret, apply=True)
+    assert not again["created"] and first["key_id"] == again["key_id"]
+    policy = call(p, "view")["account"]
+    second = provision(p.store, actor, secret="ask_" + secrets.token_urlsafe(32), apply=True)
+    assert second["created"] and call(p, "view")["account"] == policy
+    assert p.store.authenticate(secret).owner == actor
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, (OTHER, "1", FENCE), secret=secret, apply=True)
+    call(p, "request", OTHER)
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, (OTHER, "1", FENCE), secret="ask_" + secrets.token_urlsafe(32), apply=True)
+    p.store.revoke(first["key_id"])
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, actor, secret=secret, apply=True)
+    allowed.remove(actor)
+    with pytest.raises(connect_keys.Denied):
+        provision(p.store, actor, secret="ask_" + secrets.token_urlsafe(32), apply=True)

@@ -1,0 +1,101 @@
+{
+  "artifact_roles": [
+    {
+      "files": [
+        "README.md"
+      ],
+      "reason": "Diagnostic packet index, not a complete graph.",
+      "role": "evidence-index",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Original private hashes and derivative hash distinction.",
+      "role": "source-registry",
+      "status": "retained"
+    },
+    {
+      "files": [],
+      "reason": "Full frozen workload not projected because the native graph failed validation; 96-row terminal inventory remains in raw-run-evidence.",
+      "role": "workload-manifest",
+      "status": "missing"
+    },
+    {
+      "files": [],
+      "reason": "Prepared plans remain private; no complete plan projection claimed.",
+      "role": "run-plan",
+      "status": "missing"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Exact source and frozen manifest hashes; private topology omitted. Full configuration reconstruction is absent.",
+      "role": "configuration-and-identity",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "campaign-report.json",
+        "reference-audit.json"
+      ],
+      "reason": "Unmodified native report values and bounded hash audit only; no complete child/telemetry chain claimed.",
+      "role": "raw-run-evidence",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "friction-log.md",
+        "reference-audit.json"
+      ],
+      "reason": "Mismatch dispositions preserved; repair and independent review remain open.",
+      "role": "failures-and-friction",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Retained observations with verified=false; not restoration acceptance.",
+      "role": "restoration",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Incomplete diagnostic; no ranking or promotion.",
+      "role": "decision-summary",
+      "status": "retained"
+    },
+    {
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Bounded diagnostic publication draft, not published.",
+      "role": "publication-summary",
+      "status": "retained"
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "incomplete",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-evaluation-pilot-r7-cancelled",
+    "promotion_authorized": false,
+    "repository_revision": "60c80fa2b10e70939912c7ce184849790c041fd5"
+  },
+  "closed_inventory": true,
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

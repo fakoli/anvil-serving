@@ -30,4 +30,8 @@ class MediaError(Exception):
         return result
 
 
-__all__ = ["MediaError"]
+class MediaSubmissionRefused(MediaError):
+    """The adapter proved that this submission was not enqueued."""
+
+
+__all__ = ["MediaError", "MediaSubmissionRefused"]

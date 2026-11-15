@@ -1,0 +1,145 @@
+{
+  "blocked_cells": 4,
+  "completed_cells": 6,
+  "edit_attempts": 2,
+  "failed": 5,
+  "live_finished": true,
+  "live_started": true,
+  "live_window_seconds_including_cleanup": 2700,
+  "no_ignis_run": true,
+  "oracle_change": false,
+  "passed": 1,
+  "planned_executable_cells": 8,
+  "requested_cells": 12,
+  "rows": [
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "native_grade": false,
+      "public_cell": "cell-1",
+      "reason": "native grade and complete measurement retained",
+      "reasoning_control": "max",
+      "repeat": 1,
+      "status": "completed",
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "reason": "router exposes max only and caller_override=false",
+      "reasoning_control": "lower-supported",
+      "repeat": 1,
+      "status": "blocked",
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "completion_token_limit": 32768,
+      "concurrency": 1,
+      "native_grade": false,
+      "public_cell": "cell-3",
+      "reason": "native grade and complete measurement retained",
+      "reasoning_control": "max",
+      "repeat": 1,
+      "status": "completed",
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "native_grade": false,
+      "public_cell": "cell-2",
+      "reason": "native grade and complete measurement retained",
+      "reasoning_control": "max",
+      "repeat": 1,
+      "status": "completed",
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "reason": "router exposes max only and caller_override=false",
+      "reasoning_control": "lower-supported",
+      "repeat": 1,
+      "status": "blocked",
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "completion_token_limit": 32768,
+      "concurrency": 1,
+      "native_grade": true,
+      "public_cell": "cell-4",
+      "reason": "native grade and complete measurement retained",
+      "reasoning_control": "max",
+      "repeat": 1,
+      "status": "completed",
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "native_grade": null,
+      "public_cell": "cell-8",
+      "reason": "full780s allowance required;575.216s remained; no submission",
+      "reasoning_control": "max",
+      "repeat": 2,
+      "status": "unstarted",
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "reason": "router exposes max only and caller_override=false",
+      "reasoning_control": "lower-supported",
+      "repeat": 2,
+      "status": "blocked",
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "completion_token_limit": 32768,
+      "concurrency": 1,
+      "native_grade": false,
+      "public_cell": "cell-6",
+      "reason": "native grade and complete measurement retained",
+      "reasoning_control": "max",
+      "repeat": 2,
+      "status": "completed",
+      "task": "go/exercises/practice/alphametics"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "native_grade": null,
+      "public_cell": "cell-7",
+      "reason": "full780s allowance required;575.216s remained; no submission",
+      "reasoning_control": "max",
+      "repeat": 2,
+      "status": "unstarted",
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "completion_token_limit": 16384,
+      "concurrency": 1,
+      "reason": "router exposes max only and caller_override=false",
+      "reasoning_control": "lower-supported",
+      "repeat": 2,
+      "status": "blocked",
+      "task": "rust/exercises/practice/accumulate"
+    },
+    {
+      "completion_token_limit": 32768,
+      "concurrency": 1,
+      "native_grade": false,
+      "public_cell": "cell-5",
+      "reason": "native grade and complete measurement retained",
+      "reasoning_control": "max",
+      "repeat": 2,
+      "status": "completed",
+      "task": "rust/exercises/practice/accumulate"
+    }
+  ],
+  "sampling": {
+    "temperature": 0.6,
+    "top_p": 0.95
+  },
+  "unstarted_cells": 2
+}

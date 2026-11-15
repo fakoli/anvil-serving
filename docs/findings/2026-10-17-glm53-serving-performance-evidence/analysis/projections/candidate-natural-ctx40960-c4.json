@@ -1,0 +1,1365 @@
+{
+  "arm": "candidate",
+  "cell_id": "candidate-natural-ctx40960-c4",
+  "configured_target_context_tokens": 40960,
+  "engine_phase_histogram_deltas": {
+    "request_decode": {
+      "buckets": [
+        {
+          "count": 0.0,
+          "le": "0.3"
+        },
+        {
+          "count": 0.0,
+          "le": "0.5"
+        },
+        {
+          "count": 0.0,
+          "le": "0.8"
+        },
+        {
+          "count": 0.0,
+          "le": "1.0"
+        },
+        {
+          "count": 1.0,
+          "le": "1.5"
+        },
+        {
+          "count": 1.0,
+          "le": "2.0"
+        },
+        {
+          "count": 2.0,
+          "le": "2.5"
+        },
+        {
+          "count": 8.0,
+          "le": "5.0"
+        },
+        {
+          "count": 8.0,
+          "le": "10.0"
+        },
+        {
+          "count": 8.0,
+          "le": "15.0"
+        },
+        {
+          "count": 8.0,
+          "le": "20.0"
+        },
+        {
+          "count": 8.0,
+          "le": "30.0"
+        },
+        {
+          "count": 8.0,
+          "le": "40.0"
+        },
+        {
+          "count": 8.0,
+          "le": "50.0"
+        },
+        {
+          "count": 8.0,
+          "le": "60.0"
+        },
+        {
+          "count": 8.0,
+          "le": "120.0"
+        },
+        {
+          "count": 8.0,
+          "le": "240.0"
+        },
+        {
+          "count": 8.0,
+          "le": "480.0"
+        },
+        {
+          "count": 8.0,
+          "le": "960.0"
+        },
+        {
+          "count": 8.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 8.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 8.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 8.0,
+      "sum": 23.047822524793446
+    },
+    "request_prefill": {
+      "buckets": [
+        {
+          "count": 0.0,
+          "le": "0.3"
+        },
+        {
+          "count": 0.0,
+          "le": "0.5"
+        },
+        {
+          "count": 0.0,
+          "le": "0.8"
+        },
+        {
+          "count": 0.0,
+          "le": "1.0"
+        },
+        {
+          "count": 0.0,
+          "le": "1.5"
+        },
+        {
+          "count": 0.0,
+          "le": "2.0"
+        },
+        {
+          "count": 0.0,
+          "le": "2.5"
+        },
+        {
+          "count": 1.0,
+          "le": "5.0"
+        },
+        {
+          "count": 8.0,
+          "le": "10.0"
+        },
+        {
+          "count": 8.0,
+          "le": "15.0"
+        },
+        {
+          "count": 8.0,
+          "le": "20.0"
+        },
+        {
+          "count": 8.0,
+          "le": "30.0"
+        },
+        {
+          "count": 8.0,
+          "le": "40.0"
+        },
+        {
+          "count": 8.0,
+          "le": "50.0"
+        },
+        {
+          "count": 8.0,
+          "le": "60.0"
+        },
+        {
+          "count": 8.0,
+          "le": "120.0"
+        },
+        {
+          "count": 8.0,
+          "le": "240.0"
+        },
+        {
+          "count": 8.0,
+          "le": "480.0"
+        },
+        {
+          "count": 8.0,
+          "le": "960.0"
+        },
+        {
+          "count": 8.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 8.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 8.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 8.0,
+      "sum": 51.69671587110497
+    },
+    "request_queue": {
+      "buckets": [
+        {
+          "count": 1.0,
+          "le": "0.3"
+        },
+        {
+          "count": 1.0,
+          "le": "0.5"
+        },
+        {
+          "count": 1.0,
+          "le": "0.8"
+        },
+        {
+          "count": 1.0,
+          "le": "1.0"
+        },
+        {
+          "count": 1.0,
+          "le": "1.5"
+        },
+        {
+          "count": 1.0,
+          "le": "2.0"
+        },
+        {
+          "count": 1.0,
+          "le": "2.5"
+        },
+        {
+          "count": 2.0,
+          "le": "5.0"
+        },
+        {
+          "count": 4.0,
+          "le": "10.0"
+        },
+        {
+          "count": 8.0,
+          "le": "15.0"
+        },
+        {
+          "count": 8.0,
+          "le": "20.0"
+        },
+        {
+          "count": 8.0,
+          "le": "30.0"
+        },
+        {
+          "count": 8.0,
+          "le": "40.0"
+        },
+        {
+          "count": 8.0,
+          "le": "50.0"
+        },
+        {
+          "count": 8.0,
+          "le": "60.0"
+        },
+        {
+          "count": 8.0,
+          "le": "120.0"
+        },
+        {
+          "count": 8.0,
+          "le": "240.0"
+        },
+        {
+          "count": 8.0,
+          "le": "480.0"
+        },
+        {
+          "count": 8.0,
+          "le": "960.0"
+        },
+        {
+          "count": 8.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 8.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 8.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 8.0,
+      "sum": 62.92980883398559
+    }
+  },
+  "engine_phase_histogram_evidence": [
+    {
+      "bytes": 81233,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+      "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+    },
+    {
+      "bytes": 81270,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+      "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+    }
+  ],
+  "engine_sampling": {
+    "active_max": 2,
+    "kv_usage_fraction_max": 0.1644859813084112,
+    "occupancy_definition": "sampled running plus waiting; active_max counts running only",
+    "occupancy_max": 4,
+    "queued_max": 3,
+    "sampled_lower_bound": true,
+    "samples": 87,
+    "waiting_by_reason_max": {
+      "capacity": 3.0,
+      "deferred": 0.0
+    }
+  },
+  "frozen_plan": {
+    "bytes": 10864,
+    "path": "plans/comparison-plan.json",
+    "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+  },
+  "kv_startup_observation": {
+    "accounting": "engine-reported KV reservation from fixed configuration",
+    "per_gpu_bytes_rounded": 7645041786,
+    "per_gpu_gib_rounded": 7.12,
+    "physical_total_bytes": 15290083572,
+    "precision": "startup log rounds to GiB",
+    "workers": 2
+  },
+  "measurement": {
+    "bytes": 777,
+    "path": "analysis/receipts/candidate-natural-ctx40960-c4.json",
+    "sha256": "9feb37496d8105cc506fe9f5c65375e1323fc718e01661355c35e5bb5baf717c"
+  },
+  "memory_sampling": {
+    "failure": {
+      "cgroup_events_delta": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "ooms": 0
+    },
+    "gpu": {
+      "accounting": "sampled nvidia-smi per-device; reported free preserved",
+      "max_utilization_percent": 100,
+      "min_free_bytes": 938475520,
+      "peak_used_bytes": 101132009472,
+      "samples_per_device": 23
+    },
+    "host": {
+      "accounting": "host MemAvailable plus cgroup status",
+      "cgroup_current_bytes": 43191930880,
+      "cgroup_lifetime_peak_bytes": 53049847808,
+      "cgroup_limit_bytes": 55834574848,
+      "cgroup_sampled_peak_bytes": 43194183680,
+      "host_available_bytes": 60831399936
+    }
+  },
+  "metrics": {
+    "admission_status": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "observation": {
+        "ooms": 0,
+        "preemptions": 0,
+        "refused_requests": 0
+      },
+      "status": "measured"
+    },
+    "completion_tokens": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 297.0,
+        "p95": 453.0,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "concurrency": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "observation": {
+        "client_max": 4,
+        "engine_max": 2,
+        "requested": 4
+      },
+      "status": "measured"
+    },
+    "context_tokens": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "status": "measured",
+      "value": 31601.0
+    },
+    "decode_tok_s": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 110.29645076986883,
+        "p95": 190.37520324371866,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "e2e_ms": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 18888.943376019597,
+        "p95": 22466.961150057614,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "effective_prefill_tok_s": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 1784.1254450388271,
+        "p95": 8672.795451314514,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "gpu_memory": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "observation": {
+        "accounting": "sampled nvidia-smi per-device; reported free preserved",
+        "min_free_bytes": 938475520,
+        "peak_used_bytes": 101132009472
+      },
+      "status": "measured"
+    },
+    "host_memory": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "observation": {
+        "accounting": "host MemAvailable plus cgroup status",
+        "cgroup_current_bytes": 43191930880,
+        "cgroup_limit_bytes": 55834574848,
+        "cgroup_peak_bytes": 43194183680,
+        "host_available_bytes": 60831399936
+      },
+      "status": "measured"
+    },
+    "kv_cache_bytes": {
+      "evidence": [
+        {
+          "bytes": 71176,
+          "path": "logs/candidate-startup.log",
+          "sha256": "1d4a8e30ea3ad757b50717f2729ffdabd2b2b64243587188424e58d47711c45f"
+        },
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "status": "measured",
+      "value": 15290083572
+    },
+    "kv_cache_tokens": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "status": "measured",
+      "value": 1330579
+    },
+    "oom_status": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "status": "measured",
+      "value": 0
+    },
+    "prompt_tokens": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 31600.0,
+        "p95": 31601.0,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "throughput_tok_s": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "status": "measured",
+      "value": 63.14338751729282
+    },
+    "time_to_first_output_ms": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 17090.63128195703,
+        "p95": 19226.687913993374,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "tpot_ms": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 8.987547902635555,
+        "p95": 9.654079303157168,
+        "samples": 8
+      },
+      "status": "measured"
+    },
+    "ttft_ms": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "observation": {
+        "p50": 18595.0216880301,
+        "p95": 22190.313988015987,
+        "samples": 8
+      },
+      "status": "measured"
+    }
+  },
+  "native": {
+    "bytes": 21687,
+    "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+    "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+  },
+  "non_admission_failure_counts": {},
+  "notes": [
+    "engine_reported_full_context_concurrency_estimate=4.0606060606060606"
+  ],
+  "profile": "serving-comparison/v1",
+  "schema": "serving-cell-projection/v2",
+  "supplementals": {
+    "engine_phase_histograms": {
+      "evidence": [
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "request_decode": {
+          "buckets": [
+            {
+              "count": 0.0,
+              "le": "0.3"
+            },
+            {
+              "count": 0.0,
+              "le": "0.5"
+            },
+            {
+              "count": 0.0,
+              "le": "0.8"
+            },
+            {
+              "count": 0.0,
+              "le": "1.0"
+            },
+            {
+              "count": 1.0,
+              "le": "1.5"
+            },
+            {
+              "count": 1.0,
+              "le": "2.0"
+            },
+            {
+              "count": 2.0,
+              "le": "2.5"
+            },
+            {
+              "count": 8.0,
+              "le": "5.0"
+            },
+            {
+              "count": 8.0,
+              "le": "10.0"
+            },
+            {
+              "count": 8.0,
+              "le": "15.0"
+            },
+            {
+              "count": 8.0,
+              "le": "20.0"
+            },
+            {
+              "count": 8.0,
+              "le": "30.0"
+            },
+            {
+              "count": 8.0,
+              "le": "40.0"
+            },
+            {
+              "count": 8.0,
+              "le": "50.0"
+            },
+            {
+              "count": 8.0,
+              "le": "60.0"
+            },
+            {
+              "count": 8.0,
+              "le": "120.0"
+            },
+            {
+              "count": 8.0,
+              "le": "240.0"
+            },
+            {
+              "count": 8.0,
+              "le": "480.0"
+            },
+            {
+              "count": 8.0,
+              "le": "960.0"
+            },
+            {
+              "count": 8.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 8.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 8.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 8.0,
+          "sum": 23.047822524793446
+        },
+        "request_prefill": {
+          "buckets": [
+            {
+              "count": 0.0,
+              "le": "0.3"
+            },
+            {
+              "count": 0.0,
+              "le": "0.5"
+            },
+            {
+              "count": 0.0,
+              "le": "0.8"
+            },
+            {
+              "count": 0.0,
+              "le": "1.0"
+            },
+            {
+              "count": 0.0,
+              "le": "1.5"
+            },
+            {
+              "count": 0.0,
+              "le": "2.0"
+            },
+            {
+              "count": 0.0,
+              "le": "2.5"
+            },
+            {
+              "count": 1.0,
+              "le": "5.0"
+            },
+            {
+              "count": 8.0,
+              "le": "10.0"
+            },
+            {
+              "count": 8.0,
+              "le": "15.0"
+            },
+            {
+              "count": 8.0,
+              "le": "20.0"
+            },
+            {
+              "count": 8.0,
+              "le": "30.0"
+            },
+            {
+              "count": 8.0,
+              "le": "40.0"
+            },
+            {
+              "count": 8.0,
+              "le": "50.0"
+            },
+            {
+              "count": 8.0,
+              "le": "60.0"
+            },
+            {
+              "count": 8.0,
+              "le": "120.0"
+            },
+            {
+              "count": 8.0,
+              "le": "240.0"
+            },
+            {
+              "count": 8.0,
+              "le": "480.0"
+            },
+            {
+              "count": 8.0,
+              "le": "960.0"
+            },
+            {
+              "count": 8.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 8.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 8.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 8.0,
+          "sum": 51.69671587110497
+        },
+        "request_queue": {
+          "buckets": [
+            {
+              "count": 1.0,
+              "le": "0.3"
+            },
+            {
+              "count": 1.0,
+              "le": "0.5"
+            },
+            {
+              "count": 1.0,
+              "le": "0.8"
+            },
+            {
+              "count": 1.0,
+              "le": "1.0"
+            },
+            {
+              "count": 1.0,
+              "le": "1.5"
+            },
+            {
+              "count": 1.0,
+              "le": "2.0"
+            },
+            {
+              "count": 1.0,
+              "le": "2.5"
+            },
+            {
+              "count": 2.0,
+              "le": "5.0"
+            },
+            {
+              "count": 4.0,
+              "le": "10.0"
+            },
+            {
+              "count": 8.0,
+              "le": "15.0"
+            },
+            {
+              "count": 8.0,
+              "le": "20.0"
+            },
+            {
+              "count": 8.0,
+              "le": "30.0"
+            },
+            {
+              "count": 8.0,
+              "le": "40.0"
+            },
+            {
+              "count": 8.0,
+              "le": "50.0"
+            },
+            {
+              "count": 8.0,
+              "le": "60.0"
+            },
+            {
+              "count": 8.0,
+              "le": "120.0"
+            },
+            {
+              "count": 8.0,
+              "le": "240.0"
+            },
+            {
+              "count": 8.0,
+              "le": "480.0"
+            },
+            {
+              "count": 8.0,
+              "le": "960.0"
+            },
+            {
+              "count": 8.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 8.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 8.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 8.0,
+          "sum": 62.92980883398559
+        }
+      }
+    },
+    "queue_waiting_by_reason": {
+      "evidence": [
+        {
+          "bytes": 81270,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+          "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+        },
+        {
+          "bytes": 5109,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+          "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+        },
+        {
+          "bytes": 81233,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+          "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+        },
+        {
+          "bytes": 5105,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+          "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+        },
+        {
+          "bytes": 2474,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+          "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+        },
+        {
+          "bytes": 550373,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+          "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+        },
+        {
+          "bytes": 6784,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+          "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+        },
+        {
+          "bytes": 3352,
+          "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+          "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "capacity": 3.0,
+        "deferred": 0.0
+      }
+    },
+    "request_identity": {
+      "evidence": [
+        {
+          "bytes": 21687,
+          "path": "native/candidate/candidate-natural-ctx40960-c4.json",
+          "sha256": "d4e5f5bee9b12c38423d86a763089725700760b28f364045afce6ce1ea99e852"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "context_seed": 482014,
+        "namespace": "capacity-v1:seed-request-index",
+        "prompt_tokens_ordered": [
+          31600,
+          31600,
+          31599,
+          31600,
+          31600,
+          31601,
+          31600,
+          31601
+        ],
+        "request_canaries": [
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00000",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00001",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00002",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00003",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00004",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00005",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00006",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_482014_00007",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          }
+        ],
+        "request_indices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "wire_prompt_proof": "not retained; deterministic reconstruction is not transmitted-byte proof"
+      }
+    },
+    "runtime_model_load_memory": {
+      "evidence": [
+        {
+          "bytes": 71176,
+          "path": "logs/candidate-startup.log",
+          "sha256": "1d4a8e30ea3ad757b50717f2729ffdabd2b2b64243587188424e58d47711c45f"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "accounting": "engine-reported rounded runtime model-load memory; not pure checkpoint weights",
+        "per_worker_gib_rounded": 82.73,
+        "physical_total_bytes": 177661322198,
+        "workers": 2
+      }
+    }
+  },
+  "telemetry": {
+    "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json": {
+      "bytes": 81270,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-metrics.json",
+      "sha256": "a418babb65fa6640a7239c552d55fc1d78eb629bbda83251ea05a229dd05211c"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json": {
+      "bytes": 5109,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/after-slow.json",
+      "sha256": "543ce8b37a555c1ad571396ed0dd37835c7992309639966642149b242b008482"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json": {
+      "bytes": 81233,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-metrics.json",
+      "sha256": "f8a9407b681738b32fd059a052d4dcde2379c2580dc8afcc0deb03619f16731f"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json": {
+      "bytes": 5105,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/before-slow.json",
+      "sha256": "e70c524d6e5abe24a1afc5e8b52e6baf66b247d9cf386576ff76ea9cec0b5734"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json": {
+      "bytes": 2474,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/cell-summary.json",
+      "sha256": "e64e747caf50f6bf61693f0765bf4411ef8c57fb408023a105f2723181e20043"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl": {
+      "bytes": 550373,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/engine-metrics.jsonl.gz",
+      "sha256": "55a866ee8cc3352e9dabde29b3ab621b36ba59cee4bf489f93916e0f6cd8a788"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl": {
+      "bytes": 6784,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/settle-metrics.jsonl.gz",
+      "sha256": "4f7784c8fac86f3d6e1bb5d0bbe58fa0ea6c0baed20fead78db6b252ea9510c6"
+    },
+    "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl": {
+      "bytes": 3352,
+      "path": "telemetry/candidate/candidate-natural-ctx40960-c4/slow.jsonl.gz",
+      "sha256": "8104b45e71b9323093abe6714a2d32b4b853690c1b0a1803967ee4143993153a"
+    }
+  },
+  "unavailable": []
+}

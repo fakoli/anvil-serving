@@ -1,0 +1,19 @@
+{
+  "leaf_transforms": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "container_id": "redacted:sha256 of original ID",
+    "history_and_tool_arrays": "original list length and item shapes retained; confidential nested string values replaced",
+    "nested_tool_argument_string_leaves": "empty string; mapping/list shape and non-string scalar values retained",
+    "private_paths": "empty string",
+    "raw_text_fields": "empty string",
+    "response_bearing_detail_fields": "empty string",
+    "runtime_alias": "glm53-flash-sglang-scout"
+  },
+  "private_originals": "Retained outside this repository; each projection source SHA-256 is recorded in sglang-scout-source-ledger.json.",
+  "projection_contract": "Each native file is a schema-preserving public projection: all original mapping/list paths, list lengths, and scalar JSON types are retained. Confidential string values are replaced by empty strings or public-safe placeholders; confidential list items are recursively sanitized in place. No raw model output, prompt, reasoning excerpt, tool argument, response-bearing detail, private endpoint, operator path, host identity, GPU UUID, container name, or raw container ID is published.",
+  "review_correction": "SWE terminal projection retains public-safe reasoning effort, isolation network mode, and promotion-boundary string values; no raw trajectory or private identity is retained.",
+  "schema": "anvil-serving.sanitized-evidence-provenance/v1",
+  "scope": "Ten SGLang scout native projections listed in sglang-scout-source-ledger.json, plus that ledger and sglang-scout-public-configuration.json.",
+  "served_identity_binding": "sglang-scout-public-configuration.json binds glm53-flash-sglang-scout to public-safe repository, revision, image digest, recipe and registry digests, engine, quantization, TP, context, configured resource policy, and hardware facts.",
+  "status": "terminal scout projection; final restoration and publication remain separate"
+}

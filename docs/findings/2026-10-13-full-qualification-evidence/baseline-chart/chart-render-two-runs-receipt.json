@@ -1,0 +1,40 @@
+{
+  "status": "staging-only",
+  "observed_at": "2026-10-14T04:55:48.860764+00:00",
+  "renderer": "skills/anvil-serving-benchmark-docs/scripts/plot_benchmark_matrix.py",
+  "manifest_sha256": "bd708c0487050626069f3a165a5f7ad4702c64e92977d4ace387756cc4888cf5",
+  "deterministic_twice": true,
+  "runs": [
+    {
+      "run": 1,
+      "files": [
+        {
+          "path": "baseline-capacity-graph-data.json",
+          "sha256": "6a51d015053ee68852508e9818536062898d354c3c9ba9a6259fb5bfbc90f154",
+          "bytes": 10024
+        },
+        {
+          "path": "baseline-capacity-matrix.svg",
+          "sha256": "73ca0e29702e0c55a5d829019130655c83a83bb470a92f4dba332d3428e77512",
+          "bytes": 14870
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "files": [
+        {
+          "path": "baseline-capacity-graph-data.json",
+          "sha256": "6a51d015053ee68852508e9818536062898d354c3c9ba9a6259fb5bfbc90f154",
+          "bytes": 10024
+        },
+        {
+          "path": "baseline-capacity-matrix.svg",
+          "sha256": "73ca0e29702e0c55a5d829019130655c83a83bb470a92f4dba332d3428e77512",
+          "bytes": 14870
+        }
+      ]
+    }
+  ],
+  "limits": "Baseline small-N descriptive capacity only; target construction labels distinct from actual prompt counts; no challenger ranking."
+}

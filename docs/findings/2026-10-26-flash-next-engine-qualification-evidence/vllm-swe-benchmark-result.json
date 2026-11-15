@@ -1,0 +1,171 @@
+{
+  "created_at": "2026-10-26T16:01:05.024672Z",
+  "failure": {
+    "class": "resource_exhaustion",
+    "code": "budget_exhausted",
+    "message": "benchmark suite did not complete"
+  },
+  "partial": true,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "ANVIL_EVALUATION_TOKEN",
+      "base_url": "http://127.0.0.1:8000/v1",
+      "model": "llm.evaluation.vllm"
+    },
+    "finished_at": "2026-10-26T16:01:05.024547Z",
+    "started_at": "2026-10-26T15:30:59.035776Z",
+    "submitted_at": "2026-10-26T14:58:41.952056+00:00",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "failed",
+      "created_at": "2026-10-26T16:01:05.014444Z",
+      "evidence_kind": "measured",
+      "failure": {
+        "class": "resource_exhaustion",
+        "code": "budget_exhausted",
+        "message": "benchmark suite did not complete"
+      },
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+          "gpu_uuids": [
+            "[REDACTED_PUBLIC_HARDWARE_ID]"
+          ]
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "id": "sha256:bc48d33ee167fb7675a59889fe0a7fea539bc6700c53cada89284d594a754b54"
+        },
+        "model": {
+          "repository": "local-inference-lab/Qwen3.8-Flash-Next-NVFP4-MXFP8-CSF-QAD",
+          "revision": "dc5b8ab2fa14bc4fecd6886273b7ebc6095662e2"
+        },
+        "runtime": {
+          "engine": "vllm-karmic-kraken-beta-20261020",
+          "engine_full_source_revision": "unknown",
+          "engine_version_observed": "v0.1.dev21836+g6d66eed35",
+          "publisher_source_revision": "8bb0967ca1170f6e77c5bfdefcbeb85ec0c9a868",
+          "recipe_sha256": "58c64c609c50647c3a00b08baf1256f076a0b90cab6bbdf7cb98e4efc8254dff"
+        },
+        "served_model": {
+          "configured_context_tokens": 262144,
+          "id": "qwen38-flash-next-vllm-qad-tp1-c16-262k-mtp3",
+          "router_alias": "llm.evaluation.vllm"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "evaluation-platform",
+        "profile": "scout",
+        "run_id": "vllmqad-r2-swe-normal-r1-20261026",
+        "spec_sha256": "b8adf997e9999fa3ae7177bcd9b02b6fbd79bac4287b3b5f324e54cc0e68a1e8",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 11057,
+              "path": "evidence/0-assets.json",
+              "sha256": "3ebd03e4e436fe88a9c2f85250e016acb681650fcae69b91d08df9b90bf3665d"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2209,
+              "path": "evidence/0-preflight.json",
+              "sha256": "f1a826cbd6b45fe1be4850b2116a636a3f618dcc5b23a436ea98eaf3de8ebb33"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 7186,
+              "path": "evidence/0-swe-canonical-retention.json",
+              "sha256": "b1785b9a16156778f38ecb67eaa8fcee9dd3d1b9c5bbc53e74a67c959a91ee08"
+            }
+          ],
+          "name": "swe_canonical_retention",
+          "sequence": 2,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 674504,
+              "path": "evidence/2-swe.json",
+              "sha256": "c6fc71f2c1509f5e2a9155c41c81e570579775ad43c46a1460b8286c1e5e73dc"
+            }
+          ],
+          "name": "swe",
+          "sequence": 3,
+          "status": "failed"
+        }
+      ],
+      "summary": {
+        "attempted": true,
+        "completed": false
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "evaluation-platform",
+    "profile": "scout",
+    "run_id": "vllmqad-r2-swe-normal-r1-20261026",
+    "spec_sha256": "b8adf997e9999fa3ae7177bcd9b02b6fbd79bac4287b3b5f324e54cc0e68a1e8",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "failed"
+}

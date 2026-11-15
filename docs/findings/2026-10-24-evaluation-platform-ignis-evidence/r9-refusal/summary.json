@@ -1,0 +1,133 @@
+{
+  "alias_transition_performed": false,
+  "assembled_after_refusal": true,
+  "assembled_at": "2026-10-25T07:53:17.405165+00:00",
+  "candidate_created": false,
+  "candidate_requests": 0,
+  "comparison_complete": false,
+  "complete": false,
+  "configured": {
+    "host_memory_reserve_mib": 16384,
+    "memory_limit_mib": 53248,
+    "memory_swap_limit_mib": 53248,
+    "required_available_bytes": 73014444032
+  },
+  "decision": "no-promotion; configuration admission refused",
+  "final_restoration_acceptance_verified": false,
+  "interim_restoration": {
+    "checks": [
+      "smoke",
+      "json",
+      "tools"
+    ],
+    "failed_checks": 0,
+    "passed_checks": 6,
+    "tool_requests": 4
+  },
+  "jobs": {
+    "attempted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    }
+  },
+  "limits": [
+    "All 48 native rows remain planned, not cancelled or failed jobs. Admission refusal is a configuration/host-envelope result, not a model quality failure.",
+    "No native campaign execution, request-level model result, telemetry closure or candidate peak memory is present.",
+    "The later memory snapshot is not the precise admission-time availability.",
+    "Private original hashes and public derivative hashes identify different bytes; this packet does not revalidate the complete native graph.",
+    "Exact packet independent review, publication matrix and whole-experiment size admission remain pending.",
+    "Interim reload and bounded routed checks passed; full typed long-context preflight and real Pi acceptance remain pending after the final successor attempt."
+  ],
+  "manifest_sha256": "cbdb6d5994b0cff745287858328280d4428a5294c4ef474e0a96fee5196912cf",
+  "packet_kind": "pre-create admission refusal; unexecuted campaign",
+  "promoted": false,
+  "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+  "restoration_verification_scope": "interim exact recipe and bounded routed correctness",
+  "restoration_verified": true,
+  "samples": {
+    "attempted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    }
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+  "timing": {
+    "active_wall_seconds": null,
+    "child_active_wall_seconds": null,
+    "known_active_wall_seconds": null,
+    "observed_job_overlap": null,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 0,
+    "unknown_intervals": 0
+  }
+}

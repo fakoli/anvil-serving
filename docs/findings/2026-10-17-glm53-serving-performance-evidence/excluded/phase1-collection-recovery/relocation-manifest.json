@@ -1,0 +1,221 @@
+{
+  "files": [
+    {
+      "original": "native/baseline/preflight.json",
+      "preserved": "excluded/phase1-collection-recovery/native/baseline/preflight.json",
+      "sha256": "f8865a3193c4d0e93e5cc83c22f7e952bd54bccc07ff3d3d783b15920bbf07ca"
+    },
+    {
+      "original": "native/baseline/baseline-warmup-ctx10240-c1.json",
+      "preserved": "excluded/phase1-collection-recovery/native/baseline/baseline-warmup-ctx10240-c1.json",
+      "sha256": "cce2a0b87718d24427cfca60fb75a2507b9ff0f230d6f2aeef46de8a80f72d12"
+    },
+    {
+      "original": "native/baseline/baseline-warmup-ctx163840-c1.json",
+      "preserved": "excluded/phase1-collection-recovery/native/baseline/baseline-warmup-ctx163840-c1.json",
+      "sha256": "5fda6abeed5058794b8e47eca85e9e1cffedc61613d644b263cb4c22a1c6d0e4"
+    },
+    {
+      "original": "native/baseline/baseline-natural-ctx10240-c1.json",
+      "preserved": "excluded/phase1-collection-recovery/native/baseline/baseline-natural-ctx10240-c1.json",
+      "sha256": "103b74c9e25ff0e184f3751e5a80927569420d0fdb125d7a4548f973d453bd11"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/before-metrics.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-metrics.json",
+      "sha256": "96eeabb65bdb1687289cc6dd82bc2aaf7f4c3b7dc33d4478e1a543004cab61e0"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/before-gpus.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-gpus.json",
+      "sha256": "4761758daa44dca4a1c44b9978d299eab6283f93b561cf4465f14f3b6df56f5d"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/before-cgroup.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/before-cgroup.json",
+      "sha256": "0698715fe8dd27497d363eaf444974dc0eb17c36909ba5026665f6e5a93ef778"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/engine-metrics.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/engine-metrics.jsonl",
+      "sha256": "8a1bcc3ebf605bc408dda478a7760d7e7ffb91ef10311dbaeb54c8be3d05d979"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/gpu.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/gpu.jsonl",
+      "sha256": "4c98ed7fe748657f51d228facac379c071c70f529667494735d79bc21f99b567"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/cgroup.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/cgroup.jsonl",
+      "sha256": "a3079788cbbf13e58ff1386e20c935d39fdde0c75f21e29f77cf1c63444d5e5f"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/after-metrics.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-metrics.json",
+      "sha256": "5a65ed472197cb3bb15d354b84a4107cd3a6b4f0227f3c2e1c1f75a105c55a41"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/after-gpus.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-gpus.json",
+      "sha256": "344a2195b89fe0e617ebb3fce747ad738603888f7219dd379bd2f088c8fa778f"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/after-cgroup.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/after-cgroup.json",
+      "sha256": "65d3e5871c103b04ed445f1712307dcb877d672860f4a12f9304e25d858c99a2"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx10240-c1/cell-summary.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx10240-c1/cell-summary.json",
+      "sha256": "4e14c360dd29c182fc15318ba05de8db13e63312b4b85b865bd1b488aef0807c"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/before-metrics.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-metrics.json",
+      "sha256": "7e71c6f45046c9edb5d0943b5c9c298aae24abe7a3443419f181d3ef2f0f9bfc"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/before-gpus.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-gpus.json",
+      "sha256": "6a0d121f6d0c4241d6b4d79014b606257a328ae8567c13f9a2b7e0dd07c15c05"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/before-cgroup.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/before-cgroup.json",
+      "sha256": "726a245a90e7dd64570b37a440393f5afafb5c87f817cc8e74b0c5a7a4a23d3f"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/engine-metrics.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/engine-metrics.jsonl",
+      "sha256": "1705f26f1681d94dec97175bf2ab13df5a2c536c20707511ce9181670375f21b"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/gpu.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/gpu.jsonl",
+      "sha256": "6fcfa6e8542d443bc37e68655478d3bd9db9ce1a200be25b848f591255e471eb"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/cgroup.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/cgroup.jsonl",
+      "sha256": "d37085317233a009030c29f9020cd9a164d5de173ecf2c713c9c9e5878d4cc40"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/after-metrics.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-metrics.json",
+      "sha256": "ee55d3bbfdf242dc24cd9e8c06c70bc380f2172f6426ca81feea8ca7394c2822"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/after-gpus.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-gpus.json",
+      "sha256": "588592381d99520915087909e9588fd4cac4e301aa04f35ef22419c53f2c8868"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/after-cgroup.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/after-cgroup.json",
+      "sha256": "487941e03cfcd10483160560151c539f4c199bdb963d6c07090aacbf89394843"
+    },
+    {
+      "original": "telemetry/baseline/baseline-warmup-ctx163840-c1/cell-summary.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-warmup-ctx163840-c1/cell-summary.json",
+      "sha256": "0cce808df2ff06986ea704871511a0c4a69a17bbad114eec1fcb0e873ea8e763"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/before-metrics.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/before-metrics.json",
+      "sha256": "6a0b3734a0c622ed6961d011a8d931862f020e5f9db710b21af7a17171dc1d6a"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/before-slow.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/before-slow.json",
+      "sha256": "0ba6761e4ea5f7fcd768279b810c8f7e59a1fc83629b6ef3b6e37884aa832392"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/engine-metrics.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/engine-metrics.jsonl",
+      "sha256": "ffc3dbab7640e655a1b2803872fda47acf6cc35ecf0163288132e363456b4843"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/slow.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/slow.jsonl",
+      "sha256": "9514ccb61d7c4890d21a48e1345344aae7ce56906a4a367d70088f94014ef153"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/after-metrics.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/after-metrics.json",
+      "sha256": "65ef3b8e72cf7158b90052a3745ffbddd55c3534aa15e56d1895f3c7d4d95343"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/after-slow.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/after-slow.json",
+      "sha256": "f5f6494f04cdc29a352c3264475a33c9ef45f93b7cb97338545a38e710e84491"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/settle-metrics.jsonl",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/settle-metrics.jsonl",
+      "sha256": "7e0a09b5d2010e3be09d9beb002034c90f3418b8176ad985888cf37a7d501d2e"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/cell-summary.json",
+      "sha256": "3840ad3e2af0b70d9b8ad95c61b165314f2b5bf3c328252bafed86bab95b56eb"
+    },
+    {
+      "original": "telemetry/baseline/baseline-natural-ctx10240-c1/execution-binding.json",
+      "preserved": "excluded/phase1-collection-recovery/telemetry/baseline/baseline-natural-ctx10240-c1/execution-binding.json",
+      "sha256": "b49f0d4a1fcafddeba4a7c653b0ee2a906b59a517f03432b7e7e2f85e1db766d"
+    },
+    {
+      "original": "analysis/projections/baseline-natural-ctx10240-c1.json",
+      "preserved": "excluded/phase1-collection-recovery/analysis/projections/baseline-natural-ctx10240-c1.json",
+      "sha256": "d4fab1104b219047d930d7c2cc2a7086cf320a3de6a0b50e4114c1a733c53033"
+    },
+    {
+      "original": "analysis/receipts/baseline-natural-ctx10240-c1.json",
+      "preserved": "excluded/phase1-collection-recovery/analysis/receipts/baseline-natural-ctx10240-c1.json",
+      "sha256": "366995fdba3e8ac17235ec0e96086680cf2c19ea2f75e3a2ac099b736308e60d"
+    },
+    {
+      "original": "logs/cells/baseline-warmup-ctx10240-c1.stdout.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx10240-c1.stdout.log",
+      "sha256": "8d7561698dfb9593871eda746f867593a0794c914a0a17f4e4c0a49cc1565485"
+    },
+    {
+      "original": "logs/cells/baseline-warmup-ctx10240-c1.stderr.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx10240-c1.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "logs/cells/baseline-warmup-ctx163840-c1.stdout.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx163840-c1.stdout.log",
+      "sha256": "1d358bd7fc345ac71fd9d0bb53c8b77fb01e9c899244d68378e84a6e29175da3"
+    },
+    {
+      "original": "logs/cells/baseline-warmup-ctx163840-c1.stderr.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-warmup-ctx163840-c1.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "logs/cells/baseline-natural-ctx10240-c1.stdout.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c1.stdout.log",
+      "sha256": "0af015c5443815e065159a4d1670d8f96ea93b113296d649acc743bb3e6b5ad7"
+    },
+    {
+      "original": "logs/cells/baseline-natural-ctx10240-c1.stderr.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c1.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "logs/cells/baseline-natural-ctx10240-c2.stdout.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c2.stdout.log",
+      "sha256": "e129a5434a5ba76c78497ba0acedf9fe5eaeb2a4ce2b3d597e31c8585e75086a"
+    },
+    {
+      "original": "logs/cells/baseline-natural-ctx10240-c2.stderr.log",
+      "preserved": "excluded/phase1-collection-recovery/logs/cells/baseline-natural-ctx10240-c2.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "reason": "full fresh-process replay after collector defects; all first-phase evidence preserved",
+  "status": "excluded_from_final_comparison"
+}

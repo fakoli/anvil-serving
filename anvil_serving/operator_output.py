@@ -378,7 +378,9 @@ def _redact(value: Any, known_secrets: Sequence[str]) -> Any:
                     if isinstance(item, Mapping)
                     else _REDACTED
                 )
-            elif normalized in _PRIVATE_PAYLOAD_KEYS or _is_secret_key(key_text):
+            elif normalized in _PRIVATE_PAYLOAD_KEYS or (
+                _is_secret_key(key_text) and not _is_public_timing_histogram(key_text, item)
+            ):
                 result[safe_key] = _REDACTED
             else:
                 result[safe_key] = _redact(item, known_secrets)
@@ -407,6 +409,27 @@ def _redact(value: Any, known_secrets: Sequence[str]) -> Any:
     if value is None or isinstance(value, (bool, int, float)):
         return value
     return _redact(str(value), known_secrets)
+
+
+def _is_public_timing_histogram(key: str, value: Any) -> bool:
+    """Keep the exact telemetry field only when it cannot carry secret text."""
+    if key != "prefill_to_first_token" or not isinstance(value, Mapping):
+        return False
+    if set(value) != {"unit", "count", "sum", "buckets"} or value["unit"] != "seconds":
+        return False
+    buckets = value["buckets"]
+    if not isinstance(buckets, Mapping) or not 0 < len(buckets) <= 64:
+        return False
+    if not all(isinstance(edge, str) and len(edge) <= 32
+               and (edge == "+Inf" or re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", edge))
+               for edge in buckets):
+        return False
+    counts = [value["count"], *buckets.values()]
+    if not all(type(count) is int and 0 <= count <= 2**53 for count in counts):
+        return False
+    total = value["sum"]
+    return (type(total) is int and 0 <= total <= 2**53
+            or type(total) is float and math.isfinite(total) and total >= 0)
 
 
 def _is_secret_key(key: str) -> bool:

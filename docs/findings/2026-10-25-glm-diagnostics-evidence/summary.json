@@ -1,0 +1,90 @@
+{
+  "blocked_lower_reasoning_cells": 4,
+  "campaign_manifest_sha256": "13dbf9a94b8ae9b6f207db424bc3896879fc630e67c1fe7eb69b998665abb5b4",
+  "completed_graded_cells": 6,
+  "decision": "diagnostic-only; no-promotion",
+  "failed": 5,
+  "historical_r12": {
+    "accepted_failed": 6,
+    "accepted_graded": 44,
+    "accepted_passed": 38,
+    "accepted_population_changed": false,
+    "cancelled_excluded": 4,
+    "cancelled_retained_raw_grades": [
+      "pass",
+      "fail",
+      "unknown",
+      "pass"
+    ]
+  },
+  "ignis_run_started": false,
+  "job_cancellations": 0,
+  "job_failures": 0,
+  "limitations": [
+    "Targeted small sample; not a model-wide score.",
+    "Four reasoning-control cases blocked and two supported repetitions unstarted.",
+    "No causal benefit from a larger cap is established by the mixed Rust result.",
+    "Three started requests lack captured responses; their usage and acceptance are unknown.",
+    "Buffered transport does not measure true TTFT or token arrival.",
+    "No speed, efficiency, power bottleneck, engine comparison or promotion claim.",
+    "Public derivatives cannot revalidate private native hash chains."
+  ],
+  "observed_aider_usage": {
+    "all_request_token_totals": null,
+    "captured_responses": 12,
+    "known_response_usage_sum": {
+      "completion_tokens": 195001,
+      "prompt_tokens": 26393,
+      "reasoning_tokens": 193149,
+      "total_tokens": 221394
+    },
+    "request_starts": 15,
+    "scope": "Aider transport observations only; excludes benchmark preflight traffic. Missing response usage stays unknown; native Aider zero totals are not actual usage.",
+    "starts_without_captured_response": 3
+  },
+  "passed": 1,
+  "promoted": false,
+  "requested_cells": 12,
+  "restoration": {
+    "capabilities_unchanged": true,
+    "engine_running_after": 0.0,
+    "engine_waiting_after": 0.0,
+    "identity_unchanged": true,
+    "independent_closure_audit": "passed",
+    "lifecycle_change": false
+  },
+  "schema": "glm-coding-diagnostic-summary/v1",
+  "source_head": "3e211eec5998998712acba85cf2d06ae4a49cd1a",
+  "supported_planned_cells": 8,
+  "telemetry": {
+    "all_four_planes_measured_on_all_rows": true,
+    "host_oom_counter_delta": 0.0,
+    "io_pressure_is_existing_timing_confounder": true,
+    "lifetime_peak_is_not_campaign_peak": true,
+    "rows": 297,
+    "sampled_available_ram_max_bytes": 76765253632.0,
+    "sampled_available_ram_min_bytes": 74408665088.0,
+    "sampled_serving_cgroup_current_max_bytes": 21062172672,
+    "serving_cgroup_lifetime_peak_after_bytes": 32526630912,
+    "serving_cgroup_lifetime_peak_before_bytes": 32526630912,
+    "serving_cgroup_oom_delta": 0,
+    "serving_cgroup_oom_kill_delta": 0
+  },
+  "unstarted_cells": 2,
+  "validation": {
+    "full_suite_passed": 13318,
+    "full_suite_skipped": 111,
+    "source_head": "3e211eec5998998712acba85cf2d06ae4a49cd1a",
+    "subtests_passed": 76
+  },
+  "window": {
+    "authorized_seconds_including_cleanup": 2700,
+    "campaign_command_seconds": 1562.195361359045,
+    "last_postcheck_utc": "2026-10-25T22:05:09.328065+00:00",
+    "next_required_seconds": 780,
+    "remaining_active_seconds": 575.216,
+    "start_utc": "2026-10-25T21:38:25.332676+00:00",
+    "stop_reason": "campaign_budget_exceeded",
+    "through_postcheck_seconds": 1603.995389
+  }
+}

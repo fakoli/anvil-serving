@@ -1,0 +1,99 @@
+{
+  "claim_limit": "Single enabled-reasoning client smoke; no thinking-off reliability claim.",
+  "effective_catalog_mapping": "xhigh",
+  "effort_claim": "Invoked Pi max; native catalog maps max to xhigh; reasoning_content was observed. Raw request effort was not independently captured.",
+  "enabled_tools": [
+    "read"
+  ],
+  "exit_code": 0,
+  "expected": "RESTORE_R11_d719f0f1fb8a996e",
+  "final_message": {
+    "api": "openai-completions",
+    "content": [
+      {
+        "text": "RESTORE_R11_d719f0f1fb8a996e",
+        "type": "text"
+      }
+    ],
+    "model": "llm.primary",
+    "provider": "anvil",
+    "rawStopReason": "stop",
+    "responseId": "chatcmpl-c65a3913bf7347879abe805f",
+    "role": "assistant",
+    "stopReason": "stop",
+    "timestamp": 1791283904997,
+    "usage": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "cost": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "input": 747,
+      "output": 19,
+      "reasoning": 0,
+      "totalTokens": 766
+    }
+  },
+  "model": "llm.primary",
+  "native_catalog_control": {
+    "compat": {
+      "chatTemplateKwargs": {
+        "enable_thinking": {
+          "$var": "thinking.enabled"
+        },
+        "preserve_thinking": true,
+        "reasoning_effort": {
+          "$var": "thinking.effort",
+          "omitWhenOff": true
+        }
+      },
+      "thinkingFormat": "chat-template"
+    },
+    "contextWindow": 327680,
+    "id": "llm.primary",
+    "maxTokens": 65536,
+    "reasoning": true,
+    "thinkingLevelMap": {
+      "high": "xhigh",
+      "low": "low",
+      "max": "xhigh",
+      "medium": "medium",
+      "minimal": "low",
+      "xhigh": "xhigh"
+    }
+  },
+  "native_pi_thinking": "max",
+  "observed_at": "2026-10-06T10:51:45.503158+00:00",
+  "observed_reasoning_blocks": 1,
+  "observed_reasoning_signatures": [
+    "reasoning_content"
+  ],
+  "passed": true,
+  "prior_failed_probe": "restoration-pi-thinking-off-a1.json",
+  "provider": "anvil",
+  "redactions": "omitted unrelated startup; relative synthetic fixture",
+  "session": "fresh ephemeral; no saved session/provider/catalog change",
+  "source_sha256": "e4c3d37bd44de24ad6b02452a118011c7e150f14d6b8dd6623396e8d41cfc5c1",
+  "stdin": "DEVNULL",
+  "tool_events": [
+    {
+      "isError": false,
+      "result": {
+        "content": [
+          {
+            "text": "RESTORE_R11_d719f0f1fb8a996e\n",
+            "type": "text"
+          }
+        ]
+      },
+      "toolCallId": "chatcmpl-tool-9c74ab3975e50cf8",
+      "toolName": "read",
+      "type": "tool_execution_end"
+    }
+  ],
+  "wire_capture_available": false
+}

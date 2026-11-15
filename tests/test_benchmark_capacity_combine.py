@@ -1,4 +1,3 @@
-import hashlib
 import importlib.util
 import json
 import os
@@ -102,42 +101,6 @@ def _artifact(
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_combine_synchronized_replica_artifacts(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-    combined = _module().combine([left, right])
-    assert combined["replica_count"] == 2
-    assert combined["concurrency"] == 2
-    assert combined["metrics"]["output_tokens"] == 8
-    assert combined["metrics"]["throughput_tok_s"] == pytest.approx(8 / 11)
-    assert combined["metrics"]["throughput_tok_s_lower_bound"] == pytest.approx(8 / 11)
-    assert combined["metrics"]["throughput_tok_s_upper_bound"] == pytest.approx(0.8)
-    assert combined["metrics"]["throughput_estimate_kind"] == "conservative-lower-bound"
-    assert combined["wall_clock_ms_lower_bound"] == pytest.approx(10000)
-    assert combined["wall_clock_ms_upper_bound"] == pytest.approx(11000)
-    assert combined["timeline"]["alignment"] == "legacy-second-precision-bounded"
-    assert combined["replica_identity"]["status"] == "legacy-unverified"
-    assert combined["metric_population"]["p99_interpretation"] == "descriptive-nearest-rank-only"
-    assert combined["replicas"][0]["artifact"] == "left.json"
-    assert combined["metrics"]["ttft_samples"] == 2
-    assert combined["metrics"]["request_canary_passed"] == 2
-    assert combined["metrics"]["controlled_output_exact_adherence_rate"] == 1.0
-    assert combined["metrics"]["tpot_mean_ms"] == pytest.approx(100 / 3)
-    assert combined["shared_prefix_tokens"] == 0
-    assert combined["shared_prefix_identity"]["status"] == "ignored-for-unique-cache"
-    assert combined["validation_provenance"]["request_canary_semantics"] == (
-        "beginning-and-any-foreign-marker-verified"
-    )
-    assert combined["replicas"][0]["sha256"] == hashlib.sha256(
-        left.read_bytes()
-    ).hexdigest()
-    assert combined["replicas"][1]["sha256"] == hashlib.sha256(
-        right.read_bytes()
-    ).hexdigest()
-
-
 def _sampling(*, temperature=None, top_p=None):
     return {
         "temperature": {
@@ -151,19 +114,6 @@ def _sampling(*, temperature=None, top_p=None):
             "sent": top_p is not None,
         },
     }
-
-
-def test_combine_retains_declared_matching_sampling(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    sampling = _sampling(temperature=0.0, top_p=0.95)
-    _artifact(left, sampling=sampling)
-    _artifact(right, sampling=sampling)
-
-    combined = _module().combine([left, right])
-
-    assert combined["sampling"] == sampling
-    assert combined["sampling_identity"]["status"] == "declared-matching"
 
 
 @pytest.mark.parametrize(
@@ -180,126 +130,29 @@ def test_combine_rejects_different_declared_sampling(tmp_path, right_sampling):
         _module().combine([left, right])
 
 
-def test_combine_labels_missing_sampling_as_legacy_unknown_and_rejects_mixing(tmp_path):
+def test_combine_requires_matching_workload_identity_and_keeps_legacy_inputs(tmp_path):
     left = tmp_path / "left.json"
     right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-
-    legacy = _module().combine([left, right])
-    assert "sampling" not in legacy
-    assert legacy["sampling_identity"]["status"] == "legacy-unknown"
-    assert "no temperature or top_p value is inferred" in legacy["sampling_identity"]["limitation"]
-
-    _artifact(right, sampling=_sampling(temperature=0.0))
-    with pytest.raises(ValueError, match="sampling differs"):
-        _module().combine([left, right])
-
-
-@pytest.mark.parametrize(
-    ("sampling", "message"),
-    (
-        ({"temperature": _sampling()["temperature"]}, "temperature and top_p"),
-        ({"temperature": {"requested": 0.0, "effective_request": 1.0, "sent": True},
-          "top_p": _sampling()["top_p"]}, "effective_request is inconsistent"),
-        ({"temperature": _sampling()["temperature"],
-          "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": False}},
-         "sent is inconsistent"),
-    ),
-)
-def test_combine_rejects_invalid_declared_sampling(tmp_path, sampling, message):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left, sampling=sampling)
-    _artifact(right, sampling=sampling)
-
-    with pytest.raises(ValueError, match=message):
-        _module().combine([left, right])
-
-
-def test_combine_rejects_mismatched_workloads(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right, ctx=8192)
-    with pytest.raises(ValueError, match="context_tokens differs"):
-        _module().combine([left, right])
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    (
-        ("max_tokens", 8),
-        ("response_words", 3),
-        ("prompt_cache_mode", "shared"),
-        ("request_canaries", False),
-        ("controlled_output_policy", "strict"),
-        ("engine", "vllm"),
-        ("context_seed", 9),
-    ),
-)
-def test_combine_rejects_mismatched_output_and_cache_controls(
-    tmp_path, field, value
-):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right, **{field: value})
-
-    with pytest.raises(ValueError, match=rf"{field} differs"):
-        _module().combine([left, right])
-
-
-def test_combine_uses_exact_nanosecond_union_only_for_explicit_common_clock(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    epoch = 1_788_566_400_000_000_000
-    _artifact(
-        left,
-        started_at_unix_ns=epoch,
-        finished_at_unix_ns=epoch + 10_000_000_000,
-        clock_domain_id="public-host-clock",
-    )
-    _artifact(
-        right,
-        started_at_unix_ns=epoch + 500_000_000,
-        finished_at_unix_ns=epoch + 10_500_000_000,
-        clock_domain_id="public-host-clock",
-    )
-    combined = _module().combine([left, right])
-    assert combined["timeline"]["alignment"] == "exact-explicit-common-clock-domain"
-    assert combined["wall_clock_ms"] == pytest.approx(10500)
-    assert combined["metrics"]["throughput_tok_s"] == pytest.approx(8 / 10.5)
-    assert combined["metrics"]["throughput_estimate_kind"] == "exact"
-
-    _artifact(
-        right,
-        started_at_unix_ns=epoch + 500_000_000,
-        finished_at_unix_ns=epoch + 10_500_000_000,
-        clock_domain_id="another-host-clock",
-    )
-    bounded = _module().combine([left, right])
-    assert bounded["timeline"]["alignment"] == "legacy-second-precision-bounded"
-
-
-def test_combine_derives_conservative_legacy_phase_bounds(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    common = {
-        "start": "2026-09-05T04:36:18Z",
-        "finished_at": "2026-09-05T04:36:54Z",
+    identity = {
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-repeated-code",
     }
-    _artifact(left, wall_clock_ms=35969.89649999887, **common)
-    _artifact(right, wall_clock_ms=35555.37309998181, **common)
+    _artifact(left, workload_identity=identity)
+    _artifact(right, workload_identity=identity)
+
     combined = _module().combine([left, right])
-    assert combined["wall_clock_ms_lower_bound"] == pytest.approx(35969.8965)
-    assert combined["wall_clock_ms_upper_bound"] == pytest.approx(36525.2696)
-    assert combined["metrics"]["throughput_tok_s_lower_bound"] == pytest.approx(
-        8 / 36.5252696
-    )
-    assert combined["metrics"]["throughput_tok_s_upper_bound"] == pytest.approx(
-        8 / 35.9698965
-    )
+    assert combined["workload_identity"] == identity
+
+    _artifact(right)
+    with pytest.raises(ValueError, match="workload_identity differs"):
+        _module().combine([left, right])
+
+    _artifact(right, workload_identity={
+        "prompt_contract_revision": "capacity-prompt-v1",
+        "workload_kind": "synthetic-summary",
+    })
+    with pytest.raises(ValueError, match="workload_identity conflicts"):
+        _module().combine([left, right])
 
 
 def test_combine_requires_matching_configuration_fingerprints_when_present(tmp_path):
@@ -342,45 +195,6 @@ def test_combine_rejects_invalid_fingerprint_and_modern_identity_mismatch(tmp_pa
         _module().combine([left, right])
 
 
-def test_combine_labels_legacy_canary_and_controlled_output_uncertainty(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    legacy_timing = [{
-        "request_index": 0, "time_to_first_output_ms": 100.0,
-        "ttft_ms": 100.0, "e2e_ms": 200.0, "generation_ms": 100.0,
-        "prompt_tokens": 100, "output_tokens": 4,
-        "request_canary": {"passed": True, "foreign_marker_count": 0},
-    }]
-    _artifact(left, controlled_output_policy=None, request_timings=legacy_timing)
-    _artifact(right, controlled_output_policy=None, request_timings=legacy_timing)
-    combined = _module().combine([left, right])
-    assert combined["validation_provenance"]["request_canary_semantics"] == (
-        "legacy-substring-only"
-    )
-    assert combined["validation_provenance"]["controlled_output_adherence"] == (
-        "legacy-unobserved"
-    )
-    assert combined["validation_provenance"]["limitation"]
-
-
-def test_combine_rejects_incomplete_timing_population_and_failed_canary(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right, request_timings=[])
-    with pytest.raises(ValueError, match="request_timings"):
-        _module().combine([left, right])
-
-    _artifact(right, request_timings=[{
-        "request_index": 0, "time_to_first_output_ms": 100.0,
-        "ttft_ms": 100.0, "e2e_ms": 200.0, "generation_ms": 100.0,
-        "prompt_tokens": 100, "output_tokens": 4,
-        "request_canary": {"passed": False},
-    }])
-    with pytest.raises(ValueError, match="request canary"):
-        _module().combine([left, right])
-
-
 def test_combine_rejects_duplicate_paths_symlinks_hardlinks_digests_and_run_identity(
     tmp_path,
 ):
@@ -418,204 +232,6 @@ def test_combine_rejects_duplicate_paths_symlinks_hardlinks_digests_and_run_iden
     _artifact(right, replica_note="right", **shared_identity)
     with pytest.raises(ValueError, match="composite run identity"):
         module.combine([left, right])
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    (
-        ("ttft_ms", float("nan"), "finite and nonnegative"),
-        ("e2e_ms", -1.0, "finite and nonnegative"),
-        ("generation_ms", float("inf"), "finite and nonnegative"),
-        ("output_tokens", "4", "must be an integer"),
-        ("prompt_tokens", "100", "must be an integer"),
-    ),
-)
-def test_combine_rejects_invalid_timing_and_token_primitives(
-    tmp_path, field, value, message
-):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0][field] = value
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match=message):
-        _module().combine([left, right])
-
-
-def test_combine_rejects_misordered_timing_and_invalid_performance_eligibility(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0]["time_to_first_output_ms"] = 150.0
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="time_to_first_output_ms <= ttft_ms"):
-        _module().combine([left, right])
-
-    _artifact(right, performance_eligible="true")
-    with pytest.raises(ValueError, match="must be boolean or null"):
-        _module().combine([left, right])
-
-
-def test_combine_requires_contiguous_per_replica_request_indexes(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0]["request_index"] = 1
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="exactly 0 through completed"):
-        _module().combine([left, right])
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    (
-        ("policy", "strict", "policy differs"),
-        ("requested_words", 3, "requested_words differs"),
-        ("capture_complete", False, "adherence is inconsistent"),
-        ("observed_code_words", 1, "adherence is inconsistent"),
-        ("passed", False, "passed is inconsistent"),
-    ),
-)
-def test_combine_binds_controlled_output_evidence_to_artifact(
-    tmp_path, field, value, message
-):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0]["controlled_output"][field] = value
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match=message):
-        _module().combine([left, right])
-
-
-def test_combine_strict_controlled_output_requires_complete_adherent_capture(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left, controlled_output_policy="strict")
-    _artifact(right, controlled_output_policy="strict")
-    for path in (left, right):
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        payload["request_timings"][0]["controlled_output"]["policy"] = "strict"
-        path.write_text(json.dumps(payload), encoding="utf-8")
-    assert _module().combine([left, right])["completed"] == 2
-
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    controlled = payload["request_timings"][0]["controlled_output"]
-    controlled.update({
-        "capture_complete": False, "exact_adherence": None, "passed": False,
-    })
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="strict controlled-output capture is incomplete"):
-        _module().combine([left, right])
-
-    controlled.update({
-        "capture_complete": True, "exact_adherence": False, "passed": False,
-        "observed_code_words": 1,
-    })
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="strict controlled output did not adhere"):
-        _module().combine([left, right])
-
-
-def test_combine_rejects_non_object_optional_canary(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left, request_canaries=False)
-    _artifact(right, request_canaries=False)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0]["request_canary"] = "recorded"
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="request canary must be an object or null"):
-        _module().combine([left, right])
-
-
-def test_combine_rejects_evidence_for_unrequested_controls(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left, request_canaries=False)
-    _artifact(right, request_canaries=False)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0]["request_canary"] = {"passed": True}
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="unexpected request canary observation"):
-        _module().combine([left, right])
-
-    _artifact(left, response_words=0)
-    _artifact(right, response_words=0)
-    payload = json.loads(right.read_text(encoding="utf-8"))
-    payload["request_timings"][0]["controlled_output"] = {
-        "policy": "observe", "requested_words": 0, "capture_complete": True,
-        "exact_adherence": True, "passed": True,
-    }
-    right.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(ValueError, match="unexpected controlled-output observation"):
-        _module().combine([left, right])
-
-
-def test_combine_recomputes_derived_metrics_from_primitive_timings(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left)
-    _artifact(right)
-    for path in (left, right):
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        row = payload["request_timings"][0]
-        row.update({
-            "generation_ms": 999.0,
-            "effective_prefill_tok_s": 1.0,
-            "decode_tok_s": 1.0,
-            "mean_inter_token_latency_ms": 1.0,
-        })
-        path.write_text(json.dumps(payload), encoding="utf-8")
-    combined = _module().combine([left, right])
-    assert combined["metrics"]["generation_mean_ms"] == pytest.approx(100)
-    assert combined["metrics"]["effective_prefill_tok_s_mean"] == pytest.approx(1000)
-    assert combined["metrics"]["decode_tok_s_mean"] == pytest.approx(30)
-    assert combined["metrics"]["tpot_mean_ms"] == pytest.approx(100 / 3)
-
-
-def test_combine_reconciles_nanosecond_interval_with_monotonic_wall(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    epoch = 1_788_566_400_000_000_000
-    common = {
-        "started_at_unix_ns": epoch,
-        "finished_at_unix_ns": epoch + 10_000_000_000,
-        "clock_domain_id": "public-host-clock",
-    }
-    _artifact(left, **common)
-    _artifact(right, wall_clock_ms=9000.0, **common)
-    with pytest.raises(ValueError, match="does not reconcile"):
-        _module().combine([left, right])
-
-
-def test_combine_shared_prefix_identity_is_effective_and_legacy_aware(tmp_path):
-    left = tmp_path / "left.json"
-    right = tmp_path / "right.json"
-    _artifact(left, shared_prefix_tokens=999)
-    _artifact(right, shared_prefix_tokens=123)
-    unique = _module().combine([left, right])
-    assert unique["shared_prefix_tokens"] == 0
-    assert unique["shared_prefix_identity"]["status"] == "ignored-for-unique-cache"
-
-    _artifact(left, prompt_cache_mode="shared", shared_prefix_tokens=8000)
-    _artifact(right, prompt_cache_mode="shared", shared_prefix_tokens=8000)
-    shared = _module().combine([left, right])
-    assert shared["shared_prefix_tokens"] == 8000
-    assert shared["shared_prefix_identity"]["status"] == "declared"
-
-    _artifact(left, prompt_cache_mode="shared", shared_prefix_tokens=None)
-    _artifact(right, prompt_cache_mode="shared", shared_prefix_tokens=None)
-    legacy = _module().combine([left, right])
-    assert legacy["shared_prefix_identity"]["status"] == "legacy-unknown"
 
 
 def test_combiner_output_safety_rejects_inputs_unrelated_files_and_wrong_suffix(

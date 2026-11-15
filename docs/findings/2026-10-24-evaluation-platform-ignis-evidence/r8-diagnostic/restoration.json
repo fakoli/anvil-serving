@@ -1,0 +1,10 @@
+{
+  "candidate_loaded_in_this_attempt": false,
+  "incumbent_preserved": true,
+  "later_physical_recovery": "physical-recovery-context.json",
+  "limit": "Physical absence and fresh idle do not repair original campaign intervals or establish native terminal custody or post-swap routed/client restoration.",
+  "promoted": false,
+  "status": "no-model-swap-at-retained-recovery-cutoff",
+  "temporary_alias_activated_in_this_attempt": false,
+  "verified": false
+}

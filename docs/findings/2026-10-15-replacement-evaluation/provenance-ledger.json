@@ -1,0 +1,1350 @@
+{
+  "derivatives": [
+    {
+      "path": "native/glm-native-quality.native.json",
+      "sha256": "652654f6fd7e4ce2bd4f0ca2d6b2db9521c2aa658994bc2f15acdd3d04a98b0a",
+      "sources": [
+        {
+          "path": "full/raw/glm-quality-native.json",
+          "sha256": "9bbcf31a5c33b8618290315a7bb83d4c63055712b4a33e4038da2aa4dcda3473"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-oracle7-native.json",
+      "sha256": "2d3c69d5b9663cc770f4292f9b72c4c9c51e6db74b6901f3a68cab764c16c4e0",
+      "sources": [
+        {
+          "path": "full/raw/glm-agentic18-native.json",
+          "sha256": "16072f328e526c0f70c508d011c8492ad136b55eb2d08ddd01af10dbec0158a0"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-oracle7-r2-native.json",
+      "sha256": "84a5cb12fb9070f8321b0fc1c211bc6778df8e2980397d53bc35ef35c05c2d51",
+      "sources": [
+        {
+          "path": "full/raw/glm-agentic18-r2-native.json",
+          "sha256": "b18200a479c4f6486112edaea02d79f4dbff8496148a700bc2bb36b3889b640e"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-oracle7-r3-native.json",
+      "sha256": "cef308240ee3d64a9907d3affe5f5234f2dc10469522436fb461efc7f6c05d02",
+      "sources": [
+        {
+          "path": "full/raw/glm-agentic18-r3-native.json",
+          "sha256": "8d987654a3058aa8c7a8afaca3c06aeda79e1b04ab416d76c0da17f07e5b6b95"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-protocol.native.json",
+      "sha256": "09bc66201cdc8ddd6403afe0f9b4888336f904080837c9d179730f882c39488b",
+      "sources": [
+        {
+          "path": "full/raw/glm-non-swe-model-aware-preflight.json",
+          "sha256": "bad270a6a48a985de0b8b99f61639f33344a0e42c097a5da1cd9b63bde0272b5"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-swe5-infrastructure-failure.native.json",
+      "sha256": "bcee17d22da98f0137e9fcf12b8b6333108b24e31c31cd579ae0aa932d626331",
+      "sources": [
+        {
+          "path": "full/raw/glm-swe5-stage.json",
+          "sha256": "d9b83042ba1799fd12be403714378b18ff94f1f5e25a90b22b651f093750da93"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-swe5-r2.native.json",
+      "sha256": "3b710369c088cfe93f3d02f197b3a258581b9d832c8a87ff7bd5431de5118556",
+      "sources": [
+        {
+          "path": "full/raw/glm-swe5-r2-evidence.json",
+          "sha256": "327d1d80986e34a19c1fddc0f659d8ec85e8fbe0027bcc3db7f7b3d4056a777a"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/glm-vision.native.json",
+      "sha256": "4e50e586918173e7886b1fca91d8a73783c9f0e22e09b00a83aebda97c094038",
+      "sources": [
+        {
+          "path": "full/raw/glm-image8-native.json",
+          "sha256": "fa55bd49de047690adaa83e64fde45c21d0ccb30cdd0d08028d0999cec892893"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r4-oracle7.native.json",
+      "sha256": "15813e9ddf3422d450df2f5d53d774e9c3a6ffc7f333cc57cca8855071acd5dc",
+      "sources": [
+        {
+          "path": "full/raw/mimo-agentic18-r1-native.json",
+          "sha256": "e79b69add3245c4a5b0b2e26e28ae23163e8563f1daf4fc80865327ed5743c7c"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r4-protocol.native.json",
+      "sha256": "19a6e26bf542ae4ea6ed19303384341da5eee6b04d9efedc4810506908bdc3dc",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r4-model-aware-preflight.json",
+          "sha256": "88e8fe82ed6b0dbc6c6c93ec708a573e15e2297db28fa1d54d341a1aa1724e55"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r4-swe5-terminal.native.json",
+      "sha256": "0b02c50267f40f4829fdc31bc8a0ea30515b996b463558d2a18870b417d2845d",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r4-swe5-terminal-evidence.json",
+          "sha256": "9361999d0af5c7f8ea3b235ea056434f5433c18b83c3fe75d457e1cee301f88b"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r5-oracle8-r1.native.json",
+      "sha256": "68cc91d6bafdb3d20569dd0e62a2cf9167237bd283e76176c52c7c69fa0b0521",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r5-greedy-agentic18-r1-native.json",
+          "sha256": "e6fda11ac6ee2d057d436251417edcd00b8835178af9056c7a36b178eea0ae0b"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r5-oracle8-r2.native.json",
+      "sha256": "7eea02d14ca0063026efaa07400307369d184acebdeeb98245a31930429f63c2",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r5-greedy-agentic18-r2-native.json",
+          "sha256": "af79b02a8034b587d146d127725f4e8ad1136a48f9b39df2ef0e87c0e04cf12b"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r5-oracle8-r3.native.json",
+      "sha256": "13f739b7a425d3623559a7d8930ec8275d6bf54cc8d31fd91b5aa0afacc5c6ed",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r5-greedy-agentic18-r3-native.json",
+          "sha256": "e7eda8f2152f4a13223ea187bb2c0ab14a7d5a71ef7c854b2d8fbeae68fc5d75"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r5-protocol.native.json",
+      "sha256": "0dc14385ae114c9922ced59a0401208adaa54e6468f0165125710710dfc82291",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r5-model-aware-preflight.json",
+          "sha256": "8b63587a7cccb2c8a2f70944fad2428c6ffb84e2c4e82492e6bd0a00be3dcea2"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r5-wire6.native.json",
+      "sha256": "5f70c74de68e03b7d4bed2fef4eab0c81cc9f765773dec13b1a49f6d1e727282",
+      "sources": [
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/manifest.json",
+          "sha256": "4741a36b3b53b4a2089fccf1f32d34baa99d29a1c9ebc00a76fa1017ed5d5305"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/observations.json",
+          "sha256": "742e199ffc6a91f1d7f7d320089f674ee68fe21155f269ca71623f739cf0ec75"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/planning-1-expected.json",
+          "sha256": "0f6c9cb614b3026965c905f34476c0fca0bc85baaa5fbae9b4b8a7fb2055e0bb"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/planning-1-request.json",
+          "sha256": "69b3c51fc0e338e35941daaf12703b1467cb50a7d30851cc81db9a4fce7bb7c6"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/planning-1-response.json",
+          "sha256": "9af09562dcd45a9e2d543cb32a34611df6f93ffc33fa8bcf831863745c135e27"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/planning-2-expected.json",
+          "sha256": "0f6c9cb614b3026965c905f34476c0fca0bc85baaa5fbae9b4b8a7fb2055e0bb"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/planning-2-request.json",
+          "sha256": "69b3c51fc0e338e35941daaf12703b1467cb50a7d30851cc81db9a4fce7bb7c6"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/planning-2-response.json",
+          "sha256": "0bfbfc9c1767290161f8943e216bc66c03ad205f63784040328b537da115963a"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/reasoning-1-expected.json",
+          "sha256": "383b5c80b36e291e5fa01bcca7831ea0ea11574dd6d981d496414a07f1634b95"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/reasoning-1-request.json",
+          "sha256": "6f373f2d221f96838c41ca4f9842bc73dd3ef9a92a3a3ac9eec370237c9bbac9"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/reasoning-1-response.json",
+          "sha256": "a5837ed7c64544e39ca6769550737ef8b10ea3f428b372b4e71195154f19107e"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/reasoning-2-expected.json",
+          "sha256": "383b5c80b36e291e5fa01bcca7831ea0ea11574dd6d981d496414a07f1634b95"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/reasoning-2-request.json",
+          "sha256": "6f373f2d221f96838c41ca4f9842bc73dd3ef9a92a3a3ac9eec370237c9bbac9"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/reasoning-2-response.json",
+          "sha256": "3878d0353b67934a46450d59dd54204fa819161b6ba8d2a9c854112eb0403ba7"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/structured-edit-1-expected.json",
+          "sha256": "8fc895273b7dddc91942683c262cfce52a7de442953c4011773c32faa3a2f900"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/structured-edit-1-request.json",
+          "sha256": "12cdd91a05700839ef18d34c3d3a32374c374cc543bbeaf78e25218e5b6c6d20"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/structured-edit-1-response.json",
+          "sha256": "b3ed0923f232d12df2b6adfe92c461a5ded07aec7ca05bdce63d395bddf062bf"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/structured-edit-2-expected.json",
+          "sha256": "8fc895273b7dddc91942683c262cfce52a7de442953c4011773c32faa3a2f900"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/structured-edit-2-request.json",
+          "sha256": "12cdd91a05700839ef18d34c3d3a32374c374cc543bbeaf78e25218e5b6c6d20"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/structured-edit-2-response.json",
+          "sha256": "8378ef0f39af04aea436f0dce0036d41e67082d82dff99456e3a539fbf548b59"
+        },
+        {
+          "path": "full/mimo-greedy-r5/default-wire-probe/summary.json",
+          "sha256": "e5a53bd7dec9f8f676416e072ac30e09146b022ff34f0e62d8561135ac8f62a9"
+        }
+      ],
+      "transformation": "Unwrap transport/benchmark envelopes as needed; remove operational/private identifiers and reasoning text; retain synthetic fixture inputs and complete visible answers, controls, result/usage/finish metadata. Wire response id/created/system_fingerprint removed; exact original source hashes remain distinct from sanitized derivative hashes."
+    },
+    {
+      "path": "native/mimo-r5-swe5-terminal.native.json",
+      "sha256": "650c20df0c1dd54d5797c6ade27ed8798effd187588acdea9ca899b2a450f176",
+      "sources": [
+        {
+          "path": "full/raw/mimo-r5-swe5-terminal-evidence.json",
+          "sha256": "2de7da0607705f93130a4bf1dadf2e84bf01bbba4021242408cefc1bdfadd2f6"
+        }
+      ],
+      "transformation": "Transport envelope removed. Projected to the same SWE run and per-instance fields as the retained GLM public derivative. Removed request IDs, trajectories, paths, ownership, and duration; retained exact native summary, all five instance outcomes, grader completeness and hashes, request controls, limits, and failure. Native resolve_rate uses graded-only denominator; campaign success is2/5, not1.0."
+    },
+    {
+      "path": "native/mistral-r2-protocol.native.json",
+      "sha256": "97b3d07eec4845f1cc94ffca5adc4f2cdbba120e41ea6393227b1c80680e7320",
+      "sources": [
+        {
+          "path": "full/raw/mistral-r2-model-aware-preflight.json",
+          "sha256": "fac143fa58a36fe706c71a6ac092d759abddc6dc3316f00aec558c13a47b286b"
+        }
+      ],
+      "transformation": "Transport envelope removed. Removed reasoning_excerpt text only; retained complete visible content, all observations/checks, usage, finish metadata, timing and evidence_policy.reasoning=any. Configured context is not full-window proof."
+    },
+    {
+      "path": "native/mistral-r3-protocol.native.json",
+      "sha256": "b2133cf75956c13f6d4f08ffea81350a053e2475dd878ad4608d7b9bd5ad3a51",
+      "sources": [
+        {
+          "path": "full/raw/mistral-r3-model-aware-preflight.json",
+          "sha256": "becde890ab0a178106f3687466d812d86be4f042b57996958d674b7873507080"
+        }
+      ],
+      "transformation": "Transport envelope removed. Removed reasoning_excerpt text only; retained complete visible content, all observations/checks, usage, finish metadata, timing and evidence_policy.reasoning=any. Configured context is not full-window proof."
+    },
+    {
+      "path": "native/mistral-r3-oracle8-r1.native.json",
+      "sha256": "6b24a2d114826aeba24aea2adefafd28eb0087b41a97c23f28ae3e2a02959490",
+      "sources": [
+        {
+          "path": "full/raw/mistral-r3-agentic18-r1-evidence.json",
+          "sha256": "5f23ba96489b23e819c5a9d3b415d9ed154bf3a7d66c2e575e6a5fb495888230"
+        }
+      ],
+      "transformation": "Transport envelope removed; native agentic JSON payload is byte-identical to its retained native artifact. All18observations, visible answers, tool calls, failures, stages and reasoning-presence/length metadata retained. Native75%floor is unchanged; frozencampaign54/54gate is a separate rejection."
+    },
+    {
+      "path": "native/deepseek-build-r1.native.json",
+      "sha256": "0c1fc0ea966b13b2b3e72b5b61a29ec185d5f6c3ffad5edf1345335d1a348313",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-build.json",
+          "sha256": "461e030c2c52e0066779ddca7607580ba6f96574235ff22e693f6e0f4a8b9bea"
+        }
+      ],
+      "transformation": "Unwrapped native image-build payload; removed command argv and private log path. All native build identities, limits, exit, duration and status retained."
+    },
+    {
+      "path": "native/deepseek-build-r2.native.json",
+      "sha256": "2f92c4cd33b2b7d3f7f2689266edff0b64ed04596264dbeb56e383013a702484",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-build-r2.json",
+          "sha256": "1f3538352dc4577dcbf075516d4cc561c01f1e26a0caa4114f6aa122faa9dd91"
+        }
+      ],
+      "transformation": "Unwrapped native image-build payload; removed command argv and private log path. All native build identities, limits, exit, duration and status retained."
+    },
+    {
+      "path": "native/deepseek-build-r3.native.json",
+      "sha256": "7adf6fd399133ed07d301e1ef402cd802e9deb32d82588cd679c40d0c9b1e40f",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-build-r3.json",
+          "sha256": "9911807b5b369dc1a4b550f74a2e93ed29e41f25e3a2d773267394572ee65c3d"
+        }
+      ],
+      "transformation": "Unwrapped native image-build payload; removed command argv and private log path. All native build identities, limits, exit, duration and status retained."
+    },
+    {
+      "path": "native/deepseek-build-r4.native.json",
+      "sha256": "76e0ba36985b8b5ae2d545bcb211501a4f4db3cd5a93476709cd9dfb95725c36",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-build-r4.json",
+          "sha256": "67a9203250e03a5be7a79c4bef33ee4a98596dc5fe2dda1cd5df378fdc718f86"
+        }
+      ],
+      "transformation": "Unwrapped native image-build payload; removed command argv and private log path. All native build identities, limits, exit, duration and status retained."
+    },
+    {
+      "path": "native/deepseek-stage2-r1.native.json",
+      "sha256": "9a2a5b31bf9d2cd471f9858b6de846849451a8b31398e321292fab22e2cada49",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test.json",
+          "sha256": "adef7228c2943bf302eeaa3d4f874e44a85f041ccb5a5ceff9fe36d506e299ab"
+        }
+      ],
+      "transformation": "Removed owned container identifiers, physical GPU UUID/PCI address, private absence-check detail and duplicated outer logs. Removed image environment and unneeded HostConfig fields; retained reviewed test environment, isolation/limit/mount fields, source hashes, complete native per-command outputs and tests, original failure, cgroups, cleanup status and verification exit."
+    },
+    {
+      "path": "native/deepseek-stage2-r2.native.json",
+      "sha256": "e0f0642d4cd3a232bb67ed1cdc86724323cbba9cf57768d2eb4873ae2d9bc514",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r2.json",
+          "sha256": "1252b3adc0347cbc7d85b9ae745e20e76ee75bf06a566dd294c00531ee6ff2f8"
+        }
+      ],
+      "transformation": "Removed owned container identifiers, physical GPU UUID/PCI address, private absence-check detail and duplicated outer logs. Removed image environment and unneeded HostConfig fields; retained reviewed test environment, isolation/limit/mount fields, source hashes, complete native per-command outputs and tests, original failure, cgroups, cleanup status and verification exit."
+    },
+    {
+      "path": "native/deepseek-stage2-r3.native.json",
+      "sha256": "52e7aaf42436a3ba555883adfcb46467e4e28f2d16fd7856328f366eb81ed860",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r3.json",
+          "sha256": "73d0e7e13cffd028562e0b6bb5ee9424e9eff99f42c0ec5c291987b9e110e579"
+        }
+      ],
+      "transformation": "Removed owned container name and ID, physical GPU UUID and PCI address, and cleanup verification detail containing owned container identity. Removed duplicated outer logs, image-wide environment, and unneeded Docker HostConfig fields. Retained the reviewed test environment, source hashes, complete command results, inner command deadline state, outer timeout boundary, executable tmpfs proof, containment limits and cgroups, and cleanup status."
+    },
+    {
+      "path": "native/deepseek-stage2-r3-spin-pids-observation.json",
+      "sha256": "fcef0a0ffa71b893d6f8bf3c23129b78d65141cbd947fe03d8ebf71b2d5173f2",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r3-spin-cgroup.json",
+          "sha256": "b9a02e197cc80191e182b2e70d8caf506de3beed3340063789a269a1442cb855"
+        },
+        {
+          "path": "full/raw/deepseek-stage2-r3-spin-process-status.json",
+          "sha256": "2cf3f864246a24a9c15dbb46dc08f2fd448cbef3fc290b8b9b75c44b01e0d0be"
+        }
+      ],
+      "transformation": "Removed PID, cgroup path, memory and CPU counters, signal state, virtual-memory values, and wait-channel detail. Retained the exact per-source observation timestamps, pids current/max/event snapshot, and child process name, sleeping state, and thread count with explicit non-peak/non-causal limits."
+    },
+    {
+      "path": "native/deepseek-stage2-r4.native.json",
+      "sha256": "d1555b2e151243136761f9b84613d916525acae13106e4e1e5697db191b1f4aa",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r4.json",
+          "sha256": "da072c65ffdfbeddfd90d0089755c33ef02798c58ebf0bc730ce2b09ac9ae6fe"
+        },
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r4-disposition.json",
+          "sha256": "397b269398904700363c93ed097b2725bef913216b434b846e7e3533c9fd9f70"
+        }
+      ],
+      "transformation": "Removed owned container identifiers, physical GPU UUID/PCI address, private absence-check detail and duplicated outer logs. Removed image environment and unneeded HostConfig fields; retained reviewed test environment, all declared source hashes, four executed command results, bounded output-limit state and first retained Triton read-only trace, outer timeout boundary, executable tmpfs proof, pre/post cgroups including pids.max=1024 and zero max events, and cleanup status. The fourth group has seven printed failure markers only; JUnit counts are unavailable after output limit and the final two groups are unrun. Retained spin timings are tmpfs diagnostics, not NVMe or serving-performance measurements."
+    },
+    {
+      "path": "native/deepseek-stage2-r5.native.json",
+      "sha256": "845b5adc51292f90d5d407f9019284ce3d28b068c794d8b441d9049017990cc6",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r5.json",
+          "sha256": "53a655bc05dd38cbe7971f0284292baadc033499f6580da1bc3fa52f94f21915"
+        },
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r5-disposition.json",
+          "sha256": "150e5f24751a66a110fe562d2bafcd0f776edc69fc686782176fb56679453f10"
+        }
+      ],
+      "transformation": "Removed owned container identifiers, physical GPU UUID/PCI address, private absence-check detail and duplicated outer logs. Removed image environment and unneeded HostConfig fields; retained reviewed test environment, all declared source hashes, all six declared and executed command results including the 142-node final collection, strict pytest_counts state (136 passed, 6 skipped), effective TRITON_CACHE_DIR, executable tmpfs proof, pre/post cgroups including pids.max=1024 and zero max events, and cleanup status. This is failed native evidence: the r5 receipt remains incomplete and does not support Stage 2 acceptance or promotion."
+    },
+    {
+      "path": "native/deepseek-stage2-r6.native.json",
+      "sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r6.json",
+          "sha256": "9ecc35c5147b1324c2fcefc382ae4641ae991df36d62cdef1d1c8d0ac1577b6e"
+        },
+        {
+          "path": "full/raw/deepseek-stage2-r4-gpu-test-r6-disposition.json",
+          "sha256": "74813ee69515997f900a6bc9fd0539706c624d0d1625e3c2e1beb1a829e9b1ed"
+        }
+      ],
+      "transformation": "Removed owned container identifiers, physical GPU UUID/PCI address, private absence-check detail and duplicated outer logs. Removed image environment and unneeded HostConfig fields; retained reviewed test environment, all declared source hashes, all six declared and executed command results, strict 158-test zero-nonpass counts, the exact final 136-node collection, effective writable caches, executable tmpfs proof, pre/post cgroups including pids.max=1024 and zero max events, and cleanup status. This is a bounded one-SM120-GPU Stage 2 numerical compatibility pass only; Stage 3 remains pending and it does not establish model quality, TP2 serving, real-NVMe, weights fit, context, vision, concurrency, stability, or promotion."
+    },
+    {
+      "path": "native/mistral-r2-terminal-resource.native.json",
+      "sha256": "37d24fea7f1e79daf6c87977765548789bc3b28e0bf38ba2533bbee6dec8f3a8",
+      "sources": [
+        {
+          "path": "full/raw/mistral-r2-terminal-summary.json",
+          "sha256": "df101ce8d79f43c571c6df496d04c152bb19de6ed3e6b6977345279430f76a50"
+        }
+      ],
+      "transformation": "Preserve original terminal summary schema and fields; remove private container identity only when present. Historical restoration wording remains dated and is superseded by the campaign final restoration receipt."
+    },
+    {
+      "path": "native/mistral-r3-terminal-resource.native.json",
+      "sha256": "de7506e1466dd53be51a85b57b61a5c9acc2d4b470bdaf6a325510e36ade9640",
+      "sources": [
+        {
+          "path": "full/raw/mistral-r3-terminal-summary.json",
+          "sha256": "de7506e1466dd53be51a85b57b61a5c9acc2d4b470bdaf6a325510e36ade9640"
+        }
+      ],
+      "transformation": "Preserve original terminal summary schema and fields; remove private container identity only when present. Historical restoration wording remains dated and is superseded by the campaign final restoration receipt."
+    },
+    {
+      "path": "native/deepseek-stage3.native.json",
+      "sha256": "c65afaa13694394851a887648d756b3564ccd89441c0e4657f0a7cef391db07b",
+      "sources": [
+        {
+          "path": "full/deepseek-residency-accounting/sources/recipe-exl3-dense.py",
+          "sha256": "f698c6c448a585f291ba78863de2f8a0c753c56ec7d0e8f4d3f515746f75e3a2"
+        },
+        {
+          "path": "full/deepseek-stage2-test-audit/exl3-int8-path-audit/sources/recipe-tree.json",
+          "sha256": "7c49a63ece5fc5c3aa319cb0ec2c6fa1f8acc98ad6f5ef9f8455eb9187f802b9"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-glm-before-stop.json",
+          "sha256": "6e3d4581a342eb5a69c30b15fa461fe0ede6ce58d90dc3586c58832a27f9b2f7"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-glm-stop-apply.json",
+          "sha256": "a1bce94cc06e08279d31de4768a0c7ab53fe5cac6459295f537f964b941e6699"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-glm-stop-preview.json",
+          "sha256": "762cf07b7c509ce697e1e7b2a9cf98c189b5ab031cbe806f5023c8844771bcde"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-gpu-memory-before-load.csv",
+          "sha256": "b86187e5a34490c2ec5c712d6e744b22a8bab41ae88bd7287341c2822f0b18f7"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-gpu-processes-before-load.csv",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-gpus-before-load.json",
+          "sha256": "8f8f5e5db5ade43bf0ffbc43ed150b822bae2dc76c5b239bf0d1c260d1f01962"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-host-admission.json",
+          "sha256": "3302035bfe471df22283540311189046fbbd54f30545ee20aa4ac65e6fed5ef1"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-load-preview-correct-id.json",
+          "sha256": "65253bea4620923b208dc1d47d63e46b368d7ec3e75b1fcda29ef912147d8d4a"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-load-preview.json",
+          "sha256": "56d479a6ae0847b09f3758a8f9f0e3cfafd1bcdc0d8c93833c4a832fcc590754"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-router-drain.json",
+          "sha256": "334d4c3021b14bdb8f31462eda1ea2c75cc839bc3e6b30ef7a68d0175b1fed7b"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-router-quiesce-preview.json",
+          "sha256": "75d23541711a0e5d028b519a346871a7ef15394293940fe9193399f3489c3f72"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r7-router-quiesce.json",
+          "sha256": "4305ddcd875b44a05c86f704a574c2ada1826c6268ceb114312936baa3d0b3e8"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-absence.json",
+          "sha256": "f02382db192a659012dcb98cb64ca81e6ba69bbb567d1be082ce66f61af156c3"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-host-admission.json",
+          "sha256": "0847bca5f7033e1d272621fe1930e21fd4f8eebc8f629ac14709785f07d18ac7"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-load-apply.json",
+          "sha256": "18e3526ffb7453e9315e5980ff88303c11dec65890dc9027b9d326cee368a0f5"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-load-preview.json",
+          "sha256": "311650108905b4e844977da40037c18a8dd5810fcf905da310779ba2d9710c9c"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-logs-terminal.json",
+          "sha256": "d2854a9c9d20dc7e64581aecce2c15cd532d2f17b077b575474acd4970c76cc6"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-unload-apply.json",
+          "sha256": "012c8b03203143021d23c6687c4e7d34ac05167111d03de20d426164ab2ad2e6"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-unload-preview.json",
+          "sha256": "d8f49b85637462616edd62c0a0d99524910dcc76f27d08a7ee66b50a63c884de"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-metadata-pull-apply.json",
+          "sha256": "ee3311c62a7cd5a2958639af7241d22a0894f09416eb143e5d75f25f7790831f"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-metadata-pull-preview.json",
+          "sha256": "a7b85d85766f2b960949802a2379cad62fbbbfa2f75fffe7c9ad663cb89d0a10"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-absence.json",
+          "sha256": "ce3bae16ab18a9fea9013631dccb030d6c83ab76bf6d4b285d01c451728f4e1b"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-gpu-memory-startup-1.csv",
+          "sha256": "91a79e1debcfbf02974ad632f00bb712bebd7c840b58bfbf06c6725fbc286c4c"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-host-admission.json",
+          "sha256": "82a7cb84042fdeb4c6b1e822f3bfa677d2bfe93bcf372aa1ac58b633e0e533fa"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-host-memory-startup-1.json",
+          "sha256": "06dabdf9b2b192a7e2877309ff1c078204635abedb14fe8742a5ca1a84cd967f"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-load-apply.json",
+          "sha256": "4696dbe861da7cc70268d50651e0f8efcd68c1c247b2428f38dc67a859818380"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-load-preview.json",
+          "sha256": "cc33f224b6b55cf6ace0a90abf6db2177a60db160c8ba8642cd1f3d9de2ccd0f"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-logs-startup-3.json",
+          "sha256": "236f7e625196dc61a5278196b198c182d0a0b861f50a293cf212cfa882ce8a04"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-logs-startup-4.json",
+          "sha256": "b14483b26f8f2d9e40a53bbcfe74b03b9846c9fb89251574ce1997ab3c57ddf8"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-logs-startup-5.json",
+          "sha256": "f62e5b6fe9bcb81a40e42c612637b41b24c155bfb0e7b0430fff32c44f1fd28a"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-models.json",
+          "sha256": "df26c56def40e2c933da797c96c2900619f07a5add0d270459e311da5432336f"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-status-ready.json",
+          "sha256": "1c5f852fdf6591cbc2fb7533d0afec35b613318dddaba13db489951dd396321b"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-steady-resource-samples.json",
+          "sha256": "3634997cbd0f30340a24d0ea15801510e8f4cf8bc90f235f2dfe9e82c68a0ab5"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-unload-apply.json",
+          "sha256": "b411d2b719d0cbda07f84150088573014e46a44107f50a10517f57acd79e88ae"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r8-a2-unload-preview.json",
+          "sha256": "fdc675bbe668199bf7e6f125aebe805636d85c7e9f2851ac03f2febd1bcf9dfb"
+        },
+        {
+          "path": "full/deepseek-residency-accounting/artifact-config.json",
+          "sha256": "d1758fb479f7b360fd6004a2a5d1dc2fdffe70b11c2a10a6e33740a80c9ec253"
+        },
+        {
+          "path": "full/deepseek-stage3-dummy-coverage-audit/sources/make_dummy_model_dir.py",
+          "sha256": "5aeefe350c555e002f57239526272053b1a64fd5551ddbeec25786a82713b122"
+        },
+        {
+          "path": "full/deepseek-stage3-r8-engram-preparation/independent-terminal-review.json",
+          "sha256": "e13e52cfdab2bd44ff6d2c28c53e3ef40aa099fe8c75cb72ca9b0c509008b6a4"
+        },
+        {
+          "path": "full/deepseek-stage3-r9-engram-preparation/independent-review-r2.json",
+          "sha256": "96cdaa9f1ab95c8fdd9a211725a3abb22cb2ee78bbf4e2637731744274922b77"
+        },
+        {
+          "path": "full/deepseek-stage3-r9-engram-preparation/serve-recipes.stage3-dummy-r9-engram.toml",
+          "sha256": "2d5cf0c1bc3c2bff0ea26127f5862ace04a384e64e8bb6efefa9e88b73d74ea9"
+        },
+        {
+          "path": "full/deepseek-stage3-r9-engram-preparation/delta-r9.md",
+          "sha256": "6c95c4491cdc77fbad4a122057462e2dabe4a26024024f45e4cd706eb1587056"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-absence.json",
+          "sha256": "2d891fea1cd6cda5e668c2928dcfef943ddfc55e85c8e17fd1248e52ea8f2628"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-status-terminal.json",
+          "sha256": "ee1d1967e0bdd84210680f195404de4f2c720abfa9547dd00bbbd62527ded2e7"
+        },
+        {
+          "path": "full/deepseek-stage3-r9-engram-preparation/independent-terminal-review.json",
+          "sha256": "f147bdd6b3d1ede5641824f634950ddd26c9935caf3c8f895c190812d8a3a666"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-load-apply.json",
+          "sha256": "81f337001faf3b5823a732900f1fb98f8b85aa54c44c797205efe844c7d0f586"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-logs-terminal.json",
+          "sha256": "8b1743831f2437994f7a232f4b998e499ed1bd3b5f2bf7a71e207def85789fd0"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-status-1.json",
+          "sha256": "cbc936599ce6e91a0c500b9e0e4bd31d49d34539e81a1f1e15e76b02d32da4cf"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-status-2.json",
+          "sha256": "7582945161ee435391eb74d7773a72d4d21e095bb08770eb0b1cb3a92641cbdd"
+        },
+        {
+          "path": "full/deepseek-stage3-r9-engram-preparation/root-terminal-record.json",
+          "sha256": "66168806cc33b4c78edaeac7e087c4e394450606d4f3fea475ccc0319d8367c1"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-unload-apply.json",
+          "sha256": "52e6941cb9fc2cada7ad3fe40adf2519bf5a63329d40493c457c42b14d467022"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r9-unload-terminal.json",
+          "sha256": "21777c5aa072ca9f6bcacaa9473341242af386d61ffd9081fe4d875a35805ae5"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-absence.json",
+          "sha256": "904dc688e09bae05441090bdd6fc6750397313cc9fcdcaf08ed37c7bc6f55818"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-glm-before-stop.json",
+          "sha256": "6b8f8bb4704284b0a2b4eb30244f51ff4fa46d417459c430b833ee1455bc1a3d"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-gpu-startup-1.csv",
+          "sha256": "2bc44c8a128ebb72caceab07dc529b4dd04fad8a607947681338a0077afcf3ee"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-gpu-startup-2.csv",
+          "sha256": "7b1a88b1ea082926eed8f29adc19c3d27339ee165bd7d07d3eeb510581695ec3"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-load-apply.json",
+          "sha256": "db83fddc5bba05bce61e4821b8957c502fc32b707fe3a44ce76071efa59781b2"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-load-apply.stderr",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-load-preview.json",
+          "sha256": "5da110e40ac6612f65de6e3249c27e0fac84d255799b9729ba8205cbd7d00168"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-1.json",
+          "sha256": "6d2ce1a0aad8c01ec2a5be71cbc4a87a826725d1587e3a7ee72a84b28bcd2b87"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-2.json",
+          "sha256": "c7efbed392874261861ed8ad3296910e0062720dcbe24b31774d5a8cf93abb87"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-3.json",
+          "sha256": "2db9985f4b504e433fa1899303a4220679e7370be854f8a477eefac48d61d4df"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-4.json",
+          "sha256": "df8e7385e3f0997acdfeb9e2b0301164da38ac27bca9b8721c8fa35f9d9d442d"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-5.json",
+          "sha256": "980777cb0ab586681ad6916ea3c423d7b2ef6fbb1b90a662b4224d9298341aee"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-6.json",
+          "sha256": "7768d13fdd7c30e463e4f93e48d17aac3a089052d077e8274b9396d971e505ac"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-logs-terminal.json",
+          "sha256": "b6f297529e8e61bf58a8835594f66e170d8004d7c44a5ab8ff1b5f3288995ee7"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-quiesce-preview.json",
+          "sha256": "75d23541711a0e5d028b519a346871a7ef15394293940fe9193399f3489c3f72"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-resource-admission-r2.json",
+          "sha256": "85a7dbaabaf0fb9afbb414947973d3f3598ee47c4426012d7a3c0e11d3afbdf8"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-resource-admission.json",
+          "sha256": "6ed55fde742c90d305e2cc93458ed2dbf35781400e231a438b84f7cb32e91f0a"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-router-drain-r2.json",
+          "sha256": "334d4c3021b14bdb8f31462eda1ea2c75cc839bc3e6b30ef7a68d0175b1fed7b"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-router-drain.json",
+          "sha256": "9580bbdfc2fef6031479d07914b185c8cc89c06e12246db049aaee54571786cc"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-router-quiesce.json",
+          "sha256": "93aaac53a83adc60e8c455aa8cb89e5d1246018b34bc39358e1356188cb1dfef"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-status-1.json",
+          "sha256": "5cc3b3aab603595a078346ec3dfea69b4f417694cb1d6b4e5b04f6a04d730ed2"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-status-terminal.json",
+          "sha256": "62c74786f0f8d8dacf8877968d3f57d138124f7e13cfe5d40a904d9f9cec9ace"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-stop-apply.json",
+          "sha256": "a1bce94cc06e08279d31de4768a0c7ab53fe5cac6459295f537f964b941e6699"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-stop-preview.json",
+          "sha256": "762cf07b7c509ce697e1e7b2a9cf98c189b5ab031cbe806f5023c8844771bcde"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-unload-apply.json",
+          "sha256": "722cba117aac510f4c67637812b52bb97112f24f214e6311a59caebbbc4dc753"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r10-unload-terminal.json",
+          "sha256": "042889e7b81b0771b132381f8caf8204a5b2b39226e268c6a9bbd7f16cd7ebe1"
+        },
+        {
+          "path": "full/deepseek-stage3-r10-engram-preparation/independent-terminal-review.json",
+          "sha256": "20ab68deb80ecdabd7dad3611df3a7cbf6972c8060c8cf26911709a3afd0b518"
+        },
+        {
+          "path": "full/deepseek-stage3-r10-engram-preparation/serve-recipes.stage3-dummy-r10-engram.toml",
+          "sha256": "8b44e91096ec877711316e39861e4c233ae311ff7ed4240881ab49700fcccbe6"
+        },
+        {
+          "path": "full/deepseek-stage3-r10-engram-preparation/delta-r10.md",
+          "sha256": "48322b9ec4c4c76725f10ce26d62797e61c23667401c9dfd2d5b163713f612c0"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-load-preview.json",
+          "sha256": "49306feb61e609b06d58d051111bc51863dab2ed80a31ca8074962cf18aa6b5c"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-load-apply.json",
+          "sha256": "6e779278a021e691c2b1bfbcd5dd191aebbdd45cfcd9bd4e274c6e32983e6367"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-logs-terminal.json",
+          "sha256": "e375a6bce5e4cc7dbe3a62b32bf90430c9f1f9d59202a90c91981802cd93cbb0"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-status-steady.json",
+          "sha256": "d14922bef5e31482780537c66eb98544422f52edc67f282ab0049cbc83741a5c"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-resource-gate.json",
+          "sha256": "6f94fff5204786c8aba783cb7e912d07f0345516abfbd14dca1e282b5085a1c2"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-health-and-models.json",
+          "sha256": "87b50790692f7f5ace922be2463baeb5c45ed968f55f93de08e8791b4fb149fb"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-unload-preview.json",
+          "sha256": "28d3f685d9e67e6cb62b9d8763ec5253ff346e131403edab8b43e7586bc456cd"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-unload-apply.json",
+          "sha256": "c015b18de4d96a8143b4708230fd6daf4e3eba1a3df7d9ee597b36ab1d89f995"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-absence.json",
+          "sha256": "9f73bf3f36ba1f171358e52d7272eb6a33c409aad021efe5a9174bc11d4ec576"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r11-status-terminal.json",
+          "sha256": "96c8867c32fb319b8e9ccf99cc33766d2d4c9abb1e2b7ccdf7ab7215a75dd92c"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-engram-preparation/independent-review.json",
+          "sha256": "51ac1f2933a63c2007b7c8df6b048d90e8f006150f042a73e0137dbe5731a119"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-engram-preparation/serve-recipes.stage3-dummy-r11-engram.toml",
+          "sha256": "9adc74db303105c48ecc1e76efa5355ab3db0cd138bf3107d6a6ac55d39cd676"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-engram-preparation/delta-r11.md",
+          "sha256": "f5ea8256a0286f019bbc591be3d8f0596729c807665db5a24bb7f960d6578f9d"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-engram-preparation/offline-proof.json",
+          "sha256": "37e77913faf62bb4af846d5c85e4983d6a21785a862f5c25ae28adc5069ba3a8"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-memory-remedy-audit/README.md",
+          "sha256": "a81c9db1b7b24e66c8b7c70301328f30e5e8ad92ca183104fc98846c572cc031"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-memory-remedy-audit/source-manifest.json",
+          "sha256": "03874419ca40d18556f11727ae7588bb7837958183b32d3fdaa752934b4d71b8"
+        },
+        {
+          "path": "full/deepseek-stage3-r11-memory-remedy-audit/README-v1-rejected.md",
+          "sha256": "3e183b1ca4601b34edf11e1500c6cca43dd1d066e6ad47c87abf385390d97066"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-load-preview.json",
+          "sha256": "7213ba25883b29b3894ca2b1e3e1ef982275c297192f0ef16adcdc94d4821879"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-load-apply.json",
+          "sha256": "da38b3398473c22fe0cbe5ec6f448a38d56d86aaf7f560f37f3529fb8e2b8e76"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-health-and-models.json",
+          "sha256": "5cf303dad15a3e779b77fa72e05c8bec42fabecf0c2f780aaaa5f88ee574ddf9"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-resource-gate.json",
+          "sha256": "3ea798cc823655bee9dbe45af3d06b7235e3052b16fdd3fa9661fb6638be9eae"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-graph-request.json",
+          "sha256": "c2f6ec96f2b89d0ffbed203d3d5cf106bda5ee84b6270fe7bef80af4bc7e6558"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-graph-response.json",
+          "sha256": "3b7ccce1a9940ff96ac0745d9b5381072db083a478422d881c031f8ab0ee3b6a"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-logs-pre-request.json",
+          "sha256": "ef42d2c420c1f67c893398568c219abf4a447632e01ab421032afda299659bac"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-logs-post-probe-1.json",
+          "sha256": "5361f33e451221f0adb694a0320ce49f29f7ee543e5df2d2294c3da2c6f2b741"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-status-post-probe-1.json",
+          "sha256": "b6e55fc572660ece2c16f6ad6abda38c6eecf4bb5d769832fabe8f1eba1c160d"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-post-probe-resources.json",
+          "sha256": "922b80b1b6c94658a7ccd93f82222c83db35420207eec6f32a72142854cc2ae0"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-unload-preview.json",
+          "sha256": "6df5b3c6c74f47fb44dfd3aa38bc1dd58d1a458b445fefd4c1d93ba49b735de5"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-unload-apply.json",
+          "sha256": "7e68e94d931ac596375eeef73459e3df31e91e52f0798a00c63e559159a0174c"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-absence.json",
+          "sha256": "34f30f6a1d635a1eca1e94a4adbc3cac0e80c2ab76b2984d993dd89656053385"
+        },
+        {
+          "path": "full/raw/deepseek-stage3-r12-resource-admission-r2.json",
+          "sha256": "fc7f83d33a551f1a80c619a6c80ab509a6deee2d954ced54e71f64ede6488950"
+        },
+        {
+          "path": "full/deepseek-stage3-r12-engram-preparation/serve-recipes.stage3-dummy-r12-engram.toml",
+          "sha256": "46973d9517786f52307e7ac6f80160d0ad9d8fff563b42c57e2574ce483d4aff"
+        },
+        {
+          "path": "full/deepseek-stage3-r12-engram-preparation/delta-r12.md",
+          "sha256": "bc61d2070282b8589d63a3250241c481309fd28b5d7f1b42e4b6bb8be0e082e3"
+        },
+        {
+          "path": "full/deepseek-stage3-r12-engram-preparation/offline-proof.json",
+          "sha256": "9679c2c2332e8f3432bb44689911c1100ee52f1958cd7a96c4cb087e3b9380bd"
+        },
+        {
+          "path": "full/deepseek-stage3-r12-engram-preparation/independent-review-r2.json",
+          "sha256": "c39820a5d40812f34938d7cc0b08ac2068ce906877158386e9e4f6a75275d135"
+        },
+        {
+          "path": "full/deepseek-stage3-r12-engram-preparation/root-terminal-record.json",
+          "sha256": "2555576b40005be026b18335735286e811770235b87b8092ca42bfb30b25120f"
+        },
+        {
+          "path": "full/deepseek-stage3-r12-engram-preparation/independent-terminal-review.json",
+          "sha256": "0ba617460d27a4e68ff38d6ca86890c93b706428e53e3d6aef673d082b6bc39a"
+        },
+        {
+          "path": "full/deepseek-stage3-publication-staging/deepseek-stage3.native.json",
+          "sha256": "ac8446063fe2e8dd9ade643ff1c85f086605ff7a26764d43770e76e68f66dac1"
+        },
+        {
+          "path": "full/deepseek-stage3-publication-staging/provenance.json",
+          "sha256": "dff3a084c01981aaa230b14f2565a79e1b2d8230f669706d342cca65a52c2ade"
+        },
+        {
+          "path": "full/deepseek-stage3-publication-staging/independent-review-r12.json",
+          "sha256": "c4d73e257efe1e0f3bb26cdab8b75ad045fce2a63aa7ba574b78e3500c2345b7"
+        },
+        {
+          "path": "full/deepseek-stage3-publication-staging/r3-final-status/deepseek-stage3.native.json",
+          "sha256": "c65afaa13694394851a887648d756b3564ccd89441c0e4657f0a7cef391db07b"
+        },
+        {
+          "path": "full/deepseek-stage3-publication-staging/r3-final-status/transformation.json",
+          "sha256": "a1556c3e65046516b222fec0526a6c896f60c050a29efc0a78165f211289f19e"
+        },
+        {
+          "path": "full/deepseek-stage3-publication-staging/r3-final-status/independent-review.json",
+          "sha256": "96d2ab194977f95e1f86ceb60b91eb1bc4abd000768b9e3c9e8c0c042057359b"
+        }
+      ],
+      "transformation": "Copy independently reviewed Stage 3 r7-r12 public projection. Preserve exact configured controls, terminal outcomes, failure phases, resource and graph-dispatch observations. Remove private topology, paths, GPU/container identities, and raw reasoning text. Dummy-weight gate is not real-weight correctness or model quality. Versioned status-only derivative replaces obsolete draft-pending marker with completed_bounded_stage3_evidence; independent narrow review confirms all evidence values unchanged."
+    },
+    {
+      "path": "native/deepseek-stage4.native.json",
+      "sha256": "519aaa9478f26a875eeea7fec1ee1ba41dc182b298e73e50808cec3a4d7ed438",
+      "sources": [
+        {
+          "path": "full/raw/deepseek-stage4-r7-terminal.json",
+          "sha256": "0ec2f78cc2cf295c9814fda5d04b1b5c4499f177ad34caf1021fb48c4bf5b324"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r7-logs-failure.json",
+          "sha256": "d776a23ccafbf2bfe57b121b0e795d59e6f9bc10117c7c2fc3f7b281d24ab6eb"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r7-status-failure.json",
+          "sha256": "6c836c420d2df6a19a00503c03485f48b1d2209161c145955e287ef89a956978"
+        },
+        {
+          "path": "full/deepseek-stage4-r7-preparation/serve-recipes.stage4-real-text-r7-c1-64k.toml",
+          "sha256": "a8d0707d4568bbcdf69fdf775b2581c55de88d19a3c62d315765526bc887b037"
+        },
+        {
+          "path": "full/deepseek-stage4-r8-preparation/serve-recipes.stage4-real-text-r8-c1-64k.toml",
+          "sha256": "0c711e9a858a522c68e4dad0768e85e11a8f5779c1424aaadbd78a36d888d08f"
+        },
+        {
+          "path": "full/deepseek-stage4-r8-preparation/delta-r8.md",
+          "sha256": "8cfadd060e00d7181fbb3c0fdc63f9ac35b9b27a384d5da1f6ec4763bab1478e"
+        },
+        {
+          "path": "full/deepseek-stage4-r8-preparation/offline-proof.json",
+          "sha256": "c3e508cf7ae39676170eca60602cbc9e0e20d6443efa47d042a0cac2db9db990"
+        },
+        {
+          "path": "full/deepseek-stage4-r8-preparation/independent-review.json",
+          "sha256": "8b11783b2be87ace9171169c180090e1570e4a3ba1b898f17a875ab4abd67e79"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-integrity-order.json",
+          "sha256": "0051ede64862cf517a888b6d4adfb1899b53275ec5e2860e732f192e0d3da323"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-basic-preflight.json",
+          "sha256": "cc7d881b57b161dcd95945096bc4498a29dee40f112106db93789fd74ba416af"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-resource-gate.json",
+          "sha256": "e79411a9ca531f847c132e3ca2a118a733ccfe4c2d7a59f80dbdd0d86672168f"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-postbasic-status.json",
+          "sha256": "0f2154397a38f7d627b449bc415a6418da20ee49840efc0c8fc94798908389bb"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-postbasic-logs.json",
+          "sha256": "41b45228b54c2a324520a0f3c2c63c4bfd21f9e03c7c29815aabf4835dc9ff2a"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-postbasic-resource-gate.json",
+          "sha256": "2810543cde5ce6b34c485410820b94a75006a3d6629a876b68d862236c46bc6d"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-terminal.json",
+          "sha256": "42da253b1f8238b3bfdcd46cb0ab84b79bc6412a1cb1be2d55345f3dc254664c"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-unload-preview.json",
+          "sha256": "20b1f73ce6f8e74da2f3f5eb54d4fa29c71a1a0d41a260ec54d273bb901e7ed2"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-unload-apply.json",
+          "sha256": "4a8df8a34168dd82359c87255b231c1a3c228b4d0d97805a7171883a69435dac"
+        },
+        {
+          "path": "full/raw/deepseek-stage4-r8-unload-absence.json",
+          "sha256": "c443eee6f54b2ed4db8d250afa1dc1b4c564a8bc8f0ac881d8831ba6a8394b21"
+        },
+        {
+          "path": "full/deepseek-stage4-r8-preparation/independent-terminal-review.json",
+          "sha256": "d5be8bdd879b279c049d44fbfe4e7d584f2e0b821ed5d4bdaaca0ed5df0515b8"
+        },
+        {
+          "path": "full/deepseek-stage4-publication-staging/deepseek-stage4.native.json",
+          "sha256": "519aaa9478f26a875eeea7fec1ee1ba41dc182b298e73e50808cec3a4d7ed438"
+        },
+        {
+          "path": "full/deepseek-stage4-publication-staging/provenance.json",
+          "sha256": "4d1a9c66c09a90998adc50a5761a8d0e71fbf6c972da3537cdc557e8da8b26d7"
+        },
+        {
+          "path": "full/deepseek-stage4-publication-staging/independent-redaction-review.json",
+          "sha256": "f62373c69afab30734eaae877171cd81c84eaf4f70460786c02676c15329befb"
+        }
+      ],
+      "transformation": "Copy independently reviewed public-safe Stage4 r7/r8 projection; retain exact checksum transposition, controls, 178 integrity checks and bounded basic 2/2/resource results. Remove private topology, paths and container/device identities; no native-quality, full-role, performance or promotion claim."
+    },
+    {
+      "path": "native/deepseek-full-role-r2.native.json",
+      "sha256": "b2c0faa448a8325168754480fa9766d9197179e03e1327968129ac0bb4827a4f",
+      "sources": [
+        {
+          "path": "full/deepseek-full-role-r2-preparation/serve-recipes.deepseek-full-role-r2.toml",
+          "sha256": "3a9bd964cec79f84f96433598aae4e96841a256db5d42c2e53bf6db9aa159dac"
+        },
+        {
+          "path": "full/deepseek-full-role-r2-preparation/offline-proof.json",
+          "sha256": "4a73c9b963d79bad27c21aafd02acc175c25fae7a38217ad8af04a2f59361b47"
+        },
+        {
+          "path": "full/deepseek-full-role-r2-preparation/independent-startup-review.json",
+          "sha256": "bb0d91d1a3ae00919e94fa40f7ef6203ab196d0dcb79b3e6ffc78de36b09ad4f"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-terminal.json",
+          "sha256": "7f91a2d2e394c0ca02d47501648572ffde1b7a37b80286b826df5ea47fc8b5d5"
+        },
+        {
+          "path": "full/deepseek-full-role-r2-preparation/independent-terminal-review.json",
+          "sha256": "4b1c20e07ba716a4cd0f28badfebba2a4806db8f5926aa8361f3a486aa2bf1f1"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-health-and-models.json",
+          "sha256": "e0d7fd7fc4b646cdc49e57a8fc6fdae362f665915dc8ca6221fe598cddfe157d"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-resource-gate.json",
+          "sha256": "c46f47a3ae8efa215f297a8b5185c8795b73a2bb25fa4223189e746833c38d20"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-logs-23.json",
+          "sha256": "6ae88e2f7a5f4ac9eb26c2d9a8c73331b59e9ccb22741b8a6e2b20e6d3059947"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-basic-nonthinking-preflight.json",
+          "sha256": "46f73af715bd4ff8ea5daf59b9dbfc5cb88891a2939a6d0d16c23bb15fb5938f"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-basic-execution-receipt.json",
+          "sha256": "1e3cfd8465e11adec77e4d2fa74c6e134c54c647ebf08930597da45a901395e8"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-basic-preflight-cli.json",
+          "sha256": "4cd2e6423d6bd1401cb61bb054d272002649a0e45e271f6a512155fa371995da"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-basic-resource-samples.jsonl",
+          "sha256": "1a521d44daa274b8a5508a728a2f16e323a4daa43643fd4e8541804a6a497ac2"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-basic-resource-monitor-summary.json",
+          "sha256": "252056280785d2acfaa4360934a7734dbb5c4a012e2754ebfb3a5f94fddf309d"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-resource-failure-status.json",
+          "sha256": "0d7bea6743cfa9976f7a32bf588e620493c3f5cfcc00b4c49b98a129beddfc8d"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-resource-failure-logs.json",
+          "sha256": "ad9352a419c84ff951d79e7e03b70e4da2b96f3a034bc91a214163520008b232"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-unload-preview.json",
+          "sha256": "c0b4c314de22eb99fe3e9b263fc9769aa3a9bde35f646a6d7355708278765de6"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-unload-apply.json",
+          "sha256": "bbc96e04a0126d2ae8ad15f18dbe27153d33b05d880733e41d84584da7c0a63f"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r2-unload-absence.json",
+          "sha256": "b67deaaad221ffa5a25fcee62b099f1857d605f9a0fc466d1b705732f5c4dd77"
+        },
+        {
+          "path": "full/deepseek-full-role-publication-staging/independent-redaction-review.json",
+          "sha256": "d5c608cfd559bc27321082f87a1801c9d9e9a0648da63e86098d72423f343c4a"
+        },
+        {
+          "path": "full/deepseek-full-role-publication-staging/provenance.json",
+          "sha256": "e24d38dcd267e74d9b557075494a9a7a8627506dab90a20fe597afae3fd4db06"
+        }
+      ],
+      "transformation": "Independently reviewed public-safe bounded full-role r2 projection. Retains exact configuration, basic 2/2 outcome and resource-policy failure at 4087 MiB; distinguishes 43 monitor samples from 8 during execution. Removes private identities, commands, paths, endpoint values, timestamps and raw log payloads. No native-quality, speed or promotion claim."
+    },
+    {
+      "path": "native/deepseek-full-role-r3.native.json",
+      "sha256": "e71b41d4269a809dfef6b82e1e20d2070fa573b0d12cb4d0a53633058853599a",
+      "sources": [
+        {
+          "path": "full/deepseek-full-role-r3-preparation/serve-recipes.deepseek-full-role-r3.toml",
+          "sha256": "ff7897d7926d0aa340e86dc40c1233c820eb4f9f003659b7af9186a3657816f0"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-terminal.json",
+          "sha256": "64742e233fd235005268876e48fbfce5154ab87638d0bf4f7abfee9e292465b3"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-startup-summary.json",
+          "sha256": "e8b219e0c27e8fc02001e27ec46f575866b9f662a9d21afe9daa0940361509b2"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-basic-gate.json",
+          "sha256": "39d8bc5cfb275e98ef160490c6eaf7833f857194b92c9453454698375394f763"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-model-aware-preflight.json",
+          "sha256": "9d2cf253dc22df808fd392d90d434252b53a4fa4c71017ebfe002d502ef1a4e1"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-model-aware-execution-receipt.json",
+          "sha256": "75ffa598f41a037794b37ff81a181611645f73aac9de71d9cfe12d93e707ee12"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-qualification-resource-monitor-summary.json",
+          "sha256": "6d2606c18385cd949fb2bbdbb83a7a2686e6403a932c2834ba83f76ee2c56f3f"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-qualification-resource-samples.jsonl",
+          "sha256": "9009057c6b26c42a3997e3d1cd9fefd912b39ec7af2240a4794c68bc9ef14795"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-resource-failure-status.json",
+          "sha256": "4bbca19cc091d95b97874c6850c8d37d81d3bf0985282d0e54b7ca729151f9ae"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-resource-failure-logs.json",
+          "sha256": "c9294cc5cdd04a0ff092c768309a566c78ab3eb575505bd197a38f9a9d8a28ec"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-unload-preview.json",
+          "sha256": "47bfed4885626650fe5439b8f619b780098da422be338e77bdfbea12cc453b09"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-unload-apply.json",
+          "sha256": "1ffbf81e2ed29b1d2975a9533d408b94b7ed090c8226a56dd594a75a32f1f8ed"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r3-unload-absence.json",
+          "sha256": "ee99dfb0c7c785cc89a36f211ed3fd003152773567d6b0b14d5d03b4bcb7e754"
+        },
+        {
+          "path": "full/deepseek-full-role-r3-preparation/independent-terminal-review.json",
+          "sha256": "4f317ee05aee444b27fea58d788638e06523daaf0a0961c417904581b67c3459"
+        },
+        {
+          "path": "full/deepseek-full-role-r3-publication-staging/independent-redaction-review.json",
+          "sha256": "26fb7403fd45ead547acaa6efcdd5add8d2bfd23be4c9fc7d3248d143b2260ca"
+        },
+        {
+          "path": "full/deepseek-full-role-r3-publication-staging/provenance.json",
+          "sha256": "5085644b1921c9a15cc7f7f472d4e1ca33bbd5fbd029c01cae361bc4ee83519a"
+        },
+        {
+          "path": "full/deepseek-full-role-r3-publication-staging/deepseek-full-role-r3.native.json",
+          "sha256": "41830912a4ba537bbfa37465d904eae2f0e1e4686d28087dbb7ed141f4746a92"
+        }
+      ],
+      "transformation": "Independently reviewed public-safe r3 terminal projection. Only status normalized from pending-redaction to completed after accepted review; all measured values unchanged. Removes private identities, paths, endpoints, timestamps and raw payloads; no native-quality, speed or promotion claim."
+    },
+    {
+      "path": "native/deepseek-full-role-r4.native.json",
+      "sha256": "8db47000bfa1896eace7202b2e6d3e7a94031bb83dd84057d06887fd7aabef7e",
+      "sources": [
+        {
+          "path": "full/deepseek-full-role-r4-preparation/serve-recipes.deepseek-full-role-r4.toml",
+          "sha256": "c567ca5443a3ee8d24415fc67531ccb0d3f9290f37b57e047c357cf13664c32a"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-startup-summary.json",
+          "sha256": "ce158b86d6a7d50499b89c4bc63ef09bae1cce310261a838ebbc063bede776e1"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-basic-gate.json",
+          "sha256": "01b5a350a3e8d744f410878d3a6e6ec25611398364a4f67ac6f74078378750d5"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-basic-nonthinking-preflight.json",
+          "sha256": "5cdfe1406946117389003c460741d36f783a5582e9ee54d9762393793074f6c8"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-model-aware-gate.json",
+          "sha256": "8160a1f4c16c74eab21558595e2fba92bc1699b116fb94ac49cc46958d799437"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-model-aware-preflight.json",
+          "sha256": "33e70afa7973e6d11358e8bec4c3f3cd836fb201a8afdc75c13004a14a9c325b"
+        },
+        {
+          "path": "full/deepseek-full-role-r4-preparation/independent-protocol-terminal-review.json",
+          "sha256": "d99672da0b31f0f4c46e0ea89f69247112794ee2d2ec605a4af718cb432b1e64"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-oracle8-r1-worker-preflight.json",
+          "sha256": "7c5f3cf67acc0560caaccb7def4175c65404120e530ec70e39d670922519009a"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-oracle8-r1-execution-start.json",
+          "sha256": "ba726d8c5e263fb3641598623f510bd75a5edfb04cbe727f597ae787ba0639d1"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-oracle8-r1-terminal-status.json",
+          "sha256": "fd122c4850e887ce1cec6c186e91fd562a418487a183bc3c3350ab57bbcf9ac7"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-oracle8-r1-artifact.json",
+          "sha256": "91d0cf90ebf260ee9442b261a08309934aa36f57963d2449db1556bbd15a973b"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-oracle8-r1-native.json",
+          "sha256": "b6f17df4523080e9a1a2af5fc63130857446e6ed4b8258f41b68d58d5f4f5bf5"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-oracle8-terminal-gate.json",
+          "sha256": "dff2a904acfa3b930b744434ea378aff67d9330e884aea68d0bee2c8945d5c45"
+        },
+        {
+          "path": "full/deepseek-full-role-r4-preparation/independent-oracle8-terminal-review.json",
+          "sha256": "736b94db0a1376b617e881fa4c4e465e7c1fbeef58bd5dda780ac738c47e8b28"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-qualification-resource-monitor-summary.json",
+          "sha256": "7befc5383525a98cbccd9bbe7c523550c1c18ca3cbaceefa9721d7877e63b9f8"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-qualification-resource-samples.jsonl",
+          "sha256": "6753577e49c54a6b29222209ad0640fda58b4d6b4c806063d3dfd5f206464972"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-unload-preview.json",
+          "sha256": "4d6ca805a964b3272266e29c9e2b69b397fddfb55d1dc8b87b4d93948b1a9a5b"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-unload-apply.json",
+          "sha256": "f6f40f444e99432e159a02f29bc4f9d7e232a7b079082ed623ad437cdcf011d8"
+        },
+        {
+          "path": "full/raw/deepseek-full-role-r4-absence-status.json",
+          "sha256": "c24a3e01ecd29fe2a04cec54161f623ad8b380112ff3556a08331cf06f04c2c6"
+        },
+        {
+          "path": "full/deepseek-full-role-r4-publication-staging/independent-redaction-review.json",
+          "sha256": "80056c086a977282f6e3b04c229cbf22ef0ae453146e16a5a784832e9da1df79"
+        },
+        {
+          "path": "full/deepseek-full-role-r4-publication-staging-v2/deepseek-full-role-r4.native.json",
+          "sha256": "e5458909770ea8561db393b0cd6c7550be60e5d0dc0caf4d3df6d52b1739923b"
+        },
+        {
+          "path": "full/deepseek-full-role-r4-publication-staging-v2/provenance.json",
+          "sha256": "266d90cb6417e2fca85e1171e4d74e36fa16686361c0599bf87b510d915907ce"
+        },
+        {
+          "path": "full/deepseek-full-role-r4-publication-staging-v2/independent-redaction-review.json",
+          "sha256": "3f7448d2149aee469e860e3e1ebdc8bfe930dab84cf7a6564d5c37e73cf91095"
+        }
+      ],
+      "transformation": "Accepted public-safe v2 native projection; only top-level status normalized after independent redaction review. All18 Oracle observations and executed controls retained; full history/raw reasoning/private operational identities omitted. No result rescoring."
+    },
+    {
+      "path": "native/glm-final-direct-preflight.native.json",
+      "sha256": "20c1ca6b648450ca8ab80f482110f3b8363f8278abb1e8d11591b383e54c90ae",
+      "sources": [
+        {
+          "path": "full/raw/glm-final-direct-preflight.json",
+          "sha256": "76d10f8ed5eae7bdc342e6a78804ed9f60e152b082d143221e99be884709d872"
+        }
+      ],
+      "transformation": "Native preflight retained with generic host-relative example endpoint and reasoning excerpts removed; visible output, validation, reasoning counts, budgets,finish reasons and results unchanged."
+    },
+    {
+      "path": "native/glm-final-routed-preflight.native.json",
+      "sha256": "46cc0635cac91c5f0877347b54eff7f127a47a1ef88b9cd109675b12388f4c40",
+      "sources": [
+        {
+          "path": "full/raw/glm-final-routed-preflight.json",
+          "sha256": "764eb386f0fc88e475e84a98fa5d9382e0d1a0942673fefb7c492989d8ac34d8"
+        }
+      ],
+      "transformation": "Native preflight retained with generic host-relative example endpoint and reasoning excerpts removed; visible output, validation, reasoning counts, budgets,finish reasons and results unchanged."
+    }
+  ],
+  "schema": "anvil-serving.publication-redaction-provenance/v1",
+  "scope": "Native public derivatives retained for terminal gate evaluation and exact incumbent restoration. Source paths identify protected originals and hashes, not publicly retained raw files. No challenger qualified or was promoted."
+}

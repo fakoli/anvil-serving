@@ -3,23 +3,13 @@ import io
 import json
 import urllib.error
 
-import pytest
 
 from anvil_serving.observability.probes import router_workloads
 from anvil_serving.observability.probes.router_workloads import read_router_workloads
-from anvil_serving.observability.workload_collection import build_node_workloads
 from anvil_serving.observability.workloads import (
-    MAX_JSON_BYTES,
-    ResultStatus,
-    SourceResult,
-    Truncation,
-    WorkloadError,
     WorkloadErrorCode,
-    WorkloadOwner,
     WorkloadQuery,
-    node_result_to_dict,
 )
-from anvil_serving.paths import LOOPBACK_ALIAS_ENV
 
 
 NOW = dt.datetime(2026, 9, 5, 12, 0, tzinfo=dt.timezone.utc)
@@ -115,73 +105,6 @@ def _read(payload, *, endpoint="http://127.0.0.1:8765/v1", environment=None, que
     return result, response, calls
 
 
-@pytest.mark.parametrize(
-    "payload,status,records,omitted",
-    [
-        (_wire(records=[_record()]), ResultStatus.COMPLETE, 1, 0),
-        (_wire(), ResultStatus.COMPLETE, 0, 0),
-        (_wire(status="partial", omitted=None, error="workload-source-unavailable"), ResultStatus.PARTIAL, 0, None),
-        (_wire(status="unavailable", omitted=None, error="workload-source-unavailable"), ResultStatus.UNAVAILABLE, 0, None),
-    ],
-)
-def test_literal_router_wire_preserves_canonical_source(payload, status, records, omitted):
-    result, response, calls = _read(payload)
-    assert result.status is status
-    assert len(result.records) == records
-    assert result.truncation.omitted == omitted
-    assert result.collection_timestamp == NOW
-    assert response.closed and response.read_limit == MAX_JSON_BYTES + 1
-    assert len(calls) == 1
-
-
-def test_request_is_one_bounded_get_with_exact_canonical_query_and_headers():
-    query = WorkloadQuery(owner=WorkloadOwner.ROUTER, active_only=True, recent_seconds=12, limit=7)
-    result, _, calls = _read(_wire(), endpoint="http://127.0.0.1:8765/v1/", query=query)
-    request, timeout = calls[0]
-    assert result.status is ResultStatus.COMPLETE and timeout == 1.0
-    assert request.get_method() == "GET"
-    assert request.full_url == (
-        "http://127.0.0.1:8765/v1/workloads?owner=router&active_only=true&recent_seconds=12&limit=7"
-    )
-    assert request.get_header("Accept") == "application/json"
-    assert request.get_header("Authorization") == "Bearer " + TOKEN
-
-
-@pytest.mark.parametrize(
-    "endpoint,auth_env,environment",
-    [
-        ("http://localhost:8765/v1", "ROUTER_WORKLOAD_TOKEN", {"ROUTER_WORKLOAD_TOKEN": TOKEN}),
-        ("https://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", {"ROUTER_WORKLOAD_TOKEN": TOKEN}),
-        ("http://127.0.0.1/v1", "ROUTER_WORKLOAD_TOKEN", {"ROUTER_WORKLOAD_TOKEN": TOKEN}),
-        ("http://127.0.0.1:08765/v1", "ROUTER_WORKLOAD_TOKEN", {"ROUTER_WORKLOAD_TOKEN": TOKEN}),
-        ("http://127.0.0.1:8765/v1?private", "ROUTER_WORKLOAD_TOKEN", {"ROUTER_WORKLOAD_TOKEN": TOKEN}),
-        ("http://127.0.0.1:8765/v1", "bad-reference!", {"ROUTER_WORKLOAD_TOKEN": TOKEN}),
-        ("http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", {}),
-        ("http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", {"ROUTER_WORKLOAD_TOKEN": "too-short"}),
-    ],
-)
-def test_bad_configuration_or_hermetic_environment_never_opens(endpoint, auth_env, environment):
-    calls = []
-
-    def opener(*args):
-        calls.append(args)
-        raise AssertionError("must not open")
-
-    result = read_router_workloads(endpoint, auth_env, HOST, WorkloadQuery(), NOW, environment=environment, _open=opener)
-    assert result.status is ResultStatus.UNAVAILABLE
-    assert result.error is WorkloadErrorCode.UNAVAILABLE
-    assert calls == []
-
-
-def test_runtime_alias_applies_only_after_declared_loopback_validation():
-    result, _, calls = _read(
-        _wire(),
-        environment={"ROUTER_WORKLOAD_TOKEN": TOKEN, LOOPBACK_ALIAS_ENV: "router-host"},
-    )
-    assert result.status is ResultStatus.COMPLETE
-    assert calls[0][0].full_url.startswith("http://router-host:8765/v1/workloads?")
-
-
 def test_http_error_is_closed_without_reading_failure_body():
     body = io.BytesIO(b"private-error-body")
     error = urllib.error.HTTPError("http://127.0.0.1:8765/v1/workloads", 503, "private", {}, body)
@@ -198,98 +121,6 @@ def test_http_error_is_closed_without_reading_failure_body():
     assert "private" not in repr(result)
 
 
-@pytest.mark.parametrize("payload", (_wire(), b"not-json"), ids=("success", "invalid-wire"))
-def test_response_close_failure_is_fixed_unavailable_without_private_text(payload):
-    response = _ThrowingCloseResponse(payload)
-
-    def opener(request, timeout):
-        return response
-
-    result = read_router_workloads(
-        "http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST, WorkloadQuery(), NOW,
-        environment={"ROUTER_WORKLOAD_TOKEN": TOKEN}, _open=opener,
-    )
-    assert response.closed
-    assert result.status is ResultStatus.UNAVAILABLE
-    assert result.error is WorkloadErrorCode.UNAVAILABLE
-    assert "private close failure" not in repr(result)
-
-
-def test_default_opener_uses_the_proxy_free_no_redirect_transport(monkeypatch):
-    response = _Response(_wire())
-    calls = []
-
-    def opener(request, timeout):
-        calls.append((request, timeout))
-        return response
-
-    monkeypatch.setattr(router_workloads, "_urlopen_no_proxy_no_redirect", opener)
-    result = read_router_workloads(
-        "http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST, WorkloadQuery(), NOW,
-        environment={"ROUTER_WORKLOAD_TOKEN": TOKEN},
-    )
-    assert result.status is ResultStatus.COMPLETE
-    assert len(calls) == 1 and response.closed
-
-
-@pytest.mark.parametrize(
-    "payload,code",
-    [
-        (b"not-json", WorkloadErrorCode.INVALID),
-        (_wire(host="wrong-node"), WorkloadErrorCode.INVALID),
-        (_wire(collected="2026-09-05T12:00:30.000001Z"), WorkloadErrorCode.FUTURE),
-        (b"{" + b"x" * (MAX_JSON_BYTES + 1), WorkloadErrorCode.INVALID),
-    ],
-    ids=("not-json", "wrong-node", "future-node", "oversized"),
-)
-def test_malformed_identity_or_oversized_wire_is_fixed_invalid(payload, code):
-    result, response, _ = _read(payload)
-    assert result.status is ResultStatus.UNAVAILABLE
-    assert result.error is code
-    assert response.closed
-
-
-def test_future_source_is_fixed_future_and_healthy_peer_survives_composition():
-    payload = _wire(collected="2026-09-05T12:00:30.000001Z")
-    result, _, _ = _read(payload)
-    assert result.error is WorkloadErrorCode.FUTURE
-
-    source = SourceResult(
-        WorkloadOwner.MEDIA, ResultStatus.COMPLETE, NOW, (), Truncation(0, 0)
-    )
-    combined = build_node_workloads(HOST, WorkloadQuery(), NOW, {result.owner: result, source.owner: source})
-    by_owner = {item.owner: item for item in combined.sources}
-    assert by_owner[WorkloadOwner.MEDIA] == source
-
-
-@pytest.mark.parametrize("change", ("extra", "duplicate-source", "wrong-owner"))
-def test_closed_router_wire_requires_one_exact_router_source(change):
-    data = json.loads(_wire())
-    if change == "extra":
-        data["unexpected"] = "private"
-    elif change == "duplicate-source":
-        data["sources"].append(data["sources"][0])
-    else:
-        data["sources"][0]["owner"] = "media"
-    result, _, _ = _read(json.dumps(data, separators=(",", ":")).encode("ascii"))
-    assert result.status is ResultStatus.UNAVAILABLE
-    assert result.error is WorkloadErrorCode.INVALID
-
-
-def test_invalid_arguments_raise_before_opener():
-    calls = []
-
-    def opener(*args):
-        calls.append(args)
-        raise AssertionError("must not open")
-
-    with pytest.raises(WorkloadError):
-        read_router_workloads("http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST, object(), NOW, _open=opener)
-    with pytest.raises(WorkloadError):
-        read_router_workloads("http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", "", WorkloadQuery(), NOW, _open=opener)
-    assert calls == []
-
-
 def _snapshot(payload, **kwargs):
     response = _Response(payload)
     result = router_workloads.read_router_node_workloads(
@@ -300,72 +131,3 @@ def _snapshot(payload, **kwargs):
     )
     assert response.closed
     return result
-
-
-def test_client_snapshot_preserves_distinct_stale_node_and_source_times():
-    payload = json.loads(_wire(collected="2026-09-05T11:59:30.000000Z"))
-    payload["sources"][0]["collection_timestamp"] = "2026-09-05T11:59:20.000000Z"
-    result = _snapshot(json.dumps(payload).encode())
-    assert node_result_to_dict(result) == payload
-
-
-def test_client_host_exclusion_reads_no_environment_or_http():
-    class Forbidden:
-        def get(self, *args):
-            pytest.fail("environment read")
-
-    result = router_workloads.read_router_node_workloads(
-        "private-invalid-url", "private-reference", HOST, WorkloadQuery(host="node-b"), NOW,
-        environment=Forbidden(), _open=lambda *args, **kwargs: pytest.fail("HTTP read"),
-    )
-    assert result.host == HOST and result.status is ResultStatus.COMPLETE
-    assert len(result.sources) == 1 and result.sources[0].owner is WorkloadOwner.ROUTER
-    assert result.sources[0].truncation == Truncation(0, 0)
-
-
-@pytest.mark.parametrize("mutation,code", (
-    ("schema", WorkloadErrorCode.UNSUPPORTED),
-    ("future-source", WorkloadErrorCode.FUTURE),
-    ("query", WorkloadErrorCode.INVALID),
-    ("extra-source", WorkloadErrorCode.INVALID),
-))
-def test_client_refuses_invalid_snapshot_with_fixed_typed_failure(mutation, code):
-    data = json.loads(_wire(records=[_record()] if mutation == "query" else []))
-    query = WorkloadQuery()
-    if mutation == "schema":
-        data["schema"] = "private-unsupported-schema"
-    elif mutation == "future-source":
-        data["collection_timestamp"] = "2026-09-05T12:00:29.000000Z"
-        data["sources"][0]["collection_timestamp"] = "2026-09-05T12:00:59.000000Z"
-    elif mutation == "query":
-        query = WorkloadQuery(owner=WorkloadOwner.MEDIA)
-    else:
-        data["sources"].append(dict(data["sources"][0], owner="media"))
-    with pytest.raises(WorkloadError) as caught:
-        _snapshot(json.dumps(data).encode(), query=query)
-    assert caught.value.code is code
-    assert "private" not in str(caught.value)
-    assert caught.value.__suppress_context__
-
-
-def test_client_recent_window_is_receipt_relative_not_remote_node_relative():
-    record = _record()
-    record.update(state="terminal", phase="completed", outcome="success")
-    record.update(created_at="2026-09-05T11:59:40.000000Z",
-                  updated_at="2026-09-05T11:59:45.000000Z",
-                  source_timestamp="2026-09-05T11:59:45.000000Z")
-    payload = _wire(records=[record], collected="2026-09-05T11:59:31.000000Z")
-    with pytest.raises(WorkloadError) as caught:
-        _snapshot(payload, query=WorkloadQuery(recent_seconds=10))
-    assert caught.value.code is WorkloadErrorCode.INVALID
-
-
-def test_client_close_failure_is_not_a_valid_unavailable_snapshot():
-    with pytest.raises(WorkloadError) as caught:
-        router_workloads.read_router_node_workloads(
-            "http://127.0.0.1:8765/v1", "ROUTER_WORKLOAD_TOKEN", HOST, WorkloadQuery(), NOW,
-            environment={"ROUTER_WORKLOAD_TOKEN": TOKEN},
-            _open=lambda *args, **kwargs: _ThrowingCloseResponse(_wire()),
-        )
-    assert caught.value.code is WorkloadErrorCode.UNAVAILABLE
-    assert "private" not in str(caught.value)

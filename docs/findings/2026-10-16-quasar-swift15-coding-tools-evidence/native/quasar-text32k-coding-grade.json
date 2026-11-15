@@ -1,0 +1,1089 @@
+{
+  "artifact_sha256": "dead4f3902454f62fed20bbbcc965e10a883178ccc600e5c28583b7347770c22",
+  "artifact_valid": true,
+  "schema": "anvil-serving.coding-fixture-grade/v1",
+  "score": {
+    "pass_rate": 0.967479674796748,
+    "passed": 119,
+    "total": 123,
+    "whole_solution_pass_rate": 0.9523809523809523,
+    "whole_solutions_passed": 20,
+    "whole_solutions_total": 21
+  },
+  "suite": "quasar-swift15-coding",
+  "tasks": {
+    "apply_edits": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": "aXdY",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "<abcd>",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 7,
+          "status": "passed",
+          "total": 7
+        },
+        {
+          "cases": [
+            {
+              "actual": "aXdY",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "<abcd>",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 7,
+          "status": "passed",
+          "total": 7
+        },
+        {
+          "cases": [
+            {
+              "actual": "aXdY",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "<abcd>",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 7,
+          "status": "passed",
+          "total": 7
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": 21,
+      "total": 21,
+      "whole_solution_passes": 3
+    },
+    "decode_uvarint": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": [
+                0,
+                1
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                300,
+                2
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                18446744073709551615,
+                10
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 10,
+          "status": "passed",
+          "total": 10
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                0,
+                1
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                300,
+                2
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                18446744073709551615,
+                10
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 10,
+          "status": "passed",
+          "total": 10
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                0,
+                1
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                300,
+                2
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                18446744073709551615,
+                10
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 10,
+          "status": "passed",
+          "total": 10
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": 30,
+      "total": 30,
+      "whole_solution_passes": 3
+    },
+    "lru_trace": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": [
+                [
+                  "1",
+                  null
+                ],
+                [
+                  [
+                    "a",
+                    "1"
+                  ],
+                  [
+                    "c",
+                    "3"
+                  ]
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  null
+                ],
+                []
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  null
+                ],
+                [
+                  [
+                    "b",
+                    "3"
+                  ]
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 6,
+          "status": "passed",
+          "total": 6
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                [
+                  "1",
+                  null
+                ],
+                [
+                  [
+                    "a",
+                    "1"
+                  ],
+                  [
+                    "c",
+                    "3"
+                  ]
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  null
+                ],
+                []
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  null
+                ],
+                [
+                  [
+                    "b",
+                    "3"
+                  ]
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 6,
+          "status": "passed",
+          "total": 6
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                [
+                  "1",
+                  null
+                ],
+                [
+                  [
+                    "a",
+                    "1"
+                  ],
+                  [
+                    "c",
+                    "3"
+                  ]
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  null
+                ],
+                []
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  null
+                ],
+                [
+                  [
+                    "b",
+                    "3"
+                  ]
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 6,
+          "status": "passed",
+          "total": 6
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": 18,
+      "total": 18,
+      "whole_solution_passes": 3
+    },
+    "merge_intervals": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": [
+                [
+                  1,
+                  3
+                ],
+                [
+                  5,
+                  7
+                ],
+                [
+                  9,
+                  10
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  -3,
+                  -1
+                ],
+                [
+                  1,
+                  9
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [],
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 3,
+          "status": "passed",
+          "total": 3
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                [
+                  1,
+                  3
+                ],
+                [
+                  5,
+                  7
+                ],
+                [
+                  9,
+                  10
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  -3,
+                  -1
+                ],
+                [
+                  1,
+                  9
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [],
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 3,
+          "status": "passed",
+          "total": 3
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                [
+                  1,
+                  3
+                ],
+                [
+                  5,
+                  7
+                ],
+                [
+                  9,
+                  10
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                [
+                  -3,
+                  -1
+                ],
+                [
+                  1,
+                  9
+                ]
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [],
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 3,
+          "status": "passed",
+          "total": 3
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": 9,
+      "total": 9,
+      "whole_solution_passes": 3
+    },
+    "normalize_posix_path": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": "/a/b",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "/x",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "/",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        },
+        {
+          "cases": [
+            {
+              "actual": "/a/b",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "/x",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "/",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        },
+        {
+          "cases": [
+            {
+              "actual": "/a/b",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "/x",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": "/",
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": 15,
+      "total": 15,
+      "whole_solution_passes": 3
+    },
+    "parse_csv_line": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": [
+                "a",
+                "b,c",
+                "d\"e",
+                ""
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "",
+                "plain",
+                " spaced "
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                "a",
+                "b,c",
+                "d\"e",
+                ""
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "",
+                "plain",
+                " spaced "
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                "a",
+                "b,c",
+                "d\"e",
+                ""
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "",
+                "plain",
+                " spaced "
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        }
+      ],
+      "pass_rate": 1.0,
+      "passed": 15,
+      "total": 15,
+      "whole_solution_passes": 3
+    },
+    "stable_toposort": {
+      "attempts": [
+        {
+          "cases": [
+            {
+              "actual": [
+                "a",
+                "b",
+                "c",
+                "d"
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "d",
+                "a",
+                "b",
+                "c"
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "b",
+                "a",
+                "c"
+              ],
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        },
+        {
+          "cases": [
+            {
+              "error": "TypeError",
+              "passed": false
+            },
+            {
+              "error": "TypeError",
+              "passed": false
+            },
+            {
+              "error": "TypeError",
+              "passed": false
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "error": "TypeError",
+              "passed": false
+            }
+          ],
+          "failure_class": "behavioral_failure",
+          "passed": 1,
+          "status": "failed",
+          "total": 5
+        },
+        {
+          "cases": [
+            {
+              "actual": [
+                "a",
+                "b",
+                "c",
+                "d"
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "d",
+                "a",
+                "b",
+                "c"
+              ],
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": null,
+              "failure_class": null,
+              "passed": true
+            },
+            {
+              "actual": [
+                "b",
+                "a",
+                "c"
+              ],
+              "failure_class": null,
+              "passed": true
+            }
+          ],
+          "failure_class": null,
+          "passed": 5,
+          "status": "passed",
+          "total": 5
+        }
+      ],
+      "pass_rate": 0.7333333333333333,
+      "passed": 11,
+      "total": 15,
+      "whole_solution_passes": 2
+    }
+  }
+}

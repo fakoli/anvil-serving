@@ -1,0 +1,34 @@
+{
+  "cgroup_current_bytes_after": 19318222848,
+  "cgroup_event_deltas": {
+    "high": 0,
+    "low": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_group_kill": 0,
+    "oom_kill": 0
+  },
+  "cgroup_limit_bytes": 55834574848,
+  "closure_window_seconds": 35.65466666221619,
+  "engine_after": {
+    "running": 0.0,
+    "waiting": 0.0
+  },
+  "host_available_bytes_after": 73752297472,
+  "host_available_bytes_before": 73529655296,
+  "host_swap_io_and_oom_counter_delta": {
+    "oom_kill": 0,
+    "pswpin": 0,
+    "pswpout": 0
+  },
+  "ignis": "hold",
+  "lifecycle_changes": 0,
+  "memory_pressure_after": "some avg10=0.00 avg60=0.00 avg300=0.00 total=172376272\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=171815671\n",
+  "observed_at": "2026-10-26T02:08:54.556605+00:00",
+  "promoted": false,
+  "same_container_id_start_image_launch_sources_template_tokenizer": true,
+  "schema": "anvil-serving.reasoning-probe-closure/v1",
+  "scope": "Point-in-time pre/post observations, not continuous memory minima or an exclusive admission lease.",
+  "shared_router_bytes_unchanged": true,
+  "status": "verified_unchanged"
+}

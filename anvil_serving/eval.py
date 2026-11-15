@@ -36,7 +36,7 @@ def _tiers(manifest=None):
             )
         )
     return {s["name"]: {
-                "base_url": "http://127.0.0.1:%s/v1" % s["port"], "model": s["model"],
+                "base_url": "http://127.0.0.1:%s/v1" % s["port"], "model": s["served_name"],
                 "port": s["port"], "health": s.get("health", "/health"),
                 "container": s["container"], "engine": s.get("engine"),
                 "gpu_role": s.get("gpu_role")}

@@ -1,0 +1,8 @@
+{
+  "observed": "fixed2host32 4096-chunk diagnostic: solo nativegap max15.3ms, concurrent freshprefill nativegap440.7/500.2ms; clientgap440.8/500.3ms. Counting oracle failed; diagnostic timing only.",
+  "change": "prepare2048chunk package with cap16 and separate compiled forward namespace",
+  "feasibility": "same model/TP/concurrency/speculative16; reduces prefill scratch. Preserve52GiB RAM/no-swap bound and12GiB reserve. Startup logs/memory must pass; no new model weights.",
+  "recipe_sha256": "9b77f579ec9babff3eb5ada783830dcc302417c072b5c903db2c1a75664034a9",
+  "comparison": "runtimefixed2 balanced host32 vs original4096; protocol+strict+natural+agentic+nativeconcurrent prefill/decode; retain every failure",
+  "stop_new_work_by": "2026-10-21T15:10:00Z"
+}

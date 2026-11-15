@@ -1,0 +1,17 @@
+{
+  "model": "served-model-1",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Solve SEND + MORE = MONEY in decimal. Different letters are different digits and leading digits cannot be zero. Return only the three integers SEND, MORE, MONEY separated by commas."
+    }
+  ],
+  "stream": false,
+  "max_tokens": 512,
+  "temperature": 0.6,
+  "top_p": 0.95,
+  "reasoning_effort": "max",
+  "thinking_token_budget": 64,
+  "include_reasoning": true,
+  "return_token_ids": true
+}

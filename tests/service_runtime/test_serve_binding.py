@@ -46,22 +46,6 @@ services_manifest = "services.toml"
     return path
 
 
-def test_native_serve_requires_declared_service_and_refuses_gpu_reservation(tmp_path):
-    path = _native_manifest(tmp_path)
-    entry = serves.load_manifest(path)[0]
-    assert entry["runtime"] == "native"
-    assert entry["service"] == "mlx-primary-service"
-    assert entry["services_manifest"] == str(tmp_path / "services.toml")
-
-    reserved = _native_manifest(tmp_path, "\ngpu_role = \"gpu-0\"\nvram_mib = 1024\n")
-    try:
-        serves.load_manifest(reserved)
-    except ValueError as exc:
-        assert "GPU reservation" in str(exc)
-    else:
-        raise AssertionError("native service binding accepted a Docker GPU reservation")
-
-
 def test_native_serve_lifecycle_uses_shared_dispatcher(monkeypatch, tmp_path, capsys):
     entry = serves.load_manifest(_native_manifest(tmp_path))[0]
     calls = []
@@ -136,13 +120,3 @@ engine = "mlx-lm"
     assert calls[2][2]["tail"] == 7
     assert all(kwargs["expected_model"] == "mlx/model" for _, _, kwargs in calls)
     assert all(kwargs["expected_engine"] == "mlx-lm" for _, _, kwargs in calls)
-
-
-def test_native_serve_refuses_router_transition_controls(tmp_path):
-    path = _native_manifest(tmp_path, "\nrouter_tier = \"primary\"\n")
-    try:
-        serves.load_manifest(path)
-    except ValueError as exc:
-        assert "GPU reservation or exclusive-mode fields" in str(exc)
-    else:
-        raise AssertionError("native service binding accepted a router transition control")

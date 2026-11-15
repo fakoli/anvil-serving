@@ -1,0 +1,421 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-10-16T09:37:28.249258+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:30:29.088473+00:00",
+      "phase": "start",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    },
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:30:29.149619+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    },
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:32:33.511563+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    },
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:32:33.564329+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    },
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:34:58.248652+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    },
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:34:58.305093+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    },
+    {
+      "bound_port": 30000,
+      "container_id": "redacted:sha256:f9f9d2999df494f6a630e3e8a3e7148b1d447e81da4d416255fde6b05c0ff1e7",
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "observed_at": "2026-10-16T09:37:28.242501+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_digest": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "running": true,
+      "served_identity": "glm53-flash-baseline"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 509213.172330595,
+        "expected_values": [
+          "VALUE_49c3104e43f9",
+          "VALUE_15bf911f7d61",
+          "VALUE_070bbc17568b"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-10-16T09:32:33.452112+00:00",
+        "first_output": 509118.782145818,
+        "last_output": 509213.156539707,
+        "partial_visible": "",
+        "prompt_sha256": "5113e2eb4850414b8e751a39ad99e2fb04fd212ab859371fc3d75450e2f33330",
+        "prompt_tokens_tokenized": 174831,
+        "request_id": null,
+        "response_headers_at": 509089.796703361,
+        "result": {
+          "content_chunks": 6642,
+          "e2e": 123.70581328100525,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 6807,
+          "output_token_source": "usage",
+          "reasoning_chunks": 150,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 29.315696719044354,
+          "ttft": 36.920804339053575,
+          "usage": {
+            "completion_tokens": 6807,
+            "prompt_tokens": 174831,
+            "total_tokens": 181638
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 509089.442678957,
+        "started_at": "2026-10-16T09:30:29.722427+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-ade584f5d098d3c8",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 509127.293140634,
+        "expected_values": [
+          "VALUE_ee6a8a19c919",
+          "VALUE_e99ed4c5df28",
+          "VALUE_43852b5d4493"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-10-16T09:31:07.572922+00:00",
+        "first_output": 509124.506194837,
+        "last_output": 509127.277428399,
+        "partial_visible": "",
+        "prompt_sha256": "d8cac5b4d2d965554607037aa8a6b22a39e38066479899d32f4456d9649c4c2b",
+        "prompt_tokens_tokenized": 31871,
+        "request_id": null,
+        "response_headers_at": 509118.855281967,
+        "result": {
+          "content_chunks": 66,
+          "e2e": 8.491079049999826,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 193,
+          "output_token_source": "usage",
+          "reasoning_chunks": 120,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.704154311039019,
+          "ttft": 7.5269575390266255,
+          "usage": {
+            "completion_tokens": 193,
+            "prompt_tokens": 31871,
+            "total_tokens": 32064
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 509118.796063956,
+        "started_at": "2026-10-16T09:30:59.075828+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-998cdecdb4ed1ed1",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "overlap_output_at": 509118.85549314,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 509357.898625074,
+        "expected_values": [
+          "VALUE_29a8899e92b1",
+          "VALUE_5b664a9b2309",
+          "VALUE_0df701ced271"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-10-16T09:34:58.178409+00:00",
+        "first_output": 509244.702667694,
+        "last_output": 509357.881111409,
+        "partial_visible": "",
+        "prompt_sha256": "fc3b7b21f035b7d88a0210e575bed4b5af027907a32fd80ab9d0f56d5a9abb82",
+        "prompt_tokens_tokenized": 174831,
+        "request_id": null,
+        "response_headers_at": 509214.178254218,
+        "result": {
+          "content_chunks": 7574,
+          "e2e": 144.04325646499638,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 8234,
+          "output_token_source": "usage",
+          "reasoning_chunks": 600,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 30.847540354006924,
+          "ttft": 45.19002974202158,
+          "usage": {
+            "completion_tokens": 8234,
+            "prompt_tokens": 174831,
+            "total_tokens": 183065
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 509213.842883868,
+        "started_at": "2026-10-16T09:32:34.122634+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-998f43c5c9fab063",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 509253.27934901,
+        "expected_values": [
+          "VALUE_1cf36fb9ef8f",
+          "VALUE_43d17af14afa",
+          "VALUE_9aee19091da5"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-10-16T09:33:13.559132+00:00",
+        "first_output": 509250.594962267,
+        "last_output": 509253.264082961,
+        "partial_visible": "",
+        "prompt_sha256": "e46ea840ad417f19651112cd21717da41a8889688c14e0fd356932d374a56bc7",
+        "prompt_tokens_tokenized": 31879,
+        "request_id": null,
+        "response_headers_at": 509244.763922766,
+        "result": {
+          "content_chunks": 66,
+          "e2e": 8.568725131975953,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 185,
+          "output_token_source": "usage",
+          "reasoning_chunks": 112,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.884387695987243,
+          "ttft": 7.59391815494746,
+          "usage": {
+            "completion_tokens": 185,
+            "prompt_tokens": 31879,
+            "total_tokens": 32064
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 509244.706353925,
+        "started_at": "2026-10-16T09:33:04.986115+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-99940841b5d6c585",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "overlap_output_at": 509244.774437748,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 509507.8955833,
+        "expected_values": [
+          "VALUE_fe2c92361faf",
+          "VALUE_1ad0c4915fa2",
+          "VALUE_1493b61cdabc"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-10-16T09:37:28.175367+00:00",
+        "first_output": 509389.358346745,
+        "last_output": 509507.87675051,
+        "partial_visible": "",
+        "prompt_sha256": "e5030999f1c11ef04126a9fb975f0f3cfeb980cd587d6a07fae7c423c3c28ed3",
+        "prompt_tokens_tokenized": 174833,
+        "request_id": null,
+        "response_headers_at": 509358.984653493,
+        "result": {
+          "content_chunks": 8158,
+          "e2e": 149.2401940310374,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 8644,
+          "output_token_source": "usage",
+          "reasoning_chunks": 429,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 30.703155485040043,
+          "ttft": 42.8009798330022,
+          "usage": {
+            "completion_tokens": 8644,
+            "prompt_tokens": 174833,
+            "total_tokens": 183477
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 509358.635154159,
+        "started_at": "2026-10-16T09:34:58.914904+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-87674968437f1957",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": true,
+      "contender": {
+        "end": 509398.041583991,
+        "expected_values": [
+          "VALUE_f63d8ce6734f",
+          "VALUE_7b984711dd6b",
+          "VALUE_b4739da32397"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-10-16T09:35:38.321368+00:00",
+        "first_output": 509395.276510433,
+        "last_output": 509398.025305517,
+        "partial_visible": "",
+        "prompt_sha256": "4984a6277cd58ea25ef76024e70b78f8a6fc83f1a8cdf21d79dfa5703e1bb5ce",
+        "prompt_tokens_tokenized": 31873,
+        "request_id": null,
+        "response_headers_at": 509389.437383901,
+        "result": {
+          "content_chunks": 65,
+          "e2e": 8.662354539032094,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 190,
+          "output_token_source": "usage",
+          "reasoning_chunks": 118,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 5.897352417989168,
+          "ttft": 7.703180528013036,
+          "usage": {
+            "completion_tokens": 190,
+            "prompt_tokens": 31873,
+            "total_tokens": 32063
+          },
+          "visible_content": "",
+          "visible_content_capture_limit": 8192,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 509389.371900949,
+        "started_at": "2026-10-16T09:35:29.651649+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-a8057a2c0ecb231a",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "overlap_output_at": 509389.445095561,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 9216,
+    "anchor_tokens": 175000,
+    "base_url": "http://127.0.0.1:30000/v1",
+    "configuration": {
+      "image_digest": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+      "label": "retained-glm-r11-shared262k-comparison",
+      "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+      "recipe_sha256": "54172cd87da0e28180a4aa2dd4a0c10355d45fae328fbfc622c0345286c7b65b",
+      "registry_sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6"
+    },
+    "contender_max_tokens": 9216,
+    "contender_tokens": 32000,
+    "context_limit": 262144,
+    "managed_container": "baseline-container",
+    "mode": "overlap",
+    "model": "glm53-flash-baseline",
+    "prefix_mode": "unique",
+    "reasoning_effort": "max",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 600,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "b5dd77a1eb4586cb576f6bdb8a9a3f19030a82038d8506dc8ef17f77e7b9d5de",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "glm53-flash-baseline",
+  "stage": "identity_check",
+  "started_at": "2026-10-16T09:30:28.938527+00:00",
+  "status": "completed"
+}

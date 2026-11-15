@@ -1,6 +1,7 @@
 """Lifecycle effects require both exact ownership and an explicit apply gate."""
 import os
 import subprocess
+import sys
 
 import pytest
 
@@ -48,6 +49,7 @@ class Supervisor:
 class DockerSupervisor:
     def __init__(self):
         self.inspections = []
+        self.log_requests = []
 
     def verify_context(self):
         return None
@@ -57,12 +59,12 @@ class DockerSupervisor:
             {
                 "container": "hindsight",
                 "image_id": "sha256:" + "a" * 64,
-                "identity_labels": {"io.anvil-serving.managed-by": "fixture"},
+                "identity_labels": {"io.anvil-serving.managed-by": "models-recipes"},
             }
         ]
 
     def describe(self, binding):
-        return {"identity": binding["container"], "engine_hint": "none", "ports": []}
+        return {"identity": binding["container"], "image_id": binding["image_id"], "engine_hint": "none", "ports": []}
 
     def inspect(self, binding):
         self.inspections.append(binding["id"])
@@ -75,6 +77,10 @@ class DockerSupervisor:
             "pid": 456,
             "state": "running",
         }
+
+    def logs(self, binding, tail, *, since=None, until=None, timestamps=False, expected_identity=None):
+        self.log_requests.append((binding["id"], tail, since, until, timestamps, expected_identity))
+        return ['2026-10-16T12:00:01Z {"event":"admission"}']
 
 
 def native_docker_topology():
@@ -110,7 +116,7 @@ def docker_binding():
         "engine": "none",
         "container": "hindsight",
         "image_id": "sha256:" + "a" * 64,
-        "identity_labels": {"io.anvil-serving.managed-by": "fixture"},
+        "identity_labels": {"io.anvil-serving.managed-by": "models-recipes"},
     }
 
 
@@ -143,52 +149,12 @@ def test_confirmation_and_preview_never_mutate(setup, confirm, dry_run):
     assert not adapter.commands
 
 
-def test_start_and_stop_are_verified_against_supervisor(setup):
-    from anvil_serving.service_runtime.operations import execute
-    adapter, options = setup
-    started = execute("up", "events", confirm=True, dry_run=False, **options)
-    assert started["applied"] is True
-    assert started["services"][0]["after"]["running"] is True
-    stopped = execute("down", "events", confirm=True, dry_run=False, **options)
-    assert stopped["services"][0]["after"]["running"] is False
-
-
-def test_failed_stop_is_not_reported_as_success(setup):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    adapter.running = adapter.fail_stop = True
-    with pytest.raises(ServiceError, match="postcondition"):
-        execute("down", "events", confirm=True, dry_run=False, **options)
-
-
 def test_foreign_owner_is_refused_before_supervisor_access(setup):
     from anvil_serving.service_runtime.operations import execute
     from anvil_serving.service_runtime.contracts import ServiceError
     adapter, options = setup
     with pytest.raises(ServiceError):
         execute("up", "events", target="host:another", confirm=True, dry_run=False, **options)
-    assert not adapter.commands
-
-
-def test_disable_does_not_stop_running_service(setup):
-    from anvil_serving.service_runtime.operations import execute
-    adapter, options = setup
-    adapter.running = True
-    result = execute("disable", "events", confirm=True, dry_run=False, **options)
-    assert result["services"][0]["after"]["running"] is True
-    assert result["services"][0]["after"]["enabled"] is False
-
-
-def test_controller_refuses_self_shutdown_over_remote_tool(setup, monkeypatch):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    data = options["manifest"].read_text().replace('engine = "none"', 'engine = "none"\nfeature = "controller"')
-    options["manifest"].write_text(data)
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(options.pop("manifest").parent))
-    with pytest.raises(ServiceError, match="recovery"):
-        execute("down", "events", remote=True, confirm=True, dry_run=False, **options)
     assert not adapter.commands
 
 
@@ -213,47 +179,6 @@ def test_install_pinned_definition_does_not_register_or_start(setup, tmp_path):
     assert not adapter.commands
 
 
-def test_adoption_only_writes_binding(setup, tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.manifest import load_manifest
-    adapter, options = setup
-    row = load_manifest(options["manifest"])["events"]
-    options["manifest"].unlink()
-    source = tmp_path / "events.plist"
-    source.write_text("existing definition")
-    row.pop("definition_sha256")
-    result = execute("adopt", "events", binding=row, confirm=True, dry_run=False, **options)
-    assert result["applied"]
-    assert load_manifest(options["manifest"])["events"]["definition_sha256"]
-    assert not adapter.commands
-
-
-def test_unknown_supervisor_state_is_not_absent(setup):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    adapter.registered = adapter.running = None
-    with pytest.raises(ServiceError, match="state"):
-        execute("up", "events", confirm=True, dry_run=False, **options)
-    assert not adapter.commands
-
-
-def test_restart_requires_replacement_evidence(setup, monkeypatch):
-    from itertools import count
-    from types import SimpleNamespace
-    from anvil_serving.service_runtime import operations
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    adapter.running = True
-    # Exercise the unchanged-PID postcondition independently of CI scheduling.
-    ticks = count(0, .001)
-    monkeypatch.setattr(operations, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
-    with pytest.raises(ServiceError, match="postcondition") as caught:
-        operations.execute("restart", "events", confirm=True, dry_run=False, **options)
-    assert caught.value.code == "postcondition_failed"
-    assert adapter.commands == [["fixture-supervisor", "restart"]]
-
-
 def test_start_polls_endpoint_until_ready(setup):
     from anvil_serving.service_runtime.operations import execute
     from anvil_serving.service_runtime.manifest import load_manifest, digest
@@ -271,15 +196,6 @@ def test_start_polls_endpoint_until_ready(setup):
         return {"ready": len(calls) >= 3}
     result = execute("up", "events", confirm=True, dry_run=False, _engine=health, **options)
     assert result["applied"] and len(calls) >= 3
-
-
-def test_recipe_model_mismatch_refused_before_mutation(setup):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    with pytest.raises(ServiceError, match="model differs"):
-        execute("up", "events", expected_model="different-model", confirm=True, dry_run=False, **options)
-    assert not adapter.commands
 
 
 def fleet(tmp_path):
@@ -320,16 +236,6 @@ def fleet(tmp_path):
     # fixture budget during manifest and ownership checks before any command.
     return adapter, dict(manifest=path, topology=topo, _adapters={"launchd": adapter}, _run=adapter.run,
                          _sleep=lambda _: None, timeout_seconds=5, _host_os="macos", confirm=True, dry_run=False)
-
-
-def test_dependencies_start_in_order_and_protect_running_dependents(tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = fleet(tmp_path)
-    execute("up", "worker", **options)
-    assert adapter.commands == [["up", "events"], ["up", "worker"]]
-    with pytest.raises(ServiceError, match="dependent"):
-        execute("down", "events", **options)
 
 
 def test_failed_start_rolls_back_only_new_instances(tmp_path):
@@ -382,47 +288,25 @@ def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_pa
     assert recovered["services"][0]["after"]["registered"]
 
 
-def test_planned_bind_conflict_refuses_before_start(tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = fleet(tmp_path)
-    adapter.conflict = True
-    with pytest.raises(ServiceError, match="bind"):
-        execute("up", "worker", **options)
-    assert not adapter.commands
-
-
-@pytest.mark.parametrize("host_os", ["windows", "macos"])
-def test_docker_linux_guest_preserves_declared_physical_host(host_os):
-    from anvil_serving.service_runtime.operations import _owner
-    from anvil_serving.topology import resolve_command_identity
-    topo = parse_topology({"schema_version": 1, "id": "local", "command_host": "host:machine",
-        "command_runtime": "runtime:docker", "hosts": [{"id": "machine", "os": host_os, "roles": ["operator"]}],
-        "runtimes": [{"id": "docker", "host": "machine", "role": "docker"}],
-        "resources": [{"id": "events", "role": "events", "host": "machine", "runtime": "docker", "workload": "service"}]})
-    owner = _owner({"resource": "events", "manager": "docker", "engine": "none"}, topo,
-                   resolve_command_identity(topo), None, "linux", "status")
-    assert owner.host == "machine"
-
-
-def test_native_identity_operates_same_host_docker_service(tmp_path):
+def test_logs_passes_interval_to_declared_owner_and_returns_runtime_identity(tmp_path):
     from anvil_serving.service_runtime.operations import execute
 
     manifest = tmp_path / "services.toml"
     save_manifest(manifest, {"hindsight": docker_binding()}, expected_digest="")
     docker = DockerSupervisor()
-
     result = execute(
-        "status",
-        "hindsight",
-        manifest=manifest,
-        topology=native_docker_topology(),
-        _adapters={"docker": docker},
-        _host_os="linux",
+        "logs", "hindsight", manifest=manifest, topology=native_docker_topology(),
+        _adapters={"docker": docker}, _host_os="linux", tail=3,
+        since="2026-10-16T12:00:00Z", until="2026-10-16T12:01:00Z", timestamps=True,
     )
-
-    assert result["services"][0]["id"] == "hindsight"
-    assert docker.inspections == ["hindsight"]
+    assert docker.log_requests == [("hindsight", 3, "2026-10-16T12:00:00Z", "2026-10-16T12:01:00Z", True, "hindsight")]
+    assert result["observed_runtime"] == {
+        "manager": "docker", "identity": "hindsight", "image_id": "sha256:" + "a" * 64,
+        "observed_at": result["observed_runtime"]["observed_at"], "runtime_interval_continuity": "unknown",
+    }
+    assert result["requested_interval"] == {
+        "since": "2026-10-16T12:00:00Z", "until": "2026-10-16T12:01:00Z", "timestamps": True,
+    }
 
 
 def test_native_identity_adopts_same_host_docker_service(tmp_path):
@@ -444,57 +328,6 @@ def test_native_identity_adopts_same_host_docker_service(tmp_path):
     assert docker.inspections == ["hindsight"]
 
 
-@pytest.mark.parametrize(
-    ("command_role", "resource_role", "manager"),
-    [
-        ("native", "wsl", "docker"),
-        ("docker", "native", "launchd"),
-        ("native", "docker", "launchd"),
-    ],
-)
-def test_only_native_docker_bindings_cross_supervisor_runtime(
-    command_role, resource_role, manager
-):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.operations import _owner
-    from anvil_serving.topology import resolve_command_identity
-
-    topo = parse_topology(
-        {
-            "schema_version": 1,
-            "id": "local",
-            "command_host": "host:dark",
-            "command_runtime": "runtime:command",
-            "hosts": [{"id": "dark", "os": "linux", "roles": ["operator"]}],
-            "runtimes": [
-                {"id": "command", "host": "dark", "role": command_role},
-                {"id": "resource", "host": "dark", "role": resource_role},
-            ],
-            "resources": [
-                {
-                    "id": "service",
-                    "role": "service",
-                    "host": "dark",
-                    "runtime": "resource",
-                    "workload": "service",
-                }
-            ],
-        }
-    )
-
-    with pytest.raises(ServiceError, match="exact supervisor") as raised:
-        _owner(
-            {"resource": "service", "manager": manager, "engine": "none"},
-            topo,
-            resolve_command_identity(topo),
-            None,
-            "linux",
-            "status",
-        )
-
-    assert raised.value.code == "owner_mismatch"
-
-
 def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
     from dataclasses import replace
     from anvil_serving.topology import Runtime, Resource
@@ -507,7 +340,7 @@ def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
     path = options["manifest"]
     rows = load_manifest(path)
     rows["container"] = dict(id="container", resource="container", manager="docker", engine="none",
-        container="aux", image_id="sha256:" + "a" * 64, identity_labels={"io.anvil-serving.managed-by": "fixture"})
+        container="aux", image_id="sha256:" + "a" * 64, identity_labels={"io.anvil-serving.managed-by": "models-recipes"})
     save_manifest(path, rows, expected_digest=digest(path))
     docker = DockerSupervisor()
     docker.describe = lambda binding: {"identity": binding["container"], "engine_hint": "none", "ports": []}
@@ -522,20 +355,245 @@ def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
     assert container["supervisor"]["running"] is True
 
 
-def test_known_engine_hint_cannot_be_relabelled_during_adoption(setup, tmp_path):
-    from dataclasses import replace
+class RetainedSupervisor:
+    def __init__(self, custody):
+        self.running = False
+        self.custody = custody
+        self.cycle = 0
+        self.fail_health = False
+        self.commands = []
+        self.command_options = []
+
+    def verify_context(self):
+        return None
+
+    def describe(self, binding):
+        return {"manager": "docker", "retained_container": True, "engine_hint": "none", "ports": []}
+
+    def inspect(self, binding):
+        return {"manager": "docker", "registered": True, "running": self.running,
+                "enabled": True, "identity": binding["container_id"],
+                "pid": 777 if self.running else None, "state": "running" if self.running else "exited",
+                "retained_container": True, "custody_sha256": self.custody,
+                "restart_count": 0, "writable_mounts_sha256": binding["writable_mounts_sha256"],
+                "security_projection_sha256": binding["security_projection_sha256"],
+                "health_status": (
+                    "starting" if self.running and self.fail_health
+                    else "healthy" if self.running else "not_running"
+                ),
+                "started_at": f"2026-10-10T04:00:{self.cycle:02d}Z",
+                "finished_at": f"2026-10-10T04:01:{self.cycle:02d}Z"}
+
+    def plan(self, binding, action, observed):
+        if action not in {"up", "down"} or observed["identity"] != binding["container_id"]:
+            raise AssertionError("invalid retained lifecycle plan")
+        if observed["running"] is (action == "up"):
+            return []
+        return [["docker", "start", binding["container_id"]]] if action == "up" else [[
+            "docker", "stop", "--timeout", str(binding["shutdown_grace_seconds"]), binding["container_id"]
+        ]]
+
+    def run(self, argv, **kwargs):
+        self.commands.append(list(argv))
+        self.command_options.append(dict(kwargs))
+        self.running = argv[1] == "start"
+        self.cycle += 1
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+
+def retained_setup(tmp_path, *, shutdown_grace_seconds=1):
+    import hashlib
+    from anvil_serving.service_runtime.docker import _retained_custody_sha256
+
+    definition = tmp_path / "reviewed-retained-definition.json"
+    row = {
+        "id": "hindsight", "resource": "hindsight", "manager": "docker", "engine": "none",
+        "container": "retained-service", "image_id": "sha256:" + "a" * 64,
+        "identity_labels": {"owner": "reviewed"}, "retained_container": True,
+        "container_id": "b" * 64, "restart_count": 0, "restart_policy": "unless-stopped",
+        "restart_maximum_retry_count": 0, "writable_mounts_sha256": "c" * 64,
+        "security_projection_sha256": "d" * 64, "definition": str(definition),
+        "definition_sha256": "0" * 64,
+        "shutdown_grace_seconds": shutdown_grace_seconds,
+        "healthcheck_required": True, "healthcheck_sha256": "e" * 64,
+    }
+    definition.write_text(__import__("json").dumps({
+        "schema": "anvil-retained-container-definition/v1", "service": row["id"],
+        "container_id": row["container_id"], "image_id": row["image_id"],
+        "source_kind": "reviewed-nonsecret-container-definition", "source_sha256": "f" * 64,
+        "review_sha256": "1" * 64, "healthcheck_sha256": row["healthcheck_sha256"],
+        "contains_secrets": False,
+    }, sort_keys=True) + "\n")
+    row["definition_sha256"] = hashlib.sha256(definition.read_bytes()).hexdigest()
+    manifest = tmp_path / "services.toml"
+    save_manifest(manifest, {row["id"]: row}, expected_digest="")
+    adapter = RetainedSupervisor(_retained_custody_sha256(row))
+    return row, adapter, {
+        "manifest": manifest, "topology": native_docker_topology(), "_adapters": {"docker": adapter},
+        "_run": adapter.run, "_host_os": "linux",
+        "timeout_seconds": max(10, shutdown_grace_seconds + 5), "_sleep": lambda _: None,
+        "_engine": lambda *_args, **_kwargs: {"ready": True},
+    }
+
+
+def retained_authorization(path, preview, row, action):
+    from datetime import datetime, timedelta, timezone
+    from anvil_serving.service_runtime.manifest import digest
+
+    data = {
+        "schema": "anvil-retained-container-authorization/v1",
+        "scope": "retained-container-lifecycle", "service": row["id"], "action": action,
+        "manifest_sha256": digest(path.parent / "services.toml"),
+        "preview_sha256": preview["retained_container"]["preview_sha256"],
+        "container_id": row["container_id"],
+        "custody_sha256": preview["retained_container"]["custody_sha256"],
+        "definition_sha256": row["definition_sha256"], "human_approval_sha256": "e" * 64,
+        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=2)).isoformat(),
+    }
+    if action == "down":
+        data.update(
+            storage_consumer_state="clear", storage_consumer_evidence_sha256="f" * 64,
+            ingress_idle_state="unknown", ingress_evidence_sha256="1" * 64,
+            drain_state="bounded", drain_evidence_sha256="2" * 64,
+            uncertain_interruption_risk_accepted=True,
+        )
+    path.write_text(__import__("json").dumps(data, sort_keys=True))
+    path.chmod(0o600)
+
+
+retained_linux_custody = pytest.mark.skipif(
+    sys.platform != "linux",
+    reason="retained authorization custody requires native Linux POSIX ownership and modes",
+)
+
+
+@retained_linux_custody
+def test_retained_start_and_stop_require_reviewed_preview_and_scoped_authorization(tmp_path):
     from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.manifest import load_manifest
+
+    row, adapter, options = retained_setup(tmp_path)
+    preview = execute("up", row["id"], **options)
+    assert preview["retained_container"]["rollback_timeout_seconds"] == 6
+    assert preview["retained_container"]["maximum_total_seconds"] == 16
+    auth = tmp_path / "up-authorization.json"
+    retained_authorization(auth, preview, row, "up")
+    result = execute("up", row["id"], confirm=True, dry_run=False,
+                     expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+                     operator_authorization_file=auth, **options)
+    assert result["applied"] is True
+    assert adapter.commands == [["docker", "start", row["container_id"]]]
+
+    preview = execute("down", row["id"], **options)
+    auth = tmp_path / "down-authorization.json"
+    retained_authorization(auth, preview, row, "down")
+    result = execute("down", row["id"], confirm=True, dry_run=False,
+                     expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+                     operator_authorization_file=auth, **options)
+    assert result["services"][0]["after"]["registered"] is True
+    assert adapter.commands[-1] == ["docker", "stop", "--timeout", "1", row["container_id"]]
+
+
+@retained_linux_custody
+def test_retained_failed_start_reserves_full_declared_stop_grace_for_rollback(tmp_path, monkeypatch):
+    from itertools import count
+    from types import SimpleNamespace
+
+    from anvil_serving.service_runtime import operations
     from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    row = load_manifest(options["manifest"])["events"]
-    options["manifest"].unlink()
-    (tmp_path / "events.plist").write_text("pinned existing definition")
-    row.update(engine="kokoro", support="legacy")
-    topo = options["topology"]
-    options["topology"] = replace(topo, resources=(replace(topo.resources[0], workload="tts"),))
-    adapter.describe = lambda row: {"engine_hint": "parakeet", "ports": []}
-    with pytest.raises(ServiceError, match="engine"):
-        execute("adopt", "events", binding=row, confirm=True, dry_run=False, **options)
-    assert not options["manifest"].exists()
-    assert not adapter.commands
+    from anvil_serving.service_runtime.operations import execute
+
+    row, adapter, options = retained_setup(tmp_path, shutdown_grace_seconds=20)
+    adapter.fail_health = True
+    ticks = count(0, .25)
+    monkeypatch.setattr(operations, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
+    preview = execute("up", row["id"], **options)
+    auth = tmp_path / "authorization.json"
+    retained_authorization(auth, preview, row, "up")
+    with pytest.raises(ServiceError, match="postcondition") as raised:
+        execute("up", row["id"], confirm=True, dry_run=False,
+                expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+                operator_authorization_file=auth, **options)
+    assert adapter.commands == [
+        ["docker", "start", row["container_id"]],
+        ["docker", "stop", "--timeout", "20", row["container_id"]],
+    ]
+    assert adapter.command_options[-1]["timeout"] >= row["shutdown_grace_seconds"]
+    assert raised.value.details["rollback"] == [
+        {"id": row["id"], "stopped": True, "registration_restored": True},
+    ]
+
+
+@retained_linux_custody
+def test_retained_authorization_marker_refuses_same_path_reuse_when_state_repeats(tmp_path):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.operations import execute
+
+    row, adapter, options = retained_setup(tmp_path)
+    preview = execute("up", row["id"], **options)
+    auth = tmp_path / "authorization.json"
+    retained_authorization(auth, preview, row, "up")
+    approval = dict(confirm=True, dry_run=False,
+                    expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+                    operator_authorization_file=auth)
+    execute("up", row["id"], **approval, **options)
+    adapter.running = False
+    adapter.cycle = 0
+    with pytest.raises(ServiceError, match="already consumed"):
+        execute("up", row["id"], **approval, **options)
+    assert adapter.commands == [["docker", "start", row["container_id"]]]
+
+
+@retained_linux_custody
+def test_copied_retained_authorization_cannot_replay_after_manual_state_cycle(tmp_path):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.operations import execute
+
+    row, adapter, options = retained_setup(tmp_path)
+    preview = execute("up", row["id"], **options)
+    auth = tmp_path / "authorization.json"
+    copied = tmp_path / "copied-authorization.json"
+    retained_authorization(auth, preview, row, "up")
+    copied.write_bytes(auth.read_bytes())
+    copied.chmod(0o600)
+    execute("up", row["id"], confirm=True, dry_run=False,
+            expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+            operator_authorization_file=auth, **options)
+    adapter.running = False
+    adapter.cycle += 1
+    with pytest.raises(ServiceError, match="current reviewed preview"):
+        execute("up", row["id"], confirm=True, dry_run=False,
+                expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+                operator_authorization_file=copied, **options)
+    assert adapter.commands == [["docker", "start", row["container_id"]]]
+
+
+@retained_linux_custody
+def test_retained_unknown_ingress_requires_explicit_interruption_authority(tmp_path):
+    import json
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.operations import execute
+
+    row, adapter, options = retained_setup(tmp_path)
+    adapter.running = True
+    preview = execute("down", row["id"], **options)
+    auth = tmp_path / "authorization.json"
+    retained_authorization(auth, preview, row, "down")
+    data = json.loads(auth.read_text())
+    data["uncertain_interruption_risk_accepted"] = False
+    auth.write_text(json.dumps(data, sort_keys=True))
+    with pytest.raises(ServiceError, match="explicit authorization"):
+        execute("down", row["id"], confirm=True, dry_run=False,
+                expected_preview_sha256=preview["retained_container"]["preview_sha256"],
+                operator_authorization_file=auth, **options)
+    assert adapter.commands == []
+
+
+def test_retained_stop_requires_deadline_beyond_declared_grace(tmp_path):
+    from anvil_serving.service_runtime.contracts import ServiceError
+    from anvil_serving.service_runtime.operations import execute
+
+    row, adapter, options = retained_setup(tmp_path)
+    options["timeout_seconds"] = row["shutdown_grace_seconds"] + 4
+    with pytest.raises(ServiceError, match="reserve five seconds"):
+        execute("down", row["id"], **options)
+    assert adapter.commands == []

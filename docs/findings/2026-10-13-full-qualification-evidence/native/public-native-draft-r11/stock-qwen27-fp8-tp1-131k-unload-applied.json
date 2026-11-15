@@ -1,0 +1,27 @@
+{
+  "command": "models recipes unload --container public-runtime-001 --registry [REDACTED_PATH] --confirm --transport local",
+  "context": {
+    "command": "models-recipes-unload",
+    "command_host": "Primary Node",
+    "command_runtime": "[REDACTED_RUNTIME]",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "Primary Node",
+    "execution_runtime": "[REDACTED_RUNTIME]",
+    "gpu_role": "public-compute-role-001",
+    "gpu_uuid": "public-gpu-001",
+    "overlay": null,
+    "resource": "dark-model-operator",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "Primary Node",
+    "resource_runtime": "[REDACTED_RUNTIME]",
+    "target": null,
+    "topology": "Primary Node",
+    "transport": "local"
+  },
+  "data": "unloaded recipe container 'public-runtime-001'\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

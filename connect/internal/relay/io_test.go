@@ -77,6 +77,29 @@ func TestCompletedBodyPreservesHTTP1Connection(t *testing.T) {
 	}
 }
 
+type deadlineWriter struct {
+	http.ResponseWriter
+	deadlines int
+}
+
+func (w *deadlineWriter) SetReadDeadline(time.Time) error {
+	w.deadlines++
+	return nil
+}
+
+func TestLateCancellationDoesNotTouchClosedRequestWriter(t *testing.T) {
+	writer := &deadlineWriter{ResponseWriter: httptest.NewRecorder()}
+	body := Body(writer, io.NopCloser(strings.NewReader("incomplete")), context.Background(), time.Second).(*requestBody)
+	if err := body.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate a cancellation callback that stop could not prevent.
+	body.abort()
+	if writer.deadlines != 1 {
+		t.Fatalf("request writer received %d deadlines, want 1", writer.deadlines)
+	}
+}
+
 func TestHTTP2StalledUploadDoesNotCancelSiblingStream(t *testing.T) {
 	var connections atomic.Int32
 	release := make(chan struct{})

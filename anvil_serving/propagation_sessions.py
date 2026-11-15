@@ -293,6 +293,7 @@ class NativeSessionCheck:
     context_tokens: int
     max_output_tokens: int
     previous_process_generation: str | None = None
+    managed_endpoint_digest: str | None = None
 
     def __post_init__(self):
         for value in (self.target_id, self.identity.installation_id,
@@ -304,6 +305,8 @@ class NativeSessionCheck:
             _digest(value)
         if self.previous_process_generation is not None:
             _id(self.previous_process_generation)
+        if self.managed_endpoint_digest is not None:
+            _digest(self.managed_endpoint_digest)
         if (self.kind not in {"new_session", "existing_session"}
                 or _utc(self.prepared_at) > _utc(self.effect_completed_at)
                 or any(type(value) is not int or not 0 < value <= 16_777_216
@@ -333,12 +336,20 @@ def native_session_state(check: NativeSessionCheck, receipt: dict, *, now: datet
               "continuity_kind", "configured_route", "provider", "model", "context_tokens",
               "max_output_tokens", "turn_completed", "tool_probe_passed", "history_probe_passed", "fallback_used",
               "physical_catalog_digest", "process_generation"}
+    managed = check.managed_endpoint_digest is not None
+    if managed:
+        fields |= {"output_cap_mode", "endpoint_sha256"}
     if (now.tzinfo != timezone.utc or type(receipt) is not dict or set(receipt) != fields
-            or receipt.get("schema") != "native-session-acceptance/v1"
+            or receipt.get("schema") != ("native-session-acceptance/v2" if managed else "native-session-acceptance/v1")
             or receipt.get("check_digest") != check.digest
             or any(type(receipt[key]) is not bool for key in (
                 "configured_route", "turn_completed", "tool_probe_passed", "history_probe_passed"))
             or receipt["fallback_used"] is not None and type(receipt["fallback_used"]) is not bool):
+        return result
+    if managed and (receipt["output_cap_mode"] != "managed_invocation"
+            or receipt["endpoint_sha256"] != check.managed_endpoint_digest
+            or type(receipt["max_output_tokens"]) is not int
+            or receipt["max_output_tokens"] != check.max_output_tokens):
         return result
     try:
         started, completed = _utc(receipt["started_at"]), _utc(receipt["completed_at"])

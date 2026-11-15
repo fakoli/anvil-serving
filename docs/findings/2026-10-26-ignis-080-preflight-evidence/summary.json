@@ -1,0 +1,192 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "complete": true,
+  "completion_block": null,
+  "identity": {
+    "phase_one_source_commit": "dc576b25083d7cfdab1554db89379feee82346b5",
+    "phase_two_harness_patch_sha256": "0c9b211fd6bf8d49493a2db46f5def4ebfe9a887d2470d8a74f6f37331b46206",
+    "phase_two_reviewed_source_commit": "c727ff01f34d2d7564fab63d94203fec68890baf",
+    "model": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+    "model_revision": "8d94db83cd8e58d6be31e796723e5e35b960638c",
+    "served_model": "qwen3.8-flash-next",
+    "runtime": "Ignis 0.8.0",
+    "runtime_image": "sha256:0226b62047113c219124ca4a02b1e52492402b44f5a3020db91e77756914b8cc",
+    "hardware": "one NVIDIA RTX PRO 6000 Blackwell Max-Q; second equal GPU protected",
+    "phase_two_runtime_changed": false,
+    "phase_two_harness_only_change": true
+  },
+  "phase_one": {
+    "tool_choice": "auto",
+    "thinking": "default",
+    "seed": null,
+    "named_checks_passed": 4,
+    "named_checks_total": 5,
+    "observations_passed": 8,
+    "observations_total": 9,
+    "shared_prefix_tool_calls_passed": 3,
+    "shared_prefix_tool_calls_total": 4,
+    "terminal_engine_requests": 9,
+    "literal_http_statuses_retained": 0,
+    "outcome": "frozen auto-mode harness expectation unmet; not a protocol violation or engine/model defect"
+  },
+  "phase_two": {
+    "oracle_revision": "tool-call/v2-exact-weather",
+    "maximum_generation_requests": 16,
+    "generation_requests": 16,
+    "terminal_engine_requests": 16,
+    "captured_http_200_tool_requests": 12,
+    "all_sixteen_literal_http_200_supported": false,
+    "mechanism_cells": {
+      "passed": 3,
+      "total": 3,
+      "seed": 17
+    },
+    "selection": {
+      "tool_choice": "required",
+      "thinking": "default",
+      "seed": 17,
+      "rule": "prefer required/default when it passes; otherwise required/disabled; stop if neither passes"
+    },
+    "full_preflight": {
+      "named_checks_passed": 5,
+      "named_checks_total": 5,
+      "observations_passed": 9,
+      "observations_total": 9,
+      "terminal_engine_request_ids": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    "repeat": {
+      "shared_prefix_tool_calls_passed": 4,
+      "shared_prefix_tool_calls_total": 4,
+      "seed": 18,
+      "terminal_engine_request_ids": [
+        13,
+        14,
+        15,
+        16
+      ]
+    },
+    "policy_boundary": "Use required as a request-level control for a step where a tool call is mandatory; do not make it a global coding/chat/agent default.",
+    "auto_boundary": "The seeded auto 1/1 mechanism cell neither rescored the older unseeded 3/4 batch nor established auto reliability."
+  },
+  "measurement": {
+    "path": "direct online OpenAI-compatible functional preflight",
+    "evidence_label": "functional",
+    "statistics": [],
+    "performance_claims": [],
+    "capacity_claims": [],
+    "coding_or_swe_claims": []
+  },
+  "resources": {
+    "candidate_gpu_memory_mib": 96027,
+    "protected_gpu_memory_mib": 0,
+    "phase_two_candidate_cgroup_peak_bytes": 44944740352,
+    "phase_two_candidate_cgroup_peak_gib": 41.86,
+    "phase_two_candidate_cgroup_oom_events": 0,
+    "phase_two_host_mem_available_bytes_after_probes": 61764468736,
+    "boundary": "GPU/host values are retained point observations; cgroup peak is a managed lifetime high-water mark. None is a capacity result or performance comparison."
+  },
+  "gates": [
+    {
+      "gate": "exact_candidate_identity",
+      "status": "passed",
+      "evidence": "configuration.json and tool-choice-followup.json"
+    },
+    {
+      "gate": "phase_one_auto_all_four",
+      "status": "failed",
+      "evidence": "preflight-native.json and tool-failure-analysis.md"
+    },
+    {
+      "gate": "phase_two_required_mechanism",
+      "status": "passed",
+      "evidence": "tool-choice-followup.json"
+    },
+    {
+      "gate": "phase_two_selected_full_preflight",
+      "status": "passed",
+      "evidence": "tool-choice-followup.json"
+    },
+    {
+      "gate": "phase_two_selected_seed_repeat",
+      "status": "passed",
+      "evidence": "tool-choice-followup.json"
+    },
+    {
+      "gate": "phase_two_request_accounting",
+      "status": "passed",
+      "evidence": "tool-choice-followup.json"
+    },
+    {
+      "gate": "phase_one_operational_restoration",
+      "status": "passed",
+      "evidence": "restoration.json and restoration-smoke.json"
+    },
+    {
+      "gate": "phase_two_operational_restoration",
+      "status": "passed",
+      "evidence": "restoration.json and restoration-smoke-phase-two.json"
+    },
+    {
+      "gate": "coding_campaign",
+      "status": "not-run",
+      "evidence": "prepared-followup.json"
+    }
+  ],
+  "failures": [
+    {
+      "gate": "phase_one_auto_all_four",
+      "status": "failed",
+      "reason": "One of four unseeded auto-mode responses returned prose with finish_reason stop and no tool_calls; this is an unmet frozen harness expectation, not an engine/model defect."
+    }
+  ],
+  "limitations": [
+    "required is qualified only as a request-level policy for mandatory-tool steps on this exact pin",
+    "one seeded auto pass does not establish auto reliability or overwrite the original 3/4 result",
+    "no root cause or engine/model defect is assigned to the phase-one miss",
+    "literal HTTP 200 is retained for 12 captured phase-two tool requests, not all 16 observations",
+    "concurrent requests at a shared seed exercise reuse/concurrency but are not independent stochastic samples",
+    "GPU/host point snapshots are not continuous peak-watermark, capacity, or performance evidence; cgroup peak is a managed lifecycle high-water mark",
+    "the prepared 12-cell coding campaign was not run",
+    "JSON prompt adherence does not establish response_format json_object support",
+    "operational restoration passed; its single smoke is not full quality or strict-JSON acceptance"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false,
+    "recommendation": "Use tool_choice required only on workflow requests whose contract requires a tool call; preserve ordinary auto/default behavior elsewhere and retain the phase-one auto miss as diagnostic evidence.",
+    "next_gate": "Independent exact-head publication review; broader coding or client qualification remains separate."
+  },
+  "evidence": [
+    "plan.json",
+    "configuration.json",
+    "preflight-native.json",
+    "engine-request-summary.json",
+    "resource-summary.json",
+    "tool-failure-analysis.md",
+    "tool-usage-contract.md",
+    "tool-choice-followup.json",
+    "prepared-followup.json",
+    "restoration.json",
+    "restoration-smoke.json",
+    "restoration-smoke-phase-two.json"
+  ],
+  "metrics_coverage": null,
+  "comparison_evidence": null
+}

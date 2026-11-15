@@ -1,0 +1,30 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "object": "model",
+      "created": 1791955017,
+      "owned_by": "vllm",
+      "root": "public-path-016",
+      "parent": null,
+      "max_model_len": 327680,
+      "permission": [
+        {
+          "id": "modelperm-ad7580f26e04f9ae",
+          "object": "model_permission",
+          "created": 1791955017,
+          "allow_create_engine": false,
+          "allow_sampling": true,
+          "allow_logprobs": true,
+          "allow_search_indices": false,
+          "allow_view": true,
+          "allow_fine_tuning": false,
+          "organization": "*",
+          "group": null,
+          "is_blocking": false
+        }
+      ]
+    }
+  ]
+}

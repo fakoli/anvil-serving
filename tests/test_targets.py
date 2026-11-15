@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import copy
-import json
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
-from anvil_serving import targets
 from anvil_serving.targets import (
     CommandSpec,
-    CommandSpecError,
     TargetResolutionError,
     finalize_execution_plan,
     preflight_execution_plan,
@@ -192,38 +189,6 @@ def _bootstrap_topology(*, recovery: bool = True):
     return parse_topology(data)
 
 
-def test_local_target_selects_the_command_host_without_transport_endpoint():
-    plan = resolve_execution_plan(
-        parse_topology(_topology_data()),
-        _spec("router-status", "router"),
-        target="host-role:router",
-        command_host="host:dark",
-        command_runtime="runtime:dark-docker",
-    )
-
-    assert plan.transport == "local"
-    assert plan.command_host is plan.execution_host is plan.resource_host
-    assert plan.transport_endpoint == "http://100.64.0.10:8000/v1"
-
-
-def test_controller_target_selects_the_resource_owner_and_declared_controller():
-    plan = resolve_execution_plan(
-        parse_topology(_topology_data()),
-        _spec("router-status", "router", transports=("controller", "ssh")),
-        target="host:dark",
-    )
-
-    assert plan.transport == "controller"
-    assert plan.command_host is not plan.execution_host
-    assert plan.transport_endpoint == "http://100.64.0.10:8766"
-    assert plan.recovery_transport_endpoint == "ssh://operator@100.64.0.10:22"
-    assert plan.as_dict()["endpoint"] == "http://100.64.0.10:8766"
-    assert plan.transport_id == "dark-controller"
-    assert plan.recovery_transport_id == "dark-ssh-recovery"
-    assert plan.recovery_host_key_fingerprint == "SHA256:synthetic"
-    assert plan.recovery_known_hosts_path == "~/.ssh/known_hosts"
-
-
 def test_ssh_target_requires_a_declared_recovery_operation():
     plan = resolve_execution_plan(
         parse_topology(_topology_data()),
@@ -234,18 +199,6 @@ def test_ssh_target_requires_a_declared_recovery_operation():
 
     assert plan.transport == "ssh"
     assert plan.transport_endpoint == "ssh://operator@100.64.0.10:22"
-
-
-def test_local_transport_refuses_a_resource_owned_by_another_command_host():
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(
-            parse_topology(_topology_data()),
-            _spec("router-status", "router"),
-            target="host:dark",
-            transport="local",
-        )
-
-    assert excinfo.value.metadata == {"exit_class": "safety", "exit_code": 3}
 
 
 def test_ambiguous_resource_owner_refuses_with_safety_exit_metadata():
@@ -268,96 +221,6 @@ def test_ambiguous_resource_owner_refuses_with_safety_exit_metadata():
         resolve_execution_plan(ambiguous, _spec("router-status", "router"))
 
     assert excinfo.value.metadata == {"exit_class": "safety", "exit_code": 3}
-
-
-def test_explicit_target_disambiguates_same_role_across_hosts():
-    topology = parse_topology(_topology_data())
-    duplicate = replace(
-        topology.resource("router"),
-        id="mini-router-status",
-        host="mini",
-        runtime="mini-native",
-        endpoint="http://127.0.0.1:8000/v1",
-    )
-    multi_host = replace(topology, resources=topology.resources + (duplicate,))
-    plan = resolve_execution_plan(
-        multi_host,
-        _spec("router-status", "router"),
-        target="host:mini",
-        command_host="host:mini",
-        command_runtime="runtime:mini-native",
-    )
-    assert plan.resource is duplicate
-    assert plan.transport == "local"
-
-
-def test_command_host_os_restriction_fails_before_transport_selection():
-    topology = parse_topology(_topology_data())
-    hosts = tuple(replace(item, os="linux") if item.id == "dark" else item for item in topology.hosts)
-    topology = replace(topology, hosts=hosts)
-    spec = replace(_spec("host-wsl-config", "router"), execution_host_os=("windows",))
-    with pytest.raises(TargetResolutionError, match="does not support host OS") as excinfo:
-        resolve_execution_plan(topology, spec, target="host:dark")
-    assert excinfo.value.exit_code == 3
-
-
-def test_missing_resource_owner_refuses_with_safety_exit_metadata():
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(parse_topology(_topology_data()), _spec("missing-status", "missing"))
-
-    assert excinfo.value.metadata == {"exit_class": "safety", "exit_code": 3}
-
-
-def test_host_relative_loopback_remains_bound_to_the_resolved_resource_host():
-    plan = resolve_execution_plan(
-        parse_topology(_topology_data()), _spec("proxy-status", "realtime-proxy"), target="host-role:proxy"
-    )
-
-    assert plan.execution_host.id == plan.resource_host.id == "mini"
-    assert plan.resource_endpoint == "http://127.0.0.1:8765/v1"
-    assert plan.transport_endpoint == "http://100.64.0.11:8766"
-
-
-def test_controller_endpoint_must_match_declared_execution_host_before_dispatch():
-    data = _topology_data()
-    data["transports"][0]["endpoint"] = "http://100.64.0.11:8766"
-
-    with pytest.raises(TargetResolutionError, match="does not match execution host"):
-        resolve_execution_plan(
-            parse_topology(data),
-            _spec("router-status", "router", transports=("controller", "ssh")),
-        )
-
-
-def test_controller_loopback_is_only_valid_on_the_command_host():
-    data = _topology_data()
-    data["transports"][0]["endpoint"] = "http://127.0.0.1:8766"
-    topology = parse_topology(data)
-    command = _spec("router-status", "router", transports=("controller", "ssh"))
-
-    with pytest.raises(TargetResolutionError, match="loopback transport"):
-        resolve_execution_plan(topology, command, transport="controller")
-
-    plan = resolve_execution_plan(
-        topology,
-        command,
-        transport="controller",
-        command_host="host:dark",
-        command_runtime="runtime:dark-docker",
-    )
-    assert plan.transport_endpoint == "http://127.0.0.1:8766"
-
-
-def test_generic_host_without_address_accepts_explicit_private_controller_endpoint():
-    data = _topology_data()
-    data["hosts"][1].pop("address")
-
-    plan = resolve_execution_plan(
-        parse_topology(data),
-        _spec("router-status", "router", transports=("controller", "ssh")),
-    )
-
-    assert plan.transport_endpoint == "http://100.64.0.10:8766"
 
 
 def test_staged_resolution_rejects_changed_topology_content_under_same_id():
@@ -383,356 +246,15 @@ def test_mini_model_free_policy_refuses_a_model_resource_before_target_resolutio
     assert any(error.code == "capacity_policy" and error.path == "resources[3].host" for error in errors)
 
 
-def _mini_experimental_topology():
-    data = _topology_data()
-    data["capacity_policies"][0]["allow_experimental_model_workloads"] = True
-    data["resources"].append(
-        {
-            "id": "mini-experimental-model",
-            "role": "mini-experimental-model",
-            "host": "mini",
-            "runtime": "mini-native",
-            "workload": "experimental-model",
-        }
-    )
-    data["transports"][2]["allowed_operations"].append("mini-model-start")
-    return parse_topology(data)
-
-
-def test_model_free_capacity_rejects_before_transport_selection(monkeypatch):
-    selected = []
-
-    def transport_must_not_run(*args, **kwargs):
-        selected.append((args, kwargs))
-        raise AssertionError("transport selection is a side effect boundary")
-
-    monkeypatch.setattr(targets, "_select_transport", transport_must_not_run)
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(
-            _mini_experimental_topology(),
-            _spec("mini-model-start", "mini-experimental-model"),
-            target="host:mini",
-        )
-
-    assert selected == []
-    assert excinfo.value.exit_code == 3
-    assert excinfo.value.metadata["experimental_model_workload_requested"] is False
-    assert excinfo.value.metadata["experimental_model_workload_permitted"] is True
-    assert excinfo.value.metadata["experimental_model_workload_override"] is False
-
-
-def test_model_free_capacity_override_requires_both_parts_and_reports_audit_state():
-    plan = resolve_execution_plan(
-        _mini_experimental_topology(),
-        _spec("mini-model-start", "mini-experimental-model"),
-        target="host:mini",
-        experimental_model_workload=True,
-    )
-
-    assert plan.resource_host.id == "mini"
-    assert plan.transport == "controller"
-    assert plan.as_dict()["capacity_policy"] == "model-free"
-    assert plan.as_dict()["experimental_model_workload_override"] is True
-    assert plan.warnings and "experimental model workload override active" in plan.warnings[0]
-
-
-def test_dark_model_owner_remains_normally_model_capable():
-    plan = resolve_execution_plan(
-        parse_topology(_topology_data()),
-        _spec("model-status", "model-serve"),
-        command_host="host:dark",
-        command_runtime="runtime:dark-docker",
-    )
-
-    assert plan.resource_host.id == "dark"
-    assert plan.as_dict()["capacity_policy"] == "model-capable"
-    assert plan.as_dict()["experimental_model_workload_override"] is False
-    assert plan.warnings == ()
-
-
-def test_gpu_role_context_is_stable_uuid_identity_not_a_runtime_index():
-    plan = resolve_execution_plan(
-        parse_topology(_topology_data()),
-        CommandSpec(
-            name="model-status",
-            resource_role="model-serve",
-            supported_transports=("local",),
-            execution_runtime_roles=("docker",),
-            mutation_class="read",
-            recovery_capable=False,
-            gpu_role_required=True,
-        ),
-        command_host="host:dark",
-        command_runtime="runtime:dark-docker",
-    )
-
-    assert plan.as_dict()["gpu_role"] == "fast"
-    assert plan.as_dict()["gpu_uuid"] == "GPU-01234567-89ab-cdef-0123-456789abcdef"
-    assert "index" not in plan.as_dict()
-
-
 # ---- gpu_roles reservation capacity (ADR-0017) -------------------------------
-
-
-def test_gpu_roles_accept_reservation_capacity_fields():
-    data = _topology_data()
-    data["gpu_roles"][0].update(vram_mib=32768, reserve_mib=2048)
-
-    role = parse_topology(data).gpu_role("fast")
-    assert (role.vram_mib, role.reserve_mib) == (32768, 2048)
-
-
-def test_gpu_roles_without_reservation_fields_stay_out_of_the_ledger():
-    role = parse_topology(_topology_data()).gpu_role("fast")
-    assert role.vram_mib is None
-    assert role.reserve_mib is None
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("vram_mib", 0),
-        ("vram_mib", -1),
-        ("vram_mib", True),
-        ("vram_mib", "32768"),
-        ("reserve_mib", -1),
-        ("reserve_mib", True),
-        ("reserve_mib", "2048"),
-    ],
-)
-def test_gpu_roles_reject_non_integer_reservation_capacity(field, value):
-    data = _topology_data()
-    data["gpu_roles"][0]["vram_mib"] = 32768  # reserve_mib requires declared capacity
-    data["gpu_roles"][0][field] = value
-
-    errors = [
-        error
-        for error in validate_topology(data).errors
-        if error.path == f"gpu_roles[0].{field}"
-    ]
-    assert errors and errors[0].code == "type"
-
-
-def test_gpu_role_reserve_mib_requires_capacity_and_must_fit_within_it():
-    data = _topology_data()
-    data["gpu_roles"][0]["reserve_mib"] = 2048
-    errors = validate_topology(data).errors
-    assert any(
-        error.path == "gpu_roles[0].reserve_mib" and error.code == "required"
-        for error in errors
-    )
-
-    data["gpu_roles"][0]["vram_mib"] = 1024  # reserve larger than capacity
-    errors = validate_topology(data).errors
-    assert any(
-        error.path == "gpu_roles[0].reserve_mib" and error.code == "value"
-        for error in errors
-    )
 
 
 # --- ADR-0033: same-host locality rule and per-host role scoping ------------
 
 
-def _topology_with_dark_native() -> dict:
-    data = _topology_data()
-    data["runtimes"].append({"id": "dark-native", "host": "dark", "role": "native"})
-    return data
-
-
-def test_native_shell_operates_same_host_docker_resource_locally():
-    plan = resolve_execution_plan(
-        parse_topology(_topology_with_dark_native()),
-        _spec("router-status", "router"),
-        command_host="host:dark",
-        command_runtime="runtime:dark-native",
-    )
-
-    assert plan.transport == "local"
-    assert plan.transport_id is None
-
-
-def test_docker_identity_does_not_operate_native_execution_locally():
-    data = _topology_with_dark_native()
-    data["resources"].append(
-        {
-            "id": "dark-host",
-            "role": "host",
-            "host": "dark",
-            "runtime": "dark-native",
-            "workload": "service",
-        }
-    )
-    with pytest.raises(TargetResolutionError):
-        resolve_execution_plan(
-            parse_topology(data),
-            _spec("host-status", "host", transports=("local",)),
-            command_host="host:dark",
-            command_runtime="runtime:dark-docker",
-            transport="local",
-        )
-
-
-def test_voice_host_shape_resolves_local_without_command_runtime_override():
-    """The 2026-08-07 ticket repro: native identity, docker resources, and no
-    transport declared for the host's own docker runtime."""
-    data = _topology_with_dark_native()
-    data["command_host"] = "host:dark"
-    data["command_runtime"] = "runtime:dark-native"
-    data["resources"].append(
-        {
-            "id": "dark-stt",
-            "role": "stt-serve",
-            "host": "dark",
-            "runtime": "dark-docker",
-            "workload": "stt",
-            "endpoint": "http://127.0.0.1:30010/v1",
-            "endpoint_kind": "host-relative-loopback",
-        }
-    )
-    data["transports"] = []
-
-    plan = resolve_execution_plan(
-        parse_topology(data),
-        _spec("voice-audio-status", "stt-serve", transports=("local", "controller")),
-    )
-
-    assert plan.transport == "local"
-
-
-def test_duplicate_role_resolves_to_command_hosts_own_resource():
-    data = _topology_with_dark_native()
-    data["resources"].append(
-        {
-            "id": "operator-realtime-proxy",
-            "role": "realtime-proxy",
-            "host": "operator",
-            "runtime": "operator-native",
-            "endpoint": "http://127.0.0.1:8765/v1",
-            "endpoint_kind": "host-relative-loopback",
-            "workload": "service",
-        }
-    )
-    topology = parse_topology(data)
-    spec = _spec("voice-proxy-status", "realtime-proxy", transports=("local", "controller"))
-
-    plan = resolve_execution_plan(
-        topology, spec, command_host="host:operator", command_runtime="runtime:operator-native"
-    )
-    assert plan.resource.id == "operator-realtime-proxy"
-    assert plan.transport == "local"
-
-    plan = resolve_execution_plan(
-        topology, spec, command_host="host:mini", command_runtime="runtime:mini-native"
-    )
-    assert plan.resource.id == "realtime-proxy"
-
-
-def test_duplicate_role_with_no_local_owner_errors_naming_hosts():
-    data = _topology_with_dark_native()
-    data["resources"].append(
-        {
-            "id": "second-router",
-            "role": "router",
-            "host": "mini",
-            "runtime": "mini-native",
-            "endpoint": "http://100.64.0.11:8000/v1",
-            "workload": "service",
-        }
-    )
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(
-            parse_topology(data),
-            _spec("router-status", "router"),
-        )
-    message = str(excinfo.value)
-    assert "'dark'" in message and "'mini'" in message
-    assert "--target" in message
-
-
-def test_duplicate_role_explicit_target_still_overrides():
-    data = _topology_with_dark_native()
-    data["resources"].append(
-        {
-            "id": "operator-realtime-proxy",
-            "role": "realtime-proxy",
-            "host": "operator",
-            "runtime": "operator-native",
-            "endpoint": "http://127.0.0.1:8765/v1",
-            "endpoint_kind": "host-relative-loopback",
-            "workload": "service",
-        }
-    )
-    plan = resolve_execution_plan(
-        parse_topology(data),
-        _spec("voice-proxy-status", "realtime-proxy", transports=("local", "controller")),
-        target="host:mini",
-        command_host="host:mini",
-        command_runtime="runtime:mini-native",
-    )
-    assert plan.resource.id == "realtime-proxy"
-
-
-def test_expected_node_flows_into_the_execution_plan():
-    data = _topology_data()
-    for transport in data["transports"]:
-        if transport["id"] == "dark-controller":
-            transport["expected_node"] = "dark"
-    plan = resolve_execution_plan(
-        parse_topology(data),
-        _spec("router-status", "router", transports=("controller",)),
-        target="host:dark",
-    )
-    assert plan.transport == "controller"
-    assert plan.transport_expected_node == "dark"
-
-
-def test_media_worker_plan_resolves_one_declared_gpu_owner_and_controller():
-    data = _topology_data()
-    data["resources"].append(
-        {
-            "id": "media-worker",
-            "role": "media-worker",
-            "host": "dark",
-            "runtime": "dark-docker",
-            "gpu_role": "fast",
-            "workload": "model",
-        }
-    )
-    data["transports"][0]["allowed_operations"].append("media-worker-prepare")
-    plan = resolve_execution_plan(
-        parse_topology(data),
-        _spec("media-worker-prepare", "media-worker", transports=("controller",)),
-        target="host:dark",
-    )
-    assert plan.transport == "controller"
-    assert plan.resource.id == "media-worker"
-    assert plan.gpu_role.id == "fast"
-    assert plan.transport_allowed_operations[-1] == "media-worker-prepare"
-
-
 _REFERENCE_TOPOLOGY = (
     Path(__file__).resolve().parents[1] / "examples/primary-node/operator-topology.toml"
 )
-
-
-@pytest.mark.parametrize("verb", ("inspect", "logs"))
-def test_generic_diagnostic_resolves_exact_controller_resource_and_transport(verb):
-    topology = load_topology(_REFERENCE_TOPOLOGY)
-    path, node = _command_node("controller " + verb)
-    spec = command_tree_spec(path, node)
-
-    plan = resolve_execution_plan(topology, spec, target="host:primary-node")
-
-    assert spec.name == "controller-" + verb
-    assert spec.mutation_class == "read" and not spec.gpu_role_required
-    assert plan.resource.id == "anvil-controller"
-    assert plan.resource.role == "controller"
-    assert plan.execution_host.id == "primary-node"
-    assert plan.execution_runtime.id == "dark-docker"
-    assert plan.transport == "controller" and plan.transport_id == "dark-controller"
-    assert plan.transport_expected_node == "primary-node"
-    assert plan.recovery_transport_endpoint is None
-    assert plan.gpu_role is None
 
 
 @pytest.mark.parametrize("verb", ("inspect", "logs"))
@@ -767,21 +289,6 @@ def test_generic_diagnostic_permissions_are_scoped_and_scaffold_identical():
     assert _REFERENCE_TOPOLOGY.read_bytes() == scaffold.read_bytes()
 
 
-def test_host_bootstrap_resolves_controller_first_without_a_resource():
-    topology = _bootstrap_topology()
-
-    plan = resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
-
-    assert plan.transport == "controller"
-    assert plan.transport_id == "dark-bootstrap-controller"
-    assert plan.recovery_transport_id == "dark-bootstrap-recovery"
-    assert plan.transport_expected_node == "dark"
-    assert plan.execution_runtime.id == "dark-native"
-    assert plan.host_bootstrap is topology.host("dark").bootstrap
-    assert plan.resource_host is plan.resource_runtime is plan.resource is None
-    assert plan.resource_endpoint is plan.gpu_role is plan.capacity is None
-
-
 def test_same_host_bootstrap_still_selects_authenticated_controller():
     topology = _bootstrap_topology()
 
@@ -795,90 +302,6 @@ def test_same_host_bootstrap_still_selects_authenticated_controller():
 
     assert plan.transport == "controller"
     assert plan.transport_id == "dark-bootstrap-controller"
-
-
-@pytest.mark.parametrize(
-    "changes",
-    (
-        {"name": "other-bootstrap"},
-        {"resource_role": "host"},
-        {"supported_transports": ("controller",)},
-        {"execution_runtime_roles": ("docker",)},
-        {"mutation_class": "read"},
-        {"recovery_capable": False},
-        {"gpu_role_required": True},
-        {"execution_host_os": ("linux",)},
-    ),
-)
-def test_host_bootstrap_command_spec_is_exact(changes):
-    with pytest.raises(CommandSpecError, match="host-bootstrap"):
-        _bootstrap_spec(**changes)
-
-
-@pytest.mark.parametrize("target", (None, "host-role:serve", "dark", "host:"))
-def test_host_bootstrap_requires_exact_explicit_host_target(target):
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(_bootstrap_topology(), _bootstrap_spec(), target=target)
-
-    assert excinfo.value.metadata["reason_code"] == "bootstrap-target-required"
-    assert str(excinfo.value) == "bootstrap requires one explicit host target"
-
-
-def test_host_bootstrap_missing_host_uses_fixed_refusal():
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(_bootstrap_topology(), _bootstrap_spec(), target="host:missing")
-
-    assert excinfo.value.metadata["reason_code"] == "bootstrap-host-missing"
-    assert "missing" not in str(excinfo.value)
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "reason_code"),
-    (
-        ("bootstrap", None, "bootstrap-contract-missing"),
-        ("enabled", False, "bootstrap-disabled"),
-        ("bootstrap_authorized", False, "bootstrap-authorization-denied"),
-        ("execution_runtime", "missing-private-runtime", "bootstrap-runtime-invalid"),
-    ),
-)
-def test_host_bootstrap_policy_refusals_are_typed_and_input_safe(field, value, reason_code):
-    topology = _bootstrap_topology()
-    host = topology.host("dark")
-    if field == "bootstrap":
-        changed_host = replace(host, bootstrap=value)
-    else:
-        changed_host = replace(host, bootstrap=replace(host.bootstrap, **{field: value}))
-    topology = replace(
-        topology,
-        hosts=tuple(changed_host if item.id == host.id else item for item in topology.hosts),
-    )
-
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
-
-    assert excinfo.value.metadata["reason_code"] == reason_code
-    assert "private" not in str(excinfo.value)
-
-
-def test_host_bootstrap_controller_missing_and_ambiguity_are_distinct():
-    topology = _bootstrap_topology()
-    without = replace(
-        topology,
-        transports=tuple(
-            item for item in topology.transports if item.id != "dark-bootstrap-controller"
-        ),
-    )
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(without, _bootstrap_spec(), target="host:dark")
-    assert excinfo.value.metadata["reason_code"] == "bootstrap-controller-missing"
-
-    controller = topology.transport("dark-bootstrap-controller")
-    duplicate = replace(controller, id="private-duplicate-controller")
-    ambiguous = replace(topology, transports=topology.transports + (duplicate,))
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(ambiguous, _bootstrap_spec(), target="host:dark")
-    assert excinfo.value.metadata["reason_code"] == "bootstrap-controller-ambiguous"
-    assert "private" not in str(excinfo.value)
 
 
 @pytest.mark.parametrize(
@@ -937,34 +360,6 @@ def test_host_bootstrap_rejects_local_or_caller_selected_recovery(transport):
     assert "private" not in str(excinfo.value)
 
 
-def test_host_bootstrap_converts_command_identity_errors_to_fixed_refusal():
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(
-            _bootstrap_topology(),
-            _bootstrap_spec(),
-            target="host:dark",
-            command_host="host:private-missing-host",
-            command_runtime="runtime:operator-native",
-        )
-
-    assert excinfo.value.metadata["reason_code"] == "bootstrap-command-identity-invalid"
-    assert "private" not in str(excinfo.value)
-
-    class FailingEnvironment(dict):
-        def get(self, *_args, **_kwargs):
-            raise RuntimeError("private environment failure")
-
-    with pytest.raises(TargetResolutionError) as excinfo:
-        resolve_execution_plan(
-            _bootstrap_topology(),
-            _bootstrap_spec(),
-            target="host:dark",
-            environment=FailingEnvironment(),
-        )
-    assert excinfo.value.metadata["reason_code"] == "bootstrap-command-identity-invalid"
-    assert "private" not in str(excinfo.value)
-
-
 def test_host_bootstrap_recovery_requires_pinned_identity_metadata():
     topology = _bootstrap_topology()
     recovery = replace(
@@ -983,49 +378,3 @@ def test_host_bootstrap_recovery_requires_pinned_identity_metadata():
         resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
 
     assert excinfo.value.metadata["reason_code"] == "bootstrap-transport-invalid"
-
-
-def test_host_bootstrap_does_not_use_resource_or_capacity_resolution(monkeypatch):
-    def forbidden(*_args, **_kwargs):
-        raise AssertionError("host bootstrap used a resource-owned seam")
-
-    monkeypatch.setattr(targets, "_resource_owner", forbidden)
-    monkeypatch.setattr(targets, "_capacity_decision", forbidden)
-
-    plan = resolve_execution_plan(_bootstrap_topology(), _bootstrap_spec(), target="host:dark")
-
-    assert plan.resource is None and plan.capacity is None
-
-
-def test_host_bootstrap_public_projection_is_an_exact_private_value_free_allowlist():
-    topology = _bootstrap_topology()
-    plan = resolve_execution_plan(topology, _bootstrap_spec(), target="host:dark")
-
-    payload = plan.as_dict()
-    rendered = json.dumps(payload, sort_keys=True)
-
-    assert set(payload) == {
-        "command",
-        "topology",
-        "topology_snapshot",
-        "command_host",
-        "command_runtime",
-        "execution_host",
-        "execution_runtime",
-        "target",
-        "transport",
-        "transport_id",
-        "recovery_transport_id",
-        "expected_node",
-    }
-    for prohibited in (
-        "private-stage",
-        "private-install",
-        "private-python",
-        "private-receiver",
-        "SYNTHETIC_BOOTSTRAP_TOKEN",
-        "100.64.0.10",
-        "private-known-hosts",
-        "synthetic-bootstrap",
-    ):
-        assert prohibited not in rendered

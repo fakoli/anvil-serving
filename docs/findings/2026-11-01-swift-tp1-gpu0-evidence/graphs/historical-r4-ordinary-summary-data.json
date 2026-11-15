@@ -1,0 +1,192 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "MTP r1",
+          "points": [
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r1-a1.json",
+              "artifact_sha256": "f5cb4693aed0e37d179402ca09ee9fd080c126fbdba20e9e50150b0bb0ab1a35",
+              "value": 67.73731186486265,
+              "x": "C1"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r1-a1.json",
+              "artifact_sha256": "e6ec6e2824ba890b8964f23626da56d45b95cf10c848a4b50bfc116c183af17a",
+              "value": 39.97238445939927,
+              "x": "C2"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r1-a1.json",
+              "artifact_sha256": "305439dd655ac23882de54ccd4f8e55244802b17a97c5ddbaef1aa8834a58c5d",
+              "value": 26.91594845768527,
+              "x": "C4"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r1-a1.json",
+              "artifact_sha256": "de9dcdca57bdfdeee566f9da21a5a23f19251bf47a852a5df1f7d554f5f0fde7",
+              "value": 13.943354133024178,
+              "x": "C8"
+            }
+          ]
+        },
+        {
+          "label": "MTP r2",
+          "points": [
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r2-a1.json",
+              "artifact_sha256": "26a14b609ffa26d5f739addac110b52cd864ff001697c8bb4227e832511bd24a",
+              "value": 67.34954269203033,
+              "x": "C1"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r2-a1.json",
+              "artifact_sha256": "1d995d371fa3c817a1e947324c0d023a1d37089d890b29a8826a15006c6fcd04",
+              "value": 37.25242736113296,
+              "x": "C2"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r2-a1.json",
+              "artifact_sha256": "bddfa4ab58e445afd5420cac29013bd241e172bb6deea8497db73936edb54aaf",
+              "value": 26.651446908112206,
+              "x": "C4"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r2-a1.json",
+              "artifact_sha256": "b0333c41ab4f5f547c1fc4facab21d2a4a9a6f8edcccfd34baf17ad18f9d2c38",
+              "value": 16.98932971177123,
+              "x": "C8"
+            }
+          ]
+        },
+        {
+          "label": "MTP r3",
+          "points": [
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r3-a1.json",
+              "artifact_sha256": "4488b663db4bd188661b6ae2c1cd242ceaa550277c6e2f44043671c5367d6d5c",
+              "value": 64.054904654352,
+              "x": "C1"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r3-a1.json",
+              "artifact_sha256": "a1c1a1ed48d105f917513ab087b0d15533180e10c21e321dd5caf7464cefa14e",
+              "value": 34.52705039334261,
+              "x": "C2"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r3-a1.json",
+              "artifact_sha256": "b89cf61c4e4844244d3d9ae3bd8fa8adb8830cf3e54ad6f3aa65dff2f59635ab",
+              "value": 26.513536533554575,
+              "x": "C4"
+            },
+            {
+              "artifact": "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r3-a1.json",
+              "artifact_sha256": "628dc8cd1b7af467d5761c1da63e9fa2a0c89c4d184bab0cc3d1139ef072181a",
+              "value": 15.136324497991534,
+              "x": "C8"
+            }
+          ]
+        },
+        {
+          "label": "No-spec r1",
+          "points": [
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r1-a1.json",
+              "artifact_sha256": "d5e3d3ba91bfd056a80652ab9db634b5826c7a7a051c2d1d9cb0a6b7c91212bf",
+              "value": 26.555078618652846,
+              "x": "C1"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r1-a1.json",
+              "artifact_sha256": "4a1e3c5e9e56851d7cb1e98b9e871e3b4a0465ebfd74c8acd61f921c996a8ce8",
+              "value": 19.55379655711357,
+              "x": "C2"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r1-a1.json",
+              "artifact_sha256": "9285eec76163dbd8ed70b804aec16240900f803b177b20dc27e85ae4fc25243c",
+              "value": 15.95888153166029,
+              "x": "C4"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r1-a1.json",
+              "artifact_sha256": "b86f2e1e61c44c21928d31c0a5ef0d997ef6264f8c59897a274382a7632e4147",
+              "value": 11.010395741709385,
+              "x": "C8"
+            }
+          ]
+        },
+        {
+          "label": "No-spec r2",
+          "points": [
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r2-a1.json",
+              "artifact_sha256": "883f55e49dd54fd4d9ee9c0bafa2f2466f95f175ff74ae998dc3b81e3276a040",
+              "value": 25.30348226198499,
+              "x": "C1"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r2-a1.json",
+              "artifact_sha256": "93f598f3a5fafd23432284b7664eeb96b9a6304f5acd2e22f30b6037eceba6be",
+              "value": 19.361921131311423,
+              "x": "C2"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r2-a1.json",
+              "artifact_sha256": "1c7c2cae3515648818c5217a6d0f6ba76e7ef3f96042834075a25a5f58d472d6",
+              "value": 15.496383230918694,
+              "x": "C4"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r2-a1.json",
+              "artifact_sha256": "e59274096668a5c5f8096f17c6d9f818927fca2c16a974ba16eb46cb95a1ce1b",
+              "value": 10.622704329468945,
+              "x": "C8"
+            }
+          ]
+        },
+        {
+          "label": "No-spec r3",
+          "points": [
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r3-a1.json",
+              "artifact_sha256": "e26261716b91f416db441afe0177d1546a41b84fc49e6b887f25ede2f7ff132d",
+              "value": 25.280194135403434,
+              "x": "C1"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r3-a1.json",
+              "artifact_sha256": "52e8abd509c15004599a4d23251343624dd64e61c528b43f9281ead8e9563e77",
+              "value": 18.72899949434316,
+              "x": "C2"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r3-a1.json",
+              "artifact_sha256": "41168c6d724fd2c100ec69c552d35981022d9aece6bd15cb3e3a6d3b07a005e6",
+              "value": 16.420247107943798,
+              "x": "C4"
+            },
+            {
+              "artifact": "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r3-a1.json",
+              "artifact_sha256": "38b3dccc4160a99e82c4fc37a8e2ffa7063c2d230f59f6c4631a712bcd24cf8f",
+              "value": 10.000109951208353,
+              "x": "C8"
+            }
+          ]
+        }
+      ],
+      "title": "8K nominal context, ordinary-summary decode p50",
+      "x_label": "Requested concurrency",
+      "y_label": "Decode tokens/s"
+    }
+  ],
+  "metric_semantics": {
+    "metrics.decode_tok_s_p50": "Per-repetition native p50 decode tokens/s for ordinary-summary output. Pooled displayed values remain raw/{nospec,mtp3}-summary.json."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Each line is one retained repetition. C1-C8 only; strict controlled output failed separately, so this is not exact controlled-decode evidence.",
+  "title": "Historical r4 ordinary-summary decode observations"
+}

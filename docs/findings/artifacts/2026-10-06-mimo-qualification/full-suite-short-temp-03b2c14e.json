@@ -1,0 +1,35 @@
+{
+  "command": [
+    "/srv/anvil-serving/.venv/bin/python",
+    "-m",
+    "pytest",
+    "tests/",
+    "-x",
+    "-q",
+    "--basetemp",
+    "/var/tmp/anvil-serving-pytest-n8lremqt"
+  ],
+  "cwd": "/home/example/.codex/worktrees/066c/anvil-serving",
+  "exit_code": 0,
+  "finished_at": "2026-10-06T09:02:28.784558+00:00",
+  "interpreter": "/srv/anvil-serving/.venv/bin/python",
+  "pytest_args": [
+    "tests/",
+    "-x",
+    "-q"
+  ],
+  "run_id": "efad8cc9-2ba4-4c86-a9d8-e4c3c506877f",
+  "schema": "anvil-serving.test-run/v1",
+  "source": {
+    "dirty": false,
+    "head": "03b2c14e4b1dfc4eb4b0c2b3a72ffd76b564b502",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "source_after": {
+    "dirty": false,
+    "head": "03b2c14e4b1dfc4eb4b0c2b3a72ffd76b564b502",
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "started_at": "2026-10-06T08:54:37.740679+00:00",
+  "state": "passed"
+}

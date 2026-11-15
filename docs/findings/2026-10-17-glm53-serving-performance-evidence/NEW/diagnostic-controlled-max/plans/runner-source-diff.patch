@@ -1,0 +1,31 @@
+diff --git a/telemetry/run_cell.py b/NEW/diagnostic-controlled-max/telemetry/run_cell.py
+index 7200701..e5d58a8 100644
+--- a/telemetry/run_cell.py
++++ b/NEW/diagnostic-controlled-max/telemetry/run_cell.py
+@@ -17,7 +17,7 @@ import collector as C
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ COLLECTOR_SHA = "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e"
+-PLAN_SHA = "59e3680b252368ac8613d1a55eec0580f95006c66e36e62867956a7435e43532"
++PLAN_SHA = "8d594ec0d5c5d431068ab41c26d3682b83205b9bef4b360ef1fef86a7e5f24da"
+ ENV_HOME = "[PRIVATE_OPERATOR_ROOT]"
+ 
+ 
+@@ -42,7 +42,7 @@ def validate_native(row, native):
+     def option(name):
+         return argv[argv.index(name) + 1]
+     expected = {"schema": "anvil-serving.benchmark/v1", "model": option("--model"),
+-                "gpu": option("--gpu"), "measurement_protocol": "capacity-v4-reasoning",
++                "gpu": option("--gpu"),
+                 "unique_prefix_namespace": "capacity-v1:seed-request-index",
+                 "engine": option("--engine"), "base_url": option("--base-url"),
+                 "context_tokens": row["planned_context_tokens"], "concurrency": row["concurrency"],
+@@ -54,6 +54,8 @@ def validate_native(row, native):
+                 "controlled_output_policy": option("--controlled-output-policy")}
+     if any(native.get(key) != value for key, value in expected.items()):
+         raise ValueError("native identity/control mismatch")
++    if native.get("measurement_protocol") not in {"capacity-v3", "capacity-v4-reasoning"}:
++        raise ValueError("native measurement protocol mismatch")
+     workload = "synthetic-repeated-code" if expected["response_words"] else "synthetic-summary"
+     if native.get("workload_identity", {}).get("workload_kind") != workload:
+         raise ValueError("native workload mismatch")

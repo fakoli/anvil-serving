@@ -1,0 +1,14 @@
+{"name": "decode-c1-warm", "concurrency": 1, "profiled": false, "valid_requests": 1}
+{"name": "decode-c1-r1-off", "concurrency": 1, "profiled": false, "valid_requests": 1}
+{"name": "decode-c1-r1-on", "concurrency": 1, "profiled": true, "valid_requests": 1}
+{"name": "decode-c1-r2-on", "concurrency": 1, "profiled": true, "valid_requests": 1}
+{"name": "decode-c1-r2-off", "concurrency": 1, "profiled": false, "valid_requests": 1}
+{"name": "decode-c1-r3-off", "concurrency": 1, "profiled": false, "valid_requests": 1}
+{"name": "decode-c1-r3-on", "concurrency": 1, "profiled": true, "valid_requests": 1}
+{"name": "decode-c4-warm", "concurrency": 4, "profiled": false, "valid_requests": 4}
+{"name": "decode-c4-r1-off", "concurrency": 4, "profiled": false, "valid_requests": 4}
+{"name": "decode-c4-r1-on", "concurrency": 4, "profiled": true, "valid_requests": 4}
+{"name": "decode-c4-r2-on", "concurrency": 4, "profiled": true, "valid_requests": 4}
+{"name": "decode-c4-r2-off", "concurrency": 4, "profiled": false, "valid_requests": 4}
+{"name": "decode-c4-r3-off", "concurrency": 4, "profiled": false, "valid_requests": 4}
+{"name": "decode-c4-r3-on", "concurrency": 4, "profiled": true, "valid_requests": 4}

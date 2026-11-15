@@ -1,0 +1,62 @@
+{
+  "elapsed_seconds": 6.566723694792017,
+  "ended_at": "2026-10-26T02:08:25.451662+00:00",
+  "engine_drain": "unknown",
+  "ignis": "hold",
+  "promoted": false,
+  "records": [
+    {
+      "boundary": "unknown",
+      "case": "boundary",
+      "elapsed_seconds": 6.543827700894326,
+      "ended_at": "2026-10-26T02:08:25.448605+00:00",
+      "engine_drain": "unknown",
+      "finish_reason": "length",
+      "generated_reasoning_token_ids_count": null,
+      "oracle": false,
+      "owner_state": {
+        "checked_at": "2026-10-26T02:08:18.916039+00:00",
+        "identity_matches": true,
+        "idle": true,
+        "running": 0,
+        "scope": "point_in_time_owner_observation_not_admission_lease",
+        "waiting": 0
+      },
+      "reasoning_span_tokens": null,
+      "request_artifact": {
+        "bytes": 463,
+        "file": "0-request.json",
+        "sha256": "0aedf2279c95aea90be8ae704e918cf39fe604c52d904e5311c21dbee99f7277"
+      },
+      "response_anomalies": [
+        "finish_reason_not_stop",
+        "unexpected_usage_fields"
+      ],
+      "response_artifact": {
+        "bytes": 2957,
+        "file": "0-response.json",
+        "sha256": "3ff9f594a511d75e00770a52014b2262556470504563c298130d59672dd3d679"
+      },
+      "started": true,
+      "started_at": "2026-10-26T02:08:18.901938+00:00",
+      "terminal": "response",
+      "usage": {
+        "completion_tokens": 512,
+        "completion_tokens_details": {
+          "reasoning_tokens": 512
+        },
+        "prompt_tokens": 48,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        },
+        "total_tokens": 560
+      }
+    }
+  ],
+  "router_config_sha256_after": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+  "router_config_sha256_before": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+  "runtime_identity_authority": "operator_attested",
+  "runtime_verified": false,
+  "shared_configuration_changed": false,
+  "status": "executed"
+}

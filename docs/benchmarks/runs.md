@@ -1,9 +1,188 @@
 # Benchmark run catalog
 
+## 2026-11-13 Mia TensorFold runtime
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Mia fc1ee3a,110 author +6 owned patches; GLM EXL3 TP2, FP8 sharded KV, DFlash2; configured327680/C4 | Two RTX PRO6000 Blackwell Max-Q96GiB,300W; direct native HTTP and rollback routed smoke | Functional candidate accepted: Messages cut-call500 fixed;128 prompt alternatives/requested IDs pass; tools/image/C4/cache regressions pass. No matched speed or full-window C4 claim. | [Dossier](models/glm53-flash.md#mia-runtime-update-2026-11-13) · [Finding](../findings/2026-11-13-tensorfold-mia-runtime-functional.md) |
+
+## 2026-11-09 TensorFold reasoning investigation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Pinned GLM EXL3 TensorFold, TP2, FP8 paged KV, DFlash2; configured 327,680 context/C4; one owned C1 task at a time, fixed 16K response cap, Max/Low/Low/Max order | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online Aider/Polyglot and contained Go tests on native Linux | Focused `quality`, `no-promotion`; Low passed 2/2 on its first test, while Max resolved 0/2 after all-reasoning response-cap exhaustion. Eight complete responses. New disk-cache/process/48-GiB baseline; user traffic could coexist. No numeric-budget deployment, broad Go score or performance comparison. | [Dossier](models/glm53-flash.md#tensorfold-reasoning-controls-2026-11-09) · [Finding](../findings/2026-11-09-tensorfold-reasoning-budget.md) |
+| Separate request-control rollout: merged local CLI/router; three C1 jobs in Max/8,192, Low/unset, Max/8,192 order; 16,384 response cap | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online contained Go tests on a sharded-KV runtime, distinct from the original disk-only matrix | Source-backed `functional` control evidence; focused `quality`: Max 1/2 jobs, Low 1/1 on one unique task, ten HTTP 200 responses. First Max and Low passed their second coding attempt; second Max failed both attempts at the response cap, without exhausting whole-job time/call budgets. No reliable 8,192 fix/default, contemporary unbounded-Max control or causal quality/speed claim. B10 partial: remote-controller numeric admission unsupported; observer migration deferred. `no-promotion`; no global-control or cache-policy change. | [Dossier](models/glm53-flash.md#tensorfold-request-control-rollout-2026-11-09) · [Follow-up](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09) · [Summary](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json) · [Evidence index](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md) |
+
+## 2026-11-08 TensorFold Go validation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM-5.3-Flash EXL3 4-bpw on pinned TensorFold with the ordered telemetry series; TP2, FP8 paged KV, DFlash2, configured 327,680 context/C4; requested C1 | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online Aider/Polyglot and contained Go tests on one native Linux owner | `quality`, `no-promotion`: one of two profile checks passed on one unique task, first attempt at 32K; both 16K attempts failed after response-length limits. Four complete transport responses; one earlier setup failure excluded from model grades. No broad Go score, causal cap benefit or performance ranking. | [Dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08) · [Finding](../findings/2026-11-08-tensorfold-go-validation.md) · [Evidence index](../findings/2026-11-08-tensorfold-go-validation-evidence/README.md) |
+
+## 2026-11-03 RTX5090 candidate campaign
+
+| Configuration | Measured GPU / path | PRO relationship | Evidence labels | Decision labels | Evidence |
+|---|---|---|---|---|---|
+| Private candidate on Ignis 0.8.0,32K budget pair and256K vision profile | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional, bounded capacity | challenger, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) · [Ignis note](../findings/2026-11-03-ignis-improvements.md) |
+| Private QAT/NInfer text160K and failed vision sibling | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; compatibility-only failure | challenger / rejected, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+| Private coding/NInfer128K fresh recheck and earlier distinct process | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; failed outer context job retained | challenger, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+| Private historical and restored160K vision references | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; historical-invalid (initial identity provenance incomplete) | no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+
+Selected candidate configurations passed123/123 coding checks; the restored
+reference114/123. These are seven task types repeated three times with different
+loaded policies/capabilities, not a complete serving comparison or universal ranking.
+
+## 2026-11-01 Swift TP1 GPU0 qualification accepted
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Swift 1.5 Qwen3.8 27B BF16 with FP8 KV, TP1, 262,144 configured context and MTP3; selected C2 interactive operating point | One RTX PRO 6000 Blackwell Max-Q; final fresh capacity population is 10 cells / 72 requests, separate from the historical 60-cell matched comparison | Protocol and bounded qualification gates passed; no current deployment or client assignment claim. C2 32K median decode 13.43 tok/s is below its 15 tok/s soft objective while first-output p95 is 16.69 s under the 30 s ceiling; C1 is latency-first. C16 is queued requested load, not 16 active requests. SWE resolved 4/5; strict formatting failed 4/4. Operational records are private. | [Dossier](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-11-01-swift-tp1-gpu0.md) |
+
+## 2026-11-01 cache-layout and DFlash scouts
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Private target; original MTP3 versus internal 1M cache layout, then exact original restoration | Two RTX PRO 6000 Blackwell Max-Q, TP2/DCP2; direct online ~6K/~25K, requested C1/C4 | 144/144 timed requests; no 10% E2E win against both controls; +38.60% reported cache slots, ~25K/C4 7.92–9.25% slower. Natural output, absent canaries; no full-context or quality qualification. Original restored, `no-promotion`. | [Dossier](models/private-runtime-scouts.md) · [Finding](../findings/2026-11-01-runtime-scouts.md#cache-layout-results) |
+| Same private target; original MTP3 versus DFlash2 K3, then exact original restoration | Two RTX PRO 6000 Blackwell Max-Q, TP2/DCP2; direct online ~6K/~25K, requested C1/C4 | 144/144 timed requests; locally compatible in this screen, no 10% E2E win against both controls; −40.63% reported cache slots. No controlled output, canaries or matched no-speculation arm. Original restored, `no-promotion`. | [Dossier](models/private-runtime-scouts.md) · [Finding](../findings/2026-11-01-runtime-scouts.md#dflash-results) |
+
+## 2026-10-26 [operator-private] H3 MCP functional smoke
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+| --- | --- | --- | --- |
+
+## 2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Distinct pinned Qwen3.8 Flash Next recipes: Ignis 0.8.0, vLLM r2, and Flare r2; serialized C1 agentic/Aider/SWE/context scouts | One RTX PRO 6000 Blackwell Max-Q per run; single-request workload. The second card was not used for performance measurements. | Agentic 6/6 and context 9/9 passed on each recipe; context prompts reached 114,588 actual tokens. Official SWE resolved 2/5, 3/5, and 0/5, respectively; the denominator is five attempted tasks per lane, with empty patches ungraded. Flare attempted five tasks but only Django produced a nonempty graded submission. Aider outcomes were mixed and include ungraded budget stops. Shared-router whitespace handling makes historical coding attribution uncertain. vLLM C1 was 0/8 performance-eligible; Flare C1 ended 0/8 performance-eligible, with native `native_control_mismatch` preserved; exact prior evaluation routes/output caps and GLM incumbent readmission passed local checks; the router uses reviewed PR #704 overlay, not the original image. Final no-promotion; no engine ranking, speed, full-window, or concurrency claim. | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-26-flash-next-engine-qualification.md) · [Evidence index](../findings/2026-10-26-flash-next-engine-qualification-evidence/README.md) |
+
+## 2026-10-26 Ignis 0.8 mandatory-tool qualification
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Pinned Qwen3.8 Flash Next Trellis on Ignis 0.8.0; TP1, 131,072 configured context, eight lanes, MTP3; phase-one `auto`, phase-two `required` with normal thinking | One RTX PRO 6000 Blackwell Max-Q through the direct OpenAI-compatible endpoint; second equal card protected at 0 MiB candidate allocation | Original unseeded `auto` batch remains 3/4. Same-runtime phase two passed 3/3 mechanism cells, selected full preflight 5/5 checks and 9/9 observations, and seed-18 tools 4/4. Sixteen terminal engine events; HTTP 200 retained for 12 captured tool requests. Exact operational restoration passed after both phases. Functional request-policy evidence only; no coding, capacity, performance, client, or promotion claim. | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-26-ignis-080-preflight.md) · [Summary](../findings/2026-10-26-ignis-080-preflight-evidence/summary.json) · [Evidence index](../findings/2026-10-26-ignis-080-preflight-evidence/README.md) |
+
+## 2026-10-26 GLM reasoning-close GPU marker trace
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM FP4 with pinned split-top-p patch and bounded marker trace; TP2/DCP2, FP8 KV, 327,680 configured context/C4, MTP3; one C1 probe | One RTX PRO 6000 Blackwell Max-Q for actual-CUDA startup gates; dual-Max-Q model request through route-derived direct relay | Preweight selftest and 272-row sampling gate passed. The one exact-answer response had one close at index 64 with matching budget-store events on both ranks, but the trace reported 76 tokens versus 75 from the API and the frozen analyzer returned `unknown`. No second close reproduced. Exact operational restoration passed; strict JSON failed before and after, with no established regression. No promotion, resolution, capacity or performance claim; Ignis held. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-26-marker-gpu-trace.md) · [Summary](../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../findings/2026-10-26-marker-gpu-trace-evidence/README.md) |
+
+## 2026-10-25 prospective sampling upstream-tolerance trial
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM FP4, pinned split-top-p patch; native-count gate; TP2/DCP2, FP8 KV, 327,680 configured context/C4, MTP3; one C1 probe | One RTX PRO 6000 Blackwell Max-Q for synthetic kernels; dual-Max-Q model request through route-derived direct relay | The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. No performance comparison. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-upstream-tolerance.md) · [Summary](../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md) |
+
+## 2026-10-25 split-top-p sampling-reference diagnostic
+
+| Configuration | Measured hardware and layer | Outcome | Evidence |
+|---|---|---|---|
+| GLM FP4 candidate image with exact upstream split-top-p patch and independent binary64 numerical reference; model weights not loaded | One RTX PRO 6000 Blackwell Max-Q, synthetic CUDA kernel check; two cards reserved for the unrun TP2 candidate | 8/8 forced cases passed. Stock/patch masks were identical on 271/272 ordinary rows; the patch kept one extra token and failed the strict local no-worse gate. Zero candidate requests. Exact operational restoration passed; the strict JSON smoke failed, leaving functional acceptance incomplete. No promotion; Ignis held. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-reference.md) · [Summary](../findings/2026-10-25-sampling-reference-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-reference-evidence/README.md) |
+
+## 2026-10-25 pinned sampling-fix kernel trial
+
+| Configuration | Measured hardware and layer | Outcome | Evidence |
+|---|---|---|---|
+| GLM FP4 candidate image with exact vLLM split-top-p backport; model weights not loaded | One RTX PRO 6000 Blackwell Max-Q, synthetic CUDA device-0 kernel check; two cards reserved for planned TP2 | Ordinary parity failed after partial forced-case success; zero candidate model requests. Functional, no promotion, Ignis held; end-to-end fix unproven. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-sampling-fix.md) · [Authoritative counts](../findings/2026-10-25-sampling-fix-evidence/summary.json) · [Evidence index](../findings/2026-10-25-sampling-fix-evidence/README.md) |
+
+## 2026-10-25 isolated reasoning-boundary diagnostic
+
+| Configuration / scope | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM NVIDIA FP4 incumbent; C1, numeric budget64/output512 | Dual RTX PRO 6000 Blackwell Max-Q; functional diagnostic | Failed boundary transition; `no-promotion`, Ignis held, runtime unchanged. See canonical finding for measured token pattern and limitations. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up) |
+
+## 2026-10-25 GLM Go/Rust completion-cap diagnostics
+
+| Configuration / scope | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM-5.3-Flash; pinned Aider/Polyglot Go and Rust tasks with 16K/32K completion caps | Dual RTX PRO 6000 Blackwell Max-Q measured; complete engine/GPU/host/cgroup telemetry and verified closure for all six submitted jobs | Six completed measurements: one passing/five failing task grades; two supported cells unstarted, four reasoning controls blocked. Raw grades remain separate from lifecycle and measurement eligibility. No causal cap benefit, Ignis run or promotion. | [GLM dossier](models/glm53-flash.md) · [Finding](../findings/2026-10-25-glm-diagnostics.md) · [Evidence index](../findings/2026-10-25-glm-diagnostics-evidence/README.md) |
+
+Closure through the final postcheck took 26.73 minutes within the 45-minute operator limit. Three additional Aider request starts lack captured responses; their usage remains unknown. See the [authoritative summary](../findings/2026-10-25-glm-diagnostics-evidence/summary.json).
+
+## 2026-10-25 R12 baseline and R13 admission refusal
+
+| Configuration / population | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM NVIDIA FP4, vLLM TP2; R12 incumbent | 2x RTX PRO 6000 Blackwell Max-Q; C1/C4 native tools and contained coding tests | 48 submitted: 44 complete measurements/grades (38 pass, six fail), four cancelled unknowns. Released batch closure verified; request overlap unknown. Planned 48-cell candidate arm unrun. | [GLM](models/glm53-flash.md) · [Finding](../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) |
+| Qwen3.8 Flash Next Trellis, Ignis 0.8; separate R13 | One RTX PRO 6000 configured, no candidate container created | 0/48 submitted; 49 GiB RAM plus 16 GiB host reserve refused before creation, exact available memory unknown. No candidate quality, timing or capacity result. | [Qwen](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) |
+
+Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. No matched comparison or promotion. [Authoritative summary](../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json) · [Evidence index](../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md) · [Manifest](../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json).
+
+## 2026-10-24–25 evaluation-platform pilot
+
+The following rows retain the historical R5–R10 cutoff. The successor above records later evidence without changing those outcomes.
+
+| Configuration / population | Hardware and evidence | Outcome / boundary | Links |
+|---|---|---|---|
+| GLM NVIDIA FP4, vLLM TP2; R8 incumbent arm | 2x RTX PRO 6000 Blackwell Max-Q executed native tools and contained coding tests | 42 complete measurements/grades: 32 pass, ten fail; two maximum-call failures ungraded, two cancelled, two still cancelling; final interval unknown. Separate mixed-C4 canary closed four complete measurements with three passes/one valid task failure. Earlier attempts remain separate. | [GLM](models/glm53-flash.md) · [Finding](../findings/2026-10-24-evaluation-platform-ignis.md) |
+| Qwen3.8 Flash Next Trellis, Ignis 0.8; R9/R10 | One RTX PRO 6000 configured; R10 startup only, no generation measurements | R9 host-reserve refusal; R10 monitoring identity-adapter block. Each remains 0/48 submitted. Exact incumbent service restored; strict Pi final output failed. Fresh post-fix candidate campaign and accepted Pi oracle still required; no paired comparison or promotion. | [Qwen](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-24-evaluation-platform-ignis.md#r9-and-r10-no-candidate-measurement) |
+
+## 2026-10-21–23 Flare engine investigations
+
+| Date | Scope | Decision | Evidence |
+| --- | --- | --- | --- |
+| 2026-10-21 | Initial candidate scout and configuration optimization | `no-promotion`; different checkpoints and incomplete replacement gates prevent an engine-only ranking | [GLM dossier](models/glm53-flash.md) · [Scout](../findings/2026-10-21-flare-glm53-trial.md) · [optimization](../findings/2026-10-21-flare-glm53-optimization.md) |
+| 2026-10-21–22 | Inference and cache-row diagnostics | `no-promotion`; retained counters and replay observations are diagnostic, not a performance qualification | [GLM dossier](models/glm53-flash.md) · [Inference](../findings/2026-10-21-flare-inference-diagnostics.md) · [cache](../findings/2026-10-22-flare-cache-diagnostics.md) |
+| 2026-10-22–23 | Allocation, protected-regression, and upstream compatibility controls | `no-promotion`; numerical/protected gates remain held and the incumbent was restored | [GLM dossier](models/glm53-flash.md) · [Allocation](../findings/2026-10-22-flare-cache-fix.md) · [state](../findings/2026-10-23-flare-state-diagnostics.md) · [refresh](../findings/2026-10-23-flare-upstream-refresh.md) |
+
+## 2026-10-19 Ignis 0.7.2
+
+| Configuration | Hardware | Result | Decision | Evidence |
+|---|---|---|---|---|
+| Qwen3.8 Flash Next, Ignis0.7.2, 131K configured, MTP3, eight lanes | 1x RTX PRO6000 Blackwell Max-Q | C1 5/5; short C8 tools8/8; SWE incomplete: one graded unresolved, four empty ungraded | `no-promotion`; incumbent restored; no performance comparison | [Qwen dossier](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-19-ignis-072.md) |
+
+## 2026-10-17 GLM NVIDIA FP4 primary promotion follow-up
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | nvidia/GLM-5.3-Flash-FP4-Local `76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`, TP2/327,680/C4/MTP3 | direct and authenticated routed acceptance; fresh single-arm client C1/C2/C4 capacity acceptance at approximately 31.6K actual prompts | 2x RTX PRO 6000 Blackwell Max-Q | direct 9 protocols; routed preflight 8/8, image 18/18, coding/tool continuation 1/1 across five requests; capacity 12 scored requests with no observed OOM, preemption, or refusal; five fresh Pi process combinations, two primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway and WebUI catalog checks passed | operator-selected best current fit; human-approved `current` primary mapping; earlier A/B remains canonical. Client C4 sampled maxima were engine active 2, queued 3, occupancy 4 at separate times, not four simultaneous decodes. NativeWorkflows is `recovery_required` with failed progress and no retry; Earlier evaluator credential and lost-capture failures remain retained; later bounded native checks passed. Pi Web, existing sessions, running Hermes Gateway and native catalog/session propagation remain unaccepted. No SWE, endurance, p99, MTP-off, full-window simultaneous-capacity, fleet-convergence, or public-web claim. EXL3 r11 is retained rollback. | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md) |
+
+## 2026-10-17 GLM serving-performance comparison
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-17 | NVIDIA GLM-5.3-Flash-FP4-Local TP2/DCP2/MTP3 candidate; retained EXL3 r11 TP2/DCP1 no-spec control | 12 matched natural/edge pairs across four actual-input strata and C1/C2/C4 | 2x RTX PRO 6000 Blackwell Max-Q | 24 accepted cells; 84 requests per arm; all required and supplemental coverage retained | original 42-cell matrix `closed_partial` (one visible-output-overrun failure, 17 stop-rule-blocked); no SWE, endurance, no-speculation, or MTP-off comparison; no qualification or promotion. Exact r11 restoration passed direct/routed smokes and readmission. | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-17-glm53-serving-performance.md) |
+
+## 2026-10-16 GLM natural-output baseline
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | GLM-5.3-Flash r11 natural-output baseline | 12 natural timing cells plus two five-task coding repeats | 2x RTX PRO 6000 Blackwell Max-Q | 239/240 timing retained; R1 4/5 graded resolved; R2 0/2 graded resolved plus three step-limit failures | `no-promotion`; no pooled coding score and repeatability not established | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-16-glm-natural-baseline.md) |
+
+## 2026-10-16 SGLang, Qwen, and Nemotron comparison
+
+| Date | Configuration | Measurement | Hardware | Result | Decision / limitation | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | Original GLM baseline, GLM SGLang scout, Qwen FP4 scout, and Nemotron 3.5 Super VL NVFP4 scout | Native preflight, Oracle, context/vision where completed, strict C1, and terminal five-case SWE | 2x RTX PRO 6000 Blackwell Max-Q | Original GLM C1 0/4 performance-eligible; SGLang SWE 0/5 resolved, 2/5 graded; Qwen SWE 2/5, 4/5 graded; Nemotron preflight 6/6, vision 18/18, context 2/2, Oracle 48/54, C1 0/4 eligible, SWE 2/5 resolved and 4/5 graded | `no-promotion`; SGLang/Qwen coding miss the 4/5 floor; original GLM and Nemotron C1 are ineligible, and Nemotron misses exact Oracle. No eligible controlled performance population. | [GLM](models/glm53-flash.md) · [Qwen](models/qwen38-flash-next.md) · [Nemotron](models/nemotron35-super-vl-120b.md) · [finding](../findings/2026-10-16-sglang-qwen-comparison.md) |
+
+## 2026-10-16 GLM v0.9.1 trial
+
+| Date | Model / lane | Scope | Hardware | Result | Decision | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-16 | GLM-5.3-Flash v0.9.1 R2 | native preflight, strict Oracle, vision, bounded context, sampled reserve, and pinned SWE | 2x RTX PRO 6000 Blackwell Max-Q | R2: preflight 6/6, Oracle 54/54, vision 18/18, retrieval/tool-context at 216307/110760 actual tokens, SWE 3/5; restored original: direct/routed 6/6, Oracle 54/54, vision 18/18, matching context probes, SWE 3/5 | `rejected`, `no-promotion`; exact incumbent restored, zero OOM, candidates absent, primary router readmitted; both coding results below the four-case gate; no capacity, stability, DFlash, performance, causal, or model-family claim | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-16-glm-v091-trial.md) |
+
+## 2026-10-15 replacement evaluation
+
+| Date | Model / lane | Scope | Hardware | Result | Decision | Evidence |
+| --- | --- | --- | --- | --- | --- | --- |
+| 2026-10-15 | GLM control, MiMo MOPD, Mistral Medium 3.5, and DeepSeek V4.1 diagnostics | completed replacement gates; DeepSeek Stage 2 numerical, r12 dummy-path, Stage 4 real-weight, and full-role diagnostics | dual RTX PRO 6000 for GLM/MiMo/Mistral and DeepSeek TP2 diagnostics; one GPU for DeepSeek Stage 2 | no candidate qualified; r2/r3 failed exact resource gates and r4 failed its first Oracle8 round after passing resources | `no-promotion`; GLM retained after restoration; no performance conclusion | [GLM](models/glm53-flash.md) · [MiMo](models/mimo-v26-flash.md) · [Mistral](models/mistral-medium-35.md) · [DeepSeek V4.1](models/deepseek-v41-flash.md) · [finding](../findings/2026-10-15-replacement-evaluation.md) |
+
+## 2026-10-13 full qualification campaign
+
+| Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
+|---|---|---|---|---|---|---|
+| 2026-10-13 | GLM continuity baseline and mixed TP2 diagnostics | Official-base GLM continuity line; C1/C4 controlled-output cells; mixed TP2 no-spec/thinking-off SWE diagnostics | 2x RTX PRO 6000 Blackwell Max-Q | baseline SWE 2/5 complete; actual prompt means 25,280.5/25,281.125/106,520/216,194.67 in separate C1/C4 cells; mixed lanes incomplete at 1/5 | continuity/contract baseline; `no-promotion`; no universal-quality or p99 claim | [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | Qwen Coder390 and Flash Next | Coder390 TP1 INT4/INT8; QAD TP1/TP2; EXL3 4.05 TP1 parser-corrected lane | 2x RTX PRO 6000 Blackwell Max-Q | completed Coder390 medium 3/5 and INT8 control 2/5; other lanes retain protocol/quality/compatibility evidence; top-k-20 cancelled before load/query | `no-promotion`; no cross-lane ranking or claimed top-k improvement | [Qwen 27B](models/qwen38-27b.md) · [Flash Next](models/qwen38-flash-next.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | DeepSeek V4 Flash 0731 EXL3 | TP1 bounded protocol/quality and TP2 compatibility lane | 2x RTX PRO 6000 Blackwell Max-Q | retained functional/quality observations; TP2 is compatibility-only; invalid paired-image map excluded | `no-promotion`; no performance, context, or client claim | [DeepSeek](models/deepseek-v4-flash.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | MiMo V2.6 Flash conversion/trust lane | NVFP4 TP2 text-only offload and routed trust checks | 2x RTX PRO 6000 Blackwell Max-Q | corrected 2 GiB offload selection; retained policy/trust failures | unresolved candidate; no physical-fit or quality conclusion | [MiMo](models/mimo-v26-flash.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+| 2026-10-13 | Ignis R4 protocol and terminal SWE | TP1/C1 protocol, quality, and five-task SWE diagnostic | 2x RTX PRO 6000 Blackwell Max-Q | serial protocol 6/6; strict quality 12/12; C8 preflight 6/13 with seven immediate 503 refusals; separate SWE 24 engine-full retry notices all recovered; terminal SWE 2/5 resolved, 2/5 graded, three empty | `no-promotion`; protocol evidence is not capacity, C4, or client acceptance | [Flash Next](models/qwen38-flash-next.md) · [finding](../findings/2026-10-13-full-qualification.md) |
+
 ## 2026-10-05 Xeon model qualification campaign
 
 | Date | Capability | Configuration | Measured GPU | Evidence | Decision | Links |
 |---|---|---|---|---|---|---|
+| 2026-10-06 | MiMo and uncensored GLM coding-quality scout | MiMo V2.6 Flash RL `5711b268` TP2/DCP1 no-spec; Lovesenko GLM-5.3-Flash TR3 4-bpw abliterated `c8f58e6a` TP2/EP2/DCP1; both configured 327,680/C4/eight images | 2x RTX PRO 6000 Blackwell Max-Q | MiMo preflight 25/25, agentic 15/18 then 17/18/17/18, SWE 4/5; abliterated GLM preflight 25/25, agentic 18/18, SWE 3/5; no performance or full-context result | Both `not-qualified`, `no-promotion`; exact r11 restoration verified (direct 25/25, routed 7/7, readmitted) | [MiMo](models/mimo-v26-flash.md) · [GLM](models/glm53-flash.md) · [finding](../findings/2026-10-06-mimo-qualification.md) |
 | 2026-10-05 | Qwen replacement scout | Evaluated prospective primary profile | 2x RTX PRO 6000 Blackwell Max-Q | frozen primary SWE 3/5; strict C4 128-word cell 0/4 performance-eligible | `rejected`, `no-promotion`; applies only to this evaluated profile | [Qwen dossier](models/qwen38-flash-next.md) · [finding](../findings/2026-10-05-xeon-model-qualification.md) |
 | 2026-10-05 | GLM-5.3-Flash CSF/QAD scout | Pinned QAD revision, TP2/DCP2, C4, 327,680 configured tokens, no speculation | 2x RTX PRO 6000 Blackwell Max-Q | max functional 25/25; Oracle 18/18; initial SWE 4/5; fresh-reload A1 SWE 2/5 attempts, 2/4 graded (Sphinx/Xarray resolved; Django/Pylint false; Sympy ungraded at 60 steps); exact eight-image/context/offered-C4 summaries 4/4; strict C4 0/4 performance-eligible | `rejected`, `no-promotion`; A1 misses the 4/5 floor, so B1/B2/A2 did not run. No full-window, simultaneous-C4, or speed result. Exact r11 restored: direct 25/25, routed 7/7, and fresh Pi read-tool passed; routes/manifests unchanged | [GLM dossier](models/glm53-flash.md) · [finding](../findings/2026-10-05-xeon-model-qualification.md) |
 
@@ -166,6 +345,7 @@ These records synthesize retained measurements without claiming a new run.
 
 | Date | Capability | Exact model/configuration | Measured hardware | PRO relationship | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|---|---|
+| 2026-10-16 | Coding/tools functional comparison | Swift15 `ff891a1130adfcf46bf745e06f0fa3dcde2e8c82`; QUASAR `wallawalla47/Qwen3.8-27B-Quasar-NVFP4-NInferV3@fd3d06cea9df58a54d5051aac9545a4a01a922db`; matched image `59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67`, text-only 32K, configured C4, benchmark requests C1 | RTX 5090 | `unrelated` | functional: tools Q 16/18, Swift 18/18; coding Q 119/123 list and 123/123 tuple sensitivity, Swift 120/123; exact restoration verified | `no-promotion`; no general quality or timing ranking | [Qwen3.8 27B](models/qwen38-27b.md) · [finding](../findings/2026-10-16-quasar-swift15-coding-tools.md) |
 | 2026-10-05 | Swift15 recovered baseline | Swift derivative `ff891a11`, NInfer `bace20dc`, image `59df48dd`, NVFP4/K8V4/DFlash2 draft7; 262K/C4 configured; 96 GB host/64 GB WSL | RTX 5090 | unrelated; separate SWE CPU worker is not GPU measurement | functional, bounded quality/context; 3 preflight repeats, agentic 18/18, context 36/36, images 12/12, official SWE 4/5 in each of two distinct attempts (replay image-pinned); strict capacity 0/12 ineligible; separate service-v2 48/48 at 8K/24K C1/C4 | historical pre-change baseline; final cache-bundle promotion recorded in the next row; no fixed-output speed claim | [Efficient variants](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-10-05-swift-96gb-baseline.md) |
 | 2026-10-05 | Swift15 host-cache pilot | Same pinned Swift/NInfer image; 2 GiB/4 slots versus 8 GiB/8 slots; device KV 282,112 unchanged, 40 GiB zero-extra-swap bound | RTX 5090, 96 GB host | unrelated | Both 18/18 canaries; 12 matched revisits/arm: retained tokens 124,648→373,954, statistical-median visible TTFT 9.100→5.353 s / E2E 9.227→5.498 s; native nearest-rank p50 separately retained | pilot and fresh regressions passed; expanded profile promoted after final acceptance; no cold-decode/p99 claim | [Efficient variants](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-10-05-swift-96gb-baseline.md#same-image-host-cache-pilot) |
 | 2026-10-05 | Flash Next Strata initial feasibility | UD-IQ4_XS `38bb39ee`, Strata `6f32ec07`; 32K/C1 R36/M50 no swap, native IQ MTP4 | RTX 5090, 96 GB host/64 GB WSL | unrelated | Five protocol families and images 12/12 pass; service-v2 8K/C1 12/12 canaries, native nearest-rank p50 TTFT 30.406 s/E2E 30.852 s; practical latency gate failed. Instrumented MMQ/fused 3-request diagnostics separate | `rejected` after bounded diagnostics; larger-context/C4/finalist quality not run; Swift cache bundle promoted after final acceptance | [Flash Next](models/qwen38-flash-next.md) · [Finding](../findings/2026-10-05-swift-96gb-baseline.md#initial-flash-next-feasibility-and-failed-latency-gate) |
@@ -200,6 +380,29 @@ These records synthesize retained measurements without claiming a new run.
 | 2026-07-10–11 | Fast/Omni | Nemotron Nano/Omni 30B, Gemma 4 31B failed load, Qwen3.5 35B GGUF, Gemma E4B GGUF | RTX 5090 | `topology-only` | `functional`, `capacity`, `quality`, `historical-invalid` | `no-promotion` / `rejected` | [Qwen3.5 35B](models/qwen35-35b.md) · [Gemma 4 variants](models/gemma-4.md) · [RTX 5090 dossiers](models/index.md#rtx-5090) · [Blackwell bakeoff](../findings/2026-07-10-blackwell-local-model-bakeoff.md) |
 
 ## Apple Silicon runs
+
+### 2026-10-06 English voice campaign
+
+All rows use one Apple M4 Max 40-core GPU/48 GiB host and direct component endpoints. Exact revisions and runtime/source bindings are in the [finding](../findings/2026-10-06-m4-max-voice-quality-qualification.md#exact-configuration) and [recipe](../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md). Control loaded checkpoint revisions remain unattested. Percentiles are client endpoint measurements, not physical playback or end-to-end voice.
+
+| Exact configuration | Functional / quality evidence | Scope, failure and decision | Dossier / finding |
+|---|---|---|---|
+| Parakeet Metal control | human C1 WER 3.064%,p95 81.68 ms |24 human×3; critical error; retained control only | [Parakeet](models/parakeet.md#evidence-by-measurement-class) · [STT](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) |
+| Qwen3-ASR 1.7B MLX q8 | human C1 WER 2.786%,p95 314.25 ms | same population; paired CI overlaps zero/critical error; no promotion | [Qwen](models/qwen3-asr-1.7b-mlx.md#evidence-by-measurement-class) · [STT](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) |
+| Granite TurboCTC FP16 | human C1 WER 3.343%,p95 40.16 ms | same population; point regression/critical error; no promotion | [Granite](models/granite-speech-turboctc.md#evidence-by-measurement-class) · [STT](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) |
+| Kokoro 0.8.2 MPS streaming |60/60; first PCM p50 1026.71 ms |60 distinct warm+separate cold; ASR proxy/no human winner | [Kokoro](models/kokoro.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Breeze BF16 streaming |59/60 | resource abort; partial timings not ranked | [Breeze](models/breeze-tts2.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Breeze q8 R2 streaming/cache0/750 |60/60; first PCM p50 1527.19 ms | full warm component; fidelity/listening/client gates open | [Breeze](models/breeze-tts2.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Breeze q8 R3 buffered/cache0/750 |60/60; first PCM p50 5458.13 ms |435 resource samples/growth 0; no human/client qualification | [Breeze](models/breeze-tts2.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Fish q8 R2 buffered/cache0/1024 |56/60 | resource growth 728099718B; four failed; no partial ranking | [Fish](models/fish-s2-pro.md#evidence-by-measurement-class) · [TTS](../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) |
+| Baseline 4B | semantic 132/144; historical 36/36; tools 0/3 | strict 8K0/3 eligible; retain existing control only | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [4B](../findings/2026-10-06-m4-max-voice-quality-qualification.md#baseline-4b) |
+| Stock 9B off | preflight 9/9; semantic 131/144; historical 33/36 | strict 8K0/3 eligible; no promotion | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [9B](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stock-9b-off) |
+| Stock 27B off | no native inference | startup 6.19 GB swap growth; post-abort probe transport-only | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [abort](../findings/2026-10-06-m4-max-voice-quality-qualification.md#stock-27b-startup-abort) |
+| Private cache0 27B off | preflight 9/9; semantic 138/144; historical 36/36 | strict 8K0/3 eligible, substantive arithmetic/private fixture | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [off](../findings/2026-10-06-m4-max-voice-quality-qualification.md#private-cache0-27b-off) |
+| Private cache0 27B low | preflight 9/9; semantic 144/144; historical 33/36 | strict 8K0/3 eligible; prefix canary/capture failure; no promotion | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [low](../findings/2026-10-06-m4-max-voice-quality-qualification.md#27b-low-reasoning) |
+| Private cache0 27B medium | preflight 9/9; semantic 144/144; historical 31/36 | strict 8K0/3 eligible;2 reasoning-only/1 capture failure; no promotion | [MLX](models/voice-llm-mlx.md#evidence-by-measurement-class) · [medium](../findings/2026-10-06-m4-max-voice-quality-qualification.md#27b-medium-reasoning) |
+
+Static compatibility stops remain separate: Granite q8 group-size mismatch and English Nemotron unsupported pinned loader. They have no latency/quality score. Both medium phases bind the same original pre-up baseline/PID with a verified no-inference handover; resource work closure does not assert correctness or qualification.
 
 | Date | Capability | Exact model/configuration | Measured hardware | Evidence | Decision | Dossier / finding |
 |---|---|---|---|---|---|---|

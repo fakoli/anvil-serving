@@ -1,0 +1,37 @@
+{
+  "method": "Validate exact embedded native benchmark-evidence and hash-bound stages with existing product APIs; outer native artifacts are unchanged.",
+  "results": [
+    {
+      "cell": "max-1",
+      "source_artifact_sha256": "759fc6892dbd70dbcdebbc89900990bed3e0720b55a66d4af59eb2a62a8007d0",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "validated": true,
+      "summary_validation_errors": []
+    },
+    {
+      "cell": "low-1",
+      "source_artifact_sha256": "3bedad778a7c1ae126c072acaf7ef31924b5b66e60063009c3329e80d4e2d244",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "validated": true,
+      "summary_validation_errors": []
+    },
+    {
+      "cell": "low-2",
+      "source_artifact_sha256": "22fc852272773b66d12cb83e68bf29c38b2dae93331614be779ca39802a409c6",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "validated": true,
+      "summary_validation_errors": []
+    },
+    {
+      "cell": "max-2",
+      "source_artifact_sha256": "1cd94cb6880e7d2d36acc3f97a93ad0be680026a205ac44ac3a0f77b088a38d4",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "validated": true,
+      "summary_validation_errors": []
+    }
+  ]
+}

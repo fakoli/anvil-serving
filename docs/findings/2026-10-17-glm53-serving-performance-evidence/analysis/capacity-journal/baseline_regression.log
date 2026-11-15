@@ -1,0 +1,41 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ CapacityJournalTests.test_process_exit_during_later_request_preserves_first_terminal_result _
+
+self = <test_capacity_journal.CapacityJournalTests testMethod=test_process_exit_during_later_request_preserves_first_terminal_result>
+
+        def test_process_exit_during_later_request_preserves_first_terminal_result(self):
+            with tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "capacity.json"
+                script = r"""
+    import importlib.util, json, os, pathlib, sys, time
+    spec = importlib.util.spec_from_file_location("journal_test", "tests/test_capacity_journal.py")
+    test = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(test)
+    output = pathlib.Path(sys.argv[1])
+    journal = pathlib.Path(str(output) + ".journal.jsonl")
+    calls = 0
+    def stream(*args, **kwargs):
+        global calls
+        calls += 1
+        if calls == 1:
+            return test.response()
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline:
+            if journal.exists() and len(test.complete_records(journal.read_bytes())) == 2:
+                os._exit(73)
+            time.sleep(0.01)
+        os._exit(74)
+    test.cli.main(test.arguments(output), stream_request=stream)
+    """
+                process = subprocess.run(
+                    [sys.executable, "-c", script, str(output)],
+                    capture_output=True, text=True, timeout=10,
+                )
+>               self.assertEqual(process.returncode, 73, process.stderr)
+E               AssertionError: 74 != 73 :
+
+tests/test_capacity_journal.py:73: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_capacity_journal.py::CapacityJournalTests::test_process_exit_during_later_request_preserves_first_terminal_result
+1 failed in 5.13s

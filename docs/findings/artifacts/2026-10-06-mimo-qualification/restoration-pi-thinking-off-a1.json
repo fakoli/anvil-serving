@@ -1,0 +1,62 @@
+{
+  "enabled_tools": [
+    "read"
+  ],
+  "exit_code": 0,
+  "expected": "RESTORE_R11_cd73c5fa58a8b23a",
+  "final_message": {
+    "api": "openai-completions",
+    "content": [
+      {
+        "text": "The user asked me to reply with exactly the file's contents and nothing else.RESTORE_R11_cd73c5fa58a8b23a",
+        "type": "text"
+      }
+    ],
+    "model": "llm.primary",
+    "provider": "anvil",
+    "rawStopReason": "stop",
+    "responseId": "chatcmpl-b00497713fb24704bed80c5a",
+    "role": "assistant",
+    "stopReason": "stop",
+    "timestamp": 1791283737202,
+    "usage": {
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "cost": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "input": 0,
+        "output": 0,
+        "total": 0
+      },
+      "input": 738,
+      "output": 33,
+      "reasoning": 0,
+      "totalTokens": 771
+    }
+  },
+  "model": "llm.primary",
+  "observed_at": "2026-10-06T10:49:07.099471+00:00",
+  "passed": false,
+  "provider": "anvil",
+  "redactions": "omitted unrelated startup and reasoning events; relative synthetic fixture",
+  "session": "fresh ephemeral; no saved session or provider change",
+  "source_sha256": "043fbc845d3f483aebd857ce7e11c79726dedb2a13fa284d0476d1ef24670dd7",
+  "stdin": "DEVNULL",
+  "tool_events": [
+    {
+      "isError": false,
+      "result": {
+        "content": [
+          {
+            "text": "RESTORE_R11_cd73c5fa58a8b23a\n",
+            "type": "text"
+          }
+        ]
+      },
+      "toolCallId": "chatcmpl-tool-827c6e2baa85a541",
+      "toolName": "read",
+      "type": "tool_execution_end"
+    }
+  ]
+}

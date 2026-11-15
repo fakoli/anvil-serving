@@ -53,7 +53,7 @@ remained selected. This retained result is not a current route claim.
 - **Weights and KV:** W4A16 and FP8 KV.
 - **Topology:** One RTX 5090; c1 and c2 short-workload cells.
 - **Contract:** 131,072 configured tokens and thinking disabled.
-- **Recipe:** [dated Fast matrix](../../findings/2026-07-16-gemma4-chat-template-bakeoff.md#fast-matrix--rtx-5090-32-gb) and
+- **Recipe:** [dated Fast matrix](../../findings/2026-07-16-gemma4-chat-template-bakeoff.md#fast-matrix-rtx-5090-32-gb) and
   [retained quality artifact](../../findings/2026-07-16-gemma4-chat-template-bakeoff-evidence/fast-e2b-w4a16-128k-quality-r3.json).
 
 ## Evidence by measurement class

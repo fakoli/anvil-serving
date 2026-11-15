@@ -1,0 +1,177 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "Flare executable-image observations with detailed capture OFF",
+  "subtitle": "Same model package/settings; variable outputs. Not causal tracing overhead or qualification.",
+  "output": "graphs/matrix.svg",
+  "data_output": "graphs/graph-data.json",
+  "charts": [
+    {
+      "title": "C1: Aggregate completion throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Repetition",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-control-c1-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-control-c1-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-control-c1-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-instrumented-c1-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-instrumented-c1-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-instrumented-c1-r3.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "C1: Median visible TTFT",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Repetition",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-control-c1-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-control-c1-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-control-c1-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-instrumented-c1-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-instrumented-c1-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-instrumented-c1-r3.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "C4: Aggregate completion throughput",
+      "metric": "metrics.throughput_tok_s",
+      "x_label": "Repetition",
+      "y_label": "tokens/s",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-control-c4-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-control-c4-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-control-c4-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-instrumented-c4-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-instrumented-c4-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-instrumented-c4-r3.json"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "C4: Median visible TTFT",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Repetition",
+      "y_label": "ms",
+      "series": [
+        {
+          "label": "flare-control / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-control-c4-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-control-c4-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-control-c4-r3.json"
+            }
+          ]
+        },
+        {
+          "label": "flare-instrumented / natural output",
+          "points": [
+            {
+              "x": "r1",
+              "artifact": "capacity/flare-instrumented-c4-r1.json"
+            },
+            {
+              "x": "r2",
+              "artifact": "capacity/flare-instrumented-c4-r2.json"
+            },
+            {
+              "x": "r3",
+              "artifact": "capacity/flare-instrumented-c4-r3.json"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+--- a/vllm/v1/worker/gpu/sample/thinking_budget.py
++++ b/vllm/v1/worker/gpu/sample/thinking_budget.py
+@@ -5,6 +5,7 @@
+ import numpy as np
+ import torch
+ 
++from vllm.v1.worker.gpu.sample.anvil_marker_trace import MarkerTrace
+ from vllm.sampling_params import SamplingParams
+ from vllm.triton_utils import tl, triton
+ from vllm.utils.torch_utils import async_tensor_h2d
+@@ -29,6 +30,8 @@
+         self.req_states = req_states
+         self.max_num_reqs = req_states.max_num_reqs
+         self.device = req_states.device
++        self.marker_trace = MarkerTrace(req_states)
++        req_states._anvil_marker_trace = self.marker_trace
+ 
+         start_ids = (
+             []
+@@ -81,6 +84,7 @@
+     def add_request(self, req_idx: int, sampling_params: SamplingParams) -> None:
+         if not self.enabled:
+             return
++        self.marker_trace.add_request(req_idx, sampling_params)
+         budget = sampling_params.thinking_token_budget
+         self.use_thinking_budget[req_idx] = budget is not None
+         if budget is None:
+@@ -119,6 +123,10 @@
+         if not self.enabled or not np.any(self.use_thinking_budget[idx_mapping_np]):
+             return
+ 
++        trace_events = self.marker_trace.before_budget(
++            self, logits, idx_mapping_np, expanded_idx_mapping,
++            input_ids, expanded_local_pos,
++        )
+         apply_thinking_budget(
+             logits,
+             idx_mapping,
+@@ -134,7 +142,9 @@
+             self.reasoning_start_token_ids,
+             self.natural_reasoning_end_token_ids,
+             self.reasoning_end_token_ids,
+-        )
++            trace_events=trace_events,
++        )
++        self.marker_trace.after_budget(self, logits, trace_events)
+ 
+ 
+ @triton.jit
+@@ -273,6 +283,7 @@
+     START_LEN: tl.constexpr,
+     NATURAL_END_LEN: tl.constexpr,
+     END_LEN: tl.constexpr,
++    trace_events_ptr,
+ ):
+     token_idx = tl.program_id(0).to(tl.int64)
+     req_state_idx = tl.load(expanded_idx_mapping_ptr + token_idx)
+@@ -328,6 +339,14 @@
+         if end_match:
+             last_end = i
+ 
++    if trace_events_ptr is not None:
++        tl.store(trace_events_ptr + token_idx * 8 + 0, 1)
++        tl.store(trace_events_ptr + token_idx * 8 + 1, 0)
++        tl.store(trace_events_ptr + token_idx * 8 + 3, last_start)
++        tl.store(trace_events_ptr + token_idx * 8 + 4, last_end)
++        tl.store(trace_events_ptr + token_idx * 8 + 5, effective_len)
++        tl.store(trace_events_ptr + token_idx * 8 + 6, effective_len - last_start - START_LEN)
++
+     if last_start < 0 or last_start <= last_end:
+         return
+ 
+@@ -367,6 +386,10 @@
+ 
+     force_token_id = tl.load(reasoning_end_token_ids_ptr + end_prefix_len)
+     tl.store(logits_ptr + token_idx * logits_stride + force_token_id, 1.0e9)
++    if trace_events_ptr is not None:
++        tl.store(trace_events_ptr + token_idx * 8 + 1, 1)
++        tl.store(trace_events_ptr + token_idx * 8 + 2, force_token_id)
++        tl.store(trace_events_ptr + token_idx * 8 + 7, end_prefix_len)
+ 
+ 
+ def apply_thinking_budget(
+@@ -384,6 +407,7 @@
+     reasoning_start_token_ids: torch.Tensor,
+     natural_reasoning_end_token_ids: torch.Tensor,
+     reasoning_end_token_ids: torch.Tensor,
++    trace_events: torch.Tensor | None = None,
+ ) -> None:
+     num_tokens = logits.shape[0]
+     start_len = reasoning_start_token_ids.shape[0]
+@@ -425,4 +449,5 @@
+         START_LEN=start_len,
+         NATURAL_END_LEN=natural_end_len,
+         END_LEN=end_len,
++        trace_events_ptr=trace_events,
+     )
+--- a/vllm/v1/worker/gpu/sample/sampler.py
++++ b/vllm/v1/worker/gpu/sample/sampler.py
+@@ -341,4 +341,7 @@
+                 is_drafting=False,
+                 use_fp64=self.use_fp64_gumbel,
+             )
++        self.thinking_budget_state.marker_trace.after_verify(
++            processed_logits, sampled.view(-1, 1), None
++        )
+         return sampled, processed_logits
+--- a/vllm/v1/worker/gpu/spec_decode/rejection_sampler.py
++++ b/vllm/v1/worker/gpu/spec_decode/rejection_sampler.py
+@@ -204,6 +204,9 @@
+             **self._watermarking_kwargs(
+                 draft_sampled, expanded_idx_mapping, expanded_local_pos
+             ),
++        )
++        self.sampler.thinking_budget_state.marker_trace.after_verify(
++            processed_logits, sampled, num_sampled
+         )
+         return processed_logits, sampled, num_sampled
+ 
+--- a/vllm/v1/worker/gpu/model_runner.py
++++ b/vllm/v1/worker/gpu/model_runner.py
+@@ -1827,6 +1827,14 @@
+             output_bin_counts = self.sampler.penalties_state.output_bin_counts
+         else:
+             output_bin_counts = None
++        marker_trace = getattr(self.req_states, "_anvil_marker_trace", None)
++        if marker_trace is not None:
++            marker_trace.before_commit(
++                idx_mapping, sampled_tokens, num_sampled, num_rejected,
++                query_start_loc,
++                self.boundary_checkpoint_state if boundary_capture is not None else None,
++                logits_only,
++            )
+         post_update(
+             idx_mapping,
+             self.req_states.num_computed_tokens.gpu,
+@@ -1841,6 +1849,11 @@
+             self.boundary_checkpoint_state if boundary_capture is not None else None,
+             boundary_capture,
+         )
++
++        if marker_trace is not None:
++            marker_trace.after_commit(
++                idx_mapping, sampled_tokens, num_sampled, num_rejected, boundary_capture
++            )
+ 
+         # Full-checkpoint kernels retain every speculative state, so capture
+         # selects an accepted column before postprocessing compacts it. Recovery
+--- a/vllm/v1/worker/gpu/states.py
++++ b/vllm/v1/worker/gpu/states.py
+@@ -128,6 +128,9 @@
+         req_idx = self.req_id_to_index.pop(req_id, None)
+         if req_idx is None:
+             return None
++        marker_trace = getattr(self, "_anvil_marker_trace", None)
++        if marker_trace is not None:
++            marker_trace.finish(req_idx)
+         self.index_to_req_id.pop(req_idx, None)
+         self.free_indices.append(req_idx)
+         return req_idx

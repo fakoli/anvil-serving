@@ -1,0 +1,18 @@
+{
+  "scope": "bounded publication projection; not native replay or full-chain validation",
+  "ok": true,
+  "checks": {
+    "native_four_cell_report_object_exact": true,
+    "all_four_outcomes_retained": true,
+    "all_60_telemetry_rows_preserved_in_order": true,
+    "numeric_fields_unchanged": true,
+    "source_recheck_before_finalization": true,
+    "public_private_identity_scan": true,
+    "native_numeric_trees_equal": true,
+    "full_chain_reference_rows_preserved": 41,
+    "all_markdown_local_links_resolve": true
+  },
+  "independent_terminal_review": "GO bounded closure only; terminal-review.json",
+  "independent_public_packet_review_required": true,
+  "privacy_scan_scope": "Targeted private identities/paths/credential reference scan; exact native audit schema identifier retained as non-identifying format name."
+}

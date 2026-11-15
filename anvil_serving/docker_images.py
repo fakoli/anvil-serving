@@ -11,23 +11,53 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import time
 import tomllib
 
 from . import paths
+from . import operator_config
 
 
 DEFAULT_TIMEOUT_SECONDS = 30
 MAX_CONFIG_BYTES = 4 * 1024 * 1024
+MAX_COMPOSE_CONFIG_FILES = 32
+MAX_COMPOSE_PARSE_SECONDS = 30
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 _FULL_IMAGE_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 _DIGEST_REFERENCE_RE = re.compile(r"^[^\s@-][^\s@]*@sha256:([0-9a-f]{64})$")
 _DOCKER_ID_RE = re.compile(r"^(?:sha256:)?([0-9a-f]{64})$")
 _IMAGE_KEY_RE = re.compile(r"(^|_)image($|_)")
-_YAML_IMAGE_RE = re.compile(
-    r"^\s*(?:-\s*)?(?:image|rollback_image|inspector_image)\s*:\s*"
-    r"(?P<value>[^#]+?)\s*$",
-    re.IGNORECASE,
+_COMPOSE_SERVICES_RE = re.compile(r"(?m)^services[ \t]*:")
+_YAML_POTENTIAL_IMAGE_KEY_RE = re.compile(
+    r"(?:^|[,{])\s*(?:-\s*)?[^:#\n]*image[^:#\n]*:\s*"
+    r"(?P<value>[^\n,#}\]]*)",
+    re.IGNORECASE | re.MULTILINE,
 )
+_YAML_AMBIGUOUS_SYNTAX_RE = re.compile(r"(?:\\|(?:^|[\s:\-\[{,])[&*!][A-Za-z_])")
+_YAML_NON_IMAGE_SCALAR_RE = re.compile(
+    r"(?:true|false|null|~|[-+]?[0-9]+(?:\.[0-9]+)?)", re.IGNORECASE
+)
+_YAML_IMMUTABLE_REFERENCE_RE = re.compile(
+    r"(?P<value>[A-Za-z0-9][A-Za-z0-9._/:+-]*@sha256:[0-9a-f]{64}|"
+    r"sha256:[0-9a-f]{64})"
+)
+_DEPENDENCY_KEY_ALTERNATIVES = "|".join(
+    re.escape(key) for key in sorted(operator_config._DEPENDENCY_KEYS)
+)
+_YAML_DEPENDENCY_PATH_RE = re.compile(
+    r"(?:^|[,{])\s*['\"]?(?P<key>" + _DEPENDENCY_KEY_ALTERNATIVES + r")['\"]?\s*:\s*"
+    r"(?P<value>[^,}\n#]+)",
+    re.IGNORECASE | re.MULTILINE,
+)
+_YAML_DEPENDENCY_KEY_RE = re.compile(
+    r"(?:^|[,{])\s*['\"]?(?:" + _DEPENDENCY_KEY_ALTERNATIVES + r")[\"']?\s*:",
+    re.IGNORECASE | re.MULTILINE,
+)
+_NON_OPERATIONAL_CONFIG_DIRS = frozenset({
+    ".git", "__pycache__", ".venv", "benchmark-harness-cache",
+    "benchmark-runs", "build-logs", "evidence", "media-artifacts", "node_modules",
+    "venv",
+})
 _SIZE_RE = re.compile(r"^(?P<value>[0-9]+(?:\.[0-9]+)?)(?P<unit>[kMGT]?B)$")
 _SIZE_FACTORS = {
     "B": 1,
@@ -59,15 +89,17 @@ def normalize_immutable_image_reference(value: str) -> str:
     )
 
 
-def _docker_run(args, *, runner, timeout=DEFAULT_TIMEOUT_SECONDS):
+def _docker_run(args, *, runner, timeout=DEFAULT_TIMEOUT_SECONDS, input_text=None):
     try:
-        return runner(
-            ["docker", *args],
-            capture_output=True,
-            text=True,
-            errors="replace",
-            timeout=timeout,
-        )
+        kwargs = {
+            "capture_output": True,
+            "text": True,
+            "errors": "replace",
+            "timeout": timeout,
+        }
+        if input_text is not None:
+            kwargs["input"] = input_text
+        return runner(["docker", *args], **kwargs)
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise DockerImageCleanupError("docker command unavailable: %s" % exc) from exc
 
@@ -228,14 +260,253 @@ def _walk_image_values(node, key_path=()):
             yield from _walk_image_values(value, (*key_path, str(index)))
 
 
-def _yaml_image_values(text):
-    for line_number, line in enumerate(text.splitlines(), 1):
-        match = _YAML_IMAGE_RE.match(line)
-        if not match:
-            continue
-        value = match.group("value").strip().strip("\"'")
-        if value:
-            yield "line:%d" % line_number, value
+def _walk_config_strings(node, key_path=()):
+    """Yield decoded string settings with their dot-separated key path."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            path = (*key_path, str(key))
+            if isinstance(value, str):
+                yield ".".join(path), value
+            else:
+                yield from _walk_config_strings(value, path)
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            yield from _walk_config_strings(value, (*key_path, str(index)))
+
+
+def _is_grafana_template_definition(field: str, document) -> bool:
+    """Recognize Grafana variable queries without weakening ordinary definitions."""
+    parts = field.split(".")
+    if (
+        len(parts) != 4
+        or parts[0] != "templating"
+        or parts[1] != "list"
+        or not parts[2].isdigit()
+        or parts[3] != "definition"
+        or not isinstance(document, dict)
+        or not isinstance(document.get("schemaVersion"), int)
+        or not isinstance(document.get("panels"), list)
+    ):
+        return False
+    templating = document.get("templating")
+    variables = templating.get("list") if isinstance(templating, dict) else None
+    return isinstance(variables, list) and int(parts[2]) < len(variables)
+
+
+def _is_manifest_path(field: str, *, document=None) -> bool:
+    if _is_grafana_template_definition(field, document):
+        return False
+    if field == "context.topology" and isinstance(document, dict):
+        from .operator_output import CONTEXT_FIELDS
+
+        context = document.get("context")
+        if (set(document) == {"command", "context", "data", "error", "ok", "warnings"}
+                and isinstance(document["command"], str) and document["command"]
+                and type(document["ok"]) is bool and isinstance(document["warnings"], list)
+                and all(isinstance(warning, str) for warning in document["warnings"])
+                and (document["error"] is None or isinstance(document["error"], dict))
+                and isinstance(context, dict) and set(context) == set(CONTEXT_FIELDS)
+                and isinstance(context.get("topology"), str)
+                and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", context["topology"])):
+            # D013 execution context carries a topology ID, not a file path.
+            return False
+    if isinstance(document, dict):
+        parts = field.split(".")
+        if (len(parts) == 3 and parts[0] == "targets" and parts[1].isdigit() and parts[2] == "topology"
+                and type(document.get("schema_version")) is int and document["schema_version"] == 1
+                and isinstance(document.get("hosts"), list) and isinstance(document.get("gpu_assignments"), list)
+                and isinstance(document.get("targets"), list) and int(parts[1]) < len(document["targets"])):
+            target = document["targets"][int(parts[1])]
+            if isinstance(target, dict) and target.get("topology") in ("single", "tp2", "other", "unknown"):
+                # Fleet inventory's GPU topology enum is descriptive metadata.
+                return False
+        if (len(parts) == 6 and parts[0] == "scrape_configs" and parts[1].isdigit()
+                and parts[2] == "static_configs" and parts[3].isdigit() and parts[4:] == ["labels", "topology"]
+                and isinstance(document.get("scrape_configs"), list) and int(parts[1]) < len(document["scrape_configs"])):
+            scrape = document["scrape_configs"][int(parts[1])]
+            groups = scrape.get("static_configs") if isinstance(scrape, dict) else None
+            if isinstance(groups, list) and int(parts[3]) < len(groups) and isinstance(groups[int(parts[3])], dict):
+                labels = groups[int(parts[3])].get("labels")
+                if isinstance(labels, dict) and labels.get("topology") in ("single", "tp2", "other", "unknown"):
+                    return False
+    return field.rsplit(".", 1)[-1].lower() in operator_config._DEPENDENCY_KEYS
+
+
+def _archive_dependency_target(value: str, *, config_path: Path) -> Path:
+    text = value.strip().strip("'\"")
+    if not text or text.startswith((">", "|")):
+        raise ValueError("unsupported dependency YAML scalar")
+    if not os.path.isabs(text):
+        return Path(os.path.abspath(config_path.parent / text))
+    return Path(os.path.abspath(text))
+
+
+def _live_archive_dependency_errors(root: Path, *, runner=subprocess.run) -> list[str]:
+    """Reject a current config that delegates to the excluded recovery archive."""
+    archive = root / "recovered-configs"
+    errors = []
+    if not archive.exists():
+        return errors
+
+    def walk_error(exc):
+        errors.append("operator config dependency audit: %s" % exc)
+
+    for current, dirs, filenames in os.walk(root, followlinks=False, onerror=walk_error):
+        dirs[:] = [
+            name for name in dirs
+            if name not in _NON_OPERATIONAL_CONFIG_DIRS
+            and not (name == "recovered-configs" and Path(current) == root)
+        ]
+        for filename in sorted(filenames):
+            path = Path(current) / filename
+            suffix = path.suffix.lower()
+            if suffix not in {".toml", ".json", ".yaml", ".yml"}:
+                continue
+            relative = path.relative_to(root).as_posix()
+            try:
+                if _path_is_link_like(path) or path.stat().st_size > MAX_CONFIG_BYTES:
+                    raise ValueError("file is not a plain supported config")
+                raw = path.read_text(encoding="utf-8")
+                if suffix == ".toml":
+                    document = tomllib.loads(raw)
+                elif suffix == ".json":
+                    document = json.loads(raw)
+                elif _yaml_requires_compose_validation(path, raw):
+                    document = _compose_config_payload(
+                        path, runner=runner, timeout=DEFAULT_TIMEOUT_SECONDS,
+                    )
+                else:
+                    document = _standalone_yaml_config_payload(
+                        path, raw, runner=runner, timeout=DEFAULT_TIMEOUT_SECONDS,
+                    )
+                values = list(_walk_config_strings(document))
+                for field, value in values:
+                    if not _is_manifest_path(field, document=document):
+                        continue
+                    target = _archive_dependency_target(value, config_path=path)
+                    try:
+                        inside = os.path.commonpath((str(archive), str(target))) == str(archive)
+                    except ValueError:
+                        inside = False
+                    if inside:
+                        errors.append(
+                            "%s: %s references recovered-configs" % (relative, field)
+                        )
+            except (OSError, UnicodeDecodeError, ValueError, tomllib.TOMLDecodeError, json.JSONDecodeError) as exc:
+                errors.append("%s: %s" % (relative, exc))
+    return errors
+
+
+def _yaml_has_potential_image_key(raw: str) -> bool:
+    for match in _YAML_POTENTIAL_IMAGE_KEY_RE.finditer(raw):
+        if not _YAML_NON_IMAGE_SCALAR_RE.fullmatch(match.group("value").strip()):
+            return True
+    return False
+
+
+def _yaml_requires_compose_validation(path: Path, raw: str) -> bool:
+    return bool(
+        _COMPOSE_SERVICES_RE.search(raw)
+        or "compose" in path.name.lower()
+        or _yaml_has_potential_image_key(raw)
+        or _YAML_AMBIGUOUS_SYNTAX_RE.search(raw)
+    )
+
+
+def _compose_config_payload(path: Path, *, runner, timeout, input_text=None):
+    """Parse one Compose YAML without reading an environment file or resolving values."""
+    result = _docker_run(
+        [
+            "compose", "--env-file", os.devnull,
+            "--project-directory", str(path.parent),
+            "--file", "-" if input_text is not None else str(path),
+            "config", "--format", "json", "--no-interpolate",
+            "--no-env-resolution", "--no-path-resolution",
+        ],
+        runner=runner,
+        timeout=timeout,
+        input_text=input_text,
+    )
+    if result.returncode != 0:
+        raise OSError((result.stderr or result.stdout or "docker compose config failed").strip())
+    try:
+        payload = json.loads(result.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise OSError("docker compose config returned invalid JSON") from exc
+    return payload
+
+
+def _standalone_yaml_config_payload(path: Path, raw: str, *, runner, timeout):
+    """Decode inert standalone YAML through Compose's no-environment JSON parser."""
+    document = raw
+    if document.startswith("---\n") or document.startswith("---\r\n"):
+        document = document[3:].lstrip("\r\n")
+    elif re.search(r"(?m)^---[ \t]*(?:#.*)?$", document):
+        raise OSError("unsupported standalone YAML document marker")
+    if re.search(r"(?m)^\.\.\.[ \t]*(?:#.*)?$", document):
+        raise OSError("unsupported standalone YAML document marker")
+    indented = "\n".join("  " + line if line else line for line in document.splitlines())
+    wrapper = "x-native-cache-audit:\n" + indented + "\nservices: {}\n"
+    payload = _compose_config_payload(
+        path, runner=runner, timeout=timeout, input_text=wrapper,
+    )
+    if not isinstance(payload, dict):
+        raise OSError("docker compose config returned invalid standalone YAML root")
+    extension = payload.get("x-native-cache-audit")
+    if not isinstance(extension, (dict, list)):
+        raise OSError("docker compose config returned invalid standalone YAML extension")
+    return extension
+
+
+def _yaml_image_values(path: Path, raw: str, *, runner, timeout):
+    """Return immutable references, parsing potentially operational YAML."""
+    if not _yaml_requires_compose_validation(path, raw):
+        return (
+            ("raw:%d" % match.start("value"), match.group("value"))
+            for match in _YAML_IMMUTABLE_REFERENCE_RE.finditer(raw)
+        )
+    payload = _compose_config_payload(path, runner=runner, timeout=timeout)
+    return _walk_image_values(payload)
+
+
+def _compose_bind_sources(payload, *, config_path: Path):
+    """Return host bind sources from Compose JSON; named volumes are not host paths."""
+    if not isinstance(payload, dict):
+        raise OSError("docker compose config returned invalid root")
+    services = payload.get("services", {})
+    if not isinstance(services, dict):
+        raise OSError("docker compose config returned invalid services")
+    sources = []
+    for service in services.values():
+        if not isinstance(service, dict):
+            raise OSError("docker compose config returned invalid service")
+        mounts = service.get("volumes", [])
+        if not isinstance(mounts, list):
+            raise OSError("docker compose config returned invalid volumes")
+        for mount in mounts:
+            if isinstance(mount, str):
+                source = mount.split(":", 1)[0]
+                if not source or ("/" not in source and not source.startswith(".")):
+                    continue
+                kind = "bind"
+            elif isinstance(mount, dict):
+                kind = mount.get("type")
+                source = mount.get("source")
+                if kind != "bind":
+                    if kind not in {"volume", "tmpfs", "npipe", "cluster"}:
+                        raise OSError("docker compose config returned unknown mount type")
+                    continue
+                if not isinstance(source, str) or not source:
+                    raise OSError("docker compose config returned invalid bind source")
+            else:
+                raise OSError("docker compose config returned invalid volume")
+            if "$" in source:
+                raise OSError("docker compose bind source is unresolved")
+            candidate = Path(source)
+            if not candidate.is_absolute():
+                candidate = config_path.parent / candidate
+            sources.append(Path(os.path.abspath(candidate)))
+    return sources
 
 
 def _path_is_link_like(path: Path) -> bool:
@@ -248,18 +519,29 @@ def _path_is_link_like(path: Path) -> bool:
     return bool(is_junction and is_junction())
 
 
-def _config_image_values(config_home):
+def _config_image_values(config_home, *, runner=subprocess.run):
     root = Path(config_home)
     references = []
     errors = []
+    compose_files = 0
+    compose_deadline = time.monotonic() + MAX_COMPOSE_PARSE_SECONDS
     if not root.exists():
         return references, errors
     if not root.is_dir() or root.is_symlink():
         return references, ["operator config home is not a plain directory"]
-    for current, dirs, filenames in os.walk(root, followlinks=False):
+    errors.extend(_live_archive_dependency_errors(root, runner=runner))
+
+    def walk_error(exc):
+        try:
+            relative = Path(exc.filename).relative_to(root).as_posix()
+        except (TypeError, ValueError):
+            relative = str(exc.filename or root)
+        errors.append("%s: %s" % (relative, exc))
+
+    for current, dirs, filenames in os.walk(root, followlinks=False, onerror=walk_error):
         audited_dirs = []
         for name in sorted(dirs):
-            if name == ".git":
+            if name in _NON_OPERATIONAL_CONFIG_DIRS or (name == "recovered-configs" and Path(current) == root):
                 continue
             directory = Path(current) / name
             relative = directory.relative_to(root).as_posix()
@@ -290,8 +572,31 @@ def _config_image_values(config_home):
                 elif suffix == ".json":
                     values = list(_walk_image_values(json.loads(raw.decode("utf-8"))))
                 else:
-                    values = list(_yaml_image_values(raw.decode("utf-8")))
-            except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError, json.JSONDecodeError) as exc:
+                    yaml_text = raw.decode("utf-8")
+                    if _yaml_requires_compose_validation(path, yaml_text):
+                        if compose_files >= MAX_COMPOSE_CONFIG_FILES:
+                            raise OSError(
+                                "too many Compose YAML files (maximum %d)" % MAX_COMPOSE_CONFIG_FILES
+                            )
+                        remaining = compose_deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise OSError(
+                                "Compose YAML validation exceeded %d seconds"
+                                % MAX_COMPOSE_PARSE_SECONDS
+                            )
+                        compose_files += 1
+                        values = list(_yaml_image_values(
+                            path, yaml_text, runner=runner,
+                            timeout=min(DEFAULT_TIMEOUT_SECONDS, remaining),
+                        ))
+                    else:
+                        values = list(_yaml_image_values(
+                            path, yaml_text, runner=runner, timeout=0,
+                        ))
+            except (
+                DockerImageCleanupError, OSError, UnicodeDecodeError,
+                tomllib.TOMLDecodeError, json.JSONDecodeError,
+            ) as exc:
                 errors.append("%s: %s" % (relative, exc))
                 continue
             for field, value in values:
@@ -299,8 +604,14 @@ def _config_image_values(config_home):
     return references, errors
 
 
-def _configured_references(target, *, config_home):
-    references, errors = _config_image_values(config_home)
+def _configured_references(target, *, config_home, runner):
+    references, errors = _config_image_values(config_home, runner=runner)
+    for reference in references:
+        if "$" in reference["value"]:
+            errors.append(
+                "%s: unresolved image reference at %s"
+                % (reference["path"], reference["field"])
+            )
     identities = {
         target["image_id"],
         target["image_id"].removeprefix("sha256:"),
@@ -360,7 +671,9 @@ def inspect_docker_image_removal(image, *, config_home=None, runner=subprocess.r
     images = _all_image_rows(runner=runner)
     containers = _container_references(target["image_id"], runner=runner)
     home = os.path.abspath(os.path.expanduser(config_home or paths.config_home()))
-    configured, config_errors = _configured_references(target, config_home=home)
+    configured, config_errors = _configured_references(
+        target, config_home=home, runner=runner,
+    )
     children = _dependent_images(target, images)
     estimate = _reclaim_estimate(target["image_id"], runner=runner)
     blockers = []

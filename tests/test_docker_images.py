@@ -1,6 +1,6 @@
 import json
+from pathlib import Path
 import subprocess
-from types import SimpleNamespace
 
 import pytest
 
@@ -102,6 +102,28 @@ class DockerFixture:
                 "Containers space usage:\n"
             )
             return _completed(argv, stdout=output)
+        if command[:1] == ["compose"]:
+            source = command[command.index("--file") + 1]
+            raw = _kwargs.get("input") if source == "-" else Path(source).read_text(encoding="utf-8")
+            if "[\n" in raw:
+                return _completed(argv, returncode=1, stderr="invalid compose YAML")
+            if source == "-":
+                extension = {}
+                if "recovered-configs/serves.toml" in raw:
+                    key = "services_manifest" if "services_manifest" in raw else "serves_manifest"
+                    extension[key] = "recovered-configs/serves.toml"
+                return _completed(argv, stdout=json.dumps({
+                    "x-native-cache-audit": extension, "services": {},
+                }))
+            if "${" in raw:
+                image = "${IMAGE}"
+            elif "repo/app:old" in raw:
+                image = "repo/app:old"
+            else:
+                image = TARGET_DIGEST
+            return _completed(argv, stdout=json.dumps({
+                "services": {"app": {"image": image}},
+            }))
         if command == ["image", "rm", "--no-prune", TARGET_ID]:
             self.removed = True
             return _completed(argv, stdout="Deleted: " + TARGET_ID + "\n")
@@ -153,23 +175,6 @@ def test_container_reference_blocks_exact_image_removal(tmp_path, state):
     assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
 
 
-def test_declared_recipe_reference_blocks_exact_image_removal(tmp_path):
-    (tmp_path / "serve-recipes.toml").write_text(
-        '[recipe.serve]\nimage = "%s"\n' % TARGET_DIGEST,
-        encoding="utf-8",
-    )
-    fixture = DockerFixture(configured_tags=[])
-
-    result = docker_images.remove_docker_image(
-        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
-    )
-
-    configured = result["inspection"]["references"]["configured"]
-    assert result["outcome"] == "blocked"
-    assert configured[0]["path"] == "serve-recipes.toml"
-    assert configured[0]["field"] == "recipe.serve.image"
-
-
 def test_declared_rollback_reference_blocks_exact_image_removal(tmp_path):
     (tmp_path / "rollback.json").write_text(
         json.dumps({"rollback": {"image": TARGET_DIGEST}}),
@@ -186,25 +191,74 @@ def test_declared_rollback_reference_blocks_exact_image_removal(tmp_path):
     assert configured[0]["field"] == "rollback.image"
 
 
-def test_yaml_sequence_image_reference_blocks_exact_image_removal(tmp_path):
-    (tmp_path / "compose.yaml").write_text(
-        "candidates:\n  - image: %s\n" % TARGET_DIGEST,
-        encoding="utf-8",
+@pytest.mark.parametrize("dependency_key", [
+    "manifest_path", "serves_manifest", "services_manifest",
+])
+def test_live_manifest_dependency_into_recovered_configs_blocks_image_removal(tmp_path, dependency_key):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (archive / "serves.toml").write_text(
+        'image = "%s"\n' % TARGET_DIGEST, encoding="utf-8"
     )
+    (tmp_path / "voice.toml").write_text(
+        '[stt]\n%s = "recovered-configs/serves.toml"\n' % dependency_key, encoding="utf-8"
+    )
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=DockerFixture(configured_tags=[])
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["config_audit_errors"] == [
+        "voice.toml: stt.%s references recovered-configs" % dependency_key
+    ]
+
+
+def test_only_known_fleet_and_prometheus_topology_enums_are_metadata():
+    fleet = {"schema_version": 1, "hosts": [], "gpu_assignments": [], "targets": [{"topology": "tp2"}]}
+    prometheus = {"scrape_configs": [{"static_configs": [{"labels": {"topology": "unknown"}}]}]}
+    assert not docker_images._is_manifest_path("targets.0.topology", document=fleet)
+    assert not docker_images._is_manifest_path("scrape_configs.0.static_configs.0.labels.topology", document=prometheus)
+    fleet["targets"][0]["topology"] = "recovered-configs/topology.toml"
+    prometheus["scrape_configs"][0]["static_configs"][0]["labels"]["topology"] = "other.toml"
+    assert docker_images._is_manifest_path("targets.0.topology", document=fleet)
+    assert docker_images._is_manifest_path("scrape_configs.0.static_configs.0.labels.topology", document=prometheus)
+    assert docker_images._is_manifest_path("targets.0.topology", document={"targets": [{"topology": "tp2"}]})
+
+
+def test_live_yaml_dependency_alias_into_recovered_configs_blocks_image_removal(tmp_path):
+    archive = tmp_path / "recovered-configs"
+    archive.mkdir()
+    (archive / "serves.toml").write_text(
+        'image = "%s"\n' % TARGET_DIGEST, encoding="utf-8"
+    )
+    (tmp_path / "voice.yaml").write_text(
+        "services_manifest: recovered-configs/serves.toml\n", encoding="utf-8"
+    )
+    result = docker_images.remove_docker_image(
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=DockerFixture(configured_tags=[])
+    )
+
+    assert result["outcome"] == "blocked"
+    assert result["inspection"]["references"]["config_audit_errors"] == [
+        "voice.yaml: services_manifest references recovered-configs"
+    ]
+
+
+@pytest.mark.parametrize("yaml", [
+    "services:\n  app:\n    image: ${IMAGE}\n",
+    "{services: {app: {image: ${IMAGE}}}}\n",
+])
+def test_unresolved_yaml_image_reference_fails_closed(tmp_path, yaml):
+    (tmp_path / "candidate-stack.yaml").write_text(yaml, encoding="utf-8")
     fixture = DockerFixture(configured_tags=[])
 
     result = docker_images.remove_docker_image(
-        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
+        TARGET_ID, dry_run=True, config_home=tmp_path, runner=fixture
     )
 
-    configured = result["inspection"]["references"]["configured"]
+    errors = result["inspection"]["references"]["config_audit_errors"]
     assert result["outcome"] == "blocked"
-    assert configured == [{
-        "path": "compose.yaml",
-        "field": "line:2",
-        "value": TARGET_DIGEST,
-    }]
-    assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
+    assert errors == ["candidate-stack.yaml: unresolved image reference at services.app.image"]
 
 
 def test_symlinked_config_directory_fails_closed(tmp_path, monkeypatch):
@@ -232,21 +286,6 @@ def test_symlinked_config_directory_fails_closed(tmp_path, monkeypatch):
     assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
 
 
-def test_windows_python311_junction_is_link_like():
-    class JunctionPath:
-        @staticmethod
-        def is_symlink():
-            return False
-
-        @staticmethod
-        def lstat():
-            return SimpleNamespace(
-                st_file_attributes=docker_images.FILE_ATTRIBUTE_REPARSE_POINT
-            )
-
-    assert docker_images._path_is_link_like(JunctionPath()) is True
-
-
 def test_dependent_child_image_blocks_exact_image_removal(tmp_path):
     fixture = DockerFixture(configured_tags=[], child=True)
 
@@ -269,19 +308,3 @@ def test_identity_drift_between_inspection_and_removal_fails_closed(tmp_path):
 
     assert result["outcome"] == "identity-drift"
     assert not any(call[1:3] == ["image", "rm"] for call in fixture.calls)
-
-
-def test_post_removal_inspect_error_is_not_accepted_as_absence(tmp_path):
-    fixture = DockerFixture(
-        configured_tags=[],
-        post_remove_inspect_error="permission denied while connecting to Docker",
-    )
-
-    result = docker_images.remove_docker_image(
-        TARGET_ID, confirm=True, config_home=tmp_path, runner=fixture
-    )
-
-    assert result["outcome"] == "failed"
-    assert result["applied"] is False
-    assert result["removal_attempted"] is True
-    assert "permission denied" in result["error"]

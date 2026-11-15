@@ -1,0 +1,34 @@
+{
+  "total_instances": 5,
+  "submitted_instances": 5,
+  "completed_instances": 3,
+  "resolved_instances": 3,
+  "unresolved_instances": 0,
+  "empty_patch_instances": 2,
+  "error_instances": 0,
+  "completed_ids": [
+    "django__django-13512",
+    "pydata__xarray-4356",
+    "sympy__sympy-12096"
+  ],
+  "incomplete_ids": [],
+  "empty_patch_ids": [
+    "pylint-dev__pylint-8898",
+    "sphinx-doc__sphinx-9658"
+  ],
+  "submitted_ids": [
+    "django__django-13512",
+    "pydata__xarray-4356",
+    "pylint-dev__pylint-8898",
+    "sphinx-doc__sphinx-9658",
+    "sympy__sympy-12096"
+  ],
+  "resolved_ids": [
+    "django__django-13512",
+    "pydata__xarray-4356",
+    "sympy__sympy-12096"
+  ],
+  "unresolved_ids": [],
+  "error_ids": [],
+  "schema_version": 2
+}

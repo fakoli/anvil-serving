@@ -1,0 +1,123 @@
+{
+  "at": "2026-10-17T13:03:57.598053+00:00",
+  "candidate_removed": true,
+  "direct_checks_passed": 2,
+  "evidence": [
+    {
+      "bytes": 785,
+      "path": "restoration/baseline-restored-models.json",
+      "sha256": "259991754b50579c2184d6a14e4e54ccf83ec95e635b70fc51d9d25397229689"
+    },
+    {
+      "bytes": 2134,
+      "path": "restoration/baseline-restored-status.json",
+      "sha256": "15e40c17ee40c0db9b9f56a8265e00ae4768b0aef87f1df3c89d18f7891b949b"
+    },
+    {
+      "bytes": 323501,
+      "path": "restoration/candidate-end-logs.json",
+      "sha256": "7749c888089ab8cabd207bfac200301a0254cdb40e66787f9cc4e3ff8380dfbd"
+    },
+    {
+      "bytes": 77574,
+      "path": "restoration/candidate-end-metrics.txt",
+      "sha256": "0ebd4c7b85d90f00ccfc59b34cd22c9874ffd542e5c4f0aa6ec46084310596ea"
+    },
+    {
+      "bytes": 2033,
+      "path": "restoration/candidate-end-status.json",
+      "sha256": "cba2ec7ab2cc1e68b41deb28bd6c80270a36868c31bdb9faea18950117cb2195"
+    },
+    {
+      "bytes": 1193,
+      "path": "restoration/candidate-restored-status.json",
+      "sha256": "1ec1906566891b1e3acff6be56a42dc76f589c9301791f107cf7372553e09668"
+    },
+    {
+      "bytes": 736,
+      "path": "restoration/candidate-unload-preview.json",
+      "sha256": "801b13acd14f7d83235a80b2e69b85611e495ff3231923d549084e59cf8f873a"
+    },
+    {
+      "bytes": 540,
+      "path": "restoration/candidate-unload-receipt.json",
+      "sha256": "8046bfe71441940f91a7271da50d64ae1a3ae8a594bd0db2e562aa5a636475e5"
+    },
+    {
+      "bytes": 2298,
+      "path": "restoration/direct-preflight-receipt.json",
+      "sha256": "b2b63c2d6a85b24b1f0124a43dca53727e16960beec3b355537ded112704898f"
+    },
+    {
+      "bytes": 3295,
+      "path": "restoration/direct-preflight.json",
+      "sha256": "e4629017e1055694cc6e6d6d7e205a478719f049b795a422275766aa1ce72187"
+    },
+    {
+      "bytes": 2134,
+      "path": "restoration/final-baseline-status.json",
+      "sha256": "e565753aa12803a3c8921af34a55598875d5ac619d9f7f131a5f4d1d7106f19a"
+    },
+    {
+      "bytes": 1193,
+      "path": "restoration/final-candidate-status.json",
+      "sha256": "1ec1906566891b1e3acff6be56a42dc76f589c9301791f107cf7372553e09668"
+    },
+    {
+      "bytes": 2849,
+      "path": "restoration/final-operator-hashes.json",
+      "sha256": "b22f21657191c4ab6b128254ce063c6f061873ac679f844a459e3f848ddb6b93"
+    },
+    {
+      "bytes": 4888,
+      "path": "restoration/final-router-status.json",
+      "sha256": "9bf84ff6dabb90dbde5946dac30172b8c35b094cab12c38db47f58fc421815f2"
+    },
+    {
+      "bytes": 2579,
+      "path": "restoration/pre-restore-hashes.json",
+      "sha256": "6497268ae1567d3cdc93072d49e7b13728c37761361922bc3ffee068fea86bfb"
+    },
+    {
+      "bytes": 1183,
+      "path": "restoration/retained-restore-preview.json",
+      "sha256": "77e56a7e988187d120eb02d6f83a227eb98e4843b35015814a0c2d8296b3e035"
+    },
+    {
+      "bytes": 1276,
+      "path": "restoration/retained-restore-receipt.json",
+      "sha256": "cc0cabef04cf1b12b1697935d77e956d4cbcc3da5e5f48fb781a817979b4793d"
+    },
+    {
+      "bytes": 2200,
+      "path": "restoration/routed-preflight-receipt.json",
+      "sha256": "7d5c8822a3f6d8e3382f1995f6f32cd0df18a45edaac1c36bd60629b0ae0d774"
+    },
+    {
+      "bytes": 3090,
+      "path": "restoration/routed-preflight.json",
+      "sha256": "b988cbda27a206b48a93b7a5207c5c1ab7619d7b5f58d0a1ff26060f0eb3b93d"
+    },
+    {
+      "bytes": 986,
+      "path": "restoration/router-readmit-preview.json",
+      "sha256": "530032ce4739aec7060b0424f3fd766231bc742e109280615d2f04821e88d468"
+    },
+    {
+      "bytes": 1557,
+      "path": "restoration/router-readmit-receipt.json",
+      "sha256": "8d68986306d46f30648f762872d2b7ccc9b3d9553fd810f33764c9482d6cf84b"
+    }
+  ],
+  "limitations": [
+    "No reboot or fresh rebuild tested.",
+    "Provider selections and promotion assignments unchanged."
+  ],
+  "operator_files_unchanged": 14,
+  "promoted": false,
+  "restored": true,
+  "retained_container_exact": true,
+  "routed_checks_passed": 2,
+  "router_readmitted": true,
+  "schema": "anvil-serving.campaign-restoration/v1"
+}

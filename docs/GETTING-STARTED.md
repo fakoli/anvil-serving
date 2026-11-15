@@ -10,8 +10,13 @@ Use `127.0.0.1` in local URLs.
 
 ## Prerequisites
 
-- **Python >= 3.11** — the runtime is standard-library only; there are no required dependencies
-  to install beyond the package itself.
+- **Python >= 3.11** — the CLI is standard-library only; there are no required
+  dependencies to install beyond the package itself. Native PowerShell supports
+  command discovery, offline configuration and topology work, and declared
+  typed remote operations. On Windows, run service, router, controller, and
+  accounting runtimes in Linux containers with Docker Desktop's Linux engine
+  or inside Linux in WSL. Native Windows deployment of those runtimes is
+  unsupported.
 - **At least one OpenAI-compatible model serve** for the routed request. SGLang
   and vLLM are common options.
 - **For a managed Docker-backed GPU serve:** Docker, Compose v2, and a supported
@@ -31,6 +36,10 @@ For the current `main` documentation and MCP/controller command surface, install
 ```bash
 pip install -e .
 ```
+
+Run the CLI commands in Linux, macOS, or native Windows PowerShell. On Windows,
+local service runtimes belong in a Linux container or Linux in WSL; only verbs
+with a declared remote execution plan operate a remote owner.
 
 For released features only, you can install the latest published package:
 
@@ -67,6 +76,54 @@ anvil-serving product journey control-plane-fleet
 
 The six-family boundary and cross-family handoffs are documented in
 [Product families and user journeys](PRODUCT-FAMILIES.md).
+
+## Windows client
+
+For an existing deployment, keep the operator CLI in native PowerShell. It
+needs Python 3.11+ and the package, with no development extras, model engines,
+Docker, or WSL required just to contact a remote controller. From this clone:
+
+```powershell
+py -m pip install -e .
+anvil-serving --version
+anvil-serving --help
+```
+
+Use your provisioned private client configuration, which declares the Linux
+resource owner, its authenticated controller endpoint, and credential references.
+Select that directory once in the PowerShell session:
+
+```powershell
+$env:ANVIL_SERVING_HOME = Join-Path $HOME "anvil-operator"
+anvil-serving topology validate
+anvil-serving topology resolve --command "router status" --transport controller
+```
+
+Replace `anvil-operator` with your existing private client configuration
+location. The two topology commands are offline: they validate the declaration
+and explain the owner and transport without starting or contacting services.
+If the topology has multiple router owners, select the intended resource with
+`--target` as described in [Control plane](cli/control-plane.md#topology).
+Load the referenced controller credential through your existing protected
+credential setup, then read the owner's router status:
+
+```powershell
+anvil-serving router status --transport controller
+```
+
+Keep `--transport controller` explicit: a bare command does not automatically
+become remote merely because `ANVIL_SERVING_HOME` is set. Only commands with a
+declared typed remote operation can dispatch this way. Use focused `--help`
+and the resolved plan before an operation; keep its normal preview and
+confirmation requirements.
+
+For services hosted on the Windows machine itself, use Docker Desktop's Linux
+engine or Linux in WSL and follow the owning runtime's managed deployment path.
+Windows, WSL, and containers have separate paths, process ownership, and
+loopback addresses; a Windows path or `127.0.0.1` is not an implicit reference
+to the Linux owner. Run owner-local commands in that Linux environment. Do not
+run the local `init` / `serves up` / `router run` sequence below in PowerShell
+as client setup. See [Host-supervised services](HOST-SERVICES.md).
 
 ## Choose the network shape
 
@@ -214,7 +271,7 @@ to need on a first run:
 - The router answers `503` → the alias is configured but its local tier cannot serve right now.
   That is the gateway refusing cleanly rather than substituting another model; see the
   troubleshooting entry before changing anything.
-- Requests hang ~20s on Windows → a `localhost` URL sneaked in; use `127.0.0.1`.
+- Requests from a Windows client hang ~20s → a `localhost` URL sneaked in; use `127.0.0.1`.
 
 ## Next Steps
 

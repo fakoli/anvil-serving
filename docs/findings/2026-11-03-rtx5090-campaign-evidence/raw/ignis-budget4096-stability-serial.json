@@ -1,0 +1,444 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-03T13:46:17.905751+00:00",
+  "identity_observations": [
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:45:20.113935+00:00",
+      "phase": "start",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    },
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:45:20.452287+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    },
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:45:39.600822+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    },
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:45:39.937446+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    },
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:45:58.229418+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    },
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:45:58.540060+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    },
+    {
+      "bound_port": "[private topology withheld]",
+      "container_id": "[private identity withheld]",
+      "image_digest": "[private identity withheld]",
+      "observed_at": "2026-11-03T13:46:17.896695+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "[private identity withheld]",
+      "registry_digest": "[private identity withheld]",
+      "revision": "[private identity withheld]",
+      "running": true,
+      "served_identity": "[private identity withheld]"
+    }
+  ],
+  "performance_eligible": false,
+  "historical-reference": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 427204.4814461,
+        "expected_values": [
+          "VALUE_6a6b91c25c04",
+          "VALUE_8688cd49bcf9",
+          "VALUE_10cf519231c0"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-03T13:45:37.914656+00:00",
+        "first_output": 427194.5198717,
+        "last_output": 427204.4812813,
+        "partial_visible": "[text withheld]",
+        "prompt_sha256": "[private fingerprint withheld]",
+        "prompt_tokens_tokenized": 24575,
+        "request_id": null,
+        "response_headers_at": 427187.2089191,
+        "result": {
+          "content_chunks": 626,
+          "e2e": 17.303262700035702,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 2048,
+          "output_token_source": "usage",
+          "reasoning_chunks": 0,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 7.3445100000244565,
+          "ttft": 7.344510700029787,
+          "usage": {
+            "completion_tokens": 2048,
+            "prompt_tokens": 24575,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 26623
+          },
+          "visible_content": "[text withheld]",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 427187.1750878,
+        "started_at": "2026-11-03T13:45:20.608287+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-433",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 427205.8407236,
+        "expected_values": [
+          "VALUE_538699c51652",
+          "VALUE_9d5145c7201d",
+          "VALUE_6f2b0590de82"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-03T13:45:39.273934+00:00",
+        "first_output": 427205.7135181,
+        "last_output": 427205.8260331,
+        "partial_visible": "[text withheld]",
+        "prompt_sha256": "[private fingerprint withheld]",
+        "prompt_tokens_tokenized": 4094,
+        "request_id": null,
+        "response_headers_at": 427204.4947348,
+        "result": {
+          "content_chunks": 9,
+          "e2e": 1.3529311000020243,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 43,
+          "output_token_source": "usage",
+          "reasoning_chunks": 0,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.228870100050699,
+          "ttft": 1.228870899998583,
+          "usage": {
+            "completion_tokens": 43,
+            "prompt_tokens": 4094,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 4137
+          },
+          "visible_content": "[text withheld]",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 56,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 427204.4845137,
+        "started_at": "2026-11-03T13:45:37.917709+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-434",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 427223.091966,
+        "expected_values": [
+          "VALUE_28d503237089",
+          "VALUE_b6b7d3509f66",
+          "VALUE_1b98412dc137"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-03T13:45:56.525177+00:00",
+        "first_output": 427213.8820049,
+        "last_output": 427223.0917833,
+        "partial_visible": "[text withheld]",
+        "prompt_sha256": "[private fingerprint withheld]",
+        "prompt_tokens_tokenized": 24570,
+        "request_id": null,
+        "response_headers_at": 427206.6796616,
+        "result": {
+          "content_chunks": 578,
+          "e2e": 16.448892300017178,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 2048,
+          "output_token_source": "usage",
+          "reasoning_chunks": 0,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 7.250512800004799,
+          "ttft": 7.250513400009368,
+          "usage": {
+            "completion_tokens": 2048,
+            "prompt_tokens": 24570,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 26618
+          },
+          "visible_content": "[text withheld]",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 427206.6393021,
+        "started_at": "2026-11-03T13:45:40.072498+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-435",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 427224.4807105,
+        "expected_values": [
+          "VALUE_175e4bdcb034",
+          "VALUE_a129af931382",
+          "VALUE_903b460f4908"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-03T13:45:57.913921+00:00",
+        "first_output": 427224.3391152,
+        "last_output": 427224.4660429,
+        "partial_visible": "[text withheld]",
+        "prompt_sha256": "[private fingerprint withheld]",
+        "prompt_tokens_tokenized": 4097,
+        "request_id": null,
+        "response_headers_at": 427223.1345476,
+        "result": {
+          "content_chunks": 10,
+          "e2e": 1.3754001000197604,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 40,
+          "output_token_source": "usage",
+          "reasoning_chunks": 0,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.2366245000157505,
+          "ttft": 1.2366249000187963,
+          "usage": {
+            "completion_tokens": 40,
+            "prompt_tokens": 4097,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 4137
+          },
+          "visible_content": "[text withheld]",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 56,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 427223.1030685,
+        "started_at": "2026-11-03T13:45:56.536266+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-436",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "anchor": {
+        "end": 427242.7810395,
+        "expected_values": [
+          "VALUE_4c547bd7ffce",
+          "VALUE_d8cc2d2f656e",
+          "VALUE_ca3898fc005c"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-03T13:46:16.214250+00:00",
+        "first_output": 427232.5313898,
+        "last_output": 427242.7808159,
+        "partial_visible": "[text withheld]",
+        "prompt_sha256": "[private fingerprint withheld]",
+        "prompt_tokens_tokenized": 24579,
+        "request_id": null,
+        "response_headers_at": 427225.3124067,
+        "result": {
+          "content_chunks": 641,
+          "e2e": 17.52152650000062,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 2048,
+          "output_token_source": "usage",
+          "reasoning_chunks": 0,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 7.275130899972282,
+          "ttft": 7.275131699978374,
+          "usage": {
+            "completion_tokens": 2048,
+            "prompt_tokens": 24579,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 26627
+          },
+          "visible_content": "[text withheld]",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 427225.2557001,
+        "started_at": "2026-11-03T13:45:58.688897+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-437",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 427244.1419032,
+        "expected_values": [
+          "VALUE_9ee79d557ded",
+          "VALUE_8d5ccaa4e026",
+          "VALUE_86e5bb1f4bc5"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-03T13:46:17.575114+00:00",
+        "first_output": 427244.0288228,
+        "last_output": 427244.1272297,
+        "partial_visible": "[text withheld]",
+        "prompt_sha256": "[private fingerprint withheld]",
+        "prompt_tokens_tokenized": 4094,
+        "request_id": null,
+        "response_headers_at": 427242.8191962,
+        "result": {
+          "content_chunks": 8,
+          "e2e": 1.3433469000156038,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 37,
+          "output_token_source": "usage",
+          "reasoning_chunks": 0,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 1.2452098000212573,
+          "ttft": 1.2452101000235416,
+          "usage": {
+            "completion_tokens": 37,
+            "prompt_tokens": 4094,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 4131
+          },
+          "visible_content": "[text withheld]",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 56,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 427242.7963085,
+        "started_at": "2026-11-03T13:46:16.229507+00:00",
+        "status": "completed",
+        "stream_id": "chatcmpl-438",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 2048,
+    "anchor_tokens": 24576,
+    "base_url": "[private operator or asset text withheld]",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "configuration": {
+      "image_digest": "[private identity withheld]",
+      "label": "ignis-budget4096-lanes4",
+      "model_revision": "[private identity withheld]",
+      "recipe_sha256": "[private fingerprint withheld]",
+      "registry_sha256": "[private fingerprint withheld]"
+    },
+    "contender_max_tokens": 128,
+    "contender_tokens": 4096,
+    "context_limit": 32768,
+    "managed_container": "anvil-llm-ignis-budget4096",
+    "mode": "serial",
+    "model": "[private identity withheld]",
+    "prefix_mode": "unique",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 0.0,
+    "timeout_seconds": 300,
+    "tokenizer_protocol": "v1-tokenize"
+  },
+  "scenario_sha256": "[private fingerprint withheld]",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "[private-model]",
+  "stage": "identity_check",
+  "started_at": "2026-11-03T13:45:19.468074+00:00",
+  "status": "completed"
+}

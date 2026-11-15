@@ -1,0 +1,79 @@
+{
+  "base_url": "http://127.0.0.1/v1",
+  "budget": {
+    "max_completion_tokens": 65536,
+    "reasoning_headroom_tokens": 49152,
+    "visible_answer_tokens": 16384
+  },
+  "checks": [
+    "ocr"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+  "multimodal_input": {
+    "bytes": 15916,
+    "mime": "image/png",
+    "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+  },
+  "observations": [
+    {
+      "content": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "content_chars": 39,
+      "content_excerpt": "ANVIL READY\nCODE 42917\nTEMPERATURE 42 C",
+      "expected": [
+        "ANVIL READY",
+        "42917",
+        "42"
+      ],
+      "finish_reason": "stop",
+      "image": {
+        "bytes": 15916,
+        "mime": "image/png",
+        "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+      },
+      "passed": true,
+      "reasoning_chars": 206,
+      "reasoning_excerpt": "The user wants me to transcribe all visible text in the image exactly. The image shows:\n- \"ANVIL READY\" in green\n- \"CODE 42917\" in white\n- \"TEMPERATURE 42 C\" in blue\n\nI should return only the transcri",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": null,
+      "seconds": 1.195,
+      "test": "ocr",
+      "usage": {
+        "completion_tokens": 78,
+        "prompt_tokens": 334,
+        "prompt_tokens_details": null,
+        "total_tokens": 412
+      },
+      "validation_detail": "all expected text present"
+    }
+  ],
+  "ocr_expect": [
+    "ANVIL READY",
+    "42917",
+    "42"
+  ],
+  "passed": true,
+  "results": [
+    {
+      "detail": "1.2s all expected text present finish='stop' visible=39 reasoning_chars=206 reasoning_tokens=None",
+      "name": "verbatim image OCR",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

@@ -1,0 +1,173 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-23-flare-upstream-refresh",
+    "capability": "Flare current-upstream compatibility and cache diagnostics",
+    "repository_revision": "0b21d7f4883ac6f2b099df55813e8be06777b9df",
+    "dirty_state": "Compatibility commit and managed runtime bound; public product documentation worktree contains unrelated preserved edits.",
+    "started_at": "2026-10-24T04:58:42.719341+00:00",
+    "completed_at": "2026-10-24T05:28:51.048519+00:00",
+    "evidence_labels": [
+      "compatibility-only",
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-graph-data/v1",
+    "anvil-serving.benchmark-graph-manifest/v1",
+    "anvil-serving.benchmark-source-registry/v1",
+    "campaign-size-policy-review/v1",
+    "flare-current-baseline-boundary/v1",
+    "flare-current-baseline-summary/v1",
+    "flare-retained-frontend-inspection/v1",
+    "flare-upstream-current-phase/v2",
+    "flare-upstream-current-response-fixture/v2",
+    "flare-upstream-refresh-decision/v1",
+    "flare-upstream-refresh-plan/v1",
+    "flare-upstream-refresh-restoration-summary/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 4 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "report.md",
+        "alias-provenance.json",
+        "provenance.json",
+        "publication-transformations.json"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "upstream-review.md"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "archives/harness.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "coverage-and-gaps.md",
+        "reconstruction.md",
+        "archives/source.tar.gz",
+        "archives/build.tar.gz",
+        "archives/runtime.tar.gz",
+        "archives/harness.tar.gz",
+        "archives/review.tar.gz",
+        "archives/publication-method.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "reconstruction.md",
+        "recipe.toml",
+        "legacy-glm-template-compat.diff",
+        "archives/source.tar.gz",
+        "archives/build.tar.gz",
+        "archives/runtime.tar.gz",
+        "archives/harness.tar.gz",
+        "archives/review.tar.gz",
+        "archives/canonical-root.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "graph-cli-input.json",
+        "graphs/replay-data.json",
+        "graphs/replay.svg",
+        "archives/current-baseline.tar.gz",
+        "archives/canonical-00-fixtures.tar.gz",
+        "archives/canonical-01-fixed1.tar.gz",
+        "archives/canonical-02-fixed1.tar.gz",
+        "archives/canonical-03-fixed1.tar.gz",
+        "archives/canonical-04-small12.tar.gz",
+        "archives/canonical-05-pageheavy.tar.gz",
+        "archives/canonical-root.tar.gz",
+        "archives/current-baseline-driver6157110.tar.gz",
+        "archives/current-baseline-monitorfix.tar.gz",
+        "archives/post-driver-restoration.tar.gz",
+        "archives/post-driver-restoration-validated.tar.gz",
+        "archives/accepted-summary.tar.gz",
+        "archives/rejected-analysis.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "archives/source.tar.gz",
+        "archives/build.tar.gz",
+        "archives/runtime.tar.gz",
+        "archives/harness.tar.gz",
+        "archives/review.tar.gz",
+        "archives/current-baseline.tar.gz",
+        "archives/current-baseline-driver6157110.tar.gz",
+        "archives/current-baseline-monitorfix.tar.gz",
+        "archives/post-driver-restoration.tar.gz",
+        "archives/post-driver-restoration-validated.tar.gz",
+        "archives/rejected-analysis.tar.gz",
+        "archives/publication-method.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "archives/current-baseline.tar.gz",
+        "archives/canonical-root.tar.gz",
+        "archives/current-baseline-driver6157110.tar.gz",
+        "archives/current-baseline-monitorfix.tar.gz",
+        "archives/post-driver-restoration.tar.gz",
+        "archives/post-driver-restoration-validated.tar.gz"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "decision-summary.json",
+        "final-results-review.md",
+        "compatibility-pr-draft.md",
+        "issue-draft.md"
+      ],
+      "reason": "Selected sanitized campaign evidence."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No separate social publication copy requested; dated finding and native evidence are authoritative."
+    }
+  ]
+}

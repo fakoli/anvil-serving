@@ -1,0 +1,37 @@
+{
+  "schema": "anvil-serving.engine-request-correlation/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "source": {
+    "service": "Ignis",
+    "version": "0.8.0",
+    "private_log_sha256": "3d9805c623779463570b3ece24924ca459da23231c02022614470723110d84f3"
+  },
+  "counts": {
+    "native_observations": 9,
+    "engine_admitted": 9,
+    "engine_ttft": 9,
+    "engine_done": 9,
+    "request_failed_observations": 0,
+    "engine_errors_in_request_interval": 0,
+    "explicit_http_statuses_retained": 0
+  },
+  "correlation_method": "Ordered phases plus unique prompt/completion token pairs; no shared end-to-end request ID was retained.",
+  "requests": [
+    {"engine_request_id": 1, "test": "smoke", "harness_request_index": null, "prompt_tokens": 68, "completion_tokens": 124, "reused_prompt_tokens": 0, "harness_passed": true},
+    {"engine_request_id": 2, "test": "json", "harness_request_index": null, "prompt_tokens": 70, "completion_tokens": 51, "reused_prompt_tokens": 0, "harness_passed": true},
+    {"engine_request_id": 3, "test": "tools", "harness_request_index": 1, "prompt_tokens": 5521, "completion_tokens": 41, "reused_prompt_tokens": 0, "harness_passed": true},
+    {"engine_request_id": 4, "test": "tools", "harness_request_index": 2, "prompt_tokens": 5521, "completion_tokens": 46, "reused_prompt_tokens": 5519, "harness_passed": true},
+    {"engine_request_id": 5, "test": "tools", "harness_request_index": 3, "prompt_tokens": 5521, "completion_tokens": 13, "reused_prompt_tokens": 5519, "harness_passed": false},
+    {"engine_request_id": 6, "test": "tools", "harness_request_index": 0, "prompt_tokens": 5521, "completion_tokens": 45, "reused_prompt_tokens": 5519, "harness_passed": true},
+    {"engine_request_id": 7, "test": "streaming-tools", "harness_request_index": null, "prompt_tokens": 321, "completion_tokens": 58, "reused_prompt_tokens": 0, "harness_passed": true},
+    {"engine_request_id": 8, "test": "tool-result-initial", "harness_request_index": null, "prompt_tokens": 321, "completion_tokens": 58, "reused_prompt_tokens": 319, "harness_passed": true},
+    {"engine_request_id": 9, "test": "tool-result-continuation", "harness_request_index": null, "prompt_tokens": 139, "completion_tokens": 37, "reused_prompt_tokens": 0, "harness_passed": true}
+  ],
+  "interpretation": {
+    "all_requests_completed_engine_lifecycle": true,
+    "request_loss_observed": false,
+    "literal_http_200_claim_supported": false,
+    "reason": "The harness decoded nine success-path responses and the engine retained nine complete lifecycles, but neither artifact retained explicit HTTP status codes.",
+    "internal_finish_reason_boundary": "Ignis recorded internal stop for API tool_calls responses as well as ordinary stop responses; it is not treated as the API finish reason."
+  }
+}

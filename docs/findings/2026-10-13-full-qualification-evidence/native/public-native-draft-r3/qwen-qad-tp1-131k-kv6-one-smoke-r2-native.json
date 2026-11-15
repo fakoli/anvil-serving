@@ -1,0 +1,68 @@
+{
+  "base_url": "http://127.0.0.1:39167/v1",
+  "budget": {
+    "max_completion_tokens": 2176,
+    "reasoning_headroom_tokens": 2048,
+    "visible_answer_tokens": 128
+  },
+  "checks": [
+    "smoke"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "required"
+  },
+  "image_expect": [],
+  "model": "qwen38-flash-next-qad-tp1-c1-131k-kv6-host-ple-nospec",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "\n\n```python\nsum(xs)\n```",
+      "content_chars": 23,
+      "content_excerpt": "\n\n```python\nsum(xs)\n```",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 229,
+      "reasoning_excerpt": "We need answer user: \"Write a Python one-liner that returns the sum of a list `xs`.\" Simple. Need final concise. Could say `sum(xs)`. Maybe as one-liner function? \"returns\" maybe expression. Provide c",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": 59,
+      "seconds": 0.722,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 70,
+        "completion_tokens_details": {
+          "reasoning_tokens": 59
+        },
+        "prompt_tokens": 68,
+        "prompt_tokens_details": {
+          "cached_tokens": 68,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 138
+      },
+      "validation_detail": "contains sum("
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "0.7s got='```python\\nsum(xs)\\n```' finish='stop' visible=23 reasoning_chars=229 reasoning_tokens=59",
+      "name": "smoke (short coding)",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "xhigh"
+  },
+  "video_expect": [],
+  "video_input": null
+}

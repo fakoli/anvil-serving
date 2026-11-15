@@ -1,0 +1,76 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-26-marker-gpu-trace",
+  "status": "operational_passed_quality_failed",
+  "mutation_required": true,
+  "full_swap_probe_restoration_lifecycle_seconds": 1278.233917,
+  "starting_state": {
+    "captured": true,
+    "evidence": ["runtime-before.json", "baseline-smoke.json"]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "runtime-restored.json",
+      "router-restored.json",
+      "router-transition-restored.json",
+      "mode-restored.json",
+      "resources-final.json",
+      "restoration-smoke.json"
+    ]
+  },
+  "exact_identity_checks": {
+    "capture_exact": true,
+    "image_exact": true,
+    "runtime_patch_absent": true,
+    "launch_exact_except_container_lifecycle": true,
+    "host_oom_unchanged": true,
+    "cgroup_oom_zero": true,
+    "router_custody_exact": true,
+    "router_running_healthy": true,
+    "captured_engine_idle": true
+  },
+  "ending_router_state": {
+    "tier": "primary-local",
+    "model": "served-model-1",
+    "ready": true,
+    "state": "admitting",
+    "active_requests": 0,
+    "draining": false
+  },
+  "ending_engine": {"running": 0, "waiting": 0},
+  "resource_boundary": {
+    "minimum_sampled_host_available_bytes": 65195872256,
+    "transition_sample_count": 70,
+    "sample_scope": "15-second host transition observations; exact pre-load instant not guaranteed",
+    "host_oom_kill_counter_delta": 0,
+    "cgroup_oom_event_delta": 0
+  },
+  "quality_smokes": {
+    "baseline": {
+      "passed": false,
+      "error": "Extra data: line 1 column 32 (char 31)",
+      "raw_response": "missing; initial invocation omitted JSON output and was not retried"
+    },
+    "restored": {
+      "passed": false,
+      "completion_tokens": 58,
+      "error": "Extra data: line 1 column 32 (char 31)",
+      "raw_response_retained": true
+    },
+    "quality_regression": "not established; both smokes failed and the baseline raw response is missing"
+  },
+  "router_scope": "Same running router container/image/mount custody and selected-tier readiness. Actual mounted configuration bytes were not separately captured before the trial; no router file mutation or restart was performed.",
+  "operational_restoration_verified": true,
+  "functional_acceptance_complete": false,
+  "promoted": false,
+  "ignis": "hold",
+  "projection": {
+    "native_source_sha256": "d18779e375e050b904fb79ac1eda2f476c627d3d6558ac6d90fd76f70eac4ca3",
+    "transformations": [
+      "Removed timestamps and replaced the private served model name with served-model-1.",
+      "Preserved every operational identity, readiness, occupancy, OOM, sample-count and smoke verdict.",
+      "Kept operational restoration separate from incomplete functional acceptance."
+    ]
+  }
+}

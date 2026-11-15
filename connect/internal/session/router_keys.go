@@ -18,22 +18,46 @@ func (m *Manager) RouterFence(raw, host string) (string, error) {
 		if err != nil || human.DeletionRequest != "" {
 			return ErrDenied
 		}
-		if human.RouterIncarnation == "" {
-			human.RouterIncarnation, err = randomURLValue(32)
-			if err != nil {
-				return ErrUnavailable
-			}
-			if tx.Put("principals", human.ID, human) != nil {
-				return ErrUnavailable
-			}
-		}
-		if !validBinding(human.RouterIncarnation) {
-			return ErrDenied
-		}
-		fence = routerFence(tx.Epoch(), human.RouterIncarnation)
-		return nil
+		fence, err = ensureRouterFence(tx, human)
+		return err
 	})
 	return fence, err
+}
+
+// ProvisionRouterIdentity is restricted to the native same-user admin socket.
+// It creates no browser session and requires the inspected account generation.
+func (m *Manager) ProvisionRouterIdentity(id string, generation uint64) (string, error) {
+	if !config.ValidHumanID(id) || generation == 0 {
+		return "", ErrDenied
+	}
+	var fence string
+	err := m.state.Update(func(tx *store.Tx) error {
+		var human Human
+		if err := tx.Get("principals", id, &human); err != nil {
+			return ErrDenied
+		}
+		if human.ID != id || human.Generation != generation || human.Disabled || human.DeletionRequest != "" || !ValidUsername(human.Username) {
+			return ErrDenied
+		}
+		var err error
+		fence, err = ensureRouterFence(tx, human)
+		return err
+	})
+	return fence, err
+}
+
+func ensureRouterFence(tx *store.Tx, human Human) (string, error) {
+	if human.RouterIncarnation == "" {
+		var err error
+		human.RouterIncarnation, err = randomURLValue(32)
+		if err != nil || tx.Put("principals", human.ID, human) != nil {
+			return "", ErrUnavailable
+		}
+	}
+	if !validBinding(human.RouterIncarnation) {
+		return "", ErrDenied
+	}
+	return routerFence(tx.Epoch(), human.RouterIncarnation), nil
 }
 
 func routerFence(epoch, incarnation string) string {

@@ -1,0 +1,18 @@
+{
+  "files": {
+    "anvil_serving/reasoning_probe.py": "d907004227e7a724c37dbb9b2efb8b51f3be18a96805ff2f9a7ce9088582181c",
+    "anvil_serving/reasoning_probe_runtime.py": "7f40b4b1b4f5a5970a1dd7d099de417e0a9fb470db52adff991e4d7c68752902",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/Dockerfile": "e7c4eda25258ff52da6301c2b743d9b6b9f4fb0e7d5b9c11a44a1b504365c4aa",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/README.md": "d3ef1e83703d52487b823660d46bf4688b489889fa5854793a05c0a0fb2490f7",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/kernel_regression.py": "2f2bdedf444d334fe9a984d884835e4524b331d1e453450cc1bb25e7b5d7b091",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/launch.py": "24203cc50619e0b4116be44cecb14d800f6b2845298f998e1384c6adeb369cd1",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/split-topp.patch": "c30ca1225f4a3b36b1e015738d9cf34129b1876851122d9da1abea1e5097fc7c",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/trace.patch": "64aebd4552feb10b1a3120a521d9ff7df0ed199e7ebf376ee253b0c1aa3996a8",
+    "configs/runtime-patches/vllm/8244d1c4-split-topp/verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c"
+  },
+  "head": "cf0b0db9efbd8d1213f3ff3fd4b765b0e2e3eb50",
+  "review": "accepted",
+  "reviewer": "GPT-5.6 Sol high",
+  "schema": "sampling-source-freeze/v1",
+  "source_writers_stopped": true
+}

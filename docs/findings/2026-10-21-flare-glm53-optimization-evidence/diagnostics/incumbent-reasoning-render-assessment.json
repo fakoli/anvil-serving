@@ -1,0 +1,112 @@
+[
+  {
+    "requested": "max",
+    "request": {
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Return READY."
+        }
+      ],
+      "add_generation_prompt": true,
+      "return_token_strs": true,
+      "chat_template_kwargs": {
+        "reasoning_effort": "max"
+      }
+    },
+    "response": {
+      "count": 15,
+      "max_model_len": 327680,
+      "tokens": [
+        154822,
+        154824,
+        154826,
+        25062,
+        287,
+        29905,
+        371,
+        25,
+        7487,
+        154827,
+        5598,
+        84629,
+        13,
+        154828,
+        154841
+      ],
+      "token_strs": [
+        "[gMASK]",
+        "<sop>",
+        "<|system|>",
+        "Reason",
+        "ing",
+        "\u0120Eff",
+        "ort",
+        ":",
+        "\u0120Max",
+        "<|user|>",
+        "Return",
+        "\u0120READY",
+        ".",
+        "<|assistant|>",
+        "<think>"
+      ]
+    }
+  },
+  {
+    "requested": "high",
+    "request": {
+      "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Return READY."
+        }
+      ],
+      "add_generation_prompt": true,
+      "return_token_strs": true,
+      "chat_template_kwargs": {
+        "reasoning_effort": "high"
+      }
+    },
+    "response": {
+      "count": 15,
+      "max_model_len": 327680,
+      "tokens": [
+        154822,
+        154824,
+        154826,
+        25062,
+        287,
+        29905,
+        371,
+        25,
+        5124,
+        154827,
+        5598,
+        84629,
+        13,
+        154828,
+        154841
+      ],
+      "token_strs": [
+        "[gMASK]",
+        "<sop>",
+        "<|system|>",
+        "Reason",
+        "ing",
+        "\u0120Eff",
+        "ort",
+        ":",
+        "\u0120High",
+        "<|user|>",
+        "Return",
+        "\u0120READY",
+        ".",
+        "<|assistant|>",
+        "<think>"
+      ]
+    }
+  }
+]

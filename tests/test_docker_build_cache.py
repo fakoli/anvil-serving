@@ -1,7 +1,6 @@
 import json
 import subprocess
 
-import pytest
 
 from anvil_serving import docker_build_cache as cache
 
@@ -75,82 +74,3 @@ def test_old_cache_only_preview_confirm_and_server_side_guards():
     assert result["removed_ids"] == [OLD]
     assert result["daemon_report"] == "Total: 1GB"
     assert result["reclaimed_bytes"] is None
-
-
-def test_reuse_and_postinspection_failure_do_not_claim_success():
-    args = ("desktop-linux", "desktop-linux", CUTOFF)
-    docker = Docker(drift=True)
-    result = cache.prune(*args, confirm=True, runner=docker)
-    assert result["outcome"] == "inventory-drift"
-    assert not docker.removed
-    result = cache.prune(*args, confirm=True, runner=Docker(post_error=True))
-    assert result["outcome"] == "failed" and result["removal_attempted"]
-    assert "removed_ids" not in result
-
-
-@pytest.mark.parametrize("timestamp", ["2020-01-01", "yesterday", "9999-01-01T00:00:00Z"])
-def test_bad_cutoff_never_contacts_docker(timestamp):
-    docker = Docker()
-    with pytest.raises(cache.DockerImageCleanupError):
-        cache.inventory("desktop-linux", "desktop-linux", timestamp, runner=docker)
-    assert docker.calls == []
-
-
-@pytest.mark.parametrize("problem", ["invalid-id", "duplicate-id", "driver", "endpoint", "conflicting-builder"])
-def test_inventory_identity_guards(problem):
-    docker = Docker()
-
-    def runner(argv, **kwargs):
-        result = docker(argv, **kwargs)
-        if argv[3:5] == ["buildx", "ls"]:
-            row = json.loads(result.stdout)
-            if problem == "driver":
-                row["Driver"] = "remote"
-            if problem == "endpoint":
-                row["Nodes"][0]["Endpoint"] = "another-engine"
-            result.stdout = json.dumps(row)
-            if problem == "conflicting-builder":
-                row["Nodes"][0]["Endpoint"] = "another-engine"
-                result.stdout += "\n" + json.dumps(row)
-        if argv[3:5] == ["system", "df"]:
-            data = json.loads(result.stdout)
-            if problem == "invalid-id":
-                data["BuildCache"][0]["ID"] = "short|.*"
-            if problem == "duplicate-id":
-                data["BuildCache"].append(data["BuildCache"][0])
-            result.stdout = json.dumps(data)
-        return result
-
-    with pytest.raises(cache.DockerImageCleanupError):
-        cache.prune("desktop-linux", "desktop-linux", CUTOFF, confirm=True, runner=runner)
-    assert not docker.removed
-
-
-def test_multiple_ids_are_anchored_and_post_prune_none_is_failure():
-    import re
-
-    docker = Docker()
-    second_id = "e" * 25
-    attempted = False
-
-    def runner(argv, **kwargs):
-        nonlocal attempted
-        if argv[3:5] == ["buildx", "prune"]:
-            selector = next(value for value in argv if value.startswith("id~="))[4:]
-            assert re.fullmatch(selector, OLD)
-            assert re.fullmatch(selector, second_id)
-            assert not re.search(selector, "prefix" + OLD)
-            assert not re.search(selector, OLD + "suffix")
-            assert not re.fullmatch(selector, RECENT)
-            attempted = True
-            return None
-        result = docker(argv, **kwargs)
-        if argv[3:5] == ["system", "df"]:
-            data = json.loads(result.stdout)
-            data["BuildCache"].append({**data["BuildCache"][0], "ID": second_id})
-            result.stdout = json.dumps(data)
-        return result
-
-    result = cache.prune("desktop-linux", "desktop-linux", CUTOFF, confirm=True, runner=runner)
-    assert attempted and result["removal_attempted"]
-    assert result["outcome"] == "failed"

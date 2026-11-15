@@ -1,0 +1,163 @@
+{
+  "full_native_graph_validated": false,
+  "native_evidence_authority": "Original private bytes remain authoritative. Original hashes cannot validate redacted derivatives; outer derivative hashes bind public bytes.",
+  "schema": "anvil-serving.bounded-diagnostic-projection-ledger/v1",
+  "sources": [
+    {
+      "derivative": {
+        "bytes": 171208,
+        "path": "campaign-report.json",
+        "sha256": "20a5830fda7bd0933c1c35e8c0f8172b6d9c9396ee5447804481e5a647d0c3a9"
+      },
+      "original_private_bytes": 139623,
+      "original_private_sha256": "5c48e2227d14e5599497097bcc345256b3d19c5eb12b857c247c8091bccb1b3c",
+      "source_id": "t006-r8-report-terminal-r1.json",
+      "transformation": "Exact complete native 96-row report object extracted after checking CLI envelopes; no field change."
+    },
+    {
+      "derivative": {
+        "bytes": 15434,
+        "path": "first-repeat-chain-audit.json",
+        "sha256": "0994c77b7a710a3e18a4144e524ad70ff517079fa3b0c7b762d34f3de0558420"
+      },
+      "native_hash_domain": "Original commitments remain private-source commitments; derivative bytes use the outer hash.",
+      "original_private_bytes": 13684,
+      "original_private_sha256": "11257677ffe44ecdae021ced48139f7f0ac586e1ef79254fb6ad769f18fb47e5",
+      "redaction_paths": [
+        "$.activation.container_id",
+        "$.activation.served_model",
+        "$.batch_closures[0].batch_id",
+        "$.batch_closures[1].batch_id",
+        "$.batch_closures[2].batch_id",
+        "$.batch_closures[3].batch_id",
+        "$.batch_closures[4].batch_id",
+        "$.batch_closures[5].batch_id",
+        "$.batch_closures[6].batch_id",
+        "$.batch_closures[7].batch_id",
+        "$.batch_closures[8].batch_id",
+        "$.batch_closures[9].batch_id",
+        "$.batch_closures[10].batch_id",
+        "$.batch_closures[11].batch_id",
+        "$.batch_closures[12].batch_id",
+        "$.batch_closures[13].batch_id",
+        "$.batch_closures[14].batch_id",
+        "$.cells[0].batch_id",
+        "$.cells[0].cell_id",
+        "$.cells[1].batch_id",
+        "$.cells[1].cell_id",
+        "$.cells[2].batch_id",
+        "$.cells[2].cell_id",
+        "$.cells[3].batch_id",
+        "$.cells[3].cell_id",
+        "$.cells[4].batch_id",
+        "$.cells[4].cell_id",
+        "$.cells[5].batch_id",
+        "$.cells[5].cell_id",
+        "$.cells[6].batch_id",
+        "$.cells[6].cell_id",
+        "$.cells[7].batch_id",
+        "$.cells[7].cell_id",
+        "$.cells[8].batch_id",
+        "$.cells[8].cell_id",
+        "$.cells[9].batch_id",
+        "$.cells[9].cell_id",
+        "$.cells[10].batch_id",
+        "$.cells[10].cell_id",
+        "$.cells[11].batch_id",
+        "$.cells[11].cell_id",
+        "$.cells[12].batch_id",
+        "$.cells[12].cell_id",
+        "$.cells[13].batch_id",
+        "$.cells[13].cell_id",
+        "$.cells[14].batch_id",
+        "$.cells[14].cell_id",
+        "$.cells[15].batch_id",
+        "$.cells[15].cell_id",
+        "$.cells[16].batch_id",
+        "$.cells[16].cell_id",
+        "$.cells[17].batch_id",
+        "$.cells[17].cell_id",
+        "$.cells[18].batch_id",
+        "$.cells[18].cell_id",
+        "$.cells[19].batch_id",
+        "$.cells[19].cell_id",
+        "$.cells[20].batch_id",
+        "$.cells[20].cell_id",
+        "$.cells[21].batch_id",
+        "$.cells[21].cell_id",
+        "$.cells[22].batch_id",
+        "$.cells[22].cell_id",
+        "$.cells[23].batch_id",
+        "$.cells[23].cell_id",
+        "$.failure.cell_id",
+        "$.failure.classification",
+        "$.failure_receipt.path",
+        "$.schema",
+        "$.scope.arm_id",
+        "$.scope.campaign_id"
+      ],
+      "source_id": "t006-r8-first-repeat-chain-audit-r1.json",
+      "transformation": "Reviewed R3 Projection.prime/walk; all fields and numeric/null/boolean values retained, private strings/identity keys replaced. Exact redaction paths are in the ledger."
+    },
+    {
+      "derivative": {
+        "bytes": 31890,
+        "path": "prospective-eligibility.json",
+        "sha256": "77e2d6855d8dcb5195d352d92705da3e8e56c0dc301923dc3be169a2d455244a"
+      },
+      "native_hash_domain": "Original commitments remain private-source commitments; derivative bytes use the outer hash.",
+      "original_private_bytes": 32875,
+      "original_private_sha256": "095105f77ead4935709b5356c99b40c180dd7a18361e39780f24d18486850afc",
+      "source_id": "t006-r8-prospective-eligibility-r1.json",
+      "transformation": "Replace baseline campaign with diagnostic-campaign, baseline_report.path with campaign-report.json, and all48 run_id fields with native report cell labels in manifest order. Every matching key/rule/outcome/unknown field is unchanged; candidate results remain absent."
+    },
+    {
+      "derivative": {
+        "bytes": 1803,
+        "path": "physical-recovery-context.json",
+        "sha256": "7cc96800a0b4004b7ac1ca2edc988c8a2224533ea4b55e28131a0040813ffb83"
+      },
+      "native_hash_domain": "Original commitments remain private-source commitments; derivative bytes use the outer hash.",
+      "original_private_bytes": 163024,
+      "original_private_sha256": "179667a76fb0953188f66b83d7ca9b310037dec0ca75222b5baab33b3a486534",
+      "source_id": "t006-r8-postterminal-physical-absence-r1.json",
+      "transformation": "Selected exact non-identifying counts/statuses/timestamps/source hashes and final fresh sample; omitted raw paths, process/container identities, argv and monitoring identity. No native receipt is repaired."
+    },
+    {
+      "derivative": {
+        "bytes": 2594,
+        "path": "cancellation-diagnosis.json",
+        "sha256": "53816e302349c20f674bf2b1c9f3f387162d192d37c96807b67624003d4fb681"
+      },
+      "native_hash_domain": "Original commitments remain private-source commitments; derivative bytes use the outer hash.",
+      "original_private_bytes": 21027,
+      "original_private_sha256": "d6bfe484a38152e71a2eb0bf793bdbb13a57cc8e2e1f7c6288cae9d409783322",
+      "source_id": "t006-r8-auto-cancellation-diagnosis-r1.json",
+      "transformation": "Selected native states/stop facts/artifact presence/drain fields; four run IDs relabeled to report cell labels. Narrative is a bounded paraphrase; raw logs/source paths/process identifiers omitted."
+    },
+    {
+      "derivative": {
+        "bytes": 637,
+        "path": "projection-refusal.json",
+        "sha256": "8b44a1b7ce94abcbea74ae3784005528a221ce11610dfec233ef7463a3463ef2"
+      },
+      "native_hash_domain": "Original commitments remain private-source commitments; derivative bytes use the outer hash.",
+      "original_private_bytes": 1532,
+      "original_private_sha256": "8f37b26d8ba0347666ece43a45a42279c90ad59f37168024dafbd200d29f2bad",
+      "source_id": "t006-publication-r8-projector-attempt-r1.json",
+      "transformation": "Retain exact refusal/exit/helper hash and snapshot disposition; remove private command paths and traceback paths."
+    },
+    {
+      "derivative": {
+        "bytes": 427,
+        "path": "terminal-command.json",
+        "sha256": "15d8829c58c5e9bba10c14386a25b91b62f671fcee7465bb05e7cb04e89e7c35"
+      },
+      "native_hash_domain": "Original commitments remain private-source commitments; derivative bytes use the outer hash.",
+      "original_private_bytes": 873,
+      "original_private_sha256": "07d0a340323e2dbabd764986664bdf65db3407fecbb8bf2053d2e4edf20105d3",
+      "source_id": "t006-r8-incumbent-terminal.json",
+      "transformation": "Selected command timing/exit/output commitments; original command paths and PID omitted; cancelled coordinator interpretation also comes from cancellation diagnosis."
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "id": "quasar-artifact-identity",
+      "url": "https://huggingface.co/wallawalla47/Qwen3.8-27B-Quasar-NVFP4-NInferV3/tree/fd3d06cea9df58a54d5051aac9545a4a01a922db",
+      "published_or_observed": "Observed 2026-10-16; publication date not established",
+      "observed_at": "2026-10-16",
+      "age_class": "undated-pinned-revision",
+      "evidence_type": "publisher-artifact-identity",
+      "hardware_runtime_relevance": "Pinned NInfer artifact tested locally on one RTX 5090",
+      "decision_impact": "Identity only; not an external quality or performance prior",
+      "advisory": true
+    },
+    {
+      "id": "swift15-artifact-identity",
+      "url": "https://huggingface.co/kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/tree/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82",
+      "published_or_observed": "Observed 2026-10-16; publication date not established",
+      "observed_at": "2026-10-16",
+      "age_class": "undated-pinned-revision",
+      "evidence_type": "publisher-artifact-identity",
+      "hardware_runtime_relevance": "Pinned NInfer artifact tested locally on one RTX 5090",
+      "decision_impact": "Identity only; not an external quality or performance prior",
+      "advisory": true
+    }
+  ],
+  "note": "Local native measurements determine the bounded result; no external performance prior informed the decision."
+}

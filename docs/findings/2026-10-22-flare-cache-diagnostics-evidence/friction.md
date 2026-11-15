@@ -1,0 +1,15 @@
+Initial transition-status command used an unsupported alias; corrected before mutation. Initial drain included unsupported --confirm; CLI rejected it. Unload was dispatched after quiesce reported active_requests=0; a corrected drain then confirmed zero. This was an orchestration-order error, not a serving failure. Future dependent calls check success before dispatch. No requests were active at quiesce.
+
+Counter patch build r1 failed: new fields were placed on Resolved rather than StoreStats. Independent review and compiler caught this before load. Corrected shared stats type, validated renderer fixtures, and retained failed build. R3 passes37 applicable CPU tests (2GPU-dependent tests ignored), release build and version. Broad R2 retained95pass/21io_uring EPERM/8ignored; disk runtime remains unqualified and live recipe disk0 is explicit.
+
+Initial host cargo tests lacked protoc; retry through the pinned managed build image resolved the toolchain requirement without host package changes. Build registry and Dockerfile preserve the supported repeatable path.
+
+First-window incumbent recipe unload removed the container. Reconstruction now reruns b12x autotuning, whose warm state was not in the retained mounted cache. Do not change tuning controls or interrupt progressing startup. For the second window, use existing manifest-owned serves down --keep-container and exact restore-retained bindings after successful first restoration. Kernel-tuning skill now records the retention invariant; verify by matching the same container ID across the second window.
+
+Decode pairs all pass fixed length and prompt reuse, but token sequences differ across all15 pairs despite seed42. Parser accepts seed; no seed defect established. No causal observer-overhead claim. Kernel-tuning skill now requires token/acceptance checks, not just output length, before attribution.
+
+Second-window restore wrapper incorrectly used a120-second outer timeout, shorter than managed startup readiness. It interrupted the CLI wait after starting the exact retained container; normal weight loading continued. Preserve the failure, inspect owning logs, wait for exact protocol readiness, then use managed monitor-sync and fresh direct/routed validation. Future orchestration must leave managed readiness its full bounded deadline plus overhead and catch timeout receipts; do not restart progressing model startup.
+
+Final monitor-sync focused help omitted its required model positional; first preview failed usage, corrected preview and confirmed sync passed. No serving lifecycle retry occurred. First post-sync monitoring ran before catch-up and failed6/20; fresh later readback passed20/20. These are retained attempts, not discarded evidence.
+
+Independent publication review required a closed exact per-phase archive inventory and full analyzer/restoration hash bindings; both gates were added before assembly. The common coverage and artifact ledgers were consolidated at closure; prospective execution files remain separately frozen.

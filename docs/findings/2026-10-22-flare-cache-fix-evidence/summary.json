@@ -1,0 +1,616 @@
+{
+  "campaign_id": "2026-10-22-flare-cache-fix",
+  "complete": true,
+  "decision": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "compatibility-only"
+    ],
+    "next_gate": "Build an independent numerical component oracle and isolate protected-lane regressions before any default decision.",
+    "promotion_authorized": false
+  },
+  "evidence": [
+    {
+      "numeric_paths": [
+        "denominators.expected_requests",
+        "denominators.attempted_requests",
+        "denominators.failed_attempts"
+      ],
+      "path": "analysis/normalized-matrix.json",
+      "sha256": "5d47ecba13a6b7cc089ebe7fcb07018bcf94cc872e38190c30d1896bb6209143"
+    },
+    {
+      "numeric_paths": [
+        "comparison_gates_passed",
+        "performance_eligible",
+        "lanes"
+      ],
+      "path": "analysis/diagnostic-analysis.json",
+      "sha256": "0ca23252e62b7bfeb2b75c6679dcae201fde494f9574f020d56d48b0d0597c76"
+    },
+    {
+      "numeric_paths": [
+        "lanes.*.repetitions.*.arms.*.metrics",
+        "lanes.*.repetitions.*.pair.observed_percent_delta"
+      ],
+      "path": "analysis/descriptive.json",
+      "sha256": "2a7d15b0443c6f5e3124a10d46c2ff0ccaf3faea5fedafa1dcb383707a70eca9"
+    },
+    {
+      "numeric_paths": [
+        "pairs.*.observed_ttft_reduction_percent"
+      ],
+      "path": "analysis/final-causal-assessment.json",
+      "sha256": "d5342ddc8c0f2c2da9368d45a563c60c1635f3c090db48d022982dc8dc665256"
+    },
+    {
+      "numeric_paths": [
+        "windows",
+        "checks"
+      ],
+      "path": "restoration.json",
+      "sha256": "7702b68537f60d300bc4395fdb56f57dfdba306febd5891e02138db203065943"
+    },
+    {
+      "path": "candidate-freeze.json",
+      "sha256": "699dd1fd898d492c284a0963418df4ef4bab77270128b709dc22e37a2932cf7f"
+    },
+    {
+      "path": "geometry.json",
+      "sha256": "ad58e99e3430fe3d01e3a94fe98dd01a223f75705a56b248e2e93414ac22f280"
+    },
+    {
+      "path": "diagnostic-amendment.json",
+      "sha256": "b6be295ebe5e6e41de64ffa43d65990866479dbcaf2a1cf0183b6068f8e0c68a"
+    },
+    {
+      "path": "review/final-causal-review.md",
+      "role": "independent_diagnostic_causal_review",
+      "scope": "Accepted diagnostic-only fixed-work causal support; no qualification, default change, or promotion.",
+      "sha256": "473a96eddeb730e470ef9e468ba786f528597dfab4a6d862e205ae0cfd6fa9de"
+    }
+  ],
+  "failures": [
+    "Numerical sampled-output gate failed.",
+    "Strict analyzer reports 27 incomplete pairs; 12 decode parser issues are retained and are not model-request failures.",
+    "r1-B monitoring and runner-exit exceptions, and r2-B false default restoration proof, remain retained."
+  ],
+  "gates": [
+    {
+      "name": "numerical sampled-output",
+      "passed": false,
+      "reason": "exact 128-token gate failed"
+    },
+    {
+      "name": "independent oracles",
+      "passed": false,
+      "reason": "formal gate remains false; pilots are bounded scope"
+    },
+    {
+      "name": "restore fidelity",
+      "passed": false,
+      "reason": "diagnostic amendment and retained false gate"
+    },
+    {
+      "name": "causal chain",
+      "passed": false,
+      "reason": "Initial proof receipts remain false; independently reviewed manual fixed-work assessment is accepted as diagnostic causal support only, without clearing qualification."
+    },
+    {
+      "name": "strict matrix",
+      "passed": false,
+      "reason": "all 27 strict pairs incomplete; 12 retained decode parser issues are not request failures"
+    },
+    {
+      "name": "restoration",
+      "passed": true,
+      "reason": "campaign restoration record contains retained exceptions"
+    }
+  ],
+  "headline_results": [
+    "Fixed-work observed client generated TTFT reduction is 95.038% to 96.065% over three complete 52/52 matched populations; this is unqualified diagnostic evidence only.",
+    "Two protected repetition-3 populations regress: B small12 E2E latency was 8.197% higher and B pageheavy TTFT was 13.105% higher; their cause is not established.",
+    "Natural-output lanes have absent token IDs, so equality is unverified; decode C4 outputs and whole-batch work are unmatched in all three pairs."
+  ],
+  "identity": {
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q, TP2, 300 W each",
+    "host_cache_configuration": "32 GiB physical pool; A 25%=52 rows/7314 pages, B 75%=158 rows/2434 pages",
+    "host_cache_physical_bytes": 34359738368,
+    "image_digest": "sha256:d8fb208298fd3dd3f6b2b631148b01467a9449a9dcd1fef7dca304714bcf9411",
+    "model": "GLM-5.3-Flash CSF-QAD/NVFP4-MXFP8",
+    "model_revision": "dec48abd33efa73c3bb7c95b74eee10cad34f9be",
+    "source_patch_sha256": "b132065b27532028bf2a02e754e86553ea846281f616f22ce74e89442ff0ec76",
+    "source_pin": "47581ccac82660953a5b59cb04b2750d64edc97d"
+  },
+  "lane_repetition_results": [
+    {
+      "a_median": 2.2326105805000003,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 3.155010117,
+      "b_median": 1.679467363,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 3.092463536,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 52,
+      "lane": "original-reverse",
+      "metric": "e2e",
+      "observed_percent_delta": 24.775624658023524,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 2.2292039695000003,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 3.156222008,
+      "b_median": 1.7103502910000001,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 3.082410266,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 52,
+      "lane": "original-reverse",
+      "metric": "e2e",
+      "observed_percent_delta": 23.275289547253795,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 2.2299199329999997,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 3.154061905,
+      "b_median": 1.6380942649999999,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 3.068251062,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 52,
+      "lane": "original-reverse",
+      "metric": "e2e",
+      "observed_percent_delta": 26.540220536250075,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 2.4066382839999996,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 3.10871662,
+      "b_median": 1.418141721,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 2.918060913,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 52,
+      "lane": "original-forward",
+      "metric": "e2e",
+      "observed_percent_delta": 41.07374878775092,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 2.3996880904999998,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 3.093178916,
+      "b_median": 1.5736946255,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 2.344281961,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 52,
+      "lane": "original-forward",
+      "metric": "e2e",
+      "observed_percent_delta": 34.42086778985912,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 2.4032072945,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 3.152254629,
+      "b_median": 1.5215562565,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 2.922577202,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 52,
+      "lane": "original-forward",
+      "metric": "e2e",
+      "observed_percent_delta": 36.68643316861404,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 0.0160301565,
+      "a_native_n": 24,
+      "a_p95_nearest_rank": 0.020827217,
+      "b_median": 0.0156591445,
+      "b_native_n": 24,
+      "b_p95_nearest_rank": 0.025949462,
+      "complete_work_matches": 24,
+      "complete_work_mismatches": 0,
+      "lane": "small12",
+      "metric": "e2e",
+      "observed_percent_delta": 2.3144627440162573,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.019339795,
+      "a_native_n": 24,
+      "a_p95_nearest_rank": 0.023078591,
+      "b_median": 0.018205865,
+      "b_native_n": 24,
+      "b_p95_nearest_rank": 0.0232813,
+      "complete_work_matches": 24,
+      "complete_work_mismatches": 0,
+      "lane": "small12",
+      "metric": "e2e",
+      "observed_percent_delta": 5.863195550935251,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.019166578,
+      "a_native_n": 24,
+      "a_p95_nearest_rank": 0.02357103,
+      "b_median": 0.020737637500000003,
+      "b_native_n": 24,
+      "b_p95_nearest_rank": 0.025164756,
+      "complete_work_matches": 24,
+      "complete_work_mismatches": 0,
+      "lane": "small12",
+      "metric": "e2e",
+      "observed_percent_delta": -8.196870093346881,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.469982182,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 0.899878974,
+      "b_median": 0.0184942845,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 0.026306104,
+      "complete_work_matches": 52,
+      "complete_work_mismatches": 0,
+      "lane": "fixed-work",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": 96.06489666878477,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "primary"
+    },
+    {
+      "a_median": 0.4649865935,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 0.899622723,
+      "b_median": 0.0230748745,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 0.030643876,
+      "complete_work_matches": 52,
+      "complete_work_mismatches": 0,
+      "lane": "fixed-work",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": 95.03751832363314,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "primary"
+    },
+    {
+      "a_median": 0.46758528200000005,
+      "a_native_n": 52,
+      "a_p95_nearest_rank": 0.901554518,
+      "b_median": 0.020235973,
+      "b_native_n": 52,
+      "b_p95_nearest_rank": 0.03287878,
+      "complete_work_matches": 52,
+      "complete_work_mismatches": 0,
+      "lane": "fixed-work",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": 95.6722391018287,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "primary"
+    },
+    {
+      "a_median": 0.033330404499999994,
+      "a_native_n": 12,
+      "a_p95_nearest_rank": 0.053303203,
+      "b_median": 0.033060765,
+      "b_native_n": 12,
+      "b_p95_nearest_rank": 0.076011957,
+      "complete_work_matches": 12,
+      "complete_work_mismatches": 0,
+      "lane": "pageheavy",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": 0.8089895818695957,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.033199045499999996,
+      "a_native_n": 12,
+      "a_p95_nearest_rank": 0.06296387,
+      "b_median": 0.033384912,
+      "b_native_n": 12,
+      "b_p95_nearest_rank": 0.058161352,
+      "complete_work_matches": 12,
+      "complete_work_mismatches": 0,
+      "lane": "pageheavy",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": -0.5598549512515548,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.033724486,
+      "a_native_n": 12,
+      "a_p95_nearest_rank": 0.063550133,
+      "b_median": 0.0381441325,
+      "b_native_n": 12,
+      "b_p95_nearest_rank": 0.064631068,
+      "complete_work_matches": 12,
+      "complete_work_mismatches": 0,
+      "lane": "pageheavy",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": -13.105155998522852,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.0618820915,
+      "a_native_n": 12,
+      "a_p95_nearest_rank": 0.062571973,
+      "b_median": 0.062427473,
+      "b_native_n": 12,
+      "b_p95_nearest_rank": 0.06324555,
+      "complete_work_matches": 12,
+      "complete_work_mismatches": 0,
+      "lane": "cold",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": -0.8813236378734828,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.062311642,
+      "a_native_n": 12,
+      "a_p95_nearest_rank": 0.063159143,
+      "b_median": 0.062342128499999996,
+      "b_native_n": 12,
+      "b_p95_nearest_rank": 0.063032178,
+      "complete_work_matches": 12,
+      "complete_work_mismatches": 0,
+      "lane": "cold",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": -0.04892584920165637,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "protected"
+    },
+    {
+      "a_median": 0.062011704,
+      "a_native_n": 12,
+      "a_p95_nearest_rank": 0.063051727,
+      "b_median": 0.0623657445,
+      "b_native_n": 12,
+      "b_p95_nearest_rank": 0.063400459,
+      "complete_work_matches": 12,
+      "complete_work_mismatches": 0,
+      "lane": "cold",
+      "metric": "client_generated_ttft",
+      "observed_percent_delta": -0.5709252885552051,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "protected"
+    },
+    {
+      "a_median": 192.01493846940423,
+      "a_native_n": 1,
+      "a_p95_nearest_rank": 192.01493846940423,
+      "b_median": 192.0892883828508,
+      "b_native_n": 1,
+      "b_p95_nearest_rank": 192.0892883828508,
+      "complete_work_matches": 1,
+      "complete_work_mismatches": 0,
+      "lane": "decode-c1",
+      "metric": "decode_tokens_per_second",
+      "observed_percent_delta": 0.038720900592028214,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "protected"
+    },
+    {
+      "a_median": 192.03782623915293,
+      "a_native_n": 1,
+      "a_p95_nearest_rank": 192.03782623915293,
+      "b_median": 192.1742107799656,
+      "b_native_n": 1,
+      "b_p95_nearest_rank": 192.1742107799656,
+      "complete_work_matches": 1,
+      "complete_work_mismatches": 0,
+      "lane": "decode-c1",
+      "metric": "decode_tokens_per_second",
+      "observed_percent_delta": 0.0710196233125504,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "protected"
+    },
+    {
+      "a_median": 192.04830272755308,
+      "a_native_n": 1,
+      "a_p95_nearest_rank": 192.04830272755308,
+      "b_median": 192.37939464246685,
+      "b_native_n": 1,
+      "b_p95_nearest_rank": 192.37939464246685,
+      "complete_work_matches": 1,
+      "complete_work_mismatches": 0,
+      "lane": "decode-c1",
+      "metric": "decode_tokens_per_second",
+      "observed_percent_delta": 0.1724003337761697,
+      "output_equality": "matched",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "protected"
+    },
+    {
+      "a_median": 106.51719559589138,
+      "a_native_n": 4,
+      "a_p95_nearest_rank": 109.56011235552096,
+      "b_median": 108.08525736461982,
+      "b_native_n": 4,
+      "b_p95_nearest_rank": 109.41930793254002,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 4,
+      "lane": "decode-c4",
+      "metric": "decode_tokens_per_second",
+      "observed_percent_delta": 1.472120778205059,
+      "output_equality": "unmatched",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "protected"
+    },
+    {
+      "a_median": 109.19599139660956,
+      "a_native_n": 4,
+      "a_p95_nearest_rank": 110.21489017850857,
+      "b_median": 109.4563533357994,
+      "b_native_n": 4,
+      "b_p95_nearest_rank": 109.887387688677,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 4,
+      "lane": "decode-c4",
+      "metric": "decode_tokens_per_second",
+      "observed_percent_delta": 0.2384354369238623,
+      "output_equality": "unmatched",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "protected"
+    },
+    {
+      "a_median": 107.17144148001267,
+      "a_native_n": 4,
+      "a_p95_nearest_rank": 109.34181459560489,
+      "b_median": 107.02973234029703,
+      "b_native_n": 4,
+      "b_p95_nearest_rank": 108.49894898383258,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 4,
+      "lane": "decode-c4",
+      "metric": "decode_tokens_per_second",
+      "observed_percent_delta": -0.1322265873806247,
+      "output_equality": "unmatched",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "protected"
+    },
+    {
+      "a_median": 1.341451861,
+      "a_native_n": 24,
+      "a_p95_nearest_rank": 1.735142173,
+      "b_median": 1.339275754,
+      "b_native_n": 24,
+      "b_p95_nearest_rank": 1.74215925,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 24,
+      "lane": "small12-original",
+      "metric": "e2e",
+      "observed_percent_delta": 0.1622202826106428,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 1,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 1.344510378,
+      "a_native_n": 24,
+      "a_p95_nearest_rank": 1.743916596,
+      "b_median": 1.344733131,
+      "b_native_n": 24,
+      "b_p95_nearest_rank": 1.737556146,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 24,
+      "lane": "small12-original",
+      "metric": "e2e",
+      "observed_percent_delta": -0.016567592459286573,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 2,
+      "role": "descriptive"
+    },
+    {
+      "a_median": 1.3440967645000002,
+      "a_native_n": 24,
+      "a_p95_nearest_rank": 1.735787168,
+      "b_median": 1.3447261315,
+      "b_native_n": 24,
+      "b_p95_nearest_rank": 1.967617571,
+      "complete_work_matches": 0,
+      "complete_work_mismatches": 24,
+      "lane": "small12-original",
+      "metric": "e2e",
+      "observed_percent_delta": -0.04682453054144944,
+      "output_equality": "unverified_ids_absent",
+      "performance_eligible": false,
+      "repetition": 3,
+      "role": "descriptive"
+    }
+  ],
+  "limitations": [
+    "No qualification, default change, promotion, upstream submission, or general Flare-versus-incumbent claim.",
+    "Transfer audit uses 64 MiB TP2 host scratch outside the 32 GiB pool and is disabled for timing.",
+    "Teacher-forced/component numerical oracle, restore/re-snapshot state oracle, and live DMA cancellation overlap remain unavailable.",
+    "CPU shared-fetch lifetime fixture is outside frozen v2.",
+    "The causal extractor uses assert checks: do not invoke it under python -O. The campaign used ordinary Python and the independent review rehashed 1,182 inputs; general reuse needs explicit exceptions and bounded regular-file reads."
+  ],
+  "measurement": {
+    "path": "online direct and routed native formal matrix",
+    "sample_count": 1398,
+    "statistics": [
+      "All observed deltas are diagnostic; every performance_eligible cell is false.",
+      "Fixed-work causal diagnostic support accepted by independent review; scope is exact serial one-token reverse replay only."
+    ],
+    "warm_cold_state": "retained workload-specific prime/measured phases; no general engine comparison"
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "workload": {
+    "formal_request_failures": 0,
+    "formal_requests": 2550,
+    "matrix": "AB, BA, AB; nine lanes; 54 fresh formal incarnations",
+    "measured_requests": 1398,
+    "p95_method": "nearest-rank ceil(0.95*n)",
+    "prime_requests": 1152,
+    "warmups": 162
+  }
+}

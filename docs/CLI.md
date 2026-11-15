@@ -133,26 +133,30 @@ required operands, choices, and defaults.
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |
 | `models sync` | Sync the model catalog. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
-| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models pull` | Pull a model artifact. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--native-stage`<br>`--cache-dir`<br>`--hf-executable`<br>`--evidence-out`<br>`--revision`<br>`--include`<br>`--exclude`<br>`--token-env`<br>`--token-file`<br>`--no-token`<br>`--headroom-gib`<br>`--xet`<br>`--volume`<br>`--image`<br>`--expected-bytes`<br>`--memory-mib`<br>`--memory-swap-mib` |
 | `models score` | Rank models from benchmark evidence. | `read` / `bounded` | - |
 | `models recipes` | Manage recorded serve recipes. | `read` / `bounded` | - |
+| `models recipes monitor-sync` | Register one verified running recipe with the local observer. MODEL is a required positional recipe selector. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--registry` |
+| `models recipes trace-artifacts` | Inspect or export a stopped recipe's diagnostic traces. | `read` / `bounded` | `--container`<br>`--retained-volume`<br>`--registry`<br>`--output` |
 | `models recipes list` | List recorded serve recipes. | `read` / `bounded` | - |
 | `models recipes show` | Show one recorded serve recipe. | `read` / `bounded` | - |
 | `models recipes running` | Discover Anvil recipe-loaded containers. | `read` / `bounded` | - |
 | `models recipes create` | Create one recipe in an operator registry. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes update` | Update one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes delete` | Delete one selected recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models recipes prepare` | Download and verify the pinned Flare package without starting a serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--publisher-keys` |
 | `models recipes load` | Load one recipe into a named local container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models recipes status` | Inspect one recipe-loaded candidate container. | `read` / `bounded` | - |
 | `models recipes logs` | Read bounded logs from one recipe-loaded candidate container. | `read` / `bounded` | `--tail`<br>`--since`<br>`--contains` |
 | `models recipes unload` | Remove one exact recipe-loaded candidate container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `models cache` | Manage model cache storage. | `read` / `bounded` | - |
+| `models cache discard` | Preview or discard one entirely retired model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--cache-dir`<br>`--volume`<br>`--config-home`<br>`--expected-fingerprint`<br>`--non-model-root-view`<br>`--writers-quiesced`<br>`--inventory-reviewed` |
 | `models cache inventory` | Inspect Docker or native Hugging Face model-cache storage. | `read` / `bounded` | - |
 | `models cache prune` | Plan or prune the model cache. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--execute` |
-| `models cache remove` | Remove one Docker revision or preview native-cache removal. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `models cache remove` | Preview Docker revisions or remove a guarded native-cache revision or dedicated volume. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--discard-volume`<br>`--expected-volume-fingerprint`<br>`--writers-quiesced`<br>`--auxiliary-caches-reviewed`<br>`--non-model-root-view` |
 | `serves` | Manage local model serve lifecycle. | `read` / `bounded` | - |
 | `serves render` | Render a model serve definition. | `mutate` / `bounded` | - |
-| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
+| `serves up` | Start manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-deps` |
 | `serves up-for` | Resolve a chat alias to its backing serve and start it. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config` |
 | `serves down` | Stop and remove manifest-owned model serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--keep-container` |
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -160,6 +164,7 @@ required operands, choices, and defaults.
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
 | `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--skip-preflight-checks`<br>`--derive`<br>`--router-config`<br>`--rollback-router-config`<br>`--out` |
 | `serves mode` | Preview or transact split and exclusive TP=2 operating modes. | `read` / `bounded` | - |
+| `serves mode restore-retained` | Restore an exact stopped exclusive owner without router changes or replacement models. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--expected-container-id`<br>`--expected-image`<br>`--manifest-sha256`<br>`--registry-sha256` |
 | `serves mode status` | Show the active split or exclusive TP=2 mode. | `read` / `bounded` | - |
 | `serves mode preview` | Preview exclusive entry without mutating GPU workloads. | `read` / `bounded` | `--config`<br>`--restore-group` |
 | `serves mode enter` | Enter exclusive TP=2 mode transactionally. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--restore-group`<br>`--drain-timeout`<br>`--router-url`<br>`--skip-preflight-checks` |
@@ -176,17 +181,32 @@ required operands, choices, and defaults.
 | `serves logs` | Read bounded model serve logs. | `read` / `bounded` | `--follow` |
 | `serves multiplex` | Run the single-resident model multiplexer. | `process` / `foreground` | - |
 | `router` | Manage the deployed router and its lifecycle. | `read` / `bounded` | - |
-| `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256` |
+| `router startup-abort` | Abort one never-admitted failed startup while preserving retained accounting. | `mutate` / `bounded` | `--config`<br>`--preview-out`<br>`--confirm` |
+| `router recovery-status` | Inspect protected custody sidecars without authorizing recovery. | `read` / `bounded` | `--container`<br>`--ledger` |
+| `router export-config` | Export the verified, secret-free configuration mounted by the running router. | `read` / `bounded` | `--container`<br>`--expected-sha256`<br>`--out` |
+| `router clients` | Preview, enroll and read back managed caller bindings without changing providers. | `read` / `bounded` | - |
+| `router clients preview` | Preview declared recipients and owner changes. | `read` / `bounded` | `--config`<br>`--compose` |
+| `router clients install` | Enroll owned keys and install protected feature bindings. | `mutate` / `bounded` | `--config`<br>`--compose`<br>`--dry-run`<br>`--confirm` |
+| `router clients readback` | Independently read installed feature bindings and current key owners. | `read` / `bounded` | `--config`<br>`--compose` |
+| `router maintenance` | Preview or execute one protected acknowledged router maintenance operation. | `mutate` / `bounded` | `--config`<br>`--preview-out`<br>`--confirm` |
 | `router keys` | Manage local device API keys and inspect bounded access history. | `read` / `bounded` | - |
 | `router keys init` | Initialize protected device-key storage without changing the master key. | `mutate` / `bounded` | `--config`<br>`--container` |
-| `router keys create` | Create a scoped device key and save its secret once to a protected file. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--name`<br>`--model`<br>`--path`<br>`--rpm`<br>`--expires-days`<br>`--out` |
+| `router keys migrate` | Migrate first-bootstrap accounting offline with an absent protected backup. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--backup-out`<br>`--offline`<br>`--confirm`<br>`--compose`<br>`--env-file`<br>`--journal-mode`<br>`--maintenance-receipt` |
+| `router keys create` | Create a scoped device key and save its secret once to a protected file. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--compose`<br>`--offline`<br>`--confirm`<br>`--name`<br>`--model`<br>`--path`<br>`--rpm`<br>`--expires-days`<br>`--out` |
 | `router keys list` | List key IDs, grants, and lifecycle state without secrets. | `read` / `bounded` | `--config`<br>`--container` |
 | `router keys revoke` | Revoke a device key for subsequent requests. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id` |
+| `router keys bind` | Bind an ordinary key to an operator-controlled owner with revision CAS. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--kind`<br>`--owner-id`<br>`--expected-revision`<br>`--dry-run` |
+| `router keys backup` | Take a consistent protected key/accounting snapshot. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--out` |
+| `router keys restore` | Restore a protected snapshot to an absent destination without activation. | `mutate` / `bounded` | `--config`<br>`--container`<br>`--snapshot`<br>`--out` |
 | `router keys usage` | Read bounded key access history. | `read` / `bounded` | `--config`<br>`--container`<br>`--key-id`<br>`--limit` |
+| `router usage` | Read protected exact retained or active caller accounting. | `read` / `bounded` | - |
+| `router usage active` | Read owned active samples. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit` |
+| `router usage recent` | Read last24h retained detail. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit`<br>`--granularity`<br>`--from-utc`<br>`--to-utc`<br>`--group-by`<br>`--cursor`<br>`--require-complete` |
+| `router usage query` | Read exact supported retained history. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit`<br>`--granularity`<br>`--from-utc`<br>`--to-utc`<br>`--group-by`<br>`--cursor`<br>`--require-complete` |
 | `router workloads` | Read a bounded canonical workload snapshot from one router. | `read` / `bounded` | `--router-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `router diagnose` | Inspect active requests or retained request/session evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--session-id`<br>`--active`<br>`--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
 | `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
-| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate` |
+| `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate`<br>`--startup-abort-config`<br>`--current-stop-receipt`<br>`--rollback-current-stop` |
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
@@ -194,49 +214,78 @@ required operands, choices, and defaults.
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
-| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--tier`<br>`--member`<br>`--router-url` |
-| `router quiesce` | Quiesce one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--member`<br>`--router-url` |
-| `router drain` | Wait for a quiesced tier or declared member to drain. | `read` / `bounded` | `--tier`<br>`--member`<br>`--router-url`<br>`--timeout` |
-| `router readmit` | Safely readmit one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router transition-status` | Show router tier transition state. | `read` / `bounded` | `--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router quiesce` | Quiesce one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url` |
+| `router drain` | Wait for a quiesced tier or declared member to drain. | `read` / `bounded` | `--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url`<br>`--timeout` |
+| `router readmit` | Safely readmit one router tier or declared member. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scope`<br>`--barrier-token`<br>`--tier`<br>`--member`<br>`--router-url` |
 | `router logs` | Read bounded router logs. | `read` / `bounded` | `--follow` |
 | `router token` | Inspect the router token state. | `read` / `bounded` | `--reveal`<br>`--confirm` |
 | `eval` | Run quality evaluation workflows. | `read` / `bounded` | - |
+| `eval reasoning-limit-probe` | Preview or execute an isolated, bounded reasoning-boundary diagnostic. | `mutate` / `bounded` | `--router-config`<br>`--plan`<br>`--boundary-config`<br>`--output`<br>`--confirm` |
+| `eval reasoning-limit-inspect` | Read pinned GLM runtime hashes and tokenizer markers without inference. | `read` / `bounded` | `--registry`<br>`--container`<br>`--plan` |
 | `eval usage` | Write usage and role summaries from recorded sessions. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval preflight` | Preflight an endpoint. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval routed` | Run fail-closed router and real-client acceptance for one alias. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--base-url`<br>`--model`<br>`--api-key-env`<br>`--expected-served-model`<br>`--expected-config-fingerprint`<br>`--expected-router-config-sha256`<br>`--min-context-tokens`<br>`--clients`<br>`--openclaw-provider`<br>`--hermes-provider`<br>`--hermes-expected-provider`<br>`--no-harness-sync`<br>`--openclaw-config`<br>`--pi-models`<br>`--pi-settings`<br>`--client-state-path`<br>`--client-backup-root`<br>`--timeout-seconds`<br>`--run-id`<br>`--output` |
 | `eval benchmark` | Run or import benchmark evidence. | `read` / `bounded` | - |
+| `eval benchmark campaign` | Prepare and execute frozen batches over durable benchmark jobs. | `read` / `bounded` | - |
+| `eval benchmark campaign plan` | Validate explicit campaign cells without writes or traffic. | `read` / `bounded` | `--spec` |
+| `eval benchmark campaign prepare` | Prepare actual assets and freeze child specifications. | `mutate` / `bounded` | `--spec`<br>`--offline`<br>`--confirm` |
+| `eval benchmark campaign run` | Run one frozen arm with bounded C1 or C4 batches. | `mutate` / `bounded` | `--ownership-id`<br>`--arm`<br>`--confirm` |
+| `eval benchmark campaign report` | Report independent scores and matched populations. | `read` / `bounded` | `--ownership-id` |
+| `eval benchmark campaign cancel` | Persist cancellation and stop only campaign-owned children. | `mutate` / `bounded` | `--ownership-id`<br>`--confirm` |
 | `eval benchmark jev` | Replay selected evidence through a shadow Jev pilot. | `read` / `bounded` | `--config`<br>`--allow-export`<br>`--no-jev` |
 | `eval benchmark stability` | Replay bounded mixed-load scenarios and retain coverage and failure evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scenario`<br>`--output` |
-| `eval benchmark context` | Measure retrieval and reasoning degradation by context depth. | `read` / `bounded` | `--profile`<br>`--observed-context` |
-| `eval benchmark context prepare` | Prepare digest-pinned context harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
-| `eval benchmark context assets` | Inspect prepared context harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
-| `eval benchmark context cleanup` | Clean only the owned work directory for a context benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
-| `eval benchmark context preflight` | Validate the endpoint and worker for a context benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
-| `eval benchmark context submit` | Submit a durable context benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
-| `eval benchmark context status` | Read durable context benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
-| `eval benchmark context logs` | Read bounded cursor logs for a context benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
-| `eval benchmark context cancel` | Cancel a context benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
-| `eval benchmark context artifact` | Read the terminal or partial context benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
-| `eval benchmark agentic` | Run deterministic tool-use and software-solving scenarios. | `read` / `bounded` | `--profile`<br>`--observed-context` |
-| `eval benchmark agentic prepare` | Prepare digest-pinned agentic harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
-| `eval benchmark agentic assets` | Inspect prepared agentic harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
-| `eval benchmark agentic cleanup` | Clean only the owned work directory for a agentic benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
-| `eval benchmark agentic preflight` | Validate the endpoint and worker for a agentic benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
-| `eval benchmark agentic submit` | Submit a durable agentic benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
-| `eval benchmark agentic status` | Read durable agentic benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
-| `eval benchmark agentic logs` | Read bounded cursor logs for a agentic benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
-| `eval benchmark agentic cancel` | Cancel a agentic benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
-| `eval benchmark agentic artifact` | Read the terminal or partial agentic benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
-| `eval benchmark swe` | Run pinned repository problem-solving benchmarks. | `read` / `bounded` | `--profile`<br>`--observed-context` |
-| `eval benchmark swe prepare` | Prepare digest-pinned swe harness assets on the benchmark worker. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
-| `eval benchmark swe assets` | Inspect prepared swe harness assets. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
-| `eval benchmark swe cleanup` | Clean only the owned work directory for a swe benchmark run. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm`<br>`--ownership-id` |
-| `eval benchmark swe preflight` | Validate the endpoint and worker for a swe benchmark job. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--spec-json`<br>`--requirements-json` |
-| `eval benchmark swe submit` | Submit a durable swe benchmark job. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--dry-run`<br>`--confirm`<br>`--spec-json`<br>`--follow`<br>`--detach` |
-| `eval benchmark swe status` | Read durable swe benchmark job status. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id` |
-| `eval benchmark swe logs` | Read bounded cursor logs for a swe benchmark job. | `read` / `follow` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
-| `eval benchmark swe cancel` | Cancel a swe benchmark job after recording partial evidence. | `mutate` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--dry-run`<br>`--confirm` |
-| `eval benchmark swe artifact` | Read the terminal or partial swe benchmark artifact. | `read` / `bounded` | `--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark context` | Measure retrieval and reasoning degradation by context depth. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
+| `eval benchmark context prepare` | Prepare digest-pinned context harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark context assets` | Inspect prepared context harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark context cleanup` | Clean only the owned work directory for a context benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark context preflight` | Validate the endpoint and worker for a context benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark context submit` | Submit a durable context benchmark job. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark context status` | Read durable context benchmark job status. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark context logs` | Read bounded cursor logs for a context benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark context cancel` | Cancel a context benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
+| `eval benchmark context artifact` | Read the terminal or partial context benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark agentic` | Run deterministic tool-use and software-solving scenarios. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
+| `eval benchmark agentic prepare` | Prepare digest-pinned agentic harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark agentic assets` | Inspect prepared agentic harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark agentic cleanup` | Clean only the owned work directory for a agentic benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark agentic preflight` | Validate the endpoint and worker for a agentic benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark agentic submit` | Submit a durable agentic benchmark job. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark agentic status` | Read durable agentic benchmark job status. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark agentic logs` | Read bounded cursor logs for a agentic benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark agentic cancel` | Cancel a agentic benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
+| `eval benchmark agentic artifact` | Read the terminal or partial agentic benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark swe` | Run pinned repository problem-solving benchmarks. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
+| `eval benchmark swe prepare` | Prepare digest-pinned swe harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark swe assets` | Inspect prepared swe harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark swe images` | Preview or prepare only the frozen SWE task images from one job specification. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--worker`<br>`--min-free-bytes` |
+| `eval benchmark swe cleanup` | Clean only the owned work directory for a swe benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark swe preflight` | Validate the endpoint and worker for a swe benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark swe submit` | Submit a durable swe benchmark job. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark swe status` | Read durable swe benchmark job status. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark swe logs` | Read bounded cursor logs for a swe benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark swe cancel` | Cancel a swe benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
+| `eval benchmark swe artifact` | Read the terminal or partial swe benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark aider` | Run pinned Aider Polyglot edits with contained tests. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
+| `eval benchmark aider prepare` | Prepare digest-pinned aider harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark aider assets` | Inspect prepared aider harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark aider cleanup` | Clean only the owned work directory for a aider benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark aider preflight` | Validate the endpoint and worker for a aider benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark aider submit` | Submit a durable aider benchmark job. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark aider status` | Read durable aider benchmark job status. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark aider logs` | Read bounded cursor logs for a aider benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark aider cancel` | Cancel a aider benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
+| `eval benchmark aider artifact` | Read the terminal or partial aider benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
+| `eval benchmark performance` | Run pinned LIL or AIPerf performance measurements. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
+| `eval benchmark performance prepare` | Prepare digest-pinned performance harness assets on the benchmark worker. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--run-id`<br>`--ownership-id`<br>`--offline`<br>`--max-download-bytes` |
+| `eval benchmark performance assets` | Inspect prepared performance harness assets. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--ownership-id` |
+| `eval benchmark performance cleanup` | Clean only the owned work directory for a performance benchmark run. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm`<br>`--ownership-id` |
+| `eval benchmark performance preflight` | Validate the endpoint and worker for a performance benchmark job. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--spec`<br>`--spec-json`<br>`--requirements-json` |
+| `eval benchmark performance submit` | Submit a durable performance benchmark job. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--confirm`<br>`--spec`<br>`--spec-json`<br>`--follow`<br>`--detach` |
+| `eval benchmark performance status` | Read durable performance benchmark job status. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id` |
+| `eval benchmark performance logs` | Read bounded cursor logs for a performance benchmark job. | `read` / `follow` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--cursor`<br>`--limit`<br>`--follow` |
+| `eval benchmark performance cancel` | Cancel a performance benchmark job after recording partial evidence. | `mutate` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--confirm` |
+| `eval benchmark performance artifact` | Read the terminal or partial performance benchmark artifact. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context`<br>`--run-id`<br>`--path` |
 | `eval benchmark capacity` | Measure endpoint latency, throughput, context, and cache behavior. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark quality` | Run repeated quality suites and retain comparison evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark multimodal` | Run a hashed deterministic image/video corpus. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
@@ -286,18 +335,29 @@ required operands, choices, and defaults.
 | `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
 | `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
 | `media` | Inspect and run bounded managed media workflows. | `read` / `bounded` | - |
+| `media memory-guard` | Publish Windows memory safety signals and supervise one worker. | `read` / `bounded` | - |
+| `media memory-guard sample` | Read native Windows available RAM and commit headroom. | `read` / `bounded` | `--config` |
+| `media memory-guard status` | Check the configured host memory signal. | `read` / `bounded` | `--config` |
+| `media memory-guard install` | Register and start the private Windows login memory guard. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `media memory-guard uninstall` | Remove this guard's login entry and request its stop. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `media memory-guard run` | Publish memory safety signals until explicitly stopped. | `mutate` / `foreground` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `media memory-guard supervise` | Run one worker child only while its host signal is safe and fresh. | `mutate` / `foreground` | `--config`<br>`--lease`<br>`--dry-run`<br>`--confirm` |
 | `media capabilities` | List deterministic media capabilities. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
+| `media asset` | Upload owned reference media. | `read` / `bounded` | - |
+| `media asset upload` | Decode and retain one bounded local reference file. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--file`<br>`--client-config` |
 | `media bundle` | Inventory and stage exact pinned workflow assets. | `read` / `bounded` | - |
-| `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume` |
+| `media bundle inventory` | Verify exact model assets for one workflow. | `read` / `bounded` | `--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--models-root` |
 | `media bundle stage` | Add missing exact model assets without replacing existing files. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--user-volume`<br>`--runtime-uid`<br>`--runtime-gid` |
 | `media qualify` | Qualify an unavailable pinned workflow without promoting it. | `read` / `bounded` | - |
-| `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--parameters`<br>`--quality-profile`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
+| `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--models-root`<br>`--parameters`<br>`--quality-profile`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
 | `media workflow` | Inspect, validate, and run named workflows. | `read` / `bounded` | - |
 | `media workflow list` | List named workflows. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
 | `media workflow show` | Show one named workflow. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version` |
 | `media workflow validate` | Validate one workflow against its selected worker. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version`<br>`--backend-url` |
-| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--quality-profile`<br>`--idempotency-key`<br>`--backend-url` |
+| `media workflow prepare` | Compile a shot brief and return an exact bounded run request. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--brief`<br>`--quality-profile`<br>`--idempotency-key` |
+| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--quality-profile`<br>`--idempotency-key`<br>`--plan-digest`<br>`--backend-url` |
 | `media job` | Inspect and cancel durable media jobs. | `read` / `bounded` | - |
+| `media job watch` | Wait for an owned MCP job and return its completed artifacts. | `read` / `foreground` | `--job-id`<br>`--client-config`<br>`--timeout-seconds`<br>`--poll-seconds` |
 | `media job status` | Inspect one durable media job. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
 | `media job cancel` | Cancel one caller-owned media job. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
 | `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
@@ -333,8 +393,8 @@ required operands, choices, and defaults.
 | `host services logs` | Read a bounded declared-service log tail. | `read` / `bounded` | `--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services adopt` | Preview or adopt an exact existing launchd or Docker service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds`<br>`--manager`<br>`--service-label`<br>`--resource`<br>`--engine`<br>`--support`<br>`--container`<br>`--external-compose`<br>`--compose-project`<br>`--compose-service`<br>`--compose-config-source`<br>`--compose-config-target`<br>`--expected-image-id`<br>`--endpoint`<br>`--model`<br>`--health-path`<br>`--models-path`<br>`--feature`<br>`--startup-policy`<br>`--memory-mib`<br>`--serve`<br>`--serve-manifest` |
 | `host services install` | Render a declared service supervisor definition without starting it. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
-| `host services up` | Start one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
-| `host services down` | Stop one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host services up` | Start one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds`<br>`--expected-preview-sha256`<br>`--operator-authorization-file` |
+| `host services down` | Stop one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds`<br>`--expected-preview-sha256`<br>`--operator-authorization-file` |
 | `host services restart` | Restart one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services enable` | Enable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services disable` | Disable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
@@ -353,6 +413,7 @@ required operands, choices, and defaults.
 | `host gpu-sharing inspect` | Inspect Green Context and MPS capability without mutation. | `read` / `bounded` | - |
 | `host gpu-sharing probe` | Run the guarded Docker CUDA prerequisite probe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `host nccl` | Check two-rank NCCL correctness and transport in a pinned local image. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--image`<br>`--gpu-uuid`<br>`--p2p`<br>`--cumem`<br>`--max-mib`<br>`--iterations`<br>`--timeout`<br>`--output` |
+| `host gpu-test` | Run reviewed numerical tests in one bounded digest-pinned GPU container. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--spec`<br>`--output` |
 | `host doctor` | Diagnose host configuration. | `read` / `bounded` | - |
 | `host native-memory-containment` | Prepare or explicitly execute a bounded self-only fatal-memory canary. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--prepare`<br>`--execute`<br>`--allow-privileged-probe`<br>`--expected-binary-sha256`<br>`--output` |
 | `host native-memory-probe` | Probe bounded Metal allocation accounting without loading a model. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--output` |
@@ -398,24 +459,36 @@ required operands, choices, and defaults.
 | `edge up` | Apply the managed route map (additive; idempotent). | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `edge down` | Remove ONLY the mounts this tool manages. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `connect` | Manage authenticated API and browser access with Anvil Connect. | `read` / `bounded` | - |
+| `connect native-agents-check` | Run finite local Agents checks without browser or email sign-in. | `mutate` / `bounded` | `--config`<br>`--dry-run`<br>`--confirm` |
+| `connect native-agents` | Run the native Agents broker behind a managed TLS edge. | `process` / `bounded` | `--config` |
 | `connect resources` | List declared browser services and copyable grant values. | `read` / `bounded` | `--manifest` |
 | `connect users` | Manage local accounts, service entitlements, enrollment codes and authentication backups. | `mutate` / `bounded` | - |
 | `connect users list` | List local sign-in accounts (not Connect grants). | `read` / `bounded` | `--manifest` |
 | `connect users show` | Show one local sign-in account (not Connect grants). | `read` / `bounded` | `--manifest` |
 | `connect users create` | Create an account and request a password-setup email or private handoff. | `mutate` / `bounded` | `--manifest`<br>`--email`<br>`--role`<br>`--grant`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users access` | Replace ALL browser grants, enable the account and revoke its Connect sessions. | `mutate` / `bounded` | `--manifest`<br>`--grant`<br>`--dry-run`<br>`--confirm` |
+| `connect users memory` | Provision user memory banks, preserve browser grants and revoke Connect sessions. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users memory-key` | Create or verify the personal API key for the configured user memory bank. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users configure-memory` | Install protected user-bank settings; does not restart services. | `mutate` / `bounded` | `--manifest`<br>`--input`<br>`--dry-run`<br>`--confirm` |
 | `connect users suspend` | Disable sign-in and revoke Connect browser and terminal sessions. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users delete` | Remove the account and factors; retain backups and disabled authority history. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users reset-password` | Request password setup; preserve groups, grants and registered factors. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users reset-mfa` | Remove passkeys and TOTP; suspend first for a lost or compromised device. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users code` | Export a fresh enrollment code or setup link when using filesystem delivery. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users backup` | Back up all authentication accounts and factors. | `mutate` / `bounded` | `--manifest`<br>`--include-gateway`<br>`--dry-run`<br>`--confirm` |
+| `connect users sync-roles` | Reconcile explicitly bound native application roles and session revocation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users sync-operators` | Reconcile the derived Connect-operator identity-provider group. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users schedule` | Install the daily authentication and gateway backup timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
-| `connect users deletion-schedule` | Install the account-deletion processing timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
-| `connect users process-deletions` | Process one authorized permanent account deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users deletion-schedule` | Install the periodic account-reconciliation worker. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
+| `connect users process-deletions` | Reconcile native roles and operator access, then process one authorized deletion. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users restore` | Restore authentication backup into a fresh directory without activating it. | `mutate` / `bounded` | `--input`<br>`--sha256`<br>`--destination`<br>`--dry-run`<br>`--confirm` |
 | `connect qualify` | Run an isolated Connect qualification lane using saved local settings. | `process` / `bounded` | `--prepare-container`<br>`--lane`<br>`--config` |
 | `connect validate` | Validate declarations and selected native components. | `read` / `bounded` | `--manifest`<br>`--service` |
+| `connect native-authority` | Project fresh Connect grants for native Agents admission. | `mutate` / `bounded` | `--manifest`<br>`--resource`<br>`--output`<br>`--reader-gid`<br>`--dry-run`<br>`--confirm` |
+| `connect native-memory-service` | Manage one OIDC-authenticated native Memory sidecar. | `mutate` / `bounded` | - |
+| `connect native-memory-service install` | Preview or install and start the exact declared sidecar. | `mutate` / `bounded` | `--declaration`<br>`--dry-run`<br>`--confirm` |
+| `connect native-memory-service status` | Verify the exact declared sidecar and authority schedule. | `read` / `bounded` | `--declaration` |
+| `connect native-memory-service remove` | Preview or remove only the exact receipt-owned sidecar. | `mutate` / `bounded` | `--declaration`<br>`--dry-run`<br>`--confirm` |
 | `connect render` | Preview or stage an owned configuration generation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect up` | Preview or activate only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--services`<br>`--upgrade`<br>`--dry-run`<br>`--confirm` |
 | `connect down` | Preview or stop only the selected owned services. | `mutate` / `bounded` | `--manifest`<br>`--service`<br>`--dry-run`<br>`--confirm` |
@@ -461,6 +534,7 @@ required operands, choices, and defaults.
 | `workflows deployment preview` | Verify local release bytes without installation. | `read` / `bounded` | `--profile` |
 | `workflows deployment verify` | Compare pinned release and installed owner profile. | `read` / `bounded` | `--profile` |
 | `workflows recovery` | Inspect isolated recovery evidence through the owner. | `read` / `bounded` | - |
+| `workflows recovery cancel` | Reconcile a revoked original job with proven empty native custody. | `mutate` / `bounded` | `--intent-id`<br>`--job-id`<br>`--expected-digest`<br>`--confirm` |
 | `workflows recovery verify` | Read verified isolated-restore evidence. | `read` / `bounded` | `--profile` |
 | `workflows recovery snapshot-journal` | Copy the guarded native operation journal for encrypted backup. | `mutate` / `bounded` | `--profile`<br>`--output`<br>`--confirm` |
 <!-- END GENERATED CLI MANIFEST INDEX -->

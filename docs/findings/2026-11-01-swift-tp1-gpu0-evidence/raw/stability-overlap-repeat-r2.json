@@ -1,0 +1,443 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": true,
+  "finished_at": "2026-11-02T02:15:25.776695+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:11:22.203200+00:00",
+      "phase": "start",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:11:22.266137+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:12:48.951770+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:12:49.005146+00:00",
+      "phase": "round_1_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:14:10.298622+00:00",
+      "phase": "round_1_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:14:10.352402+00:00",
+      "phase": "round_2_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T02:15:25.769997+00:00",
+      "phase": "round_2_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    }
+  ],
+  "overlap_contract": "contender-stream-active/v1",
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": true,
+  "rounds": [
+    {
+      "active_overlap_output_at": 513376.187004089,
+      "anchor": {
+        "end": 513451.655028087,
+        "expected_values": [
+          "VALUE_4cd166f05785",
+          "VALUE_379c111e2fb3",
+          "VALUE_344080e8f6c4"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:12:48.889930+00:00",
+        "first_output": 513374.10582991,
+        "last_output": 513451.654802344,
+        "partial_visible": "\n\n**KEY_0 = VALUE_4cd166f05785**\n**KEY_1 = VALUE_379c111e2fb3**\n**KEY_2 = VALUE_344080e8f6c4**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Introduction and Scope\n\nThis guide provides a comprehensive reference for designing, implementing, and testing ordinary software components. \"Ordinary\" here refers to standard, non-exotic building blocks: data structures, utility functions, service interfaces, configuration parsers, and their associated test suites. The guide assumes a modern language-agnostic perspective while using Python-like pseudocode for illustrations. Every section includes implementation notes, concrete examples, edge-case analysis, and test strategies.\n\n## 2. Component Taxonomy\n\nSoftware components can be classified into:\n\n- **Pure functions** \u2013 no side effects, deterministic output.\n- **Stateful services** \u2013 maintain internal state across calls.\n- **I/O-bound components** \u2013 interact with files, networks, databases.\n- **Configuration objects** \u2013 immutable or mutable data carriers.\n- **Adapters/Facades** \u2013 translate between interfaces.\n\n**Example:**\n```python\nclass OrderService:          # stateful\n    def __init__(self, repo): self._repo = repo\n    def place(self, item, qty): ...\n\ndef calc_total(prices):      # pure function\n    return sum(prices)\n```\n\n**Edge cases:** A component that *appears* pure but reads a global config is effectively stateful. Classify by actual dependencies, not intent.\n\n**Tests:** Use a classification matrix in your test plan\u2014each category demands different mocking, isolation, and teardown strategies.\n\n## 3. Dependency Injection Patterns\n\nPrefer constructor injection over service locators. It makes components testable by allowing substitutes.\n\n```python\nclass EmailSender:\n    def __init__(self, transport: Transport):\n        self._transport = transport\n\n# In tests:\nclass FakeTransport(Transport):\n    def send(self, msg): self.sent.append(msg)\n```\n\n**Edge cases:** Circular dependencies (A needs B, B needs A). Break with event buses or lazy resolution.\n\n**Tests:** Assert the component never instantiates its own dependencies. Use static analysis (e.g., `dependency-cruiser`) in CI.\n\n## 4. Immutable Data Carriers\n\nPrefer tuples, frozen dataclasses, or records for configuration and event payloads.\n\n```python\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeploymentConfig:\n    region: str\n    replicas: int\n    timeout_s: float\n```\n\n**Edge cases:** Nested mutability (a frozen class holding a mutable list). Deep-freeze at construction time.\n\n**Tests:** Attempt mutation and assert `AttributeError`/`TypeError`. Verify `hash()` works for set/dict membership.\n\n## 5. Error Taxonomy and Propagation\n\nDefine a hierarchy:\n\n```\nAppError\n\u251c\u2500\u2500 ValidationError\n\u251c\u2500\u2500 NotFoundError\n\u251c\u2500\u2500 ConflictError\n\u2514\u2500\u2500 InfrastructureError\n    \u251c\u2500\u2500 TimeoutError\n    \u2514\u2500\u2500 ConnectionRefusedError\n```\n\n**Example:**\n```python\ndef get_user(id: int) -> User:\n    u = db.query(id)\n    if u is None:\n        raise NotFoundError(f\"user {id} not found\")\n    return u\n```\n\n**Edge cases:** Swallowing exceptions in broad `except:` blocks; re-raising without preserving the original traceback (`raise ... from e`).\n\n**Tests:** Parametrized tests that assert the *exact* exception type and message for each failure path.\n\n## 6. Validation Layer\n\nValidate at the boundary (API, CLI, file read) and trust internally.\n\n```python\ndef parse_port(raw: str) -> int:\n    try:\n        port = int(raw)\n    except ValueError:\n        raise ValidationError(f\"port must be integer, got {raw!r}\")\n    if not (1 <= port <= 65535):\n        raise ValidationError(f\"port out of range: {port}\")\n    return port\n```\n\n**Edge cases:** Unicode digits (`\"\u0661\u0662\u0663\"`), leading/trailing whitespace, `+`/`-` signs, `0` port (reserved).\n\n**Tests:** Property-based testing (Hypothesis) generating random strings; assert either valid int in range or `ValidationError`.\n\n## 7. Retry and Backoff Logic\n\n```python\nimport random, time\n\ndef with_retry(fn, max_attempts=5, base_delay=0.1):\n    for attempt in range(max_attempts):\n        try:\n            return fn()\n        except TransientError:\n            if attempt == max_attempts - 1:\n                raise\n            delay = base_delay * (2 ** attempt) + random.uniform(0, base_delay)\n            time.sleep(delay)\n```\n\n**Edge cases:** Non-idempotent operations (POST /create) must NOT be blindly retried. Clock skew. `max_attempts=0` should execute once or raise immediately\u2014define contract.\n\n**Tests:** Inject a fake clock. Assert exact sequence of delays (with jitter bounds). Assert non-transient errors propagate immediately.\n\n## 8. Caching Strategies\n\n- **Memoization** (per-process, per-object)\n- **TTL cache** (time-to-live expiry)\n- **Cache-aside** (check cache \u2192 miss \u2192 load \u2192 store)\n\n```python\nclass TTLCache:\n    def __init__(self, ttl: float):\n        self._store = {}\n        self._ttl = ttl\n\n    def get(self, key):\n        entry = self._store.get(key)\n        if entry is None: return None\n        val, ts = entry\n        if time.monotonic() - ts > self._ttl:\n            del self._store[key]\n            return None\n        return val\n```\n\n**Edge cases:** Cache stampede (many concurrent misses for same key). Negative caching (caching `None`). Unbounded growth.\n\n**Tests:** Advance a fake clock past TTL; assert eviction. Concurrency test with 100 threads hitting same key\u2014assert underlying loader called once.\n\n## 9. Concurrency: Thread Safety\n\nUse locks only around the minimal critical section. Prefer immutable state or message-passing.\n\n```python\nclass Counter:\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n\n    def increment(self):\n        with self._lock:\n            self._value += 1\n\n    @property\n    def value(self):\n        with self._lock:\n            return self._value\n```\n\n**Edge cases:** Deadlock (nested locks in inconsistent order). Live-lock. Reading a non-atomic 64-bit int on 32-bit platforms (use lock or `atomic`).\n\n**Tests:** Stress test\u20141000 threads \u00d7 1000 increments \u2192 final value must equal 1,000,000. Use `threading.Barrier` for deterministic interleaving in unit tests.\n\n## 10. Async I/O and Event Loops\n\n```python\nasync def fetch_all(urls: list[str]) -> list[str]:\n    tasks = [fetch(u) for u in urls]\n    return await asyncio.gather(*tasks, return_exceptions=True)\n```\n\n**Edge cases:** Blocking call inside async function (deadlocks the loop). Unhandled exception in one task cancelling others (use `return_exceptions`). Generator not awaited (ResourceWarning).\n\n**Tests:** Use `asyncio.run` in pytest-asyncio. Assert no blocking I/O via `trio`'s instrumentation. Test cancellation propagation.\n\n## 11. Serialization and Deserialization\n\n```python\nimport json\n\ndef serialize(obj: dict) -> str:\n    return json.dumps(obj, sort_keys=True, separators=(\",\", \":\"))\n\ndef deserialize(raw: str) -> dict:\n    try:\n        data = json.loads(raw)\n    except json.JSONDecodeError as e:\n        raise ValidationError(f\"malformed JSON: {e}\")\n    if not isinstance(data, dict):\n        raise ValidationError(\"expected object at top level\")\n    return data\n```\n\n**Edge cases:** Unicode surrogates, NaN/Infinity (non-standard JSON), nested depth > 1000 (stack overflow), duplicate keys (last wins in most parsers).\n\n**Tests:** Round-trip property: `deserialize(serialize(x)) == x` for a corpus of valid dicts. Fuzz the deserializer with truncated/corrupt bytes.\n\n## 12. File I/O Abstraction\n\n```python\nfrom pathlib import Path\nfrom typing import Protocol\n\nclass Storage(Protocol):\n    def read(self, path: str) -> bytes: ...\n    def write(self, path: str, data: bytes) -> None: ...\n\nclass LocalStorage:\n    def read(self, path: str) -> bytes:\n        return Path(path).read_bytes()\n    def write(self, path: str, data: bytes) -> None:\n        Path(path).write_bytes(data)\n```\n\n**Edge cases:** File disappears between `os.path.exists` and `open` (TOCTOU). Permission errors. Path traversal (`../../etc/passwd`). Very large files (read in chunks).\n\n**Tests:** Use `tmp_path` fixture. Test permission-denied by `chmod 000`. Assert path traversal is rejected. Chunked read for 1 GB file.\n\n## 13. Logging and Observability\n\n`",
+        "prompt_sha256": "96e2c1998f31db39b90e53d9dc87cac0bf8c595e7c8ac9c7c205de622cd2fdcb",
+        "prompt_tokens_tokenized": 32617,
+        "request_id": null,
+        "response_headers_at": 513374.105752473,
+        "result": {
+          "content_chunks": 1482,
+          "e2e": 86.47456712601706,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 48,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.925484684004914,
+          "ttft": 13.259373067994602,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32617,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 169,
+            "total_tokens": 36713
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_4cd166f05785**\n**KEY_1 = VALUE_379c111e2fb3**\n**KEY_2 = VALUE_344080e8f6c4**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Introduction and Scope\n\nThis guide provides a comprehensive reference for designing, implementing, and testing ordinary software components. \"Ordinary\" here refers to standard, non-exotic building blocks: data structures, utility functions, service interfaces, configuration parsers, and their associated test suites. The guide assumes a modern language-agnostic perspective while using Python-like pseudocode for illustrations. Every section includes implementation notes, concrete examples, edge-case analysis, and test strategies.\n\n## 2. Component Taxonomy\n\nSoftware components can be classified into:\n\n- **Pure functions** \u2013 no side effects, deterministic output.\n- **Stateful services** \u2013 maintain internal state across calls.\n- **I/O-bound components** \u2013 interact with files, networks, databases.\n- **Configuration objects** \u2013 immutable or mutable data carriers.\n- **Adapters/Facades** \u2013 translate between interfaces.\n\n**Example:**\n```python\nclass OrderService:          # stateful\n    def __init__(self, repo): self._repo = repo\n    def place(self, item, qty): ...\n\ndef calc_total(prices):      # pure function\n    return sum(prices)\n```\n\n**Edge cases:** A component that *appears* pure but reads a global config is effectively stateful. Classify by actual dependencies, not intent.\n\n**Tests:** Use a classification matrix in your test plan\u2014each category demands different mocking, isolation, and teardown strategies.\n\n## 3. Dependency Injection Patterns\n\nPrefer constructor injection over service locators. It makes components testable by allowing substitutes.\n\n```python\nclass EmailSender:\n    def __init__(self, transport: Transport):\n        self._transport = transport\n\n# In tests:\nclass FakeTransport(Transport):\n    def send(self, msg): self.sent.append(msg)\n```\n\n**Edge cases:** Circular dependencies (A needs B, B needs A). Break with event buses or lazy resolution.\n\n**Tests:** Assert the component never instantiates its own dependencies. Use static analysis (e.g., `dependency-cruiser`) in CI.\n\n## 4. Immutable Data Carriers\n\nPrefer tuples, frozen dataclasses, or records for configuration and event payloads.\n\n```python\nfrom dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass DeploymentConfig:\n    region: str\n    replicas: int\n    timeout_s: float\n```\n\n**Edge cases:** Nested mutability (a frozen class holding a mutable list). Deep-freeze at construction time.\n\n**Tests:** Attempt mutation and assert `AttributeError`/`TypeError`. Verify `hash()` works for set/dict membership.\n\n## 5. Error Taxonomy and Propagation\n\nDefine a hierarchy:\n\n```\nAppError\n\u251c\u2500\u2500 ValidationError\n\u251c\u2500\u2500 NotFoundError\n\u251c\u2500\u2500 ConflictError\n\u2514\u2500\u2500 InfrastructureError\n    \u251c\u2500\u2500 TimeoutError\n    \u2514\u2500\u2500 ConnectionRefusedError\n```\n\n**Example:**\n```python\ndef get_user(id: int) -> User:\n    u = db.query(id)\n    if u is None:\n        raise NotFoundError(f\"user {id} not found\")\n    return u\n```\n\n**Edge cases:** Swallowing exceptions in broad `except:` blocks; re-raising without preserving the original traceback (`raise ... from e`).\n\n**Tests:** Parametrized tests that assert the *exact* exception type and message for each failure path.\n\n## 6. Validation Layer\n\nValidate at the boundary (API, CLI, file read) and trust internally.\n\n```python\ndef parse_port(raw: str) -> int:\n    try:\n        port = int(raw)\n    except ValueError:\n        raise ValidationError(f\"port must be integer, got {raw!r}\")\n    if not (1 <= port <= 65535):\n        raise ValidationError(f\"port out of range: {port}\")\n    return port\n```\n\n**Edge cases:** Unicode digits (`\"\u0661\u0662\u0663\"`), leading/trailing whitespace, `+`/`-` signs, `0` port (reserved).\n\n**Tests:** Property-based testing (Hypothesis) generating random strings; assert either valid int in range or `ValidationError`.\n\n## 7. Retry and Backoff Logic\n\n```python\nimport random, time\n\ndef with_retry(fn, max_attempts=5, base_delay=0.1):\n    for attempt in range(max_attempts):\n        try:\n            return fn()\n        except TransientError:\n            if attempt == max_attempts - 1:\n                raise\n            delay = base_delay * (2 ** attempt) + random.uniform(0, base_delay)\n            time.sleep(delay)\n```\n\n**Edge cases:** Non-idempotent operations (POST /create) must NOT be blindly retried. Clock skew. `max_attempts=0` should execute once or raise immediately\u2014define contract.\n\n**Tests:** Inject a fake clock. Assert exact sequence of delays (with jitter bounds). Assert non-transient errors propagate immediately.\n\n## 8. Caching Strategies\n\n- **Memoization** (per-process, per-object)\n- **TTL cache** (time-to-live expiry)\n- **Cache-aside** (check cache \u2192 miss \u2192 load \u2192 store)\n\n```python\nclass TTLCache:\n    def __init__(self, ttl: float):\n        self._store = {}\n        self._ttl = ttl\n\n    def get(self, key):\n        entry = self._store.get(key)\n        if entry is None: return None\n        val, ts = entry\n        if time.monotonic() - ts > self._ttl:\n            del self._store[key]\n            return None\n        return val\n```\n\n**Edge cases:** Cache stampede (many concurrent misses for same key). Negative caching (caching `None`). Unbounded growth.\n\n**Tests:** Advance a fake clock past TTL; assert eviction. Concurrency test with 100 threads hitting same key\u2014assert underlying loader called once.\n\n## 9. Concurrency: Thread Safety\n\nUse locks only around the minimal critical section. Prefer immutable state or message-passing.\n\n```python\nclass Counter:\n    def __init__(self):\n        self._value = 0\n        self._lock = threading.Lock()\n\n    def increment(self):\n        with self._lock:\n            self._value += 1\n\n    @property\n    def value(self):\n        with self._lock:\n            return self._value\n```\n\n**Edge cases:** Deadlock (nested locks in inconsistent order). Live-lock. Reading a non-atomic 64-bit int on 32-bit platforms (use lock or `atomic`).\n\n**Tests:** Stress test\u20141000 threads \u00d7 1000 increments \u2192 final value must equal 1,000,000. Use `threading.Barrier` for deterministic interleaving in unit tests.\n\n## 10. Async I/O and Event Loops\n\n```python\nasync def fetch_all(urls: list[str]) -> list[str]:\n    tasks = [fetch(u) for u in urls]\n    return await asyncio.gather(*tasks, return_exceptions=True)\n```\n\n**Edge cases:** Blocking call inside async function (deadlocks the loop). Unhandled exception in one task cancelling others (use `return_exceptions`). Generator not awaited (ResourceWarning).\n\n**Tests:** Use `asyncio.run` in pytest-asyncio. Assert no blocking I/O via `trio`'s instrumentation. Test cancellation propagation.\n\n## 11. Serialization and Deserialization\n\n```python\nimport json\n\ndef serialize(obj: dict) -> str:\n    return json.dumps(obj, sort_keys=True, separators=(\",\", \":\"))\n\ndef deserialize(raw: str) -> dict:\n    try:\n        data = json.loads(raw)\n    except json.JSONDecodeError as e:\n        raise ValidationError(f\"malformed JSON: {e}\")\n    if not isinstance(data, dict):\n        raise ValidationError(\"expected object at top level\")\n    return data\n```\n\n**Edge cases:** Unicode surrogates, NaN/Infinity (non-standard JSON), nested depth > 1000 (stack overflow), duplicate keys (last wins in most parsers).\n\n**Tests:** Round-trip property: `deserialize(serialize(x)) == x` for a corpus of valid dicts. Fuzz the deserializer with truncated/corrupt bytes.\n\n## 12. File I/O Abstraction\n\n```python\nfrom pathlib import Path\nfrom typing import Protocol\n\nclass Storage(Protocol):\n    def read(self, path: str) -> bytes: ...\n    def write(self, path: str, data: bytes) -> None: ...\n\nclass LocalStorage:\n    def read(self, path: str) -> bytes:\n        return Path(path).read_bytes()\n    def write(self, path: str, data: bytes) -> None:\n        Path(path).write_bytes(data)\n```\n\n**Edge cases:** File disappears between `os.path.exists` and `open` (TOCTOU). Permission errors. Path traversal (`../../etc/passwd`). Very large files (read in chunks).\n\n**Tests:** Use `tmp_path` fixture. Test permission-denied by `chmod 000`. Assert path traversal is rejected. Chunked read for 1 GB file.\n\n## 13. Logging and Observability\n\n`",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 513365.167617328,
+        "started_at": "2026-11-02T02:11:22.402503+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 513378.293698531,
+        "expected_values": [
+          "VALUE_90a2bf77a5d2",
+          "VALUE_2e576f400b55",
+          "VALUE_b87d6968162c"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:11:35.528600+00:00",
+        "first_output": 513376.138366687,
+        "last_output": 513378.293597928,
+        "partial_visible": "\n\nKEY_0 = VALUE_90a2bf77a5d2\nKEY_1 = VALUE_2e576f400b55\nKEY_2 = VALUE_b87d6968162c",
+        "prompt_sha256": "eb29dcda8fb99997d6c050f53c2d30f3937c9970fa364e7a8d588cc977496045",
+        "prompt_tokens_tokenized": 8189,
+        "request_id": null,
+        "response_headers_at": 513376.138313531,
+        "result": {
+          "content_chunks": 15,
+          "e2e": 4.181231550988741,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 165,
+          "output_token_source": "usage",
+          "reasoning_chunks": 29,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 2.025921526015736,
+          "ttft": 3.477330901019741,
+          "usage": {
+            "completion_tokens": 165,
+            "prompt_tokens": 8189,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 109,
+            "total_tokens": 8354
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_90a2bf77a5d2\nKEY_1 = VALUE_2e576f400b55\nKEY_2 = VALUE_b87d6968162c",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 513374.109050321,
+        "started_at": "2026-11-02T02:11:31.343937+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 513452.261962272,
+      "anchor": {
+        "end": 513533.004356616,
+        "expected_values": [
+          "VALUE_4cd166f05785",
+          "VALUE_379c111e2fb3",
+          "VALUE_344080e8f6c4"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:14:10.239257+00:00",
+        "first_output": 513452.068938212,
+        "last_output": 513533.004188548,
+        "partial_visible": "\n\n**KEY_0 = VALUE_4cd166f05785**\n**KEY_1 = VALUE_379c111e2fb3**\n**KEY_2 = VALUE_344080e8f6c4**\n\n---\n\n# Engineering Guide: Implementation, Testing, and Maintenance of Ordinary Software Components\n\n## Section 1: Component Architecture Overview\n\n**Implementation:** Define the top-level architecture for software components using a layered approach. Each component exposes a public API (interfaces, methods, events) and encapsulates internal state. Use dependency injection to decouple components from concrete implementations. Structure the project with clear directories: `src/components/`, `src/services/`, `src/models/`, and `tests/`.\n\n**Example:** A `DataProcessor` component receives raw input via a `process(input: Input): Output` method. Internally it delegates to a `Validator` service and a `Transformer` service, both injected via the constructor.\n\n**Edge Cases:** Circular dependencies between components, components with no external inputs (pure functions), and components that must remain stateless across invocations.\n\n**Tests:** Unit tests verify each component in isolation with mocked dependencies. Integration tests confirm that the `DataProcessor` correctly orchestrates `Validator` and `Transformer`. Architecture tests (e.g., using dependency-check tools) enforce that no component imports from a higher layer.\n\n---\n\n## Section 2: Input Validation Layer\n\n**Implementation:** Create a dedicated validation module that runs before any business logic. Use schema-based validation (e.g., JSON Schema, Pydantic, Joi) to define allowed types, ranges, and formats. Return a structured `ValidationError` object containing a list of field-level errors rather than throwing exceptions for expected invalid inputs.\n\n**Example:** A form submission component validates that `email` matches a regex, `age` is an integer between 0 and 150, and `name` is a non-empty string of at most 100 characters.\n\n**Edge Cases:** Unicode characters in strings (validate length in code points, not bytes), null vs. undefined vs. empty string, floating-point boundary values (e.g., `age = 0.9999`), and nested objects with optional sub-fields.\n\n**Tests:** Parametrized tests covering every schema rule. Fuzz testing with random inputs to ensure the validator never throws an unhandled exception. Property-based tests asserting that valid inputs always pass and invalid inputs always fail with the correct error code.\n\n---\n\n## Section 3: State Management\n\n**Implementation:** Encapsulate mutable state within a single class or module. Expose state through getter methods or immutable snapshots. Use a state machine pattern for complex lifecycles (e.g., `IDLE \u2192 LOADING \u2192 READY \u2192 ERROR`). Persist state to disk or a database when durability is required.\n\n**Example:** A `SessionManager` tracks `userId`, `token`, `createdAt`, and `lastActivity`. Transitions: `new \u2192 active \u2192 expired \u2192 terminated`.\n\n**Edge Cases:** Concurrent state mutations from multiple threads, state restoration after a crash (partial writes), and race conditions between `expire` and `refresh` operations.\n\n**Tests:** State-machine property tests that enumerate all valid and invalid transitions. Concurrency tests using `asyncio` or `ThreadPoolExecutor` to simulate parallel access. Crash-recovery tests that kill the process mid-write and verify state integrity on restart.\n\n---\n\n## Section 4: Error Handling Strategy\n\n**Implementation:** Define a hierarchical exception hierarchy. Base class `AppError` with subclasses `ValidationError`, `NotFoundError`, `ConflictError`, `ExternalServiceError`. Catch exceptions at the component boundary, log with context, and return a structured error response. Never swallow exceptions silently.\n\n**Example:** A `FileReader` component catches `OSError` and wraps it in `ExternalServiceError(message=\"Cannot read file\", cause=original)`. The caller receives a uniform error type.\n\n**Edge Cases:** Errors during error handling (e.g., logging fails), chained exceptions preserving the original stack trace, and errors in async callbacks that have no caller to catch them.\n\n**Tests:** Test that every code path that can fail raises the correct exception type. Verify that stack traces are preserved. Test that the error handler itself does not raise (defensive logging). Integration tests simulating downstream service failures.\n\n---\n\n## Section 5: Configuration Management\n\n**Implementation:** Externalize all configuration via environment variables, config files (YAML/JSON/TOML), or a config service. Load configuration at startup into an immutable `Config` object. Support multiple environments (dev, staging, prod) with sensible defaults. Validate configuration at startup and fail fast if required keys are missing.\n\n**Example:** A `DatabaseConfig` dataclass with fields `host`, `port`, `user`, `password`, `pool_size`. Loaded from `config.yaml` with environment-variable overrides (e.g., `DB_PASSWORD`).\n\n**Edge Cases:** Missing optional fields, type coercion (string `\"8080\"` \u2192 int `8080`), secret rotation without restart, and configuration drift between instances in a cluster.\n\n**Tests:** Unit tests for the config loader with various file formats. Tests for override precedence (env > file > default). Fuzz tests with malformed config files. Integration tests that boot the application with a minimal config and verify graceful failure.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation:** Use a structured logging library (e.g., `structlog`, `pino`, `sentry`). Log at appropriate levels: `DEBUG` for trace data, `INFO` for lifecycle events, `WARNING` for recoverable anomalies, `ERROR` for failures requiring attention, `CRITICAL` for system-level failures. Include correlation IDs in every log line. Export metrics to Prometheus or similar.\n\n**Example:** Every HTTP request logs: `{\"level\":\"info\",\"msg\":\"request.completed\",\"method\":\"GET\",\"path\":\"/api/users\",\"status\":200,\"duration_ms\":42,\"correlation_id\":\"abc-123\"}`.\n\n**Edge Cases:** Log volume explosion under load (rate-limit debug logs), sensitive data accidentally logged (sanitize before emitting), and log loss during crashes (use async sinks with bounded buffers).\n\n**Tests:** Verify that no PII appears in log output (regex scans). Load tests measuring log throughput and disk I/O. Alerting tests that simulate an error spike and confirm the monitoring pipeline fires.\n\n---\n\n## Section 7: Caching Strategy\n\n**Implementation:** Implement a multi-level cache: L1 in-memory (e.g., `lru_cache`), L2 distributed (e.g., Redis). Define cache keys deterministically from input parameters. Set TTLs based on data volatility. Implement cache-aside, write-through, and write-behind patterns as appropriate. Invalidate on mutations.\n\n**Example:** A `UserProfileCache` uses key `user:{id}:profile`. TTL = 300s. On profile update, the key is deleted (cache-aside). On miss, the DB is queried and the result stored.\n\n**Edge Cases:** Cache stampede (thundering herd on expiry), stale reads during write propagation, memory leaks from unbounded caches, and serialization failures for complex objects.\n\n**Tests:** Unit tests for cache key generation. Load tests simulating 10,000 concurrent requests for the same expired key (verify only one DB hit). Memory profiling over extended runs. Serialization round-trip tests.\n\n---\n\n## Section 8: Concurrency and Thread Safety\n\n**Implementation:** Identify shared mutable state and protect it with locks, atomics, or immutability. Prefer immutable data structures where possible. Use `asyncio` for I/O-bound concurrency and thread pools for CPU-bound work. Avoid global mutable state. Document thread-safety guarantees in the component's public API.\n\n**Example:** A `ConnectionPool` uses a `threading.Semaphore` to limit concurrent connections. `acquire()` blocks if the pool is exhausted; `release()` signals availability.\n\n**Edge Cases:** Deadlocks (two locks acquired in different orders), livelocks, starvation (one thread never gets the lock), and `asyncio` event-loop blocking due to synchronous calls.\n\n**Tests:** Stress tests with N threads performing random acquire/release operations. Deadlock detection using timeout-based lock acquisition. `asyncio` tests verifying no even",
+        "prompt_sha256": "96e2c1998f31db39b90e53d9dc87cac0bf8c595e7c8ac9c7c205de622cd2fdcb",
+        "prompt_tokens_tokenized": 32617,
+        "request_id": null,
+        "response_headers_at": 513452.068892745,
+        "result": {
+          "content_chunks": 1564,
+          "e2e": 81.08243110403419,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 52,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.14709972601849586,
+          "ttft": 2.8562755090533756,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32617,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 183,
+            "total_tokens": 36713
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_4cd166f05785**\n**KEY_1 = VALUE_379c111e2fb3**\n**KEY_2 = VALUE_344080e8f6c4**\n\n---\n\n# Engineering Guide: Implementation, Testing, and Maintenance of Ordinary Software Components\n\n## Section 1: Component Architecture Overview\n\n**Implementation:** Define the top-level architecture for software components using a layered approach. Each component exposes a public API (interfaces, methods, events) and encapsulates internal state. Use dependency injection to decouple components from concrete implementations. Structure the project with clear directories: `src/components/`, `src/services/`, `src/models/`, and `tests/`.\n\n**Example:** A `DataProcessor` component receives raw input via a `process(input: Input): Output` method. Internally it delegates to a `Validator` service and a `Transformer` service, both injected via the constructor.\n\n**Edge Cases:** Circular dependencies between components, components with no external inputs (pure functions), and components that must remain stateless across invocations.\n\n**Tests:** Unit tests verify each component in isolation with mocked dependencies. Integration tests confirm that the `DataProcessor` correctly orchestrates `Validator` and `Transformer`. Architecture tests (e.g., using dependency-check tools) enforce that no component imports from a higher layer.\n\n---\n\n## Section 2: Input Validation Layer\n\n**Implementation:** Create a dedicated validation module that runs before any business logic. Use schema-based validation (e.g., JSON Schema, Pydantic, Joi) to define allowed types, ranges, and formats. Return a structured `ValidationError` object containing a list of field-level errors rather than throwing exceptions for expected invalid inputs.\n\n**Example:** A form submission component validates that `email` matches a regex, `age` is an integer between 0 and 150, and `name` is a non-empty string of at most 100 characters.\n\n**Edge Cases:** Unicode characters in strings (validate length in code points, not bytes), null vs. undefined vs. empty string, floating-point boundary values (e.g., `age = 0.9999`), and nested objects with optional sub-fields.\n\n**Tests:** Parametrized tests covering every schema rule. Fuzz testing with random inputs to ensure the validator never throws an unhandled exception. Property-based tests asserting that valid inputs always pass and invalid inputs always fail with the correct error code.\n\n---\n\n## Section 3: State Management\n\n**Implementation:** Encapsulate mutable state within a single class or module. Expose state through getter methods or immutable snapshots. Use a state machine pattern for complex lifecycles (e.g., `IDLE \u2192 LOADING \u2192 READY \u2192 ERROR`). Persist state to disk or a database when durability is required.\n\n**Example:** A `SessionManager` tracks `userId`, `token`, `createdAt`, and `lastActivity`. Transitions: `new \u2192 active \u2192 expired \u2192 terminated`.\n\n**Edge Cases:** Concurrent state mutations from multiple threads, state restoration after a crash (partial writes), and race conditions between `expire` and `refresh` operations.\n\n**Tests:** State-machine property tests that enumerate all valid and invalid transitions. Concurrency tests using `asyncio` or `ThreadPoolExecutor` to simulate parallel access. Crash-recovery tests that kill the process mid-write and verify state integrity on restart.\n\n---\n\n## Section 4: Error Handling Strategy\n\n**Implementation:** Define a hierarchical exception hierarchy. Base class `AppError` with subclasses `ValidationError`, `NotFoundError`, `ConflictError`, `ExternalServiceError`. Catch exceptions at the component boundary, log with context, and return a structured error response. Never swallow exceptions silently.\n\n**Example:** A `FileReader` component catches `OSError` and wraps it in `ExternalServiceError(message=\"Cannot read file\", cause=original)`. The caller receives a uniform error type.\n\n**Edge Cases:** Errors during error handling (e.g., logging fails), chained exceptions preserving the original stack trace, and errors in async callbacks that have no caller to catch them.\n\n**Tests:** Test that every code path that can fail raises the correct exception type. Verify that stack traces are preserved. Test that the error handler itself does not raise (defensive logging). Integration tests simulating downstream service failures.\n\n---\n\n## Section 5: Configuration Management\n\n**Implementation:** Externalize all configuration via environment variables, config files (YAML/JSON/TOML), or a config service. Load configuration at startup into an immutable `Config` object. Support multiple environments (dev, staging, prod) with sensible defaults. Validate configuration at startup and fail fast if required keys are missing.\n\n**Example:** A `DatabaseConfig` dataclass with fields `host`, `port`, `user`, `password`, `pool_size`. Loaded from `config.yaml` with environment-variable overrides (e.g., `DB_PASSWORD`).\n\n**Edge Cases:** Missing optional fields, type coercion (string `\"8080\"` \u2192 int `8080`), secret rotation without restart, and configuration drift between instances in a cluster.\n\n**Tests:** Unit tests for the config loader with various file formats. Tests for override precedence (env > file > default). Fuzz tests with malformed config files. Integration tests that boot the application with a minimal config and verify graceful failure.\n\n---\n\n## Section 6: Logging and Observability\n\n**Implementation:** Use a structured logging library (e.g., `structlog`, `pino`, `sentry`). Log at appropriate levels: `DEBUG` for trace data, `INFO` for lifecycle events, `WARNING` for recoverable anomalies, `ERROR` for failures requiring attention, `CRITICAL` for system-level failures. Include correlation IDs in every log line. Export metrics to Prometheus or similar.\n\n**Example:** Every HTTP request logs: `{\"level\":\"info\",\"msg\":\"request.completed\",\"method\":\"GET\",\"path\":\"/api/users\",\"status\":200,\"duration_ms\":42,\"correlation_id\":\"abc-123\"}`.\n\n**Edge Cases:** Log volume explosion under load (rate-limit debug logs), sensitive data accidentally logged (sanitize before emitting), and log loss during crashes (use async sinks with bounded buffers).\n\n**Tests:** Verify that no PII appears in log output (regex scans). Load tests measuring log throughput and disk I/O. Alerting tests that simulate an error spike and confirm the monitoring pipeline fires.\n\n---\n\n## Section 7: Caching Strategy\n\n**Implementation:** Implement a multi-level cache: L1 in-memory (e.g., `lru_cache`), L2 distributed (e.g., Redis). Define cache keys deterministically from input parameters. Set TTLs based on data volatility. Implement cache-aside, write-through, and write-behind patterns as appropriate. Invalidate on mutations.\n\n**Example:** A `UserProfileCache` uses key `user:{id}:profile`. TTL = 300s. On profile update, the key is deleted (cache-aside). On miss, the DB is queried and the result stored.\n\n**Edge Cases:** Cache stampede (thundering herd on expiry), stale reads during write propagation, memory leaks from unbounded caches, and serialization failures for complex objects.\n\n**Tests:** Unit tests for cache key generation. Load tests simulating 10,000 concurrent requests for the same expired key (verify only one DB hit). Memory profiling over extended runs. Serialization round-trip tests.\n\n---\n\n## Section 8: Concurrency and Thread Safety\n\n**Implementation:** Identify shared mutable state and protect it with locks, atomics, or immutability. Prefer immutable data structures where possible. Use `asyncio` for I/O-bound concurrency and thread pools for CPU-bound work. Avoid global mutable state. Document thread-safety guarantees in the component's public API.\n\n**Example:** A `ConnectionPool` uses a `threading.Semaphore` to limit concurrent connections. `acquire()` blocks if the pool is exhausted; `release()` signals availability.\n\n**Edge Cases:** Deadlocks (two locks acquired in different orders), livelocks, starvation (one thread never gets the lock), and `asyncio` event-loop blocking due to synchronous calls.\n\n**Tests:** Stress tests with N threads performing random acquire/release operations. Deadlock detection using timeout-based lock acquisition. `asyncio` tests verifying no even",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 513451.908978508,
+        "started_at": "2026-11-02T02:12:49.143867+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 513454.479336862,
+        "expected_values": [
+          "VALUE_90a2bf77a5d2",
+          "VALUE_2e576f400b55",
+          "VALUE_b87d6968162c"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:12:51.714237+00:00",
+        "first_output": 513452.21234449,
+        "last_output": 513454.479229588,
+        "partial_visible": "\n\nKEY_0 = VALUE_90a2bf77a5d2\nKEY_1 = VALUE_2e576f400b55\nKEY_2 = VALUE_b87d6968162c",
+        "prompt_sha256": "eb29dcda8fb99997d6c050f53c2d30f3937c9970fa364e7a8d588cc977496045",
+        "prompt_tokens_tokenized": 8189,
+        "request_id": null,
+        "response_headers_at": 513452.212299988,
+        "result": {
+          "content_chunks": 15,
+          "e2e": 2.397971880971454,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 162,
+          "output_token_source": "usage",
+          "reasoning_chunks": 30,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.13100007397588342,
+          "ttft": 1.6748465769924223,
+          "usage": {
+            "completion_tokens": 162,
+            "prompt_tokens": 8189,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 106,
+            "total_tokens": 8351
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_90a2bf77a5d2\nKEY_1 = VALUE_2e576f400b55\nKEY_2 = VALUE_b87d6968162c",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 513452.07848793,
+        "started_at": "2026-11-02T02:12:49.313375+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 1,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    },
+    {
+      "active_overlap_output_at": 513533.603027931,
+      "anchor": {
+        "end": 513608.471396112,
+        "expected_values": [
+          "VALUE_4cd166f05785",
+          "VALUE_379c111e2fb3",
+          "VALUE_344080e8f6c4"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:15:25.706297+00:00",
+        "first_output": 513533.409077431,
+        "last_output": 513608.471205426,
+        "partial_visible": "\n\n**KEY_0 = VALUE_4cd166f05785**\n**KEY_1 = VALUE_379c111e2fb3**\n**KEY_2 = VALUE_344080e8f6c4**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\nOrdinary software components are modular units that encapsulate a single responsibility. Each component exposes a well-defined interface (public API) while hiding internal implementation details. The architecture follows the principle of composition over inheritance: smaller components are combined to form larger systems.\n\n**Implementation:** Define a base interface (`IComponent`) with lifecycle methods (`init()`, `execute()`, `shutdown()`). Concrete components implement this interface. Use a component registry to manage instantiation and dependency resolution.\n\n**Example:**\n```python\nclass IComponent(ABC):\n    @abstractmethod\n    def init(self, config: dict) -> None: ...\n    @abstractmethod\n    def execute(self, input: Any) -> Any: ...\n    @abstractmethod\n    def shutdown(self) -> None: ...\n\nclass DataProcessor(IComponent):\n    def __init__(self):\n        self._state = \"idle\"\n    def init(self, config):\n        self._threshold = config.get(\"threshold\", 0.5)\n        self._state = \"ready\"\n    def execute(self, input):\n        return [x for x in input if x > self._threshold]\n    def shutdown(self):\n        self._state = \"terminated\"\n```\n\n**Edge Cases:** Components receiving `None` as config, components initialized twice, components shut down before initialization.\n\n**Tests:** Verify lifecycle ordering, verify state transitions, verify that `execute()` before `init()` raises a meaningful error.\n\n---\n\n## 2. Dependency Injection and Configuration\n\nComponents should receive their dependencies through constructor or factory injection rather than creating them internally. Configuration is passed as immutable data structures at initialization time.\n\n**Implementation:** Use a `ComponentFactory` that accepts a dependency map. Each component declares its required dependencies by name. The factory resolves circular dependencies with topological sorting.\n\n**Example:**\n```python\nclass ComponentFactory:\n    def __init__(self, deps: dict[str, Any]):\n        self._deps = deps\n    def create(self, name: str) -> IComponent:\n        cls = self._registry[name]\n        return cls(**{k: self._deps[k] for k in cls.required_deps})\n```\n\n**Edge Cases:** Circular dependencies (A depends on B, B depends on A), missing dependencies, duplicate dependency names with conflicting types.\n\n**Tests:** Assert factory raises `DependencyResolutionError` for cycles. Assert `MissingDependencyError` when a required key is absent. Test that the same dependency instance is shared (singleton scope) vs. created fresh (prototype scope).\n\n---\n\n## 3. Input Validation Layer\n\nEvery component must validate its inputs before processing. Validation rules are declarative and composable, allowing components to specify what shapes of data they accept.\n\n**Implementation:** Create a `Validator` class with chainable methods: `.is_type(expected)`, `.is_range(min, max)`, `.is_not_none()`, `.matches(pattern)`. Validators return a `ValidationResult` with a list of errors.\n\n**Example:**\n```python\ndef validate_records(records: list[dict]) -> ValidationResult:\n    errors = []\n    for i, r in enumerate(records):\n        if \"id\" not in r:\n            errors.append(f\"Record {i}: missing 'id'\")\n        if \"value\" in r and not isinstance(r[\"value\"], (int, float)):\n            errors.append(f\"Record {i}: 'value' must be numeric\")\n    return ValidationResult(valid=len(errors)==0, errors=errors)\n```\n\n**Edge Cases:** Empty lists, lists containing `None` elements, unicode keys, deeply nested structures exceeding recursion limits.\n\n**Tests:** Parametrized tests with valid/invalid inputs. Test that all errors are collected (not just the first). Test performance with 100,000 records stays under 2 seconds.\n\n---\n\n## 4. State Machine Management\n\nComponents with multiple states (e.g., `idle \u2192 running \u2192 paused \u2192 stopped`) must enforce valid transitions and prevent illegal state changes.\n\n**Implementation:** Define a `StateMachine` class with a transition table. Each transition specifies `from_state`, `to_state`, and an optional guard condition. Invalid transitions raise `IllegalTransitionError`.\n\n**Example:**\n```python\nTRANSITIONS = {\n    (\"idle\", \"start\"): \"running\",\n    (\"running\", \"pause\"): \"paused\",\n    (\"paused\", \"resume\"): \"running\",\n    (\"running\", \"stop\"): \"stopped\",\n    (\"paused\", \"stop\"): \"stopped\",\n}\n```\n\n**Edge Cases:** Concurrent state changes (two threads calling `transition()` simultaneously), transitions from an uninitialized state, re-entrant transitions (a guard that triggers another transition).\n\n**Tests:** Test every valid transition. Test every invalid transition raises the correct error. Use threading to verify no state corruption under concurrent access. Test that guards can block transitions.\n\n---\n\n## 5. Error Handling and Exception Hierarchy\n\nA well-structured exception hierarchy allows callers to catch specific error categories without resorting to bare `except`. Component-specific exceptions inherit from a base `ComponentError`.\n\n**Implementation:**\n```\nComponentError\n\u251c\u2500\u2500 ConfigurationError\n\u251c\u2500\u2500 ValidationError\n\u251c\u2500\u2500 ProcessingError\n\u2502   \u251c\u2500\u2500 TimeoutError\n\u2502   \u2514\u2500\u2500 ResourceExhaustedError\n\u2514\u2500\u2500 LifecycleError\n```\n\n**Example:**\n```python\nclass ProcessingError(ComponentError):\n    def __init__(self, message: str, component: str, context: dict):\n        super().__init__(message)\n        self.component = component\n        self.context = context\n```\n\n**Edge Cases:** Exceptions raised during `shutdown()` (must not mask the original error), exceptions in background threads (propagation to main thread), chained exceptions preserving the full traceback.\n\n**Tests:** Verify each exception type carries the correct attributes. Test that `except ComponentError` catches all subclasses. Test that exception context is preserved through the call stack. Test serialization of exceptions for logging.\n\n---\n\n## 6. Thread Safety and Concurrency\n\nComponents that are shared across threads must be thread-safe. Use fine-grained locking, lock-free data structures, or immutability to avoid race conditions.\n\n**Implementation:** For mutable state, use `threading.RLock` with a defined lock ordering to prevent deadlocks. For read-heavy workloads, use `threading.local()` or copy-on-write patterns. Document the locking discipline in the component's docstring.\n\n**Example:**\n```python\nclass ThreadSafeCounter:\n    def __init__(self):\n        self._lock = threading.RLock()\n        self._count = 0\n    def increment(self, delta=1):\n        with self._lock:\n            self._count += delta\n            return self._count\n```\n\n**Edge Cases:** Deadlock from lock ordering violations, livelock in retry loops, memory visibility issues without proper barriers, thread termination while a lock is held.\n\n**Tests:** Run 100 threads each performing 10,000 increments; assert final count equals 1,000,000. Use `tracemalloc` to detect memory leaks under concurrent load. Test with `threading.Barrier` to maximize contention.\n\n---\n\n## 7. Logging and Observability\n\nEvery component emits structured logs at appropriate levels. Logs include component name, operation, duration, and relevant identifiers. Metrics are exposed for external monitoring systems.\n\n**Implementation:** Use a `StructuredLogger` that outputs JSON lines. Each log entry includes `timestamp`, `level`, `component`, `operation`, `duration_ms`, `correlation_id`. Metrics use a `MeterRegistry` with counters, gauges, and histograms.\n\n**Example:**\n```python\nlogger.log(\"INFO\", component=\"DataProcessor\", operation=\"execute\",\n           duration_ms=42.7, records_in=1000, records_out=847,\n           correlation_id=\"req-abc-123\")\n```\n\n**Edge Cases:** Log injection (user-supplied strings containing newlines or JSON special characters), log flooding during error storms (need rate limiting), timezone ambiguity in timestamps, log file rotation while writing.\n\n**Tests:** Verify log format is valid JSON. Test that sensitive data (passwords, tokens) is redacted. Test rate limiter kicks in after N logs per second. Veri",
+        "prompt_sha256": "96e2c1998f31db39b90e53d9dc87cac0bf8c595e7c8ac9c7c205de622cd2fdcb",
+        "prompt_tokens_tokenized": 32617,
+        "request_id": null,
+        "response_headers_at": 513533.409024262,
+        "result": {
+          "content_chunks": 1440,
+          "e2e": 75.21034052694449,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 54,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.14810987596865743,
+          "ttft": 2.921439751982689,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32617,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 188,
+            "total_tokens": 36713
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_4cd166f05785**\n**KEY_1 = VALUE_379c111e2fb3**\n**KEY_2 = VALUE_344080e8f6c4**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\nOrdinary software components are modular units that encapsulate a single responsibility. Each component exposes a well-defined interface (public API) while hiding internal implementation details. The architecture follows the principle of composition over inheritance: smaller components are combined to form larger systems.\n\n**Implementation:** Define a base interface (`IComponent`) with lifecycle methods (`init()`, `execute()`, `shutdown()`). Concrete components implement this interface. Use a component registry to manage instantiation and dependency resolution.\n\n**Example:**\n```python\nclass IComponent(ABC):\n    @abstractmethod\n    def init(self, config: dict) -> None: ...\n    @abstractmethod\n    def execute(self, input: Any) -> Any: ...\n    @abstractmethod\n    def shutdown(self) -> None: ...\n\nclass DataProcessor(IComponent):\n    def __init__(self):\n        self._state = \"idle\"\n    def init(self, config):\n        self._threshold = config.get(\"threshold\", 0.5)\n        self._state = \"ready\"\n    def execute(self, input):\n        return [x for x in input if x > self._threshold]\n    def shutdown(self):\n        self._state = \"terminated\"\n```\n\n**Edge Cases:** Components receiving `None` as config, components initialized twice, components shut down before initialization.\n\n**Tests:** Verify lifecycle ordering, verify state transitions, verify that `execute()` before `init()` raises a meaningful error.\n\n---\n\n## 2. Dependency Injection and Configuration\n\nComponents should receive their dependencies through constructor or factory injection rather than creating them internally. Configuration is passed as immutable data structures at initialization time.\n\n**Implementation:** Use a `ComponentFactory` that accepts a dependency map. Each component declares its required dependencies by name. The factory resolves circular dependencies with topological sorting.\n\n**Example:**\n```python\nclass ComponentFactory:\n    def __init__(self, deps: dict[str, Any]):\n        self._deps = deps\n    def create(self, name: str) -> IComponent:\n        cls = self._registry[name]\n        return cls(**{k: self._deps[k] for k in cls.required_deps})\n```\n\n**Edge Cases:** Circular dependencies (A depends on B, B depends on A), missing dependencies, duplicate dependency names with conflicting types.\n\n**Tests:** Assert factory raises `DependencyResolutionError` for cycles. Assert `MissingDependencyError` when a required key is absent. Test that the same dependency instance is shared (singleton scope) vs. created fresh (prototype scope).\n\n---\n\n## 3. Input Validation Layer\n\nEvery component must validate its inputs before processing. Validation rules are declarative and composable, allowing components to specify what shapes of data they accept.\n\n**Implementation:** Create a `Validator` class with chainable methods: `.is_type(expected)`, `.is_range(min, max)`, `.is_not_none()`, `.matches(pattern)`. Validators return a `ValidationResult` with a list of errors.\n\n**Example:**\n```python\ndef validate_records(records: list[dict]) -> ValidationResult:\n    errors = []\n    for i, r in enumerate(records):\n        if \"id\" not in r:\n            errors.append(f\"Record {i}: missing 'id'\")\n        if \"value\" in r and not isinstance(r[\"value\"], (int, float)):\n            errors.append(f\"Record {i}: 'value' must be numeric\")\n    return ValidationResult(valid=len(errors)==0, errors=errors)\n```\n\n**Edge Cases:** Empty lists, lists containing `None` elements, unicode keys, deeply nested structures exceeding recursion limits.\n\n**Tests:** Parametrized tests with valid/invalid inputs. Test that all errors are collected (not just the first). Test performance with 100,000 records stays under 2 seconds.\n\n---\n\n## 4. State Machine Management\n\nComponents with multiple states (e.g., `idle \u2192 running \u2192 paused \u2192 stopped`) must enforce valid transitions and prevent illegal state changes.\n\n**Implementation:** Define a `StateMachine` class with a transition table. Each transition specifies `from_state`, `to_state`, and an optional guard condition. Invalid transitions raise `IllegalTransitionError`.\n\n**Example:**\n```python\nTRANSITIONS = {\n    (\"idle\", \"start\"): \"running\",\n    (\"running\", \"pause\"): \"paused\",\n    (\"paused\", \"resume\"): \"running\",\n    (\"running\", \"stop\"): \"stopped\",\n    (\"paused\", \"stop\"): \"stopped\",\n}\n```\n\n**Edge Cases:** Concurrent state changes (two threads calling `transition()` simultaneously), transitions from an uninitialized state, re-entrant transitions (a guard that triggers another transition).\n\n**Tests:** Test every valid transition. Test every invalid transition raises the correct error. Use threading to verify no state corruption under concurrent access. Test that guards can block transitions.\n\n---\n\n## 5. Error Handling and Exception Hierarchy\n\nA well-structured exception hierarchy allows callers to catch specific error categories without resorting to bare `except`. Component-specific exceptions inherit from a base `ComponentError`.\n\n**Implementation:**\n```\nComponentError\n\u251c\u2500\u2500 ConfigurationError\n\u251c\u2500\u2500 ValidationError\n\u251c\u2500\u2500 ProcessingError\n\u2502   \u251c\u2500\u2500 TimeoutError\n\u2502   \u2514\u2500\u2500 ResourceExhaustedError\n\u2514\u2500\u2500 LifecycleError\n```\n\n**Example:**\n```python\nclass ProcessingError(ComponentError):\n    def __init__(self, message: str, component: str, context: dict):\n        super().__init__(message)\n        self.component = component\n        self.context = context\n```\n\n**Edge Cases:** Exceptions raised during `shutdown()` (must not mask the original error), exceptions in background threads (propagation to main thread), chained exceptions preserving the full traceback.\n\n**Tests:** Verify each exception type carries the correct attributes. Test that `except ComponentError` catches all subclasses. Test that exception context is preserved through the call stack. Test serialization of exceptions for logging.\n\n---\n\n## 6. Thread Safety and Concurrency\n\nComponents that are shared across threads must be thread-safe. Use fine-grained locking, lock-free data structures, or immutability to avoid race conditions.\n\n**Implementation:** For mutable state, use `threading.RLock` with a defined lock ordering to prevent deadlocks. For read-heavy workloads, use `threading.local()` or copy-on-write patterns. Document the locking discipline in the component's docstring.\n\n**Example:**\n```python\nclass ThreadSafeCounter:\n    def __init__(self):\n        self._lock = threading.RLock()\n        self._count = 0\n    def increment(self, delta=1):\n        with self._lock:\n            self._count += delta\n            return self._count\n```\n\n**Edge Cases:** Deadlock from lock ordering violations, livelock in retry loops, memory visibility issues without proper barriers, thread termination while a lock is held.\n\n**Tests:** Run 100 threads each performing 10,000 increments; assert final count equals 1,000,000. Use `tracemalloc` to detect memory leaks under concurrent load. Test with `threading.Barrier` to maximize contention.\n\n---\n\n## 7. Logging and Observability\n\nEvery component emits structured logs at appropriate levels. Logs include component name, operation, duration, and relevant identifiers. Metrics are exposed for external monitoring systems.\n\n**Implementation:** Use a `StructuredLogger` that outputs JSON lines. Each log entry includes `timestamp`, `level`, `component`, `operation`, `duration_ms`, `correlation_id`. Metrics use a `MeterRegistry` with counters, gauges, and histograms.\n\n**Example:**\n```python\nlogger.log(\"INFO\", component=\"DataProcessor\", operation=\"execute\",\n           duration_ms=42.7, records_in=1000, records_out=847,\n           correlation_id=\"req-abc-123\")\n```\n\n**Edge Cases:** Log injection (user-supplied strings containing newlines or JSON special characters), log flooding during error storms (need rate limiting), timezone ambiguity in timestamps, log file rotation while writing.\n\n**Tests:** Verify log format is valid JSON. Test that sensitive data (passwords, tokens) is redacted. Test rate limiter kicks in after N logs per second. Veri",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 513533.255046407,
+        "started_at": "2026-11-02T02:14:10.489932+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_active": true,
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 513535.679836121,
+        "expected_values": [
+          "VALUE_90a2bf77a5d2",
+          "VALUE_2e576f400b55",
+          "VALUE_b87d6968162c"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T02:14:12.914736+00:00",
+        "first_output": 513533.55254046,
+        "last_output": 513535.679728467,
+        "partial_visible": "\n\nKEY_0 = VALUE_90a2bf77a5d2\nKEY_1 = VALUE_2e576f400b55\nKEY_2 = VALUE_b87d6968162c",
+        "prompt_sha256": "eb29dcda8fb99997d6c050f53c2d30f3937c9970fa364e7a8d588cc977496045",
+        "prompt_tokens_tokenized": 8189,
+        "request_id": null,
+        "response_headers_at": 513533.552490445,
+        "result": {
+          "content_chunks": 15,
+          "e2e": 2.2548325739917345,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 160,
+          "output_token_source": "usage",
+          "reasoning_chunks": 28,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 0.12755568197462708,
+          "ttft": 1.5264029339887202,
+          "usage": {
+            "completion_tokens": 160,
+            "prompt_tokens": 8189,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 104,
+            "total_tokens": 8349
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_90a2bf77a5d2\nKEY_1 = VALUE_2e576f400b55\nKEY_2 = VALUE_b87d6968162c",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 513533.421420475,
+        "started_at": "2026-11-02T02:14:10.656308+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": true,
+      "failure_classes": [],
+      "index": 2,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": true,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 32768,
+    "base_url": "[LOOPBACK_ENDPOINT]",
+    "configuration": {
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "label": "Swift BF16 GPU0 262K MTP3 r4 final activation",
+      "model_revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "recipe_sha256": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_sha256": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2"
+    },
+    "contender_max_tokens": 2048,
+    "contender_tokens": 8192,
+    "context_limit": 262144,
+    "managed_container": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "mode": "overlap",
+    "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "prefix_mode": "repeat",
+    "reasoning_effort": "medium",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 300,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "b06dacadb879b34b51ca28ee64bd15db9b030511579aa6cc67026127cc812a4f",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T02:11:22.084743+00:00",
+  "status": "completed"
+}

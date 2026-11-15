@@ -1,5 +1,49 @@
 # GLM-5.3-Flash
 
+## Mia runtime update — 2026-11-13
+
+The same-model Mia fc1ee3a runtime passed focused functional qualification on dual RTX PRO6000 Max-Q. The exact matched truncated Messages request changed from HTTP500 to200, and prompt scoring increased from a20 cap to128 with distinct requested-ID, repeat and concurrent checks. Tools, image, C4 canaries and19K/99K retrieval/cache restart passed. This updates runtime evidence, not broad model quality or performance rankings. [Finding and immutable identity](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md). Operational fleet closure remains separate.
+
+**2026-10-26 reasoning-close GPU marker trace:** the [bounded actual-GPU diagnostic](../../findings/2026-10-26-marker-gpu-trace.md) returned one exact-answer C1 response with a single close at index 64. Both TP ranks observed its budget store, but the worker trace contained one token after the 75-token API response, so the frozen analyzer remained `unknown`. No second close reproduced and no end-to-end resolution is established. Exact operational restoration passed; strict JSON functional acceptance remained incomplete. No promotion; Ignis held. [Summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
+
+**2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
+
+**2026-10-25 sampling-reference diagnostic:** the [independent numerical-reference gate](../../findings/2026-10-25-sampling-reference.md) passed 8/8 forced cases but rejected the patch after one of 272 ordinary rows retained one extra boundary token relative to stock/reference. Candidate weights and inference never started; the model reasoning-boundary failure remains unresolved. Exact operational restoration passed, but the restored incumbent failed its single strict JSON smoke, so functional restoration acceptance is incomplete. No promotion; Ignis held.
+
+**2026-10-25 sampling-fix trial:** the earlier [candidate kernel gate](../../findings/2026-10-25-sampling-fix.md) failed ordinary-logit exact parity after partial forced-token success. The later reference diagnostic above resolves that difference without rewriting this historical result.
+
+**2026-10-25 isolated reasoning-boundary diagnostic:** one C1 request on the dual RTX PRO 6000 Blackwell Max-Q incumbent failed the numeric budget transition. See the [measured outcome and limitations](../../findings/2026-10-25-glm-diagnostics.md#isolated-reasoning-boundary-follow-up). Functional diagnostic; `no-promotion`, Ignis held, runtime unchanged.
+
+**2026-10-21–23 Flare engine investigations:** seven closed findings retain the
+candidate scout, tuning, cache, state, and current-upstream diagnostics. The
+result is diagnostic-only: protected and numerical gates remain incomplete or
+held, the incumbent was restored after each window, and no promotion follows.
+See [engine testing](../engine-testing.md) for the ordered reports.
+
+**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
+TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
+promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
+acceptance passed. Subsequent checks accepted five Pi process combinations,
+both primary Hermes CLI profiles, Companion Node/Mac OpenClaw Gateway, and
+WebUI catalog reconciliation. The complete controlled A/B remains the numeric
+comparison: faster C1 prefill/decode, mixed concurrent latency, and narrow GPU
+headroom. Full fleet catalog/session propagation remains blocked by the older
+13-target NativeWorkflows custody gap; public web publication remains pending.
+[Promotion record and KV accounting](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md).
+
+**2026-10-17 GLM serving-performance comparison:** a separate controlled serving campaign retained 12 matched EXL3 r11-control/NVIDIA-FP4 candidate pairs: 24 accepted cells, 84 requests per arm, four actual-input strata, and C1/C2/C4. All required and supplemental measurement coverage is retained in the [canonical finding](../../findings/2026-10-17-glm53-serving-performance.md), rather than repeated here. Its original 42-cell matrix closed partial after one visible-output-overrun failure and 17 stop-rule-blocked cells. The earlier NVIDIA FP4 quality/context campaign's timing-unmeasured limitation applies to that earlier quality evidence, not this later serving comparison; its 316266-token successful context result remains separate. No SWE, endurance, no-speculation, or MTP-off comparison ran, and no candidate qualified or was promoted. Exact r11 restoration passed direct and routed smokes and router readmission. Allocated KV tokens and configured 327680/C4 do not establish simultaneous full-window capacity.
+
+**2026-10-16 SGLang scout:** the original GLM baseline C1 record completed 0/4 performance-eligible requests, so it is not a performance control. The pinned SGLang GLM profile passed native preflight 6/6 and Oracle 54/54, but its terminal SWE artifact resolved 0/5 with 2/5 officially graded. It missed the frozen 4/5 floor; later gates were deliberately stopped. [Finding](../../findings/2026-10-16-sglang-qwen-comparison.md)
+
+**2026-10-16 v0.9.1 trial:** the R2 profile passed native preflight 6/6, Oracle 54/54, vision 18/18, bounded retrieval/tool-context, and the sampled reserve gate, then resolved 3/5 pinned SWE cases against a four-case floor. It is `rejected`/`no-promotion`. The exact restored incumbent passed direct/routed 6/6, a Pi read turn, fresh Oracle 54/54, vision 18/18, matching long-context probes, and the matched SWE suite at 3/5. The common resolved count and cases do not equate detailed grader failures or support comparative, causal, or performance claims. [Finding](../../findings/2026-10-16-glm-v091-trial.md)
+
+**2026-10-15 replacement evaluation:** no challenger cleared the completed frozen gates. Exact GLM was restored and retained as the baseline; this is continuity evidence, not a new GLM qualification. [Finding](../../findings/2026-10-15-replacement-evaluation.md)
+
+**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../../findings/2026-10-13-full-qualification.md).
+
+**2026-10-06 uncensored GLM scout:** the separate `lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6a` candidate is distinct from the base and CSF/QAD lanes. Its TP2/EP2/DCP1 no-spec recipe passed preflight 25/25 and agentic 18/18, then resolved 3/5 frozen SWE tasks, below the 4/5 floor. It is `not-qualified`/`no-promotion`; no capacity, context, multimodal, or speed result is claimed. Exact r11 restoration is verified: direct 25/25, routed 7/7, configuration hashes unchanged, and router readmission complete. See the [dated scout](../../findings/2026-10-06-mimo-qualification.md).
+
 **2026-09-23 runtime investigation:** the DCP2 EXL3 configuration reproduced
 an illegal-memory-access/Xid31 crash during 175K decode plus a fresh 32K
 prefill, while its serial control passed. A single-setting DCP1 trial passed
@@ -12,7 +56,7 @@ attribution and broader qualification remain open. See the
 retains bounded 201K and 310K direct observations, quality 12/12, agentic
 18/18, and absolute SWE 4/5. The SWE baseline pair is environment-ineligible,
 so it supports no causal score claim. An offered-C8 strict/canary diagnostic
-failed 1/16, so C8 stopped. r11 is selected and deployed after retained
+failed 1/16, so C8 stopped. r11 was selected and deployed at that time after retained
 direct/routed and native-client acceptance; independent reviews, dashboard
 receipt, successful Pages publication, and HTTP/browser readback are retained.
 DCP1's KV pool is 41.73% below retained DCP2,
@@ -25,6 +69,37 @@ so four full 327K windows are unsupported. See the
 <!-- benchmark-dossier/v2 -->
 
 ## Current status and review date
+
+**2026-11-09 TensorFold reasoning controls:** the focused
+[Max/Low investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
+separates effort instructions from numeric thinking limits on one Go task
+under a fixed 16K response cap. Two Low repetitions passed their first
+contained tests. The separate source proposal is not deployed; this does
+not revise global model policy or establish a broad coding score.
+
+**2026-11-09 request-control rollout follow-up:** merged support is deployed
+in the local CLI/router. The separate three-job Go check retains Max/8,192
+at 1/2 jobs and Low/unset at 1/1, with ten responses; the second Max job
+failed both coding attempts at the 16,384 response cap. The remaining answer
+region and quality gap means 8,192 is not established as a reliable fix or
+default. Changed KV runtime and no contemporary unbounded-Max control prevent
+causal quality/speed claims. Remote-controller numeric admission remains
+unsupported (B10 partial), with observer migration deferred. No global
+controls or promotion changed.
+[Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09).
+
+**2026-11-08 TensorFold quality diagnostic:** the separate pinned EXL3
+TensorFold lane passed the selected Go task at 32K and failed at 16K after
+response-length limits. This is one task checked once per profile, not a broad
+Go score, cap-effect experiment or performance comparison. No live assignment
+or historical promotion is changed by this record.
+[Finding](../../findings/2026-11-08-tensorfold-go-validation.md).
+
+**2026-10-25 Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) closed six completed measurements with one passing and five failing task grades; two supported cells remained unstarted and four reasoning controls were blocked. Raw grades remain separate from lifecycle and measurement eligibility. The mixed Rust result establishes no causal benefit from the larger cap. Diagnostic only; no Ignis run, broad model ranking or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
+
+**2026-10-25 R12/R13 successor:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four cancelled grades remain unknown. The candidate was never measured. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. This does not change the incumbent assignment or establish a comparative ranking. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
+
+**Historical R5–R10 diagnostic addendum, 2026-10-25:** the [evaluation-platform pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) retains a censored incumbent population and separate harness canaries. Exact NVIDIA FP4 service restoration and routed preflight passed after candidate admission attempts; strict Pi final-text acceptance failed. The incumbent assignment remains unchanged. This is an incomplete pilot, not a new qualification or performance comparison.
 
 **2026-10-05 CSF/QAD scout:** the separate pinned GLM candidate passed disabled
 preflight 2/2 and HIGH preflight 25/25. Its first Oracle was 17/18 because a
@@ -40,7 +115,7 @@ graded false, and Sympy reached the 60-step limit ungraded. The native graded
 resolve rate is 2/4 = 0.5 and the campaign result is 2/5 attempts, below the
 4/5 floor. The prior 4/5 scout therefore does not establish a reliable floor.
 B1, B2, and A2 did not run, so there is no comparative speed result. The
-candidate is `rejected`/`no-promotion`; selected r11 DCP1 remains current.
+candidate was `rejected`/`no-promotion`; selected r11 DCP1 remained current at that campaign close.
 Its exact restoration completed with direct 25/25, routed 7/7, and a fresh Pi
 read-tool turn; routes and manifest hashes were unchanged.
 See the [active finding](../../findings/2026-10-05-xeon-model-qualification.md).
@@ -62,23 +137,24 @@ it cannot turn these acceptance gates into capacity or speed evidence.
 
 !!! info "Decision snapshot"
 
-    - **Product role:** current bounded text, tools, image, and OCR reference.
-    - **Selected or best-qualified configuration:** GLM Flash EXL3 r11 DCP1,
-      batch 2,048/C4/0.97, FP8 DS-MLA KV, 327,680 configured tokens, APC,
-      and no speculation.
+    - **Product role:** selected primary for this deployment: text, tools, image, and OCR.
+    - **Selected or best-qualified configuration:** NVIDIA GLM-5.3-Flash FP4 r2,
+      TP2/DCP2, FP8 KV, batch 4,096, 327,680 configured tokens, C4, MTP3,
+      and host embeddings. The [recipe comparison](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload)
+      retains model/image pins and reconstruction details.
     - **Measured hardware:** two RTX PRO 6000 Blackwell Max-Q cards, native Linux.
-    - **Evidence:** [r11 DCP1 qualification](../../findings/2026-09-23-glm-dcp1-qualification.md):
-      direct/routed preflight 28/28, 13 native-client paths, quality 12/12,
-      agentic 18/18, and absolute SWE 4/5. Its 825,268 KV pool is 41.73%
-      below DCP2, so four full 327K windows are unsupported.
-    - **Decision:** publication-verified r11 DCP1 is selected and deployed;
-      exact r10 APC is the documented rollback. Active route and startup assignments are private.
-    - **Important limitation:** r11 is a bounded DCP1 mitigation, not a root-cause,
-      crash-rate, speed, C8, full-window, video, soak, or fresh-reboot claim.
-    - **Runtime limitation:** a 2026-09-23 mixed long-decode/new-prefill replay crashed
-      DCP2. Selected DCP1 is a mitigation; selection does not mean the cause is fixed.
-    - **Review dates:** r11 qualification and runtime investigation 2026-09-23 UTC;
-      APC qualification 2026-09-19 is historical performance lineage.
+    - **Evidence:** 12 matched serving pairs and 84 scored requests per arm;
+      all 17 required metric families. Fresh direct/routed/image/context and
+      12 scored C1/C2/C4 acceptance requests passed; bounded Pi, Hermes,
+      OpenClaw and WebUI checks are retained in the promotion record.
+    - **Decision:** human-approved `current`; operator's best current fit for
+      this deployment. Exact EXL3 r11 is retained as `rollback`.
+    - **Important limitation:** concurrent latency is mixed; sampled free GPU
+      memory reached 0.87 GiB. Strict controlled output failed both recipes.
+      No new SWE/endurance/MTP-off or four simultaneous full-window result.
+      The older native workflow still blocks full fleet convergence.
+    - **Review dates:** historical promotion evidence cutoff 2026-10-17; dossier functional-evidence review 2026-11-13;
+      historical R19/r11 and earlier quality evidence remain separately dated.
 
 ### Review narrative
 
@@ -236,6 +312,26 @@ No new promotion occurred. See the
 
 ## Immutable identity
 
+The 2026-11-08 TensorFold diagnostic is a separate recipe family:
+`Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold@76c0b5173166d2795dd48860f45d8224817f894c`,
+TensorFold base `f350cd3ea253a042e205746928271f9d8f71a82d` plus the unchanged
+101 author patches and five ordered Anvil telemetry patches. Its runtime
+image is `sha256:8f5604d13d319adac8dc708b2e8bf8ce54096e181313a2a8de83cbfdd2902b06`.
+[Configuration and reconstruction boundary](../../findings/2026-11-08-tensorfold-go-validation-evidence/configuration.json).
+
+The current FP4 recipe pins
+`nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`
+and `ghcr.io/local-inference-lab/vllm:release-10152026` image digest
+`sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29`.
+The served name is `glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2`.
+[Exact recipe comparison](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload).
+The identities below are historical lanes, including the retained EXL3 rollback.
+
+The rejected 2026-10-06 uncensored lane is separately pinned to
+`lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated@c8f58e6aa9117c73607d692978b22f091d80450c`.
+Its [public reconstruction](../../findings/artifacts/2026-10-06-mimo-qualification/configs/glm53-abliterated-qualification.toml)
+retains the base EXL3 runtime image; edited weights do not inherit the base model's qualification.
+
 The selected 2026-09-14 text lane retains `brandonmusic/GLM-5.3-Flash-tr3-4bpw`
 at `a5fee929cf4888b1824323e33e8a19b60129e025` and
 `verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692`.
@@ -285,6 +381,12 @@ separate permission is obtained.
 
 ## Tested hardware and topology
 
+The current FP4 comparison and promotion acceptance measured the same native
+Linux dual-card TP2 host. Host embeddings are enabled, so this is not strictly
+GPU-only residency. Measured GPU/cgroup/host memory and concurrency are retained
+in the [full comparison](../../findings/2026-10-17-glm53-serving-performance.md).
+The following dated topology descriptions do not redefine that current recipe.
+
 The 2026-09-08 native Linux comparison measures the same physical dual-PRO
 pair at TP2/393,216/C1. It preserves the exact SGLang image and checkpoint,
 adds `NCCL_P2P_DISABLE=1`, and retains the existing compatibility patches.
@@ -311,7 +413,9 @@ FP8 target KV, and the DFlash2 draft.
 
 | Recipe | Role | Context | Decision |
 |---|---|---:|---|
-| EXL3 r7 no-spec (public-safe configuration in [dated finding](../../findings/2026-09-13-intelligence-context-scout.md)) | selected text-only reference | 327,680 total / 65,536 output, C4 | `current`; bounded evidence |
+| NVIDIA FP4 r2 ([recipe and pins](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload)) | selected primary; TP2/DCP2, FP8 KV, MTP3 | 327,680, C4 | `current`; human-approved |
+| EXL3 r11 DCP1 ([retained control](../../findings/2026-10-17-glm53-serving-performance.md#recipes-and-workload)) | exact retained rollback; FP8 KV, APC, no speculation | 327,680, C4 | `rollback` |
+| EXL3 r7 no-spec (public-safe configuration in [dated finding](../../findings/2026-09-13-intelligence-context-scout.md)) | historical text-only reference | 327,680 total / 65,536 output, C4 | historical selection; bounded evidence |
 | [SGLang W4A16 adaptive MTP](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-393k-c1-adaptive-mtp-recipe.toml) | historical 2026-09-02 text/image/OCR selection | 393,216 | `verified`, historical |
 | [DFlash2 K5, corrected xgrammar](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-purtell-k3-dflash2-k5-fp8-524k-vision-xgrammar-sm120-tp2-wsl2-recipe.toml) | historical rollback | 524,288 | `verified`, historical |
 | [SGLang W4A16 adaptive MTP, conservative](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-ormandj-sglang-sm120-tp2-240k-c1-adaptive-mtp-recipe.toml) | conservative fallback | 245,760 | `verified`, fallback |
@@ -322,7 +426,7 @@ FP8 target KV, and the DFlash2 draft.
 | [TR3 vision fixed K5](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-fixed-mtp5-vision-sm120-tp2-262k-wsl2-v2-no-owner-exchange-recipe.toml) | prior interactive profile and image rollback | 262,144 | historical `verified` |
 | [TR3 no spec](https://github.com/fakoli/anvil-serving/blob/main/configs/glm53-flash-cardillo-tpurtell-nospec-sm120-tp2-524k-wsl2-v2-no-owner-exchange-recipe.toml) | prior maximum-context/headroom lane | 524,288 | historical `verified` |
 
-The current EXL3 r7 no-spec lane admits C4 at 327,680 total tokens with a
+The historical EXL3 r7 no-spec lane admitted C4 at 327,680 total tokens with a
 65,536-token output reserve. It completed 9/9 post-promotion context cases at
 255,647–255,672 actual prompt tokens plus reserve; this does not establish
 concurrent full-window capacity. See the [dated finding](../../findings/2026-09-13-intelligence-context-scout.md).
@@ -354,6 +458,119 @@ graphs, so increasing concurrency requires a managed candidate load and the
 full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
+
+### TensorFold reasoning controls, 2026-11-09
+
+- **Status:** Closed focused `quality` investigation, `no-promotion`.
+- **Measured:** Two Low repetitions passed the selected Go task on their first
+  contained test, after first responses with 25 and 6 reported reasoning tokens.
+  Both Max repetitions failed both tests after all-reasoning, length-finished
+  16K responses. Eight transport responses have complete accounting.
+- **Limits:** One deliberately selected task, two planned repetitions per
+  effort, uncontrolled cache and possible user traffic. No numeric-budget
+  patch deployment, broad Go score, global-policy or performance claim.
+- **Evidence:** [Finding](../../findings/2026-11-09-tensorfold-reasoning-budget.md).
+
+### TensorFold request-control rollout, 2026-11-09
+
+- **Status:** Local CLI/router deployed from merged source; source-backed
+  `functional` control evidence and focused `quality`, `no-promotion`.
+- **Measured:** Three C1 jobs on one Go task at a 16,384 response cap, in
+  Max/8,192, Low/unset, Max/8,192 order: Max passed 1/2 jobs and Low 1/1.
+  First Max and Low each passed their second coding attempt after a failed
+  first attempt, with four HTTP 200/`stop` responses per job. Second Max
+  failed both attempts with two HTTP 200/`length` responses; each reported
+  16,384 completion and 8,193 reasoning tokens, leaving 8,191 derived
+  non-reasoning tokens. Whole-job time/call budgets did not expire.
+- **Control boundary:** Each Max primary response reported 8,193 reasoning
+  tokens for the 8,192 request, consistent with the source's forced
+  newline/closing-marker transition. Native trigger flags and raw token IDs
+  were not retained; these observations do not directly instrument the trigger
+  or prove an exact reasoning-token ceiling.
+- **Limits:** Sharded-KV runtime differs from the original disk-only
+  eight-response matrix; no contemporary unbounded-Max control or causal
+  quality/speed claim. The answer-region response-cap and quality gap remains
+  open; 8,192 is not established as a reliable fix or default. B10 remains
+  partial: remote-controller numeric admission is unsupported and observer
+  migration is deferred. No global controls, cache policy, fleet acceptance
+  or promotion changed.
+- **Evidence:** [Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09),
+  [summary](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+  and [evidence index](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+### TensorFold Go diagnostic, 2026-11-08
+
+- **Status:** Focused `quality`, `no-promotion`; review dated 2026-11-08.
+- **Measured:** Two C1 profile checks on one Go task: first-attempt success
+  at 32K, two failed contained tests after length-finished 16K responses.
+  Four starts and four responses have complete transport accounting.
+- **Limits:** One stochastic task/profile execution each, uncontrolled cache,
+  no performance or causal cap-benefit claim. An earlier asset-preparation
+  failure is retained separately from grades; repeated preparation remains
+  an open harness defect.
+- **Evidence:** [Finding](../../findings/2026-11-08-tensorfold-go-validation.md),
+  [native observations](../../findings/2026-11-08-tensorfold-go-validation-evidence/case-diagnostics.json)
+  and [evidence index](../../findings/2026-11-08-tensorfold-go-validation-evidence/README.md).
+
+### Actual-GPU reasoning-marker trace, 2026-10-26
+
+- **Status:** preweight gates passed; full worker/API reconciliation `unknown`; duplicate close not reproduced; `no-promotion`.
+- **Measured:** two-step actual-CUDA marker selftest, eight forced cases and 272 ordinary sampling rows on one Max-Q, then one C1 request on the dual-Max-Q TP2/DCP2 FP4/FP8-KV, 327,680-context/C4/MTP3 candidate.
+- **Result:** the response returned `9567,1085,10652` in 75 completion tokens with one close at index 64. Both ranks recorded a matching budget store for that close. Each trace reported 76 committed tokens; the API sequence was the exact first 75 and the trace-only suffix was token 1654 after stop token 154827.
+- **Limits:** the frozen analyzer correctly returned `unknown`; no second close reproduced, so its force-versus-sample provenance was not exercised. Synchronized tracing excludes performance claims. Exact operational restoration passed, while strict JSON failed before and after and no quality regression was established. Router custody was restored; mounted configuration-byte parity was not measured.
+- **Evidence:** [finding](../../findings/2026-10-26-marker-gpu-trace.md), [summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json), [frozen analyzer](../../findings/2026-10-26-marker-gpu-trace-evidence/trace-result.json), and [evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
+
+### Prospective sampling count gate and model probe, 2026-10-25
+
+- **Status:** kernel gate passed; full reasoning-limit and exact-output gates failed; `no-promotion`.
+- **Measured:** synthetic kernels on one Max-Q and one C1 model request on the dual-Max-Q TP2/DCP2 FP4/FP8-KV, 327,680-context/C4/MTP3 recipe.
+- **Limits:** the prior one-token ordinary difference remains diagnostic. Two fresh worker receipts support split-mask dispatch, not per-token attribution or general causal proof. Both matched JSON smokes failed; no established quality regression. No performance or promotion claim.
+- **Evidence:** [finding](../../findings/2026-10-25-sampling-upstream-tolerance.md), [summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json), and [evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
+
+### Split-top-p independent-reference diagnostic, 2026-10-25
+
+- **Status:** failed strict local functional kernel gate; `no-promotion`; exact operational restoration passed but functional restoration acceptance is incomplete.
+- **Measured:** eight forced cases and 272 ordinary rows on one RTX PRO 6000 Blackwell Max-Q. All forced cases passed; stock/patch masks were identical on 271 rows. On the remaining row, stock exactly matched the binary64 numerical reference and the patch retained one extra boundary token.
+- **Limits:** the one-token difference is within the predeclared count envelope derived from upstream tests, but failed the per-row local no-worse rule. This does not establish that the upstream test suite passed. Exact internal cause is unproven; no candidate weights, serving-worker trace, inference, end-to-end boundary result, or performance comparison. The restored-incumbent JSON smoke failed; no matched pretrial smoke exists, so regression is unproven and candidate causality is refuted.
+- **Evidence:** [dated finding](../../findings/2026-10-25-sampling-reference.md), [summary](../../findings/2026-10-25-sampling-reference-evidence/summary.json), [independent outcome review](../../findings/2026-10-25-sampling-reference-evidence/outcome-review.json), and [evidence index](../../findings/2026-10-25-sampling-reference-evidence/README.md).
+
+### Split-top-p patch diagnostic, 2026-10-25
+
+- **Status:** partial functional kernel result; failed preweight gate, `no-promotion`.
+- **Measured:** original/patched synthetic logits on one RTX PRO 6000 Blackwell Max-Q, CUDA device 0; exact case counts are in the [authoritative summary](../../findings/2026-10-25-sampling-fix-evidence/summary.json).
+- **Limits:** the fourth ordinary-input mask comparison failed. No candidate model weights, inference, serving-worker boundary trace, peak-allocation pass, or timing comparison. Planned TP2/C4/context settings were not exercised.
+- **Evidence:** [dated finding](../../findings/2026-10-25-sampling-fix.md), [raw excerpt and case ledger](../../findings/2026-10-25-sampling-fix-evidence/README.md), and [restoration record](../../findings/2026-10-25-sampling-fix-evidence/restoration.json). Preserve the exact-parity failure; obtain a reference probability/mask oracle before changing the gate.
+
+### Go/Rust completion-cap diagnostics, 2026-10-25
+
+- **Scope:** pinned Aider/Polyglot Go and Rust tasks at 16K/32K completion caps; diagnostic-only, no promotion.
+- **Measurement boundary:** a retained raw task grade does not make a cancelled or incomplete job a completed measurement. Missing usage, finish reasons and compiler signals remain unknown; diagnostic absence does not establish a negative result.
+- **Evidence:** [dated finding](../../findings/2026-10-25-glm-diagnostics.md) and [evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md). All six submitted jobs have verified closure; three additional request starts lack captured responses and retain unknown usage. Historical R12 accepted populations remain unchanged.
+
+### R12 baseline and R13 admission refusal, 2026-10-25
+
+- **Status:** bounded functional/quality baseline, `no-promotion`; no candidate comparison.
+- **Measured:** 44 complete incumbent measurements/grades and four cancelled unknowns on the dual-card FP4 recipe, across fixed C1/C4 task cells. All released shared batch closures verified; active wall includes drain and telemetry finalization.
+- **Limits:** native tool cases include synthetic results; contained Aider tests supply the executable coding oracle. Fixed order, uncontrolled cache, unknown request overlap and partial cancellation output prevent broader quality, concurrency or performance claims. Minimal-thinking Pi acceptance does not accept thinking-off/default behavior.
+- **Evidence:** [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json), [index](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/README.md), [manifest](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/artifact-manifest.json), [finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal). Sanitized derivatives retain distinct original-private and public-byte hashes.
+
+### Evaluation-platform diagnostic, 2026-10-24–25
+
+- **Status:** partial incumbent evidence; pilot acceptance incomplete, `no-promotion`.
+- **Measured:** R8 has 42 complete measurement/grade pairs (32 pass, ten fail) on the pinned NVIDIA FP4 TP2 recipe. The separate repaired mixed-C4 canary has four complete measurements, three task passes and one valid Go failure.
+- **Limits:** six other submitted R8 rows have unknown grades or incomplete cancellation; blocked final interval and total active time remain unknown. No Ignis generation ran, so there is no paired deployment, speed or engine comparison. Real Pi tools/provider checks passed after restoration, but strict final text failed.
+- **Evidence:** [population boundaries, configuration, failures and restoration](../../findings/2026-10-24-evaluation-platform-ignis.md); prior campaigns and four C++ canaries are separate denominators.
+
+### Current NVIDIA FP4 r2, 2026-10-17
+
+**Status:** `functional`, bounded `capacity`; human-approved `current`.
+**Measured:** the complete 17-family comparison and fresh direct/routed/image,
+near-limit, C1/C2/C4, and bounded native-client acceptance are retained.
+**Limits:** mixed concurrent latency, narrow GPU headroom, failed controlled
+output on both arms, and incomplete fleet/session propagation. Older SWE
+scores below do not transfer to this new configuration.
+**Evidence:** [promotion and KV accounting](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md),
+[comparison and native sources](../../findings/2026-10-17-glm53-serving-performance.md).
 
 ### Selected EXL3 r7 no-spec, 2026-09-14
 
@@ -435,6 +652,13 @@ model-intelligence ranking.
 
 ## Decision and promotion state
 
+As of 2026-10-17, human-approved NVIDIA FP4 r2 is the selected primary and
+EXL3 r11 is retained rollback. The operator considers it the best current fit
+for this deployment, supported by the bounded comparison and acceptance above.
+The existing native workflow remains `recovery_required`; full fleet catalog,
+existing-session, and public-web closure are separate incomplete gates.
+All selections in the following paragraphs are historical.
+
 The 2026-09-14 EXL3 r7 no-spec lane was the selected September 14 text-only reference.
 It does not establish an exhaustive intelligence winner, a general performance
 ranking, or full-window concurrent capacity. The 2026-09-08 migrated-stack
@@ -457,7 +681,14 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 ## Failures and gotchas
 
-- **Current EXL3 r7 limits (2026-09-14):** no exhaustive intelligence comparison,
+- **Current FP4 limits (2026-10-17):** strict controlled output failed on both
+  comparison arms; natural/edge timing populations remain separate. Concurrent
+  latency is mixed and sampled free VRAM reached 0.87 GiB. No MTP-off, new full
+  SWE/endurance, full-window C4, or fresh reboot result is retained. The
+  [promotion record](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+  retains client capture/policy failures and the native fleet recovery blocker.
+
+- **Historical EXL3 r7 limits (2026-09-14):** no exhaustive intelligence comparison,
   full-window concurrency soak, or fresh boot/reboot test is retained. The 38.908 tok/s
   C4 no-spec median is one matched population, not a general speed claim.
 
@@ -504,8 +735,41 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 
 ## Dated run history
 
+- 2026-11-09 — [Request-control rollout follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09):
+  merged local CLI/router deployment; separate ten-response Go check,
+  Max/8,192 1/2 and Low/unset 1/1 jobs. Response-cap/quality and remote
+  controller gaps remain; no reliable budget default, causal quality/speed
+  claim or promotion.
+
+- 2026-11-09 — [TensorFold reasoning controls](../../findings/2026-11-09-tensorfold-reasoning-budget.md):
+  fixed 16K Max/Low task diagnostics and audited request-control proposal;
+  source support, deployed behavior and independent grades remain separate.
+
+- 2026-11-08 — [TensorFold Go validation](../../findings/2026-11-08-tensorfold-go-validation.md):
+  first-attempt pass at 32K, two length-finished failures at 16K on one task;
+  targeted quality only, no promotion or performance comparison.
+
+- 2026-10-26 — [Reasoning-close GPU marker trace](../../findings/2026-10-26-marker-gpu-trace.md): one exact-answer response had a single boundary close with matching two-rank budget-store observations, but 76 trace tokens versus 75 API tokens kept the frozen analyzer `unknown`; no second close reproduced. Operational restoration passed, functional JSON acceptance incomplete. No promotion.
+
+- 2026-10-25 — [Sampling upstream-tolerance trial](../../findings/2026-10-25-sampling-upstream-tolerance.md): native count compatibility passed; one candidate request retained repeated-close/strict-output failure. Exact restoration; both matched JSON smokes failed, no established regression. No promotion.
+
+- 2026-10-25 — [Sampling-reference diagnostic](../../findings/2026-10-25-sampling-reference.md): independent binary64 reference resolved the earlier unknown difference; 8/8 forced cases passed, but one patched ordinary row over-retained one token and failed the strict local no-worse gate. Zero candidate requests. Exact operational restoration passed; the strict JSON smoke failed. No end-to-end claim or promotion.
+
+- 2026-10-25 — [Sampling-fix kernel trial](../../findings/2026-10-25-sampling-fix.md): candidate stopped before model weights after ordinary-mask parity failure; partial forced-token correction does not prove the end-to-end boundary fix.
+
+- 2026-10-25 — [R12/R13 successor](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal): R12 retained complete graded incumbent results and clean shared closure; R13 supplied no candidate measurement. Exact restoration and minimal-thinking Pi accepted, historical thinking-off failure open.
+- 2026-10-24–25: [Evaluation-platform diagnostic pilot](../../findings/2026-10-24-evaluation-platform-ignis.md) — partial incumbent grades, accepted bounded mixed-C4 closure, candidate unmeasured; service restored with strict Pi acceptance incomplete.
+- **2026-10-17 — NVIDIA FP4 promotion and serving comparison:** selected primary
+  with exact EXL3 r11 retained rollback; 12 matched pairs/84 scored requests per
+  arm, fresh functional/capacity/native-client acceptance, KV accounting, and
+  remaining fleet blocker. [Promotion](../../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+  · [comparison](../../findings/2026-10-17-glm53-serving-performance.md).
+
+- **2026-10-13 — Full qualification closure:** The official-base GLM continuity baseline completed fixed-five at 2/5. C1/C4 controlled-output cells retained actual prompt means 25,280.5, 25,281.125, 106,520, and 216,194.67. Mixed TP2 no-spec/thinking-off diagnostics were incomplete at 1/5. The last-good non-abliterated official-base lineage is the restoration choice; `no-promotion`. [Finding](../../findings/2026-10-13-full-qualification.md)
+
 | Date | Event | Result |
 |---|---|---|
+| 2026-10-06 | Separate abliterated TR3 4-bpw scout | Preflight 25/25 and agentic 18/18; all five SWE submissions graded, 3/5 resolved, below the 4/5 floor. Django/Pylint patch-quality failures; no speed/context/C4/modality qualification. `not-qualified`/`no-promotion`; exact r11 restored with direct 25/25 and routed 7/7. [Finding](../../findings/2026-10-06-mimo-qualification.md) |
 | 2026-10-05 | CSF/QAD prospective qualification scout | Max functional 25/25, Oracle 18/18, initial SWE 4/5, then fresh-reload A1 SWE 2/5 attempts and 2/4 graded (Sphinx/Xarray resolved; Django/Pylint false; Sympy ungraded at 60 steps); exact eight-image/context/offered-C4 summaries 4/4. Strict C4 is 0/4 performance-eligible. A1 misses the 4/5 floor, so B1/B2/A2 did not run and no speed comparison exists. Candidate rejected; exact r11 restored with direct 25/25, routed 7/7, and fresh Pi read-tool acceptance. [Finding](../../findings/2026-10-05-xeon-model-qualification.md) |
 | 2026-09-26 | Single-GPU challenger qualification | Exact r11 was the verified 4/5 frozen-SWE reference. Flash r3 and Swift27 r2 failed the floor; ThinkingCap's attainable upper bound was 3/5 with partial coding evidence only. Exact r11 was restored and readmitted; no alias changed. [Finding](../../findings/2026-09-26-single-gpu-qualification.md) |
 | 2026-09-14 | Intelligence and context qualification, EXL3 r7 no-spec | Selected September 14 text-only lane: MMLU-Pro 90/100 one pass, agentic 30/30, frozen SWE 4/5, strict120 120/120, context 9/9 at 255,647–255,672 prompt tokens plus 65,536 reserve, and Pi, Hermes, and OpenClaw tool checks pass; one C4 no-spec population 38.908 tok/s median; no exhaustive intelligence, full-window soak, or fresh boot/reboot claim; [finding and evidence](../../findings/2026-09-13-intelligence-context-scout.md). |
@@ -519,3 +783,7 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
 | 2026-08-31 | xgrammar fix-forward image, matched 524K no-spec/DFlash2 A/B, C2 250K-class gate, rollback drill, router, and real-client forward restore | corrected DFlash2 K5 selected at 524K; 83.08 tok/s at 4K and pooled 69.99 at 240K; C2 2/2; full [finding and raw artifacts](../../findings/2026-08-31-glm53-xgrammar-524k-qualification.md) |
 | 2026-08-30 | Current-source refresh, K5/K3/batch4,096 A/B, 4K-500K performance, 950K retrieval, image/OCR, quality, router, and real-client promotion | K5/batch2,048 selected as `current` one-week default; K3 verified alternate; batch4,096 rejected; full [finding and raw artifacts](../../findings/2026-08-30-glm53-k3-dflash2-1m-optimization.md) |
 | 2026-08-29 | Cardillo/Purtell translation, adaptive/fixed/no-spec A/B, vision/OCR, 250K and near-500K capacity | TR3 vision fixed K5 and no-spec 524K qualified as challengers; adaptive MTP rejected; 0xSero 3.0-bpw watch-only; [historical finding](../../findings/2026-08-29-glm53-cardillo-purtell-qualification.md) |
+
+### 2026-10-16 comparison baseline
+
+The frozen natural-output baseline is documented in [the dated finding](../../findings/2026-10-16-glm-natural-baseline.md). It does not establish coding repeatability and changes no recommendation or promotion state.

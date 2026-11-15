@@ -1,0 +1,30 @@
+{
+  "schema": "anvil-serving.benchmark-public-run-plan/v1",
+  "finalist_controls": {
+    "mode": "text-only",
+    "vision": false,
+    "context_tokens": 32768,
+    "visible_token_budget": 4096,
+    "reasoning_headroom": 8192,
+    "combined_request_cap": 12288,
+    "temperature": 0.6,
+    "reasoning_effort": "medium",
+    "configured_concurrency": 4,
+    "request_concurrency": 1,
+    "shared_kv_tokens": 131072,
+    "top_p": 0.95,
+    "fixed_seed": null
+  },
+  "workloads": [
+    "three-repetition independently graded coding fixture",
+    "18-scenario tools and recovery scout"
+  ],
+  "decision_boundary": "no-promotion",
+  "execution_order": [
+    "QUASAR preflight, agentic scout, three-repetition coding",
+    "unload QUASAR",
+    "fresh Swift15 preflight, agentic scout, three-repetition coding",
+    "unload test profile and restore original Swift15 262K"
+  ],
+  "posthoc_analysis": "Tuple-edge representation sensitivity was added after frozen grading; no prompts, cases, expected outputs or model responses changed."
+}

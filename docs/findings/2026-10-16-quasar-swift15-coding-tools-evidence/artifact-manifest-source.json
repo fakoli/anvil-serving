@@ -1,0 +1,129 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-10-16-quasar-swift15",
+    "capability": "text-coding-and-tools",
+    "completed_at": "2026-10-17T02:57:49Z",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "repository_revision": "2b99e3353eb2e5a2813195af85050b1da0754332",
+    "dirty_state": "Dirty 1.2.1 helper/publication worktree; installed 1.5.0 collection revision unavailable"
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.agentic-suite-run/v1",
+    "anvil-serving.coding-fixture-grade/v1",
+    "anvil-serving.fast-tier-bakeoff/v1",
+    "anvil-serving.harness-source-fingerprint/v1",
+    "anvil-serving.restoration-verification/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "raw-evidence-index.md"
+      ],
+      "reason": "Public index and redaction boundary."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "source-review-notes.md"
+      ],
+      "reason": "Pinned identity sources; no performance prior."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "fixture/suite.json",
+        "fixture/grade.py",
+        "fixture/README.md"
+      ],
+      "reason": "Sanitized fixture source and grader."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "run-plan.json"
+      ],
+      "reason": "Matched finalist controls and workloads."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration-and-identity.md",
+        "recipes/quasar-text32k.toml",
+        "recipes/swift15-text32k.toml",
+        "native/harness-provenance.json"
+      ],
+      "reason": "Public-safe identity, recipe, and harness provenance."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "native/quasar-32k-preflight.json",
+        "native/swift15-text32k-preflight.json",
+        "native/quasar-text32k-agentic-raw.json",
+        "native/swift15-text32k-agentic-raw.json",
+        "native/quasar-text32k-coding-raw.json",
+        "native/swift15-text32k-coding-raw.json",
+        "native/quasar-text32k-coding-grade.json",
+        "native/quasar-text32k-coding-grade-tuple-edges.json",
+        "native/swift15-text32k-coding-grade.json",
+        "native/swift15-text32k-coding-grade-tuple-edges.json",
+        "redaction-lineage.json"
+      ],
+      "reason": "Sanitized native artifacts preserve prompts, cases, outputs, grades, and provenance."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Negative evidence and qualification limits."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "native/final-restored-preflight.json",
+        "native/final-restored-verification.json"
+      ],
+      "reason": "Public preflight plus independent restoration verification; detailed operator state remains private."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "No-promotion decision and bounded result."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "publication-summary.md"
+      ],
+      "reason": "Derivative public summary for the bounded functional result."
+    }
+  ]
+}

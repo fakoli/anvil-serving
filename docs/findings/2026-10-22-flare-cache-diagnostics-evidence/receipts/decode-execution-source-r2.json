@@ -1,0 +1,12 @@
+{
+  "at": 1792661834.3047354,
+  "files": {
+    "OPERATOR_PATH_6fd91356822c/run-decode.py": "b02b06a14ff4754f35664b766140ac3ee2aa363b32ffee50dd0d8f1b3a5bbac2",
+    "OPERATOR_PATH_faf7f2fca59c/decode-cell.py": "d73433ffda6b93d9bf9fcbf61a5ecb4637e68a7a895c96066f8105a111b872ba",
+    "OPERATOR_PATH_bc3e70c5c556/decode-fixture.py": "89e5ba2b41720114cbf8dee21fc0f7e5fc811fa48538361cd448d6ab213ba61a",
+    "OPERATOR_PATH_fd0b725a045b/decode-order-plan.json": "34ed056689cd3a8e6986f1077257b9c6f0fa27d450d7ce76e552dec62cb0f2ac",
+    "OPERATOR_PATH_cca38b22b01b/decode-frozen-r2.json": "68cf79acf4402d3ecb3141b99463bf1ddc80735ff571b1b02a5253e19098f2ae"
+  },
+  "supersedes": "decode-execution-source.json",
+  "review": "independent Sol conditional_accept; exact old-image B controls; disk-disabled counter arm only after r3 build and gauge checks"
+}

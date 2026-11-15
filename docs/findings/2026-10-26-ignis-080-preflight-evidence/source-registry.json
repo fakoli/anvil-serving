@@ -1,0 +1,117 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "observed_at": "2026-10-26T00:00:00Z",
+  "sources": [
+    {
+      "id": "ignis-v0.8.0-release",
+      "url": "https://github.com/gpillon/ignis/releases/tag/v0.8.0",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Pins the evaluated stable Ignis release and published binary-asset digest; it is not local behavior evidence.",
+      "decision_impact": "Selected v0.8.0 rather than an unreleased development build."
+    },
+    {
+      "id": "ignis-v0.8.0-profiles",
+      "url": "https://github.com/gpillon/ignis/blob/v0.8.0/docs/user/reference/profiles.md",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Documents the RTX PRO 6000 profile defaults used as configured controls.",
+      "decision_impact": "Required effective lane and speculation values to be verified locally rather than transferred as measurements."
+    },
+    {
+      "id": "ignis-v0.8.0-model-catalog",
+      "url": "https://github.com/gpillon/ignis/blob/v0.8.0/docs/user/reference/models.md",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Pins the Flash Next model and MTP artifact identities.",
+      "decision_impact": "Bound the candidate to exact model revision and artifact checksums."
+    },
+    {
+      "id": "ignis-v0.8.0-deadlines",
+      "url": "https://github.com/gpillon/ignis/blob/v0.8.0/docs/user/api/deadlines.md",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Documents request deadlines, cancellation, liveness, and readiness semantics.",
+      "decision_impact": "Informed the bounded timeout and readiness checks; no default-deadline expiry was exercised."
+    },
+    {
+      "id": "ignis-timeout-admission-issue",
+      "url": "https://github.com/gpillon/ignis/issues/327",
+      "published_or_observed": "2026-10-19",
+      "observed_at": "2026-10-26",
+      "age_class": "recent-upstream",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Upstream issue history for prior timeout and admission behavior.",
+      "decision_impact": "Supported a fresh bounded v0.8.0 preflight, not an assumption that the earlier local problem was fixed."
+    },
+    {
+      "id": "ignis-json-object-issue",
+      "url": "https://github.com/gpillon/ignis/issues/287",
+      "published_or_observed": "2026-10-26",
+      "observed_at": "2026-10-26",
+      "age_class": "current-open-issue",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Tracks unsupported structured response_format behavior separately from JSON-prompt output.",
+      "decision_impact": "Prevented the passed JSON-prompt check from being described as JSON_OBJECT support."
+    },
+    {
+      "id": "local-ignis-072-finding",
+      "url": "https://fakoli.github.io/anvil-serving/findings/2026-10-19-ignis-072/",
+      "published_or_observed": "2026-10-19",
+      "observed_at": "2026-10-26",
+      "age_class": "recent-local",
+      "evidence_type": "functional",
+      "hardware_runtime_relevance": "Prior local one-card Ignis 0.7.2 result on the same GPU class.",
+      "decision_impact": "Kept the new preflight separate from the earlier incomplete coding run and avoided transferring its outcomes."
+    },
+    {
+      "id": "ignis-v0.8.0-tool-choice-source",
+      "url": "https://github.com/gpillon/ignis/blob/950ee0d1c2cf6178cd7fec29df3f17c3e127f987/crates/server/src/api.rs#L1312-L1493",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release-source",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Defines auto, required, named forcing, fail-closed input validation, and forced-prefix behavior at the exact peeled v0.8.0 source commit.",
+      "decision_impact": "Reclassified the auto prose response as compatible with documented policy and selected required for the separately frozen mandatory-tool diagnostic."
+    },
+    {
+      "id": "ignis-v0.8.0-chat-completions-tool-guide",
+      "url": "https://github.com/gpillon/ignis/blob/950ee0d1c2cf6178cd7fec29df3f17c3e127f987/docs/user/api/chat-completions.md#L74-L89",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release-docs",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Documents auto as the default and required/named forms as forced-open choices.",
+      "decision_impact": "Bound the report to request-level mandatory-tool use rather than a global agent default or engine-defect claim."
+    },
+    {
+      "id": "ignis-v0.8.0-thinking-source",
+      "url": "https://github.com/gpillon/ignis/blob/950ee0d1c2cf6178cd7fec29df3f17c3e127f987/crates/server/src/thinking.rs#L17-L231",
+      "published_or_observed": "2026-10-24",
+      "observed_at": "2026-10-26",
+      "age_class": "current-release-source",
+      "evidence_type": "external-prior",
+      "hardware_runtime_relevance": "Defines default thinking and request-level enable_thinking behavior.",
+      "decision_impact": "Supported the predeclared normal-thinking-first selection rule and the disabled-thinking diagnostic cell."
+    },
+    {
+      "id": "anvil-serving-tool-choice-harness",
+      "url": "https://github.com/fakoli/anvil-serving/commit/c727ff01f34d2d7564fab63d94203fec68890baf",
+      "published_or_observed": "2026-10-26",
+      "observed_at": "2026-10-26",
+      "age_class": "current-local-source",
+      "evidence_type": "source",
+      "hardware_runtime_relevance": "Adds explicit tool-choice/thinking/seed controls, bounded non-streaming transport capture, and the exact-weather validator used by phase two.",
+      "decision_impact": "Binds the post-run reviewed source to the exact live harness patch SHA-256; no Ignis engine or model code changed."
+    }
+  ]
+}

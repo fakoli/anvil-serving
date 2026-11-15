@@ -1,0 +1,27 @@
+{
+  "command": "models cache remove XiaomiMiMo/MiMo-V2.6-Flash-RL --revision 5711b268169967567844e1e560e8a3966da959b1 --volume vllm-hfcache --confirm",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "MODEL CACHE REMOVE PLAN\nrepository: XiaomiMiMo/MiMo-V2.6-Flash-RL\nrevision: 5711b268169967567844e1e560e8a3966da959b1\nresolved snapshot: 5711b268169967567844e1e560e8a3966da959b1\nvolume: vllm-hfcache\ncached bytes: 177770751317\nestimated reclaimable bytes: 3057541\nremoved XiaomiMiMo/MiMo-V2.6-Flash-RL@5711b268169967567844e1e560e8a3966da959b1; reclaimed 3057541 bytes; 177767693776 repository bytes remain\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

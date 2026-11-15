@@ -1,0 +1,28 @@
+{
+  "schema": "runtime-scout-publication/v1",
+  "date": "2026-11-01",
+  "evidence_labels": [
+    "functional",
+    "capacity"
+  ],
+  "scope": "bounded descriptive scouts; private target identity withheld",
+  "decision": "no-promotion",
+  "recommendation": "retain original MTP3 configuration and original cache layout",
+  "promoted": false,
+  "trials": {
+    "cache-layout": {
+      "summary": "cache-layout/summary.json",
+      "timed_requests": 144,
+      "failures": 0,
+      "restored": true,
+      "material_e2e_wins": 0
+    },
+    "dflash": {
+      "summary": "dflash/summary.json",
+      "timed_requests": 144,
+      "failures": 0,
+      "restored": true,
+      "material_e2e_wins": 0
+    }
+  }
+}

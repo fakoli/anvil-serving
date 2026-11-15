@@ -1,0 +1,15 @@
+{
+  "identical_two_renders": true,
+  "outputs": [
+    {
+      "bytes": 45736,
+      "path": "benchmark-matrix.svg",
+      "sha256": "ee9ea5bd9a49f3f71c8fce47cddaa12caf35087691160f5f9d1b4476404b21dd"
+    },
+    {
+      "bytes": 53848,
+      "path": "benchmark-graph-data.json",
+      "sha256": "066024de319ed636ab9e90d2a7ea925957241fcad9c4c07a62fd53fbc0bf7f73"
+    }
+  ]
+}

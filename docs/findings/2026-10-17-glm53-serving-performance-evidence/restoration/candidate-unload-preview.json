@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+    "-m",
+    "anvil_serving.cli",
+    "models",
+    "recipes",
+    "unload",
+    "nvidia/GLM-5.3-Flash-FP4-Local",
+    "--container",
+    "glm53-nvidia-fp4-local-ab-r2",
+    "--registry",
+    "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml",
+    "--transport",
+    "local",
+    "--dry-run"
+  ],
+  "returncode": 0,
+  "stderr": "",
+  "stdout": "RECIPE UNLOAD PLAN\ncontainer: glm53-nvidia-fp4-local-ab-r2\nmodel: nvidia/GLM-5.3-Flash-FP4-Local\nrevision: 76348ddb2be2e35e39ecfc00e75dc07703f4f3d5\nstate: running\nordered actions: verify recipe ownership labels; remove exact container\ndeferred until apply: confirmation and identity recheck\n"
+}

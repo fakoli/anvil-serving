@@ -1,0 +1,454 @@
+{
+  "scope": "Independent deterministic native oracles; completed jobs may include failed observations. Not SWE acceptance.",
+  "rows": [
+    {
+      "artifact": "native-base-agentic/evidence/0-agentic.json",
+      "sha256": "2453512b64bd489d922bb8ec4b3fbb520afe9f026ca5083c626ccdf1396400c0",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-agentic/evidence/0-agentic.json",
+      "sha256": "16ad729a89063f7ae65054f74ee93a6ce5a1fa05eb274a47955db2d44f8fa96f",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-fixed2-agentic/evidence/0-agentic.json",
+      "sha256": "07ef061f52c42f3b5405114d0a3fcf20fa900b0d131699310c1d31da6d756500",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-fixed2-host32-agentic/evidence/0-agentic.json",
+      "sha256": "6a165b60d403ed5c2198e6096369d2daa0b20e9dd1360385b71db7112f41a07f",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-fixed3-agentic/evidence/0-agentic.json",
+      "sha256": "8dc8fe192fcdd380ae12752e94a0db9cbd32fec6685ce23338365e39fbd3de0d",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 17,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": [
+        {
+          "case_id": null,
+          "scenario_id": "debug-loop",
+          "repetition": 0,
+          "passed": false,
+          "failure": null,
+          "failure_class": "protocol_failure"
+        }
+      ]
+    },
+    {
+      "artifact": "native-cap16-host32-agentic/evidence/0-agentic.json",
+      "sha256": "30474a3d4aff541f1f4863139ffea013e4dee1bc12356ae546fe1267b08e2a39",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-p2048-fixed2-host32-agentic/evidence/0-agentic.json",
+      "sha256": "dbb0b7eecc6d1be226306411ce5389dfa211894397573a176835c0152f41b161",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 17,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": [
+        {
+          "case_id": null,
+          "scenario_id": "debug-loop",
+          "repetition": 1,
+          "passed": false,
+          "failure": null,
+          "failure_class": "protocol_failure"
+        }
+      ]
+    },
+    {
+      "artifact": "native-cap16-p2048-fixed2-host32-high-agentic/evidence/0-agentic.json",
+      "sha256": "2349f2a5cabe37a062240821776aad713052105279ff9385ee5e9bee86049481",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": "high",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-incumbent-agentic/evidence/0-agentic.json",
+      "sha256": "8e08c8fcc306c381e5b99f315c94584128d15171a820437bef90d33bcbfecdd9",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-incumbent-high-agentic/evidence/0-agentic.json",
+      "sha256": "87e2d7280236de2a6fae071b36460e9d3870d118d03434029aa7a8b31c61816b",
+      "suite": "agentic",
+      "attempted": 18,
+      "passed": 15,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": "high",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": [
+        {
+          "case_id": null,
+          "scenario_id": "structured-edit",
+          "repetition": 0,
+          "passed": false,
+          "failure": null,
+          "failure_class": "final_answer_failure"
+        },
+        {
+          "case_id": null,
+          "scenario_id": "structured-edit",
+          "repetition": 1,
+          "passed": false,
+          "failure": null,
+          "failure_class": "final_answer_failure"
+        },
+        {
+          "case_id": null,
+          "scenario_id": "debug-loop",
+          "repetition": 0,
+          "passed": false,
+          "failure": null,
+          "failure_class": "protocol_failure"
+        }
+      ]
+    },
+    {
+      "artifact": "native-cap16-context/evidence/0-context.json",
+      "sha256": "5ccf6b0f5de7352bd01d28bd0276da3b0c852496b378a468f5d9cd2222dc249b",
+      "suite": "context",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-fixed2-host32-context/evidence/0-context.json",
+      "sha256": "8e77527d3b23f7c85ba646aaa5371f234fd848e9409b36af3982a4022a10a92b",
+      "suite": "context",
+      "attempted": 18,
+      "passed": 15,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": [
+        {
+          "case_id": "native-needle-65536-0.500-r0",
+          "scenario_id": null,
+          "repetition": null,
+          "passed": false,
+          "failure": {
+            "code": "empty_visible_answer",
+            "message": "response has no visible assistant content"
+          },
+          "failure_class": null
+        },
+        {
+          "case_id": "native-needle-319488-0.100-r0",
+          "scenario_id": null,
+          "repetition": null,
+          "passed": false,
+          "failure": null,
+          "failure_class": null
+        },
+        {
+          "case_id": "native-order-319488-0.500-r0",
+          "scenario_id": null,
+          "repetition": null,
+          "passed": false,
+          "failure": {
+            "code": "empty_visible_answer",
+            "message": "response has no visible assistant content"
+          },
+          "failure_class": null
+        }
+      ]
+    },
+    {
+      "artifact": "native-cap16-p2048-fixed2-host32-context/evidence/0-context.json",
+      "sha256": "2f87b8d3a8cb85a703335606adcbef0560d02e6e06898a42d9e4079a03027e6c",
+      "suite": "context",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-cap16-p2048-fixed2-host32-high-context/evidence/0-context.json",
+      "sha256": "32311a6cc369c0ccc7b5d7d7b9c9588d7126dc73cb3290e36b5805f04f7855ba",
+      "suite": "context",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": "high",
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    },
+    {
+      "artifact": "native-incumbent-context/evidence/0-context.json",
+      "sha256": "c35216514331c32ce93277b23c58fe733e2540e680f63b694fb0fa99847f5dbb",
+      "suite": "context",
+      "attempted": 18,
+      "passed": 18,
+      "request_controls": {
+        "chat_template_kwargs": null,
+        "reasoning_effort": null,
+        "sampling": {
+          "temperature": {
+            "effective_request": 1.0,
+            "requested": 1.0,
+            "sent": true
+          },
+          "top_p": {
+            "effective_request": 0.95,
+            "requested": 0.95,
+            "sent": true
+          }
+        },
+        "thinking_mode": "default"
+      },
+      "failed_observations": []
+    }
+  ]
+}

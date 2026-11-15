@@ -1,0 +1,7 @@
+{
+  "schema": "anvil-serving.restoration-verification/v1",
+  "verified": true,
+  "public_summary": "Original Swift15 recipe and 262K identity restored after finalist collection.",
+  "checks": ["only-original-recipe-running", "healthy-split-ownership", "direct-preflight-including-20-tool-calls", "no-oom-or-shared-memory-residue", "all-tested-network-offload-settings-restored", "co-resident-background-process-closed"],
+  "redaction": "Detailed restoration state is reported by retained independent verification; underlying operator identity and status artifacts remain private."
+}

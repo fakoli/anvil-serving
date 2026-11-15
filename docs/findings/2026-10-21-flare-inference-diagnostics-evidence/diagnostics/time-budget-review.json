@@ -1,0 +1,13 @@
+{
+  "at_unix": 1792650619.6342573,
+  "reviewer": "independent-sol",
+  "initial_budget_finding": "do not run r3 because two full C4 blocks would exceed reserve",
+  "correction": "r2 was already223.10s complete at outage62.105min; r2+620s predicts r3 end68.72min",
+  "corrected_verdict": "conditional_go_under_70_minute_expansion_stop",
+  "accepted_limits": [
+    "capture-OFF image comparison is observational, not causal overhead measurement",
+    "same exported package/runtime settings, different executable image/source"
+  ],
+  "profiling_decision": "defer new captures and new Nsight under original restoration reserve",
+  "parent_note": "reviewer later conflated ~125s capacity C1 with shorter1024-token fixture; no further profiling will run regardless"
+}

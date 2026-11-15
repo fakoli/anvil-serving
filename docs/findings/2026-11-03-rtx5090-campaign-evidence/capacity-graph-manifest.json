@@ -1,0 +1,157 @@
+{
+  "schema": "anvil-serving.benchmark-graph-manifest/v1",
+  "title": "RTX5090: short-output configuration comparison",
+  "subtitle": "Different private checkpoints/runtimes;120 valid requests each;16 words;C1;not a model ranking.",
+  "output": "capacity-comparison.svg",
+  "data_output": "capacity-graph-data.json",
+  "metric_semantics": {
+    "context": "4096 planned; actual usage3609-3687",
+    "reasoning": "disabled",
+    "cache": "unique request prefixes with canaries",
+    "output": "16 exact words; native completion counts28 for Ignis and29 for both NInfer cells.",
+    "p99": "Nearest-rank empirical tail estimate; not an SLO",
+    "identity": "Distinct private checkpoints/runtime profiles; reference and QAT configuredC1; Ignis configured4lanes but issuedC1. Same configured32K limit and16-word target; actual input/output tokenization differs. No isolated causal claim."
+  },
+  "charts": [
+    {
+      "title": "First-token median",
+      "metric": "metrics.ttft_p50_ms",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "End-to-end median",
+      "metric": "metrics.e2e_p50_ms",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "milliseconds",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Decode median",
+      "metric": "metrics.decode_tok_s_p50",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "tokens/second",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "First-token p99",
+      "metric": "metrics.ttft_p99_ms",
+      "x_label": "Actual input3609-3687 tokens;16 words;28-29 completion tokens",
+      "y_label": "milliseconds;120 samples;nearest rank",
+      "series": [
+        {
+          "label": "Reference32K / DF7",
+          "points": [
+            {
+              "artifact": "raw/reference-matched-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Candidate2 / no-spec32K",
+          "points": [
+            {
+              "artifact": "raw/qat-reverse-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        },
+        {
+          "label": "Compact32K /4L",
+          "points": [
+            {
+              "artifact": "raw/ignis-budget4096-capacity16-120.json",
+              "x": "C1 / unique"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

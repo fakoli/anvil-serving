@@ -1,0 +1,33 @@
+{
+  "schema": "recipe-container-status/v1",
+  "container": "glm53-flare-wave-instrumented",
+  "container_id": "container-3",
+  "model": "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD",
+  "revision": "dec48abd33efa73c3bb7c95b74eee10cad34f9be",
+  "image": "sha256:47ce7fde879d731aca62cd2c9004f04e2e689498d04fae09261fcb654db8fa51",
+  "image_id": "sha256:47ce7fde879d731aca62cd2c9004f04e2e689498d04fae09261fcb654db8fa51",
+  "state": "running",
+  "running": true,
+  "health": null,
+  "started_at": "2026-10-22T06:03:19.184422251Z",
+  "restart_count": 0,
+  "host_memory": {
+    "limit_bytes": 55834574848,
+    "ram_plus_swap_limit_bytes": 55834574849,
+    "oom_killed": false,
+    "exit_code": 0,
+    "current_bytes": 1708236800,
+    "peak_bytes": 10761605120,
+    "events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0
+    },
+    "effective_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 0
+  },
+  "containment_error": null
+}

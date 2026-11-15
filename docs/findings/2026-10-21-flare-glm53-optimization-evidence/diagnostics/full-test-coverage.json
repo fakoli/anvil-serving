@@ -1,0 +1,39 @@
+{
+  "collected": 12475,
+  "passed": 12400,
+  "skipped": 75,
+  "single_full_run": false,
+  "coverage": "Ordered disjoint completed populations: nodes0..9069;9070..11616;11617..12474. Environment-blocked next tests were rerun in the following partition.",
+  "partitions": [
+    {
+      "receipt": "full-tests-r2-receipt.json",
+      "passed": 9009,
+      "skipped": 61
+    },
+    {
+      "receipt": "full-tests-r5-remainder-receipt.json",
+      "passed": 2546,
+      "skipped": 1
+    },
+    {
+      "receipt": "full-tests-r6-final-receipt.json",
+      "passed": 845,
+      "skipped": 13
+    }
+  ],
+  "source": {
+    "dirty": true,
+    "head": "80ad7e5c5de49221ba1e75fa133ef358af3e72e3",
+    "tracked_diff_sha256": "0ab27fdded90914ccba38d7d3cb158b449c5352902b059eccb8a6877826ec94d"
+  },
+  "limitations": "Preserved initial failures caused by /tmp/.git, /var/tmp custody and long socket paths. No production logic changed for those failures.",
+  "evidence_sha256": {
+    "full-tests-collected.txt": "bcc6dd49d0c4a571b51735d781b5a89f81fe1ced2c4776244ae1f1b309153d32",
+    "full-tests-r2.stdout": "304dc174b93112ff7730c0f2a9527bf229e492b67132044aff79ab837ee9098f",
+    "full-tests-r5-remainder.stdout": "31e9bda235f56a7145205ddb2ba58ba9263d3b1d68045bc2386b41f4b3d1d9d3",
+    "full-tests-r6-final.stdout": "db16f042ea63a85e81d82eae00f02730ec0cfb740df442d8e29add43d85e74b9",
+    "full-tests-r2-receipt.json": "00c0b0023f01e1c08e3cc34029e840049ffe4ed0663b847af08de82eb4c4c655",
+    "full-tests-r5-remainder-receipt.json": "7f53142182a24e61c39b4e19834c3a1d04f6b00fae609fb728daaa274e5b6c70",
+    "full-tests-r6-final-receipt.json": "53e60adcc8f8012f14270c5c9b11ee6ff7d55190dda9fcb29b0179fd67747ef7"
+  }
+}

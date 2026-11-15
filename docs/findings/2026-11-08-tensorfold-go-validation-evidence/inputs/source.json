@@ -1,0 +1,36 @@
+{
+  "source_head": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+  "source_dirty": false,
+  "source_files": {
+    "anvil_serving/benchmarking/aider.py": {
+      "sha256": "3c6213bc5bd5f5a4c7600a6015866131a06793aa2e3652ee115f091ef322cf31",
+      "bytes": 25948
+    },
+    "anvil_serving/benchmarking/aider_prepare.py": {
+      "sha256": "b4d2c65122e05ea652609a35904b0f6cbbc1222496f4c786d218bd25019ee0f9",
+      "bytes": 43718
+    },
+    "anvil_serving/benchmarking/aider_containment.py": {
+      "sha256": "884c0e4e4a2f022776fed24d8cf7ecfda10407a6f930fbd1ee2d66d0239d11e9",
+      "bytes": 20129
+    },
+    "anvil_serving/benchmarking/worker.py": {
+      "sha256": "1e93101f2231c55ad05d1c347e7e9d6e06c802d7802fcb0e0446f3354e06f771",
+      "bytes": 56403
+    },
+    "anvil_serving/benchmarking/preflight.py": {
+      "sha256": "190856604959a1f3af100ada3a26479642765d0434cafb1ff48f2b628e769553",
+      "bytes": 26133
+    },
+    "anvil_serving/benchmarking/jobs_cli.py": {
+      "sha256": "c3699f236bcb07d379f9b6bbd3d2619cb32033803cba60bd04974a9cc93c2e90",
+      "bytes": 17619
+    },
+    "anvil_serving/benchmarking/swe_agent_adapter.py": {
+      "sha256": "9feafeb79cce6bccce0d816abaf125ad70cdc9ded6b01f3d26acffa6b6249fde",
+      "bytes": 39190
+    }
+  },
+  "installed_prefix": "<private-path>",
+  "installed_wheel_sha256": "8c3e746a4e97903cf92d9885ba955663f19925a43624eccc9054786f0c4fd640"
+}

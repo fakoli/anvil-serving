@@ -3,7 +3,8 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { readFile } from "node:fs/promises";
 
 import {
   Client as ModernClient,
@@ -26,9 +27,20 @@ const VERSION = "0.17.0";
 const SERVER_INFO_KEY = "io.modelcontextprotocol/serverInfo";
 const PROTOCOL_KEY = "io.modelcontextprotocol/protocolVersion";
 const MAX_NATIVE_IMAGE_BASE64_BYTES = 8 * 1024 * 1024;
+const EXECUTION_CONTEXT = { topology: "test-mesh", execution_host: "primary-node", execution_runtime: "controller-container" };
+
+test("the distributed notice retains the pinned SDK and validator licenses", async () => {
+  const notice = await readFile(new URL("../../anvil_serving/_node/THIRD_PARTY_NOTICES.txt", import.meta.url), "utf8");
+  for (const name of ["@modelcontextprotocol/client", "@modelcontextprotocol/core", "@modelcontextprotocol/server", "zod"]) {
+    const metadata = JSON.parse(await readFile(new URL(`../node_modules/${name}/package.json`, import.meta.url), "utf8"));
+    assert.ok(notice.includes(`${name} ${metadata.version}`));
+    const license = await readFile(new URL(`../node_modules/${name}/LICENSE`, import.meta.url), "utf8");
+    assert.ok(notice.includes(license.trimEnd()), `${name} full license missing`);
+  }
+});
 
 test("memory calls allow the gateway deadline without changing controller budgets", async () => {
-  const { requestTimeout } = await import(BRIDGE);
+  const { requestTimeout } = await import(pathToFileURL(BRIDGE).href);
   assert.equal(requestTimeout({}, "/v1/memory/mcp"), 310_000);
   assert.equal(requestTimeout({ timeout_seconds: 1800 }, "/v1/memory/mcp"), 310_000);
   assert.equal(requestTimeout({}), 120_000);
@@ -93,9 +105,11 @@ async function startController() {
               additionalProperties: false,
               properties: {
                 value: { type: "string", maxLength: 32 },
+                confirm: { type: "boolean" },
+                dry_run: { type: "boolean" },
               },
               required: ["value"],
-              maxProperties: 1,
+              maxProperties: 3,
             },
           },
           {
@@ -217,11 +231,12 @@ function bridgeTransport(Transport, controllerUrl) {
     env: {
       ...process.env,
       ANVIL_CONTROLLER_TOKEN: TOKEN,
+      ANVIL_MCP_EXECUTION_CONTEXT: JSON.stringify(EXECUTION_CONTEXT),
     },
   });
 }
 
-test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
+test("legacy SDK 1.29 and modern SDK 2.3 use the same bridge", async () => {
   const controller = await startController();
   try {
     const legacy = new LegacyClient({
@@ -348,6 +363,55 @@ test("legacy SDK 1.29 and modern SDK 2.0 use the same bridge", async () => {
     );
   } finally {
     await controller.close();
+  }
+});
+
+test("confirmed calls carry distinct request-local operation keys", async () => {
+  const controller = await startController();
+  const client = new LegacyClient({ name: "mutation-key-test", version: "1" });
+  try {
+    await client.connect(bridgeTransport(LegacyStdioClientTransport, controller.url));
+    await Promise.all([
+      { value: "one", confirm: true },
+      { value: "two", confirm: true, dry_run: false },
+      { value: "preview", confirm: true, dry_run: true },
+      { value: "read" },
+    ].map((args) => client.callTool({ name: "echo", arguments: args })));
+    const calls = controller.requests.filter((entry) => entry.body.method === "tools/call");
+    const keys = [];
+    for (const call of calls) {
+      const args = call.body.params.arguments;
+      const key = call.headers["x-anvil-idempotency-key"];
+      if (args.confirm === true && args.dry_run !== true) {
+        assert.match(key ?? "", /^[0-9a-f-]{36}$/);
+        assert.deepEqual(call.body.params.context, EXECUTION_CONTEXT);
+        keys.push(key);
+      } else {
+        assert.equal(key, undefined);
+        assert.equal(call.body.params.context, undefined);
+      }
+    }
+    assert.equal(keys.length, 2);
+    assert.equal(new Set(keys).size, 2);
+  } finally {
+    await client.close();
+    await controller.close();
+  }
+});
+
+test("malformed configured operation context fails before connecting", async () => {
+  for (const context of ["{", "[]", JSON.stringify({ ...EXECUTION_CONTEXT, extra: "x" }), JSON.stringify({ ...EXECUTION_CONTEXT, execution_host: "bad/host" }), JSON.stringify({ ...EXECUTION_CONTEXT, execution_host: "host\n" })]) {
+    const child = spawn(process.execPath, [BRIDGE, "--controller-url", "http://127.0.0.1:8765/mcp", "--auth-env", "ANVIL_CONTROLLER_TOKEN", "--server-version", VERSION], {
+      env: { PATH: process.env.PATH, ANVIL_CONTROLLER_TOKEN: TOKEN, ANVIL_MCP_EXECUTION_CONTEXT: context },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    const [code] = await once(child, "exit");
+    assert.equal(code, 2);
+    assert.match(stderr, /ANVIL_MCP_EXECUTION_CONTEXT must contain/);
+    assert.doesNotMatch(stderr, new RegExp(TOKEN));
   }
 });
 

@@ -1,0 +1,35 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "id": "flare",
+      "url": "https://github.com/NVIDIA/flare-local-inference/tree/47581ccac82660953a5b59cb04b2750d64edc97d",
+      "published_or_observed": "2026-10-21",
+      "observed_at": "2026-10-21",
+      "age_class": "current-pinned",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "SM120 TP2 GLM preparation and runtime",
+      "decision_impact": "pins recipe/runtime and io_uring requirement"
+    },
+    {
+      "id": "checkpoint",
+      "url": "https://huggingface.co/local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD/tree/dec48abd33efa73c3bb7c95b74eee10cad34f9be",
+      "published_or_observed": "2026-10-21",
+      "observed_at": "2026-10-21",
+      "age_class": "current-pinned",
+      "evidence_type": "official-checkpoint",
+      "hardware_runtime_relevance": "exact Flare GLM recipe checkpoint",
+      "decision_impact": "different quantized checkpoint from incumbent; engine-only attribution unavailable"
+    },
+    {
+      "id": "seccomp",
+      "url": "https://github.com/moby/profiles/blob/4b8214fc4971e06172938a1f1554ccff6647ee80/seccomp/default.json",
+      "published_or_observed": "2026-10-21",
+      "observed_at": "2026-10-21",
+      "age_class": "current-pinned",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Docker container default syscall policy",
+      "decision_impact": "base for narrowly scoped three-syscall policy"
+    }
+  ]
+}

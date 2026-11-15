@@ -9,6 +9,7 @@ decision records) but has no classifier, profile, fallback, or cloud path.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import ipaddress
 import json
 import os
@@ -16,15 +17,15 @@ import sys
 import tempfile
 import threading
 import time
-from contextlib import ExitStack
-from dataclasses import replace
+from contextlib import ExitStack, nullcontext
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from .admission import AdmissionLease, TierAdmission, _member_id, _reason_code
+from .admission import AdmissionLease, TierAdmission, RouterAdmission, owned_dispatch, managed_router_admission, _member_id, _reason_code
 from .audio import AudioGateway
 from .availability import (
     AlwaysAvailable,
@@ -84,6 +85,7 @@ from .model_metadata import (
     build_model_fingerprints,
     build_router_status,
 )
+from .identity import load_webui_bindings
 from .purpose import PurposeRouter
 from .memory import MemoryRouter
 from .request_control import (
@@ -140,12 +142,14 @@ class _AdmissionIterator:
         on_complete: Callable[[], None],
         *,
         on_cancel: Optional[Callable[[], None]] = None,
+        on_close: Optional[Callable[[], None]] = None,
         resources: Tuple[object, ...] = (),
     ) -> None:
         self._factory = factory
         self._lease = lease
         self._on_complete = on_complete
         self._on_cancel = on_cancel
+        self._on_close = on_close
         self._resources = resources
         self._inner: Optional[Iterator[BackendDelta]] = None
         self._closed = False
@@ -192,7 +196,11 @@ class _AdmissionIterator:
                     if callable(closer):
                         closer()
             finally:
-                self._lease.release()
+                try:
+                    self._lease.release()
+                finally:
+                    if self._on_close is not None:
+                        self._on_close()
 
 
 class RouterWorkloadStream:
@@ -203,7 +211,8 @@ class RouterWorkloadStream:
     iterator callers may use it directly; close() is the fallback disconnect.
     """
 
-    def __init__(self, factory, token: Optional[RouterWorkloadToken]) -> None:
+    def __init__(self, factory, token: Optional[RouterWorkloadToken], router_permit=None) -> None:
+        self._router_permit = router_permit
         self._factory = factory
         self._token = token
         self._inner = None
@@ -216,7 +225,11 @@ class RouterWorkloadStream:
         if not self._started and not self._closed:
             self._started = True
             try:
-                self._inner = self._factory()
+                if self._router_permit is None:
+                    self._inner = self._factory()
+                else:
+                    with self._router_permit.bind():
+                        self._inner = self._factory()
             except BaseException:
                 self.generation_failed = True
                 raise
@@ -244,24 +257,26 @@ class RouterWorkloadStream:
     def close_upstream(self) -> None:
         if self._closed:
             return
-        self._closed = True
-        self._factory = None
         closer = getattr(self._inner, "close", None)
         if callable(closer):
             closer()
+        self._closed = True
+        self._factory = None
 
     def finish_delivery(self, outcome: Optional[WorkloadOutcome] = None) -> None:
         if self._finished:
             return
+        self.close_upstream()  # A refused concurrent close is still owned work.
         self._finished = True
         try:
-            self.close_upstream()
-        finally:
             if self._token is not None:
                 try:
                     self._token.finish(outcome)
                 except Exception:
                     pass  # observation never owns response or admission success
+        finally:
+            if self._router_permit is not None:
+                self._router_permit.release()
 
     def close(self) -> None:
         self.finish_delivery(None if self.generation_failed else WorkloadOutcome.DISCONNECTED)
@@ -344,18 +359,23 @@ class ReplicaRuntime:
         """Invoke exactly one declared member and retain its side-channel owner."""
         self._thread_local.selected_backend = None
         backend = self.member_backend(member_id)
-        try:
-            iterator = iter(backend.generate(request))
-        except BaseException:
-            self._thread_local.selected_backend = None
-            raise
         self._thread_local.selected_backend = backend
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        if invocation is not None and not getattr(backend, "usage_transport_boundary", False):
+            invocation.ambiguous_dispatch()
+        iterator = iter(backend.generate(request))
         return iterator
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         """Delegate to the member successfully invoked by this thread."""
         backend = getattr(self._thread_local, "selected_backend", None)
         fn = getattr(backend, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._thread_local, "selected_backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -407,6 +427,11 @@ class _ConcurrencyLimitedBackend:
     def __init__(self, inner: Backend, max_concurrency: int) -> None:
         self._inner = inner
         self._sem = threading.BoundedSemaphore(max_concurrency)
+        self._usage_local = threading.local()
+
+    @property
+    def usage_transport_boundary(self):
+        return getattr(self._inner, "usage_transport_boundary", False)
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
@@ -425,6 +450,7 @@ class _ConcurrencyLimitedBackend:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        self._usage_local.backend = None
         control = request_control(args[-1])
         if control is None:
             control = RequestControl()
@@ -435,6 +461,7 @@ class _ConcurrencyLimitedBackend:
             control.check_admission()
             control.end_admission_wait()
             control.check()
+            self._usage_local.backend = self._inner
             inner = iter(generate(*args))
         except BaseException:
             self._sem.release()
@@ -446,6 +473,11 @@ class _ConcurrencyLimitedBackend:
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._usage_local, "backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -462,6 +494,7 @@ class _AutoConcurrencyGate:
     def __init__(self, inner: Backend, tier_id: str) -> None:
         self._inner = inner
         self._tier_id = tier_id
+        self._usage_local = threading.local()
         self._cond = threading.Condition()
         self._in_flight = 0
         self._ceiling: Optional[int] = None
@@ -476,6 +509,10 @@ class _AutoConcurrencyGate:
                 return
             self._ceiling = value
             self._cond.notify_all()
+
+    @property
+    def usage_transport_boundary(self):
+        return getattr(self._inner, "usage_transport_boundary", False)
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
         return self._generate(self._inner.generate, request)
@@ -493,6 +530,7 @@ class _AutoConcurrencyGate:
         generate: Callable[..., Iterator[BackendDelta]],
         *args: object,
     ) -> Iterator[BackendDelta]:
+        self._usage_local.backend = None
         request = args[-1]
         control = request_control(request)
         if control is None:
@@ -507,6 +545,7 @@ class _AutoConcurrencyGate:
             control.check_admission()
             control.end_admission_wait()
             control.check()
+            self._usage_local.backend = self._inner
             inner = iter(generate(*args))
         except BaseException:
             with self._cond:
@@ -522,6 +561,11 @@ class _AutoConcurrencyGate:
 
     def get_last_structured(self) -> Optional[StructuredResult]:
         fn = getattr(self._inner, "get_last_structured", None)
+        return fn() if callable(fn) else None
+
+    def get_last_normalized_usage(self):
+        backend = getattr(self._usage_local, "backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
         return fn() if callable(fn) else None
 
 
@@ -633,6 +677,59 @@ def _configured_admission(
     )
 
 
+@dataclass(frozen=True)
+class RouteRuntimeSnapshot:
+    """The immutable routing view captured by one admitted chat request."""
+
+    route_revision: int
+    effective_route_sha256: str
+    config: RouterConfig
+    backends: Mapping[str, Backend]
+
+
+@dataclass(frozen=True)
+class RouteUpdateHold:
+    """An in-memory gate which prevents new bindings in one update scope."""
+
+    update_id: str
+    expected_revision: int
+    tier_ids: tuple[str, ...]
+    aliases: tuple[str, ...]
+
+
+class _RouteTerminalLease:
+    def __init__(self, owner: "RoutingBackend", revision: int, tier_id: str) -> None:
+        self._owner, self._revision, self._tier_id = owner, revision, tier_id
+        self._closed = False
+
+    def close(self) -> None:
+        with self._owner._route_lock:
+            if self._closed:
+                return
+            key = (self._revision, self._tier_id)
+            count = self._owner._route_terminals.get(key)
+            if type(count) is not int or count <= 0:
+                raise RuntimeError("route terminal accounting underflow")
+            self._closed = True
+            if count == 1:
+                del self._owner._route_terminals[key]
+            else:
+                self._owner._route_terminals[key] = count - 1
+            self._owner._route_condition.notify_all()
+
+
+@dataclass(frozen=True)
+class RouteBinding:
+    """Request-local immutable tier/backend selection and terminal lease."""
+
+    snapshot: RouteRuntimeSnapshot
+    alias: str
+    tier: Tier
+    backend: Backend | None
+    route_association: object
+    terminal_lease: _RouteTerminalLease
+
+
 class RoutingBackend:
     """Resolve one configured capability alias and relay to its one tier."""
 
@@ -645,6 +742,7 @@ class RoutingBackend:
         admission: Optional[TierAdmission] = None,
         capacity_metrics: Optional[MetricsProvider] = None,
         decision_log: Optional[DecisionLog] = None,
+        start_background: bool = True,
     ) -> None:
         self._config = config
         self._backends: Dict[str, Backend] = {}
@@ -672,7 +770,7 @@ class RoutingBackend:
             if auto_gates
             else None
         )
-        if self._auto_refresher is not None:
+        if self._auto_refresher is not None and start_background:
             self._auto_refresher.start()
         self._availability = availability if availability is not None else AlwaysAvailable()
         # A valid media-only gateway has no chat tiers to admit. Its chat
@@ -695,12 +793,237 @@ class RoutingBackend:
         request_identity = build_router_status(config, started_at=self._started_at)
         self._request_config_sha256 = request_identity["config_sha256"]
         self._router_version = request_identity["package_version"]
+        # The boot configuration hash above is an owner identity and never
+        # changes.  Route revisions are a separate, request-pinned identity.
+        self._route_lock = threading.RLock()
+        self._route_condition = threading.Condition(self._route_lock)
+        self._route_holds: dict[str, RouteUpdateHold] = {}
+        self._route_terminals: dict[tuple[int, str], int] = {}
+        self._route_drain_usage_store = None
+        self._route_drain_usage_authority = None
+        self._route_backend_factory: Optional[Callable[[RouterConfig], Mapping[str, Backend]]] = None
+        from .route_updates import freeze_config, route_digest
+        frozen_config = freeze_config(config)
+        self._config = frozen_config
+        self._active_route_runtime = RouteRuntimeSnapshot(
+            0, route_digest(frozen_config), frozen_config, MappingProxyType(dict(self._backends)),
+        )
         # `is None`, not truthiness: DecisionLog defines __len__, so an empty
         # (sink-enabled) log is falsy and `or` would silently replace it.
         self._decision_log = DecisionLog() if decision_log is None else decision_log
         self._thread_local: threading.local = threading.local()
         self._workload_registry: Optional[RouterWorkloadRegistry] = None
         self._trace_exporter: Optional[TraceExporter] = None
+        self._router_admission = RouterAdmission(self._request_config_sha256)
+
+    def set_route_backend_factory(self, factory: Callable[[RouterConfig], Mapping[str, Backend]]) -> None:
+        """Install the startup-owned backend constructor for candidate routes."""
+        self._route_backend_factory = factory
+
+    def set_route_drain_usage(self, usage_store, usage_authority) -> None:
+        """Install the managed accounting reader used for destructive drains."""
+        self._route_drain_usage_store = usage_store
+        self._route_drain_usage_authority = usage_authority
+
+    def route_drain_accounting_ready(self) -> bool:
+        """Whether a destructive route drain has its durable authority."""
+        return self._route_drain_usage_store is not None and callable(self._route_drain_usage_authority)
+
+    def _durable_route_drain_pending(self, tier_ids: tuple[str, ...]) -> int:
+        store = self._route_drain_usage_store
+        authority = self._route_drain_usage_authority
+        if store is None or not callable(authority):
+            # An in-process counter cannot prove a crash-durable start was
+            # finalized. Never let an absent accounting reader authorize a
+            # selected tier's destructive drain.
+            return 1
+        try:
+            scope = authority()
+            return store.unresolved_route_starts(tier_ids, authority_scope=scope)
+        except Exception:
+            # A destructive drain must not turn an unavailable/ambiguous ledger
+            # read into permission to unload its selected tier.
+            return 1
+
+    def active_route_snapshot(self) -> RouteRuntimeSnapshot:
+        with self._route_lock:
+            return self._active_route_runtime
+
+    def _held_route(self, alias: str, tier_id: str) -> bool:
+        return any(alias in hold.aliases or tier_id in hold.tier_ids for hold in self._route_holds.values())
+
+    def bind_route_request(self, request: InternalRequest) -> RouteBinding:
+        """Capture a complete route before usage accounting or admission begins."""
+        existing = request.raw.get("_anvil_route_binding")
+        if isinstance(existing, RouteBinding):
+            return existing
+        from .usage_store import RouteAssociation
+        alias = normalize_model_alias(request.model)
+        with self._route_lock:
+            snapshot = self._active_route_runtime
+            tier = snapshot.config.route_tier(alias)
+            if tier is None:
+                raise NoAvailableTierError(request.model, (), kind="unknown_model")
+            if self._held_route(alias, tier.id):
+                raise NoAvailableTierError(request.model, (tier.id,), kind="unavailable")
+            fingerprint_fields = (tier.params or {}).get("fingerprint")
+            fingerprint = (
+                hashlib.sha256(json.dumps(dict(fingerprint_fields), sort_keys=True,
+                                          separators=(",", ":")).encode()).hexdigest()
+                if isinstance(fingerprint_fields, Mapping) else None
+            )
+            association = RouteAssociation(route_id=tier.id, backend_id=tier.id,
+                                           route_revision=snapshot.route_revision,
+                                           effective_route_sha256=snapshot.effective_route_sha256,
+                                           configured_model=tier.model, observed_model=None,
+                                           configured_fingerprint_sha256=fingerprint)
+            lease = _RouteTerminalLease(self, snapshot.route_revision, tier.id)
+            key = (snapshot.route_revision, tier.id)
+            self._route_terminals[key] = self._route_terminals.get(key, 0) + 1
+            binding = RouteBinding(snapshot, alias, tier, snapshot.backends.get(tier.id), association, lease)
+            request.raw["_anvil_route_binding"] = binding
+            return binding
+
+    def finish_route_request(self, request: InternalRequest) -> None:
+        if not isinstance(request, InternalRequest):
+            return
+        binding = request.raw.get("_anvil_route_binding")
+        if isinstance(binding, RouteBinding):
+            binding.terminal_lease.close()
+
+    def begin_route_update_hold(self, *, update_id: str, expected_revision: int,
+                                tier_ids: Sequence[str] = (), aliases: Sequence[str] = ()) -> RouteUpdateHold:
+        if type(update_id) is not str or not update_id:
+            raise ValueError("route update id is required")
+        with self._route_lock:
+            if expected_revision != self._active_route_runtime.route_revision:
+                raise ValueError("stale route revision")
+            hold = RouteUpdateHold(update_id, expected_revision, tuple(sorted(set(tier_ids))), tuple(sorted(set(aliases))))
+            if not hold.tier_ids and not hold.aliases:
+                raise ValueError("route update scope is required")
+            self._route_holds[update_id] = hold
+            return hold
+
+    def wait_route_update_drain(self, hold: RouteUpdateHold, timeout: float) -> dict:
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        while True:
+            with self._route_condition:
+                pending = sum(count for (_revision, tier_id), count in self._route_terminals.items()
+                              if tier_id in hold.tier_ids)
+            # SQLite reads must never run under the route lock/condition: a
+            # terminal writer may need the latter to release its transport
+            # lease, while durable starts are authoritative after process loss.
+            durable_pending = self._durable_route_drain_pending(hold.tier_ids)
+            pending = max(pending, durable_pending)
+            if pending == 0:
+                return {"drained": True, "pending": 0}
+            with self._route_condition:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return {"drained": False, "pending": pending}
+                # Durable terminal commits do not hold a route condition.  Poll
+                # their bounded read state rather than making a successful retry
+                # wait for an unrelated request to notify this condition.
+                self._route_condition.wait(min(remaining, 0.25))
+
+    def open_route_update_hold(self, hold: RouteUpdateHold) -> None:
+        with self._route_lock:
+            self._route_holds.pop(hold.update_id, None)
+            self._route_condition.notify_all()
+
+    def route_update_status(self) -> dict:
+        with self._route_lock:
+            return {"route_revision": self._active_route_runtime.route_revision,
+                    "effective_route_sha256": self._active_route_runtime.effective_route_sha256,
+                    "holds": [{"update_id": h.update_id, "tier_ids": list(h.tier_ids), "aliases": list(h.aliases)} for h in self._route_holds.values()]}
+
+    def route_admission_fingerprint(self) -> str:
+        import hashlib
+        snapshots = self._admission.snapshots() if self._admission is not None else ()
+        policy = [(s.tier_id, s.state, s.reason, [(m.member_id, m.state, m.reason) for m in s.members]) for s in snapshots]
+        with self._route_lock:
+            owner = self._router_admission
+            owner_state = (bool(getattr(owner, "_closed", False)),
+                           str(getattr(owner, "_barrier_token", "")),
+                           int(getattr(owner, "_generation", 0)),
+                           bool(getattr(owner, "_consumed", False)),
+                           bool(getattr(owner, "_failed", False)))
+            payload = {"policy": policy,
+                       "policy_revision": self._admission.policy_revision() if self._admission is not None else 0,
+                       "owner": owner_state, "route_revision": self._active_route_runtime.route_revision,
+                       "digest": self._active_route_runtime.effective_route_sha256,
+                       "holds": sorted(self._route_holds)}
+        return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+    def prepare_route_runtime(self, candidate_config: RouterConfig, *, revision: int,
+                              digest: str) -> RouteRuntimeSnapshot:
+        """Build only changed backend objects; unchanged wrappers keep identity."""
+        if type(revision) is not int or revision < 0 or len(digest) != 64:
+            raise ValueError("invalid route runtime identity")
+        active = self.active_route_snapshot()
+        old_tiers = {tier.id: tier for tier in active.config.tiers}
+        changed = [tier for tier in candidate_config.tiers if old_tiers.get(tier.id) != tier]
+        candidate_backends: Mapping[str, Backend] = {}
+        if changed:
+            if self._route_backend_factory is None:
+                raise ValueError("route backend factory is unavailable")
+            candidate_backends = self._route_backend_factory(candidate_config)
+        prepared: dict[str, Backend] = {}
+        for tier in candidate_config.tiers:
+            candidate_backend = candidate_backends.get(tier.id)
+            if candidate_backend is not None and not tier.replicas and tier.max_concurrency not in (None, MAX_CONCURRENCY_AUTO):
+                candidate_backend = _ConcurrencyLimitedBackend(candidate_backend, tier.max_concurrency)
+            if candidate_backend is not None:
+                try:
+                    candidate_backend._router_admission = self._router_admission
+                except Exception:
+                    pass
+            prepared[tier.id] = (
+                active.backends[tier.id]
+                if old_tiers.get(tier.id) == tier and tier.id in active.backends
+                else candidate_backend
+            )
+            if prepared[tier.id] is None:
+                raise ValueError("candidate backend is unbound")
+        return RouteRuntimeSnapshot(revision, digest, candidate_config, MappingProxyType(prepared))
+
+    def probe_route_update_targets(self, candidate_runtime: RouteRuntimeSnapshot,
+                                   tier_ids: Sequence[str], *, require_admitting: bool = False) -> None:
+        """Require an exact readiness/identity observation before publishing."""
+        if bool(getattr(self._router_admission, "_closed", False)):
+            raise ValueError("router owner is closed")
+        for tier_id in tier_ids:
+            tier = candidate_runtime.config.tier(tier_id)
+            invalidate = getattr(self._availability, "invalidate", None)
+            if callable(invalidate):
+                invalidate(tier.id)
+            # Probe the availability provider directly: ordinary admission
+            # intent is evaluated separately below and must not poison the
+            # identity evidence for a replacement held by an operator.
+            readiness = safe_check(self._availability, tier)
+            if not readiness.available or readiness.expected_model != tier.model or readiness.observed_model != tier.model:
+                raise ValueError("candidate route target is not ready with the configured model")
+            if require_admitting and (
+                self._admission is None or self._admission.snapshot(tier.id).state != "admitting"
+            ):
+                raise ValueError("candidate route target is not admitting")
+
+    def publish_route_runtime(self, prepared: RouteRuntimeSnapshot, *, expected_revision: int,
+                              hold: RouteUpdateHold | None = None, alias_only: bool = False) -> RouteRuntimeSnapshot:
+        with self._route_lock:
+            if self._active_route_runtime.route_revision != expected_revision:
+                raise ValueError("stale route revision")
+            if hold is not None and self._route_holds.get(hold.update_id) != hold:
+                raise ValueError("route update hold is not active")
+            if not alias_only and hold is not None:
+                pending = sum(count for (_revision, tier_id), count in self._route_terminals.items()
+                              if tier_id in hold.tier_ids)
+                if pending:
+                    raise ValueError("route update scope is not drained")
+            self._config = prepared.config
+            self._backends = dict(prepared.backends)
+            self._active_route_runtime = prepared
+            return prepared
 
     def close(self) -> None:
         """Stop this owner's bounded telemetry refreshes without waiting on I/O."""
@@ -792,6 +1115,7 @@ class RoutingBackend:
                 if type(member.max_concurrency) is int
             } if tier.replica_strategy == "capacity" else {},
         )
+        binding = request.raw.get("_anvil_route_binding")
         decision = DecisionRecord(
             kind="chat",
             requested_tier=tier.id,
@@ -817,6 +1141,8 @@ class RoutingBackend:
             admission_wait_ms=admission_wait_ms,
             config_sha256=self._request_config_sha256,
             router_version=self._router_version,
+            route_revision=(binding.snapshot.route_revision if isinstance(binding, RouteBinding) else None),
+            effective_route_sha256=(binding.snapshot.effective_route_sha256 if isinstance(binding, RouteBinding) else None),
             **request_correlation(request),
         )
         if workload_token is not None:
@@ -904,17 +1230,33 @@ class RoutingBackend:
         )
 
     def generate(self, request: InternalRequest) -> Iterator[BackendDelta]:
-        return self._generate(request)
+        try:
+            return self._generate(request)
+        except BaseException:
+            if not request.raw.get("_anvil_route_delivery_owned"):
+                self.finish_route_request(request)
+            raise
 
     def generate_tracked(self, request: InternalRequest, *, gateway_request_id: str) -> RouterWorkloadStream:
-        token = None
-        if self._workload_registry is not None:
+        permit = self._router_admission.acquire("chat")
+        from .internal import usage_invocation
+        invocation = usage_invocation(request)
+        token = invocation.token if invocation is not None else None
+        if token is None and self._workload_registry is not None:
             try:
                 token = self._workload_registry.begin(gateway_request_id)
             except Exception:
                 pass
-        return RouterWorkloadStream(lambda: self._generate(request, workload_token=token), token)
+        def generate_bound():
+            try:
+                return self._generate(request, workload_token=token)
+            except BaseException:
+                if not request.raw.get("_anvil_route_delivery_owned"):
+                    self.finish_route_request(request)
+                raise
+        return RouterWorkloadStream(generate_bound, token, permit)
 
+    @owned_dispatch("chat")
     def _generate(
         self, request: InternalRequest, *, workload_token=None
     ) -> Iterator[BackendDelta]:
@@ -928,6 +1270,7 @@ class RoutingBackend:
         control.note_activity("checking", estimated_input_tokens=self._prompt_tokens(request))
         control.check_admission()
         self._thread_local.last_result = None
+        self._thread_local.usage_backend = None
         self._thread_local.last_served_tier = None
         started = time.monotonic()
         readiness_check_ms: Optional[int] = None
@@ -981,9 +1324,8 @@ class RoutingBackend:
             )
             return result
 
-        configured_tier = self._config.route_tier(request.model)
-        if configured_tier is None:
-            raise NoAvailableTierError(request.model, (), kind="unknown_model")
+        binding = self.bind_route_request(request)
+        configured_tier = binding.tier
 
         if workload_token is not None:
             try:
@@ -1046,7 +1388,9 @@ class RoutingBackend:
                 latency_ms=_elapsed_ms(), readiness_check_ms=readiness_check_ms,
             )
             raise NoAvailableTierError(request.model, (tier.id,), kind="unsupported_tools")
-        backend = self._backends.get(tier.id)
+        # A request must never follow a later publication.  The binding owns
+        # both the declared tier and the exact relay wrapper for its lifetime.
+        backend = binding.backend
         if backend is None:
             record(
                 request, tier, served=False, reason="backend_unbound",
@@ -1141,6 +1485,16 @@ class RoutingBackend:
             control.check_admission()
             control.note_activity("admitted", context_limit_tokens=tier.context_limit)
             advance(WorkloadState.ADMITTED)
+            from .internal import usage_invocation
+            invocation = usage_invocation(request)
+            if invocation is not None:
+                if selected_member is not None:
+                    invocation.route = invocation.route.with_dispatch_member(
+                        replace(invocation.route, member_id=selected_member)
+                    )
+            self._thread_local.usage_backend = backend
+            if invocation is not None and not isinstance(backend, ReplicaRuntime) and not getattr(backend, "usage_transport_boundary", False):
+                invocation.ambiguous_dispatch()
             upstream_call_started = time.monotonic()
             upstream = (
                 backend.generate_member(selected_member, relay_request)
@@ -1337,38 +1691,69 @@ class RoutingBackend:
                 raise
 
         return _AdmissionIterator(
-            relay, lease, on_complete, on_cancel=on_cancel, resources=(upstream,)
+            relay, lease, on_complete, on_cancel=on_cancel,
+            on_close=(None if request.raw.get("_anvil_route_delivery_owned") else binding.terminal_lease.close),
+            resources=(upstream,)
         )
 
+    def get_last_normalized_usage(self):
+        backend = getattr(self._thread_local, "usage_backend", None)
+        fn = getattr(backend, "get_last_normalized_usage", None)
+        return fn() if callable(fn) else None
+
     def tier_health(self) -> dict:
-        return build_tier_health(self._config, self._availability)
+        snapshot = self.active_route_snapshot()
+        result = build_tier_health(snapshot.config, self._availability)
+        result.update(route_revision=snapshot.route_revision, effective_route_sha256=snapshot.effective_route_sha256)
+        return result
 
     def model_capacity(self, query: Mapping[str, list[str]]) -> dict:
-        return build_model_capacity(
-            self._config,
+        snapshot = self.active_route_snapshot()
+        result = build_model_capacity(
+            snapshot.config,
             self._availability,
             self._capacity_metrics,
             query,
             admission=self._admission,
             replica_pressure=self._replica_pressure,
         )
+        result.update(route_revision=snapshot.route_revision,
+                      effective_route_sha256=snapshot.effective_route_sha256)
+        return result
 
     def model_discovery(self) -> dict:
-        return models_payload(self._config, self._availability)
+        snapshot = self.active_route_snapshot()
+        result = models_payload(snapshot.config, self._availability)
+        result["route_revision"] = snapshot.route_revision
+        result["effective_route_sha256"] = snapshot.effective_route_sha256
+        return result
 
     def model_capabilities(self, query: Mapping[str, list[str]]) -> dict:
-        return build_model_capabilities(self._config, self._availability, query)
+        snapshot = self.active_route_snapshot()
+        result = build_model_capabilities(snapshot.config, self._availability, query)
+        result.update(route_revision=snapshot.route_revision, effective_route_sha256=snapshot.effective_route_sha256)
+        return result
 
     def model_fingerprints(self, query: Mapping[str, list[str]]) -> dict:
-        return build_model_fingerprints(self._config, self._availability, query)
+        snapshot = self.active_route_snapshot()
+        result = build_model_fingerprints(snapshot.config, self._availability, query)
+        result.update(route_revision=snapshot.route_revision, effective_route_sha256=snapshot.effective_route_sha256)
+        return result
 
     def router_status(self) -> dict:
-        return build_router_status(self._config, started_at=self._started_at)
+        snapshot = self.active_route_snapshot()
+        result = build_router_status(snapshot.config, started_at=self._started_at)
+        # This remains the immutable boot/owner identity; the live route
+        # generation is intentionally reported as separate additive fields.
+        result.update(config_sha256=self._request_config_sha256,
+                      route_revision=snapshot.route_revision,
+                      effective_route_sha256=snapshot.effective_route_sha256)
+        return result
 
     def _validate_stats_model(self, query: Mapping[str, list[str]]) -> None:
         values = query.get("model")
         if values is not None and len(values) == 1:
-            if self._config.route_tier(values[0]) is None:
+            if self.active_route_snapshot().config.route_tier(values[0]) is None:
                 raise KeyError(values[0])
 
     def router_stats(self, query: Mapping[str, list[str]]) -> dict:
@@ -1850,6 +2235,16 @@ def build_server(
     """Load configured capability routes and build an un-started authenticated front door."""
     config = load(config_path)
     server_config = load_server_config(config_path)
+    config_bytes = None
+    if server_config.route_state_path:
+        import tomllib
+        from .config import MAX_ROUTER_CONFIG_BYTES, _parse_server_config, load_bytes
+        with open(config_path, "rb") as config_file:
+            config_bytes = config_file.read(MAX_ROUTER_CONFIG_BYTES + 1)
+        captured_config = load_bytes(config_bytes)
+        captured_server = _parse_server_config(tomllib.loads(config_bytes.decode("utf-8")), config_path)
+        if captured_config != config or captured_server != server_config:
+            raise ConfigError("router configuration changed during startup")
     environ: Mapping[str, str] = os.environ if env is None else env
     auth_token: Optional[str] = None
     if server_config.auth_env:
@@ -1903,6 +2298,16 @@ def build_server(
     ):
         admission = _durable_admission(server_config.admission_state_path, config)
     with ExitStack() as cleanup:
+        import hashlib
+        configuration_revision = (hashlib.sha256(Path(config_path).read_bytes()).hexdigest()
+                                  if server_config.router_owner_id else "unmanaged")
+        router_owner, owner_usage, owner_run = managed_router_admission(server_config, configuration_revision)
+        def release_unassembled_owner():
+            descriptor = getattr(router_owner, '_owner_descriptor', None)
+            if descriptor is not None:
+                os.close(descriptor)
+                router_owner._owner_descriptor = None
+        cleanup.callback(release_unassembled_owner)
         decision_log: Optional[DecisionLog] = None
         trace_exporter: Optional[TraceExporter] = None
         if server_config.decision_log_path:
@@ -1928,9 +2333,39 @@ def build_server(
             admission=admission,
             capacity_metrics=capacity_metrics,
             decision_log=decision_log,
+            start_background=server_config.router_owner_backend != "managed-container",
         )
         cleanup.callback(routing.close)
         routing._trace_exporter = trace_exporter
+        routing._router_admission = router_owner
+        # Route-state recovery can recreate a destructive replacement hold
+        # before the front door exists. Give that recovery path the same
+        # managed durable ledger that make_server will later pass through.
+        if server_config.usage_enabled:
+            routing.set_route_drain_usage(owner_usage, getattr(router_owner, "usage_scope", None))
+        if not injected:
+            routing.set_route_backend_factory(
+                lambda candidate: build_backends(candidate, env=env, transport=transport)[0]
+            )
+        def admission_policy_revision():
+            snapshots = routing._admission.snapshots() if routing._admission is not None else ()
+            policy = [(s.tier_id,s.state,s.reason,[(m.member_id,m.state,m.reason) for m in s.members]) for s in snapshots]
+            snapshot = routing.active_route_snapshot()
+            return hashlib.sha256(json.dumps({"tiers": policy,
+                                              "policy_revision": routing._admission.policy_revision() if routing._admission is not None else 0,
+                                              "route_revision": snapshot.route_revision,
+                                              "route_digest": snapshot.effective_route_sha256,
+                                              "holds": sorted(routing.route_update_status()["holds"], key=lambda item: item["update_id"])},
+                                             sort_keys=True,separators=(",", ":")).encode()).hexdigest()
+        router_owner._policy_revision = admission_policy_revision
+        route_manager = None
+        if server_config.route_state_path:
+            from .route_updates import RouteUpdateManager
+            route_manager = RouteUpdateManager(routing, config_bytes, server_config.route_state_path)
+            cleanup.callback(route_manager.close)
+            route_manager.restore()
+        for owned_backend in backends.values():
+            owned_backend._router_admission = router_owner
         effective_workload_clock = workload_clock or (lambda: datetime.now(timezone.utc))
         if observe_workloads:
             routing._workload_registry = RouterWorkloadRegistry(
@@ -1998,6 +2433,7 @@ def build_server(
                     else None
                 ),
             )
+            operations._router_admission = router_owner
             media_backend = ComfyUIClient(backend_url)
             gateway = ProtocolGateway(
                 caller={
@@ -2022,21 +2458,106 @@ def build_server(
                     backend_endpoint=media_backend.base_url,
                 ),
                 maintenance=operations.artifacts.prune,
+                router_admission=router_owner,
             )
-        httpd = make_server(
-            host, port, routing, timeout=timeout, model_routes=config.model_routes,
-            exhaustion_status=config.exhaustion_status, auth_token=auth_token,
-            purpose=purpose, audio=audio, gateway=gateway, memory=memory,
-            authorization_policy=scoped_policy,
-            operator_routes=operator_routes,
-            workload_host=server_config.workload_host,
-            workload_registry=routing._workload_registry,
-            workload_clock=effective_workload_clock,
-            server_config=server_config,
-        )
+        def metadata_drain_readback():
+            # Stop scheduling metadata work, then observe actual completion.
+            if router_owner._closed and not any(router_owner._counts.values()):
+                if routing._auto_refresher is not None:
+                    routing._auto_refresher._stop.set()
+                    routing._auto_refresher._wake.set()
+                routing._replica_pressure.close()
+                if trace_exporter is not None:
+                    with trace_exporter._lock:
+                        trace_exporter._closed = True
+            threads = list(routing._replica_pressure._workers)
+            if trace_exporter is not None:
+                threads.append(trace_exporter._worker)
+            if routing._auto_refresher is not None and routing._auto_refresher._thread is not None:
+                threads.append(routing._auto_refresher._thread)
+            return sum(thread.is_alive() for thread in threads), False
+
+        def resume_background():
+            pressure = routing._replica_pressure
+            with pressure._condition:
+                if any(thread.is_alive() for thread in pressure._workers):
+                    raise ValueError("router_metadata_not_drained")
+                pressure._closed = False
+                pressure._workers.clear()
+                for entry in pressure._entries.values():
+                    entry.queued = False
+            refresher = routing._auto_refresher
+            if refresher is not None:
+                if refresher._thread is not None and refresher._thread.is_alive():
+                    raise ValueError("router_metadata_not_drained")
+                refresher._thread = None
+                refresher._stop.clear()
+                refresher._wake.clear()
+                refresher.start()
+            if trace_exporter is not None:
+                with trace_exporter._lock:
+                    if trace_exporter._worker.is_alive():
+                        raise ValueError("router_metadata_not_drained")
+                    trace_exporter._closed = False
+                    trace_exporter._worker = threading.Thread(target=trace_exporter._run, name="anvil-router-traces", daemon=True)
+                    trace_exporter._worker.start()
+            if media_worker is not None:
+                media_worker.start()
+
+        router_owner.observe("maintenance", metadata_drain_readback)
+        router_owner._on_readmit.append(resume_background)
+        if memory is not None:
+            # Remote memory may retain inference beyond the outer HTTP result.
+            # No native owner readback is declared by this transport contract.
+            from .maintenance import REMOTE_MEMORY_TERMINAL_UNKNOWN
+            router_owner.observe("memory", lambda:(0, REMOTE_MEMORY_TERMINAL_UNKNOWN))
+        if media_worker is not None:
+            router_owner.observe("media", media_worker.drain_readback)
+        router_owner._assembling = False
+        if getattr(router_owner, '_successor_pending', False):
+            # Bind the new closed generation to the actual assembled policy.
+            # Existing readmit checks every observer; remote UNKNOWN stays HOLD.
+            router_owner._barrier_policy = admission_policy_revision()
+            router_owner._save()
+            router_owner._successor_pending = False
+        def usage_metrics():
+            from .router_telemetry import collect_usage_snapshot, render_usage_prometheus
+            return render_usage_prometheus(collect_usage_snapshot(owner_usage, routing._workload_registry,
+                effective_workload_clock(), domain_id=server_config.usage_domain_id,
+                authority_scope=router_owner.usage_scope()))
+        # A managed successor is deliberately CLOSED while it assembles.  The
+        # Connect broker's additive migration is startup completion work: give
+        # it the existing completion-scoped storage permit, which cannot be
+        # inherited as request/inference admission.  The fresh KeyStore is
+        # bound to this owner by make_server before ConnectKeys is constructed.
+        broker_permit = (router_owner.acquire("maintenance", completion=True, storage_only=True)
+                         if server_config.connect_keys_env is not None else None)
+        try:
+            with broker_permit.bind() if broker_permit is not None else nullcontext():
+                httpd = make_server(
+                    host, port, routing, timeout=timeout, model_routes=config.model_routes,
+                    exhaustion_status=config.exhaustion_status, auth_token=auth_token,
+                    purpose=purpose, audio=audio, gateway=gateway, memory=memory,
+                    media_signed_downloads=environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0"),
+                    authorization_policy=scoped_policy,
+                    operator_routes=operator_routes,
+                    workload_host=server_config.workload_host,
+                    workload_registry=routing._workload_registry,
+                    workload_clock=effective_workload_clock,
+                    server_config=server_config, router_admission=router_owner,
+                    usage_store=owner_usage if server_config.usage_enabled else None, usage_run_id=owner_run,
+                    usage_authority=getattr(router_owner, "usage_scope", None), usage_domain_id=server_config.usage_domain_id,
+                    usage_metrics=usage_metrics if server_config.usage_metrics_enabled else None,
+                    webui_bindings=load_webui_bindings(server_config.webui_identity, env=environ),
+                    route_manager=route_manager,
+                )
+        finally:
+            if broker_permit is not None:
+                broker_permit.release()
         cleanup.callback(httpd.server_close)
         httpd.anvil_tiers = tuple(backends.keys())  # type: ignore[attr-defined]
         httpd.anvil_routing = routing  # type: ignore[attr-defined]
+        httpd.anvil_route_manager = route_manager  # type: ignore[attr-defined]
         httpd.anvil_workloads = routing._workload_registry  # type: ignore[attr-defined]
         httpd.anvil_availability = availability  # type: ignore[attr-defined]
         httpd.anvil_admission = routing._admission  # type: ignore[attr-defined]
@@ -2052,6 +2573,10 @@ def build_server(
         def close_router_server() -> None:
             nonlocal closed
             with close_lock:
+                if getattr(router_owner, "_owner_descriptor", None) is not None:
+                    counts, unknown = router_owner._drain_counts()
+                    if not router_owner._closed or any(counts.values()) or unknown:
+                        raise ValueError("router_owned_work_not_drained")
                 if closed:
                     return
                 closed = True
@@ -2062,10 +2587,18 @@ def build_server(
                 try:
                     routing.close()
                 finally:
-                    original_server_close()
+                    try:
+                        if route_manager is not None:
+                            route_manager.close()
+                    finally:
+                        original_server_close()
+                        descriptor = getattr(router_owner, "_owner_descriptor", None)
+                        if descriptor is not None:
+                            os.close(descriptor)
+                            router_owner._owner_descriptor = None
 
         httpd.server_close = close_router_server  # type: ignore[method-assign]
-        if media_worker is not None:
+        if media_worker is not None and server_config.router_owner_backend != "managed-container":
             try:
                 media_worker.start()
             except BaseException:

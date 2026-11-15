@@ -1,0 +1,166 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "evidence_labels": [
+      "incomplete",
+      "diagnostic-only"
+    ],
+    "id": "2026-10-25-evaluation-pilot-r8-stopped",
+    "promotion_authorized": false,
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057"
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "beea4c4fcf9b8e9764536a3dfef90390e3e23f12323ba523a574ddd28d69b269",
+          "bytes": 1916
+        }
+      ],
+      "reason": "Diagnostic packet index, not a complete graph."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "0f187902e0eb294317f58cddfc04599572639692fff67256b622f70c54b5e251",
+          "bytes": 1954
+        }
+      ],
+      "reason": "Original private hashes and derivative hash distinction."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Full frozen workload not projected because native nonterminal rows are refused; exact96-row report retained."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "Prepared plans remain private; no complete plan projection claimed."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "b3dba7e5547f6f5f88da176fe9aed856459bc3f8b15e3cc821f845acefc0b0b6",
+          "bytes": 3744
+        }
+      ],
+      "reason": "Exact source and frozen manifest hashes; private topology omitted. Full configuration reconstruction is absent."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "campaign-report.json",
+          "sha256": "20a5830fda7bd0933c1c35e8c0f8172b6d9c9396ee5447804481e5a647d0c3a9",
+          "bytes": 171208
+        },
+        {
+          "path": "terminal-command.json",
+          "sha256": "15d8829c58c5e9bba10c14386a25b91b62f671fcee7465bb05e7cb04e89e7c35",
+          "bytes": 427
+        },
+        {
+          "path": "first-repeat-chain-audit.json",
+          "sha256": "0994c77b7a710a3e18a4144e524ad70ff517079fa3b0c7b762d34f3de0558420",
+          "bytes": 15434
+        },
+        {
+          "path": "prospective-eligibility.json",
+          "sha256": "77e2d6855d8dcb5195d352d92705da3e8e56c0dc301923dc3be169a2d455244a",
+          "bytes": 31890
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "bcc6bfe336573cc68055d03cdc0570300e8acf6234596c5ae6d6411d03390753",
+          "bytes": 7633
+        }
+      ],
+      "reason": "Exact report and bounded selected diagnostic evidence; no full native graph claim."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "d8c8be3462607a75f719d5b46dbc768f6791097f27d6a2f8b48dff73affa0e89",
+          "bytes": 1109
+        },
+        {
+          "path": "projection-refusal.json",
+          "sha256": "8b44a1b7ce94abcbea74ae3784005528a221ce11610dfec233ef7463a3463ef2",
+          "bytes": 637
+        },
+        {
+          "path": "cancellation-diagnosis.json",
+          "sha256": "53816e302349c20f674bf2b1c9f3f387162d192d37c96807b67624003d4fb681",
+          "bytes": 2594
+        }
+      ],
+      "reason": "Native nonterminal refusal and blocked interval preserved."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "4568a22949e888ac99ec248e1c177220616746d4137878e3b55709cfdae347b0",
+          "bytes": 460
+        },
+        {
+          "path": "physical-recovery-context.json",
+          "sha256": "7cc96800a0b4004b7ac1ca2edc988c8a2224533ea4b55e28131a0040813ffb83",
+          "bytes": 1803
+        }
+      ],
+      "reason": "Retained observations with verified=false; not restoration acceptance."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "b3dba7e5547f6f5f88da176fe9aed856459bc3f8b15e3cc821f845acefc0b0b6",
+          "bytes": 3744
+        }
+      ],
+      "reason": "Incomplete diagnostic; no ranking or promotion."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "publication-summary.md",
+          "sha256": "ddc305e57d2b23431affe0d3a8313d6d4838465a561354b85fe3c90d0422a0b9",
+          "bytes": 700
+        }
+      ],
+      "reason": "Bounded diagnostic publication draft, not published."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

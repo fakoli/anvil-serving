@@ -1,0 +1,18 @@
+{
+  "fixture_argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "OPERATOR_PATH_bc3e70c5c556/decode-fixture.py",
+    "--api-key-file",
+    "OPERATOR_PATH_6f3ccf38bed5/flare.key",
+    "--phase",
+    "warmup",
+    "--concurrency",
+    "1",
+    "--seconds",
+    "60",
+    "--output",
+    "OPERATOR_PATH_f058d2eb01de/decode-c1-warm"
+  ],
+  "capture_config": null,
+  "at": 1792661908.0162897
+}

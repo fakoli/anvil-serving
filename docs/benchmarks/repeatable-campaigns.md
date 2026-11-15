@@ -21,6 +21,94 @@ evidence paths, failures, and next actions. Do not copy logs, prompts,
 responses, credentials, private paths, or reachable operator endpoints into
 it.
 
+For every serving comparison, retain a content-bound `frozen_plan` before
+requests. Its `serving-comparison/v1` plan sets `frozen_before_requests: true`,
+pins source revision/file hashes, identifies at least two model/revision/image/
+runtime/hardware arms, and maps every required cell to arm, workload, context,
+concurrency, and request count. `metrics_coverage.required_cells` exactly
+matches those plan cells. Each cell declares the required measurement families: effective prefill; TTFO and visible TTFT when separately
+observable; decode, TPOT, and E2E; aggregate output throughput; actual input
+and output token counts and distributions; weights, memory, and KV capacity
+(KV bytes and runtime token pool separately); context; requested and observed
+concurrency/occupancy; GPU, host, and cgroup memory; OOM/admission failures;
+sample count, p50/p95, workload identity, and recipe identity. Record every
+metric as `measured`, `configured`, `estimated`, `blocked`, or `not_collected`.
+Only retained native observations are measured; configured or theoretical
+concurrency is not measured capacity, and engine-reported `kv_cache_tokens` are allocated slots; any full-window
+concurrency calculated from them is a separately labeled estimate, not measured
+simultaneous capacity.
+
+For scored cells, retain a reviewed hash-bound runner and an offline orchestration
+fixture for that exact runner. The runner launches only the frozen argv, samples
+engine occupancy plus numerical GPU, Linux host `MemAvailable`, and managed
+cgroup memory/events during the owned client process. It binds the frozen plan,
+runner, and collector hashes; checks exact serve/container/GPU identity on slow
+samples and model/engine/process identity on every engine sample; and reconciles
+engine counters to native request/token totals after drain. Inventory-only GPU
+output and before/after snapshots do not satisfy this
+requirement. Any missing family, cadence gap, collector error, identity drift,
+counter mismatch, or timeout blocks that cell and therefore a full comparison.
+
+A focused smoke or quality-only check may declare performance out of scope and
+state why it was not remeasured. It must not be presented as a full serving
+comparison.
+
+Capacity runs with `--output` now append each terminal request outcome to
+`<output>.journal.jsonl` and flush/fsync it before continuing. Use a fresh output
+path for every run; an existing journal is never overwritten. A missing
+completion footer or partial last line means an interrupted run. Earlier complete
+lines preserve terminal outcomes for diagnosis, but do not make the run complete
+or recover in-flight token chunks. The final native artifact binds the completed
+journal by hash and byte count. Journal I/O is included in measured wall time;
+do not pool results from producers with different journaling behavior.
+
+## Reserve the complete batch window
+
+Managed campaigns check the full allowance before submitting a new batch and
+again before releasing its ready workers:
+
+```text
+required seconds = 60 entry reserve + longest child timeout + drain reserve
+```
+
+The fixed entry reserve covers post-release asset checks, watchdog startup
+and preflight. It is an allowance, not a separate hard timeout for every setup
+operation. A child timeout already includes its contained test execution;
+do not add test time again or sum parallel child timeouts. The validated drain
+reserve covers client cleanup, engine drain and final telemetry/receipts.
+After preflight and prepared-plan verification, the worker checks that its
+entire suite timeout still fits before dispatching the suite.
+
+For example, a 600-second child with a 120-second drain reserve needs 780
+seconds. If only 779 seconds remain, the new batch stays unsubmitted. Release
+also refuses an unfunded or shortened allowance rather than clamping it.
+The error reports required and remaining time. Earlier release receipts keep
+their historical interpretation; the new admission rule does not rewrite them.
+
+Campaign `budgets.total_s` accounts for active released batches and their
+closure; it is not an overall operator wall-clock deadline. For a campaign
+authorized for 45 minutes including cleanup, start the wall timer before the
+first inference/model transport attempt, including preflight traffic. Record
+that timer origin and absolute deadline separately. A conservative 2,100-second active budget alone
+does not enforce that wall limit: preparation and gaps between batches also
+consume elapsed time. Stop admitting work that cannot finish within the
+remaining wall window, and use managed cancellation no later than minute 40
+to leave five minutes for cleanup. Keep unstarted cells and unknown closure
+visible rather than extending the authorized window.
+
+With the campaign's existing store configuration, use the short product
+commands to cancel owned work and inspect the final evidence:
+
+```text
+anvil-serving eval benchmark campaign cancel CAMPAIGN --ownership-id OWNER --confirm
+anvil-serving eval benchmark campaign report CAMPAIGN --ownership-id OWNER --json
+```
+
+Cancellation intent alone is not verified engine drain or completed cleanup.
+Retain final worker, drain and telemetry receipts plus the complete elapsed
+interval. The report's [raw Aider grades](methodology.md#aider-grades-lifecycle-and-diagnostic-observations)
+do not change lifecycle state or accepted measurement populations.
+
 ## Verify the executing source
 
 Before the first request, run these from the intended checkout:
@@ -80,7 +168,7 @@ result are one source. Use local artifacts alone for local-only questions.
 | Feasibility | Reject physically or contractually infeasible recipes | Fit assumptions, unknowns, and rejection class retained |
 | Scout | Screen a broad matrix economically | Identity, completion, correctness, and resource gates pass |
 | Finalist | Compare survivors under one controlled workload | Matched controls, adequate sample population, and request isolation pass |
-| Quality | Test behavior separately from speed | Declared functional, quality, context, modality, and integration gates pass or remain explicitly missing |
+| Quality | Test behavior separately from speed | Declared functional, quality, context, modality, and integration gates pass; any missing gate remains explicit and blocks a complete qualification claim |
 | Restoration | Return to the captured starting state | Managed state, exact identity, route behavior, and post-run smoke reconcile |
 | Publication | Reconcile claims with native artifacts | Coverage matrix, friction dispositions, graphs, summary, and manifest agree |
 
@@ -88,6 +176,15 @@ Scout results choose what to test next. They are not headline evidence when
 their request count, completion distribution, cache state, or output contract
 differs from the finalist workload. A performance winner is not a qualified
 deployment until its independent quality and integration gates pass.
+
+Run execution can finish with failed or blocked cells, but a full serving
+comparison cannot close as complete while any required metric in a frozen cell
+is not `measured`. Preserve the failed or physically blocked cell and its
+limits, then state the narrower completed scope. Infrastructure, safety,
+identity, resource, OOM, and admission failures stop unsafe work. An ordinary
+quality or correctness miss is retained independently; continue only the
+remaining safe diagnostic or performance cells, or record an explicit
+authorized deferral. Do not silently skip timing because a quality gate missed.
 
 ## Investigate before rejecting candidates
 
@@ -186,6 +283,8 @@ Keep instruction revisions distinct from model/recipe revisions and evaluate
 actual behavior before treating a reflection as a reusable rule.
 
 ## Finalize and report
+
+A dated example is the [2026-10-06 Apple English voice campaign](../findings/2026-10-06-m4-max-voice-quality-qualification.md), with an explicit [reconstruction contract](../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md). It preserves original plan timestamps, a wrapper added after first requests, separate component populations, structural/privacy projections and failed gates. It is evidence of a bounded campaign, not retroactive compliance with the wrapper-before-request rule or a release gate pass.
 
 Generate graphs from retained numeric paths, combine synchronized replicas,
 and finalize the artifact manifest as separate fail-fast steps. Run each

@@ -1,0 +1,83 @@
+{
+  "identity": {
+    "concurrency": 1,
+    "configured_resource_policy": {
+      "distinction": "Configured recipe and startup values, not workload-capacity or performance measurements.",
+      "host_memory_reserve_mib": 12288,
+      "mem_fraction_static": 0.82,
+      "memory_limit_mib": 53248,
+      "memory_swap_limit_mib": 53248,
+      "zero_effective_swap": true
+    },
+    "context_tokens": 262144,
+    "engine": "SGLang 0.5.21",
+    "engine_revision": "e00930c5489053f26d86b179cee0d087f846acbb",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "model_repository": "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4",
+    "model_revision": "579ffa0b659bc681b89e649fa7c2d5089399602e",
+    "native_request_policy": {
+      "capacity_c1": {
+        "chat_template_kwargs": {
+          "enable_thinking": true,
+          "force_nonempty_content": true
+        },
+        "reasoning_effort": null,
+        "temperature": 1.0,
+        "top_p": 0.95
+      },
+      "preflight_and_context": {
+        "chat_template_kwargs": {
+          "enable_thinking": true,
+          "force_nonempty_content": true
+        },
+        "reasoning_effort": null,
+        "temperature": 0.0,
+        "top_p": null
+      },
+      "vision": {
+        "chat_template_kwargs": {
+          "enable_thinking": true,
+          "force_nonempty_content": true
+        },
+        "reasoning_effort": null,
+        "temperature": 0.6,
+        "thinking_mode": "enabled",
+        "top_p": 0.95
+      }
+    },
+    "public_served_alias": "nemotron35-super-vl-nvfp4-scout",
+    "quantization": "Official ModelOpt mixed NVFP4/FP8; BF16 KV measured at startup; float16 Mamba SSM; no speculative decoding.",
+    "recipe_sha256": "162062435c7cb79379771fa6f99797bb36c5ca2f217ac42f1b5fb39a4e604b89",
+    "runtime_image": "lmsysorg/sglang:v0.5.21@sha256:2dbe4c7f53230b09aaa8fa41891c13c51d9d2e253f486a70822aaf08783fff75",
+    "runtime_template_sha256": "1369e90b19976f99ce2070eb21ade8fcb4af640f008e14e82af5c5e89a9cc816",
+    "tensor_parallelism": 2
+  },
+  "measured_to_date": {
+    "r2_capacity_c1_r1": "all 4 requests failed strict canary or stream validation; performance_eligible is false",
+    "r2_context_c1": "passed 2 of 2 checks; measured prompt tokens 235978 and 123169",
+    "r2_oracle8": "native completed and passed its 0.75 per-run floor: 16 of 18 in each of three rounds (48 of 54 total); the campaign exact 18 of 18 per round and 54 of 54 total gate failed",
+    "r2_preflight": "passed 6 of 6 checks with 26 observations",
+    "r2_vision18_c1": "passed 18 of 18 attempts",
+    "r2_swe5": "terminal incomplete: 5 attempted, 4 officially graded, 2 resolved; official grader incomplete after one limits-exceeded case"
+  },
+  "oracle_campaign_gate": {
+    "campaign_gate_passed": false,
+    "campaign_required_pass_rate": 1.0,
+    "campaign_required_total": "54 of 54 across three frozen rounds",
+    "diagnosis_caveat": "All six misses are debug-loop protocol failures. The frozen exact sequence rule is explicit, while the generic tool schema did not enumerate the sole accepted scope literal. The traces show eventual task recovery and correct final reporting; this result does not establish broad coding inability.",
+    "native_per_run_floor": 0.75,
+    "native_per_run_passed": true,
+    "observed_per_round": "16 of 18",
+    "observed_total": "48 of 54"
+  },
+  "privacy_boundary": "No private host, path, endpoint, container identity, GPU UUID, raw prompts, responses, reasoning, tool arguments, logs, or commands are retained.",
+  "promotion": false,
+  "schema": "anvil-serving.public-nemotron-scout-configuration/v1",
+  "status": "terminal scout support record; C4 is blocked by the strict C1 capacity failure. Coding is terminal and incomplete. Oracle native floor passed but the campaign exact Oracle gate failed; qualification and promotion are not eligible. Final campaign restoration is verified in restoration.json.",
+  "unrun_or_pending": [
+    "C4 successor",
+    "stability",
+    "qualification",
+    "promotion"
+  ]
+}

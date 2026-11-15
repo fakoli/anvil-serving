@@ -1,0 +1,135 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-10-26-marker-gpu-trace",
+    "capability": "Focused actual-GPU reasoning-marker provenance diagnostic",
+    "repository_revision": "626f6d8abe8f987a49e09ceab24651684e28ef4f",
+    "dirty_state": "Executable source frozen clean before lifecycle; publication projections added after measurement.",
+    "started_at": "2026-10-26T06:36:06Z",
+    "completed_at": "2026-10-26T07:29:57Z",
+    "evidence_labels": ["functional"],
+    "decision_labels": ["no-promotion"],
+    "promotion_authorized": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "marker-gpu-trace-experiment/v1",
+    "marker-trace/v1",
+    "anvil-serving.reasoning-runtime-inspection/v1",
+    "preflight/v2",
+    "operator-workflow/v1",
+    "marker-gpu-trace-restoration/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": ["README.md"],
+      "reason": "Human evidence map and interpretation boundaries."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": ["source-registry.json", "projection-ledger.json"],
+      "reason": "Primary sources and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": ["plan.json", "request.json"],
+      "reason": "Frozen synthetic workload, controls and forwarded request projection."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": ["plan.json", "independent-pre-live-review.json"],
+      "reason": "Prospective gates, bounds, stop policy, restoration and independent authorization review."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "source-freeze.json",
+        "build.json",
+        "candidate-attestation.json",
+        "runtime-before.json",
+        "runtime-candidate-before.json",
+        "runtime-candidate-after.json",
+        "runtime-restored.json"
+      ],
+      "reason": "Pinned source/image/model composition and bounded runtime comparisons."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "startup-gates.json",
+        "request.json",
+        "response.json",
+        "probe-result.json",
+        "trace-result.json",
+        "serving-worker-traces.json",
+        "serving-worker-traces.log",
+        "startup-receipts.log",
+        "public-replay-result.json",
+        "public-replay-result-2.json",
+        "marker-trace-summary.json",
+        "baseline-smoke.json"
+      ],
+      "reason": "Native numerical/token evidence, complete public-safe worker records, frozen unknown analyzer result and explicitly derived summary."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "trace-result.json",
+        "independent-live-review.json",
+        "public-replay-result.json",
+        "public-replay-result-2.json",
+        "baseline-smoke.json",
+        "restoration-smoke.json"
+      ],
+      "reason": "Failed full-sequence gate, nonreproduction, build friction and strict JSON failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "closure.json",
+        "runtime-before.json",
+        "runtime-restored.json",
+        "router-restored.json",
+        "router-transition-restored.json",
+        "mode-restored.json",
+        "resources-final.json",
+        "baseline-smoke.json",
+        "restoration-smoke.json",
+        "independent-restoration-review.json"
+      ],
+      "reason": "Exact operational restoration; functional acceptance remains incomplete; no quality regression established."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "closure.json",
+        "independent-pre-live-review.json",
+        "independent-live-review.json",
+        "independent-restoration-review.json"
+      ],
+      "reason": "Closed inconclusive diagnostic with independent pre-live, post-probe and restoration reviews."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; the dated technical finding is the public report."
+    }
+  ],
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB"
+}

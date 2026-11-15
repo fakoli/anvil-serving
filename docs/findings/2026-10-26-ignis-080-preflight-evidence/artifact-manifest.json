@@ -1,0 +1,229 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "ignis-080-required-tools-20261026",
+    "capability": "Focused automatic-choice diagnostic and required-tool request-policy qualification",
+    "repository_revision": "c727ff01f34d2d7564fab63d94203fec68890baf",
+    "dirty_state": "Phase-one executable source was clean at dc576b25. Phase-two ran from the exact reviewed patch later committed as c727ff01; public projections were assembled afterward in an isolated worktree.",
+    "started_at": "2026-10-26T08:11:19.084754Z",
+    "completed_at": "2026-10-26T09:20:49.487605Z",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "ignis-tool-choice-followup/v1",
+    "ignis-tool-choice-followup-result/v1",
+    "operator-workflow/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "c35864b3ff234475ff20fea55dcaa891d23a51441bd1fb8e6a01fd84e8bc41e9",
+          "bytes": 6803
+        }
+      ],
+      "reason": "Human evidence map, two-phase outcome, and interpretation boundaries."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "c61af359f2529245471640d6416bfdf4435bbaf40a85431ce4d0e705dfeb6631",
+          "bytes": 6404
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "76137d9afbe06227597c484636529d1abbd9ec7ac842d20b892d7f47849f7396",
+          "bytes": 6543
+        },
+        {
+          "path": "tool-usage-contract.md",
+          "sha256": "ff18a91640a60664917fa3ca5715da0fa4a5cafac836d22fb2d04b1e51ec991f",
+          "bytes": 2426
+        }
+      ],
+      "reason": "Pinned official sources, reviewed harness source, and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "2d5e4e416767da02a75bb26692f94122882122380fa1483de9d319daf6798820",
+          "bytes": 3188
+        },
+        {
+          "path": "preflight-native.json",
+          "sha256": "015b66d27c678fa5bbb5a268df532a441bd6b0cd1958817160182b8b3a9b761e",
+          "bytes": 8094
+        },
+        {
+          "path": "tool-choice-followup.json",
+          "sha256": "f7f157c43da87aa615f38d1fbb293e1143575163f0f03323b0b9551ada705e9b",
+          "bytes": 7954
+        }
+      ],
+      "reason": "Frozen synthetic workload, request controls, exact oracle, and bounded phase accounting."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "2d5e4e416767da02a75bb26692f94122882122380fa1483de9d319daf6798820",
+          "bytes": 3188
+        }
+      ],
+      "reason": "Prospective phase sequencing, limits, stop conditions, and selection rule."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "38d84184977ffff3301dcc6e5cf08558f5c6c822a6490fc3aff5f94ef311e363",
+          "bytes": 2390
+        },
+        {
+          "path": "resource-summary.json",
+          "sha256": "0e98fcec9b3228057d8c379ec49b60b2633e01d14c3bb7a73b92304504e36e48",
+          "bytes": 2455
+        }
+      ],
+      "reason": "Pinned source/image/model/profile, one-card hardware boundary, containment, and measured resource provenance."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "preflight-native.json",
+          "sha256": "015b66d27c678fa5bbb5a268df532a441bd6b0cd1958817160182b8b3a9b761e",
+          "bytes": 8094
+        },
+        {
+          "path": "engine-request-summary.json",
+          "sha256": "a7f6f7a875d26085fca43563064b3eb74e04fb6260bc6feb863386af59af52d7",
+          "bytes": 2810
+        },
+        {
+          "path": "tool-choice-followup.json",
+          "sha256": "f7f157c43da87aa615f38d1fbb293e1143575163f0f03323b0b9551ada705e9b",
+          "bytes": 7954
+        },
+        {
+          "path": "resource-summary.json",
+          "sha256": "0e98fcec9b3228057d8c379ec49b60b2633e01d14c3bb7a73b92304504e36e48",
+          "bytes": 2455
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "622ce8119715d37dcf471cde92e66242007115274958448980e27d243aedd683",
+          "bytes": 2204
+        },
+        {
+          "path": "restoration-smoke-phase-two.json",
+          "sha256": "e975f8fa442c2bd36155343dda1a5369527af7f3447b649249b7f263513a4aa3",
+          "bytes": 2636
+        }
+      ],
+      "reason": "Sanitized native phase-one result, phase-two request/result projection, request lifecycle accounting, resources, and restoration smokes."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "0979174c31e5c63dbc514b7c6f44a457cde6aa259300247315a9733156928e7f",
+          "bytes": 3909
+        },
+        {
+          "path": "tool-failure-analysis.md",
+          "sha256": "4c9b0d7ce772853f94d3b59091eb77823ac05db45e7ce15b9f82e8075eb23b91",
+          "bytes": 4025
+        },
+        {
+          "path": "prepared-followup.json",
+          "sha256": "ef427e539e6e601b1620c82a0e0315386e5518a97e7f73e0f10b99db2b0339ab",
+          "bytes": 610
+        }
+      ],
+      "reason": "Original auto-mode miss, request-count correction, configuration warnings, unrun coding campaign, and evidence-wording boundary."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "39e880c076d59707ad23c89d3650c784a94cea0a531fa08e8ced5223d896a8aa",
+          "bytes": 4632
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "622ce8119715d37dcf471cde92e66242007115274958448980e27d243aedd683",
+          "bytes": 2204
+        },
+        {
+          "path": "restoration-smoke-phase-two.json",
+          "sha256": "e975f8fa442c2bd36155343dda1a5369527af7f3447b649249b7f263513a4aa3",
+          "bytes": 2636
+        },
+        {
+          "path": "independent-restoration-review.json",
+          "sha256": "f75ee0ac4210fdffce83192d2b4f43b0156d32c1f357ae7e409a4047f8333e4d",
+          "bytes": 4307
+        }
+      ],
+      "reason": "Exact operational restoration after both phases with independent phase-two acceptance and explicit quality/config-byte limits."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "0bdabb5663b73132e20feac6ce0fe4aabda4333b6e23888b31d0230e69fb9947",
+          "bytes": 6968
+        },
+        {
+          "path": "tool-choice-followup.json",
+          "sha256": "f7f157c43da87aa615f38d1fbb293e1143575163f0f03323b0b9551ada705e9b",
+          "bytes": 7954
+        },
+        {
+          "path": "independent-restoration-review.json",
+          "sha256": "f75ee0ac4210fdffce83192d2b4f43b0156d32c1f357ae7e409a4047f8333e4d",
+          "bytes": 4307
+        }
+      ],
+      "reason": "Closed functional qualification, retained auto miss, request-policy recommendation, restoration acceptance, and no-promotion boundary."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No compact social-copy package was requested; the dated technical finding is the public report."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

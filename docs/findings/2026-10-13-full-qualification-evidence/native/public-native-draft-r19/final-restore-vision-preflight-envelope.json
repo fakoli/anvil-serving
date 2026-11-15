@@ -1,0 +1,27 @@
+{
+  "command": "eval preflight --base-url public-endpoint-003 --api-key-env ANVIL_ROUTER_TOKEN --thinking-mode default --visible-answer-tokens 1024 --reasoning-headroom-tokens 8192 --timeout 180 --confirm --transport local --model vision.general --json-out public-path-003 --checks image --image-path public-path-004 --image-expect ANVIL READY",
+  "context": {
+    "command": "eval-preflight",
+    "command_host": "public-command-host-001",
+    "command_runtime": "public-command-runtime-001",
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": "public-command-host-001",
+    "execution_runtime": "public-execution-runtime-001",
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": "public-resource-001",
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": "public-command-host-001",
+    "resource_runtime": "public-execution-runtime-001",
+    "target": null,
+    "topology": "public-topology-001",
+    "transport": "local"
+  },
+  "data": "PRE-FLIGHT  public-endpoint-003  model=vision.general  thinking=default visible=1024 reasoning_headroom=8192 max_tokens=9216\n------------------------------------------------------------\n[PASS] general image understanding            5.7s all expected text present finish='stop' visible=1121 reasoning_chars=592 reasoning_tokens=None\n------------------------------------------------------------\nRESULT: ALL PASS\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

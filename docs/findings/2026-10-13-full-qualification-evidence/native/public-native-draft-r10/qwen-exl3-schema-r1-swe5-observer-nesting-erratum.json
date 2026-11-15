@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-13T21:20:57.698776+00:00",
+  "benchmark_restarted": false,
+  "cause": "Status data is directly the benchmark job, not data.job. R1 kept sampling/cancel-on-resource guards but failed to detect terminal state.",
+  "observer_transition_gap": false,
+  "r1_final_memory_json": "Not produced due observer stop; all flushed JSONL samples retained.",
+  "r1_first_at": "2026-10-13T21:17:44.920891+00:00",
+  "r1_last_at": "2026-10-13T21:20:57.148367+00:00",
+  "r1_preserved_samples": 39,
+  "r1_samples_sha256": "9f60a3091c2735e246084a8bdb9856bc82e5659a8ad6d9df9daeb3190a7b7432",
+  "r2_first_at": "2026-10-13T21:20:06.649571+00:00",
+  "remedy": "R2 handles direct and wrapped job shapes and asserts schema plus run ID; started overlapping observation before R1 stopped.",
+  "schema_version": "benchmark-observer-erratum/v1",
+  "stopped_scope": "Only root validation observer identified by exact open writable samples-file descriptor, same UID and python3- command; no managed service or benchmark worker was stopped."
+}

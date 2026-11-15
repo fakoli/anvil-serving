@@ -1,0 +1,186 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "glm-sampling-upstream-tolerance-20261025",
+  "complete": true,
+  "identity": {
+    "source_head": "80dacf71b72d9760cf539d7cbe8e9c8a88c25647",
+    "model": {
+      "repository": "nvidia/GLM-5.3-Flash-FP4-Local",
+      "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+      "public_served_label": "served-model-1",
+      "weight_format": "FP4",
+      "kv_dtype": "FP8",
+      "context": 327680,
+      "max_concurrency": 4,
+      "tensor_parallel": 2,
+      "decode_context_parallel": 2,
+      "speculative_tokens": 3
+    },
+    "runtime": {
+      "base_revision": "8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+      "upstream_patch_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+      "base_image": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+      "candidate_image": "sha256:41c4926b08c7298fb63bc7f1204926c4f95ce9083ff610069ab442141213b1aa",
+      "baseline_sampler_sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
+      "patched_sampler_sha256": "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6"
+    }
+  },
+  "workload": {
+    "scope": "Focused functional kernel and single model reasoning-boundary diagnostic; no performance comparison",
+    "policy": "upstream-count-v1",
+    "plan": "plan.json",
+    "probe_plan": "probe-plan.json"
+  },
+  "measurement": {
+    "path": "synthetic CUDA kernels, followed by one isolated C1 direct-endpoint request through a route-derived in-memory relay",
+    "warm_cold_state": "Fresh candidate load; JIT/cache uncontrolled; synchronized diagnostic traces",
+    "forced_cases": 8,
+    "ordinary_cases": 8,
+    "ordinary_rows": 272,
+    "candidate_requests": 1
+  },
+  "kernel": {
+    "gate": "passed",
+    "failed_rows": 0,
+    "failed_native_batches": 0,
+    "stock_patch_equal_rows": 271,
+    "baseline_exact_binary64_reference_rows": 36,
+    "patched_exact_binary64_reference_rows": 35,
+    "peak_tensor_bytes": 519289856,
+    "prior_one_token_difference_preserved": true
+  },
+  "boundary": {
+    "schema": "anvil-serving.sampling-boundary-summary/v1",
+    "derived_from": [
+      "response.json",
+      "probe-result.json",
+      "serving-worker-traces.json"
+    ],
+    "requests": 1,
+    "finish_reason": "stop",
+    "completion_tokens": 137,
+    "native_reasoning_tokens": 64,
+    "closing_token": 154842,
+    "closing_token_positions_zero_based": [
+      64,
+      126
+    ],
+    "token_zero_count": 0,
+    "exact_answer_oracle": false,
+    "boundary": "invalid_repeated_or_missing_close",
+    "numeric_solution_present": true,
+    "numeric_solution_presence_is_not_strict_oracle_pass": true,
+    "candidate_worker_trace_receipts": 2,
+    "kernel_path_evidence": "observed synchronized split-mask dispatch",
+    "full_reasoning_limit_gate": "failed",
+    "promotion_authorized": false
+  },
+  "gates": [
+    {
+      "name": "synthetic-kernel",
+      "status": "passed"
+    },
+    {
+      "name": "candidate-source-identity",
+      "status": "passed"
+    },
+    {
+      "name": "serving-worker-dispatch",
+      "status": "observed"
+    },
+    {
+      "name": "reasoning-boundary",
+      "status": "failed"
+    },
+    {
+      "name": "strict-answer",
+      "status": "failed"
+    },
+    {
+      "name": "baseline-json-smoke",
+      "status": "failed"
+    },
+    {
+      "name": "operational-restoration",
+      "status": "passed"
+    },
+    {
+      "name": "functional-restoration-smoke",
+      "status": "failed"
+    }
+  ],
+  "headline_results": [
+    {
+      "name": "forced_cases_passed",
+      "value": 8
+    },
+    {
+      "name": "ordinary_rows_checked",
+      "value": 272
+    },
+    {
+      "name": "stock_patch_equal_rows",
+      "value": 271
+    },
+    {
+      "name": "candidate_requests",
+      "value": 1
+    },
+    {
+      "name": "closing_token_positions_zero_based",
+      "value": [
+        64,
+        126
+      ]
+    },
+    {
+      "name": "token_zero_count",
+      "value": 0
+    }
+  ],
+  "failures": [
+    "Repeated reasoning-end marker and duplicated answer/prose fail strict model gates.",
+    "Pretrial strict JSON smoke contains prose.",
+    "Matched restored-incumbent strict JSON smoke also fails; no quality regression established."
+  ],
+  "limitations": [
+    "Single model request; no retry or causal isolation of repeated-marker behavior.",
+    "Dispatch receipts are not per-token provenance or profiler-level evidence.",
+    "Trace vocabulary 154880 versus tokenizer/fixture 154856; padding explanation not independently verified.",
+    "Native probe keeps runtime_verified=false and drain unknown; later inspector and attestation are separate.",
+    "No performance, capacity, broad quality or promotion result."
+  ],
+  "restoration": "operational_verified_existing_json_failure_reproduced",
+  "decision": {
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "Offline investigation of repeated-close MTP/thinking-budget/parser state; preserve failed strict outcome and matched JSON-smoke quality limit."
+  },
+  "promoted": false,
+  "ignis": "hold",
+  "evidence": [
+    "kernel-receipts.log",
+    "kernel-summary.json",
+    "request.json",
+    "response.json",
+    "probe-result.json",
+    "boundary-summary.json",
+    "serving-worker-traces.json",
+    "candidate-attestation.json",
+    "runtime-candidate-before.json",
+    "runtime-candidate-after.json",
+    "baseline-smoke.json",
+    "restoration.json",
+    "closure.json",
+    "restoration-smoke.json",
+    "independent-kernel-review.json",
+    "independent-live-review.json",
+    "trace-freshness.json"
+  ],
+  "quality_regression_established": false
+}

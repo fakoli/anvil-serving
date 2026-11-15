@@ -1,0 +1,58 @@
+{
+  "suite": "quasar-swift15-coding",
+  "date": "2026-10-16",
+  "work_class": "bounded-pure-python-coding",
+  "evidence_use": "diagnostic",
+  "validator_strength": "deterministic_marker",
+  "evals": [
+    {
+      "id": "merge_intervals",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def merge_intervals(intervals):`. `intervals` is a list of two-item lists of integers with start <= end. Return a new list of two-item lists, sorted by start then end, merging intervals that overlap or touch (the next start <= current end + 1). Do not mutate `intervals`. Empty input returns []. Include the exact marker `CODING_FIXTURE: merge_intervals` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: merge_intervals"}]
+    },
+    {
+      "id": "stable_toposort",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def stable_toposort(nodes, edges):`. `nodes` is a list of distinct strings and `edges` is a list of (before, after) string pairs. Return a topological ordering. At each step choose the earliest item in the original `nodes` list among currently ready nodes. Ignore duplicate edges. Return None if any edge names a node not in `nodes` or if there is a cycle. Do not mutate either input. Include the exact marker `CODING_FIXTURE: stable_toposort` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: stable_toposort"}]
+    },
+    {
+      "id": "parse_csv_line",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def parse_csv_line(line):`. Parse one CSV record into a list of strings. Commas split fields. A quoted field begins with `\"`; inside it `\"\"` means one quote and commas are literal. After a closing quote only a comma or end is valid. Quotes in an unquoted field are invalid. Preserve all other characters and empty fields. Return None for malformed quoting; otherwise return the fields. Include the exact marker `CODING_FIXTURE: parse_csv_line` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: parse_csv_line"}]
+    },
+    {
+      "id": "apply_edits",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def apply_edits(text, edits):`. Each edit is a three-item tuple `(start, end, replacement)` with integer offsets into `text` and a string replacement; it replaces `text[start:end]`. Apply all edits atomically, accepting them in any order. Return None if an offset is invalid, start > end, replacement is not a string, or two edits overlap. Adjacent edits are allowed. Otherwise return the changed string. Do not mutate `edits`. Include the exact marker `CODING_FIXTURE: apply_edits` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: apply_edits"}]
+    },
+    {
+      "id": "normalize_posix_path",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def normalize_posix_path(path):`. `path` is a string POSIX absolute path beginning with `/`. Return its canonical form: collapse repeated slashes, remove `.`, resolve `..`, and clamp attempts to go above root at root. The result has no trailing slash except `/`. Return None when input is not a string or is not absolute. Do not use os or pathlib. Include the exact marker `CODING_FIXTURE: normalize_posix_path` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: normalize_posix_path"}]
+    },
+    {
+      "id": "lru_trace",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def lru_trace(capacity, operations):`. `capacity` is a nonnegative integer. Every operation is a three-item tuple: `('put', key, value)` or `('get', key, None)`, where keys and values are strings. Process an LRU cache: get returns its value or None; put inserts/replaces and makes the key most-recent; when over capacity evict the least-recent key. Return `(results, cache)` where `results` has one entry per get in order and `cache` is a list of `(key, value)` pairs from least-recent to most-recent. Return None for an invalid capacity or malformed/unknown operation. Include the exact marker `CODING_FIXTURE: lru_trace` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: lru_trace"}]
+    },
+    {
+      "id": "decode_uvarint",
+      "visible_answer_tokens": 4096,
+      "reasoning_headroom_tokens": 8192,
+      "prompt": "Write ONLY one fenced Python code block containing complete source and no prose. Do not import anything, read files, access the network, or call anything except ordinary builtins and methods on local values. Define exactly `def decode_uvarint(data):`. `data` is a list of integer bytes. Decode one canonical unsigned 64-bit LEB128 value from its beginning and return `(value, consumed_bytes)`. Return None for invalid byte values, empty or unterminated input, more than 10 bytes, overflow beyond 2**64-1, or a noncanonical redundant encoding (for example `[128, 0]`). Ignore bytes after the first complete varint. Include the exact marker `CODING_FIXTURE: decode_uvarint` in a comment.",
+      "checks": [{"name": "marker", "contains": "CODING_FIXTURE: decode_uvarint"}]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ return structured data suitable for one CLI envelope.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import errno
 import hashlib
 from importlib import resources
 import json
@@ -549,6 +550,76 @@ def _safe_ingress_directory(data: dict[str, Any]) -> None:
         raise ManageError("managed ingress directory is unsafe")
 
 
+def _recover_stale_gateway_socket(data: dict[str, Any], runner: Runner | None, *, administrative: bool = False) -> bool:
+    """Under the deployment lock, recover only a stopped gateway's owned socket."""
+    policy = data["service_identities"]["ingress"]
+    gateway_uid, gateway_gid = role_identity(data, "gateway")
+    directory = Path(data["gateway"]["state_directory"] if administrative else policy["directory"])
+    socket_name = "admin.sock" if administrative else "ingress.sock"
+    socket_mode = 0o600 if administrative else 0o660
+    socket_gid = gateway_gid if administrative else policy["group_id"]
+    path = directory / socket_name
+    if not os.path.lexists(path):
+        return False
+
+    def validate_directory() -> None:
+        if administrative:
+            _safe_private_runtime_directory(directory, gateway_uid, gateway_gid)
+        else:
+            _safe_ingress_directory(data)
+
+    validate_directory()
+    descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        pinned = os.fstat(descriptor)
+
+        def owned_socket() -> os.stat_result:
+            info = os.stat(socket_name, dir_fd=descriptor, follow_symlinks=False)
+            if (not stat.S_ISSOCK(info.st_mode) or stat.S_IMODE(info.st_mode) != socket_mode
+                    or info.st_uid != gateway_uid or info.st_gid != socket_gid):
+                raise ManageError("refusing recovery of an unowned gateway socket")
+            return info
+
+        original = owned_socket()
+        unit = "anvil-connect-gateway.service"
+        _action(runner, (_SYSTEMCTL, "stop", unit), _SYSTEMD_TIMEOUT, "gateway recovery stop failed")
+        observed = _run(runner, (_SYSTEMCTL, "show", "--property=ActiveState,SubState,MainPID,ControlPID", unit), _VALIDATE_TIMEOUT)
+        lines = observed.stdout.decode("utf-8", "replace").splitlines()
+        fields = dict(line.split("=", 1) for line in lines if "=" in line)
+        if (observed.returncode != 0 or len(lines) != 4
+                or set(fields) != {"ActiveState", "SubState", "MainPID", "ControlPID"}
+                or fields.get("ActiveState") not in {"inactive", "failed"}
+                or fields.get("SubState") not in {"dead", "failed"}
+                or fields.get("MainPID") != "0" or fields.get("ControlPID") != "0"):
+            raise ManageError("gateway is not stopped; gateway socket recovery refused")
+        try:
+            current = owned_socket()
+        except FileNotFoundError:
+            return False  # A graceful stop removed its own listener.
+        if (original.st_dev, original.st_ino) != (current.st_dev, current.st_ino):
+            raise ManageError("gateway socket changed; recovery refused")
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as probe:
+            probe.settimeout(1)
+            try:
+                probe.connect(f"/proc/self/fd/{descriptor}/{socket_name}")
+            except OSError as exc:
+                if exc.errno != errno.ECONNREFUSED:
+                    raise ManageError("gateway socket liveness is unknown; recovery refused") from exc
+            else:
+                raise ManageError("gateway socket is still listening; recovery refused")
+        validate_directory()
+        current_directory = directory.lstat()
+        current = owned_socket()
+        if ((pinned.st_dev, pinned.st_ino) != (current_directory.st_dev, current_directory.st_ino)
+                or (original.st_dev, original.st_ino) != (current.st_dev, current.st_ino)):
+            raise ManageError("gateway socket ownership changed; recovery refused")
+        os.unlink(socket_name, dir_fd=descriptor)
+        os.fsync(descriptor)
+        return True
+    finally:
+        os.close(descriptor)
+
+
 def _validate_closed_memberships(data: dict[str, Any]) -> None:
     """Permit only the edge account as a declared supplementary group member."""
     accounts: dict[str, str] = {}
@@ -671,7 +742,8 @@ def _validate_gateway_files(data: dict[str, Any]) -> None:
     if "smtp" in data["authelia"]:
         _safe_consumed_file(Path(data["authelia"]["smtp"]["password_file"]), idp_uid, idp_gid)
     for client in data["authelia"].get("additional_oidc_clients", []):
-        _safe_consumed_file(Path(client["client_secret_file"]), idp_uid, idp_gid)
+        if not client.get("public", False):
+            _safe_consumed_file(Path(client["client_secret_file"]), idp_uid, idp_gid)
     _validate_local_files(data, Target("gateway"))
 
 
@@ -1117,7 +1189,7 @@ def _remove_owned_tree(root: Path) -> None:
 
 
 @contextmanager
-def _deployment_lock(root: Path) -> Iterator[None]:
+def _deployment_lock(root: Path, *, deadline: float | None = None) -> Iterator[None]:
     _safe_dir(root.parent)
     lock = root.parent / ("." + root.name + ".anvil-connect.lock")
     descriptor: int | None = None
@@ -1126,7 +1198,17 @@ def _deployment_lock(root: Path) -> Iterator[None]:
         info = os.fstat(descriptor)
         if not stat.S_ISREG(info.st_mode) or info.st_uid not in {0, os.geteuid()} or info.st_mode & 0o077:
             raise ManageError("lifecycle lock is unsafe")
-        fcntl.flock(descriptor, fcntl.LOCK_EX)
+        if deadline is None:
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+        else:
+            while True:
+                if time.monotonic() >= deadline:
+                    raise ManageError("lifecycle lock deadline expired")
+                try:
+                    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    time.sleep(min(0.05, max(0, deadline - time.monotonic())))
         yield
     except OSError as exc:
         raise ManageError("lifecycle lock is unavailable") from exc
@@ -2289,6 +2371,11 @@ def _up_selected(data: dict[str, Any], targets: tuple[Target, ...], *, apply: bo
                     _oidc_ready(data["gateway"]["oidc"]["issuer"], data["caddy"].get("listen", ":443"),
                                 runner, _role_service_identity(data, "edge"), data["caddy"]["tls"]["certificate_file"])
                 touched[unit] = prior[unit]
+                if unit == "anvil-connect-gateway.service":
+                    result["recovered_gateway_sockets"] = [
+                        name for name, administrative in (("ingress", False), ("admin", True))
+                        if _recover_stale_gateway_socket(data, runner, administrative=administrative)
+                    ]
                 if active:
                     _action(runner, (_SYSTEMCTL, "restart", unit), _SYSTEMD_TIMEOUT, "managed unit failed to restart")
                     restarted.append(unit)
@@ -2500,7 +2587,11 @@ def _native_events(runner: Runner | None, unit: str, tail: int = 200, deadline: 
     if match is None:
         return []
     identifier = match[1].decode("ascii")
-    observed = _observe(runner, (_JOURNALCTL, "--no-pager", "--output=json", "--lines=" + str(tail),
+    # Project only needed fields and match the native 64-event ring. Journal
+    # cursor/time metadata is always included, even with --output-fields.
+    tail = min(tail, 64)
+    observed = _observe(runner, (_JOURNALCTL, "--no-pager", "--output=json",
+                                 "--output-fields=MESSAGE,_SYSTEMD_INVOCATION_ID,_SYSTEMD_UNIT", "--lines=" + str(tail),
                                  "--unit", unit, "_SYSTEMD_INVOCATION_ID=" + identifier), deadline)
     if observed.returncode != 0:
         return []
@@ -2744,7 +2835,7 @@ def _admin_preview(request: Path) -> dict[str, str]:
     value = _strict_json(raw, "administrative request is invalid")
     allowed = {"operation", "principal", "grants", "disabled", "key_id", "installation", "role", "resources", "application_roles", "lifetime_seconds", "fingerprint", "issuer", "subject", "username", "request_id", "expected_generation"}
     operation = value.get("operation")
-    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset"}
+    operations = {"status", "principal-set", "api-key-issue", "api-key-revoke", "invite", "approve", "installation-revoke", "installation-status", "human-set", "human-router-identity", "operators-ensure-resource", "human-suspend", "human-revoke-sessions", "human-inspect", "operator-inspect", "human-deletions", "human-delete-prepare", "human-delete-prepare-absent", "human-delete-finalize", "authority-reset"}
     if set(value) - allowed or not isinstance(operation, str) or operation not in operations:
         raise ManageError("administrative request is invalid")
     if operation == "operators-ensure-resource":

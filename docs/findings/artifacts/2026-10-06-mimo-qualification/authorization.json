@@ -1,0 +1,17 @@
+{
+  "concurrency": 4,
+  "conditional_promotion_authorized": true,
+  "images": 8,
+  "minimum_swe_resolved": 4,
+  "observed_at": "2026-10-06T08:06:46.188389+00:00",
+  "output_reserve_tokens": 65536,
+  "primary_candidate": "MiMo V2.6 Flash RL, official mixed MXFP4 routed-expert / FP8 target; no-spec control then DFlash7 trial",
+  "promotion_condition": "All required quality, identity, context, capacity, stability, client, provisioning and publication gates; measurable end-to-end or successful-tasks-per-hour benefit.",
+  "recovery": "Exact r11 baseline",
+  "required_total_context_tokens": 327680,
+  "supported_tuning_authorized": true,
+  "swe_tasks": 5,
+  "tuning_authority": "User: Feel free to tune model setting after research to get it work better if you find a suitable promotion candidate.",
+  "uncensored_candidate": "lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated",
+  "user_request": "Perform full benchmarking, validation and promotion cycle for top intelligence-to-speed candidate; prefer uncensored if it passes."
+}

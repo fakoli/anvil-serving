@@ -1,0 +1,25 @@
+{
+  "schema": "campaign-final-resource-summary/v1",
+  "gpu_samples": {
+    "samples_per_gpu": 10093,
+    "minimum_free_mib_per_gpu": 13721,
+    "minimum_required_free_mib": 4096,
+    "floor_passed": true,
+    "scope": "Captured pre-load, candidate runtime, and final unload; sampling ended before incumbent restoration."
+  },
+  "host_memory": {
+    "peak_gib": 52,
+    "effective_swap_limit_bytes": 0,
+    "events_max": 3100,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0,
+    "not_oom_killed": true,
+    "interpretation": "Zero OOM and a zero effective swap limit do not establish zero memory pressure; memory-max events reached the cap."
+  },
+  "candidate_lifecycle": {
+    "managed_unload_completed": true,
+    "exact_container_identity": ""
+  },
+  "privacy_boundary": "Operator topology, paths, host identity, GPU UUIDs, container names, and container IDs are not retained."
+}

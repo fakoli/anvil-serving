@@ -1,0 +1,120 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-17-glm53-nvidia-fp4-ab",
+  "complete": true,
+  "identity": {
+    "configuration": "configuration.json",
+    "baseline": "EXL3 r11, TP2/DCP1, no speculation",
+    "candidate": "NVIDIA FP4 r2, TP2/DCP2, MTP3",
+    "hardware": "two96GB RTX PRO6000 Blackwell Max-Q"
+  },
+  "workload": {
+    "manifest": "workload-manifest.json",
+    "diagnostic_plan": "diagnostic-plan.json"
+  },
+  "measurement": {
+    "path": "online direct; restoration also authenticated routed",
+    "warm_cold_state": "Initial candidate cold startup then sequential preflight/vision/agentic/context; diagnostic separate restart and full/isolated repeats",
+    "sample_count": 18,
+    "sample_unit": "initial context observations per profile",
+    "statistics": [
+      "deterministic oracle pass counts"
+    ],
+    "baseline_timing_requests_completed": 32,
+    "candidate_timing_requests_dispatched": 0
+  },
+  "gates": [
+    {
+      "name": "functional preflight",
+      "baseline": "9/9 applicable + correctedOCR1/1; original badOCRfixture retained",
+      "candidate": "9/9 + OCR1/1"
+    },
+    {
+      "name": "vision",
+      "baseline": "18/18",
+      "candidate": "18/18"
+    },
+    {
+      "name": "synthetic agentic",
+      "baseline": "18/18",
+      "candidate": "18/18"
+    },
+    {
+      "name": "initial context",
+      "baseline": "18/18",
+      "candidate": "17/18; failed",
+      "failed_case": "native-needle-318464-0.900-r0",
+      "failed_input_tokens": 316249,
+      "largest_successful_input_tokens": 316266
+    },
+    {
+      "name": "first restoration",
+      "status": "passed",
+      "direct": "2/2",
+      "authenticated_router": "2/2",
+      "exact_original_container": true
+    },
+    {
+      "name": "unchanged r2 diagnostic",
+      "full_replay": "18/18",
+      "original_failed_case_followups": "3/3",
+      "configuration_changed": false,
+      "original_failure_preserved": true,
+      "mtp_off": "not run; predeclared condition not met"
+    },
+    {
+      "name": "final restoration",
+      "status": "passed",
+      "direct": "2/2",
+      "authenticated_router": "2/2",
+      "exact_original_container": true,
+      "candidate_absent": true
+    }
+  ],
+  "headline_results": [
+    "Initial exact r2 context gate:17/18 versus incumbent18/18.",
+    "Unchanged r2 full replay:18/18; originally failed case passed all three follow-ups. Cause remains unproven; no configuration fix established.",
+    "Exact original r11 restored; direct and authenticated routed checks2/2 each; original configs unchanged; candidate absent."
+  ],
+  "failures": [
+    {
+      "artifact": "native/candidate/0-context.json",
+      "case_id": "native-needle-318464-0.900-r0",
+      "visible_response": "The access marker for ORCHID is not present in the provided document.",
+      "finish_reason": "stop",
+      "runtime_error": false,
+      "fixture_check": "context-fixture-check.json"
+    }
+  ],
+  "limitations": [
+    "One initial sampled miss does not establish failure frequency or identify quantization/MTP/runtime as its cause.",
+    "Candidate timing, overlap/endurance and repository-scale coding were not run.",
+    "Startup KV concurrency estimates do not prove four simultaneous327K requests.",
+    "Host embeddings enabled; not strict GPU-only residency.",
+    "Diagnostic results remain separate from the original failed gate; sample size and request/cache histories limit causal interpretation."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "scout",
+      "diagnostic"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "No further diagnostic actions scheduled. Candidate timing, overlap/endurance and repository-scale coding remain untested; no qualification or promotion established."
+  },
+  "evidence": [
+    "configuration.json",
+    "workload-manifest.json",
+    "native/baseline/baseline-native-index.json",
+    "native/candidate/candidate-native-index.json",
+    "native/restoration/restoration-native-index.json",
+    "context-fixture-check.json",
+    "diagnostic-plan.json",
+    "diagnostic-result.json",
+    "native/diagnostic/diagnostic-native-index.json",
+    "restoration.json",
+    "verification.json"
+  ]
+}

@@ -74,9 +74,14 @@ _UNCHECKED = object()
 class _HeldFiles:
     """Native directory custody for one lock lifetime; no pathname-only writes."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, external_effect_paths: tuple[Path, ...] = ()) -> None:
         self.root = root
+        self.external_effect_paths = frozenset(external_effect_paths)
         self.directories: dict[Path, int] = {}
+
+    def _allows(self, path: Path) -> bool:
+        return (path.is_absolute() and ".." not in path.parts
+                and (path.is_relative_to(self.root) or path in self.external_effect_paths))
 
     def close(self) -> None:
         try:
@@ -158,7 +163,7 @@ class _HeldFiles:
         return descriptor
 
     def read(self, path: Path, *, private: bool = False) -> bytes | None:
-        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+        if not self._allows(path):
             raise PropagationFenceError("untrusted_target_path")
         try:
             parent = self.directory(path.parent)
@@ -193,10 +198,10 @@ class _HeldFiles:
             os.close(descriptor)
 
     def mode(self, path: Path) -> int:
+        if not self._allows(path):
+            raise PropagationFenceError("untrusted_target_path")
         if os.name == "nt":
             return 0o600  # Windows custody is an ACL contract, not POSIX mode bits.
-        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
-            raise PropagationFenceError("untrusted_target_path")
         parent = self.directory(path.parent)
         info = os.stat(path if os.name == "nt" else path.name, follow_symlinks=False,
                        **({} if os.name == "nt" else {"dir_fd": parent}))
@@ -209,7 +214,7 @@ class _HeldFiles:
               pre_replace: Callable[[], None] | None = None) -> None:
         if len(data) > 2 * 1024 * 1024:
             raise PropagationFenceError("document_too_large")
-        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+        if not self._allows(path):
             raise PropagationFenceError("untrusted_target_path")
         parent = self.directory(path.parent, private=private)
         if expected is not _UNCHECKED and self.read(path) != expected:
@@ -272,8 +277,12 @@ class TrustedNativeOwner:
     clock: Callable[[], datetime] = field(default=lambda: datetime.now(timezone.utc), repr=False, compare=False)
     effect_bindings: Mapping[str, tuple[str, Path]] = field(default_factory=dict, repr=False)
     current_authority: Callable[[str, int, str], bool] | None = field(default=None, repr=False, compare=False)
+    cancelled_authority: Callable[[str, str, int, str], bool] | None = field(default=None, repr=False, compare=False)
     recovery_quiescent: Callable[[str, str, int], bool] | None = field(default=None, repr=False, compare=False)
     recovery_authority: Callable[[str, str, str, str, str], bool] | None = field(default=None, repr=False, compare=False)
+    bound_cancellation_proof: Callable[[str, str, str, str, int], str] | None = field(default=None, repr=False, compare=False)
+    # Installation-bound files only; journals, locks and backups stay under storage_root.
+    external_effect_paths: tuple[Path, ...] = field(default=(), repr=False)
 
     def __post_init__(self) -> None:
         _token(self.owner_id)
@@ -291,15 +300,24 @@ class TrustedNativeOwner:
             raise PropagationFenceError("malformed_owner_context")
         if not isinstance(self.effect_bindings, Mapping):
             raise PropagationFenceError("malformed_owner_context")
+        external = self.external_effect_paths
+        if (type(external) is not tuple or any(not isinstance(path, Path)
+                or not path.is_absolute() or ".." in path.parts
+                or path == path.parent or path.is_relative_to(root) for path in external)
+                or len(set(external)) != len(external)):
+            raise PropagationFenceError("malformed_owner_context")
         bindings = {}
         for effect, binding in self.effect_bindings.items():
             _token(effect)
             if type(binding) is not tuple or len(binding) != 2 or type(binding[0]) is not str or binding[0] not in _EFFECTS:
                 raise PropagationFenceError("malformed_owner_context")
             path = Path(binding[1]).absolute()
-            if ".." in path.parts or not path.is_relative_to(root) or path == root:
+            if (".." in path.parts or path == root
+                    or not path.is_relative_to(root) and path not in external):
                 raise PropagationFenceError("untrusted_target_path")
             bindings[effect] = (binding[0], path)
+        if not set(external) <= {path for _, path in bindings.values()}:
+            raise PropagationFenceError("untrusted_target_path")
         object.__setattr__(self, "effect_bindings", MappingProxyType(bindings))
         object.__setattr__(self, "storage_root", root)
         object.__setattr__(self, "backup_root", backup)
@@ -538,7 +556,7 @@ class NativeMutationFence:
             self._require_current_authority(contract.value)
             self._check_authority(digest, generation)
             index = self._read_index()
-            if any(row["status"] != "completed" and not (
+            if any(row["status"] not in {"completed", "cancelled"} and not (
                     row["status"] == "bound" and row["generation"] == generation
                     and row["contract_digest"] == digest)
                     for row in index["operations"].values()):
@@ -707,6 +725,189 @@ class NativeMutationFence:
                     for name, effect in state["effects"].items()},
             )
 
+    def inspect_cancelled(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                          target_paths: Iterable[str | Path], job_id: str) -> dict:
+        """Prove empty native custody for an explicitly revoked original job."""
+        _token(job_id)
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            check = self.owner.cancelled_authority
+            try:
+                revoked = callable(check) and check(job_id, grant.contract_digest, grant.generation, grant.epoch) is True
+            except Exception:
+                revoked = False
+            if not revoked:
+                raise PropagationFenceError("revocation_unproven")
+            index = self._read_index()
+            if index["operations"] or index["high_water_generation"] or index["latest_reservation_id"] is not None:
+                raise PropagationFenceError("native_effects_present")
+            names = os.listdir(self._held().directory(self.journal_root, private=True))
+            if len(names) > 10_000:
+                raise PropagationFenceError("snapshot_too_large")
+            if any(name.startswith(self.owner.resource_id + ".") and name.endswith(".json")
+                   and name != self._index_path.name for name in names):
+                raise PropagationFenceError("native_effects_present")
+            evidence = {name: _sha256(raw) if raw is not None else None
+                        for name, path in grant.effect_targets
+                        for raw in (self._held().read(Path(path)),)}
+            return {"job_id": job_id, "contract_digest": grant.contract_digest,
+                    "owner_id": self.owner.owner_id, "resource_id": self.owner.resource_id,
+                    "epoch": grant.epoch, "generation": grant.generation,
+                    "targets_digest": grant.targets_digest, "quiescent": True,
+                    "native_effect_count": 0, "evidence_digest": _sha256(_canonical(evidence)),
+                    "observed_at": self._now()}
+
+    def _require_bound_quiescence(self, grant, reservation_id, job_id, job_digest, proof_digest):
+        try:
+            proof = self.owner.bound_cancellation_proof
+            quiet = callable(proof) and proof(reservation_id, job_id, job_digest,
+                grant.contract_digest, grant.generation) == proof_digest
+        except Exception:
+            quiet = False
+        if not quiet:
+            raise PropagationFenceError("quiescence_unproven")
+        try:
+            revoked = callable(self.owner.cancelled_authority) and self.owner.cancelled_authority(
+                job_id, grant.contract_digest, grant.generation, grant.epoch) is True
+        except Exception:
+            revoked = False
+        if not revoked:
+            raise PropagationFenceError("revocation_unproven")
+
+    def _bound_cancel_evidence(self, grant):
+        return {effect: {"digest": _sha256(raw) if raw is not None else None,
+                         "mode": self._held().mode(Path(path)) if raw is not None else None}
+                for effect, path in grant.effect_targets
+                for raw in (self._held().read(Path(path)),)}
+
+    def _require_prior_catalog_cutover(self, index: dict, generation: int) -> None:
+        if self.owner.resource_id != "client-catalog":
+            return
+        cutover = self._read_catalog_cutover()
+        if cutover is None:
+            return
+        if cutover["epoch"] != self.owner.epoch:
+            recovery = index.get("recovery", {})
+            raw = self._held().read(self._catalog_cutover_path, private=True)
+            if (cutover["generation"] < generation
+                    and recovery.get("cutover_epoch") == cutover["epoch"]
+                    and recovery.get("cutover_digest") == _sha256(raw)):
+                return
+            raise PropagationFenceError("native_effects_present")
+        matching = []
+        for reservation, row in index["operations"].items():
+            if row["status"] != "completed" or not row["generation"] < generation:
+                continue
+            state = self._read_state(self._operation_path(reservation))
+            if (state["status"] == "completed" and state["reservation_id"] == reservation
+                    and state["generation"] == row["generation"] == cutover["generation"]
+                    and state["epoch"] == cutover["epoch"]
+                    and state["contract_digest"] == cutover["contract_digest"]):
+                matching.append(reservation)
+        if len(matching) != 1:
+            raise PropagationFenceError("native_effects_present")
+
+    def cancel_bound(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                     target_paths: Iterable[str | Path], job_id: str, job_digest: str,
+                     quiescence_digest: str) -> dict:
+        """Retire one revoked, quiescent binding that never opened a transaction.
+
+        Installation-owned replay verification supplies both the callback and
+        its retained proof digest. This certifies no fenced catalog effect;
+        attempted synthetic conversations are retained, never erased or called
+        unchanged. Global recovery must still settle the original fleet job.
+        """
+        _token(job_id)
+        _digest(job_digest)
+        _digest(quiescence_digest)
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            reservation = self._reservation_id(grant)
+            index = self._read_index()
+            row = index["operations"].get(reservation)
+            expected = {"generation": grant.generation, "status": "bound", "job_id": job_id,
+                        "job_digest": job_digest, "contract_digest": grant.contract_digest}
+            if (row is None or row != expected and row != {
+                    **expected, "status": "cancelled", "cancellation_digest": row.get("cancellation_digest")}
+                    or index["latest_reservation_id"] != reservation
+                    or index["high_water_generation"] != grant.generation
+                    or any(key != reservation and item["status"] not in {"completed", "cancelled"}
+                           for key, item in index["operations"].items())):
+                raise PropagationFenceError("bound_operation_not_found")
+            self._require_bound_quiescence(grant, reservation, job_id, job_digest, quiescence_digest)
+            self._require_prior_catalog_cutover(index, grant.generation)
+            names = os.listdir(self._held().directory(self.journal_root, private=True))
+            if len(names) > 10_000:
+                raise PropagationFenceError("snapshot_too_large")
+            allowed = {self._index_path.name, self._catalog_cutover_path.name}
+            allowed.update(index.get("recovery", {}).get("retained_journals", {}))
+            allowed.update(self._operation_path(key).name if item["status"] == "completed"
+                           else self._cancellation_path(key).name
+                           for key, item in index["operations"].items() if key != reservation)
+            allowed.add(self._cancellation_path(reservation).name)
+            if any(name.startswith(self.owner.resource_id + ".") and name.endswith(".json")
+                   and name not in allowed for name in names):
+                raise PropagationFenceError("native_effects_present")
+            evidence = self._bound_cancel_evidence(grant)
+            receipt = {"schema": "anvil-serving.bound-cancellation/v1",
+                "owner_id": grant.owner_id, "resource_id": grant.resource_id, "epoch": grant.epoch,
+                "reservation_id": reservation, "job_id": job_id, "job_digest": job_digest,
+                "contract_digest": grant.contract_digest, "generation": grant.generation,
+                "targets_digest": grant.targets_digest, "quiescence_digest": quiescence_digest,
+                "observed": evidence, "attempted_fixture_effects_retained": True,
+                "erasure_performed": False, "historical_preservation_claim": False}
+            path = self._cancellation_path(reservation)
+            prior = self._held().read(path, private=True)
+            if prior is not None:
+                if self._read_json(path) != receipt:
+                    raise PropagationFenceError("cancellation_conflict")
+            else:
+                self._held().write(path, _canonical(receipt), private=True, expected=None)
+            # Recheck replay stores and authenticated revocation at commit;
+            # a crash above leaves an exact receipt that a retry can reconcile.
+            self._require_bound_quiescence(grant, reservation, job_id, job_digest, quiescence_digest)
+            self._require_prior_catalog_cutover(index, grant.generation)
+            if self._bound_cancel_evidence(grant) != evidence:
+                raise PropagationFenceError("external_drift")
+            index["operations"][reservation] = {**expected, "status": "cancelled",
+                "cancellation_digest": _sha256(_canonical(receipt))}
+            self._write_index(index)
+            return receipt
+
+    def inspect_bound_cancelled(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
+                                target_paths: Iterable[str | Path], job_id: str,
+                                job_digest: str) -> dict:
+        """Observe an already-retired exact binding without changing its journal."""
+        _token(job_id)
+        _digest(job_digest)
+        targets = tuple(sorted(str(self._trusted_path(path)) for path in target_paths))
+        with self._lock():
+            self._validate_grant(grant, canonical_contract, targets, require_fresh=False)
+            reservation = self._reservation_id(grant)
+            index = self._read_index()
+            row = index["operations"].get(reservation)
+            if (row is None or row["status"] != "cancelled" or row.get("job_id") != job_id
+                    or row.get("job_digest") != job_digest or row.get("contract_digest") != grant.contract_digest
+                    or row["generation"] != grant.generation
+                    or index["latest_reservation_id"] != reservation
+                    or index["high_water_generation"] != grant.generation):
+                raise PropagationFenceError("bound_operation_not_found")
+            receipt = self._read_json(self._cancellation_path(reservation))
+            self._require_bound_quiescence(grant, reservation, job_id, job_digest, receipt["quiescence_digest"])
+            self._require_prior_catalog_cutover(index, grant.generation)
+            if receipt["targets_digest"] != grant.targets_digest or set(receipt["observed"]) != set(grant.effects):
+                raise PropagationFenceError("grant_binding_mismatch")
+            if receipt["observed"] != self._bound_cancel_evidence(grant):
+                raise PropagationFenceError("external_drift")
+            return {"job_id": job_id, "contract_digest": grant.contract_digest,
+                "owner_id": self.owner.owner_id, "resource_id": self.owner.resource_id,
+                "epoch": grant.epoch, "generation": grant.generation,
+                "targets_digest": grant.targets_digest, "quiescent": True,
+                "native_effect_count": 0, "evidence_digest": row["cancellation_digest"],
+                "observed_at": self._now()}
+
     @contextmanager
     def transaction(self, grant: NativeMutationGrant, *, canonical_contract: bytes,
                     target_paths: Iterable[str | Path]) -> Iterator[NativeMutationJournal]:
@@ -776,6 +977,8 @@ class NativeMutationFence:
             _token(chosen)
             if chosen not in index["operations"]:
                 return None
+            if index["operations"][chosen]["status"] == "cancelled":
+                return self._read_json(self._cancellation_path(chosen)) | {"status": "cancelled"}
             state = self._read_state(self._operation_path(chosen))
             return json.loads(_canonical(state).decode("ascii"))
 
@@ -891,7 +1094,7 @@ class NativeMutationFence:
                 if not reserve:
                     return None
                 if (index["high_water_generation"] >= grant.generation
-                        or any(entry["status"] != "completed" for entry in index["operations"].values())):
+                        or any(entry["status"] not in {"completed", "cancelled"} for entry in index["operations"].values())):
                     raise PropagationFenceError("unresolved_reservation")
                 index["high_water_generation"] = grant.generation
                 index["latest_reservation_id"] = reservation_id
@@ -911,6 +1114,8 @@ class NativeMutationFence:
                 return None if reserve else {"status": "bound", "reservation_id": reservation_id,
                                              "job_id": job_id, "contract_digest": grant.contract_digest,
                                              "generation": grant.generation}
+            if row["status"] == "cancelled":
+                raise PropagationFenceError("already_cancelled")
             state = self._read_state(self._operation_path(reservation_id))
             if (state["reservation_id"], state["contract_digest"], state["generation"],
                     state["status"]) != (reservation_id, grant.contract_digest,
@@ -937,6 +1142,10 @@ class NativeMutationFence:
             index = self._read_index()
             parent = self._held().directory(self.journal_root, private=True)
             prefix = self.owner.resource_id + "."
+            names = os.listdir(self.journal_root if os.name == "nt" else parent)
+            if len(names) > 10_000:
+                raise PropagationFenceError("snapshot_too_large")
+            retained = dict(index.get("recovery", {}).get("retained_journals", {}))
             cutover_digest = None
             cutover_epoch = None
             if self.owner.resource_id == "client-catalog":
@@ -954,21 +1163,37 @@ class NativeMutationFence:
                     elif (index.get("recovery", {}).get("cutover_epoch") != cutover_epoch
                           or index["recovery"].get("cutover_digest") != cutover_digest):
                         raise PropagationFenceError("unindexed_journal")
-                elif index["operations"] or index.get("recovery", {}).get("cutover_digest"):
+                elif (any(row["status"] != "cancelled" for row in index["operations"].values())
+                      or index.get("recovery", {}).get("cutover_digest")):
                     raise PropagationFenceError("unindexed_journal")
-            for name in os.listdir(self.journal_root if os.name == "nt" else parent):
+            for name in names:
                 if (not name.startswith(prefix) or not name.endswith(".json")
                         or name == prefix + "index.json"
                         or (name == "client-catalog.cutover.json" and cutover_digest is not None)):
                     continue
                 reservation = name[len(prefix):-5]
+                if (reservation.endswith(".cancelled") and
+                        index["operations"].get(reservation.removesuffix(".cancelled"), {}).get("status") == "cancelled"):
+                    continue
                 if reservation in index["operations"]:
                     continue
-                orphan = self._read_json(self.journal_root / name)
-                if orphan.get("epoch") == self.owner.epoch or "recovery" not in index:
+                if name not in retained:
                     raise PropagationFenceError("unindexed_journal")
             expected: dict[str, str] = {}
+            cancelled = {}
             for reservation, row in sorted(index["operations"].items(), key=lambda item: item[1]["generation"]):
+                if row["status"] == "cancelled":
+                    receipt = self._read_json(self._cancellation_path(reservation))
+                    try:
+                        proof = self.owner.bound_cancellation_proof
+                        quiet = callable(proof) and proof(reservation, row["job_id"], row["job_digest"],
+                            row["contract_digest"], row["generation"]) == receipt["quiescence_digest"]
+                    except Exception:
+                        quiet = False
+                    if not quiet:
+                        raise PropagationFenceError("quiescence_unproven")
+                    cancelled[reservation] = row["cancellation_digest"]
+                    continue  # The immutable no-transaction receipt was checked by _read_index.
                 if row["status"] != "completed":
                     raise PropagationFenceError("unresolved_reservation")
                 state = self._read_state(self._operation_path(reservation))
@@ -995,6 +1220,8 @@ class NativeMutationFence:
             evidence = {"old_epoch": self.owner.epoch, "new_epoch": new_epoch,
                 "approval_digest": approval_digest, "target_set_digest": target_set_digest,
                 "high_water_generation": index["high_water_generation"], "observed": expected}
+            if cancelled:
+                evidence["cancelled"] = cancelled
             if cutover_digest is not None:
                 evidence["cutover_digest"] = cutover_digest
             evidence_digest = _sha256(_canonical(evidence))
@@ -1010,6 +1237,13 @@ class NativeMutationFence:
                 "target_set_digest": target_set_digest, "evidence_digest": evidence_digest}
             if cutover_digest is not None:
                 recovery.update(cutover_epoch=cutover_epoch, cutover_digest=cutover_digest)
+            # Keep exact history custody after current operation rows are cleared.
+            for reservation, row in index["operations"].items():
+                path = (self._cancellation_path(reservation) if row["status"] == "cancelled"
+                        else self._operation_path(reservation))
+                retained[path.name] = _sha256(self._held().read(path, private=True))
+            if retained:
+                recovery["retained_journals"] = retained
             index.update(epoch=new_epoch, latest_reservation_id=None, operations={}, recovery=recovery)
             self._write_index(index)
             return evidence_digest
@@ -1097,7 +1331,7 @@ class NativeMutationFence:
             if existing["status"] == "completed":
                 raise PropagationFenceError("already_completed")
             raise PropagationFenceError("unresolved_reservation")
-        if any(row["status"] != "completed" for row in index["operations"].values()):
+        if any(row["status"] not in {"completed", "cancelled"} for row in index["operations"].values()):
             raise PropagationFenceError("unresolved_reservation")
         if index["high_water_generation"] > grant.generation:
             raise PropagationFenceError("stale_generation")
@@ -1113,7 +1347,8 @@ class NativeMutationFence:
 
     def _trusted_path(self, path: str | Path) -> Path:
         selected = Path(path).absolute()
-        if ".." in selected.parts or not selected.is_relative_to(self.owner.storage_root):
+        if (".." in selected.parts or not selected.is_relative_to(self.owner.storage_root)
+                and selected not in self.owner.external_effect_paths):
             raise PropagationFenceError("untrusted_target_path")
         return selected
 
@@ -1269,7 +1504,7 @@ class NativeMutationFence:
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        files = _HeldFiles(self.owner.storage_root)
+        files = _HeldFiles(self.owner.storage_root, self.owner.external_effect_paths)
         token = self._files.set(files)
         fd = None
         try:
@@ -1313,6 +1548,9 @@ class NativeMutationFence:
     def _operation_path(self, reservation_id: str) -> Path:
         return self.journal_root / (self.owner.resource_id + "." + _token(reservation_id) + ".json")
 
+    def _cancellation_path(self, reservation_id: str) -> Path:
+        return self.journal_root / (self.owner.resource_id + "." + _token(reservation_id) + ".cancelled.json")
+
     def _read_index(self) -> dict:
         if self._held().read(self._index_path, private=True) is None:
             return {"schema": _SCHEMA + ".index", "owner_id": self.owner.owner_id,
@@ -1330,7 +1568,9 @@ class NativeMutationFence:
         if "recovery" in value:
             recovery = value["recovery"]
             basic = {"old_epoch", "approval_digest", "target_set_digest", "evidence_digest"}
-            if (type(recovery) is not dict or set(recovery) not in (basic, basic | {"cutover_epoch", "cutover_digest"})
+            permitted = (basic, basic | {"cutover_epoch", "cutover_digest"})
+            if (type(recovery) is not dict or set(recovery) not in (
+                    *permitted, *(keys | {"retained_journals"} for keys in permitted))
                     or recovery["old_epoch"] == value["epoch"]):
                 raise PropagationFenceError("unsafe_journal")
             _token(recovery["old_epoch"])
@@ -1339,19 +1579,66 @@ class NativeMutationFence:
             if "cutover_epoch" in recovery:
                 _token(recovery["cutover_epoch"])
                 _digest(recovery["cutover_digest"])
+            retained = recovery.get("retained_journals", {})
+            if type(retained) is not dict or len(retained) > 10_000:
+                raise PropagationFenceError("unsafe_journal")
+            prefix = self.owner.resource_id + "."
+            for name, digest in retained.items():
+                if (type(name) is not str or not name.startswith(prefix) or not name.endswith(".json")
+                        or name in {self._index_path.name, self._catalog_cutover_path.name}):
+                    raise PropagationFenceError("unsafe_journal")
+                _token(name[len(prefix):-5].removesuffix(".cancelled"))
+                _digest(digest)
+                raw = self._held().read(self.journal_root / name, private=True)
+                if raw is None or _sha256(raw) != digest:
+                    raise PropagationFenceError("unsafe_journal")
         for reservation, row in value["operations"].items():
             _token(reservation)
             if (type(row) is not dict or set(row) not in (
                     {"generation", "status"},
-                    {"generation", "status", "job_id", "job_digest", "contract_digest"})
+                    {"generation", "status", "job_id", "job_digest", "contract_digest"},
+                    {"generation", "status", "job_id", "job_digest", "contract_digest", "cancellation_digest"})
                     or type(row["generation"]) is not int or row["generation"] < 1
-                    or row["status"] not in {"bound", "active", "completed", "recovery_required"}
-                    or row["status"] == "bound" and "job_id" not in row):
+                    or row["status"] not in {"bound", "active", "completed", "recovery_required", "cancelled"}
+                    or row["status"] in {"bound", "cancelled"} and "job_id" not in row
+                    or ("cancellation_digest" in row) != (row["status"] == "cancelled")):
                 raise PropagationFenceError("unsafe_journal")
             if "job_id" in row:
                 _token(row["job_id"])
                 _digest(row["job_digest"])
                 _digest(row["contract_digest"])
+            if row["status"] == "cancelled":
+                receipt = self._read_json(self._cancellation_path(reservation))
+                receipt_fields = {"schema", "owner_id", "resource_id", "epoch", "reservation_id",
+                    "job_id", "job_digest", "contract_digest", "generation", "targets_digest",
+                    "quiescence_digest", "observed", "attempted_fixture_effects_retained",
+                    "erasure_performed", "historical_preservation_claim"}
+                if (set(receipt) != receipt_fields
+                        or type(receipt.get("generation")) is not int
+                        or type(receipt.get("observed")) is not dict or not receipt["observed"]
+                        or receipt.get("attempted_fixture_effects_retained") is not True
+                        or receipt.get("erasure_performed") is not False
+                        or receipt.get("historical_preservation_claim") is not False
+                        or row["cancellation_digest"] != _sha256(_canonical(receipt))
+                        or any(receipt.get(key) != expected for key, expected in {
+                            "schema": "anvil-serving.bound-cancellation/v1",
+                            "owner_id": self.owner.owner_id, "resource_id": self.owner.resource_id,
+                            "epoch": self.owner.epoch, "reservation_id": reservation,
+                            **{key: row[key] for key in ("job_id", "job_digest", "contract_digest", "generation")}
+                        }.items())
+                        or self._held().read(self._operation_path(reservation), private=True) is not None):
+                    raise PropagationFenceError("unsafe_journal")
+                _digest(receipt["targets_digest"])
+                _digest(receipt["quiescence_digest"])
+                for effect, observed in receipt["observed"].items():
+                    _token(effect)
+                    if (type(observed) is not dict or set(observed) != {"digest", "mode"}
+                            or (observed["digest"] is None) != (observed["mode"] is None)
+                            or observed["mode"] is not None and (type(observed["mode"]) is not int
+                                or not 0 <= observed["mode"] <= 0o777)):
+                        raise PropagationFenceError("unsafe_journal")
+                    if observed["digest"] is not None:
+                        _digest(observed["digest"])
         return value
 
     def _read_state(self, path: Path) -> dict:

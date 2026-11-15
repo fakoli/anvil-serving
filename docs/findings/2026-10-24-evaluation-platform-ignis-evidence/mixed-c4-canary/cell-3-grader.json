@@ -1,0 +1,35 @@
+{
+  "testdir": "private-original/all-your-base",
+  "testcase": "all-your-base",
+  "model": "openai/llm.primary",
+  "edit_format": "whole",
+  "tests_outcomes": [
+    false,
+    true
+  ],
+  "cost": 0.0,
+  "duration": 157.5868194103241,
+  "test_timeouts": 0,
+  "commit_hash": "5dc9490",
+  "num_error_outputs": 0,
+  "num_user_asks": 0,
+  "num_exhausted_context_windows": 0,
+  "num_malformed_responses": 0,
+  "syntax_errors": 0,
+  "indentation_errors": 0,
+  "lazy_comments": 0,
+  "reasoning_effort": null,
+  "prompt_tokens": 5043,
+  "completion_tokens": 23920,
+  "thinking_tokens": null,
+  "chat_hashes": [
+    [
+      "f458c453b0e9b681776a523f34a794bb88e067ac",
+      "59d2b74e6ab548880ba60118f63ae96b53402724"
+    ],
+    [
+      "f458c453b0e9b681776a523f34a794bb88e067ac",
+      "63518a2e9f62fd4bf63f2990f1a927d9f07a0962"
+    ]
+  ]
+}

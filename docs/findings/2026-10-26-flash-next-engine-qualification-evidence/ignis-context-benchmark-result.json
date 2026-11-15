@@ -1,0 +1,486 @@
+{
+  "created_at": "2026-10-26T13:45:28.394397Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "ANVIL_EVALUATION_TOKEN",
+      "base_url": "http://127.0.0.1:8000/v1",
+      "model": "llm.evaluation.ignis"
+    },
+    "finished_at": "2026-10-26T13:45:28.394301Z",
+    "started_at": "2026-10-26T13:43:11.727340Z",
+    "submitted_at": "2026-10-26T13:34:06.578529Z",
+    "worker": {
+      "id": "Primary Node"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-10-26T13:45:28.380731Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": 8192,
+          "profile_buckets": [
+            8192,
+            32768,
+            131072,
+            262144
+          ],
+          "selected_buckets": [
+            8192,
+            32768,
+            114688
+          ]
+        },
+        "dataset": {
+          "name": "deterministic-native",
+          "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+        },
+        "hardware": {
+          "gpu_name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+          "gpu_uuids": [
+            "[REDACTED_PUBLIC_HARDWARE_ID]"
+          ]
+        },
+        "harnesses": {
+          "native": {
+            "schema": "anvil-serving.context/v1"
+          }
+        },
+        "image": {
+          "id": "sha256:0226b62047113c219124ca4a02b1e52492402b44f5a3020db91e77756914b8cc"
+        },
+        "model": {
+          "repository": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+          "revision": "8d94db83cd8e58d6be31e796723e5e35b960638c"
+        },
+        "runtime": {
+          "engine": "ignis-0.8.0",
+          "recipe_sha256": "b5135421c217552c18bfffdcc2bbbd0e63e6d9e93f167d2014dc5a56c0fe47b0",
+          "source_revision": "950ee0d1c2cf6178cd7fec29df3f17c3e127f987"
+        },
+        "served_model": {
+          "configured_context_tokens": 131072,
+          "id": "qwen3.8-flash-next",
+          "router_alias": "llm.evaluation.ignis"
+        },
+        "topology": {
+          "kind": "co-resident-benchmark-client",
+          "worker_id": "Primary Node"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "evaluation-platform",
+        "profile": "scout",
+        "run_id": "ignis080-context-scout-r1-20261026",
+        "spec_sha256": "4fe6e8d156b331bdf8c8474e747757ce3e62bce153817559059728ca8d89eec4",
+        "suite": "context"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 586,
+              "path": "evidence/0-assets.json",
+              "sha256": "947cd37a10dfbec99c76bd40571516adf448877832def500feeb40f10fd7b491"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2211,
+              "path": "evidence/0-preflight.json",
+              "sha256": "b7d27070be47e67f9470ff6d972efbc66c70a916e06e8e742085d782099a7755"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 28816,
+              "path": "evidence/0-context.json",
+              "sha256": "f113aa0ef5490c3dea02560f2cc33b6aa9ac094ce430568db3b8b4c45174592e"
+            }
+          ],
+          "name": "context",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "advertised_context": 131072,
+        "attempted_buckets": [
+          8192,
+          32768,
+          114688
+        ],
+        "buckets": [
+          {
+            "completed_count": 3,
+            "completion_rate": 1.0,
+            "engine_telemetry": {
+              "available": false,
+              "observations": []
+            },
+            "failures": {},
+            "latency_ms": {
+              "available": true,
+              "mean": 2861.747172040244,
+              "observations": [
+                2620.845308061689,
+                3063.134313095361,
+                2901.2618949636817
+              ]
+            },
+            "meets_policy": true,
+            "pass_rate": 1.0,
+            "passed_count": 3,
+            "relative_drop_from_baseline": 0.0,
+            "requested_tokens": 8192,
+            "sample_count": 3,
+            "samples": [
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-needle-8192-0.500-r0",
+                "case_type": "native-needle",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 2620.845308061689,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 8198,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 8192,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 40.82652252342756,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-8192-0.500-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 3063.134313095361,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 8202,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 8192,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 62.680894918375294,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-distractor-8192-0.500-r0",
+                "case_type": "native-distractor",
+                "completed": true,
+                "distractor_count": 2,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 2901.2618949636817,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 8208,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 8192,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 51.35696307136216,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              }
+            ],
+            "throughput_tps": {
+              "available": true,
+              "mean": 51.62146017105501,
+              "observations": [
+                40.82652252342756,
+                62.680894918375294,
+                51.35696307136216
+              ]
+            }
+          },
+          {
+            "completed_count": 3,
+            "completion_rate": 1.0,
+            "engine_telemetry": {
+              "available": false,
+              "observations": []
+            },
+            "failures": {},
+            "latency_ms": {
+              "available": true,
+              "mean": 9267.942331653709,
+              "observations": [
+                9011.548401089385,
+                9403.395975008607,
+                9388.882618863136
+              ]
+            },
+            "meets_policy": true,
+            "pass_rate": 1.0,
+            "passed_count": 3,
+            "relative_drop_from_baseline": 0.0,
+            "requested_tokens": 32768,
+            "sample_count": 3,
+            "samples": [
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-needle-32768-0.500-r0",
+                "case_type": "native-needle",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 9011.548401089385,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 32658,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 32768,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 13.42721523699219,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-32768-0.500-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 9403.395975008607,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 32662,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 32768,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 21.481600959574088,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-distractor-32768-0.500-r0",
+                "case_type": "native-distractor",
+                "completed": true,
+                "distractor_count": 2,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 9388.882618863136,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 32668,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 32768,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 17.786994126913623,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              }
+            ],
+            "throughput_tps": {
+              "available": true,
+              "mean": 17.565270107826635,
+              "observations": [
+                13.42721523699219,
+                21.481600959574088,
+                17.786994126913623
+              ]
+            }
+          },
+          {
+            "completed_count": 3,
+            "completion_rate": 1.0,
+            "engine_telemetry": {
+              "available": false,
+              "observations": []
+            },
+            "failures": {},
+            "latency_ms": {
+              "available": true,
+              "mean": 32497.507145317893,
+              "observations": [
+                32019.511128077284,
+                32671.336503932253,
+                32801.67380394414
+              ]
+            },
+            "meets_policy": true,
+            "pass_rate": 1.0,
+            "passed_count": 3,
+            "relative_drop_from_baseline": 0.0,
+            "requested_tokens": 114688,
+            "sample_count": 3,
+            "samples": [
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-needle-114688-0.500-r0",
+                "case_type": "native-needle",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 32019.511128077284,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 114578,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 114688,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 4.122486426229406,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "ea77d2c40d5ae22b614345bf65faaf4a798b6926e2753eaa34d64261ffa8f4cb",
+                "case_id": "native-order-114688-0.500-r0",
+                "case_type": "native-order",
+                "completed": true,
+                "distractor_count": 0,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 32671.336503932253,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 114582,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 114688,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 3,
+                "throughput_tps": 6.0603581361346865,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              },
+              {
+                "answer_sha256": "165c06e1078f0d23d51237f55fdf201897c11ab1ba6b89b4be0058e8551485db",
+                "case_id": "native-distractor-114688-0.500-r0",
+                "case_type": "native-distractor",
+                "completed": true,
+                "distractor_count": 2,
+                "engine_telemetry": null,
+                "failure": null,
+                "finish_reason": "stop",
+                "latency_ms": 32801.67380394414,
+                "passed": true,
+                "position": 0.5,
+                "prompt_tokens": 114588,
+                "raw_reasoning": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "raw_reasoning_field": "reasoning_content",
+                "raw_reasoning_truncated": false,
+                "requested_tokens": 114688,
+                "schema": "anvil-serving.context-observation/v1",
+                "target_count": 1,
+                "throughput_tps": 4.816827365102379,
+                "token_measurement": "usage",
+                "visible_answer": "[REDACTED_PUBLIC_RESPONSE_TEXT]",
+                "visible_answer_truncated": false
+              }
+            ],
+            "throughput_tps": {
+              "available": true,
+              "mean": 4.9998906424888245,
+              "observations": [
+                4.122486426229406,
+                6.0603581361346865,
+                4.816827365102379
+              ]
+            }
+          }
+        ],
+        "effective_context": 114688,
+        "first_material_degradation": null,
+        "notes": [
+          "effective_context uses attempted buckets only",
+          "missing engine telemetry is unavailable and is not inferred from latency"
+        ],
+        "schema": "anvil-serving.context-curve/v1",
+        "threshold_policy": {
+          "baseline_bucket": 8192,
+          "baseline_pass_rate": 1.0,
+          "max_relative_drop": 0.25,
+          "pass_rate_floor": 0.75
+        }
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "evaluation-platform",
+    "profile": "scout",
+    "run_id": "ignis080-context-scout-r1-20261026",
+    "spec_sha256": "4fe6e8d156b331bdf8c8474e747757ce3e62bce153817559059728ca8d89eec4",
+    "suite": "context"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}

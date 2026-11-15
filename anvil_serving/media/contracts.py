@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import math
 import re
 from dataclasses import dataclass, field, replace
 from enum import Enum
@@ -15,7 +16,7 @@ from .errors import MediaError
 _ID_RE = re.compile(r"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$")
 _OPAQUE_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
 _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
-_MIME_RE = re.compile(r"^(?:image|video)/[a-z0-9][a-z0-9.+-]{0,63}$")
+_MIME_RE = re.compile(r"^(?:image|video|audio)/[a-z0-9][a-z0-9.+-]{0,63}$")
 SUBMISSION_RECOVERY_GRACE_SECONDS = 30
 
 
@@ -96,16 +97,49 @@ class ParameterSpec:
     maximum: int | float | None = None
     max_length: int | None = None
     enum: tuple[str, ...] = ()
+    media_types: tuple[str, ...] = ()
+    description: str = ""
+    role: str = ""
+    media_limits: Mapping[str, int | float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if self.kind not in {"string", "integer", "number", "boolean", "artifact"}:
+        if (not isinstance(self.media_limits, Mapping) or self.media_limits and self.kind != "artifact"
+                or set(self.media_limits) - {"width", "height", "frames", "durationSeconds", "decodedBytes", "channels", "sampleRate"}
+                or any(isinstance(v, bool) or not isinstance(v, (int, float))
+                       or isinstance(v, float) and not math.isfinite(v) or v <= 0
+                       for v in self.media_limits.values())):
+            raise MediaError("invalid_contract", "artifact media limits are invalid")
+        object.__setattr__(self, "media_limits", MappingProxyType(dict(self.media_limits)))
+        if not isinstance(self.description, str) or len(self.description) > 512:
+            raise MediaError("invalid_contract", "parameter description is invalid")
+        if not isinstance(self.role, str) or len(self.role) > 64:
+            raise MediaError("invalid_contract", "parameter role is invalid")
+        if self.role:
+            _identifier(self.role, "parameter role")
+        if not isinstance(self.required, bool):
+            raise MediaError("invalid_contract", "parameter required flag must be boolean")
+        if not isinstance(self.kind, str) or self.kind not in {"string", "integer", "number", "boolean", "artifact"}:
             raise MediaError("invalid_contract", "parameter kind is invalid")
+        for bound in (self.minimum, self.maximum):
+            if bound is not None and (isinstance(bound, bool) or not isinstance(bound, (int, float))
+                                      or isinstance(bound, float) and not math.isfinite(bound)):
+                raise MediaError("invalid_contract", "parameter bounds must be finite numbers")
         if self.minimum is not None and self.maximum is not None and self.minimum > self.maximum:
             raise MediaError("invalid_contract", "parameter bounds are reversed")
-        if self.max_length is not None and (isinstance(self.max_length, bool) or self.max_length < 1):
+        if self.max_length is not None and (isinstance(self.max_length, bool)
+                                           or not isinstance(self.max_length, int) or self.max_length < 1):
             raise MediaError("invalid_contract", "parameter max_length is invalid")
         if len(self.enum) > 64 or any(not isinstance(item, str) or not item for item in self.enum):
             raise MediaError("invalid_contract", "parameter enum is invalid")
+        if not isinstance(self.media_types, tuple) or (
+            self.media_types and (
+                self.kind != "artifact"
+                or len(self.media_types) > 16
+                or any(not isinstance(item, str) or not _MIME_RE.fullmatch(item) for item in self.media_types)
+                or len(set(self.media_types)) != len(self.media_types)
+            )
+        ):
+            raise MediaError("invalid_contract", "artifact parameter media types are invalid")
 
     def validate(self, name: str, value: Any) -> Any:
         if self.kind in {"string", "artifact"}:
@@ -113,6 +147,10 @@ class ParameterSpec:
                 raise MediaError("invalid_parameter", f"{name} must be a string")
             if self.max_length is not None and len(value) > self.max_length:
                 raise MediaError("invalid_parameter", f"{name} is too long")
+            try:
+                value.encode("utf-8")
+            except UnicodeError as exc:
+                raise MediaError("invalid_parameter", f"{name} must be valid Unicode") from exc
             if self.kind == "artifact" and not _OPAQUE_RE.fullmatch(value):
                 raise MediaError("invalid_artifact", f"{name} is not an opaque artifact id")
             if self.enum and value not in self.enum:
@@ -127,6 +165,8 @@ class ParameterSpec:
                 raise MediaError("invalid_parameter", f"{name} must be an integer")
         elif isinstance(value, bool) or not isinstance(value, (int, float)):
             raise MediaError("invalid_parameter", f"{name} must be numeric")
+        if isinstance(value, float) and not math.isfinite(value):
+            raise MediaError("invalid_parameter", f"{name} must be finite")
         if self.minimum is not None and value < self.minimum:
             raise MediaError("invalid_parameter", f"{name} is below its minimum")
         if self.maximum is not None and value > self.maximum:
@@ -145,8 +185,16 @@ class ParameterSpec:
             schema["maxLength"] = self.max_length
         if self.enum:
             schema["enum"] = list(self.enum)
+        if self.description:
+            schema["description"] = self.description
+        if self.role:
+            schema["x-anvil-role"] = self.role
         if self.kind == "artifact":
             schema["format"] = "anvil-artifact-id"
+            if self.media_limits:
+                schema["x-anvil-media-limits"] = dict(self.media_limits)
+            if self.media_types:
+                schema["x-anvil-media-types"] = list(self.media_types)
         return schema
 
 
@@ -216,8 +264,23 @@ class WorkflowDescriptor:
     retention_seconds: int = 86400
     max_queue_depth: int = 4
     max_concurrency: int = 1
+    category: str = ""
+    description: str = ""
+    prompt_parameter: str = "prompt"
+    prompt_template: str = ""
 
     def __post_init__(self) -> None:
+        from .planning import CATEGORIES, template_fields
+        if not isinstance(self.category, str) or (self.category and self.category not in CATEGORIES):
+            raise MediaError("invalid_contract", "workflow category is invalid")
+        if not isinstance(self.description, str) or len(self.description) > 1024:
+            raise MediaError("invalid_contract", "workflow description is invalid")
+        fields = template_fields(self.prompt_template)
+        _identifier(self.prompt_parameter, "prompt parameter")
+        if self.prompt_template and (not fields or self.prompt_parameter not in self.parameters
+                                     or self.parameters[self.prompt_parameter].kind != "string"
+                                     or not any(b.parameter == self.prompt_parameter for b in self.bindings)):
+            raise MediaError("invalid_contract", "prompt recipe needs a bound string parameter")
         _identifier(self.id, "workflow id")
         _identifier(self.version, "workflow version")
         _identifier(self.service_target, "service target")
@@ -379,6 +442,16 @@ class WorkflowDescriptor:
             ]
             result["qualityProfileParameters"] = sorted(profile_parameters)
             result["profiledParameterSchema"] = parameter_schema(caller_parameters)
+        if self.category:
+            result["category"] = self.category
+        if self.description:
+            result["description"] = self.description
+        if self.prompt_template:
+            from .planning import template_fields
+            result["prompting"] = {"parameter": self.prompt_parameter,
+                                   "template": self.prompt_template,
+                                   "briefFields": list(template_fields(self.prompt_template)),
+                                   "compiler": "literal-template"}
         return result
 
 
@@ -403,13 +476,26 @@ class MediaArtifact:
     sha256: str
     expires_at: dt.datetime
     source_path: str = field(default="", repr=False, compare=False)
+    origin: str = "generated"
+    media_info: Mapping[str, int | float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not _OPAQUE_RE.fullmatch(self.id) or not _OPAQUE_RE.fullmatch(self.job_id):
+        if self.origin not in {"generated", "input"}:
+            raise MediaError("invalid_contract", "artifact origin is invalid")
+        if not _OPAQUE_RE.fullmatch(self.id) or (self.origin == "generated" and not _OPAQUE_RE.fullmatch(self.job_id)):
             raise MediaError("invalid_contract", "artifact identity is invalid")
         _principal(self.principal, "artifact principal")
-        _identifier(self.workflow_id, "artifact workflow")
-        _identifier(self.workflow_version, "artifact workflow version")
+        if self.origin == "generated":
+            _identifier(self.workflow_id, "artifact workflow")
+            _identifier(self.workflow_version, "artifact workflow version")
+        elif self.job_id or self.workflow_id or self.workflow_version:
+            raise MediaError("invalid_contract", "input artifacts cannot claim a generation job")
+        if (not isinstance(self.media_info, Mapping) or len(self.media_info) > 16
+                or any(not isinstance(k, str) or len(k) > 64 or isinstance(v, bool)
+                       or not isinstance(v, (int, float)) or isinstance(v, float) and not math.isfinite(v) or v < 0
+                       for k, v in self.media_info.items())):
+            raise MediaError("invalid_contract", "artifact media metadata is invalid")
+        object.__setattr__(self, "media_info", MappingProxyType(dict(self.media_info)))
         if not _MIME_RE.fullmatch(self.media_type):
             raise MediaError("invalid_contract", "artifact MIME type is invalid")
         if isinstance(self.byte_length, bool) or self.byte_length < 1:
@@ -419,7 +505,7 @@ class MediaArtifact:
         _timestamp(self.expires_at, "artifact expiry")
 
     def as_public_dict(self) -> dict[str, Any]:
-        return {
+        result = {
             "id": self.id,
             "jobId": self.job_id,
             "mediaType": self.media_type,
@@ -429,6 +515,12 @@ class MediaArtifact:
             "expiresAt": self.expires_at.isoformat(),
             "resource": f"/artifacts/{self.id}",
         }
+        if self.origin == "input":
+            result.pop("jobId"); result.pop("workflow")
+            result["origin"] = self.origin
+        if self.media_info:
+            result["mediaInfo"] = dict(self.media_info)
+        return result
 
 
 @dataclass(frozen=True)

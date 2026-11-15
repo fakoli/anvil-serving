@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "OPERATOR_PATH_9ba32d4067f1/python",
+    "-m",
+    "anvil_serving.cli",
+    "router",
+    "drain",
+    "--tier",
+    "primary-local",
+    "--timeout",
+    "30",
+    "--json"
+  ],
+  "at": 1792660147.5659728
+}

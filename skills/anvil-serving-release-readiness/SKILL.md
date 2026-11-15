@@ -90,7 +90,29 @@ installed CLI only as a verified fallback.
    public alias and maps it to the expected rollback model identity. Treat an
    auxiliary alias such as `llm.rollback` as profile-specific, not a universal
    rollback contract. Unknown or unavailable routes must remain fail-closed.
-3. Promotion provisioning: run the declared infrastructure capture and fleet
+3. For a promotion with several declared harnesses, use parallel read-only
+   preparation with explicit ownership:
+   - The lead retains authority for route/model lifecycle, promotion, and the
+     final catalog binding. It supplies the verified post-cutover router
+     generation, catalog digest, selected activation binding, and recovery
+     policy before any harness write.
+   - A harness-update worker inventories current owners and supported native
+     provisioning paths, prepares a bound update, and performs writes only
+     after receiving that verified binding. It must not infer a replacement
+     path from a retired legacy writer or bypass a workflow-retirement fence.
+   - An independent acceptance worker inventories only actually deployed
+     harnesses, records which profiles and sessions need testing, and validates
+     the resulting catalog, real client-shaped turns, preservation, and repeat
+     convergence. Retired installations are evidence, not active targets.
+   Keep worker evidence separate and have the lead join it against the same
+   route/catalog binding. Concurrent work is limited to isolated read-only
+   discovery; serialize client writes, owner recovery, and service reloads.
+   If the supported updater refuses an immutable-image, revision, or native
+   workflow-owner check, preserve the failure and use its reviewed fix-forward
+   path. Do not weaken the guard, re-enable a retired writer, or claim client
+   convergence. Report `harness_convergence_pending` while the accepted route
+   remains live.
+4. Promotion provisioning: run the declared infrastructure capture and fleet
    reconciliation on **every approved promotion**, even if alias names or token
    limits did not change. Derive the rebuild snapshot from the selected and
    rollback activation profiles, including their router, recipes and startup
@@ -160,15 +182,95 @@ installed CLI only as a verified fallback.
    continuation when affected. A long-context needle or protocol preflight
    does not replace these client-shaped smokes. Any catalog/profile drift or
    missing declared fleet coverage blocks deployment closure.
-4. Reasoning/output: use the deployed default reasoning effort and enough
+   If an interrupted propagation job holds the fleet resources, recover that
+   exact job through its owner before preparing a successor. Preserve its
+   original contract, process births, custody and child-result digests, and
+   workflow history. Expiry, a missing PID, or a reboot alone cannot prove that
+   persisted native work cannot replay. Require fresh, complete owner readback
+   of the exact terminal workflow and every affected native replay source;
+   settle through the supported recovery operation, never a database edit or
+   a legacy-writer bypass. Keep any maintenance reader restricted to observation
+   and recovery, verify authenticated operation exposure and admission denial,
+   and make a failed host preflight stop all fleet mutation. Bind the fresh
+   successor to the accepted activation and retained settlement evidence.
+   Before staging native profiles, validate both their file hashes and the
+   semantic identities recomputed by the pinned consumer. An inventory or fixture
+   change must update the profile identity, manifest identity, every owned
+   contract target and the complete content-hash chain. Require this check before
+   the first staging write; a valid outer hash does not prove consumer acceptance.
+   Before staging or replacing a workflow owner, require its exact pinned
+   artifact to parse the canonical contract and recompute its semantic effect
+   scope. Revision, generation, execution or target changes must rebuild that
+   scope and the contract-to-owner hash chain. Matching outer hashes and a
+   qualified reader image do not prove that the owner can bootstrap.
+   Keep a failed packet immutable and prepare a fresh successor. Qualify the
+   repaired client artifact separately when the accepted model/owner is retained;
+   do not patch an installed runtime or manufacture another model transition.
+   Track catalog convergence, new-session acceptance, existing-session
+   preservation, and scheduled reconciliation separately for every declared
+   installation; a fresh CLI smoke cannot stand in for Pi Web or an existing
+   session. Fix authorized blockers and rerun their failed gates before closure.
+   For client upgrades, inventory retained patches and verify each against the
+   pinned upstream package. Bind expected installer changes, such as deleted
+   completion markers, to exact source evidence; never ignore arbitrary drift.
+   Verify the dependency generation the native package manager actually selects,
+   including retained features/plugins, before and after a real client turn.
+   An unchanged base interpreter or version banner is insufficient. Preserve
+   native selections through supported package-manager APIs, require repeat
+   convergence, and qualify CLI, Gateway, bundled dashboard and standalone UI
+   separately when declared. Keep authentication and native idle gates intact.
+   When a native upgrade changes persistent schemas, take and verify a stopped
+   predecessor backup before migration. Qualify schema/integrity separately
+   from plugin convergence, preserved provider selections and live client
+   acceptance. Never promise binary-only rollback across incompatible schemas.
+   Record the recovery boundary durably before the first migration command,
+   and consult it on retries after controller interruption. Once migration may
+   have started, use the qualified candidate recovery path; a failed command
+   does not prove that no state changed. Restored-clone checks must deny access
+   to production state, including absolute plugin install paths, and must not
+   claim broader preservation than their native checks establish.
+   For native catalog-reader changes, measure all retained profiles together
+   through the exact installed host observer, then the complete owner readback.
+   Require two consecutive complete owner previews before cutover; a single
+   near-deadline pass cannot qualify an intermittent reader. Count native config
+   checks as well as metadata queries. Overlap only independently isolated
+   read-only work; serialize shared custody I/O and join every worker before
+   releasing its fence or scratch files. Keep mutation paths serialized.
+   A per-profile concurrency test does not prove the aggregate readback budget.
+   Retain subprocess counts, wall-clock time, exact runtime/profile bindings,
+   cleanup evidence and every declared target. Batch queries must preserve the
+   native resolver's defaults, profile selection, redaction and missing-key
+   behavior; parsing YAML alone is insufficient. Keep native redaction enabled
+   for metadata even when interactive CLI settings opt out;
+   operational output and receipts must never expose credential values.
+   Project only declared catalog fields; whole provider documents can carry
+   opaque credentials in headers or unrelated settings despite native masking.
+   Exclude unrelated provider rows and reject unsafe retained identifiers.
+   Exercise the snapshot-enabled fenced consumer, including protected source
+   preservation and repeat convergence; legacy-reader tests cannot prove it.
+   Qualify metadata readers with
+   an older supported profile in a disposable home and prove its complete tree
+   remains unchanged. Trap filesystem writes, helper/network calls and secret
+   loader/recovery imports in the real pinned package. Bind explicit profile
+   resolution fail closed: an unreadable named profile must never read default.
+   CLI imports and config getters can create logs/backups or run recovery even
+   without calling main; keep those effects outside metadata queries and
+   isolate the native oracle. A native resolver that silently ignores an unreadable
+   or malformed administrator overlay cannot certify convergence: require strict
+   managed-config reads, a positive effective-overlay fixture and silent refusal
+   cases, with managed environment files unopened.
+   Do not increase fixed budgets
+   or omit a target to turn a failed preview green. Requalify the consumer and
+   prepare a fresh successor rather than modifying a failed immutable packet.
+5. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
    not a model failure.
-5. Exclusive mode: prove both GPU roles have the intended owner, every competing
+6. Exclusive mode: prove both GPU roles have the intended owner, every competing
    managed GPU workload is blocked, and shared-memory ownership is clean.
-6. OpenClaw: verify the Mini gateway path, selected model alias/context/reasoning
+7. OpenClaw: verify the Mini gateway path, selected model alias/context/reasoning
    settings, no silent fallback, and the expected MCP tool inventory.
-7. Re-run the post-deploy smoke after any hotfix. Record exact versions,
+8. Re-run the post-deploy smoke after any hotfix. Record exact versions,
    revisions, checks, failures, rollback state, and live result in the release
    evidence.
 

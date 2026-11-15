@@ -1,0 +1,14 @@
+{
+  "precondition": "The retained campaign runner has stopped and the operator supplies a fresh matching identity receipt for this arm.",
+  "prohibitions": [
+    "No request dispatch by this preparation packet.",
+    "No managed lifecycle action.",
+    "Do not use outputs as a retry replacement or performance comparison."
+  ],
+  "schema": "anvil-serving.diagnostic-dispatch-policy/v1",
+  "sequence": [
+    "diagnostic-baseline-controlled-ctx10240-c1-n1",
+    "diagnostic-candidate-controlled-ctx10240-c1-n1"
+  ],
+  "status": "prepared-not-authorized"
+}

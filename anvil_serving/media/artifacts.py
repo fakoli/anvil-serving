@@ -11,7 +11,7 @@ import secrets
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Callable, Mapping
 
 from .contracts import MediaArtifact, MediaJob, utc_now
 from .errors import MediaError
@@ -46,13 +46,16 @@ class ArtifactStore:
 
     def ingest(
         self,
-        job: MediaJob,
+        job: MediaJob | None,
         source: BinaryIO,
         *,
         media_type: str,
         max_bytes: int,
         retention_seconds: int,
         now: dt.datetime | None = None,
+        principal: str = "",
+        expected_sha256: str = "",
+        validate: Callable[[Path], Mapping] | None = None,
     ) -> MediaArtifact:
         if max_bytes < 1 or retention_seconds < 1:
             raise MediaError("artifact_policy_invalid", "artifact policy is invalid", status=500)
@@ -81,22 +84,31 @@ class ArtifactStore:
                 os.fsync(handle.fileno())
             if length < 1 or not _signature_matches(media_type, bytes(header)):
                 raise MediaError("artifact_signature_invalid", "artifact bytes do not match the declared media type", status=422)
+            if expected_sha256 and digest.hexdigest() != expected_sha256:
+                raise MediaError("artifact_digest_mismatch", "uploaded bytes differ from the expected digest", status=422)
+            info = validate(Path(temporary)) if validate is not None else {}
             created = now or utc_now()
             artifact = MediaArtifact(
                 id=artifact_id,
-                job_id=job.id,
-                principal=job.principal,
-                workflow_id=job.workflow_id,
-                workflow_version=job.workflow_version,
+                job_id=job.id if job else "",
+                principal=job.principal if job else principal,
+                workflow_id=job.workflow_id if job else "",
+                workflow_version=job.workflow_version if job else "",
                 media_type=media_type,
                 byte_length=length,
                 sha256=digest.hexdigest(),
                 expires_at=created + dt.timedelta(seconds=retention_seconds),
                 source_path=str(self._data_path(artifact_id)),
+                origin="generated" if job else "input", media_info=info,
             )
             os.replace(temporary, self._data_path(artifact_id))
             temporary = None
-            self._write_metadata(artifact)
+            try:
+                self._write_metadata(artifact)
+            except OSError:
+                self._data_path(artifact.id).unlink(missing_ok=True)
+                self._metadata_path(artifact.id).with_suffix(".json.tmp").unlink(missing_ok=True)
+                raise
             return artifact
         finally:
             if temporary is not None:
@@ -217,6 +229,7 @@ class ArtifactStore:
             "byte_length": artifact.byte_length,
             "sha256": artifact.sha256,
             "expires_at": artifact.expires_at.isoformat(),
+            "origin": artifact.origin, "media_info": dict(artifact.media_info),
         }
         target = self._metadata_path(artifact.id)
         temporary = target.with_suffix(".json.tmp")
@@ -246,6 +259,10 @@ def _signature_matches(media_type: str, header: bytes) -> bool:
         return header.startswith(_PNG)
     if media_type == "video/mp4":
         return len(header) >= 12 and header[4:8] == b"ftyp"
+    if media_type == "image/jpeg":
+        return header.startswith(b"\xff\xd8\xff")
+    if media_type == "audio/wav":
+        return header.startswith(b"RIFF") and header[8:12] == b"WAVE"
     return False
 
 

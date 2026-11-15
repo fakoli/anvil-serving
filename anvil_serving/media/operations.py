@@ -2,23 +2,49 @@
 
 from __future__ import annotations
 
+import functools
+
+import copy
 import hashlib
 import json
 import threading
-from dataclasses import replace
+from dataclasses import fields, is_dataclass, replace
+from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from .admission import MediaAdmissionService
 from .artifacts import ArtifactStore
+from .assets import MAX_ASSET_BYTES, MEDIA_FORMATS, enforce_limits, inspect_media, policy as asset_policy
 from .cancellation import MediaCancellationService
-from .comfyui import ComfyUIClient
-from .contracts import JobState, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
-from .errors import MediaError
-from .jobs import MediaJobStore
-from .workflows import WorkflowRegistry
+from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient
+from .contracts import JobState, MediaArtifact, RenderedWorkflow, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
+from .errors import MediaError, MediaSubmissionRefused
+from .jobs import MAX_IDEMPOTENCY_KEY, MediaJobStore
+from .planning import CATEGORIES, compile_brief
+from .workflows import WorkflowRegistry, canonical_digest, render_request
 
 
 LifecyclePreview = Callable[[str, str, str], Mapping[str, Any]]
+
+
+def _contract_value(value):
+    # Dataclass fields include private execution requirements omitted from discovery.
+    if is_dataclass(value):
+        return {item.name: _contract_value(getattr(value, item.name)) for item in fields(value)}
+    if isinstance(value, Mapping):
+        return {key: _contract_value(child) for key, child in value.items()}
+    if isinstance(value, tuple):
+        return [_contract_value(child) for child in value]
+    return value
+
+
+def _owned_media(operation):
+    """Resolve the shared native permit only after media construction completes."""
+    @functools.wraps(operation)
+    def call(self, *args, **kwargs):
+        from ..router.admission import owned_dispatch
+        return owned_dispatch("media")(operation)(self, *args, **kwargs)
+    return call
 
 
 def _backend_method(backend: ComfyUIClient, name: str) -> Callable[..., Any]:
@@ -47,13 +73,21 @@ class MediaOperations:
 
     def capabilities(self) -> dict[str, Any]:
         workflows = self.registry.list()
+        recipes = self.registry.recipes() if hasattr(self.registry, "recipes") else []
         return {
             "capabilities": ["image-generation", "video-generation", "named-workflow"],
             "workflows": workflows,
+            "assetUpload": asset_policy(),
+            "recipes": recipes,
+            "categories": [{"id": key, "description": description,
+                            "workflows": [w["id"] + "@" + w["version"] for w in workflows if w.get("category") == key],
+                            "recipes": [r["id"] for r in recipes if r["category"] == key]}
+                           for key, description in CATEGORIES.items()],
             "operations": [
                 "workflow.list",
                 "workflow.show",
                 "workflow.validate",
+                "workflow.prepare",
                 "workflow.run",
                 "job.status",
                 "job.cancel",
@@ -73,6 +107,36 @@ class MediaOperations:
         workflow = self.registry.get(workflow_id, version)
         return {"compatibility": backend.compatibility(workflow).as_public_dict()}
 
+    @staticmethod
+    def _execution_digest(rendered, principal, idempotency_key):
+        if (not isinstance(idempotency_key, str) or not idempotency_key
+                or len(idempotency_key) > MAX_IDEMPOTENCY_KEY):
+            raise MediaError("invalid_idempotency_key", "idempotency key is outside policy")
+        return canonical_digest({"owner": principal, "contract": _contract_value(rendered.descriptor),
+                                 "graph": canonical_digest(rendered.graph),
+                                 "parameters": rendered.parameters_digest, "key": idempotency_key})
+
+    def workflow_prepare(self, workflow_id, version, parameters, *, principal, idempotency_key,
+                         brief=None, quality_profile="") -> dict[str, Any]:
+        descriptor = self.registry.get(workflow_id, version)
+        compiled = compile_brief(descriptor, parameters, brief)
+        _, rendered = render_request(self.registry, workflow_id, version, compiled, quality_profile)
+        if len(json.dumps(rendered.resolved_parameters, ensure_ascii=False, allow_nan=False).encode("utf-8")) > descriptor.max_request_bytes:
+            raise MediaError("invalid_parameters", "compiled parameters exceed workflow request bytes", status=413)
+        inputs = self._artifact_inputs(rendered, principal=principal)
+        digest = self._execution_digest(rendered, principal, idempotency_key)
+        request = {"workflow_id": workflow_id, "version": version, "parameters": compiled,
+                   "quality_profile": rendered.quality_profile, "idempotency_key": idempotency_key,
+                   "plan_digest": digest}
+        return {"plan": {"schema": "anvil-serving.media-plan/v1", "digest": digest,
+                         "workflow": descriptor.as_public_dict(),
+                         "effectiveParameters": dict(rendered.resolved_parameters),
+                         "references": [{"parameter": name, "role": descriptor.parameters[name].role,
+                                         "artifact": artifact.as_public_dict()} for name, artifact in inputs.items()],
+                         "backendChecked": False, "qualified": descriptor.available},
+                "runArguments": request}
+
+    @_owned_media
     def workflow_run(
         self,
         workflow_id: str,
@@ -84,25 +148,11 @@ class MediaOperations:
         backend: ComfyUIClient,
         qualification: bool = False,
         quality_profile: str | None = None,
+        plan_digest: str | None = None,
     ) -> dict[str, Any]:
-        if quality_profile is None:
-            rendered = self.registry.render(workflow_id, version, parameters)
-        else:
-            selected_profile = quality_profile
-            if not selected_profile:
-                selected_profile = self.registry.get(
-                    workflow_id,
-                    version,
-                ).default_quality_profile
-            if selected_profile:
-                rendered = self.registry.render(
-                    workflow_id,
-                    version,
-                    parameters,
-                    quality_profile=selected_profile,
-                )
-            else:
-                rendered = self.registry.render(workflow_id, version, parameters)
+        _, rendered = render_request(self.registry, workflow_id, version, parameters, quality_profile)
+        if plan_digest is not None and plan_digest != self._execution_digest(rendered, principal, idempotency_key):
+            raise MediaError("media_plan_changed", "prepared inputs or workflow contract changed; prepare again", status=409)
         resolved_parameters = rendered.resolved_parameters or parameters
         if qualification:
             candidate = replace(rendered.descriptor, available=True, unavailable_reasons=())
@@ -122,6 +172,7 @@ class MediaOperations:
                 backend=backend,
                 qualification=qualification,
             )
+        self._artifact_inputs(rendered, principal=principal)
         try:
             compatibility = (
                 backend.compatibility(rendered.descriptor, qualification=True)
@@ -292,6 +343,7 @@ class MediaOperations:
                     status=503,
                 ) from exc
 
+    @_owned_media
     def _resume_existing(
         self,
         job_id: str,
@@ -326,6 +378,7 @@ class MediaOperations:
             )
         return {"job": current.as_public_dict(), "created": False}
 
+    @_owned_media
     def _resume_accepted(
         self,
         job_id: str,
@@ -376,6 +429,7 @@ class MediaOperations:
             )
             return {"job": current.as_public_dict(), "created": False}
 
+    @_owned_media
     def _resume_preparing(
         self,
         job_id: str,
@@ -426,6 +480,7 @@ class MediaOperations:
             )
             return {"job": current.as_public_dict(), "created": False}
 
+    @_owned_media
     def _submit_rendered(
         self,
         job_id: str,
@@ -457,16 +512,31 @@ class MediaOperations:
                 principal=principal,
                 reason="backend_submission_started",
             )
-            # SUBMITTING is durable before the remote request. Any exception
-            # after this point is outcome-ambiguous and must never cause an
-            # automatic second submission.
+            # SUBMITTING is durable before the remote request. Unknown outcomes
+            # must never cause an automatic second submission.
             self.jobs.check_backend_endpoint(
                 job_id,
                 getattr(backend, "base_url", ""),
                 principal=principal,
                 bind=True,
             )
-            prompt_id = backend.submit(rendered, job_id=job_id)
+            try:
+                rendered = self._stage_artifact_inputs(
+                    rendered, principal=principal, backend=backend
+                )
+            except MediaError as exc:
+                # Upload preparation has not called /prompt, so failure is unambiguous.
+                self.jobs.transition(
+                    job_id, JobState.FAILED, principal=principal, reason=exc.code
+                )
+                raise
+            try:
+                prompt_id = backend.submit(rendered, job_id=job_id)
+            except MediaSubmissionRefused as exc:
+                self.jobs.transition(
+                    job_id, JobState.FAILED, principal=principal, reason=exc.code
+                )
+                raise
             self.jobs.set_backend_prompt(job_id, prompt_id, principal=principal)
             return self.jobs.transition(
                 job_id,
@@ -474,6 +544,53 @@ class MediaOperations:
                 principal=principal,
                 reason="submitted_to_media_backend",
             )
+
+    def _artifact_inputs(
+        self, rendered: RenderedWorkflow, *, principal: str
+    ) -> dict[str, MediaArtifact]:
+        inputs = {}
+        maximum = min(MAX_UPLOAD_BYTES, rendered.descriptor.max_artifact_bytes)
+        for name, spec in rendered.descriptor.parameters.items():
+            if spec.kind != "artifact" or name not in rendered.resolved_parameters:
+                continue
+            artifact = self.artifacts.metadata(rendered.resolved_parameters[name], principal=principal)
+            if spec.media_types and artifact.media_type not in spec.media_types:
+                raise MediaError("artifact_media_type", "input artifact has an unsupported media type")
+            if artifact.media_type not in MEDIA_FORMATS:
+                raise MediaError("artifact_media_type", "input artifact has an unsupported media type")
+            if artifact.byte_length > maximum:
+                raise MediaError("artifact_too_large", "input artifact exceeds upload policy", status=413)
+            if artifact.origin == "input" and not spec.media_limits:
+                raise MediaError("asset_limits_required", "this recipe has no qualified reference extent limits", status=409)
+            if spec.media_limits:
+                info = artifact.media_info or inspect_media(Path(artifact.source_path), artifact.media_type)
+                enforce_limits(info, spec.media_limits)
+            inputs[name] = artifact
+        return inputs
+
+    def _stage_artifact_inputs(
+        self, rendered: RenderedWorkflow, *, principal: str, backend: ComfyUIClient
+    ) -> RenderedWorkflow:
+        inputs = self._artifact_inputs(rendered, principal=principal)
+        if not inputs:
+            return rendered
+        graph = copy.deepcopy(rendered.graph)
+        maximum = min(MAX_UPLOAD_BYTES, rendered.descriptor.max_artifact_bytes)
+        uploaded = {}
+        for binding in rendered.descriptor.bindings:
+            artifact = inputs.get(binding.parameter)
+            if artifact is None:
+                continue
+            if artifact.id not in uploaded:
+                payload = self.artifacts.read(artifact.id, principal=principal, max_bytes=maximum)
+                if hashlib.sha256(payload.data).hexdigest() != artifact.sha256:
+                    raise MediaError("artifact_digest_mismatch", "input artifact content changed", status=409)
+                extension = MEDIA_FORMATS[artifact.media_type][1]
+                uploaded[artifact.id] = _backend_method(backend, "upload_input")(
+                    f"anvil-{artifact.sha256}.{extension}", payload.data, max_bytes=maximum
+                )
+            graph[binding.node]["inputs"][binding.input] = uploaded[artifact.id]
+        return replace(rendered, graph=graph)
 
     def _resume_submitting(
         self,
@@ -550,6 +667,7 @@ class MediaOperations:
     def job_status(self, job_id: str, *, principal: str) -> dict[str, Any]:
         return {"job": self.jobs.get(job_id, principal=principal).as_public_dict()}
 
+    @_owned_media
     def job_cancel(
         self, job_id: str, *, principal: str, backend: ComfyUIClient
     ) -> dict[str, Any]:
@@ -578,9 +696,23 @@ class MediaOperations:
     def artifact_inspect(self, artifact_id: str, *, principal: str) -> dict[str, Any]:
         return {"artifact": self.artifacts.metadata(artifact_id, principal=principal).as_public_dict()}
 
+    @_owned_media
+    def asset_upload(self, source, *, principal, media_type, sha256):
+        artifact = self.artifacts.ingest(None, source, principal=principal, media_type=media_type,
+                                         max_bytes=MAX_ASSET_BYTES, retention_seconds=86400,
+                                         expected_sha256=sha256,
+                                         validate=lambda path: inspect_media(path, media_type))
+        return {"artifact": artifact.as_public_dict()}
+
 
 def parameters_from_json(raw: str, *, max_bytes: int = 65536) -> dict[str, Any]:
-    if not isinstance(raw, str) or len(raw.encode("utf-8")) > max_bytes:
+    if not isinstance(raw, str):
+        raise MediaError("invalid_parameters", "workflow parameters exceed the CLI input limit")
+    try:
+        encoded = raw.encode("utf-8")
+    except UnicodeError as exc:
+        raise MediaError("invalid_parameters", "workflow parameters must be valid Unicode") from exc
+    if len(encoded) > max_bytes:
         raise MediaError("invalid_parameters", "workflow parameters exceed the CLI input limit")
     try:
         value = json.loads(raw)

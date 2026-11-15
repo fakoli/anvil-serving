@@ -1,0 +1,8 @@
+{
+  "reviewer": "independent Sol reviewer",
+  "gate": "accepted-bounded-retry",
+  "blocking_findings": [],
+  "policy_delta": "exactly io_uring_setup, io_uring_enter, io_uring_register added to pinned Moby default",
+  "low_severity_followup": "regular-file nonblocking open and oversized/FIFO tests added; 244 targeted tests passed",
+  "residual": "operator must keep reviewed profile immutable through Docker launch"
+}

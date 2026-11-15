@@ -1,0 +1,9 @@
+{
+  "reviewer": "flare_trial_review",
+  "code": "accepted",
+  "test_count": 19,
+  "source_fix_commit": "15c52a5511de221c09717025a011a8b965775321",
+  "submission": "held until selected variant is bound",
+  "budget_finding": "7200s differs from historical21600s scout; preserve deadline-bounded partial-scout interpretation",
+  "disposition": "User deadline retained; no historical matched qualification claim; bind final variant and runtime before submit."
+}

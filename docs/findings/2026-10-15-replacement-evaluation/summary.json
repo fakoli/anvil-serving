@@ -1,0 +1,275 @@
+{
+  "schema": "replacement-campaign-summary/v1",
+  "campaign_id": "2026-10-15-replacement-full",
+  "decision": "retain_incumbent_no_qualified_challenger",
+  "status": "gate_evaluation_complete_incumbent_restored",
+  "promoted": false,
+  "promotion_authority": "User conditionally authorized promotion of an independently qualified winner; no tested challenger satisfies the prerequisite.",
+  "required_role": {
+    "context_tokens": 327680,
+    "concurrency": 4,
+    "image_slots": 8
+  },
+  "metrics": {
+    "glm": {
+      "protocol_passed": 5,
+      "protocol_attempted": 5,
+      "protocol_source": {
+        "path": "native/glm-protocol.native.json",
+        "sha256": "09bc66201cdc8ddd6403afe0f9b4888336f904080837c9d179730f882c39488b",
+        "metric_paths": [
+          "results[].passed"
+        ]
+      },
+      "oracle7": {
+        "passed": 54,
+        "attempted": 54,
+        "sources": [
+          {
+            "path": "native/glm-oracle7-native.json",
+            "sha256": "2d3c69d5b9663cc770f4292f9b72c4c9c51e6db74b6901f3a68cab764c16c4e0",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          },
+          {
+            "path": "native/glm-oracle7-r2-native.json",
+            "sha256": "84a5cb12fb9070f8321b0fc1c211bc6778df8e2980397d53bc35ef35c05c2d51",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          },
+          {
+            "path": "native/glm-oracle7-r3-native.json",
+            "sha256": "cef308240ee3d64a9907d3affe5f5234f2dc10469522436fb461efc7f6c05d02",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          }
+        ]
+      },
+      "swe5": {
+        "resolved": 4,
+        "assigned": 5,
+        "graded": 5,
+        "official_grader_complete": true,
+        "required_sentinels": {
+          "django__django-13512": true,
+          "pylint-dev__pylint-8898": false
+        },
+        "source": {
+          "path": "native/glm-swe5-r2.native.json",
+          "sha256": "3b710369c088cfe93f3d02f197b3a258581b9d832c8a87ff7bd5431de5118556",
+          "metric_paths": [
+            "summary.resolved",
+            "summary.attempted",
+            "summary.graded",
+            "instances[].grader.resolved",
+            "official_grader_complete"
+          ]
+        }
+      },
+      "vision_passed": 15,
+      "vision_attempted": 15,
+      "vision_source": {
+        "path": "native/glm-vision.native.json",
+        "sha256": "4e50e586918173e7886b1fca91d8a73783c9f0e22e09b00a83aebda97c094038",
+        "metric_paths": [
+          "passed_attempts",
+          "attempts"
+        ]
+      }
+    },
+    "mimo_r4": {
+      "oracle7": {
+        "passed": 15,
+        "attempted": 18,
+        "sources": [
+          {
+            "path": "native/mimo-r4-oracle7.native.json",
+            "sha256": "15813e9ddf3422d450df2f5d53d774e9c3a6ffc7f333cc57cca8855071acd5dc",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          }
+        ]
+      },
+      "swe5": {
+        "resolved": 3,
+        "assigned": 5,
+        "graded": 4,
+        "official_grader_complete": false,
+        "required_sentinels": {
+          "django__django-13512": true,
+          "pylint-dev__pylint-8898": false
+        },
+        "source": {
+          "path": "native/mimo-r4-swe5-terminal.native.json",
+          "sha256": "0b02c50267f40f4829fdc31bc8a0ea30515b996b463558d2a18870b417d2845d",
+          "metric_paths": [
+            "summary.resolved",
+            "summary.attempted",
+            "summary.graded",
+            "instances[].grader.resolved",
+            "official_grader_complete"
+          ]
+        }
+      }
+    },
+    "mimo_r5": {
+      "oracle8": {
+        "passed": 54,
+        "attempted": 54,
+        "sources": [
+          {
+            "path": "native/mimo-r5-oracle8-r1.native.json",
+            "sha256": "68cc91d6bafdb3d20569dd0e62a2cf9167237bd283e76176c52c7c69fa0b0521",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          },
+          {
+            "path": "native/mimo-r5-oracle8-r2.native.json",
+            "sha256": "7eea02d14ca0063026efaa07400307369d184acebdeeb98245a31930429f63c2",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          },
+          {
+            "path": "native/mimo-r5-oracle8-r3.native.json",
+            "sha256": "13f739b7a425d3623559a7d8930ec8275d6bf54cc8d31fd91b5aa0afacc5c6ed",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          }
+        ]
+      },
+      "swe5": {
+        "resolved": 2,
+        "assigned": 5,
+        "graded": 2,
+        "official_grader_complete": false,
+        "required_sentinels": {
+          "django__django-13512": true,
+          "pylint-dev__pylint-8898": false
+        },
+        "source": {
+          "path": "native/mimo-r5-swe5-terminal.native.json",
+          "sha256": "650c20df0c1dd54d5797c6ade27ed8798effd187588acdea9ca899b2a450f176",
+          "metric_paths": [
+            "summary.resolved",
+            "summary.attempted",
+            "summary.graded",
+            "instances[].grader.resolved",
+            "official_grader_complete"
+          ]
+        }
+      }
+    },
+    "mistral_r3": {
+      "oracle8": {
+        "passed": 17,
+        "attempted": 18,
+        "sources": [
+          {
+            "path": "native/mistral-r3-oracle8-r1.native.json",
+            "sha256": "6b24a2d114826aeba24aea2adefafd28eb0087b41a97c23f28ae3e2a02959490",
+            "metric_paths": [
+              "summary.passed",
+              "summary.attempted"
+            ]
+          }
+        ]
+      },
+      "protocol_free_vram_mib_per_gpu": 4798,
+      "resource_source": {
+        "path": "native/mistral-r3-terminal-resource.native.json",
+        "sha256": "de7506e1466dd53be51a85b57b61a5c9acc2d4b470bdaf6a325510e36ade9640",
+        "metric_paths": [
+          "resource"
+        ],
+        "derivation": "Integer MiB value explicitly recorded in the native resource string."
+      }
+    },
+    "mistral_r2": {
+      "minimum_free_vram_mib": 3826,
+      "required_free_vram_mib": 4096,
+      "source": {
+        "path": "native/mistral-r2-terminal-resource.native.json",
+        "sha256": "37d24fea7f1e79daf6c87977765548789bc3b28e0bf38ba2533bbee6dec8f3a8",
+        "metric_paths": [
+          "free_vram_mib_active_and_idle",
+          "required_free_vram_mib"
+        ]
+      }
+    },
+    "deepseek_stage4": {
+      "basic_checks_passed": 2,
+      "basic_checks_total": 2,
+      "gpu_free_idle_mib_per_device": 7615,
+      "gpu_free_post_basic_mib_per_device": 7101,
+      "source": {
+        "path": "native/deepseek-stage4.native.json",
+        "sha256": "519aaa9478f26a875eeea7fec1ee1ba41dc182b298e73e50808cec3a4d7ed438",
+        "metric_paths": [
+          "outcomes[1].basic_protocol_checks",
+          "outcomes[1].idle_free_gpu_mib_per_gpu",
+          "outcomes[1].post_basic_free_gpu_mib_per_gpu"
+        ]
+      },
+      "native_quality_evidence": false
+    },
+    "deepseek_r4": {
+      "oracle8": {
+        "passed": 17,
+        "attempted": 18,
+        "required_round_passes": 18,
+        "required_campaign_passes": 54,
+        "source": {
+          "path": "native/deepseek-full-role-r4.native.json",
+          "sha256": "8db47000bfa1896eace7202b2e6d3e7a94031bb83dd84057d06887fd7aabef7e",
+          "metric_paths": [
+            "outcome.oracle8_round1.passed",
+            "outcome.oracle8_round1.attempted"
+          ]
+        }
+      },
+      "minimum_active_free_gpu_mib_per_device": 6539,
+      "source": {
+        "path": "native/deepseek-full-role-r4.native.json",
+        "sha256": "8db47000bfa1896eace7202b2e6d3e7a94031bb83dd84057d06887fd7aabef7e",
+        "metric_paths": [
+          "outcome.oracle8_request_window.minimum_free_gpu_mib_per_gpu"
+        ]
+      }
+    }
+  },
+  "gate_dispositions": {
+    "glm": "Incumbent retained as control; SWE numeric floor passed but required Pylint sentinel failed. Retention does not constitute new qualification.",
+    "mimo_r4": "Failed reliability and SWE gates; arrow ambiguity retained separately from genuine fenced-JSON defect.",
+    "mimo_r5": "Failed SWE gate despite repeated agentic pass. Three absent submissions count against all five assigned cases.",
+    "mistral_r3": "Failed 100-percent agentic gate; configured 262144 context also falls below required role.",
+    "deepseek": "Stage3r12 dummy-plus-Engram and Stage4r8 bounded real-weight feasibility passed. Full-role r2/r3 failed request-time reserve. Full-role r4 passed fresh basic/protocol/resource gates but native Oracle8 round1 scored17/18: invalid first tool argument and one extra call in debug-loop. Independent review confirmed genuine strict protocol failure. Exact configuration rejected and unloaded; no retry or downstream qualification."
+  },
+  "not_run_after_early_gate_failure": [
+    "held-out paired SWE comparison",
+    "full 90-observation context matrix",
+    "finalist concurrency/capacity",
+    "full finalist vision and sustained stability"
+  ],
+  "comparison_limits": [
+    "No general intelligence ranking or performance winner is established.",
+    "Oracle7 and Oracle8 are different prompt revisions and are not a matched causal comparison.",
+    "Configured context is not measured usable or simultaneous context.",
+    "GLM incumbent headroom is grandfathered retention, not a new challenger reserve pass.",
+    "Historical MiMo/Mistral/GLM Oracle records retain declared harness revisions but no execution/import receipts; MiMo SWE independently binds the official grader adapter only. No uniform retrospective executed-source proof is claimed.",
+    "Fresh DeepSeekR4 execution is bound to actual clean evaluator CWD/revision/interpreter/worker receipt. Older incumbent/challenger records retain the separately documented executed-source limitation."
+  ]
+}

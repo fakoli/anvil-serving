@@ -1,0 +1,225 @@
+{
+  "data": {
+    "created_at": "2026-11-03T14:38:56.708571Z",
+    "failure": null,
+    "partial": false,
+    "provenance": {
+      "endpoint": {
+        "base_url": "[private operator or asset text withheld]",
+        "model": "[private identity withheld]"
+      },
+      "finished_at": "2026-11-03T14:38:56.708486Z",
+      "started_at": "2026-11-03T14:02:29.137598Z",
+      "submitted_at": "2026-11-03T13:56:16.352240+00:00",
+      "worker": "[private topology withheld]"
+    },
+    "results": {
+      "evidence": {
+        "completeness": "completed",
+        "created_at": "2026-11-03T14:38:56.696853Z",
+        "evidence_kind": "measured",
+        "failure": null,
+        "identities": {
+          "concurrency": {
+            "configured_lanes": 4,
+            "test_requests_sequential": true
+          },
+          "context": {
+            "configured_tokens": 262144
+          },
+          "dataset": {
+            "name": "deterministic-native",
+            "profile_sha256": "[private fingerprint withheld]"
+          },
+          "hardware": {
+            "driver": "621.01",
+            "gpu": "NVIDIA GeForce RTX 5090",
+            "ram_total_bytes": 100582346752,
+            "vram_total_mib": 32607
+          },
+          "harnesses": {
+            "native": {
+              "schema": "anvil-serving.context/v1"
+            }
+          },
+          "image": {
+            "reference": "anvil-ignis@[private fingerprint withheld]"
+          },
+          "model": {
+            "artifact_sha256": "[private fingerprint withheld]",
+            "repo": "[private identity withheld]",
+            "require_complete_cache": true,
+            "revision": "[private identity withheld]",
+            "volume": "[private topology withheld]"
+          },
+          "runtime": {
+            "canonical_recipe_digest": "[private fingerprint withheld]",
+            "engine": "ignis",
+            "managed_container_id": "[private fingerprint withheld]",
+            "recipe_digest_semantics": "retained TOML input SHA256; canonical loaded identity captured separately",
+            "recipe_sha256": "[private fingerprint withheld]",
+            "registry_digest": "[private identity withheld]",
+            "revision": "[private identity withheld]"
+          },
+          "served_model": {
+            "configured_context": 262144,
+            "id": "[private-model]"
+          },
+          "topology": {
+            "kind": "co-resident-benchmark-client",
+            "worker_id": "[private topology withheld]"
+          }
+        },
+        "promotion": {
+          "authorized": false,
+          "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+        },
+        "run": {
+          "ownership_id": "llm-campaign-20261103",
+          "profile": "scout",
+          "run_id": "ignis-256k-vision-context-20261103",
+          "spec_sha256": "[private fingerprint withheld]",
+          "suite": "context"
+        },
+        "schema": "anvil-serving.benchmark-evidence/v1",
+        "stages": [
+          {
+            "evidence": [
+              {
+                "bytes": 560,
+                "path": "evidence/0-assets.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "asset_preparation",
+            "sequence": 0,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 1959,
+                "path": "evidence/0-preflight.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "preflight",
+            "sequence": 1,
+            "status": "completed"
+          },
+          {
+            "evidence": [
+              {
+                "bytes": 91123,
+                "path": "evidence/0-context.json",
+                "sha256": "[private fingerprint withheld]"
+              }
+            ],
+            "name": "context",
+            "sequence": 2,
+            "status": "completed"
+          }
+        ],
+        "summary": {
+          "advertised_context": 262144,
+          "attempted_buckets": [
+            8192,
+            131072,
+            245760
+          ],
+          "buckets": [
+            {
+              "completed_count": 15,
+              "completion_rate": 1.0,
+              "engine_telemetry": {
+                "available": false
+              },
+              "failures": {},
+              "latency_ms": {
+                "available": true,
+                "mean": 2495.1703466669037
+              },
+              "meets_policy": true,
+              "pass_rate": 1.0,
+              "passed_count": 15,
+              "relative_drop_from_reference": 0.0,
+              "requested_tokens": 8192,
+              "sample_count": 15,
+              "throughput_tps": {
+                "available": true,
+                "mean": 14.712307024068279
+              }
+            },
+            {
+              "completed_count": 15,
+              "completion_rate": 1.0,
+              "engine_telemetry": {
+                "available": false
+              },
+              "failures": {},
+              "latency_ms": {
+                "available": true,
+                "mean": 45263.938946661074
+              },
+              "meets_policy": true,
+              "pass_rate": 1.0,
+              "passed_count": 15,
+              "relative_drop_from_reference": 0.0,
+              "requested_tokens": 131072,
+              "sample_count": 15,
+              "throughput_tps": {
+                "available": true,
+                "mean": 0.8285250581414189
+              }
+            },
+            {
+              "completed_count": 15,
+              "completion_rate": 1.0,
+              "engine_telemetry": {
+                "available": false
+              },
+              "failures": {},
+              "latency_ms": {
+                "available": true,
+                "mean": 97840.93401333473
+              },
+              "meets_policy": true,
+              "pass_rate": 1.0,
+              "passed_count": 15,
+              "relative_drop_from_reference": 0.0,
+              "requested_tokens": 245760,
+              "sample_count": 15,
+              "throughput_tps": {
+                "available": true,
+                "mean": 0.38381992237426343
+              }
+            }
+          ],
+          "effective_context": 245760,
+          "first_material_degradation": null,
+          "notes": [
+            "effective_context uses attempted buckets only",
+            "missing engine telemetry is unavailable and is not inferred from latency"
+          ],
+          "schema": "anvil-serving.context-curve-summary/v1",
+          "threshold_policy": {
+            "reference_bucket": 8192,
+            "reference_pass_rate": 1.0,
+            "max_relative_drop": 0.25,
+            "pass_rate_floor": 0.75
+          }
+        }
+      }
+    },
+    "run": {
+      "ownership_id": "llm-campaign-20261103",
+      "profile": "scout",
+      "run_id": "ignis-256k-vision-context-20261103",
+      "spec_sha256": "[private fingerprint withheld]",
+      "suite": "context"
+    },
+    "schema": "anvil-serving.benchmark-result/v1",
+    "status": "completed"
+  },
+  "ok": true
+}

@@ -1,0 +1,91 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "glm-sampling-reference-20261025-r2",
+    "capability": "Focused split-top-p numerical-reference diagnostic",
+    "started_at": "2026-10-26 UTC; exact timestamp not retained in public evidence",
+    "completed_at": "2026-10-26T03:57:22.096135Z",
+    "repository_revision": "3fa3d856ba3f5a797a661a50a468fdee481f58ab",
+    "dirty_state": "Executable source frozen after independent review; publication files are a later evidence projection.",
+    "evidence_labels": ["functional"],
+    "decision_labels": ["no-promotion"],
+    "promoted": false,
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.image-build/v1",
+    "recipe-container-status/v1",
+    "sampling-reference-experiment/v1",
+    "sampling-source-freeze/v1",
+    "sampling-reference-result/v1",
+    "anvil-serving.independent-outcome-review/v1",
+    "sampling-reference-closure/v1",
+    "anvil-serving.benchmark-restoration/v1",
+    "preflight/v2"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": ["README.md"],
+      "reason": "Human-readable evidence map and explicit interpretation limits."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": ["source-registry.json", "reference-design.md", "projection-ledger.json"],
+      "reason": "Dated primary sources, independent oracle design, and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": ["plan.json"],
+      "reason": "Frozen seeds, shapes, forced cases, ordinary rows, top-p value, and numerical oracle."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": ["plan.json", "reference-design.md"],
+      "reason": "Predeclared gates, stop rules, bounds, and independently reviewed acceptance design."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": ["identity.json", "source-freeze.json", "build.json"],
+      "reason": "Exact source, patch, helper, image, model, and measured-hardware identity."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": ["kernel-receipts.log", "kernel-summary.json", "candidate-status.json"],
+      "reason": "Verbatim bounded numerical receipts, derived row/accounting summary, and managed exit status."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": ["friction-log.md", "kernel-summary.json", "candidate-status.json", "restoration-smoke.json"],
+      "reason": "Strict local policy failure, secondary post-exit observability limitation, and failed restored-incumbent strict JSON smoke."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": ["restoration.json", "closure.json", "runtime-restored.json", "router-restored.json", "mode-restored.json", "shared-memory-restored.json", "gpus-restored.json", "restoration-smoke.json"],
+      "reason": "Exact operational restoration and idle readiness passed; the strict JSON functional smoke failed, so restoration acceptance is incomplete."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": ["summary.json", "outcome-review.json"],
+      "reason": "Bounded failed functional result and independent no-probe decision; no end-to-end or promotion claim."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; the dated technical finding is the public report."
+    }
+  ],
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 4 MiB"
+}

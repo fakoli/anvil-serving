@@ -1,0 +1,197 @@
+{
+  "advisory_conclusion": "The four LimitsExceeded outcomes are agent task-execution failures relative to the fixed 60-step budget, characterized by prolonged exploration or verification and failure to reserve a submission step. The retained request and server evidence does not support transport instability or a harness malfunction. Django was submitted and officially graded unresolved because two fail-to-pass targets remained unmet. This is an evidence classification, not an independent SWE correctness grade.",
+  "instances": [
+    {
+      "api_calls": 25,
+      "bounded_observation": "The agent identified a one-line JSONField change, added a release note, ran focused and broader tests, created and inspected a patch, and submitted at step 25.",
+      "classification": "submitted_and_officially_graded_unresolved",
+      "correctness": {
+        "fail_to_pass_failure": [
+          "test_json_display_for_field (admin_utils.tests.UtilsTests)",
+          "test_label_for_field (admin_utils.tests.UtilsTests)"
+        ],
+        "fail_to_pass_success": [
+          "test_prepare_value (forms_tests.field_tests.test_jsonfield.JSONFieldTest)"
+        ],
+        "infrastructure_assessment": "This is an official test failure, not a grading-infrastructure failure: the patch applied, the test command completed, a report was produced, and the run summary records zero grader errors.",
+        "observed_test_output": "The grader ran 35 tests and reported one concrete assertion failure in test_json_display_for_field for a non-ASCII JSON value: the display retained escaped Unicode instead of the expected characters. The official report also marked test_label_for_field as an unmet fail-to-pass target.",
+        "official_grader_completed": true,
+        "pass_to_pass_failures": [],
+        "patch_applied": true,
+        "resolved": false
+      },
+      "event_sequences": [
+        2,
+        126
+      ],
+      "grader_evidence": {
+        "report": {
+          "path": "raw/swe-r2/django/report.json",
+          "sha256": "3cd6e37cf77501fb74f3b30ca7c05e59264375be0edf3ce1cf3af17ebcd5b943"
+        },
+        "test_output": {
+          "path": "raw/swe-r2/django/test_output.txt",
+          "sha256": "6377f5390800ea20f7db95100f86ef3d80cc974c6afcfad8864432746c50e744"
+        }
+      },
+      "instance_id": "django__django-13512",
+      "submission_present": true,
+      "terminal_status": "Submitted",
+      "trajectory": "work/mini-output/django__django-13512/django__django-13512.traj.json",
+      "trajectory_sha256": "4385eacdc24f0c7483000e79efdd7dc613264da9e3b458b8c8ed1ad2ee4d6d22",
+      "transport_200": 25
+    },
+    {
+      "api_calls": 60,
+      "bounded_observation": "Edits began by step 12 and were repeatedly revised through step 29. Steps 31-51 expanded into broad baseline comparisons and repeated NumPy, Dask, sparse, Pint, axis, dtype, and formatting checks. Steps 53-58 added and revised release notes. Step 60 was still investigating skipna behavior and no submission was produced.",
+      "classification": "agent_execution_budget_exhaustion_after_scope_expansion",
+      "correctness": "unknown; empty prediction and ungraded",
+      "event_sequences": [
+        127,
+        428
+      ],
+      "instance_id": "pydata__xarray-4356",
+      "submission_present": false,
+      "terminal_status": "LimitsExceeded",
+      "trajectory": "work/mini-output/pydata__xarray-4356/pydata__xarray-4356.traj.json",
+      "trajectory_sha256": "6e01db37b66e438d00c27f0b9de558035e6a446a4ecf0def1fd3dc8d2542300c",
+      "transport_200": 60,
+      "transport_or_harness_fault": "not observed; the configured 60-step harness limit was enforced"
+    },
+    {
+      "api_calls": 60,
+      "bounded_observation": "The first 28 steps were discovery. Steps 29-36 iterated through several splice/reset implementations. Later steps broadened into functional-suite baselines, adjacent option analysis, self-lint, release-fragment research, and multiple ad hoc test scripts whose assumptions required correction. At step 60 the agent created patch.txt but did not execute the required submission command.",
+      "classification": "agent_execution_budget_exhaustion_before_submission",
+      "correctness": "unknown; empty prediction and ungraded",
+      "event_sequences": [
+        429,
+        730
+      ],
+      "instance_id": "pylint-dev__pylint-8898",
+      "submission_present": false,
+      "terminal_status": "LimitsExceeded",
+      "trajectory": "work/mini-output/pylint-dev__pylint-8898/pylint-dev__pylint-8898.traj.json",
+      "trajectory_sha256": "975272548351ce3f10aaf14d0e16b5848b668bb2905b9c2dc66a957e1b1561ba",
+      "transport_200": 60,
+      "transport_or_harness_fault": "not observed; the configured 60-step harness limit was enforced"
+    },
+    {
+      "api_calls": 60,
+      "bounded_observation": "The candidate source edit appeared at step 36 and focused tests ran at steps 37-39. Steps 40-43 expanded into full-suite and baseline comparisons; steps 44-59 continued with custom package builds, HTML parsing, inheritance experiments, and changelog work. Step 60 began creating a repository test file despite the task boundary and no submission was produced.",
+      "classification": "agent_execution_budget_exhaustion_after_post_fix_exploration",
+      "correctness": "unknown; empty prediction and ungraded",
+      "event_sequences": [
+        731,
+        1032
+      ],
+      "instance_id": "sphinx-doc__sphinx-9658",
+      "submission_present": false,
+      "terminal_status": "LimitsExceeded",
+      "trajectory": "work/mini-output/sphinx-doc__sphinx-9658/sphinx-doc__sphinx-9658.traj.json",
+      "trajectory_sha256": "d2be8f659f7499f7f586d5447e3ee441cd41c0481b0371942536278bffc1996e",
+      "transport_200": 60,
+      "transport_or_harness_fault": "not observed; the configured 60-step harness limit was enforced"
+    },
+    {
+      "api_calls": 60,
+      "bounded_observation": "A source edit existed before the terminal section. Steps 40-60 were consumed by repeated and broad tests, baseline comparisons, multiple ad hoc test runners, investigations of unrelated or pre-existing failures, and additional recursion edge cases. Step 60 was still running an edge-case probe and no submission was produced.",
+      "classification": "agent_execution_budget_exhaustion_after_extended_validation",
+      "correctness": "unknown; empty prediction and ungraded",
+      "event_sequences": [
+        1033,
+        1334
+      ],
+      "instance_id": "sympy__sympy-12096",
+      "submission_present": false,
+      "terminal_status": "LimitsExceeded",
+      "trajectory": "work/mini-output/sympy__sympy-12096/sympy__sympy-12096.traj.json",
+      "trajectory_sha256": "cdb02a8bbbaf5d3be81dbe62fe1ad4d5a9dd376653d2411610baa012bb176f6f",
+      "transport_200": 60,
+      "transport_or_harness_fault": "not observed; the configured 60-step harness limit was enforced"
+    }
+  ],
+  "limitations": [
+    "The official grader is incomplete overall: only Django was graded; the four empty predictions were ungraded.",
+    "Unsubmitted in-container edits cannot be graded from terminal trajectories alone.",
+    "The server-log envelope contains JSONL text and was used only for bounded request correlation.",
+    "The reviewer runtime model identity is not independently exposed; the model and reasoning effort above are the configured review role."
+  ],
+  "native_outcome": {
+    "artifact_state": "incomplete",
+    "attempted": 5,
+    "evidence": {
+      "path": "swe-result.json",
+      "sha256": "51051dac9d8175229b995e06224093abb6cfd2b8f5f23d8638758efff5e83537"
+    },
+    "failure": {
+      "class": "budget_exhausted",
+      "code": "swe_limits_exceeded",
+      "stage": "agent"
+    },
+    "graded": 1,
+    "interpretation": "One submitted prediction was officially graded unresolved. Four empty predictions were ungraded; this is not a fully graded 0/5 result.",
+    "official_grader_complete": false,
+    "resolve_rate": 0.0,
+    "resolved": 0
+  },
+  "observed_at": "2026-10-20T03:12:16Z",
+  "official_grader_summary": {
+    "completed_instances": 1,
+    "empty_patch_instances": 4,
+    "error_instances": 0,
+    "path": "work/official-grader/openai__qwen3.8-flash-next.ignis-072-swe5-20261019-r2.json",
+    "resolved_instances": 0,
+    "semantic_note": "The report field submitted_instances=5 counts all prediction records. Its empty_patch_ids field identifies four records with empty patches; only Django was agent-submitted and graded.",
+    "sha256": "1fe9c90437b4dc3857196053ee95a33b69bcb3a25d43e4356e136e7a06effde4",
+    "unresolved_instances": 1
+  },
+  "reviewer_configuration": {
+    "model": "gpt-5.6-sol",
+    "reasoning_effort": "high",
+    "runtime_identity_independently_exposed": false
+  },
+  "run_id": "ignis-072-swe5-20261019-r2",
+  "run_root": "$OPERATOR_HOME",
+  "schema": "anvil-serving.swe-quality-advisory/v1",
+  "scope": {
+    "completed_instances_reviewed": [
+      "django__django-13512",
+      "pydata__xarray-4356",
+      "pylint-dev__pylint-8898",
+      "sphinx-doc__sphinx-9658",
+      "sympy__sympy-12096"
+    ],
+    "kind": "read-only bounded terminal-trajectory and native-grader review",
+    "official_grader_complete": false,
+    "success_graded_by_reviewer": false
+  },
+  "transport_observation": {
+    "agent_retries": 0,
+    "assessment": "No observed transport or server-request failure explains the four terminal LimitsExceeded outcomes. Each had 60 successful model responses followed by one harness-recorded logical LimitsExceeded event before another transport request.",
+    "event_source": {
+      "path": "swe-request-events.jsonl",
+      "sha256": "df7c35b401bb1402ee95ecba97fa1c0aa418ce9ae595e0d1282d923bdad8fab4",
+      "terminal_event_sequence": 1335
+    },
+    "model_call_http_200_responses": 265,
+    "request_event_count": 1334,
+    "request_event_omissions": 0,
+    "request_event_omitted_bytes": 0,
+    "server_log_correlation": {
+      "admitted": 265,
+      "cancelled": 0,
+      "done": 265,
+      "finish_reason_stop": 265,
+      "note": "Eight cancelled requests in the full log precede request 48 and are outside the SWE model-call range. Two startup warnings about disabled KV-disk storage and an unknown image prompt enhancer were observed outside the request path; neither appears as an SWE request error.",
+      "path": "$RESEARCH_EVIDENCE",
+      "sha256": "4b6e832bd2e70042806c0bc6e680473f65480a1cc9c61b3240aead40a2c7a6cb",
+      "swe_request_id_range": [
+        48,
+        312
+      ],
+      "ttft": 265
+    },
+    "transport_errors": 0
+  },
+  "provenance_note": "Trajectory paths and hashes refer to protected originals reviewed independently; the official Django report and test output are retained publicly at the listed packet-relative paths."
+}

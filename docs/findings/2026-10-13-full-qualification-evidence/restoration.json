@@ -1,0 +1,34 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-10-13-full-qualification",
+  "status": "accepted-with-routed-thinking-off-gap",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "native/public-native-draft/native-hardware-summary-current.json"
+    ],
+    "router_config_sha256": "not published in this public bundle"
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "restoration-summary-r19.md",
+      "native/public-native-draft-r19/"
+    ]
+  },
+  "differences": [
+    "No public route or manifest change is asserted by this bundle.",
+    "Routed thinking-off remains a failed observation; a separate high-thinking client check passed."
+  ],
+  "post_run_checks": [
+    "Direct functional restoration passed 13/13.",
+    "Routed smoke, JSON, tools, SSE, Responses, vision 1/1, OCR 1/1, JSON_OBJECT, Pi settled read-tool acceptance, Hermes, and Hindsight recall plus retain passed as separate check classes.",
+    "R19 retained a high-thinking OpenClaw client pass while preserving the thinking-off failure and local pre-query max rejection."
+  ],
+  "verified": true,
+  "limitations": [
+    "No failed-request wire capture proves exact parser flattening.",
+    "Unified evaluation remains non-green where it hardcodes thinking-off."
+  ]
+}

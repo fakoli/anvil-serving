@@ -1,0 +1,16 @@
+{
+  "affected": "two excluded baseline warmups; zero measured requests dispatched",
+  "correction": "Retain timestamped raw and parsed nvidia-smi memory.total/used/free and utilization/power/temperature; /proc/meminfo MemAvailable; numeric and identity checks before scored dispatch; preserve native GPU free instead of total-used. Validate Prometheus parser with idle/nonzero samples.",
+  "evidence": [
+    "telemetry/baseline/baseline-warmup-ctx10240-c1/before-gpus.json",
+    "telemetry/collector-probe/sample.json"
+  ],
+  "follow_up": "After live collection closes, add durable product-gap ticket and skill instruction requiring numerical telemetry preflight. Product source remains frozen during matched A/B.",
+  "frozen_benchmark_commands_unchanged": true,
+  "issue": "Inventory command was incorrectly treated as GPU memory telemetry; host MemAvailable missing; idle parser rejected valid Prometheus syntax.",
+  "observed_at": "2026-10-17T11:03:51.613313+00:00",
+  "reviewed_at": "2026-10-17T11:08:01.954891+00:00",
+  "reviewed_collector_sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+  "schema": "campaign-friction/v1",
+  "status": "corrected collector approved independently; first scored cell pending audit"
+}

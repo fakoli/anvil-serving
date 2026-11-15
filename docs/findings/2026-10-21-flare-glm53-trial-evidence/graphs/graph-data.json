@@ -1,0 +1,600 @@
+{
+  "charts": [
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 192.46979497685334,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 192.39176299909897,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 198.616648358572,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 197.80995221265655,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Decode: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 125.55796552003589,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 63.605123578605166,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 125.81587140068487,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 71.87331390922793,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 768.5575089417398,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 2349.4068970903754,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 857.0858809398487,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 2536.3618150586262,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "First any output: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 1855.9025480644777,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 3052.4571960559115,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 1824.5955089805648,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 3509.0971150202677,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Visible TTFT: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 5.168219049897124,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 5.107995031364992,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 5.008625701023005,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 4.9852570485053285,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "TPOT proxy: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms/token"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 2107.206608983688,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 3406.731904949993,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 2111.882359953597,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 3828.3064720453694,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "End to end: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c1.json",
+              "artifact_sha256": "3490824f1e561e76c1bd8caa9d325db3cbff2c8265ba30bc12ce59862c07eafe",
+              "value": 9961.381324297408,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c1.json",
+              "artifact_sha256": "b2fa827e9e85fdf6f1406e11887646fc22564fcf14c4c406a9dff29d119c6ccb",
+              "value": 9716.792263891199,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c1.json",
+              "artifact_sha256": "8cc4e4baec8a69a64a95099c6140a6db71fc8aec4ec06e3cb45bf5af1a385bec",
+              "value": 8953.784502289207,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c1.json",
+              "artifact_sha256": "98b20979bea67567cfb22410e044f4325b226f86298543da2279120554597f87",
+              "value": 9021.867565924147,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill: C1 near-zero hits",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.decode_tok_s_p50",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 71.00887070674433,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 69.57331136787838,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 97.65725287105504,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 105.11871870733648,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Decode: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.throughput_tok_s",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 276.13009709914655,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 270.47051528774455,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 360.2057017593626,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 331.3804800165646,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Aggregate output: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s"
+    },
+    {
+      "metric": "metrics.time_to_first_output_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 28.926171944476664,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 40.47033900860697,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 109.76374696474522,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 108.51979500148445,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "First any output: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.ttft_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 2368.828277103603,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 2301.5108529943973,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 1383.3696600049734,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 1634.988614008762,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Visible TTFT: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.tpot_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 14.027000801631045,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 14.089301705932877,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 10.217192505925002,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 9.337313269883309,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "TPOT proxy: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms/token"
+    },
+    {
+      "metric": "metrics.e2e_p50_ms",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 3187.5118321040645,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 2777.716259006411,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 2118.2844400173053,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 2302.195120952092,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "End to end: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "ms"
+    },
+    {
+      "metric": "metrics.effective_prefill_tok_s_p50",
+      "series": [
+        {
+          "label": "Flare QAD",
+          "points": [
+            {
+              "artifact": "raw/flare-natural-ctx10240-c4.json",
+              "artifact_sha256": "78e4dca474a260417424da0964a1b8df7f767ac56337411fa7f581439c704dfb",
+              "value": 263376.7504350506,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/flare-natural-ctx32768-c4.json",
+              "artifact_sha256": "394f643df56c26b0dac615f514f7b61607557feec2c492dbfe5bbd967d63583b",
+              "value": 524383.5134052385,
+              "x": "22.9K"
+            }
+          ]
+        },
+        {
+          "label": "Incumbent FP4",
+          "points": [
+            {
+              "artifact": "raw/incumbent-natural-ctx10240-c4.json",
+              "artifact_sha256": "09b50b586e6f61e86e4685484e93cefc3fb867831b508762c2b278a70fbf77a3",
+              "value": 65715.79333295872,
+              "x": "7.7K"
+            },
+            {
+              "artifact": "raw/incumbent-natural-ctx32768-c4.json",
+              "artifact_sha256": "efa0346112d530e8aba2b3a59ec41ca5197a57cc700e54d67a200a8b45b1cac3",
+              "value": 210110.95428258958,
+              "x": "22.9K"
+            }
+          ]
+        }
+      ],
+      "title": "Effective prefill: C4 warm",
+      "x_label": "Actual mean prompt tokens",
+      "y_label": "tokens/s"
+    }
+  ],
+  "metric_semantics": {
+    "prefill": "Includes queueing, scheduling, prefill and first-token work.",
+    "throughput": "Variable output lengths; descriptive scout only.",
+    "tpot": "Per-request aggregate proxy; not raw token interval distribution."
+  },
+  "schema": "anvil-serving.benchmark-graph-data/v1",
+  "subtitle": "Different checkpoints; variable output; n8/cell; C4 warm after C1. No promotion.",
+  "title": "GLM Flare whole-recipe scout"
+}

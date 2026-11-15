@@ -1,0 +1,139 @@
+{
+  "command": "router status",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": {
+    "container": "anvil-router",
+    "custody": {
+      "available": true,
+      "compose_project": "anvil-serving",
+      "compose_service": "router",
+      "container_id": "container-id-redacted",
+      "image_id": "sha256:d963df4e55267b25919433d0496fe52d9f9af67d5e7aada3c7c9217d49068163",
+      "image_reference": "anvil-serving:router-d7ed7e92e498",
+      "local_reference_image_id": "sha256:d963df4e55267b25919433d0496fe52d9f9af67d5e7aada3c7c9217d49068163",
+      "local_reference_matches": true,
+      "mounts": [
+        {
+          "destination": "/run/anvil-memory",
+          "name": "",
+          "read_only": true,
+          "source": "/etc/anvil-memory-access",
+          "type": "bind"
+        },
+        {
+          "destination": "/etc/anvil/config.toml",
+          "name": "",
+          "read_only": true,
+          "source": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/worker/router.toml",
+          "type": "bind"
+        },
+        {
+          "destination": "/etc/anvil/media-profile",
+          "name": "",
+          "read_only": true,
+          "source": "[PRIVATE_OPERATOR_ROOT]/media-profiles/qwen-active",
+          "type": "bind"
+        },
+        {
+          "destination": "/run/anvil-client-worker/client-identity.json",
+          "name": "",
+          "read_only": true,
+          "source": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/worker/client-identity.json",
+          "type": "bind"
+        },
+        {
+          "destination": "/var/lib/anvil-media",
+          "name": "",
+          "read_only": false,
+          "source": "/data/anvil/state/media",
+          "type": "bind"
+        },
+        {
+          "destination": "/var/lib/anvil-serving",
+          "name": "",
+          "read_only": false,
+          "source": "/data/anvil/state/router",
+          "type": "bind"
+        },
+        {
+          "destination": "/var/lib/anvil-serving/router-keys",
+          "name": "anvil-serving_anvil-router-keys",
+          "read_only": false,
+          "source": "/data/docker/volumes/anvil-serving_anvil-router-keys/_data",
+          "type": "volume"
+        },
+        {
+          "destination": "/var/lib/anvil-serving/router-keys/router-user-usage-admin-token",
+          "name": "",
+          "read_only": true,
+          "source": "/data/workspaces/router-user-usage-infra/modern/observability/.router-usage-inputs/router_usage_admin_token",
+          "type": "bind"
+        },
+        {
+          "destination": "/var/lib/anvil-serving/router-keys/router-user-usage-authorization.json",
+          "name": "",
+          "read_only": true,
+          "source": "/data/workspaces/router-user-usage-infra/modern/observability/.router-usage-inputs/router_usage_authorization.json",
+          "type": "bind"
+        },
+        {
+          "destination": "/var/lib/anvil-serving/router-keys/router-user-usage-scrape-token",
+          "name": "",
+          "read_only": true,
+          "source": "/data/workspaces/router-user-usage-infra/modern/observability/.router-usage-inputs/router_usage_scrape_token",
+          "type": "bind"
+        },
+        {
+          "destination": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/clients/bindings.json",
+          "name": "",
+          "read_only": true,
+          "source": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/clients/bindings.json",
+          "type": "bind"
+        },
+        {
+          "destination": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/webui/signer",
+          "name": "",
+          "read_only": true,
+          "source": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/webui/signer",
+          "type": "bind"
+        },
+        {
+          "destination": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/worker/router.toml",
+          "name": "",
+          "read_only": true,
+          "source": "[PRIVATE_OPERATOR_ROOT]/.config/anvil-serving/router-user-usage/worker/router.toml",
+          "type": "bind"
+        }
+      ],
+      "restart_count": 0,
+      "started_at": "2026-10-16T08:37:20.59784849Z"
+    },
+    "docker_state": "running",
+    "health_status": null,
+    "health_url": "http://127.0.0.1:8000/",
+    "ok": true,
+    "running": true
+  },
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

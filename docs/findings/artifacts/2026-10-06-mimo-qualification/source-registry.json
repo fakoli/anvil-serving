@@ -1,0 +1,107 @@
+{
+  "campaign_id": "2026-10-06-mimo-qualification",
+  "observed_at": "2026-10-06T08:16:22.436518+00:00",
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "sources": [
+    {
+      "age_class": "current",
+      "decision_impact": "Exact target and bundled dflash snapshot; mixed quantization and native sampling. No local quality inference.",
+      "evidence_type": "official-model-card",
+      "hardware_runtime_relevance": "2x RTX PRO 6000 Max-Q TP2, native Linux; prior only until locally qualified",
+      "id": "mimo-official",
+      "observed_at": "2026-10-06T08:16:22.436518+00:00",
+      "published_or_observed": "2026-10-06",
+      "url": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL/tree/5711b268169967567844e1e560e8a3966da959b1"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Exact supported build-source preset, separate from rtx6kpro archived Compose and actual vLLM engine commit; no-spec/DFlash7 configuration leads.",
+      "evidence_type": "official-runtime-source",
+      "hardware_runtime_relevance": "2x RTX PRO 6000 Max-Q TP2, native Linux; prior only until locally qualified",
+      "id": "mimo-preset",
+      "observed_at": "2026-10-06T08:16:22.436518+00:00",
+      "published_or_observed": "2026-10-06",
+      "url": "https://github.com/local-inference-lab/blackwell-llm-docker/blob/a6e819d3f5decd69a8833b5a0b32175bec084035/runtime/profiles/mimo26-flash.yaml"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "TP2 preset selects0.985 GPU utilization; adapt C4/context327680/images8/output65536 and containment locally.",
+      "evidence_type": "upstream-recipe",
+      "hardware_runtime_relevance": "2x RTX PRO 6000 Max-Q TP2, native Linux; prior only until locally qualified",
+      "id": "lil-deployment",
+      "observed_at": "2026-10-06T08:16:22.436518+00:00",
+      "published_or_observed": "2026-10-06",
+      "url": "https://registry.example/?build=karmic-kraken-beta-c8c8feeaa8cc4a758d356533b0e1b895d25c4b0f7fa23fe0d7130750b8741136&model=mimo26-flash&preset=mimo26-flash-tp2"
+    },
+    {
+      "age_class": "35-day-old-exact-checkpoint",
+      "decision_impact": "Prefer only after identical independent quality gates; small author refusal test is not intelligence evidence.",
+      "evidence_type": "community-model-card",
+      "hardware_runtime_relevance": "Same GLM Flash TR3 4bpw architecture/manifest ABI as incumbent; author claims45 BF16 attention output matrices abliterated. Exact native engine TP2/EP2/DCP1 trial required.",
+      "id": "uncensored-glm",
+      "observed_at": "2026-10-06T08:16:22.436518+00:00",
+      "published_or_observed": "2026-09-01",
+      "url": "https://huggingface.co/lovesenko/GLM-5.3-Flash-tr3-4bpw-Abliterated/tree/c8f58e6aa9117c73607d692978b22f091d80450c"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "25/25 current direct checks; matched frozen tool/coding workload follows.",
+      "evidence_type": "local-measurement",
+      "hardware_runtime_relevance": "2x RTX PRO 6000 Max-Q TP2, native Linux; prior only until locally qualified",
+      "id": "baseline-current",
+      "observed_at": "2026-10-06T08:16:22.436518+00:00",
+      "published_or_observed": "2026-10-06",
+      "url": "baseline-preflight.json"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Full Reddit, X, HF, Exa and upstream sweep already retained; do not duplicate research without a concrete failure.",
+      "evidence_type": "local-research",
+      "hardware_runtime_relevance": "2x RTX PRO 6000 Max-Q TP2, native Linux; prior only until locally qualified",
+      "id": "prior-sweep",
+      "observed_at": "2026-10-06T08:16:22.436518+00:00",
+      "published_or_observed": "2026-10-06",
+      "url": "../2026-10-06-model-sweep/REPORT.md"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "Distinguish engine source 23f2a1830 from blackwell-llm-docker image source a6e819d3; no benchmark inference from source.",
+      "evidence_type": "official-source-and-live-engine-startup",
+      "hardware_runtime_relevance": "Exact pinned runtime digest and vLLM build observed on dual Max-Q",
+      "id": "mimo-runtime-engine-observed",
+      "observed_at": "2026-10-06T09:06:31.852903+00:00",
+      "published_or_observed": "2026-10-06",
+      "url": "https://github.com/local-inference-lab/vllm/commit/23f2a1830f3d34e5587e501bb6c953bab8e7799f"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "T1/.95 vendor baseline; bounded greedy and thinking-disabled mechanism controls preserve cases and budgets.",
+      "evidence_type": "official-model-runtime-documentation",
+      "hardware_runtime_relevance": "Native MiMo thinking/sampling controls; current pinned target and runtime. No local cure established.",
+      "id": "mimo-vendor-sampling",
+      "observed_at": "2026-10-06",
+      "published_or_observed": "2026-10-06",
+      "url": "https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Flash-RL/raw/5711b268169967567844e1e560e8a3966da959b1/README.md"
+    },
+    {
+      "age_class": "current",
+      "decision_impact": "T1/.95 vendor baseline; bounded greedy and thinking-disabled mechanism controls preserve cases and budgets.",
+      "evidence_type": "official-model-runtime-documentation",
+      "hardware_runtime_relevance": "Native MiMo thinking/sampling controls; current pinned target and runtime. No local cure established.",
+      "id": "mimo-native-thinking",
+      "observed_at": "2026-10-06",
+      "published_or_observed": "2026-10-06",
+      "url": "https://recipes.vllm.ai/XiaomiMiMo/MiMo-V2.6-Flash-RL"
+    },
+    {
+      "age_class": "current-exact-revision",
+      "decision_impact": "Bounded replay captures raw numeric IDs and pinned tokenizer token strings to distinguish generation from parser loss; no model restart or oracle change.",
+      "evidence_type": "official-source",
+      "hardware_runtime_relevance": "Exact engine used by pinned MiMo image; response token IDs are from full generated output before parallel-tool filtering.",
+      "id": "mimo-exact-engine-token-capture",
+      "observed_at": "2026-10-06T09:28:00Z",
+      "published_or_observed": "2026-10-06",
+      "url": "https://github.com/local-inference-lab/vllm/blob/23f2a1830f3d34e5587e501bb6c953bab8e7799f/vllm/entrypoints/openai/chat_completion/serving.py"
+    }
+  ]
+}

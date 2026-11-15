@@ -1,0 +1,93 @@
+{
+  "schema": "anvil-serving.public-projection-ledger/v1",
+  "campaign_id": "2026-10-26-ignis-080-preflight",
+  "policy": "Tracked files are public; operator paths, container IDs/names, GPU UUIDs, active ports, private registry/volume names, and protected router state are omitted or generalized.",
+  "entries": [
+    {
+      "private_source": "trial/preflight-native.json",
+      "private_sha256": "2196300745faef0d6c3f97e4cde22d9b211594c072672d84e537e67a7cefbd87",
+      "public_path": "preflight-native.json",
+      "transformations": ["replace active loopback port with documented generic loopback port"],
+      "native_schema_preserved": true
+    },
+    {
+      "private_source": "trial/candidate-logs-after-preflight.json",
+      "private_sha256": "3d9805c623779463570b3ece24924ca459da23231c02022614470723110d84f3",
+      "public_path": "engine-request-summary.json",
+      "transformations": ["derive bounded request lifecycle rows", "remove timestamps, trace/span IDs, private paths, ports, and container command metadata"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "trial/candidate-status-after-preflight.json",
+      "private_sha256": "f3cf64a6c1f36210a69c23684c61c6f83edd41b1757466d56de28f63bf558c06",
+      "public_path": "configuration.json and resource-summary.json",
+      "transformations": ["retain image/model/revision/containment values", "remove container name/ID, private command, registry path, endpoint, and topology identity"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "trial/resources-candidate-ready.json",
+      "private_sha256": "0ecf7caaa826e0c2553674b27390203dd3d8ae0603a645924e667627445d7aa7",
+      "public_path": "resource-summary.json",
+      "transformations": ["retain GPU memory and host-memory aggregates", "remove GPU UUIDs and process inventory"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "trial/resources-during-preflight.json",
+      "private_sha256": "c0b0cdcb26925ec926717e725233ca51e26e95a1226205ce256523d8010e27ce",
+      "public_path": "resource-summary.json",
+      "transformations": ["retain GPU memory, minimum host MemAvailable, and OOM delta", "remove GPU UUIDs and process inventory"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "trial/plan-r4-identity-correction.json",
+      "private_sha256": "b96a476a21f16e0598188cb663defb0039bf26ed4ba38ea5e5ceb21f38087e3c",
+      "public_path": "plan.json",
+      "transformations": ["remove private paths, container, GPU UUID, port, registry digest, and watchdog implementation", "correct six phases to nine HTTP requests while retaining original plan hash"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "tool-failure-analysis.md",
+      "private_sha256": "a00a19e3e4684ed805de5b13ada6b908207a0bc8ba36a22638bf8d8536a8e7c5",
+      "public_path": "tool-failure-analysis.md",
+      "transformations": ["remove protected absolute paths and private evidence locations", "preserve request construction, gate semantics, token correlation, and uncertainty"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "tool-usage-research.md",
+      "private_sha256": "b49aa6a19b29594f80c42c559dfb48755567d2c81f4b6962d97ae0c15016f445",
+      "public_path": "tool-usage-contract.md and source-registry.json",
+      "transformations": ["retain exact official Ignis 0.8 source URLs and request-policy conclusions", "omit private evidence paths, internal planning, and non-public operational context"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "tool-choice-followup/plan-r4.json, stage-a-result.json, selection.json, selected-results.json, selected-full-native.json, selected-repeat-native.json, candidate-status-after.json, and resources-after-probes.json",
+      "private_sha256": null,
+      "public_path": "tool-choice-followup.json, plan.json, configuration.json, resource-summary.json, and summary.json",
+      "transformations": ["retain stage controls, exact pass counts, seed/mode selection, terminal engine IDs, captured HTTP-status boundary, request hashes, resource values, and private source hashes", "omit active port, container identity, private registry/path, process inventory, raw response IDs/timestamps, and 400-line repeated fixture bodies", "generalize live endpoint to the documented loopback boundary where referenced"],
+      "native_schema_preserved": false
+    },
+    {
+      "private_source": "campaign-preparation/ignis-080-c1-12-template.json and protected router-integration review",
+      "private_sha256": null,
+      "public_path": "prepared-followup.json",
+      "transformations": ["retain only planned/submitted/completed counts and blocking prerequisite classes", "remove task corpus, private routes, endpoints, paths, and operator identities"],
+      "native_schema_preserved": false
+    }
+  ],
+  "restoration_projection": {
+    "private_source": "trial/result.json plus tool-choice-followup/result.json and both phases' exact restoration identity, custody, readmission, smoke, resource, and failed-local-invocation receipts",
+    "private_result_sha256": "48aaee4919e04fd66a155e89efbb920478a171c8d476a93a1b0fb5aad91a7eab",
+    "phase_two_private_result_sha256": "53261439dd831130287b13212873adddb485a38a43606e6d0c2d8ca08bce51b5",
+    "phase_two_private_restoration_sha256": "3a4c81fad580587221899dd88c6239a224cd31d8db511a7d4b7af5c88e6116e7",
+    "public_paths": ["restoration.json", "restoration-smoke.json", "restoration-smoke-phase-two.json", "independent-restoration-review.json"],
+    "transformations": ["remove container IDs/names, GPU UUID/order values, ports, private paths, mount sources, credentials, commands, and execution timestamps", "retain exact public model/image/revision/recipe facts, custody-object hash equality, request counts, result, OOM status, and caveats"]
+  },
+  "independent_restoration_review_projection": {
+    "private_source": "reviews/tool-choice-followup-restoration-review.json",
+    "private_sha256": "9ac47633650bce06f1be759d1af2cab4319a26b19ff3625e912ea0c5b24eefa2",
+    "public_path": "independent-restoration-review.json",
+    "transformations": ["replace protected absolute paths with artifact labels", "preserve target hashes, reviewer independence, gate status, residual risks, recommendation, human gate, and promoted=false"]
+  },
+  "pending": ["final independent exact-head publication review"],
+  "credentials_or_shared_environment_inspected": false
+}

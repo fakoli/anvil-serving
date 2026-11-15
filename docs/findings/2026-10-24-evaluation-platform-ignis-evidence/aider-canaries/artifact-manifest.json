@@ -1,0 +1,157 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-10-25-aider-diagnostic-canaries",
+    "capability": "aider-harness-diagnostic",
+    "repository_revision": "60c80fa2b10e70939912c7ce184849790c041fd5",
+    "dirty_state": "clean recorded per-canary commits; mixed revisions explicitly retained",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.aider-plan/v1",
+    "anvil-serving.aider-retention/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "f0ad3f6c31b4cdb832535eb99128a485d9eb11d1e04ac76d992031f17fd9adb0",
+          "bytes": 2319
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "53898760e5a3c07677b011a8315665e0f6c9b9f8f90ce055cbdf3ff64543b710",
+          "bytes": 269
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native-records.jsonl",
+          "sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+          "bytes": 112245
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native-records.jsonl",
+          "sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+          "bytes": 112245
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native-records.jsonl",
+          "sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+          "bytes": 112245
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "172a4d6dc0b8a27e18b88d3141c7640e425ee7ef185ff287abb37181107f058f",
+          "bytes": 80512
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "native-records.jsonl",
+          "sha256": "77ab182dddf5f121e4556ad814ad44bd3da568c859ddbccdae3a918e6cad4990",
+          "bytes": 112245
+        },
+        {
+          "path": "projection-validation.json",
+          "sha256": "7778dd1eac6b8fad311521a56438a0b25e86b8c383e900a95d6cbfd3c7308128",
+          "bytes": 742
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "969d19af021426aced7ae338f1be196836e028a118b7a8483071a4634698338e",
+          "bytes": 1489
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "172a4d6dc0b8a27e18b88d3141c7640e425ee7ef185ff287abb37181107f058f",
+          "bytes": 80512
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "restoration",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No model/route lifecycle mutation during these standalone canaries; no fresh live-state claim. Broader campaign restoration remains separate."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "eed3ed8d84bb38bd87db14e0de2ff57d1b82891b6bfaf752cde9b05ccb5da59b",
+          "bytes": 8573
+        },
+        {
+          "path": "restoration.json",
+          "sha256": "78efbcfbbd5525256a36fe0e46fe89bd8ae0e50f7fd35d0124f49957d4a0d3f8",
+          "bytes": 667
+        }
+      ],
+      "reason": "Sanitized diagnostic derivatives; original private hashes and omissions are explicit in projection ledger."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "External diagnostic preparation only; no narrative matrix or social publication yet."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

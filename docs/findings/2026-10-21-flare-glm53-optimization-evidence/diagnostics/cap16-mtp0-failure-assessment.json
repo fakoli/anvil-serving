@@ -1,0 +1,11 @@
+{
+  "scope": "Runtime MTP0 control failed, no performance benchmark performed",
+  "earliest_actionable_error": "root CompletionRecord status3 error_code1 at first generated token during shared-prefix C4 tools; peer still running; rank agreement guard stopped runtime",
+  "source_mapping": "ignition/components/sampling.py INVALID_DISTRIBUTION=1",
+  "unproven": "Whether nonfinite logits, empty probability mass, constraints, recurrent state, ordinary graph or another cause produced invalid distribution",
+  "host_oom_killed": false,
+  "weight_verification": "passed116.6s againstsigned index",
+  "preflight": "smoke/json/needle pass;tools1/4;remainingchecks503",
+  "extra_failed_request": "An intended retrieval diagnostic was issued after the failed preflight result before gating was corrected; endpointrefused,noresult. Retained stdout/stderr.",
+  "next": "Keep MTP0 rejected pending bounded diagnosis; continue same-package supportedfixed3control with fresh7checkpreflight."
+}

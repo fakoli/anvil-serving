@@ -10,7 +10,13 @@ from datetime import datetime
 from typing import Callable
 
 from .fleet_workload_collection import build_fleet_workloads, normalize_node_workloads
-from .workloads import FleetResult, MAX_NODES, NodeResult, WorkloadQuery
+from .workloads import (
+    FleetResult,
+    MAX_NODES,
+    NodeResult,
+    WorkloadQuery,
+    canonical_workload_query,
+)
 
 
 _AGGREGATE_SECONDS = 5.0
@@ -48,18 +54,6 @@ def _read_clock(clock: Callable[[], object]) -> float | None:
         return _clock_value(clock())
     except Exception:
         return None
-
-
-def _copy_query(query: WorkloadQuery) -> WorkloadQuery:
-    return WorkloadQuery(
-        query.owner,
-        query.kind,
-        query.state,
-        query.host,
-        query.active_only,
-        query.recent_seconds,
-        query.limit,
-    )
 
 
 class FleetWorkloadCollector:
@@ -272,7 +266,7 @@ class FleetWorkloadCollector:
         """Return one bounded canonical fleet observation."""
 
         fallback = build_fleet_workloads(self._hosts, query, now, {})
-        checked_query = _copy_query(query)
+        checked_query = canonical_workload_query(query)
         checked_now = fallback.collection_timestamp
         eligible = tuple(
             host

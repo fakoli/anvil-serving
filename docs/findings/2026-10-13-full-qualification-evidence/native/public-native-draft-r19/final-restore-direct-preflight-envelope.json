@@ -1,0 +1,27 @@
+{
+  "command": "eval preflight --base-url public-endpoint-001 --model glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec --checks smoke,json,tools,streaming-tools,tool-result --tool-batch 8 --thinking-mode default --visible-answer-tokens 1024 --reasoning-headroom-tokens 8192 --reasoning-evidence any --allowed-finish-reasons stop,tool_calls --timeout 180 --json-out public-path-001 --confirm",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "PRE-FLIGHT  public-endpoint-001  model=glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec  thinking=default visible=1024 reasoning_headroom=8192 max_tokens=9216\n------------------------------------------------------------\n[PASS] smoke (short coding)                   4.5s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it — Python's built-\" finish='stop' visible=318 reasoning_chars=906 reasoning_tokens=None\n[PASS] structured JSON                        parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=183 reasoning_tokens=None\n[PASS] shared-prefix tool batch x8            8/8 clean (sample: 3.2s valid tool_call get_weather(city='Oakland') finish='tool_calls' visible=0 reasoning_chars=81 reasoning_tokens=None)\n[PASS] streaming tool call                    1.2s done=True events=37 valid tool_call get_weather(city='Oakland') finish='tool_calls'\n[PASS] tool-result continuation               1.7s tool result retained finish='stop' visible=11 reasoning_chars=234 reasoning_tokens=None\n------------------------------------------------------------\nRESULT: ALL PASS\n",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

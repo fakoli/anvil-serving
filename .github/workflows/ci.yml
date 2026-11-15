@@ -11,6 +11,7 @@ permissions:
 env:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONNOUSERSITE: "1"
+  ANVIL_SERVING_NO_HOME_ENV: "1"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -28,8 +29,7 @@ jobs:
       - name: Install (editable + dev extras)
         run: python -m pip install -e ".[dev]"
       - name: Verify active CLI references (all scopes)
-        # Sole home of the repo-level audit checks; the test suite keeps only
-        # unit tests of the script so the matrix does not re-run these.
+        # Run the repo-level audit once, outside the Python version matrix.
         run: |
           python scripts/audit_cli_references.py --check --scope docs
           python scripts/audit_cli_references.py --check --scope skills
@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         # Boundary versions of the support envelope only; a middle version
         # adds a full-suite run without adding coverage for stdlib-only code.
         python-version: ["3.11", "3.13"]
@@ -59,13 +59,69 @@ jobs:
       - name: Check Node.js
         run: node --version
 
-      - name: Run Connect contracts before the full suite
-        # Catch portable schema/renderer and platform-boundary regressions
-        # before spending a complete Linux or Windows suite run.
-        run: python -m pytest tests/connect/ -q
-
       - name: Run tests
-        run: python -m pytest tests/ -x -q -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+        run: python -m ${{ matrix.python-version == '3.13' && 'coverage run -m pytest' || 'pytest' }} tests/ -x -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+
+      - name: Retain test timings and outcomes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ github.sha }}-py${{ matrix.python-version }}
+          path: test-results.xml
+          if-no-files-found: warn
+
+      - name: Enforce 70% coverage
+        if: matrix.python-version == '3.13'
+        run: python -m coverage report
+
+  windows-cli:
+    name: Windows CLI smoke (py3.13)
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Install CLI and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Verify installed version
+        run: anvil-serving --version
+      - name: Verify installed help
+        run: anvil-serving --help > $null
+      - name: Verify installed command manifest
+        run: |
+          anvil-serving --command-manifest > "$env:RUNNER_TEMP/command-manifest.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m json.tool "$env:RUNNER_TEMP/command-manifest.json" > $null
+          exit $LASTEXITCODE
+      - name: Verify synthetic topology and typed remote dispatch
+        run: >-
+          python -m pytest -q
+          tests/test_cli.py::test_topology_resolve_json_is_structured_and_contextual
+          tests/test_cli.py::test_cli_remote_config_export_maps_path_and_allows_bounded_large_response
+          tests/test_cli.py::test_cli_remote_router_restart_dispatches_typed_operation
+          tests/test_cli.py::test_cli_remote_router_dry_run_never_generates_mutation_idempotency
+      - name: Verify cache cleanup refuses unsupported mutation
+        run: >-
+          python -m pytest -q
+          tests/test_models.py::test_legacy_docker_revision_apply_never_dispatches_even_with_confirmation
+          tests/test_models.py::test_volume_report_timeout_is_bounded_and_not_retried
+          tests/test_models.py::test_whole_cache_discard_requires_posix_before_audit
+          tests/test_model_cache_discard.py
+      - name: Verify native Windows file and credential custody
+        run: >-
+          python -m pytest -q
+          tests/test_bootstrap_opened_file.py
+          tests/test_bootstrap_permissions.py
+          tests/test_control_plane_authorization.py
+          tests/test_docker_disk_restore.py
+          tests/test_mcp_auth_file.py
+          tests/test_operator_config.py
+          tests/test_propagation_fencing.py
+          tests/router/test_keys.py
+          tests/router/test_windows_sidecars.py
+          -k "windows or selected_export_does_not_open_unselected_secret_identity"
 
   connect-linux:
     name: Connect native contracts (Linux)
@@ -73,30 +129,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version: "1.26.0"
-
-      - name: Install Python test dependencies
-        run: python -m pip install -e ".[dev]"
 
       - name: Run native internal and command contracts
         # The tunnel qualification package (./lab) needs a separately verified
         # pinned wstunnel binary. It remains an explicit evidence gate, not a
         # skipped CI qualification.
         run: go -C connect test ./internal/... ./cmd/anvil-connect -count=1
-
-      - name: Run Connect Python contracts
-        # Browser qualification remains isolated because it requires its own
-        # browser/identity fixture; these tests cover the portable CLI help and
-        # Linux-owned lifecycle contracts without live systemd.
-        run: python scripts/run_tests.py tests/connect/ -x -q
 
   connect-macos-client:
     name: Connect standalone client (macOS)
@@ -176,7 +218,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
 

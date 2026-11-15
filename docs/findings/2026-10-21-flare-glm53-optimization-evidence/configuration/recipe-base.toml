@@ -1,0 +1,66 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD"
+name = "glm53-flare-47581cca-tp2-c4-mtp3"
+expected_container = "glm53-flare-opt-base"
+status = "experimental"
+source = "NVIDIA Flare 47581ccac82660953a5b59cb04b2750d64edc97d GLM recipe; unqualified local trial"
+
+  [recipe.download]
+  repo = "local-inference-lab/GLM-5.3-Flash-NVFP4-MXFP8-CSF-QAD"
+  revision = "dec48abd33efa73c3bb7c95b74eee10cad34f9be"
+  volume = "flare-glm53-dec48abd"
+  require_complete_cache = true
+  inspection_image = "sha256:8908da0c34a446d7aa6a8a907e7cedc100a49a85a78848c624ba47ef64e21f37"
+
+  [recipe.hardware]
+  gpu = "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition"
+  arch = "sm_120"
+  vram_total_gb = 192
+
+  [recipe.serve]
+  engine = "flare-47581cca"
+  image = "sha256:8908da0c34a446d7aa6a8a907e7cedc100a49a85a78848c624ba47ef64e21f37"
+  entrypoint = ["/opt/flare/flare/target/release/flare", "run"]
+  model_path = "/root/.cache/flare/packages/snapshots/ccfacae530f1d4fcf85c95e5a1396188c7bcebcf0aa6125db975c4a37e35e26c/model.safetensors"
+  named_volumes = [
+    "flare-glm53-47581cca-cache:/root/.cache/flare",
+    "flare-glm53-47581cca-private:/root/.config/flare",
+  ]
+  port = 39130
+  served_model_name = "glm53-flare-47581cca-tp2-c4-mtp3"
+  context_tokens = 32768
+  memory_limit_mib = 53248
+  memory_swap_limit_mib = 53248
+  host_memory_reserve_mib = 12288
+  startup_timeout_seconds = 3600
+  seccomp_profile = "/operator/evidence/2026-10-20-flare-trial/seccomp-flare-dcc4a1e40b8b.json"
+  seccomp_profile_sha256 = "dcc4a1e40b8b5e12c59951cd82ab5e76bce12135cfbe2061a73c717b986a766b"
+  ipc = "private"
+  shm_size = "32gb"
+  ulimits = [
+    "memlock=-1",
+    "stack=67108864:67108864",
+  ]
+  env = [
+    "HF_HUB_OFFLINE=1",
+    "TRANSFORMERS_OFFLINE=1",
+    "CARGO_BUILD_JOBS=2",
+    "MAX_JOBS=2",
+    "OMP_NUM_THREADS=1",
+  ]
+  flags = [
+    "--publisher-keys /root/.config/flare/development-publisher.json",
+    "--gpus 0,1",
+    "--max-concurrency 4",
+    "--mtp-draft-tokens 3",
+    "--scheduler-policy balanced",
+    "--prefix-cache-memory 0",
+    "--prefix-cache-disk-limit 0",
+    "--memory-limit=-2G",
+    "--host 0.0.0.0",
+    "--port 39130",
+    "--served-model-name glm53-flare-47581cca-tp2-c4-mtp3"
+]
+  note = "Optimization campaign; original package capacity4; native runtime balanced MTP3. Workload ceiling32768 is not native runtime context limit. No promotion."

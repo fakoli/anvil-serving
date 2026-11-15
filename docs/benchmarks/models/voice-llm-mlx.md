@@ -4,6 +4,8 @@
 
 ## Current status and review date
 
+Latest additional review, 2026-10-06: no LLM replacement is qualified. Stock 0.32.0/MLX 0.32.3 and private-cache0 profiles are distinct from the September runtime/revisions below. Retain existing 4B, without newly qualifying it.
+
 !!! info "Decision snapshot"
 
     - **Product role:** local Apple Silicon voice-LLM candidate lane.
@@ -133,6 +135,10 @@ public reproduction bundle. Reconstruct and review them before any managed load.
   no speed-ratio meaning. Raw audio and SDK events are intentionally not retained publicly.
 - **Evidence:** [voice summary](../../findings/2026-09-08-m4-max-voice-refresh-evidence/sanitized-voice-summary.json).
 
+### 2026-10-06 — Local MLX profiles
+
+**Status:** functional and semantic/historical evidence; all strict 8K capacity cells ineligible. **Measured:** semantic 4B132/144,9B131/144,private 27B off138/144,low144/144,medium144/144; historical 36/36,33/36,36/36,33/36,31/36. Stock27B aborts during startup before inference after6.19 GB swap growth. **Limits:** off arithmetic and exact punctuation failures remain hard gates. Low/medium capture8192chars can be incomplete; canary observed once but not at prefix start,1633completecodewords retained prefix only. Timeout120 is socket inactivity. Private LM cache0 remains unshipped; no useful-context/speed ranking. **Evidence:** [dated finding](../../findings/2026-10-06-m4-max-voice-quality-qualification.md#llm-results) · [hardware](../hardware/apple-m4-max.md#2026-10-06-english-voice-qualification) · [reconstruction](../../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md).
+
 ## Decision and promotion state
 
 !!! warning "Promotion remains human-gated"
@@ -173,6 +179,8 @@ public reproduction bundle. Reconstruct and review them before any managed load.
   endpoint details remain operator-private; public evidence records outcomes only.
 
 ## Dated run history
+
+- 2026-10-06 — [English voice qualification](../../findings/2026-10-06-m4-max-voice-quality-qualification.md#llm-results).
 
 - 2026-09-19 — [VoiceChat feasibility stop](../../findings/2026-09-19-voicechat-feasibility.md): no candidate acquisition or inference. Disk arithmetic passed for the 8.553 GiB package, but memory is unresolved and the pinned session cannot accept a tool result; `no-promotion`.
 - 2026-09-08 — [M4 Max local voice refresh](../../findings/2026-09-08-m4-max-voice-refresh.md)

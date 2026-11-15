@@ -1,0 +1,2369 @@
+{
+  "arms": [
+    {
+      "arm": "arm-1",
+      "jobs": {
+        "attempted": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "cancelled": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "completed": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "failed": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "planned": {
+          "count": 48,
+          "known_count": 48,
+          "unknown_cells": 0
+        },
+        "scored": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "submitted": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "unfinished": {
+          "count": 48,
+          "known_count": 48,
+          "unknown_cells": 0
+        }
+      },
+      "samples": {
+        "attempted": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "cancelled": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "failed": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "planned": {
+          "count": 48,
+          "known_count": 48,
+          "unknown_cells": 0
+        },
+        "scored": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "submitted": {
+          "count": 0,
+          "known_count": 0,
+          "unknown_cells": 0
+        },
+        "unfinished": {
+          "count": 48,
+          "known_count": 48,
+          "unknown_cells": 0
+        }
+      }
+    }
+  ],
+  "cells": [
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-1",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "3f25e6775098271355403075b265ff4c7ff98a898c7ae331853da525d9903574",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-1",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-2",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "7055b68bf14fb1af7ab992475883a4db5bcd1750ef8d9d3b0527e5007548b9d1",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-2",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-3",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "e742c84e3c07a28151a3f398e55044cfb310f024155a746b4f5c24dc3f55aa31",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-3",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-4",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "987da30d566dd4f280d98416bd437071ad638adb4c6ac526ff6b145323415e30",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-4",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-5",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "a7553c617ba90ec1c159fa4260db11af0a4160e0bf263d4f9deaa274efd85502",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-5",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-6",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "ee5347e1223f0714aee691fbe08e6faec67dc352b452134534562c29bea80114",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-6",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-7",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "c511e88c818965bba3cc93729d3d9a8dd4582b2bb35fce351615f0f9ccde96bc",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-7",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-8",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "c65932ccc3db7b9fd007d5f0b3f2d91d9bf4b5d6434e5997e1deebea019178bc",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-8",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-9",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "4948883f2b980d5d14489a12799dacbf552e6f709a46f00b51a37b7039635c72",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-9",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-10",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "c6743a945fad2c225f5c5ae569cae154cb12e60cfdb6a9cdbebc98432a8df88f",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-10",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-11",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "b2014ce91d83d1a297b4d26105a4032fc313ef6da0bd4574f04e371aae75a14e",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-11",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-12",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "d9f86093f67ba1f85eb2b9440cbe957616616733f07b1efe6e8f0b076a57873b",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-12",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-13",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "a8e99c4c40c7948514c5f882b19ed931c822435c1cf0f7f7214245240f5bfac2",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-1",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-14",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "4dfe0122eba95d3bfeca9ba41e43f3c7340eb5f02aab652eba0c39e014160af8",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-2",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-15",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "d41cfa145f516b4509d6f1c79a74a6d4766129873b4292fc7cfa62ba49b54da2",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-3",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-16",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "00bbd8a68844331b035fd6aa561e0c92906e0f951847daf6214a53e64d52d120",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-4",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-17",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "a05bdb5ca64cd6370e7a856661d0118129d9442e4dd34c19b72aee12596c9d30",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-5",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-18",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "8f701c2824b0e311e38cdb6af86fb8010fd86291f988ed2558662f93c1794e6a",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-6",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-19",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "7b54da532e4fd686ac5bcfabe12dab123dabb5cd489e42f6f736f287ac7143e8",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-7",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-20",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "e6237d8c79a49851ad8ee0f0210aa8be778a7473fa1ad1e1704152871a659693",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-8",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-21",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "879776066a33aa5f3cc1e3a554c975bd275ad8fe979307271d10bbcac525a08d",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-9",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-22",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "5a83e48fdea2d679fc6258f0f52a4f6fb745f8ae960f5fb1f4ffad1502f3a9bc",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-10",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-23",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "a40943e9e61c00af9a0189046df3f4b7a5953dea59a126fe35403218fa2a961d",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-11",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-24",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 1,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "5d3d9573b1843e1793ba8b5c30cf7590e1daeaf339e64bbf862738fcedf0d21a",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-12",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-25",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "c1119a29db8eec283ee4795acb9961170dfa489719df77adccaf679111ddac5b",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-1",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-26",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "94bf4648d52ca5cebd597b8a4ab117bd308c31ca194b57ec117be53d5b5f385d",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-2",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-27",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "9f8207ee505de089b9e0c61518e0cf34b608cbb019a387f9d8d11c7488c4ae27",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-3",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-28",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "902e7549047e82660d5ab92717e79ba79e809bd6887d19cb94ee52c491036d21",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-4",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-29",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "fb5e59431cb10ae1926be03de21f195bb79e6795841281969e50c4aa8b54c7af",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-5",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-30",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "cf613dbe348cf4616e9c3eca1dd06123c6d7e66011e70fb517bbc33511d7f860",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-6",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-31",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "fd35e745eb4595cabdf1f50d06d351a6232d7d9d117997d2481f903485d720b8",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-7",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-32",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "8d47f6733d83e6919f00924606f761135f50f039ca8a197c712421b5016a7ef6",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-8",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-33",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "57c2d0933f63d767a694fd86f5b04ea5aa19ac25f861640cc744a2c9ff38c742",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-9",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-34",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "fcd16f798bad388632866fb084a90ff5933dc83884013501ea469154fa8ecd21",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-10",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-35",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "f4804ecc84571c9f70c7be97c95f04d660071c34c16ddaa35526ff6987f284b2",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-11",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-36",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 1,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "646ae892283ab218b178eae49400315efd21ebea97a1b772b45917e504142a75",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-12",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-37",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "061d9f92afaae755932afad500b9c2ea664248ec4e39cff67814085cfb55ab1f"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "209ed68a67e9ed1786f361d575369c0a571dfc792cd81a5dbdf28d3cb75e9bad",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-1",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-38",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "97eec10f05e45dfd26bacf7050c7c4782b6c6826774811a5387f78e6808333ba"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "b612b06a5dec2e13dd1b83d4d7b03080d1d21447793ac1bd4dd64e7f10e83e95",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-2",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-39",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "bb234a0274af7613ac31fcab11ce191df0d09bbbab797d6dab777b64ed4085ca"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "ef07385ae8dfe24069db8a5e4dafc52fc373cec298cd99d12e95dbda5ad3e122",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-3",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-40",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3ce7dfbd998d3a19c94f0e015b8697a7de280b979f602165c7a87d7479677f96"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "532361151e191b361354b2349a53dd1fd2efb706301f4069f38038bc050de596",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-4",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-41",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "87a101b74398cb07c85b79f93342d65196ecb4a22022afb305efc2071d928460"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "864984dad33ae3a06c13cee083b3f4d98cea5ed00af4abb7cbb18aca3b88cdbb",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-5",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-42",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "547dcc1f8dee8a691ed676f75637b945601db3f6b12f8144585bd7e6c83d82de"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "7c8e6f553abddd8b667233c0afba19b4b6e7ced3565939d4be1b25befcc407b1",
+      "state": "planned",
+      "suite": "agentic",
+      "task": "task-6",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-43",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "19be18ade96ec853ec6ad1f8ebf6a3c47efccd95625a9cb44000c65e234320b0"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "0dc19cb62671395a3b71ae8cabd4088ff5de90b849ca5e4d419010ae658701cd",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-7",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-44",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "8f70d21356a4e01598459be3bcbb1b020525cc5bbd9b73500564b536f3116e7d"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "68ce9b9a4fe805d2f852f338c63fd27dce643128fb71beaa5567211563b4593b",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-8",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-45",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "64357d16a3e38c2de0b924b4500f3b96a64dcece957766fc2e694f4d320782f9"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "5250fe3d3b48f94422d1c76a36d9ea193a0350afa1be72b9a71f6e5c5ff6cbdf",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-9",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-46",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "3d3313c0a390fce13c8572aea94ec54402f5784459b2803c8bf5336f993e5456"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "8bc20610c9b694f54aaf27fdba2d28c189b6f446a1ccdd29a59890d199b84d72",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-10",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-47",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "b5c0f5a5398051c7a683982f6555c835a40b984ab8d021a04b0f7e0e14311ce2"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "f1f861cc8fb4e7143a93f1415e1103af46a9bc1db5b193063271a2422268a2f2",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-11",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    },
+    {
+      "arm": "arm-1",
+      "cache": {
+        "proven": null,
+        "requested": "uncontrolled"
+      },
+      "cell": "cell-48",
+      "evidence_status": "not_submitted",
+      "identity_status": "unverified",
+      "matching": {
+        "cache_sha256": "085931b8e2281b6f2b9b6106a89daf2a6ed108c79630bba93ea4aae627c01130",
+        "controls_sha256": "e4d134f6acc09fde492b92355e3e9d5d26caae4fd18b084a67003f0019f1dfc8",
+        "oracle_sha256": "25225f41815cf4cbdb08d3620bb034db8eab913fae9c537cc731be6e3b4b43ed",
+        "workload_sha256": "13694da6b9eab3d26c92f3467f0f6a0bb44d3f326232cb8eed44f1454b0427e3"
+      },
+      "measurement_complete": false,
+      "native_aggregate_metrics": {},
+      "outcomes": null,
+      "repeat": 2,
+      "requested_concurrency": 4,
+      "samples": {
+        "attempted": 0,
+        "cancelled": 0,
+        "failed": 0,
+        "planned": 1,
+        "scored": 0,
+        "submitted": 0,
+        "unfinished": 1
+      },
+      "spec_sha256": "439b04aedfb39e5f2109e3dce0e8a932310729022f41688c4a24dfc428858350",
+      "state": "planned",
+      "suite": "aider",
+      "task": "task-12",
+      "telemetry_coverage": {
+        "cgroup": "unknown",
+        "engine": "unknown",
+        "gpu": "unknown",
+        "host": "unknown"
+      }
+    }
+  ],
+  "comparisons": [],
+  "jobs": {
+    "attempted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    }
+  },
+  "labels": "synthetic labels in manifest order; private identities omitted",
+  "manifest_sha256": "80406e77c611d671bd759f5bdeeb937faf383a705c20c9327be44dba143b2238",
+  "promotion_authorized": false,
+  "repeats": [
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-1"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-2"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-3"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-4"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-5"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-6"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-7"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-8"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-9"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-10"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-11"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 1,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-12"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-1"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-2"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-3"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-4"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-5"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-6"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-7"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-8"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-9"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-10"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-11"
+    },
+    {
+      "agreement": null,
+      "arm": "arm-1",
+      "inference": "descriptive_only; no confidence interval or significance claim",
+      "latency_sum_ms_range": null,
+      "planned_repeats": 2,
+      "requested_concurrency": 4,
+      "score_range": null,
+      "scored_repeats": 0,
+      "task": "task-12"
+    }
+  ],
+  "samples": {
+    "attempted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    }
+  },
+  "schema": "anvil-serving.benchmark-campaign-report/v1",
+  "timing": {
+    "active_wall_seconds": null,
+    "child_active_wall_seconds": null,
+    "known_active_wall_seconds": null,
+    "observed_job_overlap": null,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 0,
+    "unknown_intervals": 0
+  }
+}

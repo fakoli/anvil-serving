@@ -97,6 +97,8 @@ def _binding(args: dict, action: str, service: str) -> dict | None:
 
 def _execute(args: dict, action: str, *, service_required: bool = False) -> dict:
     _reject_private_inputs(args)
+    if "expected_preview_sha256" in args or "operator_authorization_file" in args:
+        raise ToolError("local_owner_required", "retained-container authorization is accepted only by the local native CLI")
     service = _str_arg(args, "service", required=service_required)
     topology = _str_arg(args, "topology", "")
     topology_overlay = _str_arg(args, "topology_overlay", "")

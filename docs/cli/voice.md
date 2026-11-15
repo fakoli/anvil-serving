@@ -19,6 +19,7 @@ loopback forwarders, but it is model-free by default.
 | Forward Mini-local audio ports | `voice proxy bridge --dry-run` | Run the bridge in the foreground after reviewing both routes. |
 | Measure a voice candidate | `voice benchmark` | Retain structured evidence with `--evidence-out`. |
 | Qualify an STT model | `voice corpus prepare` | Validate it, then run `voice benchmark --scope stt`. |
+| Measure TTS generation over a text corpus | `voice benchmark --scope tts` | Retain audio outside Git, then obtain independent STT and human listening evidence. |
 | Inspect configuration overlays | `voice profiles list` | Validate one resolved overlay with `voice profiles validate`. |
 | Prepare an optional sidecar | `voice sidecar validate` | Render a host command or Compose skeleton; neither command launches it. |
 
@@ -56,7 +57,7 @@ loopback forwarders, but it is model-free by default.
 
 | Command | Purpose |
 | --- | --- |
-| `voice benchmark` | Replay one end-to-end voice session against resolved endpoints. |
+| `voice benchmark` | Replay one end-to-end session, or a reusable STT/TTS corpus, against resolved endpoints. |
 | `voice corpus prepare` | Build the deterministic 24-human/6-synthetic English STT corpus. |
 | `voice corpus validate` | Fail closed on malformed JSONL, audio metadata, paths, or hashes. |
 | `voice profiles list` | List named overlays without contacting a service. |
@@ -227,7 +228,10 @@ Without these two options, the command retains compatibility by using a
 
 The benchmark records resolved model and endpoint identity with its end-to-end
 STT, router, and TTS metrics. Evidence output is restricted to the workspace or
-configured evidence root. Unreachable dependencies return nonzero and do not
+configured evidence root. Evidence publication is atomic and refuses to
+overwrite an existing file, including when another writer publishes the same
+path concurrently. Select a new `--evidence-out` filename for every attempt.
+Unreachable dependencies return nonzero and do not
 create a successful measurement record.
 
 ### STT corpus
@@ -257,6 +261,144 @@ Use a separate `--repetitions 1 --concurrency 4` lane.
 requests; it does not qualify multilingual behavior. Evidence uses
 `stt-benchmark-evidence/v1`, writes atomically, and exits nonzero with
 `complete=false` if an expected request fails.
+
+Prepare a separate 120-human English holdout corpus with 60 utterances from
+each LibriSpeech split, excluding the canonical corpus:
+
+```bash
+anvil-serving voice corpus prepare --config ~/.anvil-serving/voice.toml \
+  --out artifacts/stt/holdout --human-cases-per-split 60 --synthetic-cases 0 \
+  --exclude-manifest artifacts/stt/corpus/manifest.jsonl
+anvil-serving voice corpus validate --manifest artifacts/stt/holdout/manifest.jsonl --expected-cases 120
+```
+
+`--human-cases-per-split` accepts multiples of three from 3 through 300 and
+balances short, medium, and long source durations equally in each split.
+`--synthetic-cases` accepts 0–6 fixed phrases; zero sends no TTS requests.
+The default remains 12 human cases per split plus six synthetic cases.
+Exclusion validates the supplied manifest, filters exact case IDs and source
+identities before deterministic selection, and rejects normalized-audio hash
+overlap. Supplement preparation validates its exact requested count and
+rejects duplicate audio hashes or IDs before publishing the output directory.
+`provenance.json` retains the exclusion manifest hash and identities, actual
+duration-bucket counts, archive checksums, source FLAC hashes, and normalized
+WAV hashes; the command also returns its provenance hash. Failed preparation
+leaves no partial published corpus.
+
+### TTS corpus
+
+Measure an already-running TTS endpoint using the selected voice manifest and
+profile. Store audio in a new directory outside every Git worktree; retain
+JSON under the workspace or a configured evidence root:
+
+```bash
+anvil-serving voice benchmark --scope tts \
+  --config ~/.anvil-serving/voice.toml --profile dark-audio \
+  --corpus artifacts/tts/prompts.jsonl --expected-cases 24 \
+  --repetitions 3 --concurrency 1 \
+  --audio-out ~/.local/share/anvil-serving/tts-audio/run-001 \
+  --evidence-out artifacts/tts/run-001.json
+```
+
+Each contiguous JSONL line has exactly these fields:
+
+```json
+{"schema_version":"tts-corpus/v1","id":"short-01","text":"Please cancel the reminder.","category":"short-correction","language":"en"}
+```
+
+The command rejects duplicate IDs or JSON fields, blank text, unsupported
+schemas, unsafe ID path tokens, extra fields, count mismatches, and oversized
+corpora before contacting the endpoint. It accepts 1–128 cases, 1–20 warm
+repetitions, and at most 1024 warm requests. TTS concurrency is currently 1.
+The optional `--expected-cases` supplies an exact count gate. The output
+directory must be new and contain no symbolic-link ancestors or parent
+traversal.
+
+Use `--tts-candidate-overlay candidate.toml` to apply a TTS-only overlay after
+the profile. A candidate overlay contains only `[voice.tts]` and the optional
+`[tts_benchmark.identity]` table. Identity accepts `served_name`, `checkpoint`,
+`revision`, `runtime`, `runtime_version`, `image`, `image_digest`, `hardware`,
+and `quantization`, as nonempty strings. `--candidate` supplies a label;
+otherwise the overlay filename supplies it. These declarations describe the
+operator's pinned candidate and are not an endpoint attestation.
+
+The supported endpoint contract is OpenAI HTTP `/v1/audio/speech`. The
+manifest's `voice_id`, when declared, is sent as `voice`; otherwise evidence
+labels voice selection `server-default-unverified`. Declared `language` is
+also sent without inferring language from each corpus case. Authentication
+uses the configured `api_key_env` reference and rejects an unset variable.
+The request preserves the exact model, voice, language, and response format,
+and refuses HTTP redirects. LLM/STT candidate options are rejected for this
+scope.
+
+`voice.tts.stream` is an explicit Boolean request option and defaults to
+`true`. Set it to `false` for a declared buffered adapter; the same setting
+reaches both corpus benchmarks and the live voice pipeline. Evidence retains
+the selected setting and labels buffered first-audio timing accordingly:
+the first body data may arrive only after synthesis completes. The command
+does not retry a rejected streaming request as a buffered request.
+
+`voice.tts.max_tokens` optionally sends an explicit OpenAI HTTP generation
+cap. It accepts integers from 1 through 8192; Boolean, fractional, zero,
+negative, and larger values are rejected. When absent, the request omits the
+field and retains the server default. A declared value applies identically
+to the live pipeline and corpus benchmark and is retained in the resolved
+configuration and its hash. Set it in the manifest or TTS candidate overlay;
+changing the cap defines a new tested configuration and does not modify
+historical comparison evidence. The server determines what one generation
+token represents for its model.
+
+The evidence schema is `tts-benchmark-evidence/v1`. It retains the exact
+request endpoint and configuration, source manifest/overlay hashes, resolved
+TTS configuration hash, corpus hash and file order, a separate first-observed
+cold request, and every warm request in repetition then JSONL order. The cold
+label does not imply empty endpoint caches: the command never resets a model
+or operates its lifecycle. Failures remain in the evidence, and
+`complete=true` requires every expected request and zero failures. Incomplete
+runs write evidence atomically and exit nonzero.
+
+Each request records response status, byte count and SHA-256, first body read,
+first complete audio frame observed in an HTTP read, request-through-EOF
+latency, source audio duration, and client read chunk timings. WAV headers are
+excluded from first-audio timing. Chunk timings describe HTTP reads and may
+include client buffering; they do not establish server synthesis boundaries
+or acoustic playback. The end-to-end metric excludes decoding and artifact
+writes. Chunk logs retain at most the first 64 reads per request and 16,384
+reads across the complete run, including the cold request. Each request
+reports retained and omitted counts and explicit truncation. First-frame
+timing remains independent of these log limits.
+
+`summary.warm_artifact_inclusive_wall_seconds` includes HTTP requests,
+decoding, resampling, file writes, fsync, artifact hashing, and advisory
+screening. It describes harness elapsed time; endpoint throughput is
+explicitly unmeasured. Per-request latency and RTF continue to use HTTP
+request-through-EOF timing. The two RTF orientations are explicit:
+
+| Evidence field | Definition | Faster direction |
+| --- | --- | --- |
+| `generation_seconds_per_audio_second` | Request-through-EOF seconds / source audio seconds | Lower |
+| `audio_seconds_per_generation_second` | Source audio seconds / request-through-EOF seconds | Higher |
+
+The declared response format is honored. Raw `pcm` means signed 16-bit
+little-endian mono at `source_sample_rate`; `wav` uses the validated container's
+rate and accepts mono PCM16 or IEEE float32. WAV is permitted only in this TTS
+benchmark context; realtime voice configuration still requires PCM. The
+original response is retained beside a normalized mono PCM16 WAV at
+`target_sample_rate`. Normalization uses whole-response linear interpolation
+without an anti-aliasing filter, so listening at the native rate remains useful.
+Nonfinite float samples are replaced with zero for normalization and counted.
+Responses are bounded to 16 MiB and 120 audio seconds; the entire audio
+artifact directory is bounded to 512 MiB. Evidence contains only relative
+audio artifact names and filesystem-path hashes, and never embeds audio byte
+bodies.
+
+Blank signals, nonfinite samples, repeated 100-ms waveform blocks, and
+identical audio returned for different text are deterministic advisory flags.
+They neither prove intelligibility nor automatically fail a quality gate.
+Independent STT fidelity validation, human listening, and listening preference
+remain separate and explicitly `not_run` or `not_measured` in this evidence.
+The command does not measure playback or cancellation and never promotes a
+candidate.
 
 ## Profiles
 

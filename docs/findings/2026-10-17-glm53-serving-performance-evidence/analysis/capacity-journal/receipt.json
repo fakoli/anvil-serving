@@ -1,0 +1,54 @@
+{
+  "applied_to_live": false,
+  "apply_check_exit_code": 0,
+  "base_head": "5e1f92fbe2624b2121f443c146db422dd36d62cb",
+  "candidate_files": {
+    "anvil_serving/benchmarking/cli.py": "fdedfa611927e8d0b5f713e7d441413ee8a14b87da4d85ee1bd64b137a09dc52",
+    "tests/test_capacity_journal.py": "ac88b5743269e3342741f09ed0ac7594905fed81fad11a73ad46e350cb2a2130"
+  },
+  "checks": [
+    {
+      "command": [
+        "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_capacity_journal.py",
+        "tests/test_benchmark.py",
+        "-q",
+        "--basetemp",
+        "/tmp/capacity-journal-pytest-94l4t1g8"
+      ],
+      "exit_code": 0,
+      "label": "candidate",
+      "log": "candidate.log"
+    },
+    {
+      "command": [
+        "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/test_capacity_journal.py::CapacityJournalTests::test_process_exit_during_later_request_preserves_first_terminal_result",
+        "-q",
+        "--basetemp",
+        "/tmp/capacity-journal-pytest-y5ks8341"
+      ],
+      "exit_code": 1,
+      "label": "baseline_regression",
+      "log": "baseline_regression.log",
+      "note": "Negative control of unchanged interruption test from append-jsonl-v2; exclusivity revision adds preservation cases only."
+    }
+  ],
+  "independent_review": {
+    "note": "No remaining product blocker. Suggested duplicate test flag cleanup was checked: current arguments helper has only one reasoning-effort/output pair; no change required.",
+    "observed_at": "2026-10-17T12:13:17.336807+00:00",
+    "patch_sha256": "d5aaf3e74e132449f7456b9d6133391a75a9a323a1e4af64b7011d505c3c790a",
+    "reviewer": "/root/trial_review",
+    "status": "accepted"
+  },
+  "live_cli_sha256_after": "e6170f7b990eb51623bdc154110a54c572d2ea71488b43ecfd2f1318bd51c800",
+  "live_cli_sha256_before": "e6170f7b990eb51623bdc154110a54c572d2ea71488b43ecfd2f1318bd51c800",
+  "model_requests": 0,
+  "observed_at": "2026-10-17T12:12:17.779001+00:00",
+  "patch_sha256": "d5aaf3e74e132449f7456b9d6133391a75a9a323a1e4af64b7011d505c3c790a",
+  "revision": "exclusive-append-jsonl-v3"
+}

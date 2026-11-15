@@ -1,0 +1,59 @@
+{
+  "candidate_monitoring_guard": "Correctly refused unbound GPU identity; engine was running and health/model-list probes passed.",
+  "cause": "Original explicit GPU selection/order was omitted from the restore command; default all-GPU selection did not satisfy exact monitoring identity.",
+  "classification": "coordinator launch omission; not engine failure or new product defect",
+  "exact_reload": "In progress at this record cutoff; explicit original two-GPU order restored to command. No acceptance claimed.",
+  "explicit_gpu_device_argument_present": false,
+  "final_restoration_verified": false,
+  "incumbent": {
+    "containment_error": null,
+    "host_memory": {
+      "current_bytes": 21267578880,
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "exit_code": 0,
+      "limit_bytes": 55834574848,
+      "oom_killed": false,
+      "peak_bytes": 31349850112,
+      "ram_plus_swap_limit_bytes": 55834574849
+    },
+    "image_digest": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "recipe_digest": "50d5cfe756db664c54d13939c722ae05d79a9bf2e26b47b4eb4673fc2655e065",
+    "registry_digest": "ad28a9920e0482584a52f2814945ad23d0dc6491c709a610f7c5a829c4ee1cfe",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "running": true,
+    "state": "running"
+  },
+  "observed_at": "2026-10-25T08:18:28.180099+00:00",
+  "observed_gpu_selection": [
+    "all"
+  ],
+  "restore_load": {
+    "exit_code": 1,
+    "finished_at": "2026-10-25T08:17:55.133151+00:00",
+    "started_at": "2026-10-25T08:09:41.435432+00:00"
+  },
+  "retained_probe_excerpt": {
+    "advertised_id_matches_discovered": true,
+    "health_status": 200,
+    "models_count": 1,
+    "models_status": 200,
+    "private_paths_and_permission_ids_omitted": true,
+    "raw_private_probe_retained": true
+  },
+  "schema": "anvil-serving.restoration-attempt-diagnostic/v1",
+  "wrong_incarnation_managed_unload": {
+    "exit_code": 0,
+    "finished_at": "2026-10-25T08:19:17.448772+00:00",
+    "started_at": "2026-10-25T08:19:13.919128+00:00"
+  }
+}

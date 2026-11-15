@@ -1,0 +1,15 @@
+{
+  "cell": "baseline-controlled-ctx10240-c1",
+  "confirmed": "At least one response finished length after16384 generation tokens. Engine remains running; no preemption/OOM observed.",
+  "evidence": {
+    "bytes": 84377,
+    "path": "identity/baseline-controlled-length-observation.json",
+    "sha256": "8dcd429634cccc16f1a1405db3950e47ac15e04de5dd5de443e0df0d0bb0099d"
+  },
+  "next": "Let frozen bound stop and drain; independently reviewed separate n1 exact-input reproduction before any follow-up policy decision.",
+  "observed_at": "2026-10-17T11:50:11.085251+00:00",
+  "promoted": false,
+  "root_cause": "not established",
+  "state": "active within frozen1200s bound",
+  "unknown": "No native cell artifact yet; cannot distinguish reasoning-only, visible repetition, mixed output or strict oracle result."
+}

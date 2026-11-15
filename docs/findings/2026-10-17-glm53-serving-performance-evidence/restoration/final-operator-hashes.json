@@ -1,0 +1,90 @@
+{
+  "all_unchanged": true,
+  "at": "2026-10-17T13:03:57.595404+00:00",
+  "files": [
+    {
+      "bytes": 8122,
+      "file": "router.toml",
+      "sha256": "34032baa98f3359990d37fd506588a61f15ffda8bfb6b93b96462b498be3fc70",
+      "unchanged": true
+    },
+    {
+      "bytes": 6718,
+      "file": "operator-topology.toml",
+      "sha256": "f63cd49bb25713c05268ee2252cb8233aba98c5ce905cea78400163c7e9de29c",
+      "unchanged": true
+    },
+    {
+      "bytes": 5454,
+      "file": "serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "sha256": "3beba851889013e16084ccb5d6154d9dd77c4b742a25620a11bd68686f6afab6",
+      "unchanged": true
+    },
+    {
+      "bytes": 5980,
+      "file": "serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml",
+      "sha256": "773394b53c51728df11f1369ce32eed12b5a10985cefba3fdbc8815063d153b3",
+      "unchanged": true
+    },
+    {
+      "bytes": 3490,
+      "file": "serves.toml",
+      "sha256": "ac8479d6c1cc9d07424f81d17b019e027f40f64174e30e0cf46ad64fc09fee75",
+      "unchanged": true
+    },
+    {
+      "bytes": 4270,
+      "file": "serves.glm53-v043-promotion.toml",
+      "sha256": "2b3f3e4f7e48ff422dc241f97de0650e0bb23dd0dd07553ea0a499e3d8d29b9a",
+      "unchanged": true
+    },
+    {
+      "bytes": 1185,
+      "file": "serves.glm53-exl3-327k-r10-vision8-apc-nospec.toml",
+      "sha256": "df3e9d39b26cbcaaa913049b34f46b6724337dc80514ecc02f634e87ccb8c899",
+      "unchanged": true
+    },
+    {
+      "bytes": 18767,
+      "file": "serves.tp2-campaign.toml",
+      "sha256": "29555561105ede3c526d8c8728c0a11e7af3a4b6dca1ea056f455c3c2ce19dff",
+      "unchanged": true
+    },
+    {
+      "bytes": 1127,
+      "file": "serves.glm53-sglang-sm120-393k.toml",
+      "sha256": "41420b61989af605c1e743b2f139a10b4c9c68a4b52480f1148fda1e337ee46d",
+      "unchanged": true
+    },
+    {
+      "bytes": 1149,
+      "file": "serves.glm53-exl3-327k-r9-vision8-nospec.toml",
+      "sha256": "658faa3938a968d8904d18c055a9d358123184cba8bff6d8badd7bb02f57290e",
+      "unchanged": true
+    },
+    {
+      "bytes": 1313,
+      "file": "serves.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+      "sha256": "42f44e2fc4d2f2415fdf545e24484531494efd9019c18a7908c6198394d68975",
+      "unchanged": true
+    },
+    {
+      "bytes": 1046,
+      "file": "serves.mimo26-isolated-20261006.toml",
+      "sha256": "bfce5bab91e66a1de64512f452d6fb47d0d8fb100101324ead80d2afcaebcf98",
+      "unchanged": true
+    },
+    {
+      "bytes": 1085,
+      "file": "serves.glm53-abliterated-isolated-20261006.toml",
+      "sha256": "bf8242b4e2afae08a5c34f79e6ba8f858c130c1d9c14ef3b90276e5f091678c7",
+      "unchanged": true
+    },
+    {
+      "bytes": 3637,
+      "file": "serves.glm53-abliterated-promotion.toml",
+      "sha256": "a59977035cfbfda09ea738379a26625c7c949f61a76e247be2934b15a2a60ef9",
+      "unchanged": true
+    }
+  ]
+}

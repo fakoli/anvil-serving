@@ -1,0 +1,17 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "[private-model]",
+      "object": "model",
+      "owned_by": "ignis",
+      "active": true,
+      "kind": "text",
+      "max_model_len": 262144,
+      "decode_lanes": 4,
+      "adapted": "",
+      "available": true
+    }
+  ],
+  "status": "serving"
+}

@@ -1,0 +1,7 @@
+# R19 accepted restoration evidence
+
+This independently accepted projection records restoration, not promotion. Direct 13-check preflight, routed protocol checks, vision/OCR, JSON_OBJECT, and Pi settled acceptance passed. Readmit was applied after the preflight.
+
+The restore command reached its external 60-second timeout and was not retried; subsequent exact-ID status showed the retained container running, healthy, and ready. The R11 official-base lineage remains non-abliterated, with no engine, kernel, or sampler change. Context 327680, C4, and vision-8 are configured/observed, not a fresh full requalification.
+
+Mini R2 preserves the OpenClaw thinking-off failure alongside Hermes pass. A separate OpenClaw high-thinking native check passed 9/9; two thinking-off attempts failed with reasoning visible, and max was rejected locally before query. Hindsight recall and retain passed. Default cloud providers, route configuration, and native memories were preserved. Unified eval is therefore not green because it hardcodes thinking=off. The file hash 36d899b5 and canonical public metadata hash 5b60f412 differ by contract, not mutation; the latter was independently recomputed from unchanged configuration. Retained bounds are 52 GiB RAM plus 1 MiB swap. Free GPU memory was 2974 MiB per card at restoration startup; the later post-client sample was 1875/1897 MiB. These observed baseline samples are below the strict candidate 4 GiB reserve. Original bounded swap use of 745,472 bytes was observed; no zero-swap claim is made.

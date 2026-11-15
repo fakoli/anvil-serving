@@ -1,0 +1,27 @@
+{
+  "before": {
+    "tensorfold:requests_running": 0.0,
+    "tensorfold:requests_waiting": 0.0,
+    "tensorfold:prompt_tokens_total": 22902175.0,
+    "tensorfold:generation_tokens_total": 468224.0,
+    "tensorfold:request_latency_seconds_count": 294.0
+  },
+  "after": {
+    "tensorfold:requests_running": 0.0,
+    "tensorfold:requests_waiting": 0.0,
+    "tensorfold:prompt_tokens_total": 22908305.0,
+    "tensorfold:generation_tokens_total": 535033.0,
+    "tensorfold:request_latency_seconds_count": 298.0
+  },
+  "observed_deltas": {
+    "tensorfold:prompt_tokens_total": 6130.0,
+    "tensorfold:generation_tokens_total": 66809.0,
+    "tensorfold:request_latency_seconds_count": 4.0
+  },
+  "native_totals": {
+    "responses": 4,
+    "prompt_tokens": 6130,
+    "completion_tokens": 66809
+  },
+  "note": "Observed agreement only; quality-only live run, no isolation/throughput claim."
+}

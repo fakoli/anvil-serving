@@ -1,0 +1,97 @@
+{
+  "schema": "anvil-serving.public-evidence-projection-ledger/v1",
+  "campaign_id": "glm-sampling-reference-20261025-r2",
+  "policy": "Allowlisted public projections omit operator topology, host/container identities, GPU UUIDs, process IDs, private paths, command arguments, and raw warning text. Numerical kernel receipts are retained verbatim after selecting only ANVIL_SAMPLING_INPUTS, ANVIL_SAMPLING_FORCED_CASE, ANVIL_SAMPLING_ORDINARY_ROW, ANVIL_SAMPLING_ORDINARY_CASE, and ANVIL_SAMPLING_REGRESSION stdout lines.",
+  "sources": [
+    {
+      "private_artifact": "candidate-kernel-logs.json",
+      "private_sha256": "7f02535c536ff093e319bf53481131023f9272fbb4dbee79fc8eb0caea33db39",
+      "public_artifacts": ["kernel-receipts.log", "kernel-summary.json"],
+      "projection": "Selected numerical stdout receipts; omitted managed command/context, PID-bearing trace warnings, private paths, and traceback paths. Kernel summary is a bounded derivative and retains the private raw hash."
+    },
+    {
+      "private_artifact": "source-freeze.json",
+      "private_sha256": "199d9d2924f26ecd1bf7803ce3dff81eaab28e23eaa8472b031a22ebda9d73fe",
+      "public_artifacts": ["source-freeze.json", "identity.json"],
+      "projection": "Retained source revision, file hashes, candidate image, and test count; normalized the independent-review description."
+    },
+    {
+      "private_artifact": "experiment-plan.json",
+      "private_sha256": "737c767e63c7fdf697832cc20589d9b47622de4ad64ef10d30448eac7da36019",
+      "public_artifacts": ["plan.json"],
+      "projection": "Retained predeclared cases, oracle, criteria, bounds, stop policy, and zero-inference outcome; omitted private paths, endpoint, command, and operator-only lifecycle detail."
+    },
+    {
+      "private_artifact": "reference-design.md",
+      "private_sha256": "7009716c81c48edf9d079b3409ecdefb1e11efad72a2d687d72e4f2f26bceee1",
+      "public_artifacts": ["reference-design.md"],
+      "projection": "Public-safe source note retained with one temporal clarification distinguishing the earlier diagnostic from this run."
+    },
+    {
+      "private_artifact": "build-result.json",
+      "private_sha256": "49eceb87df57e17758c736b51f0cb6694ebf96468ebec2db4a4ad6232c147a62",
+      "public_artifacts": ["build.json"],
+      "projection": "Retained bounded build result, image identity, resource bounds, and duration; omitted command, private paths, and log location."
+    },
+    {
+      "private_artifact": "candidate-failed-status.json",
+      "private_sha256": "6835b68cedd1dfa5c466bdbfacd78b9d0d928b85207fa547b2e8ce88c5590243",
+      "public_artifacts": ["candidate-status.json"],
+      "projection": "Retained state, exit, OOM flag, immutable image/model identity, and unavailable post-exit fields; omitted managed context and container identity."
+    },
+    {
+      "private_artifact": "kernel-summary.json",
+      "private_sha256": "07a957e5140cbedb18164a152a662f262fee82bed4378b6463ced70c211955b1",
+      "public_artifacts": ["kernel-summary.json"],
+      "projection": "Retained measurements and decision; clarified that the local count envelope was derived from upstream tests and is not an upstream-suite pass."
+    },
+    {
+      "private_artifact": "outcome-review.json",
+      "private_sha256": "6a78ecf71c6baae4e796d01d6e30c5abaaac9b4ffe14a9820762b226f7723478",
+      "public_artifacts": ["outcome-review.json"],
+      "projection": "Retained independent decision and limitations; expanded compressed prose and clarified the upstream-derived envelope boundary."
+    },
+    {
+      "private_artifact": "closure.json",
+      "private_sha256": "263340303a435547f9bb7fc0bf6c592bb5f129af2d7893645971d066ab06fc77",
+      "public_artifacts": ["closure.json", "restoration.json"],
+      "projection": "Retained operational and functional restoration statuses, bounded resource deltas, phase gaps, elapsed time, and decision boundaries; omitted private container identities."
+    },
+    {
+      "private_artifact": "runtime-restored.json",
+      "private_sha256": "f778c0d401e7fdff69afadbe3c54fa4b0c932484d526ccf5923ae341aec9ba19",
+      "public_artifacts": ["runtime-restored.json"],
+      "projection": "Retained immutable model/image/source/template/tokenizer/launch identities, containment, memory events, and idle engine counts; represented tokenizer file digests as file/sha256 records to distinguish artifact hashes from credential signatures; omitted process inventory, PIDs, private paths, and host identity."
+    },
+    {
+      "private_artifact": "router-restored.json",
+      "private_sha256": "66657f39935646011467d9f238197750a62be9fbefb4bbdd106bdda2981b18af",
+      "public_artifacts": ["router-restored.json"],
+      "projection": "Retained configured/observed identity equality, readiness, admission, drain state, and active-request count; omitted private endpoint and model-route identity."
+    },
+    {
+      "private_artifact": "mode-restored.json",
+      "private_sha256": "17c2af747475f020589c57a315924eecb2551dab567ba3a23cf564cacdc59b6c",
+      "public_artifacts": ["mode-restored.json"],
+      "projection": "Retained exclusive TP2 mode, restored incumbent ownership, blocked candidate, and empty unresolved set; omitted private role and workload names."
+    },
+    {
+      "private_artifact": "shared-memory-restored.json",
+      "private_sha256": "c05fa09d5ede1d37d5f98e97fe4cb3f3e749307e13c8c1bca953ed778c8222ac",
+      "public_artifacts": ["shared-memory-restored.json"],
+      "projection": "Retained availability, empty active set and blockers, and zero reclaimable bytes; omitted managed command context."
+    },
+    {
+      "private_artifact": "gpus-restored.json",
+      "private_sha256": "f03eb15394ebbd99792c2fb0324475c5a50688b2b384acb8f28a074ad8ce54ff",
+      "public_artifacts": ["gpus-restored.json"],
+      "projection": "Retained count and product; omitted GPU UUIDs and host context."
+    },
+    {
+      "private_artifact": "restoration-smoke.json",
+      "private_sha256": "d9022fbe50db29c890e5a32bc2d4c93a153f0123cf5ff5211bad538e58c93ff9",
+      "public_artifacts": ["restoration-smoke.json"],
+      "projection": "Retained the complete synthetic response, usage, timing, finish reason, requested settings, and parser failure; redacted the loopback endpoint."
+    }
+  ]
+}

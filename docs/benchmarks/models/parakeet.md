@@ -4,6 +4,8 @@
 
 ## Current status and review date
 
+Latest additional review, 2026-10-06: existing Apple Metal control retained; complete corpus evidence, critical entity gate failed, no new qualification. The older CUDA snapshot below remains historical.
+
 !!! info "Decision snapshot"
 
     - **Product role:** Published routed-STT reference baseline in the retained
@@ -93,6 +95,10 @@ records the reconstructable service configuration.
 The dated finding links the retained corpus artifacts and result summaries.
 The exact checkpoint commit remains **not retained**.
 
+### 2026-10-06 — Parakeet Metal control
+
+**Status:** contemporaneous Metal control, complete component corpus. **Measured:** canonical human 33/1,077 = 3.064% micro-WER; C1 p50/p95 46.62/81.68 ms (72 requests, 24 distinct cases); C4 p95 279.02 ms (24); supplemental 64/1,864 = 3.433% (120). **Limits:** loaded checkpoint revision not independently attested; critical MISSUS→mister in all three repetitions; microphone/accent/client/soak missing. **Evidence:** [dated finding](../../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results) · [hardware](../hardware/apple-m4-max.md#2026-10-06-english-voice-qualification) · [reconstruction](../../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md).
+
 ## Decision and promotion state
 
 ### Retained baseline
@@ -118,6 +124,8 @@ The exact checkpoint commit is **not retained**. Reproduction must therefore
 distinguish the pinned runtime image from the unpinned model snapshot.
 
 ## Dated run history
+
+- 2026-10-06 — [English voice qualification](../../findings/2026-10-06-m4-max-voice-quality-qualification.md#stt-results).
 
 - [2026-07-28 multi-sample qualification](../../findings/2026-07-28-nemotron35-asr-qualification.md)
 - [2026-07-08 earlier STT benchmark](../../findings/2026-07-08-stt-model-benchmark.md)

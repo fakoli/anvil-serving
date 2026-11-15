@@ -35,6 +35,20 @@ directory; excess output is drained and reported as truncated. Successful
 builds return the immutable image ID. The validated Dockerfile is sent as a
 fixed byte stream, so changes to its path cannot expand the planned build.
 
+A derived image can declare optional `base_image` as a repository reference
+ending in `@sha256:` and 64 lowercase hexadecimal characters. The command
+passes it only as the fixed `BASE_IMAGE` build argument; arbitrary build
+arguments are unsupported. Its Dockerfile uses `ARG BASE_IMAGE` followed by
+`FROM ${BASE_IMAGE}`. Keep deployment-specific image references in the private
+build declaration. Builds without this field keep their existing arguments.
+
+Preview validates the declaration, limits, Dockerfile and optional base-image
+reference. It does not fetch an image, validate `COPY` inputs, apply patches or
+prove a source tree. A patch build must verify its manifest, patch hashes and
+expected source trees inside its Dockerfile before compilation. See the
+[TensorFold patch catalog](https://github.com/fakoli/anvil-serving/tree/main/configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1)
+for an ordered owned series with those checks.
+
 Docker Buildx and its BuildKit daemon must support Linux per-step resource
 limits. The command supplies CPU, memory and memory-plus-swap ceilings and
 refuses an older CLI without `--resource`. Only single-stage Dockerfiles are

@@ -1,0 +1,14 @@
+{
+  "observed_at": "2026-10-26T05:04:50.294999+00:00",
+  "inspection_sha256": "20f076640a1984910d523a785cdbc06b86d1aaf84aa0c24695c6953bc904fe75",
+  "base_source_differences": [
+    "vllm/v1/sample/ops/topk_topp_triton.py"
+  ],
+  "all_other_captured_source_template_tokenizer_bytes_match": true,
+  "helper_hashes_match": true,
+  "image_matches": true,
+  "mounts_match": true,
+  "idle": true,
+  "ignis": "hold",
+  "promoted": false
+}

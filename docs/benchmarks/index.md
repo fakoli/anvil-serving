@@ -1,18 +1,92 @@
 # Benchmarks
 
+**2026-11-09 TensorFold reasoning investigation:** the
+[Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
+retain the same 16K total response budget and separate effort instructions
+from a numeric thinking limit. The two reviewed Low repetitions passed their
+first contained tests; proposed forwarding support is not deployed or
+measured here. No broad Go or performance claim follows.
+
+**2026-11-09 source and rollout follow-up:** merged request-local
+[thinking-budget support](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+is deployed in the local CLI/router. A separate three-job check on one Go task
+retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset passed 1/1 at a
+16,384 response cap. The second Max job failed both coding attempts at that
+cap; 8,192 is not established as a reliable fix or default. Its sharded-KV
+runtime differs from the original disk-only matrix, with no contemporary
+unbounded-Max control or causal quality/speed claim. Remote-controller
+numeric admission remains unsupported (B10 partial); no global model-policy
+change or promotion follows.
+[Summary](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+· [Evidence index](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+**2026-11-08 TensorFold Go validation:** the
+[focused quality check](../findings/2026-11-08-tensorfold-go-validation.md)
+records a passing first attempt at 32K and length-finished failures at 16K on
+one selected Go task. It establishes no broad coding score, performance
+comparison, causal cap benefit or promotion.
+[GLM dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08).
+
+**2026-11-03 RTX5090 research update:** the
+[candidate campaign](../findings/2026-11-03-rtx5090-campaign.md) records bounded
+coding and synthetic capability results without changing any deployment decision.
+The [Ignis note](../findings/2026-11-03-ignis-improvements.md) separates model,
+runtime and evaluator improvements. [Dossier](models/rtx5090-campaign-candidates.md).
+
+**Current review, 2026-11-01:** Swift TP1 has qualification accepted on one
+RTX PRO 6000 Blackwell Max-Q. This is a qualification result; the measured C2/C1 tradeoff, strict-format
+failure, and SWE limit are retained in the [dated finding](../findings/2026-11-01-swift-tp1-gpu0.md).
+
+**Separate private-target scouts, 2026-11-01: original configuration retained.**
+The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
+each completed 144 timed requests on the dual RTX PRO 6000 pair. Neither
+candidate improved median response latency by 10% against both controls.
+Cache slots increased 38.60% with the layout change and decreased 40.63% with
+DFlash2 K3. Both candidates were removed and the original configuration was
+restored. That scout target identity is private; the named October reference
+below is historical evidence, not a statement of today's selected checkpoint.
+[Private-target dossier](models/private-runtime-scouts.md).
+
+**Historical primary recommendation, 2026-10-17:** the operator selected
+`nvidia/GLM-5.3-Flash-FP4-Local` as the best current fit for this deployment.
+The pinned TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is promoted;
+EXL3 r11 is retained as rollback. The matched two-recipe comparison measured
+faster C1 prefill and decode, with mixed concurrent latency and narrower GPU
+headroom. The [promotion record](../findings/2026-10-17-glm53-nvidia-fp4-promotion.md)
+explains the selection, client acceptance, KV accounting, and remaining fleet
+workflow blocker. The [full comparison](../findings/2026-10-17-glm53-serving-performance.md)
+retains every measured cell and failure; this preference does not establish
+an exhaustive quality ranking.
+
+**2026-10-15 replacement evaluation:** the completed [campaign finding](../findings/2026-10-15-replacement-evaluation.md) records no eligible challenger. DeepSeek V4.1 Flash remained bounded to diagnostic gates, and exact GLM was restored and retained. The finding is the detailed gate record; this does not add a new GLM qualification, route change, or performance ranking.
+
+**Historical bounded recommendation, 2026-10-13:** The retained recommendation was the non-abliterated official-base GLM TR3 EXL3 4-bpw R11 baseline: TP2/EP2/DCP1, FP8 DS-MLA KV, 327680 configured tokens, C4, APC, no speculation, and vision 8. R19 accepted exact restoration with direct 13/13, routed tools/SSE/JSON_OBJECT and vision/OCR, Pi settled read, Hermes, OpenClaw high 9/9, and Hindsight recall/retain. Thinking-off remains failed and unified evaluation is not blanket green. The fresh fixed-five baseline is 2/5; retention does not claim a universal quality winner or a new full-context C4 measurement. [Exact configuration and evidence](../findings/2026-10-13-full-qualification.md).
+
+**2026-10-13 full qualification:** [campaign closure](../findings/2026-10-13-full-qualification.md) retains separate GLM, Qwen, DeepSeek, MiMo, and Ignis evidence. The GLM baseline completed 2/5; terminal Ignis was incomplete at 2/5 resolved with three empty cases. No challenger cleared the complete 4/5 plus Django/Pylint requirement, so no challenger was promoted.
+
 **Eight-image follow-up, 2026-09-18:** [GLM EXL3 r9](../findings/2026-09-18-glm53-vision.md#eight-image-follow-up) passed four eight-image comparison requests, one eight-image high-resolution request. Limit now eight/request; no concurrent eight-image soak.
 
 
-**2026-09-23 publication-verified decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) is selected and deployed after retained direct/routed and native-client acceptance. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. Exact r10 is the rollback.
+**Historical 2026-09-23 publication-verified decision:** [GLM DCP1 r11](../findings/2026-09-23-glm-dcp1-qualification.md) is selected and deployed after retained direct/routed and native-client acceptance. Independent reviews, dashboard receipt, successful Pages publication, and HTTP/browser readback are retained. Exact r10 is the rollback.
 
 **2026-10-05 qualification decision:** [Qwen replacement and GLM CSF/QAD evidence](../findings/2026-10-05-xeon-model-qualification.md) rejects Qwen at 3/5 and GLM after fresh-reload A1 resolved 2/5 attempts (2/4 graded), below the 4/5 floor. GLM's earlier 4/5 scout, functional 25/25, Oracle 18/18, vision, and bounded context acceptance remain retained but do not establish a reliable quality floor, full-window capacity, or speed. B1/B2/A2 did not run. Exact r11 DCP1 restoration completed with direct 25/25, routed 7/7, and a fresh Pi read-tool turn; independent review follows closure.
 
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-10-05 UTC.**
+configuration and retained evidence. **Evidence reviewed: 2026-11-01 Swift TP1 qualification and separate private-target runtime scouts; publication readback remains partial.**
 
-## Current bounded APC reference — September 19
+## Engine testing
+
+The [October 25 sampling-fix trial](../findings/2026-10-25-sampling-fix.md) stopped at a synthetic ordinary-mask parity failure before model weights or inference. It supplies partial functional kernel evidence, no candidate promotion or proven model-boundary fix.
+
+The [engine-testing reports](engine-testing.md) collect the closed Flare
+diagnostics and the 0.7.2 Ignis qualification. They are bounded local evidence:
+the incumbent remains selected, no Flare result is promoted, and Ignis coding
+qualification is incomplete. Use the reports for their exact evidence and
+failure boundaries, not as live deployment status.
+
+## Historical bounded APC reference — September 19
 
 <div class="bench-recipe" markdown="1">
 
@@ -122,6 +196,10 @@ workload and independent gates pass.
 
 ## Start with comparable numbers
 
+For speech recognition, speech generation and spoken answers, start with
+**[voice model results](voice-models.md)**. The latest Apple comparison retains
+all failed gates and no-promotion decisions alongside the measured results.
+
 The **[model comparison table](comparison.md)** puts the wider measured
 configuration — TTFT, throughput, context, reasoning mode, and recipe link —
 in one place, grouped by card and workload. The
@@ -169,6 +247,8 @@ and the Apple MLX Qwen lanes. Each dossier is a stable, model-centered summary
 with its dated findings and raw evidence.
 
 ## Recent evidence
+
+- **2026-10-06 — Apple English voice:** [quality-first component qualification](../findings/2026-10-06-m4-max-voice-quality-qualification.md) retains all STT/TTS/LLM failures and no promotion. Human-only STT chart, complete and resource-aborted TTS arms, separate off/low / medium LLM profiles and bounded restoration are auditable; failed strict 8K cells are not performance ranked. [Hardware](hardware/apple-m4-max.md#2026-10-06-english-voice-qualification) · [all runs](runs.md#2026-10-06-english-voice-campaign).
 
 - **2026-09-15 — media:** The [media finding](../findings/2026-09-15-media-bringup.md)
   records bounded workflow evidence; use its dossier and finding rather than

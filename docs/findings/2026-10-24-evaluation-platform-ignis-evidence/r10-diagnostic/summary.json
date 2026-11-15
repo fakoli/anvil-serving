@@ -1,0 +1,124 @@
+{
+  "alias_transition_performed": false,
+  "assembled_after_attempt": true,
+  "assembled_at": "2026-10-25T08:33:55.431515+00:00",
+  "candidate_campaign_requests": 0,
+  "candidate_created": true,
+  "candidate_generation_requests": 0,
+  "candidate_inference_latency": null,
+  "candidate_quality": null,
+  "comparison_complete": false,
+  "complete": false,
+  "failure_class": "Anvil Serving served-identity adapter defect",
+  "jobs": {
+    "attempted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "completed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    }
+  },
+  "limits": [
+    "All48 rows remain planned; admission/startup metadata is not generation or measurement.",
+    "Candidate raw HTTP ready/models responses and inner exception were not durably retained; exact observations are coordinator/reviewer provenance only.",
+    "No complete telemetry interval, inference capacity, performance ranking or engine failure claim.",
+    "First incumbent restore launch omitted explicit GPU order; monitoring refused correctly.",
+    "Pi real read, terminal and provider/model checks pass, but extra prose and duplicated digest fail strict clean-input output.",
+    "Original hashes identify private originals, not these derivatives; complete native graph not projected.",
+    "Exact packet review, whole-experiment size admission and final publication integration pending."
+  ],
+  "managed_load_exit_code": 1,
+  "manifest_sha256": "80406e77c611d671bd759f5bdeeb937faf383a705c20c9327be44dba143b2238",
+  "monitoring_registration": "failed_closed",
+  "packet_kind": "monitoring adapter failure; campaign unexecuted; service restored with incomplete real-client acceptance",
+  "pi_strict_acceptance": false,
+  "promoted": false,
+  "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+  "restoration_acceptance_complete": false,
+  "routed_preflight_passed": true,
+  "samples": {
+    "attempted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "cancelled": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "failed": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "planned": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    },
+    "scored": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "submitted": {
+      "count": 0,
+      "known_count": 0,
+      "unknown_cells": 0
+    },
+    "unfinished": {
+      "count": 48,
+      "known_count": 48,
+      "unknown_cells": 0
+    }
+  },
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "service_restored": true,
+  "source_sha256": "4a87fc4fcd3d7f21b1a5f51197392f057f27ae103c09cb2792bb692656a17430",
+  "timing": {
+    "active_wall_seconds": null,
+    "child_active_wall_seconds": null,
+    "known_active_wall_seconds": null,
+    "observed_job_overlap": null,
+    "observed_request_overlap": null,
+    "request_overlap_status": "unknown",
+    "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+    "unknown_batch_intervals": 0,
+    "unknown_intervals": 0
+  }
+}

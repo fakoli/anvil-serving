@@ -1,0 +1,69 @@
+{
+  "schema": "anvil-serving.public-redaction-bindings/v1",
+  "campaign_id": "2026-10-16-glm-natural-baseline",
+  "scope": "cached SWE R1 and R2 stages, official grader reports, and campaign-evidence projections",
+  "bindings": [
+    {
+      "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/native/cached-swe-r1-stage.json",
+      "private_source_sha256": "sha256:daae6ffc2888d5d41532a3d2c4069b197dc0bb64132c59862b0af89923050294",
+      "public_path": "native/cached-swe-r1.json",
+      "public_sha256": "sha256:5a6b43f47056932b26c45e0aa6736f0397a68e214b04d22f86e5c0a9bf08795f",
+      "redactions": [
+        "dataset cache path",
+        "grader containment receipt path",
+        "request IDs",
+        "trajectory paths",
+        "commands",
+        "stdout and stderr",
+        "actual execution identifiers",
+        "endpoint address",
+        "credential reference"
+      ],
+      "excluded_private_companion": "The wrapper artifact is not published because its path and hash references are not public-bound."
+    },
+    {
+      "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/official-grader/r1-report.json",
+      "private_source_sha256": "sha256:89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
+      "public_path": "native/cached-swe-r1-official-grader.json",
+      "public_sha256": "sha256:89909d2f961d451d9376b707292f47f892f60c56765f795f91cb1ad913f5b4d4",
+      "redactions": [],
+      "transformation": "Byte-exact retention; no transformation; official outcomes retained."
+    },
+    {
+      "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r1-artifact.json",
+      "private_source_sha256": "sha256:4bf12c97668a7fde67b05e759fad8c19ffa63cc09da874295f1e5c4e326d2a23",
+      "public_path": "native/cached-swe-r1-campaign-evidence.json",
+      "public_sha256": "sha256:aaee35b842b004e2610237c08c10fa0695bf3d6bd558179aa6f27f2f0b3dc5f5",
+      "redactions": [
+        "hardware identifier",
+        "topology worker identifier",
+        "local evidence paths"
+      ],
+      "transformation": "Extracted the existing results.evidence benchmark-evidence/v1 payload. Stage references retain their source hashes and sizes but use explicit redacted path values. This campaign-level comparator has aggregate semantics only; the native SWE stage and official grader report remain authoritative per-task evidence."
+    },
+    {
+      "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/native/cached-swe-r2-stage.json",
+      "private_source_sha256": "sha256:f629daff8a454f754d07c2c726eb5553ba0735c457e631f0429ca1d3ce7404f4",
+      "public_path": "native/cached-swe-r2.json",
+      "public_sha256": "sha256:8f8c456e1518b9038226bf72c4efab4a0b52a4dcd229b7a72bed98030dda057f",
+      "redactions": ["dataset cache path", "grader containment receipt path", "request IDs", "trajectory paths", "commands", "stdout and stderr", "actual execution identifiers", "endpoint address", "credential reference"],
+      "transformation": "Retains incomplete native SWE-run/v1 controls, image observations, task mapping, per-instance statuses, and failures. Private execution material is redacted."
+    },
+    {
+      "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/official-grader/r2-report.json",
+      "private_source_sha256": "sha256:9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+      "public_path": "native/cached-swe-r2-official-grader.json",
+      "public_sha256": "sha256:9eb7940939be6fd29af5b3af8d881ccf9c0aee8e56def5ed3427750d457e7cdb",
+      "redactions": [],
+      "transformation": "Byte-exact retention; no transformation; official outcomes retained."
+    },
+    {
+      "private_source_path": "private-evidence://2026-10-16-glm-natural-baseline/terminal-wrapper/r2-artifact.json",
+      "private_source_sha256": "sha256:a64efd611759b58829986411630f0b5051771a21d34bfa0cd2cbc4c1856866bd",
+      "public_path": "native/cached-swe-r2-campaign-evidence.json",
+      "public_sha256": "sha256:05f1cb9c3bc094e150ea587a1876288b80e4edd5cfac2ff0879ea55ea7c78fce",
+      "redactions": ["hardware identifier", "topology worker identifier", "local evidence paths"],
+      "transformation": "Extracted the existing failed results.evidence benchmark-evidence/v1 payload. It is an incomplete campaign comparator with no score or per-task comparator semantics."
+    }
+  ]
+}

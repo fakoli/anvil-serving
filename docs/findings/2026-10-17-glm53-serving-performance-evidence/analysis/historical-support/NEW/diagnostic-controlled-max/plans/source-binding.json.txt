@@ -1,0 +1,161 @@
+ARCHIVAL JSON SNAPSHOT — references retained as source claims, not current graph bindings
+Original source: NEW/diagnostic-controlled-max/plans/source-binding.json
+Original SHA256: ea6854cdb64bc322aab5ebf9b4847a3fca0e4e537d3975baf0f7ccf02e4f6641
+Original bytes: 8449
+
+{
+  "copied_sources": {
+    "collector": {
+      "byte_identical": true,
+      "copy_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/telemetry/collector.py",
+      "copy_sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e",
+      "original_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/telemetry/collector.py",
+      "original_sha256": "addcd9a4145e09c918282d939a6bd44860f690ec5ee24419a65dd0eb8ea0806e"
+    },
+    "fixture": {
+      "adaptation": "Offline-only fixture uses controlled n=1 native data, including a capacity-v3 all-failed result with the CLI response_metadata schema, top-level request_canaries/controlled_output_policy, and response-timing canary/control observations.",
+      "copy_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/telemetry/test_run_cell.py",
+      "copy_sha256": "41ff58e10192901fce2c4d7107fd2f86b6bec3e7d68710900ddff3e53c13f35f",
+      "original_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/telemetry/test_run_cell.py",
+      "original_sha256": "d275a1d584d85d88d86028f65685a4bd2e45ed72d446dee7dcec1b96cecaeccd"
+    },
+    "runner": {
+      "allowed_delta": "PLAN_SHA literal and diagnostic-only capacity-v3|capacity-v4-reasoning acceptance; all other validation gates, including reasoning_effort=max, remain retained.",
+      "copy_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/telemetry/run_cell.py",
+      "copy_sha256": "3a310a117d567e99149b689665a9edd35df2056a141a757364d8de12f13c1df4",
+      "copy_sha256_pre_plan_binding": "4da3e73183494c7b47b26b367ce3cc3d4c7818599f1cebb614d624d952aaeff2",
+      "diff_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/plans/runner-source-diff.patch",
+      "diff_sha256": "bc437177ec4ac067b36e52d54afc1688bd4bce65baf308037c8f4b5af8716374",
+      "original_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/telemetry/run_cell.py",
+      "original_sha256": "4da3e73183494c7b47b26b367ce3cc3d4c7818599f1cebb614d624d952aaeff2"
+    }
+  },
+  "diagnostic_plan": {
+    "absolute_request_cutoff": "2026-10-17T15:25:51.522595+00:00",
+    "path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/plans/run-plan.json",
+    "sha256": "8d594ec0d5c5d431068ab41c26d3682b83205b9bef4b360ef1fef86a7e5f24da"
+  },
+  "diagnostic_validator": {
+    "measurement_protocols": [
+      "capacity-v3",
+      "capacity-v4-reasoning"
+    ],
+    "preserved_reasoning_control": "--reasoning-effort max must equal native serve_flags.reasoning_effort",
+    "reason": "Controlled/canary/visible-content failures are emitted by the CLI as capacity-v3 while retaining response metadata."
+  },
+  "execution": {
+    "identity_receipts_copied": false,
+    "lifecycle_actions": false,
+    "requests_dispatched": false
+  },
+  "intent": "One-request same request-contract/input replay after the retained campaign runner stops; diagnostic only, not a performance comparison, retry replacement, promotion input, or reclassification of the retained original failure. The prompt seed is not a sampling seed at temperature 0.6, so response recurrence is stochastic and APC/cache history can differ.",
+  "original_campaign": {
+    "absolute_request_cutoff": "2026-10-17T15:25:51.522595+00:00",
+    "run_plan_path": "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/plans/run-plan.json",
+    "run_plan_sha256": "59e3680b252368ac8613d1a55eec0580f95006c66e36e62867956a7435e43532",
+    "source_rows": {
+      "baseline": {
+        "argv_changed_only": {
+          "--output": [
+            "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/baseline/baseline-controlled-ctx10240-c1.json",
+            "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/native/baseline/diagnostic-baseline-controlled-ctx10240-c1-n1.json"
+          ],
+          "--requests": [
+            "20",
+            "1"
+          ]
+        },
+        "diagnostic_id": "diagnostic-baseline-controlled-ctx10240-c1-n1",
+        "id": "baseline-controlled-ctx10240-c1",
+        "model_pin": {
+          "container": "intelligence-glm-exl3-327k-r11-dcp1-vision8-apc-nospec",
+          "engine": "vllm-exl3-v84",
+          "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+          "port":  31841,
+          "registry": "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-exl3-327k-r11-dcp1-vision8-apc-nospec.toml",
+          "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025"
+        },
+        "outer_timeout_seconds": {
+          "diagnostic": 600,
+          "original": 1200
+        },
+        "request_index": 0,
+        "row_sha256": "dff91831d5aca2f3ec1ce9529b5a9f26ceeabdb635e54c3cb8ea1f5137303565",
+        "same_seed": true,
+        "unchanged_controls": {
+          "--base-url": "http://127.0.0.1:31841/v1",
+          "--concurrency": "1",
+          "--confirm": true,
+          "--controlled-output-policy": "strict",
+          "--ctx-tokens": "10240",
+          "--engine": "vllm-exl3-v84",
+          "--gpu": "dual-rtx-pro-6000-maxq",
+          "--max-model-len": "327680",
+          "--max-tokens": "16384",
+          "--model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+          "--prompt-cache-mode": "unique",
+          "--reasoning-effort": "max",
+          "--request-canaries": true,
+          "--response-words": "128",
+          "--seed": "483001",
+          "--temperature": "0.6",
+          "--timeout": "900",
+          "--top-p": "0.95"
+        }
+      },
+      "candidate": {
+        "argv_changed_only": {
+          "--output": [
+            "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/native/candidate/candidate-controlled-ctx10240-c1.json",
+            "[PRIVATE_OPERATOR_ROOT]/evidence/2026-10-17-glm53-serving-performance/NEW/diagnostic-controlled-max/native/candidate/diagnostic-candidate-controlled-ctx10240-c1-n1.json"
+          ],
+          "--requests": [
+            "20",
+            "1"
+          ]
+        },
+        "diagnostic_id": "diagnostic-candidate-controlled-ctx10240-c1-n1",
+        "id": "candidate-controlled-ctx10240-c1",
+        "model_pin": {
+          "container": "glm53-nvidia-fp4-local-ab-r2",
+          "engine": "vllm-b12x-release-10152026",
+          "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+          "port":  31843,
+          "registry": "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml",
+          "repository": "nvidia/GLM-5.3-Flash-FP4-Local",
+          "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5"
+        },
+        "outer_timeout_seconds": {
+          "diagnostic": 600,
+          "original": 1200
+        },
+        "request_index": 0,
+        "row_sha256": "5ff984f4d114ac13d40eefe1b6121f8f62840bc2728f27bc22b9480947ed44c5",
+        "same_seed": true,
+        "unchanged_controls": {
+          "--base-url": "http://127.0.0.1:31843/v1",
+          "--concurrency": "1",
+          "--confirm": true,
+          "--controlled-output-policy": "strict",
+          "--ctx-tokens": "10240",
+          "--engine": "vllm-b12x-release-10152026",
+          "--gpu": "dual-rtx-pro-6000-maxq",
+          "--max-model-len": "327680",
+          "--max-tokens": "16384",
+          "--model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+          "--prompt-cache-mode": "unique",
+          "--reasoning-effort": "max",
+          "--request-canaries": true,
+          "--response-words": "128",
+          "--seed": "483001",
+          "--temperature": "0.6",
+          "--timeout": "900",
+          "--top-p": "0.95"
+        }
+      }
+    }
+  },
+  "schema": "anvil-serving.diagnostic-controlled-max-binding/v1",
+  "status": "frozen-pre-dispatch"
+}

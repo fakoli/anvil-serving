@@ -1,0 +1,85 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-10-13-full-qualification",
+  "complete": true,
+  "identity": {
+    "hardware": "dual RTX PRO 6000 Blackwell Max-Q",
+    "topology": "TP1 and TP2 public-native lanes only"
+  },
+  "workload": {
+    "quality": "five fixed SWE-bench Verified tasks with an independent official grader",
+    "capacity": "controlled output with request-canary validation"
+  },
+  "measurement": {
+    "path": "direct managed qualification",
+    "warm_cold_state": "preserved per native artifact",
+    "sample_count": 3,
+    "statistics": [
+      "actual prompt-token means; no stable p99 claim below 100 samples"
+    ]
+  },
+  "gates": [
+    "complete fixed-five grading",
+    "at least four resolved tasks",
+    "Django and Pylint sentinels resolved"
+  ],
+  "headline_results": [
+    {
+      "name": "GLM baseline SWE",
+      "value": "2/5 resolved with complete grading"
+    },
+    {
+      "name": "baseline prompt means",
+      "value": "25280.5, 25281.125, 106520, 216194.67"
+    },
+    {
+      "name": "Ignis terminal SWE",
+      "value": "2/5 resolved; 2/5 graded; 3 empty"
+    }
+  ],
+  "failures": [
+    "No challenger met the complete fixed-five floor and sentinel requirement.",
+    "Ignis C8 protocol preflight passed 6/13 with seven immediate 503 refusals; serial C1 passed 6/6. Separate SWE engine-full retries recovered 24 times; JSON_OBJECT is unsupported.",
+    "Qwen top-k-20 was cancelled before load/query; no improvement was measured."
+  ],
+  "limitations": [
+    "No new full-context C4 or performance ranking claim is made.",
+    "R19 accepts restoration evidence but preserves the routed thinking-off failure and does not prove parser flattening without a failed-request wire capture."
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality",
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion",
+      "rollback"
+    ],
+    "promotion_authorized": false,
+    "next_gate": "resolve the routed thinking-off evaluation gap before any later configuration decision"
+  },
+  "evidence": [
+    "README.md",
+    "native/",
+    "baseline-chart/baseline-capacity-graph-data.json"
+  ],
+  "restoration": {
+    "status": "accepted-with-thinking-off-gap",
+    "direct": "13/13",
+    "openclaw_high": "9/9",
+    "openclaw_off": "two failures with reasoning visible",
+    "openclaw_max": "local rejection before query",
+    "hindsight": "recall and retain passed",
+    "no_promotion": true
+  },
+  "cleanup": {
+    "status": "complete",
+    "removed_model_cache_snapshots": 11,
+    "removed_docker_images": 106,
+    "remaining_safely_removable_images": 0,
+    "evidence": "cleanup-summary.json",
+    "accounting_caveat": "Logical repository bytes and native allocated-plan bytes are reported separately; neither is a model-quality measurement."
+  }
+}

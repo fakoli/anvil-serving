@@ -1,0 +1,13 @@
+{
+  "at": 1792663221.8376281,
+  "reviewer": "flare_trial_review",
+  "gate_state": "accepted_with_runtime_gates",
+  "runtime_gates": [
+    "quiesce and drain",
+    "retained stop and exact restore preview",
+    "pool startup zero/geometry validation",
+    "70/90 minute cutoff",
+    "exact retained restore and direct/routed/monitoring gates"
+  ],
+  "promoted": false
+}

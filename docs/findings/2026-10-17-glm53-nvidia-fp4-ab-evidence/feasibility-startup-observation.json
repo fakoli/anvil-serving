@@ -1,0 +1,55 @@
+{
+  "schema": "anvil-serving.feasibility-startup-observation/v1",
+  "campaign": "2026-10-17-glm53-nvidia-fp4-ab",
+  "observed_at": "2026-10-17T08:00:54Z",
+  "candidate": {
+    "served_model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+    "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "configured_context_tokens": 327680
+  },
+  "startup": {
+    "load_exit_code": 0,
+    "load_completed_at": "2026-10-17T08:00:08Z",
+    "models_identity_check": "passed",
+    "models_identity_checked_at": "2026-10-17T08:00:54Z",
+    "state": "running",
+    "no_oom_observed_at_startup": true
+  },
+  "engine_observations": {
+    "model_loading_memory_gib_per_tp_worker": 82.73,
+    "kv_cache_reservation_gib_per_gpu": 7.12,
+    "kv_cache_allocation_mode": "explicit kv_cache_memory_bytes; gpu_memory_utilization profiling skipped",
+    "split_group_rebalanced": true,
+    "engine_reported_kv_cache_tokens": 1330579,
+    "engine_reported_max_concurrency_at_327680": 4.06
+  },
+  "host_containment_observation": {
+    "memory_limit_bytes": 55834574848,
+    "effective_swap_limit_bytes": 0,
+    "current_bytes": 23043084288,
+    "peak_bytes": 33131892736,
+    "oom_events": 0,
+    "oom_kill_events": 0
+  },
+  "feasibility_effect": {
+    "startup_fit": "observed",
+    "paper_fit": "replaced in part by engine startup observations",
+    "long_context_capacity": "unknown",
+    "c4_long_context_capacity": "unknown",
+    "qualification": "not-established",
+    "notes": [
+      "The engine token and 4.06x figures are allocator estimates after split-cache-group rebalance under the explicit fixed KV reservation.",
+      "They do not verify four concurrent 327680-token requests, request admission, request correctness, post-workload reserve, or stable long-context execution.",
+      "The startup cgroup observation records no OOM only through readiness; it is not workload telemetry."
+    ]
+  },
+  "protected_native_evidence": [
+    {"id": "startup-log", "sha256": "ba08f24e2051efd07b8201f87d4a88e85b03f5e75cdd10ed52e37baed096cb1f", "bytes": 38661},
+    {"id": "models-identity", "sha256": "a364ccb285852cbf918b61f7db912a9af77da4338068ac448ad1d142015b28e9", "bytes": 853},
+    {"id": "ready-status", "sha256": "da9163b91ddbe1f31d7f692862588bcb055deb50020df816b4a51ec39327e766", "bytes": 1019},
+    {"id": "startup-telemetry", "sha256": "616544920b86f9d5f64c55e2bec54ec2158f3533b127710eef5ac2cfc365a39b", "bytes": 3152},
+    {"id": "candidate-recipe", "sha256": "c057ee8a2f6255aecd7427ee7edadaa23062daf0fbdde7e570fbbd2224231e0c", "bytes": 5470}
+  ]
+}

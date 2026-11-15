@@ -1,0 +1,154 @@
+{
+  "schema_version": "flare-cache-fix-report-evidence-map/v1",
+  "report": "report.md",
+  "plan": "FLARE-FIX-001",
+  "source_pin": "47581ccac82660953a5b59cb04b2750d64edc97d",
+  "status": "experiment_closed_diagnostic_only",
+  "v2": {
+    "source_patch_sha256": "b132065b27532028bf2a02e754e86553ea846281f616f22ce74e89442ff0ec76",
+    "image_sha256": "d8fb208298fd3dd3f6b2b631148b01467a9449a9dcd1fef7dca304714bcf9411"
+  },
+  "promotion": {
+    "promoted": false,
+    "human_gate_required": true,
+    "upstream_submission": false
+  },
+  "measured_evidence": [
+    {
+      "path": "candidate-freeze.json",
+      "role": "frozen 25/75 allocation and candidate selection"
+    },
+    {
+      "path": "geometry.json",
+      "role": "source-verified record geometry and projections"
+    },
+    {
+      "path": "implementation-validation.json",
+      "role": "source/build test summary and retained limits"
+    },
+    {
+      "path": "pilot-a-restore-comparison.json",
+      "role": "all-case 128-token baseline result"
+    },
+    {
+      "path": "pilot-a-repeatability-comparison.json",
+      "role": "full-GPU-hit repeatability discriminator"
+    },
+    {
+      "path": "pilot-window-closeout.json",
+      "role": "incumbent restoration receipt"
+    },
+    {
+      "path": "offload-audit-current-tests.json",
+      "role": "current CPU audit-test invocation"
+    },
+    {
+      "path": "offload-audit-current-tests.log",
+      "role": "120-pass, zero-fail, 8-ignored CPU audit-test output; supersedes stale 118-test receipt"
+    },
+    {
+      "path": "two-gpu-audit-25-75.json",
+      "role": "synthetic exact-byte transfer audit passed for both splits, ranks, and directions"
+    },
+    {
+      "path": "audit-a-startup-r3.json",
+      "role": "signed model/stored-data verification and audit-enabled startup; 32 MiB host scratch per rank outside fixed pool"
+    },
+    {
+      "path": "audit-a-correctness/summary.json",
+      "role": "3/3 independent correctness oracles passed"
+    },
+    {
+      "path": "audit-a-warmup/summary.json",
+      "role": "3/3 audit-window warmup checks passed"
+    },
+    {
+      "path": "audit-a-transfer-audit.json",
+      "role": "actual-model A transfer audit passed both ranks, directions, pages, and row with zero failures"
+    },
+    {
+      "path": "audit-b-transfer-audit.json",
+      "role": "actual-model B transfer audit passed both ranks, directions, pages, and row with zero failures"
+    },
+    {
+      "path": "audit-b-capacity.json",
+      "role": "158 rows/2434 pages and 525 protected plus warmup pages fit"
+    },
+    {
+      "path": "audit-b-fixed1-pilot.json",
+      "role": "52/52 fixed-1 ID equality with 50 fetches; not fair timing evidence"
+    },
+    {
+      "path": "audit-window-closeout.json",
+      "role": "23.55-minute restoration; direct and routed seven-group checks with fresh monitor"
+    },
+    {
+      "path": "contribution/manifest.json",
+      "role": "verified incremental source-patch provenance and replay"
+    },
+    {
+      "path": "summary.json",
+      "role": "all 27 diagnostic cells and bounded decision"
+    },
+    {
+      "path": "restoration.json",
+      "role": "nine historical restoration windows and retained exceptions"
+    },
+    {
+      "path": "analysis/normalized-matrix.json",
+      "role": "54 native runs, 2550 formal requests and 162 warmups"
+    },
+    {
+      "path": "analysis/descriptive.json",
+      "role": "complete three-pair descriptive metrics"
+    },
+    {
+      "path": "analysis/cache-causal-observations.json",
+      "role": "312 fixed-work request records and 1182 hashed inputs"
+    },
+    {
+      "path": "analysis/final-causal-assessment.json",
+      "role": "diagnostic causal support with qualification false"
+    },
+    {
+      "path": "review/final-matrix-review.md",
+      "role": "independent matrix verification"
+    },
+    {
+      "path": "review/final-causal-review.md",
+      "role": "independent causal verification"
+    }
+  ],
+  "source_review": [
+    {
+      "path": "diagnostic-amendment.json",
+      "role": "unqualified diagnostic scope after failed numerical gate"
+    },
+    {
+      "path": "review/sampling-discriminator.md",
+      "role": "sampling clamp, metadata limit, and numerical gate analysis"
+    }
+  ],
+  "authoritative_final_metric_table": {
+    "path": "summary.json",
+    "native_derived": "analysis/descriptive.json",
+    "status": "complete_diagnostic_only",
+    "limitations": "All27 strict comparisons incomplete; natural output token IDs unavailable; C4 output/work unmatched; numerical gate failed; protected r3 regressions retained."
+  },
+  "pending_evidence": [
+    "independent numerical component oracle",
+    "Restore/re-Snapshot state oracle",
+    "physical DMA cancellation overlap",
+    "future human decision before any promotion or upstream submission"
+  ],
+  "gate_separation": {
+    "byte_transport": "synthetic and actual-model A/B audits passed for their exercised byte-transfer scope",
+    "sampled_output": "failed all-case 128-token baseline gate; no numerical claim",
+    "teacher_forced_logit": "not implemented; remains a separate stronger numerical oracle"
+  },
+  "validation": {
+    "status": "manual_structure_reviewed",
+    "workflow_packet_validate": "unavailable in this tool surface; not run",
+    "evidence_sufficiency": "Complete requested diagnostic matrix; qualification remains blocked"
+  }
+}

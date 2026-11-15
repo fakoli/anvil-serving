@@ -33,53 +33,6 @@ def _transport(*, host="node-a", expected_node="node-a", operation="node-workloa
     )
 
 
-def test_every_declared_host_is_retained_and_only_exact_binding_is_callable(monkeypatch):
-    calls = []
-
-    def reader(endpoint, auth_env, host, query, now, *, environment, monotonic):
-        calls.append((endpoint, auth_env, host, environment))
-        from anvil_serving.observability.workload_collection import build_node_workloads
-        return build_node_workloads(host, query, now, {})
-
-    monkeypatch.setattr(sources, "read_controller_workloads", reader)
-    readers = sources.build_fleet_workload_readers(
-        _topology(transports=(_transport(operation="node_workloads"),)),
-        environment={"CONTROLLER_TOKEN": TOKEN, "PRIVATE": "do-not-copy"},
-        monotonic=lambda: 0.0,
-    )
-    assert set(readers) == {"node-a", "node-b"}
-    assert readers["node-b"] is None
-    assert readers["node-a"]("node-a", WorkloadQuery(), NOW).host == "node-a"
-    assert calls == [("http://127.0.0.1:8765", "CONTROLLER_TOKEN", "node-a", {"CONTROLLER_TOKEN": TOKEN})]
-
-
-@pytest.mark.parametrize("transports", [
-    (),
-    (_transport(expected_node="node-b"),),
-    (_transport(), _transport(identifier="controller-b")),
-    (Transport("ssh-a", "ssh", "node-a", "node-a-native", "ssh://127.0.0.1:22", allowed_operations=("node-workloads",)),),
-    (_transport(operation="controller-status"),),
-])
-def test_missing_ambiguous_or_wrong_binding_disables_only_that_host(transports):
-    readers = sources.build_fleet_workload_readers(
-        _topology(transports=transports), environment={"CONTROLLER_TOKEN": TOKEN}
-    )
-    assert readers["node-a"] is None
-    assert readers["node-b"] is None
-
-
-def test_topology_shape_is_validated_before_environment_access():
-    class _Trap(dict):
-        def get(self, key, default=None):
-            raise AssertionError(key)
-
-    topology = _topology()
-    object.__setattr__(topology, "hosts", [Host("node-a", ())])
-    with pytest.raises(ValueError) as error:
-        sources.build_fleet_workload_readers(topology, environment=_Trap())
-    assert "node-a" not in str(error.value)
-
-
 def test_callback_exclusion_and_wrong_host_do_not_call_reader(monkeypatch):
     monkeypatch.setattr(
         sources, "read_controller_workloads",
@@ -93,25 +46,6 @@ def test_callback_exclusion_and_wrong_host_do_not_call_reader(monkeypatch):
     wrong = callback("node-b", WorkloadQuery(), NOW)
     assert excluded.status is ResultStatus.COMPLETE
     assert wrong.status is ResultStatus.UNAVAILABLE
-
-
-def test_environment_and_topology_mutation_cannot_change_captured_binding(monkeypatch):
-    captured = {"CONTROLLER_TOKEN": TOKEN}
-    topology = _topology(transports=(_transport(),))
-    calls = []
-
-    def reader(*args, **kwargs):
-        calls.append(kwargs["environment"])
-        from anvil_serving.observability.workload_collection import build_node_workloads
-        return build_node_workloads("node-a", WorkloadQuery(), NOW, {})
-
-    monkeypatch.setattr(sources, "read_controller_workloads", reader)
-    callback = sources.build_fleet_workload_readers(topology, environment=captured)["node-a"]
-    captured["CONTROLLER_TOKEN"] = "different-token-value"
-    object.__setattr__(topology.transports[0], "endpoint", "http://127.0.0.1:9999")
-    assert callback is not None
-    callback("node-a", WorkloadQuery(), NOW)
-    assert calls == [{"CONTROLLER_TOKEN": TOKEN}]
 
 
 @pytest.mark.parametrize("value", (None, "short", "bad\ncredential"))

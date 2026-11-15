@@ -1,0 +1,7 @@
+{
+  "at": 1792662188.0503736,
+  "observation": "All15 paired request token sequences differ despite identical bodies containing seed42;35responses all1024completion tokens and7037prompt tokens. All30 nonwarm requests fully prompt cached.",
+  "consequence": "Trace on/off measures equal-length workloads, not identical decoded computation. MTP acceptance/content can differ. Three pairs do not establish a causal overhead estimate or zero overhead. Retain acceptance deltas and pair ranges; bounded trace integrity valid separately.",
+  "next": "verify API seed handling and declare deterministic or acceptance-matched workload before causal observer overhead or kernel comparison",
+  "source_check": "helios/src/server/request.rs:391 parses seed with integer(object, seed, defaults.seed); it is not simply absent from the parser. No seed defect established."
+}

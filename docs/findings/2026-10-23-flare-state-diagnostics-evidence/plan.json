@@ -1,0 +1,63 @@
+{
+  "schema": "flare-state-diagnostic-plan/v1",
+  "created_utc": "2026-10-23T05:49:38.073343+00:00",
+  "authorizations": {
+    "gpu_downtime": "user authorized",
+    "upstream_submission": false,
+    "promotion": false
+  },
+  "prior_campaign_immutable": "OPERATOR_PATH_45ed7a70cf41/2026-10-22-flare-cache-fix",
+  "stages": [
+    {
+      "id": "state",
+      "method": "Authenticated retained TP2 package, existing graphs, canonical Snapshot A -> distinct live Restore -> Snapshot B; exact bytes both ranks and logically referenced pages",
+      "acceptance": "all observed canonical bytes equal; poisoned destination replaced; source unchanged",
+      "claims_excluded": [
+        "full logits equality",
+        "uncached numerical equivalence",
+        "historical 128-ID qualification"
+      ]
+    },
+    {
+      "id": "protected",
+      "method": "full frozen small12/pageheavy populations counterbalanced A/B/B/A, separate tracing captures",
+      "acceptance": "retain all attempts, exact IDs/work and lifecycle identity; report paired and arm summaries; no posthoc tolerance",
+      "claims_excluded": [
+        "noise as proven root cause",
+        "allocator as proven latency cause",
+        "parity with incumbent"
+      ]
+    },
+    {
+      "id": "numerical",
+      "method": "Use existing raw top20 logprobs if state oracle and signed serving binding permit; full-logits requires independently reviewed semantic view",
+      "acceptance": "localization only, no substitution for full numerical gate"
+    }
+  ],
+  "bounds": {
+    "repairs_per_stage": 2,
+    "root_is_only_gpu_operator": true,
+    "native_fence_seconds": 120,
+    "window_minutes": 90,
+    "restore_reserve_minutes": 15,
+    "no_unchanged_128_token_repeat_loop": true,
+    "request_cutoff_minutes": 75
+  },
+  "restoration_contract": "OPERATOR_PATH_855d8335357e/restore-commands.json",
+  "source_notes": {
+    "numerical-seam": "432350a62c0fdcfddf3c651144ece1c578038cc3c6c62d762dc70adfcaa67956",
+    "oracle-gates": "9d8de1fdb3feb6c56773e321dfc14a5fcf63e30883070f7cdd05a93db6fe6007"
+  },
+  "synthesis": "Two independent source/oracle reviews and one distinct protected-population analysis; no claim of full three-answer independent research panel. Corrected canonical state oracle agrees across reviewers. No source-confirmed numerical defect yet.",
+  "execution_order": "Protected diagnostics may run while source-only state-test work proceeds; both axes are independent and remain unqualified. No compile or audit/readback during timed requests.",
+  "repairs": [
+    {
+      "stage": "protected-controller",
+      "attempt": 1,
+      "cause": "Reviewer found unused wall deadline and setup could cross request cutoff",
+      "outcome": "Coordinator interrupted during firstload; no timingphases; incumbent restored",
+      "replacement": "runtime/protected-tool-action-r2.json",
+      "status": "pendingreview"
+    }
+  ]
+}

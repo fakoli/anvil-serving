@@ -1,0 +1,36 @@
+{
+  "schema": "sampling-reference-closure/v1-public-projection",
+  "recorded_at": "2026-10-26T03:57:22.096135Z",
+  "total_operation_through_final_verification_seconds": 675.4336562156677,
+  "operational_restoration": "verified exact image, model, source, runtime template, tokenizer, launch, mounts, router, exclusive mode, GPU ownership, and managed readiness",
+  "functional_restoration": "strict JSON acceptance failed; no matched pretrial smoke establishes a regression",
+  "restoration_acceptance": "incomplete",
+  "smoke_requests": 1,
+  "smoke_seconds": 0.792,
+  "smoke_completion_tokens": 54,
+  "smoke_finish_reason": "stop",
+  "smoke_exact_json": false,
+  "candidate_inference_requests": 0,
+  "reasoning_probe": "not_run",
+  "ignis": "hold",
+  "promoted": false,
+  "engine_running": 0,
+  "engine_waiting": 0,
+  "router_ready": true,
+  "router_admitting": true,
+  "router_active_requests": 0,
+  "memory": {
+    "available_before_bytes": 71636434944,
+    "available_after_bytes": 71831248896,
+    "oom_delta": 0,
+    "swapin_pages_delta": 17,
+    "swapout_pages_delta": 27,
+    "restored_container_peak_bytes": 35670380544,
+    "restored_events": {"low": 0, "high": 0, "max": 0, "oom": 0, "oom_kill": 0, "oom_group_kill": 0},
+    "phase_gaps": [
+      "No sample exactly between incumbent unload and candidate load; first entry sample occurred during the synthetic gate.",
+      "Candidate cgroup final and peak unavailable after deliberate startup assertion exit; Docker OOM-killed was false."
+    ]
+  },
+  "private_receipt_sha256": "263340303a435547f9bb7fc0bf6c592bb5f129af2d7893645971d066ab06fc77"
+}

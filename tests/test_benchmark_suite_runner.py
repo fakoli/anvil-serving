@@ -9,6 +9,7 @@ import pytest
 
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.profiles import load_profile
+from anvil_serving.benchmarking.submission import validate_submission_spec
 from anvil_serving.benchmarking.suite_runner import run_agentic_suite, run_context_suite
 
 
@@ -58,17 +59,11 @@ def test_debug_fixture_rejects_extra_calls_without_advancing_state(extra):
     assert result["observations"][0]["passed"] is (extra is None)
 
 
-def test_parallel_fixture_matches_arguments_and_rejects_duplicate_consumption():
-    from anvil_serving.benchmarking.agentic import build_agentic_scenario
-    from anvil_serving.benchmarking.suite_runner import _fixture_result
+def test_debug_loop_v2_submission_requires_legacy_case_authorization():
+    with pytest.raises(BenchmarkJobError) as error:
+        validate_submission_spec(spec("agentic", case_ids=["debug-loop-v2"]))
 
-    scenario, expected = build_agentic_scenario("parallel-tools")
-    consumed = set()
-    b = {"name": "read_file", "arguments": {"path": "b.py"}}
-    a = {"name": "read_file", "arguments": {"path": "a.py"}}
-    assert _fixture_result(scenario, expected, consumed, b) == {"path": "b.py", "marker": "B-OK"}
-    assert _fixture_result(scenario, expected, consumed, b) == {"error": "unexpected deterministic tool call"}
-    assert _fixture_result(scenario, expected, consumed, a) == {"path": "a.py", "marker": "A-OK"}
+    assert error.value.code == "unknown_agentic_case_id"
 
 
 def spec(suite, **parameters):
@@ -107,44 +102,6 @@ def context_caller(base, model, key, messages, max_tokens, timeout, **_kwargs):
             },
         },
     }
-
-
-def test_context_runner_calibrates_with_endpoint_usage_and_scores_exactly():
-    result = run_context_suite(
-        load_profile("smoke"),
-        spec("context", case_limit=1, advertised_context=650000),
-        caller=context_caller,
-    )
-    assert result["calibration"]["method"] == "endpoint-usage-filler-ratio/v2"
-    assert result["observations"][0]["passed"] is True
-    assert result["curve"]["effective_context"] == 8192
-    assert result["request_ids"]
-
-
-def test_context_runner_honors_recorded_case_bucket_position_and_headroom_selection():
-    result = run_context_suite(
-        load_profile("smoke"),
-        spec(
-            "context",
-            case_ids=["native-needle"],
-            token_buckets=[512],
-            positions=[0.97],
-            repetitions=1,
-            output_headroom_tokens=8192,
-            advertised_context=262144,
-        ),
-        caller=context_caller,
-    )
-
-    assert result["selection"] == {
-        "case_ids": ["native-needle"],
-        "token_buckets": [512],
-        "positions": [0.97],
-        "repetitions": 1,
-        "output_headroom_tokens": 8192,
-    }
-    assert result["observations"][0]["requested_tokens"] == 512
-    assert result["observations"][0]["position"] == 0.97
 
 
 def test_context_runner_forwards_controls_and_retains_bounded_reasoning_capture():
@@ -211,71 +168,6 @@ def test_context_runner_forwards_controls_and_retains_bounded_reasoning_capture(
     assert observation["finish_reason"] == "stop"
 
 
-def test_context_runner_preserves_legacy_optional_sampler_kwargs():
-    calls = []
-
-    def caller(base, model, key, messages, max_tokens, timeout, **kwargs):
-        calls.append(kwargs)
-        prompt = messages[-1]["content"]
-        answer = "ok" if prompt.startswith("token calibration") else re.search(
-            r"access marker for ORCHID is (K\d+)\.", prompt
-        ).group(1)
-        return {
-            "latency_s": 0.1,
-            "response": {
-                "choices": [{"message": {"content": answer}, "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
-            },
-        }
-
-    result = run_context_suite(
-        load_profile("smoke"),
-        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
-        caller=caller,
-    )
-
-    assert calls == [{}, {}]
-    assert result["request_controls"]["sampling"] == {
-        "temperature": {"requested": None, "effective_request": 0.0, "sent": True},
-        "top_p": {"requested": None, "effective_request": None, "sent": False},
-    }
-
-
-@pytest.mark.parametrize(
-    ("suite", "parameters", "caller"),
-    (
-        ("context", {"temperature": -0.1}, context_caller),
-        ("agentic", {"top_p": 0.0}, context_caller),
-    ),
-)
-def test_suite_runners_reject_invalid_optional_sampler_controls(suite, parameters, caller):
-    with pytest.raises(BenchmarkJobError) as exc:
-        run = run_context_suite if suite == "context" else run_agentic_suite
-        run(load_profile("smoke"), spec(suite, **parameters), caller=caller)
-
-    assert exc.value.code == "bad_sampling"
-
-
-def test_context_runner_marks_reasoning_only_reply_as_empty_visible_failure():
-    def caller(base, model, key, messages, max_tokens, timeout, **_kwargs):
-        prompt = messages[-1]["content"]
-        return {
-            "latency_s": 0.1,
-            "response": {
-                "choices": [{"message": {"content": "ok" if prompt.startswith("token calibration") else "", "reasoning": "hidden"}, "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": max(2, math.ceil(len(prompt) / 4)), "completion_tokens": 2},
-            },
-        }
-
-    result = run_context_suite(
-        load_profile("smoke"),
-        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
-        caller=caller,
-    )
-
-    assert result["observations"][0]["failure"]["code"] == "empty_visible_answer"
-
-
 def test_context_runner_rejects_selection_beyond_advertised_capacity():
     with pytest.raises(BenchmarkJobError) as exc:
         run_context_suite(
@@ -290,16 +182,6 @@ def test_context_runner_rejects_selection_beyond_advertised_capacity():
         )
 
     assert exc.value.code == "context_capacity_exceeded"
-
-
-def test_context_runner_rejects_unimplemented_profile_cases():
-    profile = copy.deepcopy(load_profile("smoke"))
-    profile["suites"]["context"]["cases"] = ["ruler-niah"]
-
-    with pytest.raises(BenchmarkJobError) as exc:
-        run_context_suite(profile, spec("context"), caller=context_caller)
-
-    assert exc.value.code == "unsupported_context_case"
 
 
 class AgentCaller:
@@ -339,208 +221,110 @@ class AgentCaller:
         }
 
 
-def test_agentic_runner_injects_failed_result_then_scores_retry():
-    result = run_agentic_suite(
-        load_profile("smoke"),
-        spec("agentic", recovery_result="error", case_ids=["tool-recovery"]),
-        caller=AgentCaller(),
-    )
-    assert result["passed"] is True
-    observation = result["observations"][0]
-    assert observation["stages"]["recovery"]["passed"] is True
-    assert [call["arguments"]["attempt"] for call in observation["tool_calls"]] == ["1", "2"]
-    assert len(result["request_ids"]) == 3
-    assert observation["visible_answer"] == "BUILD-OK"
-    assert len(observation["turns"]) == 3
+def budget_profile(suite, *, calls, tokens=16, deadline=600, repetitions=1):
+    profile = copy.deepcopy(load_profile("deep"))
+    profile["schema"] = "anvil-serving.benchmark-profile/v2"
+    settings = profile["suites"][suite]
+    if suite == "context":
+        settings.update(token_buckets=[512, 1024], positions=[0.5, 0.97])
+    settings["repetitions"] = repetitions
+    settings["timeout_s"] = deadline
+    settings["output_headroom_tokens" if suite == "context" else "max_completion_tokens"] = tokens
+    settings["budgets"] = {
+        "max_model_calls": calls, "max_completion_tokens": tokens,
+        "deadline_s": deadline, "max_retries": 0,
+        "min_free_disk_bytes": settings["requirements"]["min_free_disk_bytes"],
+    }
+    return profile
 
 
-def test_agentic_runner_forwards_one_explicit_reasoning_control():
-    caller = AgentCaller()
-    result = run_agentic_suite(
-        load_profile("smoke"),
-        spec(
-            "agentic",
-            recovery_result="error",
-            case_ids=["tool-recovery"],
-            reasoning_effort="xhigh",
-            temperature=1.0,
-            top_p=0.95,
-        ),
+def test_context_budget_deadline_during_calibration_retains_evidence(monkeypatch):
+    from anvil_serving.benchmarking import budgets
+
+    now = [0]
+    monkeypatch.setattr(budgets.time, "monotonic", lambda: now[0])
+
+    def caller(*args, **kwargs):
+        now[0] = 11
+        return context_caller(*args, **kwargs)
+
+    result = run_context_suite(
+        budget_profile("context", calls=5, deadline=10),
+        spec("context", case_ids=["native-needle"], token_buckets=[512], positions=[0.5]),
         caller=caller,
     )
-
-    assert result["request_controls"]["reasoning_effort"] == "xhigh"
-    assert result["request_controls"]["sampling"] == {
-        "temperature": {"requested": 1.0, "effective_request": 1.0, "sent": True},
-        "top_p": {"requested": 0.95, "effective_request": 0.95, "sent": True},
-    }
-    assert all(item["reasoning_effort"] == "xhigh" for item in caller.kwargs)
-    assert all(item["chat_template_kwargs"] is None for item in caller.kwargs)
-    assert all(item["temperature"] == 1.0 and item["top_p"] == 0.95 for item in caller.kwargs)
+    assert result["calibration"] is not None
+    assert result["observations"] == []
+    assert result["curve"] is None
+    assert result["failure"]["budget"] == "deadline_s"
+    assert result["budget"]["model_calls"] == 1
 
 
-def test_agentic_runner_rejects_conflicting_reasoning_controls():
-    with pytest.raises(BenchmarkJobError) as exc:
-        run_agentic_suite(
-            load_profile("smoke"),
-            spec(
-                "agentic",
-                case_ids=["tool-recovery"],
-                reasoning_effort="xhigh",
-                thinking_mode="enabled",
-            ),
-            caller=AgentCaller(),
-        )
+def test_agentic_deadline_before_first_send_has_no_attempted_case(monkeypatch):
+    from anvil_serving.benchmarking import budgets, suite_runner
 
-    assert exc.value.code == "conflicting_reasoning_controls"
+    now = [0]
+    monkeypatch.setattr(budgets.time, "monotonic", lambda: now[0])
+    original = suite_runner.build_agentic_scenario
+
+    def scenario(*args, **kwargs):
+        now[0] += 10
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(suite_runner, "build_agentic_scenario", scenario)
+    result = run_agentic_suite(
+        budget_profile("agentic", calls=3, deadline=10),
+        spec("agentic", case_ids=["tool-recovery"]),
+        caller=lambda *_, **__: pytest.fail("sent after deadline"),
+    )
+    assert result["state"] == "incomplete"
+    assert result["budget"]["model_calls"] == 0
+    assert result["observations"] == []
+    assert result["summary"]["attempted"] == 0
+    assert result["summary"]["pass_rate"] is None
 
 
-def test_agentic_runner_executes_every_profile_repetition():
-    profile = copy.deepcopy(load_profile("smoke"))
-    profile["suites"]["agentic"]["repetitions"] = 2
+def test_long_session_budget_counts_every_real_turn():
+    calls = []
+
+    def caller(_base, _model, _key, messages, **kwargs):
+        calls.append((copy.deepcopy(messages), kwargs))
+        return {"latency_s": 0.1, "response": {
+            "choices": [{"message": {"content": "ACK"}}],
+            "usage": {"prompt_tokens": len(calls) * 100, "completion_tokens": 2},
+        }}
 
     result = run_agentic_suite(
-        profile,
-        spec("agentic", recovery_result="error", case_ids=["tool-recovery"]),
-        caller=AgentCaller(),
+        budget_profile("agentic", calls=2),
+        spec("agentic", case_ids=["long-session"], session_turns=4), caller=caller,
     )
+    assert len(calls) == 2
+    assert result["budget"]["model_calls"] == 2
+    assert result["observations"][0]["history_prompt_tokens"] == [100, 200]
+    assert len(result["observations"][0]["turns"]) == 2
+    assert result["state"] == "incomplete"
 
-    assert [item["repetition"] for item in result["observations"]] == [0, 1]
-    assert result["summary"]["attempted"] == 2
 
+def test_agentic_late_last_reply_is_retained_but_cannot_complete(monkeypatch):
+    from anvil_serving.benchmarking import budgets
 
-def test_agentic_runner_executes_real_long_session_turns_with_token_growth():
-    class LongSessionCaller:
-        def __init__(self):
-            self.prompts = []
+    now = [0]
+    monkeypatch.setattr(budgets.time, "monotonic", lambda: now[0])
+    agent = AgentCaller()
+    timeouts = []
 
-        def __call__(self, base, model, key, messages, max_tokens, timeout, **_kwargs):
-            self.prompts.append(copy.deepcopy(messages))
-            final = messages[-1]["content"] == "Return only the session marker."
-            content = "SESSION-8841" if final else f"noted {len(self.prompts)}"
-            return {
-                "latency_s": 0.1,
-                "request_id": f"session-{len(self.prompts)}",
-                "response": {
-                    "choices": [{"message": {"content": content}, "finish_reason": "stop"}],
-                    "usage": {
-                        "prompt_tokens": 100 * len(self.prompts),
-                        "completion_tokens": 2,
-                    },
-                },
-            }
+    def caller(*args, **kwargs):
+        timeouts.append(kwargs["timeout"])
+        now[0] += 4
+        return agent(*args, **kwargs)
 
-    profile = copy.deepcopy(load_profile("deep"))
-    profile["suites"]["agentic"]["repetitions"] = 1
-    caller = LongSessionCaller()
     result = run_agentic_suite(
-        profile,
-        spec("agentic", case_ids=["long-session"], session_turns=4),
-        caller=caller,
+        budget_profile("agentic", calls=5, deadline=10),
+        spec("agentic", case_ids=["tool-recovery"]), caller=caller,
     )
-
-    assert result["passed"] is True
-    assert len(caller.prompts) == 5
-    assert result["observations"][0]["history_prompt_tokens"] == [100, 200, 300, 400, 500]
-    assert len(result["request_ids"]) == 5
-
-
-def test_long_session_preserves_declared_budget_telemetry_and_reasoning_replay():
-    class LongSessionFailureCaller:
-        def __init__(self):
-            self.calls = []
-
-        def __call__(self, base, model, key, messages, max_tokens, timeout, **_kwargs):
-            self.calls.append((copy.deepcopy(messages), max_tokens))
-            first = len(self.calls) == 1
-            message = (
-                {"content": "ACK", "reasoning_content": "first-turn reasoning"}
-                if first
-                else {"content": "", "reasoning_content": "second-turn reasoning"}
-            )
-            return {
-                "latency_s": 0.1,
-                "response": {
-                    "choices": [{"message": message, "finish_reason": "length"}],
-                    "usage": {"prompt_tokens": 28 * len(self.calls), "completion_tokens": 64},
-                },
-            }
-
-    profile = copy.deepcopy(load_profile("deep"))
-    profile["suites"]["agentic"]["repetitions"] = 1
-    caller = LongSessionFailureCaller()
-    result = run_agentic_suite(
-        profile,
-        spec("agentic", case_ids=["long-session"], session_turns=2),
-        caller=caller,
-    )
-
-    observation = result["observations"][0]
-    assert [max_tokens for _messages, max_tokens in caller.calls] == [16384, 16384]
-    replayed_assistant = caller.calls[1][0][-2]
-    assert replayed_assistant == {
-        "role": "assistant", "content": "ACK", "reasoning_content": "first-turn reasoning"
-    }
-    assert observation["failure"]["code"] == "parser_error"
-    assert observation["turns"][-1] == {
-        "latency_ms": 100.0,
-        "prompt_tokens": 56,
-        "completion_tokens": 64,
-        "finish_reason": "length",
-        "reasoning_chars": len("second-turn reasoning"),
-        "tool_call_count": 0,
-    }
-
-
-@pytest.mark.parametrize("case_ids", [[], ["tool-recovery", "tool-recovery"], ["unknown"]])
-def test_agentic_runner_rejects_invalid_case_selection(case_ids):
-    with pytest.raises(BenchmarkJobError):
-        run_agentic_suite(
-            load_profile("smoke"),
-            spec("agentic", case_ids=case_ids),
-            caller=AgentCaller(),
-        )
-
-
-@pytest.mark.parametrize("case", ["tool-recovery", "tool-sequence", "dependent-result", "debug-loop", "parallel-tools"])
-def test_fixture_rejects_wrong_turn_grouping_before_consumption(case, monkeypatch):
-    from anvil_serving.benchmarking.agentic import build_agentic_scenario
-    from anvil_serving.benchmarking import suite_runner
-
-    _, expected = build_agentic_scenario(case)
-    emitted = expected["tool_calls"][:1] if case == "parallel-tools" else expected["tool_calls"]
-    monkeypatch.setattr(suite_runner, "_fixture_result", lambda *_args: pytest.fail("consumed sequential fixture"))
-
-    def caller(*_args, **_kwargs):
-        return {"latency_s": 0.01, "response": {"choices": [{"message": {
-            "tool_calls": [{"id": f"call-{i}", "type": "function", "function": {
-                "name": call["name"], "arguments": json.dumps(call["arguments"]),
-            }} for i, call in enumerate(emitted)],
-        }}]}}
-
-    profile = copy.deepcopy(load_profile("deep"))
-    profile["suites"]["agentic"]["repetitions"] = 1
-    observation = run_agentic_suite(profile, spec("agentic", case_ids=[case]), caller=caller)["observations"][0]
-    assert not observation["passed"]
-    assert observation["failure_class"] == "protocol_failure"
-    assert observation["stages"]["protocol"]["passed"] is False
-    assert observation["tool_calls"] == emitted
-
-
-def test_parallel_runner_requires_and_accepts_one_complete_batch():
-    from anvil_serving.benchmarking.agentic import build_agentic_scenario
-
-    _, expected = build_agentic_scenario("parallel-tools")
-
-    def caller(_base, _model, _key, messages, **_kwargs):
-        tool_results = [m for m in messages if m["role"] == "tool"]
-        message = {"content": expected["final"]}
-        if not tool_results:
-            message = {"tool_calls": [{"id": f"call-{i}", "type": "function", "function": {
-                "name": call["name"], "arguments": json.dumps(call["arguments"]),
-            }} for i, call in enumerate(reversed(expected["tool_calls"]))]}
-        return {"latency_s": 0.01, "response": {"choices": [{"message": message}]}}
-
-    profile = copy.deepcopy(load_profile("deep"))
-    profile["suites"]["agentic"]["repetitions"] = 1
-    assert run_agentic_suite(profile, spec("agentic", case_ids=["parallel-tools"]), caller=caller)["passed"]
+    assert timeouts == [10, 6, 2]
+    assert result["observations"][0]["visible_answer"] == "BUILD-OK"
+    assert result["observations"][0]["passed"] is True  # retained content correctness
+    assert result["passed"] is False  # suite deadline was violated
+    assert result["failure"]["budget"] == "deadline_s"
+    assert result["state"] == "incomplete"

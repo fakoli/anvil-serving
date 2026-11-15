@@ -1,0 +1,56 @@
+{
+  "schema": "replacement-full-role-r2-native/v1",
+  "campaign": "DeepSeek V4.1 Flash EXL3 full-role r2",
+  "status": "completed_bounded_full_role_r2_evidence",
+  "configuration": {
+    "candidate_revision": "f7451e9617f675087881b5016fb210a526c7f99c",
+    "official_engram_revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027",
+    "runtime_image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b",
+    "quantization": "original candidate EXL3 2.7 bpw plan",
+    "tensor_parallel": 2,
+    "context_tokens": 327680,
+    "concurrency": 4,
+    "image_limit": 8,
+    "kv_cache_override_bytes": 2147483648,
+    "max_num_batched_tokens": 2048,
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "dense_mrow": 0,
+    "custom_all_reduce": "disabled",
+    "cpu_offload_gb_per_gpu": 4,
+    "configured_ram_mib": 65536,
+    "effective_swap_mib": 0
+  },
+  "outcome": {
+    "classification": "bounded_full_role_r2_resource_policy_failure",
+    "integrity_pairs_passed_before_engine": 178,
+    "health_status": 200,
+    "model_context_tokens": 327680,
+    "idle_free_gpu_mib_per_gpu": 4615,
+    "reported_engine_kv_capacity_tokens": 590576,
+    "reported_engine_kv_capacity_interpretation": "reported engine value; not usable-context, C4, or image-8 workload proof",
+    "basic_protocol_checks": {
+      "passed": 2,
+      "total": 2,
+      "scope": "non-thinking basic protocol only"
+    },
+    "required_free_gpu_mib_per_gpu": 4096,
+    "resource_policy_deficit_mib_per_gpu": 9,
+    "oom_events": 0,
+    "effective_host_limit_bytes": 68719476736,
+    "effective_swap_bytes": 0,
+    "managed_teardown_verified": true,
+    "followon_qualification_requests_sent": false,
+    "resource_monitor_samples": 43,
+    "resource_monitor_sampling_scope": "before and during basic non-thinking protocol execution",
+    "within_basic_execution_samples": 8,
+    "minimum_within_basic_execution_free_gpu_mib_per_gpu": 4087
+  },
+  "boundaries": [
+    "The exact r2 configuration failed the frozen GPU reserve after basic protocol checks; it is pruned for that configuration.",
+    "The 590,576-token engine report is not usable-context, C4, image-8, or workload-fit proof.",
+    "No native quality, throughput, long-context, multimodal, full-role qualification, route, alias, or promotion conclusion is recorded.",
+    "Unrun follow-on gates are unmeasured, not measured model failures."
+  ],
+  "promoted": false,
+  "human_gate_required": true
+}

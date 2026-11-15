@@ -1,0 +1,26 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "mixed-c4-diagnostic",
+  "status": "not-applicable-model-swap",
+  "mutation_required": false,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "release.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "evidence": [
+      "postterminal-state.json"
+    ]
+  },
+  "differences": [],
+  "post_run_checks": [
+    "all four native jobs completed; worker groups and coordinator absent",
+    "no exact owned-ID or child-path process matches; all eight recorded test containers absent",
+    "managed incumbent status passed; observer generation unchanged with zero running/waiting"
+  ],
+  "verified": false,
+  "not_applicable_reason": "No model or route lifecycle transition occurred. Postterminal cleanup/current-state observation is retained; this is not restoration-after-model-swap or a post-restoration client/preflight proof."
+}

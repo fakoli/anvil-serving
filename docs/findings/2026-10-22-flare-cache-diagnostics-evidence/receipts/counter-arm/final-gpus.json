@@ -1,0 +1,24 @@
+{
+  "argv": [
+    "nvidia-smi",
+    "--query-gpu=uuid,name,power.limit,temperature.gpu,memory.used",
+    "--format=csv,noheader,nounits"
+  ],
+  "at": 1792664879.2322965,
+  "rows": [
+    {
+      "uuid": "synthetic-id-14c581c315ea",
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "power.limit": "300.00",
+      "temperature.gpu": "55",
+      "memory.used": "96451"
+    },
+    {
+      "uuid": "synthetic-id-d013185ea964",
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "power.limit": "300.00",
+      "temperature.gpu": "59",
+      "memory.used": "96451"
+    }
+  ]
+}

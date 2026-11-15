@@ -1,0 +1,17 @@
+{
+  "reviewer": "GPT-5.6 Sol high read-only",
+  "reviewed_recipe_sha256": "9b77f579ec9babff3eb5ada783830dcc302417c072b5c903db2c1a75664034a9",
+  "decision": "approved bounded scout",
+  "guards": [
+    "freshforwardcachelogicalbytes0verified",
+    "exportedpackageandruntimeplanmustshowprefill2048",
+    "recordactualgraphcountKVpoolcgrouppeakOOMevents",
+    "startbefore14:05Zwith3600sstartupbound; stopnewwork15:10Z"
+  ],
+  "source": [
+    "ignition/recipes/glm53/bootstrap.py:111-117",
+    "ignition/recipes/glm53/bootstrap.py:363-380"
+  ],
+  "tradeoff": "smallerindividualchunksmayreducestallswhileloweringprefillthroughput; measureboth",
+  "promoted": false
+}

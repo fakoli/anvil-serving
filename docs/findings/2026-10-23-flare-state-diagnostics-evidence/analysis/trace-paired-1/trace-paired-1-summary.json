@@ -1,0 +1,310 @@
+{
+  "capture_groups": [
+    {
+      "arm": "A",
+      "capture_sha256": "564c409c8d0df8bbb337c45d3aa6b04d0e6d3094e0fd55b8bb60be6c69871ed0",
+      "coverage": {
+        "expected_measured": 24,
+        "http_request_to_slot_mapping": "not_inferred",
+        "observed_measured": 24,
+        "performance_eligible": false
+      },
+      "duration_ns": 30001232271,
+      "excluded_boundary_samples": 0,
+      "incarnation": "1-a",
+      "lane": "small12",
+      "metrics": {
+        "commit_to_observation_ms": {
+          "max": 2.764684,
+          "min": 0.589087,
+          "n": 48,
+          "p50": 0.702521,
+          "p95": 1.705292
+        },
+        "max_rank_gpu_ms": {
+          "max": 0.634592,
+          "min": 0.118816,
+          "n": 48,
+          "p50": 0.45720000000000005,
+          "p95": 0.585184
+        },
+        "prior_observation_age_ms": {
+          "max": 26220.75256,
+          "min": 421.159709,
+          "n": 45,
+          "p50": 432.142612,
+          "p95": 5345.756106
+        },
+        "rank_interval_spread_ms": {
+          "max": 0.257472,
+          "min": 0.00032,
+          "n": 48,
+          "p50": 0.014384000000000001,
+          "p95": 0.150784
+        },
+        "retained_shape_cost_ms": {
+          "max": 0.68032,
+          "min": 0.0,
+          "n": 48,
+          "p50": 0.5875619999999999,
+          "p95": 0.629268
+        },
+        "selection_to_commit_us": {
+          "max": 57.637,
+          "min": 3.509,
+          "n": 48,
+          "p50": 14.869,
+          "p95": 52.191
+        },
+        "wall_ms": {
+          "max": 1.932364,
+          "min": 0.398691,
+          "n": 48,
+          "p50": 0.622803,
+          "p95": 0.73977
+        }
+      },
+      "normalized_path": "analysis/trace-paired-1/small12-1-a.json",
+      "normalized_sha256": "91f99dd63ed474eaeaefba1c4b4ba0a68362771a15cd08317677dd41cd872624",
+      "samples": 48
+    },
+    {
+      "arm": "B",
+      "capture_sha256": "c46e40bc421e353e9b56e52213b30cf709fc8020b08aca8f35706e260768fe8f",
+      "coverage": {
+        "expected_measured": 24,
+        "http_request_to_slot_mapping": "not_inferred",
+        "observed_measured": 24,
+        "performance_eligible": false
+      },
+      "duration_ns": 30001342233,
+      "excluded_boundary_samples": 0,
+      "incarnation": "2-b",
+      "lane": "small12",
+      "metrics": {
+        "commit_to_observation_ms": {
+          "max": 1.706579,
+          "min": 0.589267,
+          "n": 48,
+          "p50": 0.7015975,
+          "p95": 1.612437
+        },
+        "max_rank_gpu_ms": {
+          "max": 0.625344,
+          "min": 0.101888,
+          "n": 48,
+          "p50": 0.422304,
+          "p95": 0.607712
+        },
+        "prior_observation_age_ms": {
+          "max": 24895.771237,
+          "min": 420.420751,
+          "n": 45,
+          "p50": 435.12444,
+          "p95": 5400.623806
+        },
+        "rank_interval_spread_ms": {
+          "max": 0.168512,
+          "min": 3.2e-05,
+          "n": 48,
+          "p50": 0.012095999999999999,
+          "p95": 0.132544
+        },
+        "retained_shape_cost_ms": {
+          "max": 0.634877,
+          "min": 0.0,
+          "n": 48,
+          "p50": 0.524237,
+          "p95": 0.627906
+        },
+        "selection_to_commit_us": {
+          "max": 53.585,
+          "min": 3.236,
+          "n": 48,
+          "p50": 14.354,
+          "p95": 46.648
+        },
+        "wall_ms": {
+          "max": 0.716069,
+          "min": 0.380301,
+          "n": 48,
+          "p50": 0.611171,
+          "p95": 0.702083
+        }
+      },
+      "normalized_path": "analysis/trace-paired-1/small12-2-b.json",
+      "normalized_sha256": "1bda3f3d01bad20beecc4869c1df7e281a7b2182de4ebe3b255c22548a753863",
+      "samples": 48
+    },
+    {
+      "arm": "A",
+      "capture_sha256": "934bb26586dd286605113ad5955da6b18ea6038b16aa1e7deab80de8cb5ddeaf",
+      "coverage": {
+        "expected_measured": 12,
+        "http_request_to_slot_mapping": "not_inferred",
+        "observed_measured": 12,
+        "performance_eligible": false
+      },
+      "duration_ns": 30001085517,
+      "excluded_boundary_samples": 0,
+      "incarnation": "1-a",
+      "lane": "pageheavy",
+      "metrics": {
+        "commit_to_observation_ms": {
+          "max": 1.788236,
+          "min": 0.620629,
+          "n": 24,
+          "p50": 0.7707729999999999,
+          "p95": 1.692397
+        },
+        "max_rank_gpu_ms": {
+          "max": 0.641088,
+          "min": 0.134176,
+          "n": 24,
+          "p50": 0.423648,
+          "p95": 0.613088
+        },
+        "prior_observation_age_ms": {
+          "max": 36377.523774,
+          "min": 430.816399,
+          "n": 21,
+          "p50": 469.131808,
+          "p95": 7876.766712
+        },
+        "rank_interval_spread_ms": {
+          "max": 0.184256,
+          "min": 0.001024,
+          "n": 24,
+          "p50": 0.024192,
+          "p95": 0.168768
+        },
+        "retained_shape_cost_ms": {
+          "max": 1.083796,
+          "min": 0.0,
+          "n": 24,
+          "p50": 0.5461940000000001,
+          "p95": 0.609087
+        },
+        "selection_to_commit_us": {
+          "max": 47.069,
+          "min": 3.428,
+          "n": 24,
+          "p50": 15.2845,
+          "p95": 46.763
+        },
+        "wall_ms": {
+          "max": 0.73934,
+          "min": 0.454169,
+          "n": 24,
+          "p50": 0.6228125,
+          "p95": 0.707091
+        }
+      },
+      "normalized_path": "analysis/trace-paired-1/pageheavy-1-a.json",
+      "normalized_sha256": "3abf9d262ec35f4c61a3c549578b964b4f3700331cee5589ca3deba92d6c5d45",
+      "samples": 24
+    },
+    {
+      "arm": "B",
+      "capture_sha256": "088730c5b1e38ed873e02638ba68f665e007d1c76ff0acaeecbbbedd14026f91",
+      "coverage": {
+        "expected_measured": 12,
+        "http_request_to_slot_mapping": "not_inferred",
+        "observed_measured": 12,
+        "performance_eligible": false
+      },
+      "duration_ns": 30001656969,
+      "excluded_boundary_samples": 0,
+      "incarnation": "2-b",
+      "lane": "pageheavy",
+      "metrics": {
+        "commit_to_observation_ms": {
+          "max": 1.5532,
+          "min": 0.587944,
+          "n": 24,
+          "p50": 0.7057165000000001,
+          "p95": 1.472274
+        },
+        "max_rank_gpu_ms": {
+          "max": 0.642816,
+          "min": 0.116736,
+          "n": 24,
+          "p50": 0.42744,
+          "p95": 0.579392
+        },
+        "prior_observation_age_ms": {
+          "max": 6112.752294,
+          "min": 422.949837,
+          "n": 21,
+          "p50": 459.60876,
+          "p95": 1289.167136
+        },
+        "rank_interval_spread_ms": {
+          "max": 0.19456,
+          "min": 0.000192,
+          "n": 24,
+          "p50": 0.01968,
+          "p95": 0.177088
+        },
+        "retained_shape_cost_ms": {
+          "max": 0.629045,
+          "min": 0.0,
+          "n": 24,
+          "p50": 0.543125,
+          "p95": 0.628762
+        },
+        "selection_to_commit_us": {
+          "max": 53.849,
+          "min": 3.444,
+          "n": 24,
+          "p50": 13.3015,
+          "p95": 34.854
+        },
+        "wall_ms": {
+          "max": 0.693021,
+          "min": 0.391333,
+          "n": 24,
+          "p50": 0.6176515,
+          "p95": 0.654036
+        }
+      },
+      "normalized_path": "analysis/trace-paired-1/pageheavy-2-b.json",
+      "normalized_sha256": "1e1acbaf31239a932cd838301952c4ac20aeaf5c7e514dc92247f8fd393fc34a",
+      "samples": 24
+    }
+  ],
+  "coverage": {
+    "all_complete": true,
+    "all_excluded_boundary_samples_zero": true,
+    "expected_measured": 72,
+    "groups": 4,
+    "observed_measured": 72,
+    "samples": 144
+  },
+  "diagnostic_only": true,
+  "limits": [
+    "Trace coverage establishes temporal overlap and full measured-population count only; HTTP request to native slot/generation mapping is explicitly not inferred.",
+    "Selection/commit, GPU, wall, and rank-interval observations are descriptive scheduler samples, not per-request timing attribution or a causal bottleneck claim.",
+    "Rank intervals overlap and are not summed; their spread is not synchronization wait. Wall minus GPU time is not pure CPU overhead.",
+    "Graph dimensions are capacities rather than executed token counts; retained shape cost is a prior observation, not a submitted-plan estimate.",
+    "Trace capture is separate from ABBA timing and cannot clear numerical, protected-performance, host-transfer, or promotion gates."
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "recommend_candidate": false,
+  "schema": "flare-state-diagnostics-trace-summary/v1",
+  "source_artifacts": [
+    {
+      "path": "formal/trace-paired-1/closeout.json",
+      "sha256": "97a828bdd37a2d6a1ce7da7283aae5b235b4d4b6b299a34acf086ca72c96ec71"
+    },
+    {
+      "path": "formal/trace-paired-1/root-closure-verification.json",
+      "sha256": "466d51eb32f776e66d92033451f7e9e5c329119ce83e8615ce070bf404add6dd"
+    },
+    {
+      "path": "../../2026-10-21-flare-inference-diagnostics/wave-v1/analyze-scheduler.py",
+      "sha256": "705850323742f76da327ed5ea04c0bbf8f0c948c928e65aff863196521891c4f"
+    }
+  ]
+}

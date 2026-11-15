@@ -4,6 +4,8 @@ Token and credential configuration names environment variables; the values
 must also survive a host reboot. This module resolves a variable through the
 operator ``.env`` chain — shell environment first, then
 ``$ANVIL_SERVING_HOME/.env``, then ``~/.env`` — without ever logging values.
+Set ``ANVIL_SERVING_NO_HOME_ENV=1`` to exclude the shared home file, including
+direct lifecycle reads, while retaining operator and manifest environments.
 
 Hermeticity rule: when a caller supplies an explicit ``env`` mapping, file
 fallback is skipped entirely. Injected environments stay hermetic in tests and
@@ -27,6 +29,8 @@ def read_dotenv(path):
     Shell environment wins later; this only fills missing vars for lifecycle
     commands launched from a manifest directory.
     """
+    if _home_environment_disabled() and _is_shared_home_environment(path):
+        return {}
     values = {}
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -50,12 +54,29 @@ def read_dotenv(path):
     return values
 
 
+def _home_environment_disabled() -> bool:
+    value = os.environ.get("ANVIL_SERVING_NO_HOME_ENV", "0")
+    if value not in {"0", "1"}:
+        raise ValueError("ANVIL_SERVING_NO_HOME_ENV must be 0 or 1")
+    return value == "1"
+
+
+def _is_shared_home_environment(path) -> bool:
+    home_environment = os.path.expanduser("~/.env")
+    if os.path.realpath(path) == os.path.realpath(home_environment):
+        return True
+    try:
+        return os.path.samefile(path, home_environment)
+    except FileNotFoundError:
+        return False
+
+
 def fallback_paths() -> list[str]:
     """Ordered dotenv fallback locations, highest precedence first."""
-    return [
-        config_path(".env"),
-        os.path.join(os.path.expanduser("~"), ".env"),
-    ]
+    paths = [config_path(".env")]
+    if not _home_environment_disabled():
+        paths.append(os.path.expanduser("~/.env"))
+    return paths
 
 
 def env_sources(name: str) -> list[str]:

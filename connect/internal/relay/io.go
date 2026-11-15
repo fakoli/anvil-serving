@@ -95,24 +95,20 @@ func (b *requestBody) Read(p []byte) (int, error) {
 }
 func (b *requestBody) abort() {
 	b.mu.Lock()
-	b.closed = true
-	_ = b.control.SetReadDeadline(time.Now())
+	if !b.closed {
+		b.closed = true
+		if !b.eof {
+			_ = b.control.SetReadDeadline(time.Now())
+		}
+	}
 	b.mu.Unlock()
 	b.once.Do(func() { _ = b.body.Close() })
 }
 func (b *requestBody) Close() error {
+	// An AfterFunc already scheduled may run after the handler returns.
+	// Close retires the response controller under the same lock as abort.
 	b.stop()
-	b.mu.Lock()
-	complete := b.eof
-	if complete {
-		b.closed = true
-	}
-	b.mu.Unlock()
-	if !complete {
-		b.abort()
-	} else {
-		b.once.Do(func() { _ = b.body.Close() })
-	}
+	b.abort()
 	return nil
 }
 

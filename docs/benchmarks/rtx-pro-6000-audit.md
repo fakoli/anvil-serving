@@ -7,6 +7,96 @@ coverage control; benchmark results remain in the [run catalog](runs.md).
 
 ## `measured-on`
 
+`docs/findings/2026-11-01-swift-tp1-gpu0.md`; `docs/benchmarks/models/qwen38-efficient-variants.md`
+(one RTX PRO 6000 Blackwell Max-Q: final TP1 functional, quality, capacity and
+resource evidence; qualification accepted; deployment status private;
+no stable p99 or sixteen-active-request claim).
+
+`docs/findings/2026-10-26-ignis-080-preflight.md`;
+`docs/findings/2026-10-26-ignis-080-preflight-evidence/README.md`
+(one-Max-Q bounded functional and resource measurements; required-tool
+preflight and repeat passed, original auto-tool miss retained; exact operational
+incumbent restoration verified; no performance, capacity, or promotion claim).
+
+`docs/findings/2026-10-26-marker-gpu-trace.md`
+(one-Max-Q actual-CUDA startup gates and one dual-Max-Q C1 model request;
+first close observed budget-forced, second close not reproduced, complete
+worker/API reconciliation unknown; no performance or promotion claim).
+
+`docs/findings/2026-10-25-sampling-upstream-tolerance.md`;
+`docs/findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md`
+(one-Max-Q synthetic kernel gate passed; one dual-Max-Q C1 model request failed
+repeated-close and strict-output gates; exact operational restoration passed,
+matched JSON smokes failed before and after; no speed claim or promotion).
+
+`docs/findings/2026-10-25-sampling-reference.md`;
+`docs/findings/2026-10-25-sampling-reference-evidence/README.md`
+(one-Max-Q synthetic sampling-reference checks before weights; 8/8 forced
+cases passed, one of 272 ordinary rows failed the strict local no-worse gate,
+no candidate inference or promotion; exact operational restoration passed,
+but the restored-incumbent strict JSON smoke failed).
+
+`docs/findings/2026-10-25-sampling-fix.md`;
+`docs/findings/2026-10-25-sampling-fix-evidence/README.md`
+(one-Max-Q synthetic sampling-kernel checks before weights; two GPUs reserved
+for the unrun TP2 candidate, failed ordinary parity retained, no promotion).
+
+`docs/findings/2026-10-25-glm-diagnostics.md`
+(six bounded Go/Rust quality measurements on the dual-Max-Q incumbent;
+failed and unstarted cases retained, no engine comparison or promotion).
+
+`docs/findings/2026-10-24-evaluation-platform-ignis.md`
+(bounded incumbent diagnostics on the dual-Max-Q configuration and one-GPU
+Ignis candidate startup evidence; no candidate inference, paired comparison,
+or promotion).
+
+`docs/benchmarks/engine-testing.md`
+(navigation and interpretation of the dated Flare/Ignis measurements below;
+no additional hardware test, current deployment claim or promotion);
+
+`docs/findings/2026-10-23-flare-upstream-refresh.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/reconstruction.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/report.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/compatibility-pr-draft.md`;
+`docs/findings/2026-10-23-flare-upstream-refresh-evidence/issue-draft.md`
+(current-upstream compatibility baseline on dual Max-Q TP2; descriptive replay and warm controls, driver boundary, no 75% arm or promotion).
+
+`docs/findings/2026-10-23-flare-state-diagnostics.md`
+(dual-Max-Q TP2 canonical state, protected latency, and separate scheduler-trace diagnostics; bounded state checks accepted, numerical and latency gates remain held; no promotion).
+
+`docs/findings/2026-10-22-flare-cache-fix.md`
+(dual-Max-Q TP2 cache-row allocation diagnostic; fixed-work replay support remains diagnostic, with numerical failure, protected regressions, and decode-C4 mismatches retained; no promotion).
+
+`docs/findings/2026-10-22-flare-cache-diagnostics.md`
+(dual-Max-Q cache replay and allocator-counter diagnostics; no performance ranking or promotion).
+
+`docs/findings/2026-10-21-flare-inference-diagnostics.md`
+(dual-Max-Q four-arm diagnostic wave, bounded scheduler trace and retained incumbent C4 failures; no overall ranking or promotion).
+
+`docs/findings/2026-10-21-flare-glm53-optimization.md` (bounded dual-Max-Q optimization and incumbent controls; no promotion).
+`docs/findings/2026-10-21-flare-glm53-optimization-evidence/diagnostics/optimization-plan.md` (plan for the same measured hardware; unrun options remain plans).
+
+`docs/findings/2026-10-21-flare-glm53-trial.md`;
+`docs/findings/2026-10-21-flare-glm53-trial-evidence/README.md`
+(bounded dual-Max-Q Flare/incumbent natural-output scout, strict failures, warm package reuse and exact restoration; no promotion or engine-only comparison).
+
+`docs/findings/2026-10-16-glm-natural-baseline.md` (dual-Max-Q natural-output timing and repeated cached SWE observations through a shared router; coding repeatability not established, no promotion);
+
+`docs/findings/2026-10-16-sglang-qwen-comparison.md` and `docs/findings/2026-10-16-sglang-qwen-comparison-evidence/README.md` (bounded dual-GPU SGLang, Qwen, and Nemotron scout evidence; no performance comparison or promotion);
+`docs/benchmarks/models/nemotron35-super-vl-120b.md` (measured-on: bounded direct TP2 scout, no qualification);
+
+`docs/findings/2026-10-15-replacement-evaluation/README.md` (evidence index for measured bounded dual-GPU replacement gates and one-GPU numerical compatibility; no additional measurement);
+`docs/findings/2026-10-15-replacement-evaluation.md` (GLM, MiMo, and Mistral dual-GPU gates; DeepSeek Stage 2 separately classified as one-GPU numerical evidence; exact GLM restoration retained);
+`docs/findings/2026-10-16-glm-v091-trial.md` (measured bounded R1/R2 and restored-original GLM functional, Oracle, vision, context, reserve, and five-case SWE evidence on the dual Max-Q configuration; R2 and control both resolved 3/5, so no promotion or performance claim);
+`docs/benchmarks/models/mistral-medium-35.md` (measured-on: bounded direct TP2 qualification);
+`docs/benchmarks/models/deepseek-v41-flash.md` (measured-on: Stage 2 one-GPU numerical evidence; Stage 3 dummy-path, Stage 4 bounded real-weight, and full-role r2/r3 resource-gate diagnostics plus r4's first-round Oracle8 failure on the dual-GPU configuration);
+`docs/findings/2026-10-13-full-qualification.md`;
+`docs/findings/2026-10-13-full-qualification-evidence/configuration-and-identity.md`
+(TP1/TP2 protocol, quality, fixed-five SWE and baseline capacity on dual Max-Q hardware; incomplete and failed candidate runs are retained, with no promotion).
+
+`docs/findings/2026-10-06-mimo-qualification.md`
+(dual-Max-Q MiMo and abliterated GLM direct quality scout; both candidates not qualified, no performance or full-context claim, exact r11 restoration verified: direct 25/25, routed 7/7, unchanged configuration hashes, and router readmission);
+
 `docs/findings/2026-10-05-xeon-model-qualification.md`
 (dual-Max-Q Qwen replacement and GLM CSF/QAD scout; configured context/C4 only,
 strict C4 cells are performance-ineligible; fresh-reload A1 missed the SWE
@@ -89,6 +179,9 @@ public-post merge and deployed readback remain pending);
 `docs/benchmarks/models/qwen36-27b.md`;
 `docs/benchmarks/models/qwen38-27b.md`;
 `docs/benchmarks/models/qwen38-flash-next.md`; `docs/benchmarks/runs.md`;
+`docs/findings/2026-10-26-flash-next-engine-qualification.md`;
+`docs/findings/2026-10-26-flash-next-engine-qualification-evidence/publication-summary.md`
+(three serialized recipe scouts on one RTX PRO 6000 Blackwell Max-Q; functional and context results retained, mixed coding outcomes and two failed C1 output gates; no engine ranking, speed claim, or promotion).
 `docs/findings/2026-07-10-blackwell-local-model-bakeoff.md`;
 `docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/failures.md`;
 `docs/findings/2026-07-10-blackwell-local-model-bakeoff-evidence/preflight-transcripts.md`;
@@ -264,3 +357,34 @@ qualification evidence).
 | `docs/findings/2026-09-23-thinkingcap-evidence/README.md` | wrong-target preparation | Records the corrected RTX 5090 target and explains that prior PRO 6000 preparation did not run ThinkingCap inference or a benchmark. |
 | `docs/findings/2026-09-23-thinkingcap-evidence/run-plan-initial-superseded.md` | wrong-target preparation | Preserved superseded plan that identifies the earlier PRO 6000 work as a targeting mistake with no ThinkingCap measurement. |
 | `docs/findings/2026-09-23-thinkingcap-evidence/friction-log.md` | wrong-target preparation | Operational chronology only: it records the corrected RTX 5090 authorization and that the PRO 6000/GLM line was superseded, without a ThinkingCap measurement. |
+
+## 2026-10-13 source-directory additions
+
+`docs/findings/2026-10-13-full-qualification-evidence/source-directory.md`;
+`docs/findings/2026-10-13-full-qualification-evidence/community-addendum.md`;
+`docs/findings/2026-10-13-full-qualification-evidence/source-guide.md`
+(`external-prior`: public hardware reports and recipe leads, with external measurements kept separate from this campaign).
+
+## 2026-10-17 GLM FP4 additions
+
+`docs/findings/2026-10-17-glm53-serving-performance.md`
+(measured-on: dual-RTX-PRO-6000 matched serving comparison with 24 accepted
+cells and 12 paired candidate/control populations; original controlled matrix
+remains partial, the candidate is not promoted);
+
+`docs/findings/2026-10-17-glm53-nvidia-fp4-ab.md`
+(measured-on: prior bounded candidate/control functional, context, diagnostic,
+and restoration evidence; its timing-unmeasured limitation is scoped to that
+quality campaign);
+
+`docs/findings/2026-10-17-glm53-nvidia-fp4-ab-evidence/diagnostic-research.md`
+(`external-prior`: pinned recipe and runtime fault-isolation research only;
+it records no additional local measurement).
+
+`docs/findings/2026-10-17-glm53-serving-performance-evidence/plans/source/skills/anvil-serving-benchmark-docs/SKILL.md`
+(`topology-only`: frozen publication-methodology snapshot; its hardware examples
+do not constitute another measured run).
+
+## 2026-10-19 Ignis 0.7.2
+
+`docs/findings/2026-10-19-ignis-072.md` (`measured-on`: one RTX PRO6000 Blackwell Max-Q; bounded functional/deadline checks and incomplete coding qualification; no promotion or capacity claim).

@@ -1,0 +1,275 @@
+{
+  "artifacts": [
+    {
+      "native_schema": "preflight/v2",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "checks",
+        "results",
+        "observations[].usage",
+        "observations[].seconds"
+      ],
+      "private_source_bytes": 22369,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "8a17173b36a222d5257fe649034fffd540034cc8789d3f7b6e788442fd92572f",
+      "public_bytes": 17167,
+      "public_path": "native/sglang-scout-preflight.json",
+      "public_sha256": "bd0d494e6c72856dcff45fba76ec536c305e6af2fbec8eb09529ea0300e321e9",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 37031,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "2dfd1cf94bf6bc74cd7e39bf1904a8828ac6b3ac68265d642a6207bb6ea0a1fc",
+      "public_bytes": 33563,
+      "public_path": "native/sglang-scout-oracle8-r1.json",
+      "public_sha256": "0073dd4f91177f908245c2ea9ca4059655829b6634601625e7c8c5f31a4e99a0",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 37284,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "5d4e9d66043045d104bc261bd4cba0fbed8e99cd0d0987dfd01df4db79589075",
+      "public_bytes": 33559,
+      "public_path": "native/sglang-scout-oracle8-r2.json",
+      "public_sha256": "f701555132ed246ba2a5ac471c9fd6552daa4374e6ba466429558893d47a07c5",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.agentic-suite-run/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "passed",
+        "summary",
+        "observations[].stages",
+        "observations[].turns",
+        "observations[].answer_sha256"
+      ],
+      "private_source_bytes": 36976,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "20a063cd7a2a77b0758ca568a5e11753e0a956007dbd49e04b11cf8182e0ee81",
+      "public_bytes": 33562,
+      "public_path": "native/sglang-scout-oracle8-r3.json",
+      "public_sha256": "7c50cc24697f16b5b8ed91b48038439d288391f4a63fc2e0e2fd80b889946a1e",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.mhc-runtime-source/v1",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "source_sha256",
+        "script_sha256",
+        "image",
+        "binding"
+      ],
+      "private_source_bytes": 534,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "4e27ddc816546455a857c631b3179bc4e4c9e721bb0197fc41e2814ad73b42a4",
+      "public_bytes": 466,
+      "public_path": "native/sglang-scout-mhc-runtime-source.json",
+      "public_sha256": "b3b5e97013819da23bddd65948b434383aa3075103b574f561678d528f406ba2",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.mhc-parity/v2",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "geometry",
+        "token_counts",
+        "repetitions",
+        "atol",
+        "rtol",
+        "results"
+      ],
+      "private_source_bytes": 1425,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "82541f6d0ccfb4ef030120d14e2017d82b9033150f4403ad24469ae1da99c444",
+      "public_bytes": 1357,
+      "public_path": "native/sglang-scout-mhc-parity.json",
+      "public_sha256": "bc4b9e37c86f2c2985a5405a8880ce6774406b6fe3241fceab94c9d24fe200be",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "unversioned-retained-native-record",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "gates",
+        "minimum_free_mib"
+      ],
+      "private_source_bytes": 310,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "004d470abb3df1ed105211e221a249803307b93ea7ae3d6bb2c258590536bcf8",
+      "public_bytes": 310,
+      "public_path": "native/sglang-scout-startup-acceptance.json",
+      "public_sha256": "e8ce3d37cc5cc203cb1c93056a0ed4069a07c580884988eca9cecb3aa73aef5c",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "unversioned-retained-native-record",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "mem_available_bytes",
+        "required_bytes",
+        "host_admitted"
+      ],
+      "private_source_bytes": 154,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "9d729adc275ff30be1f2e0f6610e1abd5141c9fb97f132fcb0a0e24f09944763",
+      "public_bytes": 154,
+      "public_path": "native/sglang-scout-r1-host-ram-policy-failure.json",
+      "public_sha256": "4e5128c1a88d71811317dc6ec545802c0bb16d666ca1a5e8d704cb6b613f5834",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "unversioned-retained-native-record",
+      "partial_child_redactions": [
+        "string outputs and prompt excerpts are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "minimum_free_mib",
+        "breach_samples",
+        "requests_sent",
+        "minimum_free_mib_final",
+        "benchmark_requests_sent"
+      ],
+      "private_source_bytes": 746,
+      "private_source_label": "retained-sglang-scout-artifact",
+      "private_source_sha256": "bcc8cfcdcea3688fc4ed077e4e468703c38eb46effba58fc2339d5e7bb9b65c1",
+      "public_bytes": 717,
+      "public_path": "native/sglang-scout-r2-gpu-reserve-abort.json",
+      "public_sha256": "0d6a2210c3e5354d32fbf2708bbd504f4e254cc0115ebe674c8d3c249e136066",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    },
+    {
+      "native_schema": "anvil-serving.swe-run/v1",
+      "partial_child_redactions": [
+        "raw trajectories, prompts, code patches, commands, stdout/stderr, and model text are empty strings",
+        "confidential nested values retain list length and item shape while being recursively sanitized",
+        "private paths are empty strings",
+        "private GPU identifiers are public placeholders",
+        "private runtime aliases are a public synthetic alias"
+      ],
+      "preserved_metric_paths": [
+        "state",
+        "failure",
+        "summary.attempted",
+        "summary.graded",
+        "summary.resolved",
+        "summary.resolve_rate",
+        "official_grader_complete",
+        "instances[].exit_status",
+        "instances[].failure_class",
+        "instances[].grader.completed",
+        "instances[].grader.resolved"
+      ],
+      "private_source_bytes": 40234,
+      "private_source_label": "retained-sglang-scout-terminal-swe-artifact",
+      "private_source_sha256": "7c3242f6f6f1d60196400379f6b180218aa864289ff161c69edf352a1b5b48ec",
+      "public_bytes": 36526,
+      "public_path": "native/sglang-scout-swe5.json",
+      "public_sha256": "4847c30f6a2c2359d511579d06d9695ba4bbdb1a1f8f4f79334e12e4d65913eb",
+      "sanitization": "schema-preserving recursive projection; preserves mapping/list paths and scalar JSON types while replacing confidential leaf values"
+    }
+  ],
+  "campaign_id": "2026-10-16-sglang-qwen-comparison",
+  "evidence_scope": "completed SGLang scout native schema-preserving public projections, including terminal partial SWE evidence",
+  "finalization": "deferred until campaign closure and independent public-artifact review; no artifact-manifest.json has been created",
+  "privacy_policy": "Private originals remain outside the repository. This ledger binds schema-preserving sanitized projections to private original SHA-256 values without disclosing private paths, endpoints, host/GPU UUIDs, account data, prompts, raw model output, or raw container identifiers.",
+  "public_identity": {
+    "endpoint": "127.0.0.1:30000",
+    "hardware": "2x NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "host": "Primary Node",
+    "served_alias": "glm53-flash-sglang-scout"
+  },
+  "schema": "anvil-serving.public-sglang-scout-source-ledger/v1",
+  "served_name_disclosure": "The measured runtime alias is private; every occurrence is replaced with glm53-flash-sglang-scout. sglang-scout-public-configuration.json binds that public alias to exact public-safe model revision, runtime image digest, recipe and registry digests, engine, quantization, TP, context, and hardware, with field-level private-source SHA-256 references.",
+  "status": "terminal public projection ledger; campaign closure is recorded by the common artifact manifest and no-promotion decision summary",
+  "supporting_public_records": [
+    {
+      "private_source_bytes": 13251,
+      "private_source_label": "retained-no-spec-parity-recipe",
+      "private_source_sha256": "69867be8be90d9531d31ba85c7d9afd33e3630e9beabe21315bc6c77bd5f8b0b",
+      "public_bytes": 3988,
+      "public_path": "sglang-scout-public-configuration.json",
+      "public_sha256": "1ce10f5ed5980235496c2120899b903b7c2920aa418cdcbe7571c1432248b7ee",
+      "purpose": "public-safe exact configuration and served-name binding"
+    },
+    {
+      "public_bytes": 1950,
+      "public_path": "sglang-scout-sanitization-provenance.json",
+      "public_sha256": "69e07e82e7738e63872db4fad11eb887d6ad2823275eed4c4eb13469324c5c8a",
+      "purpose": "disclosed SGLang-scout schema-preserving redaction contract"
+    }
+  ]
+}

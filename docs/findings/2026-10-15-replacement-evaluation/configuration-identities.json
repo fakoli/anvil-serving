@@ -1,0 +1,121 @@
+{
+  "configurations": [
+    {
+      "candidate": "GLM r11",
+      "identities": {
+        "context": {
+          "configured_tokens": 327680,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "hardware": {
+          "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+          "vram_mib_per_gpu": 97887
+        },
+        "model": {
+          "repository": "brandonmusic/GLM-5.3-Flash-tr3-4bpw",
+          "revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+          "served_name": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+        },
+        "runtime": {
+          "engine": "vLLM EXL3",
+          "image": "sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692"
+        }
+      },
+      "original_source_sha256": "f75795a7edf6efbd127851eade3d954ce04142102fad7b6698c5c9c1904045d9",
+      "scope": "exact retained benchmark identity; configured context is not measured full-context coverage",
+      "source_basename": "glm-agentic18-artifact.json"
+    },
+    {
+      "candidate": "MiMo r5",
+      "identities": {
+        "context": {
+          "configured_tokens": 327680,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "hardware": {
+          "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+          "vram_mib_per_gpu": 97887
+        },
+        "model": {
+          "repository": "XiaomiMiMo/MiMo-V2.6-Flash-MOPD",
+          "revision": "b12f5573350bb1704513fcf119fca48e498b0423",
+          "served_name": "mimo26-mopd-fp8kv-omni-tp2-c4-327k-r5-greedy"
+        },
+        "runtime": {
+          "engine": "vLLM",
+          "image": "sha256:42ff601ea51f08c7598322ac22a363b843e1c8202c8358752bb50a01553b805b",
+          "recipe_digest": "9f332fe1ebf3cc652d456451ee69679db34f70d9d0f28fad76c789258b2dccb2",
+          "recipe_registry_sha256": "6fadf1b1722cbe1def1142bafdf0bc480e46cd82cdf824b3e0345c6267daf079",
+          "sampling_source_revision": "eb87980585c10f7e5ee8f498fd3830898101d208"
+        }
+      },
+      "original_source_sha256": "44981584f08bfa723c19b66f19516dc75b9fe9242a5edcce337c3b8866eddf8a",
+      "scope": "exact retained benchmark identity; configured context is not measured full-context coverage",
+      "source_basename": "mimo-r5-greedy-agentic18-r1-artifact.json"
+    },
+    {
+      "candidate": "Mistral r3",
+      "identities": {
+        "context": {
+          "configured_tokens": 262144,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "hardware": {
+          "gpu": "2x RTX PRO 6000 Blackwell Max-Q",
+          "vram_mib_per_gpu": 97887
+        },
+        "model": {
+          "repository": "mistralai/Mistral-Medium-3.5-128B",
+          "revision": "22b2b868a15677cfa6061277ed2f653d1349a9ab",
+          "served_name": "mistral35-fp8kv-tp2-c4-262k-r3"
+        },
+        "runtime": {
+          "engine": "vLLM",
+          "image": "vllm/vllm-openai@sha256:cb9bc64f0f038c2c2ebf13b31248fb87aca40c356c3d20f363be087cfcff1fcd",
+          "image_id": "sha256:cb9bc64f0f038c2c2ebf13b31248fb87aca40c356c3d20f363be087cfcff1fcd",
+          "recipe_digest": "dd52af2cd56ea427e16e996bc93a6dff04763151646092e3ee7235db2b8b0425",
+          "registry_sha256": "a8495d2db46959352b91ec509b64fb19e470aded43bd6be78ae35413c0843879"
+        }
+      },
+      "original_source_sha256": "545d5d5322130ede129469f3ee5b11076ca762f11890dc105431be97a0dadc77",
+      "scope": "exact retained benchmark identity; configured context is not measured full-context coverage",
+      "source_basename": "mistral-r3-agentic18-r1-artifact.json"
+    },
+    {
+      "additional_review_source_basename": "independent-stage2-r6-review.json",
+      "additional_review_source_sha256": "95a190fd0dc0c3ff58408ca39fc0e652e878e949105161f65acd522e097ab555",
+      "candidate": "DeepSeek Stage 2 r6 runtime",
+      "identities": {
+        "hardware": {
+          "gpu": "one RTX PRO 6000 Blackwell Max-Q compute GPU",
+          "vram_mib_per_gpu": 97887
+        },
+        "model": {
+          "candidate_artifact": {
+            "format": "EXL3 2.7bpw",
+            "repository": "sudoingx/DeepSeek-V4.1-Flash-EXL3-2.7bpw",
+            "revision": "f7451e9617f675087881b5016fb210a526c7f99c"
+          },
+          "repository": "deepseek-ai/DeepSeek-V4.1-Flash",
+          "revision": "2cba9e42aa026125f3ed06c6d98c1db82f7ca027"
+        },
+        "runtime": {
+          "engine": "vLLM 0.31.0+dsv41.sm120 with EXL3 plugin",
+          "image": "sha256:b6db406afb24809ed7b27c7312556487cb7099baf73fd7423183e9d6f7061e4b"
+        }
+      },
+      "original_source_sha256": "0b9d0e80dbcaa300835c900dd401b44d90915669c087c209feaf812dbce1a782",
+      "revision_source_basename": "source-registry.json",
+      "revision_source_sha256": "3e27c3b852dfc1656a84ef5f98b96b7338e178f41c3af8b5be26ff58107353b3",
+      "scope": "Measured: independently reviewed Stage 2 r6 one-GPU numerical runtime compatibility. Intended target: the pinned EXL3 artifact and official Engram revisions named here. No model weights loaded; not Stage 3 serving, quality, capacity, or promotion evidence.",
+      "source_basename": "deepseek-stage2-r6.native.json"
+    }
+  ],
+  "schema": "replacement-public-configurations/v1"
+}

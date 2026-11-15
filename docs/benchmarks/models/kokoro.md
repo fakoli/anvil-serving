@@ -4,6 +4,8 @@
 
 ## Current status and review date
 
+Latest additional review, 2026-10-06: existing Kokoro FastAPI 0.8.2/MPS control retained, with no human naturalness winner or new control qualification. The older RTX snapshot below remains historical.
+
 !!! info "Decision snapshot"
 
     - **Product role:** published co-resident TTS component in the retained
@@ -105,6 +107,10 @@ qualification or a new deployment decision.
 - **Evidence:** [ASR qualification](../../findings/2026-07-28-nemotron35-asr-qualification.md)
   and [retained runtime state](../../findings/2026-07-28-nemotron35-asr-qualification-evidence/runtime-state.json).
 
+### 2026-10-06 — Kokoro MPS control
+
+**Status:** full 60-prompt component control, one separate cold request. **Measured:** warm 60/60; first PCM p50/p95 1,026.71/1,709.21 ms; independent ASR proxy WER 8.118%. **Limits:** loaded checkpoint/default voice unverified; two names require human acoustic review; no blind votes, actual interruption or combined soak. **Evidence:** [dated finding](../../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results) · [hardware](../hardware/apple-m4-max.md#2026-10-06-english-voice-qualification) · [reconstruction](../../findings/2026-10-06-m4-max-voice-quality-qualification-evidence/reproduction.md).
+
 ## Decision and promotion state
 
 ### Retained dated role
@@ -134,6 +140,8 @@ qualification or a new deployment decision.
   do not describe the retained Dark result.
 
 ## Dated run history
+
+- 2026-10-06 — [English voice qualification](../../findings/2026-10-06-m4-max-voice-quality-qualification.md#tts-results).
 
 - [2026-07-27 — co-resident voice stack](../../findings/2026-07-27-omni-voice-stack-qualification.md)
 - [2026-07-28 — ASR corpus use](../../findings/2026-07-28-nemotron35-asr-qualification.md)

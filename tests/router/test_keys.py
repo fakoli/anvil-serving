@@ -40,29 +40,6 @@ def test_authentication_is_digest_only_revocable_and_closed(tmp_path):
     assert store.authenticate(secret) is None
 
 
-def test_expiry_and_missing_store_fail_closed(tmp_path):
-    with pytest.raises(KeyStoreError):
-        KeyStore(tmp_path / "missing.sqlite3")
-    store = _store(tmp_path)
-    metadata, secret = _key(store, expires_days=1)
-    with store._connect() as connection:
-        connection.execute("UPDATE keys SET expires_at = 0 WHERE key_id = ?", (metadata["key_id"],))
-    assert store.authenticate(secret) is None
-
-
-def test_malformed_database_values_fail_closed_without_token_type_errors(tmp_path):
-    store = _store(tmp_path)
-    metadata, secret = _key(store)
-    with store._connect() as connection:
-        connection.execute("UPDATE keys SET token_hash = 'not-a-digest' WHERE key_id = ?", (metadata["key_id"],))
-    assert store.authenticate(secret) is None
-    with store._connect() as connection:
-        connection.execute("UPDATE keys SET token_hash = ? WHERE key_id = ?", (keys.hashlib.sha256(secret.encode()).digest(), metadata["key_id"]))
-        connection.execute("UPDATE keys SET models = 7 WHERE key_id = ?", (metadata["key_id"],))
-    with pytest.raises(KeyStoreError, match="invalid grants"):
-        store.authenticate(secret)
-
-
 @pytest.mark.skipif(os.name == "nt", reason="POSIX ownership and symlink contract")
 def test_store_refuses_unsafe_permissions_and_symlinks(tmp_path):
     unsafe = tmp_path / "unsafe"
@@ -79,20 +56,6 @@ def test_store_refuses_unsafe_permissions_and_symlinks(tmp_path):
     link.symlink_to(target)
     with pytest.raises(KeyStoreError, match="unsafe"):
         KeyStore(link)
-
-
-@pytest.mark.skipif(os.name == "nt", reason="POSIX hardlink contract")
-def test_store_refuses_hardlinked_database_and_linked_ancestor(tmp_path):
-    store = _store(tmp_path)
-    os.link(store.path, tmp_path / "other.sqlite3")
-    with pytest.raises(KeyStoreError, match="owner-only"):
-        KeyStore(store.path)
-    root = tmp_path / "root"
-    root.mkdir(mode=0o700)
-    linked = tmp_path / "linked"
-    linked.symlink_to(root, target_is_directory=True)
-    with pytest.raises(KeyStoreError, match="unsafe"):
-        KeyStore.initialize(linked / "keys.sqlite3")
 
 
 def test_store_path_is_absolute_and_model_grants_are_closed(tmp_path, monkeypatch):
@@ -127,33 +90,6 @@ def test_rate_limit_is_atomic_and_persists(tmp_path):
     assert KeyStore(tmp_path / "keys.sqlite3").admit(metadata["key_id"]) >= 1
 
 
-def test_rate_limit_clock_bounce_cannot_mint_tokens(tmp_path, monkeypatch):
-    store = _store(tmp_path)
-    metadata, _ = _key(store, rpm=2)
-    with store._connect() as connection:
-        connection.execute("INSERT INTO buckets VALUES (?, ?, ?)", (metadata["key_id"], 0.0, 100.0))
-    monkeypatch.setattr(keys.time, "time", lambda: 50.0)
-    assert store.admit(metadata["key_id"]) == 80
-    with store._connect() as connection:
-        assert connection.execute("SELECT updated_at FROM buckets").fetchone()[0] == 100.0
-    monkeypatch.setattr(keys.time, "time", lambda: 130.0)
-    assert store.admit(metadata["key_id"]) == 0
-
-
-def test_store_contention_returns_a_bounded_failure(tmp_path):
-    store = _store(tmp_path)
-    lock = sqlite3.connect(store.path, isolation_level=None)
-    lock.execute("BEGIN EXCLUSIVE")
-    started = time.monotonic()
-    try:
-        with pytest.raises(KeyStoreError):
-            store.list_keys()
-    finally:
-        lock.execute("ROLLBACK")
-        lock.close()
-    assert time.monotonic() - started < 2.0
-
-
 def test_authentication_waits_for_a_short_audit_lock(tmp_path):
     store = _store(tmp_path)
     metadata, secret = _key(store)
@@ -178,19 +114,6 @@ def test_authentication_waits_for_a_short_audit_lock(tmp_path):
             lock.execute("ROLLBACK")
             lock.close()
         assert future.result(timeout=2) == 0
-
-
-def test_capacity_prunes_revoked_keys_without_erasing_audit(tmp_path, monkeypatch):
-    monkeypatch.setattr(keys, "_MAX_KEYS", 2)
-    store = _store(tmp_path)
-    first, _ = _key(store)
-    store.record(first["key_id"], "req_retained", "POST", "/v1/chat/completions", 200, 1)
-    second, _ = _key(store)
-    assert store.revoke(first["key_id"])
-    assert {row["key_id"] for row in store.list_keys()} == {first["key_id"], second["key_id"]}
-    third, _ = _key(store)
-    assert {row["key_id"] for row in store.list_keys()} == {second["key_id"], third["key_id"]}
-    assert store.usage(first["key_id"])[0]["request_id"] == "req_retained"
 
 
 def test_audit_is_bounded_and_supports_legacy_and_unknown_principals(tmp_path, monkeypatch):

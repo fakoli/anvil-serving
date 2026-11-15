@@ -1,0 +1,1400 @@
+{
+  "aggregates": {
+    "case": {
+      "image-chart": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.740739,
+        "latency_p95_seconds": 1.748417,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-eight-slot-admission": {
+        "attempts": 3,
+        "latency_p50_seconds": 1.788487,
+        "latency_p95_seconds": 2.977139,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "image-ocr": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.106906,
+        "latency_p95_seconds": 1.118934,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-scene": {
+        "attempts": 2,
+        "latency_p50_seconds": 4.682996,
+        "latency_p95_seconds": 4.837212,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-spatial-count": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.195418,
+        "latency_p95_seconds": 1.232551,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-ui": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.7354984999999998,
+        "latency_p95_seconds": 1.751388,
+        "pass_rate": 1.0,
+        "passed": 2
+      },
+      "image-unique8-count": {
+        "attempts": 3,
+        "latency_p50_seconds": 1.679847,
+        "latency_p95_seconds": 1.703516,
+        "pass_rate": 1.0,
+        "passed": 3
+      },
+      "multi-image-comparison": {
+        "attempts": 2,
+        "latency_p50_seconds": 1.490427,
+        "latency_p95_seconds": 1.543986,
+        "pass_rate": 1.0,
+        "passed": 2
+      }
+    },
+    "modality": {
+      "image": {
+        "attempts": 18,
+        "latency_p50_seconds": 1.7115624999999999,
+        "latency_p95_seconds": 4.837212,
+        "pass_rate": 1.0,
+        "passed": 18
+      }
+    }
+  },
+  "attempts": [
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the chart, here are the quarterly values in ascending order:\n\n- **Q1: 10**\n- **Q2: 20**\n- **Q3: 30**\n\nThe chart shows a steady increase in units each quarter, with each quarter doubling... actually, increasing by 10 units per quarter.",
+      "passed": true,
+      "reasoning": {
+        "chars": 185,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.748417,
+      "usage": {
+        "completion_tokens": 124,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 452
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-chart",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        }
+      ],
+      "modality": "image",
+      "output": "Based on the chart, here are the quarterly values in ascending order:\n\n- **Q1: 10**\n- **Q2: 20**\n- **Q3: 30**\n\nThe chart shows a steady increase in units each quarter, with each quarter doubling... actually, increasing by 10 units per quarter.",
+      "passed": true,
+      "reasoning": {
+        "chars": 185,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.733061,
+      "usage": {
+        "completion_tokens": 124,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 452
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-eight-slot-admission",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "Eight",
+      "passed": true,
+      "reasoning": {
+        "chars": 569,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 2.977139,
+      "usage": {
+        "completion_tokens": 189,
+        "prompt_tokens": 2433,
+        "prompt_tokens_details": null,
+        "total_tokens": 2622
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-eight-slot-admission",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "Eight",
+      "passed": true,
+      "reasoning": {
+        "chars": 336,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.783365,
+      "usage": {
+        "completion_tokens": 97,
+        "prompt_tokens": 2433,
+        "prompt_tokens_details": null,
+        "total_tokens": 2530
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-eight-slot-admission",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 12635,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "chart.png",
+          "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+        },
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        },
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        },
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        },
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        },
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "Eight",
+      "passed": true,
+      "reasoning": {
+        "chars": 336,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 1.788487,
+      "usage": {
+        "completion_tokens": 97,
+        "prompt_tokens": 2433,
+        "prompt_tokens_details": null,
+        "total_tokens": 2530
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "ANVIL READY\n\nCODE 42917\n\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 191,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.118934,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 398
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ocr",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 15916,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ocr.png",
+          "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+        }
+      ],
+      "modality": "image",
+      "output": "ANVIL READY\n\nCODE 42917\n\nTEMPERATURE 42 C",
+      "passed": true,
+      "reasoning": {
+        "chars": 191,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.094878,
+      "usage": {
+        "completion_tokens": 74,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 398
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "# Scene Description\n\nThe image is a simple, minimalist graphic illustration set against a dark navy blue background. It appears to be a stylized diagram or schematic representation of a scene.\n\n## Elements:\n\n1. **Sky/Background**: A solid dark navy blue fills the entire canvas, suggesting a night sky or simply serving as a backdrop.\n\n2. **Red Rectangle**: A bright red square/rectangle sits in the left-center portion of the image, positioned just above the green area. It represents a car in this simplified illustration.\n\n3. **Green Rectangle**: A wide, dark green horizontal band spans the bottom of the image, representing the ground or park area.\n\n## Prominent Labels (verbatim):\n\n- **\"SUNNY DAY\"** \u2014 displayed in bold yellow text at the top center of the image\n- **\"RED CAR\"** \u2014 displayed in bold white text on the left side, above the red rectangle\n- **\"GREEN PARK\"** \u2014 displayed in bold white text inside the green rectangle, on the right side\n\n## Summary:\n\nThe image uses color-coded shapes with direct text labels to depict a scene: a red car parked in a green park on a sunny day. The labels match the colors of the objects they describe (red text label for the red shape, green label for the green shape), making it a clear, educational-style visual.",
+      "passed": true,
+      "reasoning": {
+        "chars": 350,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 4.837212,
+      "usage": {
+        "completion_tokens": 359,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 687
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-scene",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 13187,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "scene.png",
+          "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+        }
+      ],
+      "modality": "image",
+      "output": "# Scene Description\n\nThe image is a simple, minimalist graphic illustration set against a dark navy blue background. It appears to be a stylized diagram or basic scene composition.\n\n## Elements:\n\n1. **Sky/Background**: A solid dark navy blue fills the entire canvas, representing the sky.\n\n2. **Title Text**: At the top center of the image, in bold yellow capital letters, is the label:\n   - **\"SUNNY DAY\"**\n\n3. **Car Label**: Below the title, on the left side, in bold white capital letters:\n   - **\"RED CAR\"**\n\n4. **The Car**: Directly beneath the \"RED CAR\" label sits a solid red rectangle, representing the car in a highly simplified, abstract form.\n\n5. **The Park**: Along the bottom of the image stretches a wide green rectangle representing the ground/park area. Inside it, on the right side, in bold white capital letters:\n   - **\"GREEN PARK\"**\n\n## Summary of Prominent Labels (verbatim):\n- **SUNNY DAY**\n- **RED CAR**\n- **GREEN PARK**\n\nThe overall composition is a flat, geometric scene depicting a red car parked on a green park under a sunny day sky, using basic shapes and clearly labeled text.",
+      "passed": true,
+      "reasoning": {
+        "chars": 350,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 4.52878,
+      "usage": {
+        "completion_tokens": 342,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 670
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "**Three**\n\nThere are 3 blue boxes in the image.",
+      "passed": true,
+      "reasoning": {
+        "chars": 299,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.232551,
+      "usage": {
+        "completion_tokens": 83,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 411
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-spatial-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8785,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "spatial.png",
+          "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+        }
+      ],
+      "modality": "image",
+      "output": "**Three**\n\nThere are three blue boxes in the image.",
+      "passed": true,
+      "reasoning": {
+        "chars": 283,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.158285,
+      "usage": {
+        "completion_tokens": 79,
+        "prompt_tokens": 328,
+        "prompt_tokens_details": null,
+        "total_tokens": 407
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "**Application Report:**\n\n- **Application Name:** ANVIL SERVING\n- **Status:** READY\n- **GPU Usage:** 42%",
+      "passed": true,
+      "reasoning": {
+        "chars": 331,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.751388,
+      "usage": {
+        "completion_tokens": 123,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 447
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-ui",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 16940,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "ui.png",
+          "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+        }
+      ],
+      "modality": "image",
+      "output": "**Application Report:**\n\n- **Application Name:** ANVIL SERVING\n- **Status:** READY\n- **GPU Usage:** 42%",
+      "passed": true,
+      "reasoning": {
+        "chars": 331,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.719609,
+      "usage": {
+        "completion_tokens": 123,
+        "prompt_tokens": 324,
+        "prompt_tokens_details": null,
+        "total_tokens": 447
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-unique8-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 638,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "unique8.png",
+          "sha256": "d8ce62bdea767d322b1404d5a28ad0b11d365b59ba5815ce32d5fa1346abc18b"
+        }
+      ],
+      "modality": "image",
+      "output": "eight",
+      "passed": true,
+      "reasoning": {
+        "chars": 374,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.703516,
+      "usage": {
+        "completion_tokens": 118,
+        "prompt_tokens": 102,
+        "prompt_tokens_details": null,
+        "total_tokens": 220
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-unique8-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 638,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "unique8.png",
+          "sha256": "d8ce62bdea767d322b1404d5a28ad0b11d365b59ba5815ce32d5fa1346abc18b"
+        }
+      ],
+      "modality": "image",
+      "output": "eight",
+      "passed": true,
+      "reasoning": {
+        "chars": 374,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.679847,
+      "usage": {
+        "completion_tokens": 118,
+        "prompt_tokens": 102,
+        "prompt_tokens_details": null,
+        "total_tokens": 220
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "image-unique8-count",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 638,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "unique8.png",
+          "sha256": "d8ce62bdea767d322b1404d5a28ad0b11d365b59ba5815ce32d5fa1346abc18b"
+        }
+      ],
+      "modality": "image",
+      "output": "eight",
+      "passed": true,
+      "reasoning": {
+        "chars": 374,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 3,
+      "sampling": null,
+      "seconds": 1.660582,
+      "usage": {
+        "completion_tokens": 118,
+        "prompt_tokens": 102,
+        "prompt_tokens_details": null,
+        "total_tokens": 220
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ],
+      "modality": "image",
+      "output": "**Meter B is higher** at **75 percent**.\n\nComparison:\n- **Meter A:** 25 percent (orange fill)\n- **Meter B:** 75 percent (green fill)\n\nMeter B is 50 percentage points higher than Meter A, and its fill level is three times greater.",
+      "passed": true,
+      "reasoning": {
+        "chars": 140,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 1,
+      "sampling": null,
+      "seconds": 1.543986,
+      "usage": {
+        "completion_tokens": 100,
+        "prompt_tokens": 629,
+        "prompt_tokens_details": null,
+        "total_tokens": 729
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    },
+    {
+      "case_id": "multi-image-comparison",
+      "failure": null,
+      "finish_reason": "stop",
+      "media": [
+        {
+          "bytes": 8000,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-a.png",
+          "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+        },
+        {
+          "bytes": 7679,
+          "kind": "image",
+          "mime": "image/png",
+          "path": "compare-b.png",
+          "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+        }
+      ],
+      "modality": "image",
+      "output": "**Meter B is higher** at **75 percent**.\n\nComparison:\n- **Meter A:** 25 percent (orange bar)\n- **Meter B:** 75 percent (green bar)\n\nMeter B is 50 percentage points higher than Meter A, and its fill level is three times greater.",
+      "passed": true,
+      "reasoning": {
+        "chars": 131,
+        "field": "reasoning",
+        "tokens": null
+      },
+      "repetition": 2,
+      "sampling": null,
+      "seconds": 1.436868,
+      "usage": {
+        "completion_tokens": 98,
+        "prompt_tokens": 629,
+        "prompt_tokens_details": null,
+        "total_tokens": 727
+      },
+      "validation": {
+        "assertions": [
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "passed": true,
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "finish_reason_allowed": true,
+        "visible_answer": true
+      }
+    }
+  ],
+  "configuration": {
+    "allowed_finish_reasons": [
+      "stop"
+    ],
+    "chat_template_kwargs": null,
+    "concurrency": 1,
+    "max_images_per_request": 8,
+    "max_tokens": 8192,
+    "max_videos_per_request": 1,
+    "reasoning_effort": "max",
+    "sampling": {
+      "temperature": {
+        "effective_request": 0.0,
+        "requested": 0.0,
+        "sent": true
+      },
+      "top_p": {
+        "effective_request": 0.95,
+        "requested": 0.95,
+        "sent": true
+      }
+    },
+    "thinking_mode": "default",
+    "timeout_seconds": 300.0
+  },
+  "corpus": {
+    "cases": [
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "red car"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "green park"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "sunny day"
+          }
+        ],
+        "id": "image-scene",
+        "media": [
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Describe the scene and report every prominent label. Use the labels verbatim.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42917"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ocr",
+        "media": [
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Transcribe all visible text exactly. Preserve every number.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "ordered_casefold",
+            "values": [
+              "Q1",
+              "10",
+              "Q2",
+              "20",
+              "Q3",
+              "30"
+            ]
+          }
+        ],
+        "id": "image-chart",
+        "media": [
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Read the chart and report each quarter with its value in ascending quarter order.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "ANVIL SERVING"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "READY"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "42"
+          }
+        ],
+        "id": "image-ui",
+        "media": [
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Report the application name, status, and GPU percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "three"
+          }
+        ],
+        "id": "image-spatial-count",
+        "media": [
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Count the blue boxes. Reply with the count written as an English word.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "contains_casefold",
+            "value": "meter b"
+          },
+          {
+            "type": "contains_casefold",
+            "value": "75"
+          }
+        ],
+        "id": "multi-image-comparison",
+        "media": [
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Compare the two meters. Identify which meter is higher and report its percentage.",
+        "repetitions": 2,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "id": "image-eight-slot-admission",
+        "media": [
+          {
+            "bytes": 12635,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "chart.png",
+            "sha256": "c905e453c4e16eb274e46992d1a901bbced8f2314b47b9d408971bb176ab2f3e"
+          },
+          {
+            "bytes": 8000,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-a.png",
+            "sha256": "7dac4f31d62c88d765150aa6051efea9ddaaa8c64312080be4c5b8f6ad96322a"
+          },
+          {
+            "bytes": 7679,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "compare-b.png",
+            "sha256": "8f7cdfd733f1ee9731de6160e77af6aa50189edec6eaf9ddd7654a0c8300a43e"
+          },
+          {
+            "bytes": 15916,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ocr.png",
+            "sha256": "a8d5158019fb2b08ee9f6a153860ab2342384644f7c53ab58fdd45658124e83e"
+          },
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          },
+          {
+            "bytes": 8785,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "spatial.png",
+            "sha256": "d48f47cfba9d65524d6a9ca37d593550e10400c1b5fa160bec8aea24e0164051"
+          },
+          {
+            "bytes": 16940,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "ui.png",
+            "sha256": "03fd14d8b68973c915de2848736d22eb6f67ba6bdb5da2a7a563085ac894e804"
+          },
+          {
+            "bytes": 13187,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "scene.png",
+            "sha256": "30a1f11e40bf4e0a8595d39828e0aa362e8b28ac683c404a1068cc20bf7f7bda"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Count the supplied image slots. Reply with the English word only.",
+        "repetitions": 3,
+        "sampling": null
+      },
+      {
+        "assertions": [
+          {
+            "type": "equals_normalized_casefold",
+            "value": "eight"
+          }
+        ],
+        "id": "image-unique8-count",
+        "media": [
+          {
+            "bytes": 638,
+            "kind": "image",
+            "mime": "image/png",
+            "path": "unique8.png",
+            "sha256": "d8ce62bdea767d322b1404d5a28ad0b11d365b59ba5815ce32d5fa1346abc18b"
+          }
+        ],
+        "modality": "image",
+        "prompt": "Count the navy squares. Reply with the count written as an English word only.",
+        "repetitions": 3,
+        "sampling": null
+      }
+    ],
+    "path": "<PRIVATE_PATH>",
+    "provenance": {
+      "derived_from": "image-corpus.json plus deterministic unique8.png",
+      "observed_date": "2026-10-15",
+      "scope": "Paired extension of the original 15-attempt corpus. The historic corpus remains seven unique images plus a duplicated scene slot; this extension adds an eighth distinct fixture as a separate three-attempt case.",
+      "source_sha256": "a514ae146b5aab3bcb55ae9fb27f55a41791a20863304d1bb95947e93931cd12",
+      "unique8_case_note": "unique8.png is a deterministic 320x160 RGB fixture containing eight navy squares in a 4x2 grid. Its expected count is derived from the fixture construction and is independent of the duplicate-slot admission assertion. It does not measure worst-case image memory."
+    },
+    "schema": "multimodal-corpus/v1",
+    "sha256": "cc7eb79f04d7fb79531ceaf0286866446c3e6b2d0951907291d6eaca1b766431"
+  },
+  "failed_attempts": 0,
+  "finished_at": "2026-10-16T06:50:25Z",
+  "identity": {
+    "base_url": "http://127.0.0.1:PORT_REDACTED/v1",
+    "engine_build_ref": null,
+    "engine_revision": "6dc2f516688fe6f84c6994dcd20fddf296853a6c",
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96GB",
+    "model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "model_revision": "a5fee929cf4888b1824323e33e8a19b60129e025",
+    "runtime_image": "verdictai/glm53-flash-exl3-k4:r19-sm120-tp2-ep2-dcp2-v84-language-only@sha256:0f1cdcc8891f1cc3a444121eb61d366289a1cbba285f0892dcbb24bc94961692",
+    "served_models": [
+      "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec"
+    ]
+  },
+  "passed": true,
+  "passed_attempts": 18,
+  "requests": 18,
+  "run_id": "multimodal-20261016T064950Z",
+  "schema": "multimodal-benchmark-evidence/v1",
+  "started_at": "2026-10-16T06:49:50Z"
+}

@@ -1,0 +1,61 @@
+{
+  "status": "executed",
+  "records": [
+    {
+      "case": "boundary",
+      "started_at": "2026-10-26T05:04:58.372239+00:00",
+      "started": true,
+      "owner_state": {
+        "checked_at": "2026-10-26T05:04:58.391253+00:00",
+        "identity_matches": true,
+        "running": 0,
+        "waiting": 0,
+        "idle": true,
+        "scope": "point_in_time_owner_observation_not_admission_lease"
+      },
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 48,
+        "total_tokens": 185,
+        "completion_tokens": 137,
+        "prompt_tokens_details": {
+          "created_cache_tokens": 0,
+          "cached_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 64
+        }
+      },
+      "boundary": "invalid_repeated_or_missing_close",
+      "reasoning_span_tokens": null,
+      "generated_reasoning_token_ids_count": null,
+      "oracle": false,
+      "response_anomalies": [],
+      "terminal": "response",
+      "ended_at": "2026-10-26T05:04:59.877019+00:00",
+      "elapsed_seconds": 1.5018070230726153,
+      "engine_drain": "unknown",
+      "request_artifact": {
+        "file": "0-request.json",
+        "sha256": "0aedf2279c95aea90be8ae704e918cf39fe604c52d904e5311c21dbee99f7277",
+        "bytes": 463
+      },
+      "response_artifact": {
+        "file": "0-response.json",
+        "sha256": "8681a2da2509741e5e0845c46802cd80f36aa2ca06266238c968c00dc72bbc59",
+        "bytes": 2145
+      }
+    }
+  ],
+  "router_config_sha256_before": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+  "router_config_sha256_after": "aadcc9ffd338c32ff44a52d45db1fbe276aeb0e6aaa643da64ad58f21d284225",
+  "shared_configuration_changed": false,
+  "engine_drain": "unknown",
+  "runtime_verified": false,
+  "ignis": "hold",
+  "promoted": false,
+  "runtime_identity_authority": "operator_attested",
+  "ended_at": "2026-10-26T05:04:59.879569+00:00",
+  "elapsed_seconds": 1.5149411601014435
+}

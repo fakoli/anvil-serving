@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 
 import pytest
@@ -38,43 +39,6 @@ def _lock(tmp_path):
     path = tmp_path / "bundle.lock.json"
     path.write_text(json.dumps(value), encoding="utf-8")
     return path
-
-
-def test_inventory_reports_missing_without_creating_volume(tmp_path):
-    calls = []
-
-    def runner(argv, **_kwargs):
-        calls.append(argv)
-        return _completed(argv, 1, stderr="not found")
-
-    result = inventory(
-        "image.test", "v1", lock_path=_lock(tmp_path), models_volume="media-models",
-        runner=runner,
-    )
-    assert result["volumeExists"] is False
-    assert result["ready"] is False
-    assert result["assets"][0]["state"] == "missing"
-    assert calls == [["docker", "volume", "inspect", "media-models"]]
-
-
-def test_inventory_hashes_existing_assets_and_reports_conflict(tmp_path):
-    calls = 0
-
-    def runner(argv, **_kwargs):
-        nonlocal calls
-        calls += 1
-        if argv[:3] == ["docker", "volume", "inspect"]:
-            return _completed(argv)
-        return _completed(argv, stdout="122\n" + "d" * 64 + "\n")
-
-    result = inventory(
-        "image.test", "v1", lock_path=_lock(tmp_path), models_volume="media-models",
-        runner=runner,
-    )
-    assert calls == 2
-    assert result["ready"] is False
-    assert result["assets"][0]["state"] == "mismatch"
-    assert result["assets"][0]["observedSha256"] == "d" * 64
 
 
 def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
@@ -130,46 +94,38 @@ def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
     assert result["assets"][0]["state"] == "exact"
 
 
-def test_stage_refuses_existing_mismatch_without_mutation(tmp_path):
-    calls = []
-
-    def runner(argv, **_kwargs):
-        calls.append(argv)
-        if argv[:3] == ["docker", "volume", "inspect"]:
-            return _completed(argv)
-        return _completed(argv, stdout="123\n" + "d" * 64 + "\n")
-
-    with pytest.raises(MediaError, match="were preserved") as raised:
-        stage(
-            "image.test", "v1", lock_path=_lock(tmp_path), models_volume="media-models",
-            user_volume="media-user", dry_run=False, runner=runner,
-        )
-    assert raised.value.code == "media_bundle_conflict"
-    assert all(argv[:3] != ["docker", "volume", "create"] for argv in calls)
-
-
-def test_inventory_existing_volume_is_cache_only(tmp_path):
-    calls = []
-
-    def runner(argv, **_kwargs):
-        calls.append(argv)
-        if argv[:3] == ["docker", "volume", "inspect"]:
-            return _completed(argv)
-        return _completed(argv, 44)
-
-    result = inventory(
-        "image.test", "v1", lock_path=_lock(tmp_path),
-        models_volume="media-models", runner=runner,
-    )
-    assert result["ready"] is False
-    docker_run = next(argv for argv in calls if argv[:2] == ["docker", "run"])
-    assert "--pull=never" in docker_run
+def test_host_inventory_hashes_only_safe_pinned_targets_without_docker_or_writes(tmp_path):
+    lock = _lock(tmp_path)
+    value = json.loads(lock.read_text())
+    model = value["workflows"][0]["models"][0]
+    data = b"pinned model fixture"
+    model.update(size=len(data), sha256=hashlib.sha256(data).hexdigest())
+    lock.write_text(json.dumps(value))
+    root = tmp_path / "models"; target = root / model["target"]
+    target.parent.mkdir(parents=True)
+    def check(**kwargs):
+        return inventory("image.test", "v1", lock_path=lock,
+                         runner=lambda *a, **k: pytest.fail("Docker called"), **kwargs)
+    assert check(models_root=root)["assets"][0]["state"] == "missing"
+    target.write_bytes(data)
+    assert check(models_root=root)["ready"]
+    target.write_bytes(b"wrong")
+    assert check(models_root=root)["assets"][0]["state"] == "mismatch"
+    assert target.read_bytes() == b"wrong"
+    for kwargs in ({}, {"models_root": root, "models_volume": "models"}):
+        with pytest.raises(MediaError, match="exactly one"):
+            check(**kwargs)
+    model["target"] = "../outside.bin"; lock.write_text(json.dumps(value))
+    with pytest.raises(MediaError, match="unsafe"):
+        check(models_root=root)
 
 
-@pytest.mark.parametrize("volume", ["C:/models", "../models", "-models", "models/name"])
-def test_volume_names_are_fail_closed(tmp_path, volume):
-    with pytest.raises(MediaError, match="named Docker volume"):
-        inventory(
-            "image.test", "v1", lock_path=_lock(tmp_path), models_volume=volume,
-            runner=lambda *_args, **_kwargs: pytest.fail("Docker was called"),
-        )
+def test_host_inventory_rejects_symlink_escape(tmp_path):
+    lock = _lock(tmp_path); root = tmp_path / "models"; root.mkdir()
+    outside = tmp_path / "outside"; outside.mkdir()
+    try:
+        (root / "diffusion_models").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("test host cannot create directory symlinks")
+    with pytest.raises(MediaError, match="escapes"):
+        inventory("image.test", "v1", lock_path=lock, models_root=root)

@@ -1,0 +1,17 @@
+FROM ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29
+USER root
+COPY --from=rust:1.94.1-slim-trixie@sha256:cf09adf8c3ebaba10779e5c23ff7fe4df4cccdab8a91f199b0c142c53fef3e1a /usr/local/cargo /usr/local/cargo
+COPY --from=rust:1.94.1-slim-trixie@sha256:cf09adf8c3ebaba10779e5c23ff7fe4df4cccdab8a91f199b0c142c53fef3e1a /usr/local/rustup /usr/local/rustup
+ENV RUSTUP_HOME=/usr/local/rustup CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:/opt/venv/bin:/usr/local/cuda/bin:$PATH
+ENV CARGO_BUILD_JOBS=4 UV_CONCURRENT_BUILDS=2 UV_CONCURRENT_DOWNLOADS=4
+RUN apt-get update && apt-get install -y --no-install-recommends nasm protobuf-compiler libssl-dev liburing-dev pkg-config cmake ninja-build python3-dev && rm -rf /var/lib/apt/lists/*
+RUN /opt/venv/bin/python -m pip install --no-cache-dir uv==0.13.4
+WORKDIR /opt/flare
+COPY . .
+RUN uv sync --locked --python 3.12 --extra prepare --extra test
+RUN cargo build --locked --release --manifest-path flare/Cargo.toml --bin flare
+RUN .venv/bin/python -c "import torch, ignition, flare_heliopause; print(torch.__version__)" && flare/target/release/flare --version && .venv/bin/ignition --help
+LABEL org.opencontainers.image.revision="47581ccac82660953a5b59cb04b2750d64edc97d"
+ENTRYPOINT []
+CMD ["/opt/flare/flare/target/release/flare", "--help"]

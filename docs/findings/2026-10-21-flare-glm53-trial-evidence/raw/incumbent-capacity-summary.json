@@ -1,0 +1,42 @@
+[
+  {
+    "concurrency": 1,
+    "completed": 0,
+    "requested": 4,
+    "responses_received": 4,
+    "performance_eligible": false,
+    "failure_classes": [
+      "controlled_output_failed",
+      "controlled_output_failed",
+      "controlled_output_failed",
+      "controlled_output_failed"
+    ],
+    "canaries_passed": 4,
+    "observed_words": [
+      191,
+      163,
+      174,
+      153
+    ]
+  },
+  {
+    "concurrency": 4,
+    "completed": 0,
+    "requested": 4,
+    "responses_received": 4,
+    "performance_eligible": false,
+    "failure_classes": [
+      "controlled_output_failed",
+      "controlled_output_failed",
+      "controlled_output_failed",
+      "controlled_output_failed"
+    ],
+    "canaries_passed": 4,
+    "observed_words": [
+      1551,
+      174,
+      157,
+      1057
+    ]
+  }
+]

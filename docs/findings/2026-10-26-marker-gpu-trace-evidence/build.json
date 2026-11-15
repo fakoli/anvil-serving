@@ -1,0 +1,26 @@
+{
+  "schema": "marker-gpu-trace-build-projection/v1",
+  "candidate_image": "sha256:789be89fc1f16c28673fad1dbb539974f7d363c6c04ee1372a22fd12b21090d3",
+  "actual_base_image": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+  "reference_comparison_image": "sha256:41c4926b08c7298fb63bc7f1204926c4f95ce9083ff610069ab442141213b1aa",
+  "composition": "The successful candidate directly applies the exact pinned split-top-p and marker-trace patches to the original immutable runtime image. The preceding patched image is a comparison identity, not the successful Docker base.",
+  "first_attempt": {
+    "status": "failed_before_lifecycle",
+    "reason": "Local preceding-patch image manifest could not be resolved.",
+    "gpu_or_model_contact": false,
+    "native_receipt_sha256": "58a49702d2afa95214fa6b45f72be4a10272a100679349faa8d8e0e231df2b8c"
+  },
+  "successful_attempt": {
+    "status": "passed",
+    "cpu_only": true,
+    "cpus": 2,
+    "memory_mib": 4096,
+    "timeout_seconds": 900,
+    "returncode": 0,
+    "dockerfile_sha256": "68e39226042e1a50d1e7cf102102b0f642df6ed8ecf788bd826e9e16a244b3fc",
+    "native_receipt_sha256": "46f8c2a5ba3bc470be8a677661f190fd4b1055876f9bd1012feaa9b18a5c98b8"
+  },
+  "reference_identity_receipt_sha256": "89c6531fd42534f41a8f0f5d92a5248669cff626e2a1da675ae6d685a49b855b",
+  "runtime_attestation": "candidate-attestation.json",
+  "runtime_inspections": ["runtime-candidate-before.json", "runtime-candidate-after.json"]
+}

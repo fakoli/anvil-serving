@@ -1,0 +1,125 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "mixed-c4-diagnostic",
+    "capability": "mixed-client measurement-closure smoke",
+    "repository_revision": "d8f86a2208584b21f39c3cf600762142d7ad0057",
+    "dirty_state": "clean exact source",
+    "started_at": "2026-10-25T05:54:35.164557+00:00",
+    "completed_at": "2026-10-25T05:59:52.406104+00:00",
+    "evidence_labels": [
+      "compatibility-only"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-campaign-report/v1",
+    "anvil-serving.benchmark-campaign/v1",
+    "anvil-serving.campaign-release/v1",
+    "anvil-serving.campaign-batch-closure/v1",
+    "anvil-serving.campaign-execution/v1",
+    "anvil-serving.campaign-telemetry/v1"
+  ],
+  "closed_inventory": true,
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "campaign-manifest.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "campaign-manifest.json",
+        "release.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "campaign-manifest.json",
+        "source-validation.json",
+        "projection-ledger.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "campaign-report.json",
+        "batch-closure.json",
+        "telemetry-terminal.json",
+        "telemetry-samples.jsonl",
+        "cell-1-execution.json",
+        "cell-2-execution.json",
+        "cell-3-execution.json",
+        "cell-4-execution.json",
+        "cell-3-grader.json",
+        "cell-4-grader.json",
+        "projection-validation.json",
+        "full-chain-audit.json",
+        "terminal-review.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "postterminal-state.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": "Selected diagnostic derivatives; original private/public hashes remain distinct."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "Compact diagnostic evidence only; dated narrative/matrix/public copy remains a separate whole-experiment task."
+    }
+  ]
+}

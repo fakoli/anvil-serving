@@ -1,0 +1,20 @@
+{
+  "schema": "anvil-serving.independent-outcome-review/v1",
+  "reviewer": "independent Sol",
+  "decision": "The frozen local gate failed correctly; no conditional model probe.",
+  "confirmed": [
+    "Eight forced cases passed.",
+    "Stock and patch masks were identical on 271 of 272 ordinary rows.",
+    "All 136 holdout rows were identical between versions.",
+    "The only changed row retained one extra token, 30317, with binary64 reference mass 2.0449949975313364e-6.",
+    "All reported input/output bit-integrity and prefix/subset checks passed.",
+    "The change is within the predeclared count envelope derived from the pinned upstream tests; this does not establish that the upstream test suite passed."
+  ],
+  "not_proven": [
+    "The end-to-end reasoning limit is repaired.",
+    "A unique internal pivot or duplicate-handling cause; no internal pivot was captured.",
+    "Any performance or quality impact."
+  ],
+  "next_experiment": "In a new frozen plan, separate an upstream-compatible policy from exact minimality or capture pivot, minimum-larger value, and duplicate budget for the single frozen row. Do not retroactively pass or rerun this attempt.",
+  "promoted": false
+}

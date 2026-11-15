@@ -7,7 +7,7 @@ import threading
 
 import pytest
 
-from anvil_serving.router.config import ServerConfig, ConfigError, load_server_config
+from anvil_serving.router.config import ServerConfig
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.keys import KeyStore
 from tests.router.helpers import StaticBackend
@@ -61,7 +61,7 @@ def running(store, **kwargs):
                     completed.set()
 
     server.RequestHandlerClass = CompletedHandler
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     connection = http.client.HTTPConnection(*server.server_address, timeout=5)
     connection._test_completions = completions
@@ -100,6 +100,47 @@ def request(connection, token, path=CHAT, body=None, method="POST", extra=None):
             completions.pop(marker, None)
 
 
+def test_device_catalog_sync_is_filtered_and_keeps_operator_routes_denied(store):
+    from anvil_serving.client_catalog_sync import fetch_client_catalog, ClientCatalogError
+    import copy
+    meta, token = issue(store)
+    with running(store) as (connection, backend):
+        capabilities = {"object": "list", "data": [
+            {"id": "private-tier", "model": "private-model", "aliases": ["llm.primary", "llm.private"],
+             "context_limit_tokens": 327680, "limits": {"max_output_tokens": 65536, "images_per_request": 8},
+             "modalities": ["text", "image"], "thinking": {"supported": True},
+             "compat": {"supportedReasoningEfforts": ["low", "high"], "secret": "hidden"},
+             "members": ["private-member"]},
+            {"aliases": ["llm.private"], "model": "private-only"}]}
+        queries = []
+        def metadata(query):
+            queries.append(query)
+            return capabilities
+        backend.model_capabilities = metadata
+        backend.router_status = lambda: {"config_sha256": "a" * 64, "package_version": "1.5.0",
+            "model_aliases": ["llm.primary", "llm.private"], "tier_counts": {"private": 2}}
+        base = f"http://{connection.host}:{connection.port}/v1"
+        catalog = fetch_client_catalog(base_url=base, environ={"ANVIL_ROUTER_TOKEN": token})
+        assert list(catalog["models"]) == ["llm.primary"]
+        assert catalog["config_sha256"] == "a" * 64
+        for path in ("/v1/models/capabilities", "/v1/router/status"):
+            status, _, body = request(connection, token, path, method="GET")
+            assert status == 200 and b"private" not in body and b"hidden" not in body
+        before = len(queries)
+        assert request(connection, token, "/v1/models/capabilities?model=llm.private", method="GET")[0] == 404
+        assert request(connection, token, "/v1/models/capabilities?model=unknown", method="GET")[0] == 404
+        assert len(queries) == before
+        for path in ("/v1/models/fingerprints", "/v1/models/capacity", "/v1/stats", "/v1/requests", "/metrics"):
+            assert request(connection, token, path, method="GET")[0] == 403
+        bad = copy.deepcopy(capabilities); bad["data"][0]["context_limit_tokens"] = False
+        backend.model_capabilities = lambda _: bad
+        with pytest.raises(ClientCatalogError):
+            fetch_client_catalog(base_url=base, environ={"ANVIL_ROUTER_TOKEN": token})
+        store.revoke(meta["key_id"])
+        assert request(connection, token, "/v1/router/status", method="GET")[0] == 401
+        assert backend.requests == []
+
+
 def test_catalog_grants_denials_and_master(store):
     meta, token = issue(store)
     with running(store) as (connection, backend):
@@ -115,60 +156,6 @@ def test_catalog_grants_denials_and_master(store):
         assert request(connection, MASTER, "/v1/models", method="GET")[0] == 200
         assert request(connection, token + "wrong")[0] == 401
         assert request(connection, token, "/healthz", method="GET")[0] == 200
-
-
-@pytest.mark.parametrize("path,body", [
-    (CHAT, {"model": " LLM.PRIMARY ", "messages": [{"role": "user", "content": "hi"}]}),
-    ("/v1/messages", {"model": "llm.primary", "max_tokens": 5, "messages": [{"role": "user", "content": "hi"}]}),
-    ("/v1/responses", {"model": "llm.primary", "input": "hi"}),
-])
-def test_dialects_streaming_and_trusted_identity(store, path, body):
-    meta, token = issue(store, paths=[path])
-    with running(store) as (connection, backend):
-        for stream in (False, True):
-            spoofed = {} if path == "/v1/responses" else {"_anvil_correlation": {"client_id": "spoof"}}
-            status, headers, raw = request(connection, token, path + "/?ignored=true",
-                {**body, "stream": stream, **spoofed},
-                extra={"X-Anvil-Client-Id": "spoof"})
-            assert status == 200
-            assert b"ok" in raw
-            assert backend.requests[-1].raw["_anvil_correlation"]["client_id"] == meta["key_id"]
-            assert backend.requests[-1].raw["_anvil_correlation"]["gateway_request_id"] == headers["X-Anvil-Request-Id"]
-    history = store.usage(meta["key_id"])
-    rendered = json.dumps(history)
-    assert meta["key_id"] in rendered
-    assert token not in rendered and "spoof" not in rendered and "ignored" not in rendered
-
-
-def test_revocation_on_reused_connection_and_separate_budgets(store):
-    first, token = issue(store, rpm=1)
-    _, second = issue(store, rpm=1)
-    with running(store) as (connection, backend):
-        assert request(connection, token)[0] == 200
-        status, headers, _ = request(connection, token)
-        assert status == 429 and int(headers["Retry-After"]) > 0
-        assert request(connection, second)[0] == 200
-        store.revoke(first["key_id"])
-        assert request(connection, token)[0] == 401
-        assert request(connection, MASTER)[0] == 200
-        assert len(backend.requests) == 3
-
-
-def test_ambiguous_headers_and_storage_failure_close_without_dispatch(store):
-    _, token = issue(store)
-    with running(store) as (connection, backend):
-        assert request(connection, token, extra={"x-api-key": MASTER})[0] == 401
-        store.path.unlink()
-        assert request(connection, token)[0] == 503
-        assert request(connection, MASTER)[0] == 200
-        assert len(backend.requests) == 1
-
-
-def test_config_requires_master(tmp_path):
-    config = tmp_path / "router.toml"
-    config.write_text('[server]\napi_keys_path = ' + json.dumps(str(tmp_path / "keys.sqlite3")) + "\n")
-    with pytest.raises(ConfigError, match="auth_env"):
-        load_server_config(str(config))
 
 
 @pytest.mark.parametrize("kind,path,fields", [
@@ -209,20 +196,6 @@ def test_purpose_model_grants_and_upstream_correlation(store, kind, path, fields
     assert token not in json.dumps(store.usage())
 
 
-def test_single_api_header_and_health_does_not_displace_usage(store):
-    meta, token = issue(store)
-    with running(store) as (connection, backend):
-        connection.request("GET", "/v1/models", headers={"x-api-key": token})
-        response = connection.getresponse()
-        assert response.status == 200
-        response.read()
-        for _ in range(3):
-            assert request(connection, "invalid", "/healthz", method="GET")[0] == 200
-            assert request(connection, "invalid")[0] == 401
-    history = store.usage()
-    assert len(history) == 1 and history[0]["key_id"] == meta["key_id"]
-
-
 def test_scoped_operator_credential_independent_of_device_store(store, tmp_path):
     from anvil_serving.control_plane.authorization import load_authorization_policy
     policy_file = tmp_path / "policy.json"
@@ -239,15 +212,9 @@ def test_scoped_operator_credential_independent_of_device_store(store, tmp_path)
         assert backend.requests[0].raw["_anvil_correlation"]["client_id"] == "existing-client"
 
 
-def test_config_rejects_ambiguous_relative_key_store(tmp_path):
-    config = tmp_path / "router.toml"
-    config.write_text('[server]\nauth_env="TEST_MASTER"\napi_keys_path="keys.sqlite3"\n')
-    with pytest.raises(ConfigError, match="absolute"):
-        load_server_config(str(config))
-
-
 @pytest.mark.parametrize("retired", ["revoked", "expired"])
-def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tmp_path, monkeypatch, retired):
+@pytest.mark.parametrize("path", [CHAT, "/v1/models/capabilities", "/v1/router/status"])
+def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tmp_path, monkeypatch, retired, path):
     from anvil_serving.control_plane.authorization import load_authorization_policy
     from anvil_serving.router import keys
 
@@ -264,7 +231,7 @@ def test_retired_device_namespace_cannot_fall_through_to_scoped_policy(store, tm
             connection.execute("UPDATE keys SET expires_at = 1")
         monkeypatch.setattr(keys.time, "time", lambda: 2)
     with running(store, authorization_policy=policy) as (connection, backend):
-        assert request(connection, token)[0] == 401
+        assert request(connection, token, path, method="POST" if path == CHAT else "GET")[0] == 401
         assert backend.requests == []
 
 

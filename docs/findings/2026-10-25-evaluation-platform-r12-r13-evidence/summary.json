@@ -1,0 +1,233 @@
+{
+  "assembled_after_attempts": true,
+  "comparison_complete": false,
+  "complete": false,
+  "decision": "no-promotion; measured incumbent baseline and separately unexecuted candidate admission refusal",
+  "exact_recipe_restored": true,
+  "limits": [
+    "R12 six scored failures are task failures; four cancelled grades remain unknown.",
+    "R12 candidate48 planned cells and R13 candidate48 planned cells are separate attempt denominators, not96 observed candidate tasks.",
+    "No candidate quality, throughput, latency, peak memory, engine causality or performance ranking was measured.",
+    "Native private hashes cannot be revalidated against sanitized derivative bytes.",
+    "Historical thinking-off Pi strict-output failure remains open; minimal-thinking success does not accept off/default behavior.",
+    "Reviewer R1 accessor false-negative was corrected offline as R2 over the same live invocation; no native retry.",
+    "Remote-memory terminal remains UNKNOWN; local router zero counts do not prove fleet drain."
+  ],
+  "promoted": false,
+  "promotion_authorized": false,
+  "publication_status": "Content reviewed; exact final inventory and size approval are recorded with the publication PR.",
+  "r12": {
+    "incumbent_closure": {
+      "all_released_closures_valid": true,
+      "failed_grades": 6,
+      "graded": 44,
+      "immutable_two_snapshot_inputs": true,
+      "incumbent_job_states": {
+        "cancelled": 4,
+        "completed": 44
+      },
+      "measurement_complete": 44,
+      "passed": 38,
+      "producers_and_containers_absent": true,
+      "released_batches": 30,
+      "telemetry_rows": 712
+    },
+    "jobs": {
+      "attempted": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      },
+      "cancelled": {
+        "count": 4,
+        "known_count": 4,
+        "unknown_cells": 0
+      },
+      "completed": {
+        "count": 44,
+        "known_count": 44,
+        "unknown_cells": 0
+      },
+      "failed": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "planned": {
+        "count": 96,
+        "known_count": 96,
+        "unknown_cells": 0
+      },
+      "scored": {
+        "count": null,
+        "known_count": 44,
+        "unknown_cells": 4
+      },
+      "submitted": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      },
+      "unfinished": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      }
+    },
+    "manifest_sha256": "f29d0b50fd8eb5c132e2a06cbc1fc5ce7005691de48d9cbc8df0502400fe0b0b",
+    "native_comparison_complete": false,
+    "samples": {
+      "attempted": {
+        "count": null,
+        "known_count": 44,
+        "unknown_cells": 4
+      },
+      "cancelled": {
+        "count": null,
+        "known_count": 0,
+        "unknown_cells": 4
+      },
+      "failed": {
+        "count": null,
+        "known_count": 6,
+        "unknown_cells": 4
+      },
+      "planned": {
+        "count": 96,
+        "known_count": 96,
+        "unknown_cells": 0
+      },
+      "scored": {
+        "count": null,
+        "known_count": 44,
+        "unknown_cells": 4
+      },
+      "submitted": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      },
+      "unfinished": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      }
+    },
+    "timing": {
+      "active_wall_seconds": 3529.8781661863904,
+      "child_active_wall_seconds": 3127.6179882695433,
+      "known_active_wall_seconds": 3529.8781661863904,
+      "observed_job_overlap": 4,
+      "observed_request_overlap": null,
+      "request_overlap_status": "unknown",
+      "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+      "unknown_batch_intervals": 0,
+      "unknown_intervals": 0
+    }
+  },
+  "r13": {
+    "candidate_created": false,
+    "classification": "pre-create host-reserve containment refusal",
+    "comparisons": [],
+    "jobs": {
+      "attempted": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "cancelled": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "completed": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "failed": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "planned": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      },
+      "scored": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "submitted": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "unfinished": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      }
+    },
+    "manifest_sha256": "7142f426b23b18609e5d4cdeb14c2cbd635900ac306f92772b229324c691c428",
+    "samples": {
+      "attempted": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "cancelled": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "failed": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "planned": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      },
+      "scored": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "submitted": {
+        "count": 0,
+        "known_count": 0,
+        "unknown_cells": 0
+      },
+      "unfinished": {
+        "count": 48,
+        "known_count": 48,
+        "unknown_cells": 0
+      }
+    },
+    "timing": {
+      "active_wall_seconds": null,
+      "child_active_wall_seconds": null,
+      "known_active_wall_seconds": null,
+      "observed_job_overlap": null,
+      "observed_request_overlap": null,
+      "request_overlap_status": "unknown",
+      "scope": "active wall includes release, verified drain and bounded telemetry finalization; child overlap is not request concurrency",
+      "unknown_batch_intervals": 0,
+      "unknown_intervals": 0
+    }
+  },
+  "repository_revision": "c0ce1d0633939eaf686bbd1e9e59241f6a0534aa",
+  "restoration_acceptance_complete": true,
+  "restoration_evidence": "restoration-evidence.json",
+  "restoration_status": "verified exact incumbent; explicit minimal-thinking Pi acceptance only",
+  "restoration_verified": true,
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "service_restored": true,
+  "source_sha256": "c769b70b4e020e62a39ab4ea7ea5a636dacb0064fdde9144216609ffe3dae2f4",
+  "thinking_off_or_default_accepted": false
+}

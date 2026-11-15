@@ -1,0 +1,101 @@
+{
+  "base_url": "http://127.0.0.1/v1",
+  "budget": {
+    "max_completion_tokens": 65536,
+    "reasoning_headroom_tokens": 49152,
+    "visible_answer_tokens": 16384
+  },
+  "checks": [
+    "smoke",
+    "json"
+  ],
+  "evidence_policy": {
+    "allowed_finish_reasons": [
+      "stop",
+      "tool_calls"
+    ],
+    "errors": [],
+    "reasoning": "any"
+  },
+  "image_expect": [],
+  "model": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2",
+  "multimodal_input": null,
+  "observations": [
+    {
+      "content": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` does exactly this. If you want it as a reusable function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you want to avoid the built-in (e.g., for learning purposes), you can use `functools.reduce`:\n\n```python\nfrom functools import reduce; reduce(lambda a, b: a + b, xs, 0)\n```\n\nBut `sum(xs)` is the idiomatic choice.",
+      "content_chars": 381,
+      "content_excerpt": "```python\nsum(xs)\n```\n\nThat's it \u2014 Python's built-in `sum()` does exactly this. If you want it as a reusable function:\n\n```python\ntotal = lambda xs: sum(xs)\n```\n\nOr, if you want to avoid the built-in ",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 1163,
+      "reasoning_excerpt": "The user wants a Python one-liner that returns the sum of a list `xs`. This is a very simple request. The most idiomatic way is:\n\n```python\nsum(xs)\n```\n\nThat's the built-in `sum()` function. But maybe",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": 289,
+      "seconds": 2.244,
+      "test": "smoke",
+      "usage": {
+        "completion_tokens": 400,
+        "completion_tokens_details": {
+          "reasoning_tokens": 289
+        },
+        "prompt_tokens": 28,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 428
+      },
+      "validation_detail": "contains sum("
+    },
+    {
+      "content": "{\"language\":\"python\",\"ok\":true}",
+      "content_chars": 31,
+      "content_excerpt": "{\"language\":\"python\",\"ok\":true}",
+      "finish_reason": "stop",
+      "passed": true,
+      "reasoning_chars": 179,
+      "reasoning_excerpt": "The user wants me to return ONLY a JSON object: {\"language\":\"python\",\"ok\":true}. No prose. This is a simple formatting request. I should just output the JSON exactly as requested.",
+      "reasoning_field": "reasoning",
+      "reasoning_tokens": 40,
+      "seconds": 0.527,
+      "test": "json",
+      "usage": {
+        "completion_tokens": 51,
+        "completion_tokens_details": {
+          "reasoning_tokens": 40
+        },
+        "prompt_tokens": 30,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "created_cache_tokens": 0,
+          "multimodal_tokens": null
+        },
+        "total_tokens": 81
+      },
+      "validation_detail": "parsed keys=['language', 'ok']"
+    }
+  ],
+  "ocr_expect": [],
+  "passed": true,
+  "results": [
+    {
+      "detail": "2.2s got=\"```python\\nsum(xs)\\n```\\n\\nThat's it \u2014 Python's built-\" finish='stop' visible=381 reasoning_chars=1163 reasoning_tokens=289",
+      "name": "smoke (short coding)",
+      "passed": true
+    },
+    {
+      "detail": "parsed keys=['language', 'ok'] finish='stop' visible=31 reasoning_chars=179 reasoning_tokens=40",
+      "name": "structured JSON",
+      "passed": true
+    }
+  ],
+  "schema_version": "preflight/v2",
+  "thinking": {
+    "chat_template_kwargs": null,
+    "mode": "default",
+    "reasoning_effort": "max"
+  },
+  "video_expect": [],
+  "video_input": null
+}

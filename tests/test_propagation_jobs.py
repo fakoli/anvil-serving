@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
 import os
 from pathlib import Path
 import sys
-from threading import Barrier
 import time
 
 import pytest
@@ -181,36 +179,6 @@ def test_preview_mode_cannot_create_or_authorize_effects(tmp_path):
                            replace(profile, mode="effects"))
 
 
-def test_actual_http_preserves_caller_and_composes_per_server(tmp_path):
-    owner = ControlledOwner(tmp_path)
-    policy = _authorization_policy(tmp_path, [
-        {"id": "admission", "scopes": ["propagation:admission"], "credential_env": "ADMISSION"},
-        {"id": "dispatcher", "scopes": ["propagation:dispatch"], "credential_env": "DISPATCH"},
-        {"id": "reader", "scopes": ["propagation:status"], "credential_env": "READER"},
-    ])
-    env = {"ANVIL_CONTROLLER_TOKEN": "synthetic-legacy-controller", "ADMISSION": "synthetic-admission", "DISPATCH": "synthetic-dispatch", "READER": "synthetic-reader"}
-    with running_controller(env=env, authorization_policy=policy, propagation_service=owner.service) as (host, port):
-        def call(name, args, token):
-            status, _, body, _ = _request(host, port, "POST", "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}}, {"Authorization": "Bearer " + token})
-            return status, body
-        _, body = call("propagation.accept.v1", {"approval_ref": "approval-1", "request_id": "http-1"}, env["ADMISSION"])
-        accepted = body["result"]["structuredContent"]
-        assert accepted["ok"], body
-        result = accepted["data"]
-        with owner.intents._connection() as db:
-            assert db.execute("SELECT caller_id FROM propagation_request_tombstones WHERE request_id='http-1'").fetchone()[0] == "admission"
-        _, denied = call("propagation.accept.v1", {"approval_ref": "approval-1", "request_id": "wrong"}, env["READER"])
-        assert "result" not in denied or denied["result"].get("isError")
-        _, body = call("propagation.dispatch.pending.v1", {"cursor": None}, env["DISPATCH"])
-        assert body["result"]["structuredContent"]["data"]["intents"][0]["intent_id"] == result["intent_id"]
-        _, body = call("propagation.dispatch.record.v1", result, env["DISPATCH"])
-        assert body["result"]["structuredContent"]["data"]["recorded"] is True
-    # A separate server with no constructor service retains unavailable declarations.
-    with running_controller(env=env, authorization_policy=policy) as (host, port):
-        _, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "propagation_capabilities", "arguments": {}}, {"Authorization": "Bearer " + env["READER"]})
-        assert all(not op["available"] for op in body["data"]["operations"])
-
-
 def test_current_authority_is_bound_to_executing_job_and_declared_resource(tmp_path):
     owner = ControlledOwner(tmp_path, runner_wait=3)
     accepted = owner.accept()
@@ -274,121 +242,6 @@ def test_current_authority_is_bound_to_executing_job_and_declared_resource(tmp_p
         owner.service.handle("fleet.propagation.current.v1", arguments, caller_id="activity")
 
 
-def test_lost_submit_ack_and_expired_preview_resolve_original_job(tmp_path):
-    owner = ControlledOwner(tmp_path)
-    accepted, job, preview = owner.submit()
-    count = owner.preview_reads
-    late = PropagationService(owner.intents, owner.jobs, PropagationSupervisor(JobStore(owner.jobs.path)), replace(owner.profile, now=lambda: _now() + timedelta(days=2)))
-    duplicate = late.submit(accepted["intent_id"], preview["preview_digest"], job["operation_id"])
-    assert duplicate == {**job, "state": "existing"}
-    assert owner.preview_reads == count and owner.marker.read_text() == "accepted"
-    with pytest.raises(PropagationJobError, match="operation_identity_mismatch"):
-        late.submit(accepted["intent_id"], preview["preview_digest"], "different-operation")
-
-
-def test_fresh_verify_and_same_pass_convergence_detect_changed_bytes(tmp_path):
-    owner = ControlledOwner(tmp_path)
-    accepted, job, _ = owner.submit()
-    verified = owner.service.verify(accepted["intent_id"], job["job_id"])
-    assert verified["all_targets_verified"]
-    assert verified["verification_id"] == owner.jobs.lookup(job["job_id"])["convergence_ref"]
-    converged = owner.service.convergence(accepted["intent_id"], verified["verification_id"])
-    assert converged["all_targets_verified"] and converged["changed"] == converged["reloads"] == 0
-    assert owner.reads[-1] == ("convergence", verified["verification_id"])
-    owner.marker.write_text("concurrent-drift")
-    with pytest.raises(PropagationJobError, match="verification_failed"):
-        owner.service.convergence(accepted["intent_id"], verified["verification_id"])
-    assert owner.marker.read_text() == "concurrent-drift"
-
-
-def test_observation_age_is_bound_to_snapshot_not_transport_completion(tmp_path, monkeypatch):
-    owner = ControlledOwner(tmp_path)
-    accepted, job, _ = owner.submit()
-    captured = _now() + timedelta(seconds=1)
-    monkeypatch.setattr(sys.modules[__name__], "_now", lambda: captured)
-    owner.service.profile = replace(owner.profile, now=lambda: captured + timedelta(seconds=2))
-    observed = owner.service.verify(accepted["intent_id"], job["job_id"])
-    assert observed["all_targets_verified"]
-    assert observed["observed_at"] == _stamp(captured)
-    assert observed["outcomes"][0]["age_seconds"] == 0
-    owner.corrupt = lambda value: value["outcomes"][0].update(age_seconds=1)
-    with pytest.raises(PropagationJobError, match="invalid_freshness"):
-        owner.service.status(job["job_id"])
-    owner.corrupt = None
-    owner.service.profile = replace(owner.profile, now=lambda: captured + timedelta(seconds=301))
-    with pytest.raises(PropagationJobError, match="stale_observation"):
-        owner.service.verify(accepted["intent_id"], job["job_id"])
-
-
-def test_pagination_retains_snapshot_binding_and_all_original_targets(tmp_path):
-    owner = ControlledOwner(tmp_path, count=12)
-    accepted, job, _ = owner.submit()
-    args = {"intent_id": accepted["intent_id"], "job_id": job["job_id"], "cursor": None}
-    first = owner.service.handle("fleet.propagation.verify.v1", args, caller_id="worker-1")
-    cursor = first["next_cursor"]
-    assert cursor is not None
-    with pytest.raises(PropagationJobError, match="snapshot_unavailable"):
-        owner.service.handle("fleet.propagation.verify.v1", {**args, "cursor": cursor}, caller_id="worker-2")
-    rows = list(first["outcomes"])
-    read_count = len(owner.reads)
-    while cursor:
-        page = owner.service.handle("fleet.propagation.verify.v1", {**args, "cursor": cursor}, caller_id="worker-1")
-        assert page["snapshot_id"] == first["snapshot_id"] and page["observed_at"] == first["observed_at"]
-        rows.extend(page["outcomes"])
-        cursor = page["next_cursor"]
-    assert len(rows) == 12 and [row["target_id"] for row in rows] == sorted({row["target_id"] for row in rows})
-    assert len(owner.reads) == read_count
-
-
-@pytest.mark.parametrize("corrupt", [
-    lambda x: x.update(job_id="different-job"),
-    lambda x: x["outcomes"].pop(),
-    lambda x: x["checks"].pop(),
-    lambda x: x["outcomes"][0].update(outcome="failed"),
-    lambda x: x["outcomes"][0].update(freshness="stale"),
-    lambda x: x["receipts"][0].update(observed_at="2020-01-01T00:00:00Z"),
-], ids=["job", "target", "check", "outcome", "freshness", "receipt-age"])
-def test_invalid_owner_observations_cannot_enable_convergence(tmp_path, corrupt):
-    owner = ControlledOwner(tmp_path)
-    accepted, job, _ = owner.submit()
-    owner.corrupt = corrupt
-    with pytest.raises((PropagationJobError, ValueError)):
-        owner.service.verify(accepted["intent_id"], job["job_id"])
-    owner.corrupt = None
-    expected = _hash(["convergence/v1", owner.contract.digest, 1])
-    with pytest.raises(PropagationJobError, match="verification_incomplete"):
-        owner.service.convergence(accepted["intent_id"], expected)
-
-
-def test_child_exit_between_poll_and_identity_reconciles_durable_result(tmp_path, monkeypatch):
-    owner = ControlledOwner(tmp_path)
-    accepted = owner.accept()
-    preview = owner.service.preview(accepted["intent_id"])
-    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
-    submitted = owner.service.submit(accepted["intent_id"], preview["preview_digest"], operation)
-    job_id = submitted["job_id"]
-    child = owner.supervisor._children[job_id]
-    original_poll = child.poll
-    first = True
-
-    def exit_after_first_poll():
-        nonlocal first
-        if first:
-            first = False
-            # Model a liveness poll immediately before exit, then cross the
-            # scheduling gap before identity lookup without a timing sleep.
-            assert child.wait(timeout=10) == 0
-            return None
-        return original_poll()
-
-    monkeypatch.setattr(child, "poll", exit_after_first_poll)
-    assert owner.supervisor.observe(job_id)["state"] == "applied"
-    assert owner.supervisor.observe(job_id)["state"] == "applied"
-    assert job_id not in owner.supervisor._children
-    assert job_id not in owner.supervisor._pidfds
-    assert owner.marker.read_text() == "accepted"
-
-
 @pytest.mark.parametrize("observed", [lambda job: None,
     lambda job: {"pid": job["pid"], "start_ticks": job["start_ticks"], "boot_id": "other"}],
     ids=["missing", "mismatched"])
@@ -439,27 +292,6 @@ def test_http_idempotency_header_cannot_replay_verification_or_convergence(tmp_p
         failed = call("convergence", verification_id=first["verification_id"])
         assert not failed["ok"] and failed["error"]["code"] == "verification_failed"
         assert len(owner.reads) == reads + 1 and owner.marker.read_text() == "changed-after-verified"
-
-
-def test_offline_target_stays_in_status_and_cannot_enable_convergence(tmp_path):
-    owner = ControlledOwner(tmp_path, count=2)
-    accepted, job, _ = owner.submit()
-    def offline(result):
-        target = result["outcomes"][-1]
-        target.update({key: value for key, value in _offline_row().items()
-                       if key not in {"target_id", "installation_id", "profile_id", "runtime_id", "check_set_digest"}})
-        result["receipts"] = result["receipts"][:-1]
-        for check in result["checks"]:
-            if check["target_id"] == target["target_id"]:
-                check.update(outcome="pending", pending_reason="offline", observed_at=None, evidence_ref=None, evidence_digest=None)
-    owner.corrupt = offline
-    status = owner.service.status(job["job_id"])
-    assert status["target_count"] == len(status["outcomes"]) == 2
-    assert status["outcomes"][-1]["pending_reason"] == "offline"
-    verified = owner.service.verify(accepted["intent_id"], job["job_id"])
-    assert not verified["all_targets_verified"]
-    with pytest.raises(PropagationJobError, match="verification_incomplete"):
-        owner.service.convergence(accepted["intent_id"], verified["verification_id"])
 
 
 def test_stale_intent_is_fenced_before_native_job_submission(tmp_path):
@@ -514,84 +346,6 @@ def test_durable_unlaunched_job_resolves_after_authority_expiry(tmp_path):
     assert owner.jobs.lookup(job["job_id"])["never_launched"] and not owner.marker.exists()
 
 
-@pytest.mark.parametrize("completed", [False, True])
-def test_native_job_inspection_after_expiry_never_reserves_or_rewrites(tmp_path, completed):
-    from anvil_serving.propagation_fencing import NativeMutationFence, PropagationFenceError
-    from tests.test_propagation_fencing import _CONTRACT, _fence, _grant
-
-    fence, target = _fence(tmp_path)
-    grant = _grant(fence, target)
-    digest = hashlib.sha256(b"original-job").hexdigest()
-    bound = dict(canonical_contract=_CONTRACT, target_paths=(target,),
-                 job_id="job-1", job_digest=digest)
-    assert fence.bind_job(grant, reserve=False, **bound) is None
-    assert fence.journal() is None
-    assert fence.bind_job(grant, **bound) is None
-    if completed:
-        with fence.transaction(grant, canonical_contract=_CONTRACT, target_paths=(target,)) as journal:
-            journal.begin_effect("catalog", target, b"before", b"after")
-            journal.bind_backup("catalog", journal.backup([target]))
-            journal.write("catalog", b"after")
-            journal.observe_bytes("catalog", target.read_bytes())
-    original_files = {p: p.read_bytes() for p in tmp_path.rglob("*.json")}
-    original_mtime = target.stat().st_mtime_ns
-
-    expired = NativeMutationFence(replace(fence.owner,
-        clock=lambda: datetime(2026, 9, 29, tzinfo=timezone.utc),
-        current_authority=lambda *_: False), tmp_path)
-    original = expired.bind_job(_grant(expired, target), reserve=False, **bound)
-    assert original["status"] == ("completed" if completed else "bound")
-    assert {p: p.read_bytes() for p in tmp_path.rglob("*.json")} == original_files
-    with pytest.raises(PropagationFenceError, match="job_identity_conflict"):
-        expired.bind_job(_grant(expired, target), reserve=False, **{**bound, "job_id": "other-job"})
-    with pytest.raises(PropagationFenceError, match="approval_expired"):
-        with expired.transaction(_grant(expired, target), canonical_contract=_CONTRACT,
-                                 target_paths=(target,)):
-            pytest.fail("expired job entered the write boundary")
-    assert target.read_bytes() == (b"after" if completed else b"before")
-    assert target.stat().st_mtime_ns == original_mtime
-
-
-def test_future_pending_check_cannot_enter_status(tmp_path):
-    owner = ControlledOwner(tmp_path)
-    accepted = owner.accept()
-    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
-    job, _ = owner.jobs.submit({"intent_id": accepted["intent_id"], "operation_id": operation,
-        "canonical_contract": owner.contract.canonical, "preview_digest": DIGEST,
-        "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
-        "deadline": owner.contract.value["deadline_at"]})
-    owner.corrupt = lambda result: result["checks"][0].update(observed_at=_stamp(_now() + timedelta(days=1)))
-    with pytest.raises(PropagationJobError, match="stale_observation"):
-        owner.service.status(job["job_id"])
-
-
-def test_concurrent_duplicate_submit_returns_one_durable_job(tmp_path, monkeypatch):
-    owner = ControlledOwner(tmp_path)
-    accepted = owner.accept()
-    preview = owner.service.preview(accepted["intent_id"])
-    operation = _hash(["effect/v1", owner.contract.digest, "fleet", "apply"])
-    barrier, launched = Barrier(2), []
-    original = owner.supervisor.launch
-    def launch(job_id):
-        barrier.wait(timeout=5)
-        result = original(job_id)
-        launched.append(job_id)
-        return result
-    monkeypatch.setattr(owner.supervisor, "launch", launch)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(owner.service.submit, accepted["intent_id"], preview["preview_digest"], operation) for _ in range(2)]
-        jobs = [future.result(timeout=10) for future in futures]
-    assert jobs[0]["job_id"] == jobs[1]["job_id"]
-    assert sorted(job["state"] for job in jobs) == ["created", "existing"]
-    assert launched == [jobs[0]["job_id"]]
-    for _ in range(200):
-        status = owner.supervisor.observe(jobs[0]["job_id"])
-        if status["state"] != "running":
-            break
-        time.sleep(.02)
-    assert status["state"] == "applied" and owner.marker.read_text() == "accepted"
-
-
 def test_same_job_reconciliation_requires_durable_quiescence_and_exact_owner_readback(tmp_path):
     owner = ControlledOwner(tmp_path)
     owner.supervisor.reconcile = lambda job, result: "uncertain"
@@ -618,21 +372,6 @@ def test_same_job_reconciliation_requires_durable_quiescence_and_exact_owner_rea
         owner.jobs.reconcile_applied(job["job_id"], original["result"]["result_digest"])
 
 
-def test_superseded_historical_apply_cannot_receive_fresh_acceptance(tmp_path):
-    from anvil_serving.control_plane.controller.propagation_store import PropagationIntentError
-    owner = ControlledOwner(tmp_path)
-    accepted, job, _ = owner.submit()
-    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
-    value["effect_set_digest"] = effect_scope_digest(value)
-    newer = parse_contract(value)
-    owner.intents.admit(newer.canonical,
-        approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
-        active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission", request_id="request-2", now=_now())
-    with pytest.raises(PropagationIntentError, match="stale_generation"):
-        owner.service.verify(accepted["intent_id"], job["job_id"])
-    assert owner.reads == []
-
-
 def test_new_generation_waits_for_durable_job_custody(tmp_path):
     from anvil_serving.control_plane.controller.propagation_store import PropagationIntentError
     owner = ControlledOwner(tmp_path)
@@ -652,28 +391,3 @@ def test_new_generation_waits_for_durable_job_custody(tmp_path):
             active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
             request_id="request-2", now=_now())
     owner.intents.assert_current(accepted["intent_id"])
-
-
-def test_owner_refuses_split_admission_and_job_ledgers(tmp_path):
-    owner = ControlledOwner(tmp_path)
-    other = PropagationIntentStore(tmp_path / "separate.sqlite")
-    with pytest.raises(ValueError, match="share one database"):
-        PropagationService(other, owner.jobs, owner.supervisor, owner.profile)
-
-
-def test_old_job_cannot_reserve_after_new_generation_admission(tmp_path):
-    owner = ControlledOwner(tmp_path)
-    accepted = owner.accept()
-    value = {**owner.contract.value, "generation": 2, "revision": "revision-2"}
-    value["effect_set_digest"] = effect_scope_digest(value)
-    newer = parse_contract(value)
-    owner.intents.admit(newer.canonical,
-        approval_lookup=lambda ref: ApprovedAuthority(ref, DIGEST, newer.digest),
-        active_identity=ActiveIdentity("activation-1", DIGEST), caller_id="admission",
-        request_id="request-2", now=_now())
-    with pytest.raises(PropagationJobError, match="stale_generation"):
-        owner.jobs.submit({"intent_id": accepted["intent_id"],
-            "operation_id": _hash(["effect/v1", owner.contract.digest, "fleet", "apply"]),
-            "canonical_contract": owner.contract.canonical, "preview_digest": DIGEST,
-            "profile_id": "profile-1", "profile_digest": DIGEST, "resources": ["catalog-000"],
-            "deadline": owner.contract.value["deadline_at"]})

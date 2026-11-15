@@ -1,0 +1,53 @@
+{
+  "schema_version": "operator-workflow/v1",
+  "reviewer": "flare_trial_review",
+  "request": "Fixed3 correctness, shape accounting, and comparison design",
+  "gate_state": "evidence_collection",
+  "findings": [
+    {
+      "status": "confirmed",
+      "severity": "medium",
+      "finding": "Fixed3 agentic17/18 versus adaptive/incumbent18/18; debug-loop first called invalid run_tests(scope=all), then recovered. Generic75% threshold does not establish equivalence."
+    },
+    {
+      "status": "confirmed",
+      "severity": "medium",
+      "finding": "Natural~193 versus~168tokens/s cannot establish fixed3 speedup because lengths and token trajectories differ. Natural96/96,retrieval11/11,strict16 12/12 are bounded correctness."
+    },
+    {
+      "status": "confirmed",
+      "finding": "Three drafts means physical verification width4. Same proposal distribution,target correction,deterministic chain verifier and commit validation as adaptive width4. Forcing width4 changes scheduling and RNG advancement; complete responses need not match.",
+      "sources": [
+        "helios/src/runtime_package/selection.rs:113-158",
+        "ignition/components/draft_sampling.py:1-9",
+        "ignition/components/flashinfer_sampling.py:27-36",
+        "ignition/components/speculation.py:361-405,491-540"
+      ]
+    },
+    {
+      "status": "confirmed",
+      "finding": "Rare C1 batch2/4 counters are padded physical graph capacities, not user-request concurrency. Graph rounds equal each depth's offered counts; clientpeak1. Scheduler permits fewer live lanes than capacity.",
+      "sources": [
+        "helios/src/scheduler/policy.rs:715-768,1042-1093",
+        "helios/src/server/metrics.rs:336-370"
+      ]
+    },
+    {
+      "status": "plausible",
+      "finding": "Rare larger C1shapes consistent with Discovery/Refresh of live request costs, not truly idle probes. Counter lacks origin; scheduler trace needed for causal attribution.",
+      "sources": [
+        "helios/src/scheduler/policy.rs:1012-1036",
+        "helios/src/scheduler/refresh.rs:137-139",
+        "helios/src/server/metrics/scheduler.rs:140-186"
+      ]
+    }
+  ],
+  "recommendation": "Hold fixed3 speedup and quality-equivalence claims. Continue throughput, preserve17/18, compare matched strict-output128/256word cells before ranking.",
+  "acceptance": [
+    "Metrics before/after required",
+    "Width4,offered3,accepted<=offered,emitted<=accepted+1,failed delta0",
+    "Bind package/model/flags and observed shapes"
+  ],
+  "human_gate_required": "promotion only; existing trial authorization continues",
+  "promoted": false
+}

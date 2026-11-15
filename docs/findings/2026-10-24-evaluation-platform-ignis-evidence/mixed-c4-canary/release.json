@@ -1,0 +1,28 @@
+{
+  "activation": {
+    "binding_sha256": "7d22fbf2f6f8838507cc5d8458acc34e42dd846bdf0614a53817ef32956868bb",
+    "container_id": "container-1",
+    "generation": "generation-1",
+    "metrics_url": "http://100.64.0.10:19100/engine/generation-1/metrics",
+    "served_model": "incumbent-model",
+    "started_at": "2026-10-24T05:24:53.460914102Z",
+    "status": "verified"
+  },
+  "allowance_s": 900.0,
+  "arm_id": "incumbent",
+  "batch_id": "batch-1",
+  "boot_id": "boot-1",
+  "deadline_monotonic": 1274643.428275855,
+  "drain_reserve_s": 120,
+  "manifest_sha256": "49b642d443730402231f227f912c5d634f656a692f5f5756a44bbe9336e1a3fe",
+  "released_at": "2026-10-25T05:54:43.708291Z",
+  "released_monotonic": 1273743.428275855,
+  "run_ids": [
+    "cell-1",
+    "cell-2",
+    "cell-3",
+    "cell-4"
+  ],
+  "schema": "anvil-serving.campaign-release/v1",
+  "traffic_deadline_monotonic": 1274523.428275855
+}

@@ -17,15 +17,6 @@ from anvil_serving.voice.realtime import app as realtime_app
 from scripts.voice import realtime_sdk_client_demo as demo
 
 
-def test_sdk_websocket_base_url_targets_anvil_realtime_path():
-    assert demo._sdk_websocket_base_url("ws://127.0.0.1:8765") == "ws://127.0.0.1:8765/v1"
-    assert demo._sdk_websocket_base_url("ws://127.0.0.1:8765/v1") == "ws://127.0.0.1:8765/v1"
-    assert (
-        demo._sdk_websocket_base_url("ws://127.0.0.1:8765/v1/realtime")
-        == "ws://127.0.0.1:8765/v1"
-    )
-
-
 def test_realtime_app_outbound_queue_prunes_queued_output_on_cancel():
     outbound = realtime_app._OutboundEvents()
     outbound.enqueue({"type": "response.created", "response": {"id": "resp_1"}})

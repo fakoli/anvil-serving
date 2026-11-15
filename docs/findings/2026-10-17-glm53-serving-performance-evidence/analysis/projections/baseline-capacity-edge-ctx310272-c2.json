@@ -1,0 +1,1327 @@
+{
+  "arm": "baseline",
+  "cell_id": "baseline-capacity-edge-ctx310272-c2",
+  "configured_target_context_tokens": 310272,
+  "engine_phase_histogram_deltas": {
+    "request_decode": {
+      "buckets": [
+        {
+          "count": 0.0,
+          "le": "0.3"
+        },
+        {
+          "count": 0.0,
+          "le": "0.5"
+        },
+        {
+          "count": 0.0,
+          "le": "0.8"
+        },
+        {
+          "count": 0.0,
+          "le": "1.0"
+        },
+        {
+          "count": 0.0,
+          "le": "1.5"
+        },
+        {
+          "count": 0.0,
+          "le": "2.0"
+        },
+        {
+          "count": 1.0,
+          "le": "2.5"
+        },
+        {
+          "count": 1.0,
+          "le": "5.0"
+        },
+        {
+          "count": 1.0,
+          "le": "10.0"
+        },
+        {
+          "count": 2.0,
+          "le": "15.0"
+        },
+        {
+          "count": 2.0,
+          "le": "20.0"
+        },
+        {
+          "count": 2.0,
+          "le": "30.0"
+        },
+        {
+          "count": 2.0,
+          "le": "40.0"
+        },
+        {
+          "count": 4.0,
+          "le": "50.0"
+        },
+        {
+          "count": 4.0,
+          "le": "60.0"
+        },
+        {
+          "count": 4.0,
+          "le": "120.0"
+        },
+        {
+          "count": 4.0,
+          "le": "240.0"
+        },
+        {
+          "count": 4.0,
+          "le": "480.0"
+        },
+        {
+          "count": 4.0,
+          "le": "960.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 4.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 4.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 4.0,
+      "sum": 99.59072361292783
+    },
+    "request_prefill": {
+      "buckets": [
+        {
+          "count": 0.0,
+          "le": "0.3"
+        },
+        {
+          "count": 0.0,
+          "le": "0.5"
+        },
+        {
+          "count": 0.0,
+          "le": "0.8"
+        },
+        {
+          "count": 0.0,
+          "le": "1.0"
+        },
+        {
+          "count": 0.0,
+          "le": "1.5"
+        },
+        {
+          "count": 0.0,
+          "le": "2.0"
+        },
+        {
+          "count": 0.0,
+          "le": "2.5"
+        },
+        {
+          "count": 0.0,
+          "le": "5.0"
+        },
+        {
+          "count": 0.0,
+          "le": "10.0"
+        },
+        {
+          "count": 0.0,
+          "le": "15.0"
+        },
+        {
+          "count": 0.0,
+          "le": "20.0"
+        },
+        {
+          "count": 0.0,
+          "le": "30.0"
+        },
+        {
+          "count": 0.0,
+          "le": "40.0"
+        },
+        {
+          "count": 0.0,
+          "le": "50.0"
+        },
+        {
+          "count": 2.0,
+          "le": "60.0"
+        },
+        {
+          "count": 4.0,
+          "le": "120.0"
+        },
+        {
+          "count": 4.0,
+          "le": "240.0"
+        },
+        {
+          "count": 4.0,
+          "le": "480.0"
+        },
+        {
+          "count": 4.0,
+          "le": "960.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 4.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 4.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 4.0,
+      "sum": 305.29253865312785
+    },
+    "request_queue": {
+      "buckets": [
+        {
+          "count": 4.0,
+          "le": "0.3"
+        },
+        {
+          "count": 4.0,
+          "le": "0.5"
+        },
+        {
+          "count": 4.0,
+          "le": "0.8"
+        },
+        {
+          "count": 4.0,
+          "le": "1.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1.5"
+        },
+        {
+          "count": 4.0,
+          "le": "2.0"
+        },
+        {
+          "count": 4.0,
+          "le": "2.5"
+        },
+        {
+          "count": 4.0,
+          "le": "5.0"
+        },
+        {
+          "count": 4.0,
+          "le": "10.0"
+        },
+        {
+          "count": 4.0,
+          "le": "15.0"
+        },
+        {
+          "count": 4.0,
+          "le": "20.0"
+        },
+        {
+          "count": 4.0,
+          "le": "30.0"
+        },
+        {
+          "count": 4.0,
+          "le": "40.0"
+        },
+        {
+          "count": 4.0,
+          "le": "50.0"
+        },
+        {
+          "count": 4.0,
+          "le": "60.0"
+        },
+        {
+          "count": 4.0,
+          "le": "120.0"
+        },
+        {
+          "count": 4.0,
+          "le": "240.0"
+        },
+        {
+          "count": 4.0,
+          "le": "480.0"
+        },
+        {
+          "count": 4.0,
+          "le": "960.0"
+        },
+        {
+          "count": 4.0,
+          "le": "1920.0"
+        },
+        {
+          "count": 4.0,
+          "le": "7680.0"
+        },
+        {
+          "count": 4.0,
+          "le": "+Inf"
+        }
+      ],
+      "count": 4.0,
+      "sum": 0.5419042009161785
+    }
+  },
+  "engine_phase_histogram_evidence": [
+    {
+      "bytes": 84420,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+      "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+    },
+    {
+      "bytes": 84419,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+      "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+    }
+  ],
+  "engine_sampling": {
+    "active_max": 2,
+    "kv_usage_fraction_max": 0.5060975609756098,
+    "occupancy_definition": "sampled running plus waiting; active_max counts running only",
+    "occupancy_max": 2,
+    "queued_max": 1,
+    "sampled_lower_bound": true,
+    "samples": 412,
+    "waiting_by_reason_max": {
+      "capacity": 1.0,
+      "deferred": 0.0
+    }
+  },
+  "frozen_plan": {
+    "bytes": 10864,
+    "path": "plans/comparison-plan.json",
+    "sha256": "d76662aedc1ef10157a0f290c8f8b37724f039ab84e57513dc5df7084ef172b1"
+  },
+  "kv_startup_observation": {
+    "accounting": "engine-reported current KV cache allocation",
+    "per_gpu_bytes_rounded": 8321499136,
+    "per_gpu_gib_rounded": 7.75,
+    "physical_total_bytes": 16642998272,
+    "precision": "startup log rounds to GiB",
+    "workers": 2
+  },
+  "measurement": {
+    "bytes": 816,
+    "path": "analysis/receipts/baseline-capacity-edge-ctx310272-c2.json",
+    "sha256": "8cdfe69d3f180bb88d02e88bfc5f72d129f5a5eb87472df779bfd51e082e5315"
+  },
+  "memory_sampling": {
+    "failure": {
+      "cgroup_events_delta": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "ooms": 0
+    },
+    "gpu": {
+      "accounting": "sampled nvidia-smi per-device; reported free preserved",
+      "max_utilization_percent": 100,
+      "min_free_bytes": 1760559104,
+      "peak_used_bytes": 100309925888,
+      "samples_per_device": 105
+    },
+    "host": {
+      "accounting": "host MemAvailable plus cgroup status",
+      "cgroup_current_bytes": 55638007808,
+      "cgroup_lifetime_peak_bytes": 55834574848,
+      "cgroup_limit_bytes": 55834574848,
+      "cgroup_sampled_peak_bytes": 55639867392,
+      "host_available_bytes": 64565837824
+    }
+  },
+  "metrics": {
+    "admission_status": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "observation": {
+        "ooms": 0,
+        "preemptions": 0,
+        "refused_requests": 0
+      },
+      "status": "measured"
+    },
+    "completion_tokens": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 166.0,
+        "p95": 243.0,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "concurrency": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "observation": {
+        "client_max": 2,
+        "engine_max": 2,
+        "requested": 2
+      },
+      "status": "measured"
+    },
+    "context_tokens": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "status": "measured",
+      "value": 252302.0
+    },
+    "decode_tok_s": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 5.508038116160653,
+        "p95": 71.72835889163937,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "e2e_ms": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 101335.02844895702,
+        "p95": 110268.1252489565,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "effective_prefill_tok_s": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 2761.616936937679,
+        "p95": 4372.643429570463,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "gpu_memory": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "observation": {
+        "accounting": "sampled nvidia-smi per-device; reported free preserved",
+        "min_free_bytes": 1760559104,
+        "peak_used_bytes": 100309925888
+      },
+      "status": "measured"
+    },
+    "host_memory": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "observation": {
+        "accounting": "host MemAvailable plus cgroup status",
+        "cgroup_current_bytes": 55638007808,
+        "cgroup_limit_bytes": 55834574848,
+        "cgroup_peak_bytes": 55639867392,
+        "host_available_bytes": 64565837824
+      },
+      "status": "measured"
+    },
+    "kv_cache_bytes": {
+      "evidence": [
+        {
+          "bytes": 26713,
+          "path": "logs/baseline-phase2-startup.log",
+          "sha256": "d09228425759834876ad10f66007cb8d799ea5c444403c81540612bcd116c9a2"
+        },
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "status": "measured",
+      "value": 16642998272
+    },
+    "kv_cache_tokens": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "status": "measured",
+      "value": 998210
+    },
+    "oom_status": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "status": "measured",
+      "value": 0
+    },
+    "prompt_tokens": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 252300.0,
+        "p95": 252302.0,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "throughput_tok_s": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "status": "measured",
+      "value": 3.9569522346165757
+    },
+    "time_to_first_output_ms": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 59033.21515605785,
+        "p95": 99770.0840360485,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "tpot_ms": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 64.40516081538645,
+        "p95": 182.77322728483176,
+        "samples": 4
+      },
+      "status": "measured"
+    },
+    "ttft_ms": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "observation": {
+        "p50": 100487.24191496149,
+        "p95": 101262.55168300122,
+        "samples": 4
+      },
+      "status": "measured"
+    }
+  },
+  "native": {
+    "bytes": 16987,
+    "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+    "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+  },
+  "non_admission_failure_counts": {},
+  "notes": [
+    "engine_reported_full_context_concurrency_estimate=3.0462962962962963"
+  ],
+  "profile": "serving-comparison/v1",
+  "schema": "serving-cell-projection/v2",
+  "supplementals": {
+    "engine_phase_histograms": {
+      "evidence": [
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "request_decode": {
+          "buckets": [
+            {
+              "count": 0.0,
+              "le": "0.3"
+            },
+            {
+              "count": 0.0,
+              "le": "0.5"
+            },
+            {
+              "count": 0.0,
+              "le": "0.8"
+            },
+            {
+              "count": 0.0,
+              "le": "1.0"
+            },
+            {
+              "count": 0.0,
+              "le": "1.5"
+            },
+            {
+              "count": 0.0,
+              "le": "2.0"
+            },
+            {
+              "count": 1.0,
+              "le": "2.5"
+            },
+            {
+              "count": 1.0,
+              "le": "5.0"
+            },
+            {
+              "count": 1.0,
+              "le": "10.0"
+            },
+            {
+              "count": 2.0,
+              "le": "15.0"
+            },
+            {
+              "count": 2.0,
+              "le": "20.0"
+            },
+            {
+              "count": 2.0,
+              "le": "30.0"
+            },
+            {
+              "count": 2.0,
+              "le": "40.0"
+            },
+            {
+              "count": 4.0,
+              "le": "50.0"
+            },
+            {
+              "count": 4.0,
+              "le": "60.0"
+            },
+            {
+              "count": 4.0,
+              "le": "120.0"
+            },
+            {
+              "count": 4.0,
+              "le": "240.0"
+            },
+            {
+              "count": 4.0,
+              "le": "480.0"
+            },
+            {
+              "count": 4.0,
+              "le": "960.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 4.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 4.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 4.0,
+          "sum": 99.59072361292783
+        },
+        "request_prefill": {
+          "buckets": [
+            {
+              "count": 0.0,
+              "le": "0.3"
+            },
+            {
+              "count": 0.0,
+              "le": "0.5"
+            },
+            {
+              "count": 0.0,
+              "le": "0.8"
+            },
+            {
+              "count": 0.0,
+              "le": "1.0"
+            },
+            {
+              "count": 0.0,
+              "le": "1.5"
+            },
+            {
+              "count": 0.0,
+              "le": "2.0"
+            },
+            {
+              "count": 0.0,
+              "le": "2.5"
+            },
+            {
+              "count": 0.0,
+              "le": "5.0"
+            },
+            {
+              "count": 0.0,
+              "le": "10.0"
+            },
+            {
+              "count": 0.0,
+              "le": "15.0"
+            },
+            {
+              "count": 0.0,
+              "le": "20.0"
+            },
+            {
+              "count": 0.0,
+              "le": "30.0"
+            },
+            {
+              "count": 0.0,
+              "le": "40.0"
+            },
+            {
+              "count": 0.0,
+              "le": "50.0"
+            },
+            {
+              "count": 2.0,
+              "le": "60.0"
+            },
+            {
+              "count": 4.0,
+              "le": "120.0"
+            },
+            {
+              "count": 4.0,
+              "le": "240.0"
+            },
+            {
+              "count": 4.0,
+              "le": "480.0"
+            },
+            {
+              "count": 4.0,
+              "le": "960.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 4.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 4.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 4.0,
+          "sum": 305.29253865312785
+        },
+        "request_queue": {
+          "buckets": [
+            {
+              "count": 4.0,
+              "le": "0.3"
+            },
+            {
+              "count": 4.0,
+              "le": "0.5"
+            },
+            {
+              "count": 4.0,
+              "le": "0.8"
+            },
+            {
+              "count": 4.0,
+              "le": "1.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1.5"
+            },
+            {
+              "count": 4.0,
+              "le": "2.0"
+            },
+            {
+              "count": 4.0,
+              "le": "2.5"
+            },
+            {
+              "count": 4.0,
+              "le": "5.0"
+            },
+            {
+              "count": 4.0,
+              "le": "10.0"
+            },
+            {
+              "count": 4.0,
+              "le": "15.0"
+            },
+            {
+              "count": 4.0,
+              "le": "20.0"
+            },
+            {
+              "count": 4.0,
+              "le": "30.0"
+            },
+            {
+              "count": 4.0,
+              "le": "40.0"
+            },
+            {
+              "count": 4.0,
+              "le": "50.0"
+            },
+            {
+              "count": 4.0,
+              "le": "60.0"
+            },
+            {
+              "count": 4.0,
+              "le": "120.0"
+            },
+            {
+              "count": 4.0,
+              "le": "240.0"
+            },
+            {
+              "count": 4.0,
+              "le": "480.0"
+            },
+            {
+              "count": 4.0,
+              "le": "960.0"
+            },
+            {
+              "count": 4.0,
+              "le": "1920.0"
+            },
+            {
+              "count": 4.0,
+              "le": "7680.0"
+            },
+            {
+              "count": 4.0,
+              "le": "+Inf"
+            }
+          ],
+          "count": 4.0,
+          "sum": 0.5419042009161785
+        }
+      }
+    },
+    "queue_waiting_by_reason": {
+      "evidence": [
+        {
+          "bytes": 84419,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+          "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+          "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+        },
+        {
+          "bytes": 84420,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+          "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+        },
+        {
+          "bytes": 5314,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+          "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+        },
+        {
+          "bytes": 2505,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+          "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+        },
+        {
+          "bytes": 2436556,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+          "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+        },
+        {
+          "bytes": 6224,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+          "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+        },
+        {
+          "bytes": 10029,
+          "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+          "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "capacity": 1.0,
+        "deferred": 0.0
+      }
+    },
+    "request_identity": {
+      "evidence": [
+        {
+          "bytes": 16987,
+          "path": "native/baseline/baseline-capacity-edge-ctx310272-c2.json",
+          "sha256": "45c40c61c60f0ead60eef4d33f5eaee0c58234dc9460c4929065698186d65ccb"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "context_seed": 484032,
+        "namespace": "capacity-v1:seed-request-index",
+        "prompt_tokens_ordered": [
+          252302,
+          252301,
+          252300,
+          252300
+        ],
+        "request_canaries": [
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00000",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00001",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00002",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          },
+          {
+            "capture_complete": true,
+            "foreign_marker_count": 0,
+            "marker": "ANVIL_REQ_484032_00003",
+            "marker_at_start": true,
+            "observed_marker_count": 1,
+            "passed": true
+          }
+        ],
+        "request_indices": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "wire_prompt_proof": "not retained; deterministic reconstruction is not transmitted-byte proof"
+      }
+    },
+    "runtime_model_load_memory": {
+      "evidence": [
+        {
+          "bytes": 26713,
+          "path": "logs/baseline-phase2-startup.log",
+          "sha256": "d09228425759834876ad10f66007cb8d799ea5c444403c81540612bcd116c9a2"
+        }
+      ],
+      "status": "measured",
+      "value": {
+        "accounting": "engine-reported rounded runtime model-load memory; not pure checkpoint weights",
+        "per_worker_gib_rounded": 80.58,
+        "physical_total_bytes": 173044232354,
+        "weights_plus_non_torch_per_worker_gib_rounded": 83.56,
+        "weights_plus_non_torch_physical_total_bytes": 179443733626,
+        "workers": 2
+      }
+    }
+  },
+  "telemetry": {
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json": {
+      "bytes": 84419,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-metrics.json",
+      "sha256": "b4918e8e08e3b140339bc2277b55b0f1ffb2fa7233b976d82e98fc55b655e6f4"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json": {
+      "bytes": 5314,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/after-slow.json",
+      "sha256": "d34ea5817d4d0f13fd3ef47a982b5625c523c36ba9ac0922f5c5c30cdb515f22"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json": {
+      "bytes": 84420,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-metrics.json",
+      "sha256": "7b635eff8741b0329f7073aed730e7e375bfb63bdec063e617b2778729e6f44c"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json": {
+      "bytes": 5314,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/before-slow.json",
+      "sha256": "57608fb8bac49aa0d6b35c5d3b8e26c9144f3dc4ef9f2958354ca08784b7687a"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json": {
+      "bytes": 2505,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/cell-summary.json",
+      "sha256": "2890abff93924bf125e4b5b4f3ca263ceab28b69eea8aa87d2b81e47b154ad56"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl": {
+      "bytes": 2436556,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/engine-metrics.jsonl.gz",
+      "sha256": "0ede31016068758fcfe914b4a912b259fde9b163aadb67089ec8175802c460a7"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl": {
+      "bytes": 6224,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/settle-metrics.jsonl.gz",
+      "sha256": "f094e8e8b9bcb1f9c73c9de262df5942cb108ad53b4d5ae3d3c0f48efde3c517"
+    },
+    "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl": {
+      "bytes": 10029,
+      "path": "telemetry/baseline/baseline-capacity-edge-ctx310272-c2/slow.jsonl.gz",
+      "sha256": "eb07cfcb1f51db0e89339937399f3c0a231fd04503006f76decf1c54504d80b0"
+    }
+  },
+  "unavailable": []
+}

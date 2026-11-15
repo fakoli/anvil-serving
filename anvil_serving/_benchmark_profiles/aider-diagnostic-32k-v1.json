@@ -1,0 +1,48 @@
+{
+  "schema": "anvil-serving.benchmark-profile/v2",
+  "name": "aider-diagnostic-32k-v1",
+  "description": "Bounded single-task Aider Polyglot diagnostic with a 32K completion cap and unchanged two-attempt grading.",
+  "adapters": {
+    "aider": {
+      "kind": "git",
+      "source": "https://github.com/Aider-AI/aider",
+      "revision": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c"
+    },
+    "polyglot-benchmark": {
+      "kind": "git",
+      "source": "https://github.com/paraemsi/polyglot-benchmark",
+      "revision": "7e0611e77b54e2dea774cdc0aa00cf9f7ed6144f"
+    }
+  },
+  "suites": {
+    "aider": {
+      "cases": [
+        "polyglot"
+      ],
+      "repetitions": 1,
+      "timeout_s": 600,
+      "instance_limit": 1,
+      "max_steps": 2,
+      "max_completion_tokens": 32768,
+      "scoring": {
+        "pass_rate_floor": 1.0
+      },
+      "requirements": {
+        "min_free_disk_bytes": 21474836480,
+        "container_required": true
+      },
+      "adapters": [
+        "aider",
+        "polyglot-benchmark"
+      ],
+      "budgets": {
+        "max_model_calls": 12,
+        "max_completion_tokens": 32768,
+        "deadline_s": 600,
+        "max_retries": 0,
+        "min_free_disk_bytes": 21474836480
+      }
+    }
+  },
+  "content_sha256": "cfa62a675f71534ab08827eeb722f1c4d9f244b45b919ea040b4ad9249fb2961"
+}

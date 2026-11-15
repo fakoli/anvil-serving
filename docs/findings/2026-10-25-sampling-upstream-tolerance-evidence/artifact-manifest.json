@@ -1,0 +1,311 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "glm-sampling-upstream-tolerance-20261025",
+    "capability": "Focused split-top-p and reasoning-boundary functional diagnostic",
+    "repository_revision": "80dacf71b72d9760cf539d7cbe8e9c8a88c25647",
+    "dirty_state": "Executable source frozen before lifecycle; publication projections added after measurement.",
+    "started_at": "2026-10-26T04:54:56.908025+00:00",
+    "completed_at": "2026-10-26T05:14:45.702282+00:00",
+    "evidence_labels": [
+      "functional"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "promoted": false
+  },
+  "native_evidence_schemas": [
+    "sampling-upstream-tolerance-experiment/v1",
+    "anvil-serving.reasoning-limit-probe-plan/v1",
+    "anvil-serving.image-build/v1",
+    "anvil-serving.reasoning-runtime-inspection/v1",
+    "preflight/v2",
+    "sampling-upstream-closure/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "708e8d14d29ebed5958211685d525750901f38ebbbe490f2c0bfb691f9e427a3",
+          "bytes": 3479
+        }
+      ],
+      "reason": "Human evidence map and interpretation boundaries."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "3cf0f94de54d0a349387799910c655d80e60e6dbd42382a1ce22e10333aa7e48",
+          "bytes": 3563
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "08eeb6848f643d14817258b00e44472a34960cdc99fed5fb6b69b51fc464438f",
+          "bytes": 14169
+        }
+      ],
+      "reason": "Primary sources and private-to-public provenance."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "f4f479724b3dbccbb1b7ead93b56e7ccb0d7e044549d3e244c7b548c7b5bd068",
+          "bytes": 6988
+        },
+        {
+          "path": "probe-plan.json",
+          "sha256": "d3e518bb5ab202e10591f8482c29f32932711a1837df8da0d713d904e72077e7",
+          "bytes": 3599
+        },
+        {
+          "path": "request.json",
+          "sha256": "5471262015d8a55f190d16287e3c94924e0dfdde1f0184a894fee4f984b6b89c",
+          "bytes": 484
+        }
+      ],
+      "reason": "Frozen synthetic workload, controls and exact forwarded request projection."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "plan.json",
+          "sha256": "f4f479724b3dbccbb1b7ead93b56e7ccb0d7e044549d3e244c7b548c7b5bd068",
+          "bytes": 6988
+        },
+        {
+          "path": "probe-plan.json",
+          "sha256": "d3e518bb5ab202e10591f8482c29f32932711a1837df8da0d713d904e72077e7",
+          "bytes": 3599
+        }
+      ],
+      "reason": "Prospective admission, stop, timeout and restoration rules."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "identity.json",
+          "sha256": "bcae998e31685154412c4a2350ea94a2433d6bd4cb33d48be0f108ce734d6be6",
+          "bytes": 2275
+        },
+        {
+          "path": "source-freeze.json",
+          "sha256": "88e2321d438dd076149898fedc28203da129988f2ce3fc95c03bb7bfe7b1c10c",
+          "bytes": 1172
+        },
+        {
+          "path": "build.json",
+          "sha256": "87bc5af90e1a9726e829b6e57cabec90115845b7093e969ce5ee3d07c360dc95",
+          "bytes": 425
+        },
+        {
+          "path": "candidate-attestation.json",
+          "sha256": "5ba40badbce43b2d964f00b8e56da64aa19e4629148c65b90ca4f6eded8d2c83",
+          "bytes": 432
+        },
+        {
+          "path": "runtime-before.json",
+          "sha256": "4c68c5bdfc25be61acf2afea18e222ba0c54149c789e10c784e06bfd8d2117a4",
+          "bytes": 6630
+        },
+        {
+          "path": "runtime-candidate-before.json",
+          "sha256": "ee49f8de29bfc6f9a76111d1255517fe217cf2989a079699c1648ff5c33e07be",
+          "bytes": 7974
+        },
+        {
+          "path": "runtime-candidate-after.json",
+          "sha256": "659d129aba069b141e39f055a1c37c71f8173dbb2b2b5eea799ee70723bd0ad7",
+          "bytes": 7974
+        }
+      ],
+      "reason": "Pinned source/image/model and independent runtime comparisons."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "kernel-receipts.log",
+          "sha256": "f0704eade17573dd26b31f43f0ff66b122fc675c6201bc3954ef346cb5d15f4f",
+          "bytes": 15350
+        },
+        {
+          "path": "kernel-summary.json",
+          "sha256": "22df898ea47d84b937380ce9143f04a20fb587de390730af559d96b1b89a36a1",
+          "bytes": 6981
+        },
+        {
+          "path": "request.json",
+          "sha256": "5471262015d8a55f190d16287e3c94924e0dfdde1f0184a894fee4f984b6b89c",
+          "bytes": 484
+        },
+        {
+          "path": "response.json",
+          "sha256": "b2d829964d6215844ca293ba4695e43b26e47506948277e2c7dc7f34b02aa0f3",
+          "bytes": 3083
+        },
+        {
+          "path": "probe-result.json",
+          "sha256": "7621266c783180f36526525aed4d0a8ad6101afc3c4a9af34e469ae045f43ef2",
+          "bytes": 2007
+        },
+        {
+          "path": "boundary-summary.json",
+          "sha256": "7f22b6d88772c3d653a6c87955e2e7d38461b4678cd0c37c8e29c57d831e922d",
+          "bytes": 752
+        },
+        {
+          "path": "serving-worker-traces.json",
+          "sha256": "e8b0218dea104c78380677192dde166572595708b91d44fd4f6af44d01b1d19d",
+          "bytes": 1172
+        },
+        {
+          "path": "trace-freshness.json",
+          "sha256": "770f1346ffd0f3478f59da6853849feb054f3fb9f97d86941bea63bb5af181e7",
+          "bytes": 628
+        },
+        {
+          "path": "baseline-smoke.json",
+          "sha256": "4befa147bda4bf0668d326f9b261be6ae025ad4974a23f3d1561e80183cdb1e5",
+          "bytes": 1861
+        }
+      ],
+      "reason": "Native numerical/token evidence and explicitly derived summaries, including strict failures."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "c1e443e3657f7484a73ab8711cbf0e35cbbbc06d94c0a5a75852ba0db5200da8",
+          "bytes": 3552
+        },
+        {
+          "path": "probe-result.json",
+          "sha256": "7621266c783180f36526525aed4d0a8ad6101afc3c4a9af34e469ae045f43ef2",
+          "bytes": 2007
+        },
+        {
+          "path": "baseline-smoke.json",
+          "sha256": "4befa147bda4bf0668d326f9b261be6ae025ad4974a23f3d1561e80183cdb1e5",
+          "bytes": 1861
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "bf16908e6ee1451965faf61effa30e402bc12af9f00603017f35c6236d9f4253",
+          "bytes": 1916
+        }
+      ],
+      "reason": "Failed repeated-close/exact-output gates, known JSON quality failure and durable follow-up."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "8432fc3030cc7025b67ef5daa6603a331a359c76244e688f38c061110df8b6b5",
+          "bytes": 2638
+        },
+        {
+          "path": "closure.json",
+          "sha256": "dc8f13d9e04240e7b8606b939c47b768027c537ddaecbcf4021e7da0c3e4ff26",
+          "bytes": 1314
+        },
+        {
+          "path": "runtime-before.json",
+          "sha256": "4c68c5bdfc25be61acf2afea18e222ba0c54149c789e10c784e06bfd8d2117a4",
+          "bytes": 6630
+        },
+        {
+          "path": "runtime-restored.json",
+          "sha256": "c5427021a42e009da80e5fda8a18e7b7f0ed7fbe07341e41c21f2ac57a43d24c",
+          "bytes": 6632
+        },
+        {
+          "path": "router-restored.json",
+          "sha256": "241d32ecf31e79acb186bdae4814c3d0421eb3ebc78937bc751c8b43bf62522e",
+          "bytes": 326
+        },
+        {
+          "path": "mode-restored.json",
+          "sha256": "bc88637fcc635cdc17bd386b1589f52b3861bc6763359255dc55ae3c7615e416",
+          "bytes": 164
+        },
+        {
+          "path": "shared-memory-restored.json",
+          "sha256": "fa59f55c3af9d184938078d9a398d8c9310d0246a0ba5ed17466c52d0834cfec",
+          "bytes": 125
+        },
+        {
+          "path": "resources-final.json",
+          "sha256": "2d8e1fe7a5559951db8964b776a4754398f926c8a26162a303ee1b7fb2200341",
+          "bytes": 666
+        },
+        {
+          "path": "restoration-smoke.json",
+          "sha256": "bf16908e6ee1451965faf61effa30e402bc12af9f00603017f35c6236d9f4253",
+          "bytes": 1916
+        },
+        {
+          "path": "independent-restoration-review.json",
+          "sha256": "a451b7662339536d92508c5b42be6bed3d1980ba87d747f6b8f48bdc4d598aed",
+          "bytes": 1302
+        }
+      ],
+      "reason": "Exact operational restoration; functional acceptance remains incomplete; no established regression."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "6186706f5331ee8d7e305158303716312a45246d44eddd253f933f09f8e77249",
+          "bytes": 5749
+        },
+        {
+          "path": "independent-kernel-review.json",
+          "sha256": "a250d37921f996803575ce55d343beb18d18356fcd0650e0b64e2a35a334e0a7",
+          "bytes": 560
+        },
+        {
+          "path": "independent-live-review.json",
+          "sha256": "6e20eb0cc1d34e3239f9e175211e375ad63c47c691ceb7a54f12e2bce79dab2a",
+          "bytes": 1299
+        },
+        {
+          "path": "independent-restoration-review.json",
+          "sha256": "a451b7662339536d92508c5b42be6bed3d1980ba87d747f6b8f48bdc4d598aed",
+          "bytes": 1302
+        }
+      ],
+      "reason": "Closed diagnostic with passed kernel gate, failed full probe and independent phase reviews."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social-copy package requested; dated technical finding is the public report."
+    }
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "generated_from": "artifact-manifest-source.json"
+}

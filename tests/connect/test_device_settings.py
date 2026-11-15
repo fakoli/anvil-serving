@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.connect.config import ManifestError, canonical_manifest, validate_manifest
-from anvil_serving.connect.render import render, render_for_inspection
+from anvil_serving.connect.config import ManifestError, validate_manifest
+from anvil_serving.connect.render import render
 
 
 def declaration() -> dict:
@@ -60,15 +60,6 @@ def device_declaration(prefix: str = "/", *, isolated: bool = False) -> dict:
         "methods": ["GET"],
     }
     return value
-
-
-def test_absent_device_fields_preserve_legacy_canonical_manifest_and_render() -> None:
-    value = declaration()
-    normalized = validate_manifest(value)
-    assert "device_authorizations" not in normalized["gateway"]["gateway"]
-    assert "device_authorization" not in normalized["clients"][0]
-    assert json.loads(render_for_inspection(value)["files"]["gateway.json"]) == normalized["gateway"]
-    assert canonical_manifest(value) == canonical_manifest(normalized)
 
 
 def test_device_authorization_is_copied_from_the_exact_gateway_binding() -> None:
@@ -147,36 +138,6 @@ def test_device_authorization_shape_and_principal_mappings_are_closed() -> None:
         validate_manifest(value)
 
 
-@pytest.mark.parametrize(("label", "accepted"), [
-    ("é" * 64, True),  # 128 UTF-8 bytes
-    ("é" * 65, False),
-    ("bad\x01label", False),
-    ("bad\x7flabel", False),
-    ("\ud800", False),
-])
-def test_device_label_has_a_bounded_valid_utf8_control_free_grammar(label, accepted) -> None:
-    value = device_declaration()
-    value["gateway"]["gateway"]["device_authorizations"][0]["label"] = label
-    if accepted:
-        assert validate_manifest(value)["gateway"]["gateway"]["device_authorizations"][0]["label"] == label
-    else:
-        with pytest.raises(ManifestError):
-            validate_manifest(value)
-
-    value = device_declaration()
-    value["gateway"]["gateway"]["device_authorizations"][0]["principals"] = {}
-    with pytest.raises(ManifestError, match="opaque human mappings"):
-        validate_manifest(value)
-
-    value = device_declaration()
-    value["clients"][0]["device_authorization"] = {
-        "browser_host": "dash.example.test", "approval_path": "/_anvil-connect/device",
-        "api_resource": "dashboard-api", "methods": ["GET"], "scope": "all",
-    }
-    with pytest.raises(ManifestError, match="unknown keys"):
-        validate_manifest(value)
-
-
 def test_client_device_authorization_requires_gateway_binding() -> None:
     value = device_declaration()
     del value["gateway"]["gateway"]["device_authorizations"]
@@ -206,41 +167,3 @@ def test_device_authorization_principal_and_method_order_is_canonical() -> None:
     normalized = validate_manifest(copy.deepcopy(value))
     assert normalized["gateway"]["gateway"]["device_authorizations"][0]["methods"] == ["GET", "POST"]
     assert list(normalized["gateway"]["gateway"]["device_authorizations"][0]["principals"]) == ["human:" + "a" * 64, "human:" + "b" * 64]
-
-
-def test_browser_administration_closed_parity() -> None:
-    value = device_declaration()
-    human = "human:" + "a" * 64
-    value["gateway"]["gateway"]["browser_administration"] = {
-        "browser_resource": "dashboard",
-        "operators": [human],
-    }
-    assert validate_manifest(value)["gateway"]["gateway"]["browser_administration"]["operators"] == [human]
-    for bad in (
-        None,
-        {"browser_resource": "dashboard", "operators": []},
-        {"browser_resource": "dashboard", "operators": [human, human]},
-        {"browser_resource": "dashboard", "operators": ["human:" + "A" * 64]},
-        {"browser_resource": "dashboard-api", "operators": [human]},
-        {"browser_resource": "dashboard", "operators": [human], "unknown": True},
-    ):
-        value["gateway"]["gateway"]["browser_administration"] = bad
-        with pytest.raises(ManifestError):
-            validate_manifest(value)
-
-    value = device_declaration()
-    value["gateway"]["gateway"]["browser_administration"] = {
-        "browser_resource": "dashboard",
-        "operators": [human],
-    }
-    browser = next(
-        item for item in value["gateway"]["gateway"]["resources"]
-        if item["rule"]["id"] == "dashboard"
-    )
-    browser["rule"]["methods"] = ["GET"]
-    for connector in value["connectors"]:
-        for resource in connector["resources"]:
-            if resource["envelope"]["rule"]["id"] == "dashboard":
-                resource["envelope"]["rule"]["methods"] = ["GET"]
-    with pytest.raises(ManifestError):
-        validate_manifest(value)

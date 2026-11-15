@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-21T08:49:39.480388+00:00",
+  "reviewer": "independent Sol reviewer",
+  "decision": "restart with8 workers shared across2ranks",
+  "source_ceiling": 8,
+  "prior_peak_bytes": 12963590144,
+  "cgroup_limit_bytes": 55834574848,
+  "warm_cache_reuse": true,
+  "deadline_unchanged": true,
+  "no_cold_start_claim": true
+}

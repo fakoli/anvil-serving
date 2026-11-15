@@ -1,0 +1,38 @@
+{
+  "argv_declared_model_id": "qwen3.8-flash-next",
+  "candidate_created": true,
+  "candidate_running_at_status": true,
+  "discovered_served_identity": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+  "image_digest": "sha256:2b8d56c75bbba758b504bc0ef7edea59bf45df398dd9a4cde1514edc81b63029",
+  "independent_diagnosis_review_sha256": "c728a1c2a2d01057772d28d6c338bb96ecb30b509d07210522f2ff652e7465aa",
+  "interpretation": "Anvil Serving identity adapter failure; no evidence of engine load/readiness failure. No generation, task-quality or latency result.",
+  "managed_error": {
+    "class": "execution",
+    "code": "execution_failed",
+    "details": {},
+    "message": "recipe is running but monitoring registration failed; metrics remain withheld"
+  },
+  "managed_load": {
+    "exit_code": 1,
+    "finished_at": "2026-10-25T08:01:43.249055+00:00",
+    "started_at": "2026-10-25T08:01:16.000934+00:00"
+  },
+  "model_repository": "gpillon/Qwen3.8-Flash-Next-trellis-a25-ignis",
+  "model_revision": "8d94db83cd8e58d6be31e796723e5e35b960638c",
+  "readiness_observation": {
+    "models_advertised_id": "qwen3.8-flash-next",
+    "provenance": "Coordinator tool observation and source-backed independent review; raw HTTP response and inner registration exception were not durably retained.",
+    "raw_http_response_retained": false,
+    "ready_http_status": 200
+  },
+  "recipe_digest": "d7d3740c1ab9e9aaad22e434bea3ce93fc65831f19f82fc005a845e78e671282",
+  "registry_digest": "1a150dac55ac22e8b5923fff4ef6c4461cf5a7602f91ae248192127a532e74e5",
+  "schema": "anvil-serving.monitoring-failure-diagnostic/v1",
+  "source_verified_cause": {
+    "finding": "Parser recognizes --served-model-name only, ignores Ignis --model-id and falls back to repository ID. Monitoring correctly withholds metrics for advertised-model mismatch.",
+    "guard": "anvil_serving/recipe_monitoring.py:193-198",
+    "guard_sha256": "391ea9ff756db5f29d3442b42d156c173509a8e0ea86c5cc79ea315ca5a6343a",
+    "parser": "anvil_serving/serve_recipes.py:1065-1081",
+    "parser_sha256": "af0deeae1aea49d6532643be6f34e1b04f4db40c5515fd8b6c0d0b7e75c0b057"
+  }
+}

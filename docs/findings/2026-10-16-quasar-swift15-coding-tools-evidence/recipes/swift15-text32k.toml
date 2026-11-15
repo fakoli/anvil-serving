@@ -1,0 +1,70 @@
+schema = "anvil-serving.serve-recipes/v1"
+
+[[recipe]]
+model = "kaushikvira/Qwen3.8-27B-Swift15-NInfer-Text32k-Candidate"
+status = "unverified-coding-tools-candidate"
+source = "2026-10-16 matched text-only 32k coding/tools comparison; original 262k vision profile retained separately"
+family = "qwen3.8-dense-vl"
+total_params_b = 27
+
+[recipe.download]
+repo = "kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3"
+revision = "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82"
+volume = "model-cache"
+require_complete_cache = true
+
+[recipe.hardware]
+gpu = "NVIDIA GeForce RTX 5090"
+arch = "sm_120a"
+vram_total_gb = 32
+vram_note = "Unmeasured candidate residency; startup and workload must establish fit."
+
+[recipe.serve]
+entrypoint = ["/bin/sh", "-c", "sha256sum --check /opt/provenance/binary.sha256 && printf '%s  %s\\n' 16f313c043c06a19f7c27d74f8259ed9d86c8cb5beed631efbb96f392b373d96 \"$1\" | sha256sum --check && exec /opt/ninfer-build/apps/ninfer-serve \"$@\"", "swift15-verified"]
+engine = "ninfer"
+image = "anvil-ninfer@sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67"
+model_path = "/root/.cache/huggingface/hub/models--kaushikvira--Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/snapshots/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82/qwen3_8_27b_swift15_nvfp4full-dflash2.ninfer"
+quantization = "NVFP4 W4A4 target projections and output head; reference DFlash2; K8V4 KV"
+context_tokens = 32768
+port = 30002
+health = "/health"
+startup_timeout_seconds = 3600
+served_model_name = "qwen38-swift15-ninfer-text32k-c4"
+flags = [
+  "--host 0.0.0.0",
+  "--port 30002",
+  "--model-id qwen38-swift15-ninfer-text32k-c4",
+  "--max-context 32768",
+  "--kv-capacity auto",
+  "--kv-dtype k8v4",
+  "--max-concurrency 4",
+  "--default-max-tokens 32768",
+  "--prefill-chunk 4096",
+  "--temperature 0.9",
+  "--min-p 0.05",
+  "--spec dflash2",
+  "--draft-tokens 7",
+  "--lm-head-draft",
+  "--host-kv-mib 8192",
+  "--host-state-slots 8",
+
+  "--default-thinking-budget 16384",
+  "--preserve-thinking",
+  "--request-log-jsonl /dev/stdout",
+]
+note = "Unverified candidate. Exact binary and candidate artifact hashes checked before startup; no live alias change."
+
+memory_limit_mib = 40960
+memory_swap_limit_mib = 40960
+host_memory_reserve_mib = 8192
+
+[recipe.fit]
+suited = ["single-rtx5090", "coding-tools-candidate"]
+not_suited = ["automatic-promotion"]
+rationale = "Isolated checkpoint comparison against Swift15; identical NInfer image, C4 KV, cache and DFlash2 controls. Request load is C1. No promotion."
+
+[recipe.sources]
+official = ["https://huggingface.co/kaushikvira/Qwen3.8-27B-swift15-nvfp4full-dflash2-NInfer-v3/tree/ff891a1130adfcf46bf745e06f0fa3dcde2e8c82"]
+
+
+

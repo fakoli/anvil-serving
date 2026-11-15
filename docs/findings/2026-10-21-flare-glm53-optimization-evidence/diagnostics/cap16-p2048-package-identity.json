@@ -1,0 +1,10 @@
+{
+  "bytes": 2645178,
+  "sha256": "0fdced23da87f99c3669dc05ab87ecd7f17a6572773c6b61021d077f68a09ed9",
+  "runtime_package_path": "/root/.cache/flare/packages/snapshots/d5aec1543dc32413175462d17d374e54d27def24129f878045358c4db128c357/model.safetensors",
+  "at": "2026-10-21T13:51:23.029169+00:00",
+  "hash_scope": "package index only; external blobs excluded",
+  "method": "read-only exact non-secret index metadata; managed auxiliary volume identity gap recorded in ticket",
+  "preparation_recipe_sha256": "9b77f579ec9babff3eb5ada783830dcc302417c072b5c903db2c1a75664034a9",
+  "runtime_recipe_sha256": "c5885a608b8ef253b11a8f89d89001614f1ecd63bcc772b1334d613a4d2380f1"
+}

@@ -1,0 +1,19 @@
+{
+  "activation": {
+    "binding_sha256": "[QUALIFICATION_FINAL_BINDING]",
+    "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+    "generation": "[QUALIFICATION_FINAL_ACTIVATION]",
+    "metrics_url": "[LOOPBACK_ENDPOINT]",
+    "served_model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "started_at": "2026-11-02T00:43:12.309284535Z"
+  },
+  "collector_sha256": "46d1d5149cbeea7120f2b47cd5d900da2422582d657f4c97d906b717b988adc6",
+  "identity_receipt_sha256": "3075907c239fae7c91361e0bbd2c45191b13f00268b6d9b6ee63899899d343c3",
+  "maximum_seconds": 18000,
+  "plan_sha256": "d91bd5eb23f47ff3958d8d800d5dd50fd9f475573f78f22d5978e77fa2b2a253",
+  "script_sha256": "13b2f496cd9c19fb6cf03153375bcaddfeabfcab2f5fb87a1757fd68a1cf77dc",
+  "started": {
+    "monotonic_ns": 508245465143775,
+    "unix_ns": 1793580362700042583
+  }
+}

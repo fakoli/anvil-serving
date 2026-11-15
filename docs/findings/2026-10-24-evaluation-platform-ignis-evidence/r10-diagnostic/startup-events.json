@@ -1,0 +1,68 @@
+{
+  "events": [
+    {
+      "attributes": {},
+      "body": "checksum clean \u2014 tokenizer + chat template loaded",
+      "event_name": "ignis.artifact.verified",
+      "service.name": "ignis",
+      "service.version": "0.8.0",
+      "severity_text": "INFO",
+      "timestamp": "2026-10-25T08:01:17.497Z"
+    },
+    {
+      "attributes": {
+        "error": "Configured artifact directory: Permission denied (os error 13); private path omitted."
+      },
+      "body": "the KV-disk directory cannot be opened: the load goes on without the tier",
+      "event_name": "ignis.kv_disk.off",
+      "service.name": "ignis",
+      "service.version": "0.8.0",
+      "severity_text": "WARN",
+      "timestamp": "2026-10-25T08:01:41.043Z"
+    },
+    {
+      "attributes": {
+        "decode_lanes": 8,
+        "eos": 248046,
+        "kv_format": "hq-e8-2b",
+        "max_context": 131072,
+        "prefill_chunk": 1024,
+        "rope_scaling": "none",
+        "rope_scaling_setting": "auto",
+        "speculation": "mtp draft_tokens=3 draft_head=full",
+        "vision": "off"
+      },
+      "body": "model loaded on the GPU",
+      "event_name": "ignis.model.loaded",
+      "service.name": "ignis",
+      "service.version": "0.8.0",
+      "severity_text": "INFO",
+      "timestamp": "2026-10-25T08:01:41.043Z"
+    },
+    {
+      "attributes": {
+        "enhancer": "qwen3.8-27b",
+        "reason": "image.prompt_enhancer `qwen3.8-27b` names no text model this server can switch to: list it in switch.known_models, start on it, or download it from the catalog"
+      },
+      "body": "prompt enhancement uses each prompt as sent until image.prompt_enhancer names a text model this server can switch to",
+      "event_name": "ignis.config.prompt_enhancer_unknown",
+      "service.name": "ignis",
+      "service.version": "0.8.0",
+      "severity_text": "WARN",
+      "timestamp": "2026-10-25T08:01:41.047Z"
+    },
+    {
+      "attributes": {
+        "warm_up_ms": 62
+      },
+      "body": "first traversal done: the API admits requests",
+      "event_name": "ignis.process.ready",
+      "service.name": "ignis",
+      "service.version": "0.8.0",
+      "severity_text": "INFO",
+      "timestamp": "2026-10-25T08:01:41.113Z"
+    }
+  ],
+  "schema": "anvil-serving.startup-diagnostic-excerpt/v1",
+  "scope": "Five selected native log events; artifact paths omitted. Ready event is startup metadata, not generation proof. Timing is not reported as inference latency."
+}

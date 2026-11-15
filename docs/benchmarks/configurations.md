@@ -23,6 +23,7 @@ and links back to the exact TOML, dated finding, dossier, and raw evidence.
 
 | Configuration family | Recorded hardware and runtime | Served envelope | Exact source |
 |---|---|---|---|
+| 2026-10-16 unqualified SGLang GLM, Qwen FP4, and Nemotron NVFP4 scouts | 2x RTX PRO 6000 Blackwell Max-Q; pinned public-safe configuration records | configured 262,144-token scout envelopes; stopped before eligible capacity comparison | [Campaign configuration records](../findings/2026-10-16-sglang-qwen-comparison-evidence/) |
 | Qwen3.8 27B September 2026 PRO 6000 optimization family: Inferact finalist/TP2 control, RadixArk TTFT tradeoff, and kelnei vLLM MTP2/control | 1–2× RTX PRO 6000 Blackwell Max-Q, WSL2; digest-pinned SGLang and vLLM 0.27.1 | 262,144 tokens; C8 per service; matched 4K/C8 sustained-output evidence | [Open family](#qwen38-pro6000-current) |
 | GLM-5.3-Flash EXL3 K3 + DFlash2 K5 and matched no-spec control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, vLLM-derived local image, TP=2/DCP=2 | 524,288 tokens, max 16 sequences, up to 16 images, no video | [Open pair](#glm53-524k) |
 | GLM-5.3-Flash ormandj W4A16/NVFP4 SGLang adaptive MTP and control | 2× RTX PRO 6000 Blackwell Max-Q, WSL2, digest-pinned SGLang rc14, TP=2 | current 393,216-token C1 lane; 245,760-token fallback, 131K A/B, and 499K negative controls retained | [Open family](#glm53-sglang-sm120) |
@@ -54,7 +55,7 @@ An independent runner can preserve the same contract with this mapping:
 | Recipe field | Container-runtime meaning |
 |---|---|
 | `recipe.download.repo` + `revision` | Fetch this exact model snapshot. A branch name or latest revision is not equivalent. |
-| `recipe.download.volume` | Named model-cache volume, mounted at `/root/.cache/huggingface` by Anvil Serving. Populate the exact snapshot before an offline load when `require_complete_cache = true`. |
+| `recipe.download.volume` + `cache_mount` | Named model-cache volume mounted at `recipe.download.cache_mount`, which defaults to `/root/.cache/huggingface`. Set a normalized absolute POSIX `cache_mount` for images whose runtime user cannot traverse `/root`; when set, any `model_path` must be inside it. Populate the exact snapshot before an offline load when `require_complete_cache = true`. |
 | `recipe.download.require_complete_cache` | When `true`, Anvil Serving also injects `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`. An independent invocation must add both values even when they are absent from `recipe.serve.env`. |
 | `recipe.hardware` | Hardware prerequisite and topology assumption, not a portable device selector. Select local devices that satisfy the GPU count, architecture, VRAM, and TP/DCP shape; never copy a host UUID from someone else's machine. |
 | `recipe.serve.image` | Exact container image. Preserve `@sha256:` when present. A local image name requires the recorded build assets and a digest check before it is equivalent. |
@@ -76,7 +77,7 @@ artifacts. Work from a local copy of one full snippet below:
    custom image cannot be recreated from the linked assets.
 2. Create `recipe.download.volume`, populate the exact
    `recipe.download.repo@revision` snapshot, and mount it at
-   `/root/.cache/huggingface`. When `require_complete_cache = true`, also add
+   `recipe.download.cache_mount` (default `/root/.cache/huggingface`). When `require_complete_cache = true`, also add
    `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`. Create every
    `named_volumes` source separately.
 3. Select local GPUs matching `recipe.hardware` and the declared TP/DCP shape.
@@ -98,7 +99,7 @@ docker run --name <LOCAL_CONTAINER_NAME>
   -e <EACH recipe.serve.env ENTRY>
   [-e <recipe.serve.model_env>=<recipe.model> WHEN model_env is present]
   [-e HF_HUB_OFFLINE=1 -e TRANSFORMERS_OFFLINE=1 WHEN require_complete_cache=true]
-  -v <recipe.download.volume>:/root/.cache/huggingface
+  -v <recipe.download.volume>:<recipe.download.cache_mount, default /root/.cache/huggingface>
   --mount type=volume,source=<NAMED_VOLUME>,target=<ABSOLUTE_TARGET>[,readonly]
   -p 127.0.0.1:<recipe.serve.port>:<recipe.serve.port>
   --ipc <recipe.serve.ipc>

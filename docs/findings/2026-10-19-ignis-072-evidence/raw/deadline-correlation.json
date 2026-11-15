@@ -1,0 +1,88 @@
+{
+  "evidence_sha256": {
+    "raw/deadline-contract.json": "1f10454c7307b7e3a4d4f45c4cf2f740371601c1e0513e56219c329a38fd0a88",
+    "raw/deadline-server-logs.json": "c0988f11eb07c3a68facd3e3ac3aa39e12e9c94b05c4d4ea0cb522401c8b4174"
+  },
+  "passed": true,
+  "response_ids": [
+    "chatcmpl-1",
+    "chatcmpl-2",
+    "chatcmpl-3"
+  ],
+  "scope": "2-second configured nonstream and stream deadline contract plus same-lane recovery; not default2400s expiry",
+  "terminal_events": [
+    {
+      "attributes": {
+        "admitted": true,
+        "cause": "timeout",
+        "class": "interactive",
+        "duration_ms": 2001,
+        "lane": 7,
+        "request_id": 1,
+        "tokens": 305
+      },
+      "body": "request cancelled",
+      "event_name": "ignis.request.cancelled",
+      "service.name": "ignis",
+      "service.version": "0.7.2",
+      "severity_number": 9,
+      "severity_text": "INFO",
+      "span_id": "001000c000000001",
+      "timestamp": "2026-10-20T03:11:19.691Z",
+      "trace_id": "00000000000000000000000000000001"
+    },
+    {
+      "attributes": {
+        "admitted": true,
+        "cause": "timeout",
+        "class": "interactive",
+        "duration_ms": 2002,
+        "lane": 7,
+        "request_id": 2,
+        "tokens": 359
+      },
+      "body": "request cancelled",
+      "event_name": "ignis.request.cancelled",
+      "service.name": "ignis",
+      "service.version": "0.7.2",
+      "severity_number": 9,
+      "severity_text": "INFO",
+      "span_id": "0000008000000002",
+      "timestamp": "2026-10-20T03:11:21.702Z",
+      "trace_id": "00000000000000000000000000000002"
+    },
+    {
+      "attributes": {
+        "class": "interactive",
+        "duration_ms": 215,
+        "finish_reason": "stop",
+        "itl_ms_max": 22,
+        "itl_ms_mean": 5.95,
+        "itl_samples": 20,
+        "lane": 7,
+        "request_id": 3,
+        "spec.accepted": 13,
+        "spec.drafted": 24,
+        "spec.pos": "75,50,38",
+        "spec.rounds": 9,
+        "tok_s": 97.67441860465117,
+        "tokens": 21
+      },
+      "body": "request done",
+      "event_name": "ignis.request.done",
+      "service.name": "ignis",
+      "service.version": "0.7.2",
+      "severity_number": 9,
+      "severity_text": "INFO",
+      "span_id": "0008008000000002",
+      "timestamp": "2026-10-20T03:11:21.927Z",
+      "trace_id": "00000000000000000000000000000003"
+    }
+  ],
+  "public_evidence_sha256": {
+    "deadline_contract": "176a20c9358d2285b0231d1c476d3d6adc1654440261e39abb857dc04abb8fb3",
+    "server_logs": "cdda9cd5d976694dd9fabaaf5cb6b100c87fd1489f55d2f61e4b1a1769cd142f",
+    "server_status": "13a428e8943a70f9839ac1d393e0760b4ea66867050551ae8c4dc80526537bac"
+  },
+  "hash_scope": "public_evidence_sha256 binds redacted packet bytes; protected source hashes are in deadline-original-hash-ledger.json."
+}

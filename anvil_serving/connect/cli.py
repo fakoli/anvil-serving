@@ -44,20 +44,24 @@ def _users_parser(actions) -> None:
         "sha256": {"help": "Independently retained archive checksum.", "required": True},
         "destination": {"help": "Fresh private recovery directory; never activates accounts.", "required": True},
         "include-gateway": {"action": "store_true", "help": "Also retain gateway authority after the authentication snapshot."},
+        "scheduled": {"action": "store_true", "help": "Run the verified installed authentication and gateway backup worker now."},
     }
     for operation, (summary, names) in USER_OPERATIONS.items():
         leaf = operations.add_parser(operation, allow_abbrev=False, help=summary, description=summary)
         leaf.set_defaults(username=None, manifest=None, email=None, role=None, grant=None,
-                          output=None, input=None, sha256=None, destination=None, include_gateway=False)
-        if operation not in {"list", "backup", "schedule", "deletion-schedule", "process-deletions", "restore"}:
+                          output=None, input=None, sha256=None, destination=None, include_gateway=False, scheduled=False)
+        if operation not in {"list", "backup", "sync-operators", "sync-roles", "schedule", "deletion-schedule", "process-deletions", "restore", "configure-memory"}:
             leaf.add_argument("username", help="Exact local username.")
         if operation != "restore":
             leaf.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
+        backup_modes = leaf.add_mutually_exclusive_group() if operation == "backup" else None
         for name in names:
             kwargs = {"action": _Once, **options[name]}
+            if name == "input" and operation == "configure-memory":
+                kwargs["help"] = "Protected memory installation JSON outside Git."
             if name == "grant" and operation == "access":
                 kwargs["required"] = True
-            leaf.add_argument("--" + name, **kwargs)
+            (backup_modes if name in {"include-gateway", "scheduled"} else leaf).add_argument("--" + name, **kwargs)
         if operation not in {"list", "show"}:
             leaf.add_argument("--dry-run", action="store_true", help="Preview only, even with --confirm.")
             leaf.add_argument("--confirm", action="store_true", help="Apply; omission previews the operation.")
@@ -82,6 +86,30 @@ def _parser(prog: str = "anvil-serving connect") -> argparse.ArgumentParser:
     qualify_mode.add_argument("--prepare-vm", action="store_true")
     qualification.add_argument("--config", action=_Once)
     _users_parser(actions)
+    native_agents = actions.add_parser("native-agents", allow_abbrev=False,
+        help="Run the native Agents broker behind a managed TLS edge.")
+    native_agents.add_argument("--config", required=True, action=_Once)
+    native_check = actions.add_parser("native-agents-check", allow_abbrev=False,
+        help="Run local synthetic checks, or preview empty-session checks against declared guest owners.")
+    native_check.add_argument("--config", action=_Once)
+    native_check.add_argument("--confirm", action="store_true")
+    native_check.add_argument("--dry-run", action="store_true")
+    native_authority = actions.add_parser("native-authority", allow_abbrev=False,
+        help="Project current Pi resource grants into short-lived native authority.")
+    for name in ("manifest", "resource", "output"):
+        native_authority.add_argument("--" + name, required=True, action=_Once)
+    native_authority.add_argument("--reader-gid", required=True, type=int, action=_Once)
+    native_authority.add_argument("--dry-run", action="store_true")
+    native_authority.add_argument("--confirm", action="store_true")
+    native_memory_service = actions.add_parser("native-memory-service", allow_abbrev=False,
+        help="Manage one OIDC-authenticated native Memory sidecar.")
+    native_memory_actions = native_memory_service.add_subparsers(dest="native_memory_action", required=True)
+    for operation in ("install", "status", "remove"):
+        leaf = native_memory_actions.add_parser(operation, allow_abbrev=False)
+        leaf.add_argument("--declaration", required=True, action=_Once)
+        if operation != "status":
+            leaf.add_argument("--dry-run", action="store_true")
+            leaf.add_argument("--confirm", action="store_true")
     resources = actions.add_parser("resources", allow_abbrev=False,
                                    help="List declared browser services and copyable grant values.")
     resources.add_argument("--manifest", action=_Once, help="Defaults to /etc/anvil-connect/deployment.json.")
@@ -214,7 +242,7 @@ def _legacy_user_options(argv: list[str]) -> list[str]:
     if len(argv) < 2 or argv[0] != "users" or not argv[1].startswith("-"):
         return argv
     value_options = {"--manifest", "--email", "--role", "--grant", "--output", "--input", "--sha256", "--destination"}
-    switches = {"--confirm", "--dry-run", "--include-gateway"}
+    switches = {"--confirm", "--dry-run", "--include-gateway", "--scheduled"}
     index = 1
     while index < len(argv) and argv[index].startswith("-"):
         flag, inline, _ = argv[index].partition("=")
@@ -248,7 +276,25 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
         target = manage.Target.parse(args.service) if getattr(args, "service", None) else None
         apply = bool(getattr(args, "confirm", False) and not getattr(args, "dry_run", False))
         action = args.action
-        if action == "resources":
+        if action == "native-agents-check":
+            from ..native_agents.local_check import check
+            result = check(args.config, apply=apply)
+            if result.get("ok") is False:
+                return CommandResult(data=result, error=OperatorError(
+                    "Local Agents check failed; retained request and session IDs identify any empty test sessions.",
+                    code="native_agents_local_check_failed"))
+        elif action == "native-agents":
+            from ..native_agents.server import serve
+            serve(args.config)
+            result = {"stopped": True}
+        elif action == "native-authority":
+            from ..native_agents.authority import project
+            result = project(args.manifest, resource=args.resource, output=args.output,
+                             reader_gid=args.reader_gid, apply=apply)
+        elif action == "native-memory-service":
+            from ..native_memory_gateway.lifecycle import operate
+            result = operate(args.native_memory_action, args.declaration, apply=apply)
+        elif action == "resources":
             from .inventory import resources
             from .users import DEFAULT_MANIFEST
             result = resources(args.manifest or DEFAULT_MANIFEST)
@@ -257,12 +303,35 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
             if args.operation in {"list", "show"}:
                 from .inventory import accounts
                 result = accounts(args.manifest or DEFAULT_MANIFEST, args.username)
+            elif args.operation == "backup" and args.scheduled:
+                from .user_schedule import run_backup
+                result = run_backup(args.manifest or DEFAULT_MANIFEST, apply=apply)
+            elif args.operation == "configure-memory":
+                from .user_memory import configure
+                result = configure(args.manifest or DEFAULT_MANIFEST, args.input, apply=apply)
             elif args.operation in {"schedule", "deletion-schedule", "process-deletions"}:
                 if args.include_gateway or any((args.username, args.email, args.role, args.output, args.input, args.sha256, args.destination, args.grant)):
                     raise UsageError("Use users schedule --confirm to install the daily authentication backup timer.", code="connect_users_invalid")
                 if args.operation == "process-deletions":
                     from .user_delete import process_pending
-                    result = process_pending(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                    from .users import sync_operators
+                    from .application_roles import sync_roles
+                    phases, failures, blocked = {}, {}, set()
+                    for name, operation in (("application_roles", sync_roles), ("operator_group", sync_operators), ("deletion", process_pending)):
+                        if name == "deletion" and apply and "application_roles" in failures:
+                            blocked.add(name)
+                            continue
+                        try:
+                            phases[name] = operation(args.manifest or DEFAULT_MANIFEST, apply=apply)
+                        except Exception as exc:
+                            failures[name] = exc
+                    if failures:
+                        error = manage.ManageError("Account reconciliation worker did not complete every independent operation.", may_have_executed=apply)
+                        error.recovery = {name: "blocked" if name in blocked else "failed" if name in failures else
+                            "pending" if isinstance(phases.get(name), dict) and phases[name].get("complete") is False else "completed"
+                            for name in ("application_roles", "operator_group", "deletion")}
+                        raise error from next(iter(failures.values()))
+                    result = phases
                 else:
                     from .user_schedule import schedule
                     options = {"deletions": True} if args.operation == "deletion-schedule" else {}
@@ -272,6 +341,12 @@ def dispatch(argv: list[str] | None = None, *, prog: str = "anvil-serving connec
                     raise UsageError("Use users restore --input ARCHIVE --sha256 DIGEST --destination NEW_DIRECTORY.", code="connect_users_invalid")
                 from .user_backup import restore
                 result = restore(args.input, args.destination, sha256=args.sha256, apply=apply)
+            elif args.operation == "sync-roles":
+                from .application_roles import sync_roles
+                result = sync_roles(args.manifest or DEFAULT_MANIFEST, apply=apply)
+            elif args.operation == "sync-operators":
+                from .users import sync_operators
+                result = sync_operators(args.manifest or DEFAULT_MANIFEST, apply=apply)
             else:
                 if args.input or args.destination or args.sha256:
                     raise UsageError("--input, --sha256 and --destination are only accepted for restore.", code="connect_users_invalid")

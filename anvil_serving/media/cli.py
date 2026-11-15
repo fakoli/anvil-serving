@@ -15,7 +15,7 @@ from .errors import MediaError
 from .jobs import MediaJobStore
 from .operations import MediaOperations, parameters_from_json, stable_request_key
 from .qualification import qualify as qualify_media
-from .workflows import WorkflowRegistry
+from .workflows import WorkflowRegistry, render_request as _render_request
 from .worker import MediaArtifactCapture, MediaJobReconciler
 
 
@@ -34,7 +34,7 @@ def _parser() -> argparse.ArgumentParser:
     bundle = sub.add_parser("bundle")
     bundle_sub = bundle.add_subparsers(dest="action", required=True)
     inventory = bundle_sub.add_parser("inventory")
-    _bundle_identity(inventory)
+    _bundle_identity(inventory, host_root=True)
     stage = bundle_sub.add_parser("stage")
     _bundle_identity(stage)
     stage.add_argument("--user-volume", required=True)
@@ -46,13 +46,11 @@ def _parser() -> argparse.ArgumentParser:
     qualify_sub = qualify.add_subparsers(dest="action", required=True)
     qualify_run = qualify_sub.add_parser("run")
     _storage_options(qualify_run)
-    _workflow_identity(qualify_run)
+    _bundle_identity(qualify_run, host_root=True)
     qualify_run.add_argument("--parameters", required=True)
     qualify_run.add_argument("--quality-profile", default="")
     qualify_run.add_argument("--principal", required=True)
     qualify_run.add_argument("--backend-url", required=True)
-    qualify_run.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
-    qualify_run.add_argument("--models-volume", required=True)
     qualify_run.add_argument("--gpu-index", type=int, default=0)
     qualify_run.add_argument("--poll-seconds", type=float, default=2.0)
     qualify_run.add_argument("--ffprobe", default="ffprobe")
@@ -69,6 +67,14 @@ def _parser() -> argparse.ArgumentParser:
     _storage_options(validate)
     _workflow_identity(validate)
     validate.add_argument("--backend-url", required=True)
+    prepare = workflow_sub.add_parser("prepare")
+    _storage_options(prepare)
+    _workflow_identity(prepare)
+    prepare.add_argument("--parameters", default="{}")
+    prepare.add_argument("--brief", default="")
+    prepare.add_argument("--quality-profile", default="")
+    prepare.add_argument("--principal", required=True)
+    prepare.add_argument("--idempotency-key", required=True)
     run = workflow_sub.add_parser("run")
     _storage_options(run)
     _workflow_identity(run)
@@ -77,6 +83,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--principal", required=True)
     run.add_argument("--idempotency-key", default="")
     run.add_argument("--backend-url", required=True)
+    run.add_argument("--plan-digest", default=None)
     run.add_argument("--dry-run", action="store_true")
 
     job = sub.add_parser("job")
@@ -111,11 +118,14 @@ def _workflow_identity(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--version", required=True)
 
 
-def _bundle_identity(parser: argparse.ArgumentParser) -> None:
+def _bundle_identity(parser: argparse.ArgumentParser, *, host_root=False) -> None:
     parser.add_argument("workflow_id")
     parser.add_argument("--version", required=True)
     parser.add_argument("--bundle-lock", default=str(DEFAULT_LOCK))
-    parser.add_argument("--models-volume", required=True)
+    models = parser.add_mutually_exclusive_group(required=True)
+    models.add_argument("--models-volume")
+    if host_root:
+        models.add_argument("--models-root")
 
 
 def _job_identity(parser: argparse.ArgumentParser) -> None:
@@ -134,21 +144,6 @@ def _operations(args: argparse.Namespace) -> MediaOperations:
     )
 
 
-def _render_request(registry, workflow_id, version, parameters, quality_profile):
-    descriptor = registry.get(workflow_id, version)
-    selected_profile = quality_profile or descriptor.default_quality_profile
-    if selected_profile:
-        rendered = registry.render(
-            workflow_id,
-            version,
-            parameters,
-            quality_profile=selected_profile,
-        )
-    else:
-        rendered = registry.render(workflow_id, version, parameters)
-    return descriptor, rendered
-
-
 def run(args: argparse.Namespace) -> dict:
     if args.family == "bundle":
         if args.action == "inventory":
@@ -157,6 +152,7 @@ def run(args: argparse.Namespace) -> dict:
                 args.version,
                 lock_path=args.bundle_lock,
                 models_volume=args.models_volume,
+                models_root=args.models_root,
             )
         return bundle_stage(
             args.workflow_id,
@@ -242,6 +238,7 @@ def run(args: argparse.Namespace) -> dict:
             lock_path=args.bundle_lock,
             models_volume=args.models_volume,
             gpu_index=args.gpu_index,
+            models_root=args.models_root,
             poll_seconds=args.poll_seconds,
             ffprobe=args.ffprobe,
         )
@@ -252,12 +249,19 @@ def run(args: argparse.Namespace) -> dict:
             return operations.workflow_list()
         if args.action == "show":
             return operations.workflow_show(args.workflow_id, args.version)
+        if args.action == "prepare":
+            return operations.workflow_prepare(args.workflow_id, args.version,
+                parameters_from_json(args.parameters), principal=args.principal,
+                idempotency_key=args.idempotency_key,
+                brief=parameters_from_json(args.brief) if args.brief else None,
+                quality_profile=args.quality_profile)
         backend = ComfyUIClient(args.backend_url)
         if args.action == "validate":
             return operations.workflow_validate(args.workflow_id, args.version, backend=backend)
         parameters = parameters_from_json(args.parameters)
-        descriptor = operations.registry.get(args.workflow_id, args.version)
-        selected_profile = args.quality_profile or descriptor.default_quality_profile
+        _, rendered = _render_request(operations.registry, args.workflow_id, args.version,
+                                      parameters, args.quality_profile)
+        selected_profile = rendered.quality_profile
         key = args.idempotency_key or stable_request_key(
             args.workflow_id,
             args.version,
@@ -272,6 +276,7 @@ def run(args: argparse.Namespace) -> dict:
             idempotency_key=key,
             backend=backend,
             quality_profile=args.quality_profile,
+            plan_digest=getattr(args, "plan_digest", None),
         )
     if args.family == "job":
         if args.action == "status":

@@ -1,0 +1,186 @@
+{
+  "configuration_identity": "managed_container_observed_labels_matched",
+  "coverage_passed": false,
+  "finished_at": "2026-11-02T01:59:38.571127+00:00",
+  "identity_observations": [
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:58:23.709915+00:00",
+      "phase": "start",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:58:23.763641+00:00",
+      "phase": "round_0_before",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    },
+    {
+      "bound_port": 39130,
+      "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "observed_at": "2026-11-02T01:59:38.564847+00:00",
+      "phase": "round_0_after",
+      "recipe_digest": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_digest": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2",
+      "revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "running": true,
+      "served_identity": "[QUALIFICATION_FINAL_MODEL_ALIAS]"
+    }
+  ],
+  "performance_eligible": false,
+  "promoted": false,
+  "retrieval_passed": false,
+  "rounds": [
+    {
+      "anchor": {
+        "end": 512661.280333667,
+        "expected_values": [
+          "VALUE_31e8ca555222",
+          "VALUE_6bd56dae235f",
+          "VALUE_273a03f9eb70"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:59:38.515235+00:00",
+        "first_output": 512595.579165542,
+        "last_output": 512661.279985294,
+        "partial_visible": "\n\n**KEY_0 = VALUE_31e8ca555222**\n**KEY_1 = VALUE_6bd56dae235f**\n**KEY_2 = VALUE_273a03f9eb70**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\nA software component is a self-contained, deployable unit that encapsulates functionality behind a well-defined interface. In this guide, we treat \"ordinary\" components as those that perform well-understood transformations\u2014data parsing, format conversion, validation, and orchestration\u2014without exotic runtime dependencies.\n\n**Implementation:**\n```python\nfrom abc import ABC, abstractmethod\nfrom dataclasses import dataclass\n\n@dataclass\nclass ComponentResult:\n    success: bool\n    data: dict\n    errors: list[str] = None\n\nclass BaseComponent(ABC):\n    @abstractmethod\n    def execute(self, input_data: dict) -> ComponentResult:\n        ...\n\n    @abstractmethod\n    def validate_input(self, input_data: dict) -> list[str]:\n        ...\n```\n\n**Example:** A `JsonParser` component that accepts a raw string and returns structured data.\n\n**Edge Cases:**\n- Empty input string\n- Nested JSON exceeding recursion depth\n- Unicode characters outside the Basic Multilingual Plane (surrogate pairs)\n- BOM (Byte Order Mark) prefixed input\n\n**Tests:**\n```python\ndef test_json_parser_valid():\n    result = JsonParser().execute({\"raw\": '{\"a\": 1}'})\n    assert result.success is True\n    assert result.data[\"parsed\"] == {\"a\": 1}\n\ndef test_json_parser_empty():\n    result = JsonParser().execute({\"raw\": \"\"})\n    assert result.success is False\n    assert len(result.errors) > 0\n```\n\n---\n\n## 2. Input Validation Layer\n\nEvery component must reject malformed input before processing. The validation layer is a pure function mapping input to a list of error strings (empty list means valid).\n\n**Implementation:**\n```python\nimport re\n\nclass ValidationRule:\n    def __init__(self, field: str, pattern: str, message: str):\n        self.field = field\n        self.pattern = re.compile(pattern)\n        self.message = message\n\n    def check(self, data: dict) -> str | None:\n        value = data.get(self.field, \"\")\n        if not self.pattern.match(str(value)):\n            return self.message\n        return None\n\nclass Validator:\n    def __init__(self, rules: list[ValidationRule]):\n        self.rules = rules\n\n    def validate(self, data: dict) -> list[str]:\n        errors = []\n        for rule in self.rules:\n            err = rule.check(data)\n            if err:\n                errors.append(err)\n        return errors\n```\n\n**Example:** Validating that a `component_id` field matches `[a-z][a-z0-9_]{2,31}`.\n\n**Edge Cases:**\n- Field entirely missing (should trigger a \"required\" rule)\n- Value is `None` vs. empty string\n- Unicode homoglyphs that visually match but fail the ASCII pattern\n- Extremely long strings (DoS via regex backtracking)\n\n**Tests:**\n```python\ndef test_valid_component_id():\n    v = Validator([ValidationRule(\"id\", r\"^[a-z][a-z0-9_]{2,31}$\", \"Invalid id\")])\n    assert v.validate({\"id\": \"auth_service\"}) == []\n\ndef test_missing_field():\n    v = Validator([ValidationRule(\"id\", r\"^[a-z][a-z0-9_]{2,31}$\", \"Invalid id\")])\n    assert \"Invalid id\" in v.validate({})\n\ndef test_oversized_input():\n    v = Validator([ValidationRule(\"id\", r\"^[a-z][a-z0-9_]{2,31}$\", \"Invalid id\")])\n    assert \"Invalid id\" in v.validate({\"id\": \"a\" * 10_000})\n```\n\n---\n\n## 3. Dependency Injection and Wiring\n\nComponents should not instantiate their own collaborators. A DI container wires dependencies at composition time, enabling substitution in tests.\n\n**Implementation:**\n```python\nfrom typing import TypeVar, Callable\nT = TypeVar(\"T\")\n\nclass Container:\n    def __init__(self):\n        self._factories: dict[type, Callable] = {}\n\n    def register(self, interface: type, factory: Callable):\n        self._factories[interface] = factory\n\n    def resolve(self, interface: type) -> T:\n        if interface not in self._factories:\n            raise DependencyNotFoundError(interface)\n        return self._factories[interface]()\n\nclass DependencyNotFoundError(Exception):\n    pass\n```\n\n**Example:** Registering a `Logger` implementation so that `JsonParser` receives it via constructor.\n\n**Edge Cases:**\n- Circular dependencies (A \u2192 B \u2192 A)\n- Resolving a type that was never registered\n- Thread-safety when the container is resolved concurrently during startup\n- Lazy vs. eager instantiation semantics\n\n**Tests:**\n```python\ndef test_resolve_registered():\n    c = Container()\n    c.register(Logger, lambda: ConsoleLogger())\n    assert isinstance(c.resolve(Logger), ConsoleLogger)\n\ndef test_resolve_missing():\n    c = Container()\n    with pytest.raises(DependencyNotFoundError):\n        c.resolve(Database)\n\ndef test_circular_dependency():\n    c = Container()\n    c.register(A, lambda: A(c.resolve(B)))\n    c.register(B, lambda: B(c.resolve(A)))\n    with pytest.raises(CircularDependencyError):\n        c.resolve(A)\n```\n\n---\n\n## 4. Configuration Management\n\nComponents receive configuration through a typed, immutable object. Configuration is loaded once at startup and never mutated at runtime.\n\n**Implementation:**\n```python\nfrom dataclasses import dataclass, field\nfrom pathlib import Path\nimport json\n\n@dataclass(frozen=True)\nclass ComponentConfig:\n    name: str\n    timeout_ms: int = 5000\n    retry_count: int = 3\n    log_level: str = \"INFO\"\n\n    @classmethod\n    def from_file(cls, path: Path) -> \"ComponentConfig\":\n        with path.open() as f:\n            raw = json.load(f)\n        valid_keys = {f.name for f in cls.__dataclass_fields__.values()}\n        filtered = {k: v for k, v in raw.items() if k in valid_keys}\n        return cls(**filtered)\n```\n\n**Example:** Loading `component.yaml` (or JSON) from a known path during service bootstrap.\n\n**Edge Cases:**\n- File not found or permission denied\n- JSON with extra unknown keys (should be ignored, not crash)\n- `timeout_ms` set to 0 or negative\n- Concurrent reads of the config file during hot-reload\n\n**Tests:**\n```python\ndef test_load_valid_config(tmp_path):\n    p = tmp_path / \"cfg.json\"\n    p.write_text('{\"name\": \"parser\", \"timeout_ms\": 2000}')\n    cfg = ComponentConfig.from_file(p)\n    assert cfg.name == \"parser\"\n    assert cfg.timeout_ms == 2000\n\ndef test_unknown_keys_ignored(tmp_path):\n    p = tmp_path / \"cfg.json\"\n    p.write_text('{\"name\": \"x\", \"bogus\": 42}')\n    cfg = ComponentConfig.from_file(p)\n    assert cfg.name == \"x\"\n\ndef test_missing_file():\n    with pytest.raises(FileNotFoundError):\n        ComponentConfig.from_file(Path(\"/nonexistent/cfg.json\"))\n```\n\n---\n\n## 5. Execution Lifecycle and State Machine\n\nEach component instance follows a strict lifecycle: `CREATED \u2192 INITIALIZED \u2192 RUNNING \u2192 DRAINING \u2192 STOPPED`. Transitions are guarded and logged.\n\n**Implementation:**\n```python\nfrom enum import Enum, auto\n\nclass State(Enum):\n    CREATED = auto()\n    INITIALIZED = auto()\n    RUNNING = auto()\n    DRAINING = auto()\n    STOPPED = auto()\n\nTRANSITIONS = {\n    State.CREATED: {State.INITIALIZED},\n    State.INITIALIZED: {State.RUNNING},\n    State.RUNNING: {State.DRAINING},\n    State.DRAINING: {State.STOPPED},\n}\n\nclass Lifecycle:\n    def __init__(self):\n        self._state = State.CREATED\n\n    def transition(self, target: State):\n        if target not in TRANSITIONS[self._state]:\n            raise IllegalTransitionError(self._state, target)\n        self._state = target\n\n    @property\n    def state(self) -> State:\n        return self._state\n```\n\n**Example:** A `BatchProcessor` that must be initialized (loading models) before it can process, and must drain in-flight requests before stopping.\n\n**Edge Cases:**\n- Attempting to transition from `STOPPED` to any state (terminal)\n- Concurrent `transition()` calls from multiple threads\n- Crash during `INITIALIZED` (partial resource allocation)\n- Re-entry: `RUNNING \u2192 RUNNING` is illegal\n\n**Tests:**\n```python\ndef test_happy_path():\n    lc = Lifecycle()\n    lc.transition(State.INITIALIZED)\n    lc.transition(State.RUNNING)\n    lc.transition(State.DRAINING)\n    lc.transition(State.STOPPED)\n    assert lc.state == State.STOPPED\n\ndef test_illegal_skip():\n    lc = Lifecycle()\n    with pytest.raises(IllegalTransitionError):\n        lc.transition(State.RUNNING)\n\ndef test_terminal_st",
+        "prompt_sha256": "528d13bb1091b5a8fb91ed7dfe529deecd20b575525bb885f191a79b0df33ae5",
+        "prompt_tokens_tokenized": 32626,
+        "request_id": null,
+        "response_headers_at": 512595.579084061,
+        "result": {
+          "content_chunks": 1251,
+          "e2e": 74.59939770400524,
+          "finish_reasons": [
+            "length"
+          ],
+          "out_toks": 4096,
+          "output_token_source": "usage",
+          "reasoning_chunks": 48,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 8.898367040033918,
+          "ttft": 13.218555538041983,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 32626,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 173,
+            "total_tokens": 36722
+          },
+          "visible_content": "\n\n**KEY_0 = VALUE_31e8ca555222**\n**KEY_1 = VALUE_6bd56dae235f**\n**KEY_2 = VALUE_273a03f9eb70**\n\n---\n\n# Engineering Guide: Ordinary Software Components and Their Tests\n\n## 1. Component Architecture Overview\n\nA software component is a self-contained, deployable unit that encapsulates functionality behind a well-defined interface. In this guide, we treat \"ordinary\" components as those that perform well-understood transformations\u2014data parsing, format conversion, validation, and orchestration\u2014without exotic runtime dependencies.\n\n**Implementation:**\n```python\nfrom abc import ABC, abstractmethod\nfrom dataclasses import dataclass\n\n@dataclass\nclass ComponentResult:\n    success: bool\n    data: dict\n    errors: list[str] = None\n\nclass BaseComponent(ABC):\n    @abstractmethod\n    def execute(self, input_data: dict) -> ComponentResult:\n        ...\n\n    @abstractmethod\n    def validate_input(self, input_data: dict) -> list[str]:\n        ...\n```\n\n**Example:** A `JsonParser` component that accepts a raw string and returns structured data.\n\n**Edge Cases:**\n- Empty input string\n- Nested JSON exceeding recursion depth\n- Unicode characters outside the Basic Multilingual Plane (surrogate pairs)\n- BOM (Byte Order Mark) prefixed input\n\n**Tests:**\n```python\ndef test_json_parser_valid():\n    result = JsonParser().execute({\"raw\": '{\"a\": 1}'})\n    assert result.success is True\n    assert result.data[\"parsed\"] == {\"a\": 1}\n\ndef test_json_parser_empty():\n    result = JsonParser().execute({\"raw\": \"\"})\n    assert result.success is False\n    assert len(result.errors) > 0\n```\n\n---\n\n## 2. Input Validation Layer\n\nEvery component must reject malformed input before processing. The validation layer is a pure function mapping input to a list of error strings (empty list means valid).\n\n**Implementation:**\n```python\nimport re\n\nclass ValidationRule:\n    def __init__(self, field: str, pattern: str, message: str):\n        self.field = field\n        self.pattern = re.compile(pattern)\n        self.message = message\n\n    def check(self, data: dict) -> str | None:\n        value = data.get(self.field, \"\")\n        if not self.pattern.match(str(value)):\n            return self.message\n        return None\n\nclass Validator:\n    def __init__(self, rules: list[ValidationRule]):\n        self.rules = rules\n\n    def validate(self, data: dict) -> list[str]:\n        errors = []\n        for rule in self.rules:\n            err = rule.check(data)\n            if err:\n                errors.append(err)\n        return errors\n```\n\n**Example:** Validating that a `component_id` field matches `[a-z][a-z0-9_]{2,31}`.\n\n**Edge Cases:**\n- Field entirely missing (should trigger a \"required\" rule)\n- Value is `None` vs. empty string\n- Unicode homoglyphs that visually match but fail the ASCII pattern\n- Extremely long strings (DoS via regex backtracking)\n\n**Tests:**\n```python\ndef test_valid_component_id():\n    v = Validator([ValidationRule(\"id\", r\"^[a-z][a-z0-9_]{2,31}$\", \"Invalid id\")])\n    assert v.validate({\"id\": \"auth_service\"}) == []\n\ndef test_missing_field():\n    v = Validator([ValidationRule(\"id\", r\"^[a-z][a-z0-9_]{2,31}$\", \"Invalid id\")])\n    assert \"Invalid id\" in v.validate({})\n\ndef test_oversized_input():\n    v = Validator([ValidationRule(\"id\", r\"^[a-z][a-z0-9_]{2,31}$\", \"Invalid id\")])\n    assert \"Invalid id\" in v.validate({\"id\": \"a\" * 10_000})\n```\n\n---\n\n## 3. Dependency Injection and Wiring\n\nComponents should not instantiate their own collaborators. A DI container wires dependencies at composition time, enabling substitution in tests.\n\n**Implementation:**\n```python\nfrom typing import TypeVar, Callable\nT = TypeVar(\"T\")\n\nclass Container:\n    def __init__(self):\n        self._factories: dict[type, Callable] = {}\n\n    def register(self, interface: type, factory: Callable):\n        self._factories[interface] = factory\n\n    def resolve(self, interface: type) -> T:\n        if interface not in self._factories:\n            raise DependencyNotFoundError(interface)\n        return self._factories[interface]()\n\nclass DependencyNotFoundError(Exception):\n    pass\n```\n\n**Example:** Registering a `Logger` implementation so that `JsonParser` receives it via constructor.\n\n**Edge Cases:**\n- Circular dependencies (A \u2192 B \u2192 A)\n- Resolving a type that was never registered\n- Thread-safety when the container is resolved concurrently during startup\n- Lazy vs. eager instantiation semantics\n\n**Tests:**\n```python\ndef test_resolve_registered():\n    c = Container()\n    c.register(Logger, lambda: ConsoleLogger())\n    assert isinstance(c.resolve(Logger), ConsoleLogger)\n\ndef test_resolve_missing():\n    c = Container()\n    with pytest.raises(DependencyNotFoundError):\n        c.resolve(Database)\n\ndef test_circular_dependency():\n    c = Container()\n    c.register(A, lambda: A(c.resolve(B)))\n    c.register(B, lambda: B(c.resolve(A)))\n    with pytest.raises(CircularDependencyError):\n        c.resolve(A)\n```\n\n---\n\n## 4. Configuration Management\n\nComponents receive configuration through a typed, immutable object. Configuration is loaded once at startup and never mutated at runtime.\n\n**Implementation:**\n```python\nfrom dataclasses import dataclass, field\nfrom pathlib import Path\nimport json\n\n@dataclass(frozen=True)\nclass ComponentConfig:\n    name: str\n    timeout_ms: int = 5000\n    retry_count: int = 3\n    log_level: str = \"INFO\"\n\n    @classmethod\n    def from_file(cls, path: Path) -> \"ComponentConfig\":\n        with path.open() as f:\n            raw = json.load(f)\n        valid_keys = {f.name for f in cls.__dataclass_fields__.values()}\n        filtered = {k: v for k, v in raw.items() if k in valid_keys}\n        return cls(**filtered)\n```\n\n**Example:** Loading `component.yaml` (or JSON) from a known path during service bootstrap.\n\n**Edge Cases:**\n- File not found or permission denied\n- JSON with extra unknown keys (should be ignored, not crash)\n- `timeout_ms` set to 0 or negative\n- Concurrent reads of the config file during hot-reload\n\n**Tests:**\n```python\ndef test_load_valid_config(tmp_path):\n    p = tmp_path / \"cfg.json\"\n    p.write_text('{\"name\": \"parser\", \"timeout_ms\": 2000}')\n    cfg = ComponentConfig.from_file(p)\n    assert cfg.name == \"parser\"\n    assert cfg.timeout_ms == 2000\n\ndef test_unknown_keys_ignored(tmp_path):\n    p = tmp_path / \"cfg.json\"\n    p.write_text('{\"name\": \"x\", \"bogus\": 42}')\n    cfg = ComponentConfig.from_file(p)\n    assert cfg.name == \"x\"\n\ndef test_missing_file():\n    with pytest.raises(FileNotFoundError):\n        ComponentConfig.from_file(Path(\"/nonexistent/cfg.json\"))\n```\n\n---\n\n## 5. Execution Lifecycle and State Machine\n\nEach component instance follows a strict lifecycle: `CREATED \u2192 INITIALIZED \u2192 RUNNING \u2192 DRAINING \u2192 STOPPED`. Transitions are guarded and logged.\n\n**Implementation:**\n```python\nfrom enum import Enum, auto\n\nclass State(Enum):\n    CREATED = auto()\n    INITIALIZED = auto()\n    RUNNING = auto()\n    DRAINING = auto()\n    STOPPED = auto()\n\nTRANSITIONS = {\n    State.CREATED: {State.INITIALIZED},\n    State.INITIALIZED: {State.RUNNING},\n    State.RUNNING: {State.DRAINING},\n    State.DRAINING: {State.STOPPED},\n}\n\nclass Lifecycle:\n    def __init__(self):\n        self._state = State.CREATED\n\n    def transition(self, target: State):\n        if target not in TRANSITIONS[self._state]:\n            raise IllegalTransitionError(self._state, target)\n        self._state = target\n\n    @property\n    def state(self) -> State:\n        return self._state\n```\n\n**Example:** A `BatchProcessor` that must be initialized (loading models) before it can process, and must drain in-flight requests before stopping.\n\n**Edge Cases:**\n- Attempting to transition from `STOPPED` to any state (terminal)\n- Concurrent `transition()` calls from multiple threads\n- Crash during `INITIALIZED` (partial resource allocation)\n- Re-entry: `RUNNING \u2192 RUNNING` is illegal\n\n**Tests:**\n```python\ndef test_happy_path():\n    lc = Lifecycle()\n    lc.transition(State.INITIALIZED)\n    lc.transition(State.RUNNING)\n    lc.transition(State.DRAINING)\n    lc.transition(State.STOPPED)\n    assert lc.state == State.STOPPED\n\ndef test_illegal_skip():\n    lc = Lifecycle()\n    with pytest.raises(IllegalTransitionError):\n        lc.transition(State.RUNNING)\n\ndef test_terminal_st",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 8192,
+          "visible_content_truncated": true
+        },
+        "retrieval_passed": true,
+        "start": 512586.667005929,
+        "started_at": "2026-11-02T01:58:23.901890+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "anchor_output_during_contender_response_wait": false,
+      "contender": {
+        "end": 512599.704229171,
+        "expected_values": [
+          "VALUE_262de232d5e8",
+          "VALUE_260eefc17961",
+          "VALUE_6a1e6b0dacf2"
+        ],
+        "failure_classes": [],
+        "finished_at": "2026-11-02T01:58:36.939130+00:00",
+        "first_output": 512597.65368435,
+        "last_output": 512599.652256405,
+        "partial_visible": "\n\nKEY_0 = VALUE_262de232d5e8\nKEY_1 = VALUE_260eefc17961\nKEY_2 = VALUE_6a1e6b0dacf2",
+        "prompt_sha256": "7f77e5593c75bcef3b63ca37d2e675bd8b7ae8af0b984d39b750c4b78c2c1d3e",
+        "prompt_tokens_tokenized": 8193,
+        "request_id": null,
+        "response_headers_at": 512597.653592432,
+        "result": {
+          "content_chunks": 14,
+          "e2e": 4.115973158972338,
+          "finish_reasons": [
+            "stop"
+          ],
+          "out_toks": 153,
+          "output_token_source": "usage",
+          "reasoning_chunks": 28,
+          "stream_terminal_observed": true,
+          "time_to_first_output": 2.065447276982013,
+          "ttft": 3.41482735297177,
+          "usage": {
+            "completion_tokens": 153,
+            "prompt_tokens": 8193,
+            "prompt_tokens_details": null,
+            "reasoning_tokens": 99,
+            "total_tokens": 8346
+          },
+          "visible_content": "\n\nKEY_0 = VALUE_262de232d5e8\nKEY_1 = VALUE_260eefc17961\nKEY_2 = VALUE_6a1e6b0dacf2",
+          "visible_content_capture_limit": 8192,
+          "visible_content_captured_chars": 82,
+          "visible_content_truncated": false
+        },
+        "retrieval_passed": true,
+        "start": 512595.583941908,
+        "started_at": "2026-11-02T01:58:32.818812+00:00",
+        "status": "completed",
+        "stream_id": "[STABILITY_STREAM_ID]",
+        "usage_verified": true
+      },
+      "coverage_passed": false,
+      "failure_classes": [
+        "coverage_not_exercised"
+      ],
+      "index": 0,
+      "retrieval_passed": true,
+      "runtime_passed": true
+    }
+  ],
+  "runtime_passed": false,
+  "scenario": {
+    "anchor_max_tokens": 4096,
+    "anchor_tokens": 32768,
+    "base_url": "[LOOPBACK_ENDPOINT]",
+    "configuration": {
+      "image_digest": "sha256:37bbbd3444732a464bbc68dee4fb0164e0ce9e18e2f027f3fc967f1152d3c262",
+      "label": "Swift BF16 GPU0 262K MTP3 r4 final activation",
+      "model_revision": "b4c84d42903a8646b25857eb2827288d92ed85a4",
+      "recipe_sha256": "0326e4bad2521be11898a1811221440a8a919d84342d0c3c8fd92685a923c2d5",
+      "registry_sha256": "aa9c41bb6c325484743e6db85385d1701b9bd4c5b66417e33e3e017f96fb9ba2"
+    },
+    "contender_max_tokens": 2048,
+    "contender_tokens": 8192,
+    "context_limit": 262144,
+    "managed_container": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "mode": "overlap",
+    "model": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+    "prefix_mode": "unique",
+    "reasoning_effort": "medium",
+    "rounds": 3,
+    "run_timeout_seconds": 1800,
+    "schema": "anvil-serving.stability-scenario/v1",
+    "temperature": 1,
+    "timeout_seconds": 300,
+    "top_p": 0.95
+  },
+  "scenario_sha256": "d753c4ebd1dc5c46765afdd095b1337fb597e06b9b204c80efe425234f610ca9",
+  "scheduler_overlap": "not_measured",
+  "schema": "anvil-serving.stability/v1",
+  "served_model_observed": "[QUALIFICATION_FINAL_MODEL_ALIAS]",
+  "stage": "identity_check",
+  "started_at": "2026-11-02T01:58:23.600371+00:00",
+  "status": "incomplete"
+}

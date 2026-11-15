@@ -1,0 +1,24 @@
+{
+  "reviewer": "flare_trial_review; independent Sol",
+  "recommendation": "accept_with_limits",
+  "at": 1792649361.7636497,
+  "confirmed": {
+    "c1_successful_measured": 156,
+    "c4_successful_measured": 480,
+    "c1_mean_block_throughput": 114.4083339,
+    "c4_mean_block_throughput": 146.6595227,
+    "native_counter_reconciliation": "generated delta equals artifact completion tokens; input minus prefill equals9 reused tokens/request; one lookup/hit and three completed host stores/request; zero host hits",
+    "identity": "same container/image/recipe/generation/StartedAt/GPU selection across all control cells"
+  },
+  "limits": [
+    "Variable output, no semantic/canary oracle, no overall ranking after incumbent C4 failure",
+    "Prompt seeds are not API sampling seeds",
+    "Row pressure is plausible, not a causal throughput diagnosis",
+    "Initial cache hypothesis file omits C1r3 and allC4; append a complete matrix record"
+  ],
+  "reviewer_erratum": {
+    "original_incorrect": "approximately9.37GiB",
+    "corrected_confirmed": "9374826496bytes=8.73099GiB=9.37483GB"
+  },
+  "next_probe": "Fresh identical52prompt corpus forward prime then reverse replay; no intervening traffic or policy change. Capture identity, cache counters, resident rows/bytes and failure/skip/store deltas. Add row/page/eviction reason counters before allocation policy change. No performance ranking."
+}

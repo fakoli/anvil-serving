@@ -1,0 +1,36 @@
+{
+  "base_source_revision": "a3fed43efae3b18ec6181618d6a4a66153a9d14e",
+  "build": "passed",
+  "build_artifact_home": "[redacted-runtime-label] scoped child ANVIL_SERVING_HOME and explicit original topology",
+  "embedded_tests": {
+    "gpu_runtime": false,
+    "passed": 9,
+    "ran": 9
+  },
+  "evidence": [
+    {
+      "path": "tabby-qwen-schema-managed-build-r2.json",
+      "sha256": "bbd2d10cd82cd9e24ca4bababf2584320f22bdaf2a0267fceb5d2a7a6b35879a"
+    },
+    {
+      "path": "tabby-qwen-schema-managed-build-r2-observer.json",
+      "sha256": "4be4debe5035a1f9fff1f67301f9865e4bd9c512eb588d3c866c0d97e6b43cf0"
+    },
+    {
+      "path": "tabby-qwen-schema-derived-image-identity.json",
+      "sha256": "b142b217ddd58c0e1c2b3c6054a0fb6282e61f261246ec06d482615c7139e5ca"
+    },
+    {
+      "path": "tabby-qwen-schema-managed-build-r2-native.log",
+      "sha256": "19abbe863c077389e50b4030b156dea4514bbbdc93fc05f7f0823dbbd82f3a7e"
+    }
+  ],
+  "first_apply": "prebuild log-directory permission failure; retained; existing shared permissions unchanged",
+  "image_id": "sha256:b61766e6c60749d0695bce6cdee1a4ceb5886ff9dbd45e5667243cf4c24447c7",
+  "inference_clearance": "held pending independent exact recipe review and native identity/provenance/memory/reserve gates",
+  "label_caveat": "OCI source revision is inherited from the base; four operator-patched files mean it is not an unmodified a3fed runtime. Native source hash attestation required before requests.",
+  "observed_at": "2026-10-13T20:49:43.605743+00:00",
+  "operator_patch_manifest_sha256": "997fda896d0f994eee3b97ea212d850fbbbd76f58c2bfbdbc667f3ac30a09502",
+  "promoted": false,
+  "schema_version": "campaign-stage-decision/v1"
+}

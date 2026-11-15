@@ -1,0 +1,7 @@
+{
+  "mode": "dual-gpu-exclusive",
+  "tensor_parallel_size": 2,
+  "unresolved": [],
+  "blocked_workload_count": 1,
+  "exact_original_gpu_ownership_verified": true
+}

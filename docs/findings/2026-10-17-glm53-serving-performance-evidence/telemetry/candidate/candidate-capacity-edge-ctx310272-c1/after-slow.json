@@ -1,0 +1,106 @@
+{
+  "cgroup": {
+    "argv": [
+      "[PRIVATE_OPERATOR_ROOT]/.venv/bin/python",
+      "-m",
+      "anvil_serving.cli",
+      "models",
+      "recipes",
+      "status",
+      "nvidia/GLM-5.3-Flash-FP4-Local",
+      "--container",
+      "glm53-nvidia-fp4-local-ab-r2",
+      "--registry",
+      "[PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml",
+      "--transport",
+      "local",
+      "--json"
+    ],
+    "host_memory": {
+      "current_bytes": 43262185472,
+      "effective_limit_bytes": 55834574848,
+      "effective_swap_limit_bytes": 0,
+      "events": {
+        "high": 0,
+        "low": 0,
+        "max": 0,
+        "oom": 0,
+        "oom_group_kill": 0,
+        "oom_kill": 0
+      },
+      "exit_code": 0,
+      "limit_bytes": 55834574848,
+      "oom_killed": false,
+      "peak_bytes": 53049847808,
+      "ram_plus_swap_limit_bytes": 55834574849
+    },
+    "identity": {
+      "container": "glm53-nvidia-fp4-local-ab-r2",
+      "container_id": "container-id-redacted",
+      "image": "ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+      "model": "nvidia/GLM-5.3-Flash-FP4-Local",
+      "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+      "running": true,
+      "state": "running"
+    },
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\"command\":\"models recipes status nvidia/GLM-5.3-Flash-FP4-Local --container glm53-nvidia-fp4-local-ab-r2 --registry [PRIVATE_OPERATOR_ROOT]/serve-recipes.glm53-nvidia-fp4-ab-20261017-r2.toml --transport local\",\"context\":{\"command\":\"models-recipes-status\",\"command_host\":\"Primary Node\",\"command_runtime\":\"primary-native\",\"controller_endpoint\":null,\"controller_endpoint_kind\":null,\"execution_host\":\"Primary Node\",\"execution_runtime\":\"primary-container-runtime\",\"gpu_role\":\"primary-compute-a\",\"gpu_uuid\":\"GPU-REDACTED\",\"overlay\":null,\"resource\":\"primary-model-operator\",\"resource_endpoint\":null,\"resource_endpoint_kind\":null,\"resource_host\":\"Primary Node\",\"resource_runtime\":\"primary-container-runtime\",\"target\":null,\"topology\":\"Primary Node-reference\",\"transport\":\"local\"},\"data\":\"{\\n  \\\"container\\\": \\\"glm53-nvidia-fp4-local-ab-r2\\\",\\n  \\\"container_id\\\": \\\"container-id-redacted\\\",\\n  \\\"containment_error\\\": null,\\n  \\\"health\\\": null,\\n  \\\"host_memory\\\": {\\n    \\\"current_bytes\\\": 43262185472,\\n    \\\"effective_limit_bytes\\\": 55834574848,\\n    \\\"effective_swap_limit_bytes\\\": 0,\\n    \\\"events\\\": {\\n      \\\"high\\\": 0,\\n      \\\"low\\\": 0,\\n      \\\"max\\\": 0,\\n      \\\"oom\\\": 0,\\n      \\\"oom_group_kill\\\": 0,\\n      \\\"oom_kill\\\": 0\\n    },\\n    \\\"exit_code\\\": 0,\\n    \\\"limit_bytes\\\": 55834574848,\\n    \\\"oom_killed\\\": false,\\n    \\\"peak_bytes\\\": 53049847808,\\n    \\\"ram_plus_swap_limit_bytes\\\": 55834574849\\n  },\\n  \\\"image\\\": \\\"ghcr.io/local-inference-lab/vllm:release-10152026@sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29\\\",\\n  \\\"image_id\\\": \\\"sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29\\\",\\n  \\\"model\\\": \\\"nvidia/GLM-5.3-Flash-FP4-Local\\\",\\n  \\\"revision\\\": \\\"76348ddb2be2e35e39ecfc00e75dc07703f4f3d5\\\",\\n  \\\"running\\\": true,\\n  \\\"schema\\\": \\\"recipe-container-status/v1\\\",\\n  \\\"state\\\": \\\"running\\\"\\n}\\n\",\"error\":null,\"ok\":true,\"warnings\":[]}\n"
+  },
+  "gpu": {
+    "argv": [
+      "nvidia-smi",
+      "--query-gpu=index,uuid,name,memory.total,memory.used,memory.free,utilization.gpu,power.draw,temperature.gpu",
+      "--format=csv,noheader,nounits"
+    ],
+    "returncode": 0,
+    "rows": [
+      {
+        "index": 0,
+        "memory_free_mib": 895,
+        "memory_total_mib": 97887,
+        "memory_used_mib": 96447,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "power_draw_w": 294.89,
+        "temperature_gpu_c": 83,
+        "utilization_gpu_percent": 55,
+        "uuid": "GPU-REDACTED"
+      },
+      {
+        "index": 1,
+        "memory_free_mib": 897,
+        "memory_total_mib": 97887,
+        "memory_used_mib": 96445,
+        "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+        "power_draw_w": 289.66,
+        "temperature_gpu_c": 82,
+        "utilization_gpu_percent": 30,
+        "uuid": "GPU-REDACTED"
+      }
+    ],
+    "stderr": "",
+    "stdout": "0, GPU-REDACTED, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887, 96447, 895, 55, 294.89, 83\n1, GPU-REDACTED, NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition, 97887, 96445, 897, 30, 289.66, 82\n"
+  },
+  "host_memory": {
+    "MemAvailable": {
+      "unit": "kB",
+      "value": 59406516
+    },
+    "MemTotal": {
+      "unit": "kB",
+      "value": 131020020
+    },
+    "SwapFree": {
+      "unit": "kB",
+      "value": 52
+    },
+    "SwapTotal": {
+      "unit": "kB",
+      "value": 8388604
+    }
+  },
+  "stamp": {
+    "monotonic_ns": 607587896153939,
+    "unix_ns": 1792241528175933917
+  }
+}

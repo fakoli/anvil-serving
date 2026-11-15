@@ -1,0 +1,48 @@
+{
+  "observed_at": "2026-11-03T15:58:20.716978+00:00",
+  "checks": {
+    "container_id": true,
+    "image_digest": true,
+    "recipe_digest": true,
+    "registry_digest": true,
+    "revision": true,
+    "served_identity": true,
+    "bound_port": true,
+    "main_running": true,
+    "only_main_running": true,
+    "campaign_targets_absent": true,
+    "secondary_target_absent": true,
+    "health_ok": true,
+    "served_identity_matches": true,
+    "no_candidate_listeners_on_checked_ports": true,
+    "manifest_hashes_unchanged": true
+  },
+  "endpoints": {
+    "/health": {
+      "status": 200,
+      "body": {
+        "status": "ok"
+      }
+    },
+    "/v1/models": {
+      "status": 200,
+      "body": {
+        "data": [
+          {
+            "created": 1793721499,
+            "id": "[private operator or asset text withheld]",
+            "object": "model",
+            "owned_by": "ninfer"
+          }
+        ],
+        "object": "list"
+      }
+    }
+  },
+  "checked_ports": "[private topology withheld]",
+  "listener_query": "[private topology withheld]",
+  "listener_caveat": "Final Windows listener enumeration may be empty despite successful loopback health/model metadata requests; main reachability is proved by HTTP and managed binding, not inferred from this snapshot.",
+  "deduplicated_listeners": "[private topology withheld]",
+  "scope": "Read-only final metadata/health observation; no model inference. Main deliberately remains running; no promotion.",
+  "passed": true
+}

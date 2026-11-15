@@ -1,0 +1,199 @@
+{
+  "client_overrides": {
+    "hermes": {
+      "expected_observed_provider": "custom",
+      "model": "llm.primary",
+      "provider_selector": "anvil"
+    },
+    "openclaw": {
+      "model": "anvil/llm.primary",
+      "provider": "anvil"
+    }
+  },
+  "clients": [
+    "openclaw",
+    "hermes"
+  ],
+  "clients_skipped": [],
+  "credentials": {
+    "api_key_env": "ANVIL_ROUTER_TOKEN",
+    "available": true
+  },
+  "dry_run": false,
+  "finished_at": "2026-10-14T05:42:39.444118Z",
+  "harness_reconciliation": {
+    "backup_root": "public-backup-root-001",
+    "enabled": false,
+    "openclaw_config": "public-openclaw-config-001",
+    "pi_models": "public-pi-models-001",
+    "pi_settings": "public-pi-settings-001",
+    "restart_openclaw_on_router_change": false,
+    "state_path": "public-state-path-001"
+  },
+  "harness_sync": {
+    "checks": {},
+    "enabled": false,
+    "failure": null,
+    "passed": true,
+    "receipt": null
+  },
+  "output": "public-output-001",
+  "passed": false,
+  "persistent_changes": false,
+  "results": [
+    {
+      "checks": {
+        "context_exact": true,
+        "fallback_forbidden": true,
+        "json_valid": true,
+        "marker_exact": false,
+        "model_exact": true,
+        "output_bounded": true,
+        "process_succeeded": true,
+        "provider_exact": true,
+        "status_ok": true,
+        "winner_model_exact": true,
+        "winner_provider_exact": true
+      },
+      "client": "openclaw",
+      "command": {
+        "model": "anvil/llm.primary",
+        "provider": "anvil",
+        "thinking": "off",
+        "tool_probe": "exec/read-temporary-nonce"
+      },
+      "failure": "client identity or response validation failed",
+      "observed": {
+        "context_tokens": 327680,
+        "fallback_used": false,
+        "latency_ms": 16036,
+        "max_output_tokens": 65536,
+        "model": "llm.primary",
+        "payload_count": 1,
+        "provider": "anvil",
+        "response_chars": 239,
+        "returncode": 0,
+        "session_id": "public-session-id-001",
+        "stop_reason": "stop",
+        "winner_model": "llm.primary",
+        "winner_provider": "anvil"
+      },
+      "passed": false
+    },
+    {
+      "checks": {
+        "api_call_recorded": true,
+        "completed": true,
+        "marker_exact": true,
+        "model_exact": true,
+        "not_failed": true,
+        "output_bounded": true,
+        "process_succeeded": true,
+        "provider_exact": true,
+        "usage_valid": true
+      },
+      "client": "hermes",
+      "command": {
+        "expected_observed_provider": "custom",
+        "model": "llm.primary",
+        "provider_selector": "anvil",
+        "reasoning": "none",
+        "tool_probe": "terminal/read-temporary-nonce"
+      },
+      "failure": null,
+      "observed": {
+        "api_calls": 2,
+        "context_tokens": null,
+        "fallback_used": null,
+        "input_tokens": 10734,
+        "latency_ms": 18621,
+        "max_output_tokens": null,
+        "model": "llm.primary",
+        "output_tokens": 394,
+        "provider": "custom",
+        "reasoning_tokens": 0,
+        "response_chars": 57,
+        "returncode": 0,
+        "session_id": "public-session-id-002"
+      },
+      "passed": true
+    }
+  ],
+  "router": {
+    "checks": {
+      "alias_advertised": true,
+      "capacity_loaded": true,
+      "config_fingerprint_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "readiness_ready": true,
+      "router_config_sha256_exact": true,
+      "router_config_sha256_valid": true,
+      "served_model_exact": true
+    },
+    "observed": {
+      "config_fingerprint": "glm53-r11-dcp1-vision8-apc-nospec-v84-fp8kv-tp2-c4-thinking49152",
+      "config_sha256": "5b60f412504fbfe67cf380d0b10392a2704c625637f356540af6786465d4019f",
+      "configured_max_concurrency": 4,
+      "context_limit_tokens": 327680,
+      "discovery_context_window": 327680,
+      "engine": {
+        "name": "vllm-glm53-exl3-b12x-v84-fp8-control",
+        "quantization": "exl3-4bpw-fp8-ds-mla-kv"
+      },
+      "package_version": "1.5.0",
+      "readiness": {
+        "loaded": true,
+        "reason": "identity_passed",
+        "state": "ready"
+      },
+      "served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "tier_id": "primary-local"
+    },
+    "passed": true
+  },
+  "router_before_sync": {
+    "checks": {
+      "alias_advertised": true,
+      "capacity_loaded": true,
+      "config_fingerprint_exact": true,
+      "context_minimum": true,
+      "discovery_context_exact": true,
+      "readiness_ready": true,
+      "router_config_sha256_exact": true,
+      "router_config_sha256_valid": true,
+      "served_model_exact": true
+    },
+    "observed": {
+      "config_fingerprint": "glm53-r11-dcp1-vision8-apc-nospec-v84-fp8kv-tp2-c4-thinking49152",
+      "config_sha256": "5b60f412504fbfe67cf380d0b10392a2704c625637f356540af6786465d4019f",
+      "configured_max_concurrency": 4,
+      "context_limit_tokens": 327680,
+      "discovery_context_window": 327680,
+      "engine": {
+        "name": "vllm-glm53-exl3-b12x-v84-fp8-control",
+        "quantization": "exl3-4bpw-fp8-ds-mla-kv"
+      },
+      "package_version": "1.5.0",
+      "readiness": {
+        "loaded": true,
+        "reason": "identity_passed",
+        "state": "ready"
+      },
+      "served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+      "tier_id": "primary-local"
+    },
+    "passed": true
+  },
+  "run_id": "public-run-id-001",
+  "schema": "routed-client-eval/v2",
+  "started_at": "2026-10-14T05:42:04.500774Z",
+  "target": {
+    "alias": "llm.primary",
+    "base_url": "public-endpoint-005",
+    "expected_config_fingerprint": "glm53-r11-dcp1-vision8-apc-nospec-v84-fp8kv-tp2-c4-thinking49152",
+    "expected_router_config_sha256": "5b60f412504fbfe67cf380d0b10392a2704c625637f356540af6786465d4019f",
+    "expected_served_model": "glm53-flash-exl3-4bpw-v84-fp8-tp2-dcp1-c4-327k-r11-vision8-apc-nospec",
+    "min_context_tokens": 327680
+  }
+}

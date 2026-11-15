@@ -1,0 +1,110 @@
+{
+  "completeness": "completed",
+  "created_at": "2026-10-21T11:17:00.159903Z",
+  "evidence_kind": "measured",
+  "failure": null,
+  "identities": {
+    "concurrency": {
+      "requests": 1,
+      "workers": 1
+    },
+    "context": {
+      "configured_tokens": 327680,
+      "output_headroom_tokens": "not-applicable",
+      "profile_buckets": "not-applicable",
+      "selected_buckets": "not-applicable"
+    },
+    "dataset": {
+      "name": "deterministic-native",
+      "profile_sha256": "fce0e6e1e7497585bdfc6f76507d3baaff99a6b4f174d841d268de20c68de7f6"
+    },
+    "hardware": {
+      "architecture": "x86_64",
+      "container_capable": true,
+      "free_disk_bytes": 1797647540224,
+      "harness_assets": [],
+      "id": "primary-node",
+      "owned_output_writable": true,
+      "platform": "linux"
+    },
+    "harnesses": {
+      "native": {
+        "schema": "anvil-serving.agentic/v1"
+      }
+    },
+    "image": {
+      "status": "not-applicable"
+    },
+    "model": {
+      "alias": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2"
+    },
+    "runtime": {
+      "reason": "not exposed by router preflight",
+      "status": "unavailable"
+    },
+    "served_model": {
+      "configured_context": 327680,
+      "id": "glm53-nvidia-fp4-local-tp2-327k-c4-mtp3-r2"
+    },
+    "topology": {
+      "kind": "co-resident-benchmark-client",
+      "worker_id": "primary-node"
+    }
+  },
+  "promotion": {
+    "authorized": false,
+    "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+  },
+  "run": {
+    "ownership_id": "flare-opt-20261021",
+    "profile": "scout",
+    "run_id": "flare-opt-incumbent-oracle8-t1-r1",
+    "spec_sha256": "360dceeae0a7b64186e9f0bf9780d04b1e958d762d46e920024c70c3fbbb315d",
+    "suite": "agentic"
+  },
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "stages": [
+    {
+      "evidence": [
+        {
+          "bytes": 555,
+          "path": "evidence/0-assets.json",
+          "sha256": "aba054baae189129b22ac3959fd6193395f597fe1b66b279b24c2cda4e1c43d2"
+        }
+      ],
+      "name": "asset_preparation",
+      "sequence": 0,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 2020,
+          "path": "evidence/0-preflight.json",
+          "sha256": "000129bd51025c13c597ad00cd43e09397a4ca9b6806f541d4c01aede7b9715f"
+        }
+      ],
+      "name": "preflight",
+      "sequence": 1,
+      "status": "completed"
+    },
+    {
+      "evidence": [
+        {
+          "bytes": 37106,
+          "path": "evidence/0-agentic.json",
+          "sha256": "8e08c8fcc306c381e5b99f315c94584128d15171a820437bef90d33bcbfecdd9"
+        }
+      ],
+      "name": "agentic",
+      "sequence": 2,
+      "status": "completed"
+    }
+  ],
+  "summary": {
+    "attempted": 18,
+    "pass_rate": 1.0,
+    "passed": 18,
+    "required_pass_rate": 0.75
+  }
+}

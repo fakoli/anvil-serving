@@ -2,7 +2,7 @@
 
 from .common import CONFIRM_OPTIONS
 from .family import command_family
-from .spec import CommandNode, _node, _option, _resource_node
+from .spec import CommandNode, _handler, _node, _option, _resource_node
 
 
 REGISTRY_OPTION = (
@@ -20,6 +20,7 @@ BUNDLE_IDENTITY_OPTIONS = (
     _option("--bundle-lock", summary="Pinned media bundle lock.", value_name="PATH"),
     _option("--models-volume", summary="Protected ComfyUI model volume.", value_name="NAME"),
 )
+HOST_MODELS_OPTION = (_option("--models-root", summary="Read-only host model root instead of a Docker volume.", value_name="PATH"),)
 
 
 @command_family(category="Anvil Media")
@@ -28,6 +29,38 @@ def commands() -> CommandNode:
         "media",
         "Inspect and run bounded managed media workflows.",
         children=(
+            _node(
+                "memory-guard",
+                "Publish Windows memory safety signals and supervise one worker.",
+                children=tuple(
+                    _node(
+                        action,
+                        description,
+                        handler=_handler(
+                            "anvil_serving.media.memory_guard",
+                            argv_prefix=(action,),
+                            forward_confirm_flag=action not in {"sample", "status"},
+                        ),
+                        mutation_class="read" if action in {"sample", "status"} else "mutate",
+                        output_policy="foreground" if action in {"run", "supervise"} else "bounded",
+                        options=(
+                            _option("--config", summary="Operator-owned memory guard policy.", value_name="PATH"),
+                        ) + (
+                            (_option("--lease", summary="Container mapping of the host signal.", value_name="PATH"),)
+                            if action == "supervise" else ()
+                        ) + (CONFIRM_OPTIONS if action not in {"sample", "status"} else ()),
+                        docs_anchor="docs/cli/media.md#windows-host-memory-guard",
+                    )
+                    for action, description in (
+                        ("sample", "Read native Windows available RAM and commit headroom."),
+                        ("status", "Check the configured host memory signal."),
+                        ("install", "Register and start the private Windows login memory guard."),
+                        ("uninstall", "Remove this guard's login entry and request its stop."),
+                        ("run", "Publish memory safety signals until explicitly stopped."),
+                        ("supervise", "Run one worker child only while its host signal is safe and fresh."),
+                    )
+                ),
+            ),
             _resource_node(
                 "capabilities",
                 "List deterministic media capabilities.",
@@ -36,6 +69,15 @@ def commands() -> CommandNode:
                 options=STATE_OPTIONS,
                 argv_prefix=("capabilities",),
             ),
+            _node("asset", "Upload owned reference media.", children=(
+                _node("upload", "Decode and retain one bounded local reference file.",
+                      handler=_handler("anvil_serving.media.asset_client", argv_prefix=()),
+                      mutation_class="mutate", execution_policy="offline",
+                      docs_anchor="docs/cli/media.md#upload-reference-media", options=CONFIRM_OPTIONS + (
+                                   _option("--file", summary="Local PNG, JPEG, MP4 or WAV reference.", value_name="PATH"),
+                                   _option("--client-config", summary="Protected stdio MCP client definition.", value_name="PATH"),
+                               )),
+            )),
             _node(
                 "bundle",
                 "Inventory and stage exact pinned workflow assets.",
@@ -45,7 +87,7 @@ def commands() -> CommandNode:
                         "Verify exact model assets for one workflow.",
                         "anvil_serving.media.cli",
                         role="media-worker",
-                        options=BUNDLE_IDENTITY_OPTIONS,
+                        options=BUNDLE_IDENTITY_OPTIONS + HOST_MODELS_OPTION,
                         argv_prefix=("bundle", "inventory"),
                     ),
                     _resource_node(
@@ -91,6 +133,7 @@ def commands() -> CommandNode:
                         options=CONFIRM_OPTIONS
                         + IDENTITY_OPTIONS
                         + BUNDLE_IDENTITY_OPTIONS
+                        + HOST_MODELS_OPTION
                         + (
                             _option(
                                 "--parameters",
@@ -176,6 +219,22 @@ def commands() -> CommandNode:
                         argv_prefix=("workflow", "validate"),
                     ),
                     _resource_node(
+                        "prepare",
+                        "Compile a shot brief and return an exact bounded run request.",
+                        "anvil_serving.media.cli",
+                        role="media-gateway",
+                        options=IDENTITY_OPTIONS + tuple(
+                            _option(flag, summary=summary, value_name=value)
+                            for flag, summary, value in (
+                                ("--version", "Pinned workflow version.", "VERSION"),
+                                ("--parameters", "Bounded workflow parameters.", "JSON"),
+                                ("--brief", "Structured shot brief accepted by the recipe.", "JSON"),
+                                ("--quality-profile", "Exact declared quality profile.", "PROFILE"),
+                                ("--idempotency-key", "Stable caller request key.", "KEY"),
+                            )),
+                        argv_prefix=("workflow", "prepare"),
+                    ),
+                    _resource_node(
                         "run",
                         "Submit one bounded named media workflow.",
                         "anvil_serving.media.cli",
@@ -203,6 +262,7 @@ def commands() -> CommandNode:
                             _option(
                                 "--idempotency-key", summary="Caller retry key.", value_name="KEY"
                             ),
+                            _option("--plan-digest", summary="Digest returned by workflow preparation.", value_name="SHA256"),
                             _option(
                                 "--backend-url",
                                 summary="Declared adapter endpoint.",
@@ -217,6 +277,19 @@ def commands() -> CommandNode:
                 "job",
                 "Inspect and cancel durable media jobs.",
                 children=(
+                    _node(
+                        "watch",
+                        "Wait for an owned MCP job and return its completed artifacts.",
+                        handler=_handler("anvil_serving.media.watch", argv_prefix=()),
+                        output_policy="foreground",
+                        options=(
+                            _option("--job-id", summary="Existing caller-owned job.", value_name="ID"),
+                            _option("--client-config", summary="Protected stdio MCP client definition.", value_name="PATH"),
+                            _option("--timeout-seconds", summary="Watcher deadline; does not cancel rendering.", value_name="SECONDS"),
+                            _option("--poll-seconds", summary="Bounded MCP polling interval.", value_name="SECONDS"),
+                        ),
+                        docs_anchor="docs/cli/media.md#background-completion",
+                    ),
                     _resource_node(
                         "status",
                         "Inspect one durable media job.",

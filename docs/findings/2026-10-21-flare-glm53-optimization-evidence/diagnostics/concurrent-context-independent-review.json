@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-10-21T14:20:00Z",
+  "reviewer": "independent Sol high",
+  "gate": "approved_for_bounded_execution",
+  "workload_sha256": "2ff4aa170dd3365bd3bf29c677bd659ca4d3459e3108073a7ae9571f02beb87a",
+  "wrapper_sha256": "9c43743baf67655d3419c63a5251982ee509d8ffc7cae468754233a873562751",
+  "limits": [
+    "active4 is sampled admitted requests, not GPU simultaneity or four full-window residency",
+    "API seed omitted but current engine default0; no independent random-seed claim",
+    "all seven gates and wrapper drain remain mandatory"
+  ],
+  "promoted": false
+}

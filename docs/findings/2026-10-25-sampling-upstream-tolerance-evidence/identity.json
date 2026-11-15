@@ -1,0 +1,40 @@
+{
+  "schema": "anvil-serving.sampling-upstream-identity/v1",
+  "repository_revision": "80dacf71b72d9760cf539d7cbe8e9c8a88c25647",
+  "runtime": {
+    "base_revision": "8244d1c44348ae8a5bbfc9f1b607021652283ed4",
+    "upstream_patch_commit": "0a1276e5e3d9000488e7590cc0957edd709f2152",
+    "base_image": "sha256:745feb916ee816f5409fd58386114be4f22fbede7f9c0e0a7b8c4fe8dac0fb29",
+    "candidate_image": "sha256:41c4926b08c7298fb63bc7f1204926c4f95ce9083ff610069ab442141213b1aa",
+    "baseline_sampler_sha256": "0b5fc337058e22bc28a8530ccec904d6ccd89b9548b02955c657ac429b1669d2",
+    "patched_sampler_sha256": "2b5305c406d8495e515f048ce0322c7ae5946a49e5f27bd5bbbf30a1e1fea0e6"
+  },
+  "helpers": {
+    "Dockerfile": "6b2e06b18704d451f6e107a27a5314df2509c9a5fd481e51c4d08b25bb6178a0",
+    "README.md": "b1a9ec99af36a6eb2795ab75beae42b29d961af89d4aaf677ad4fef3f8da6694",
+    "kernel_regression.py": "86a15934b4b0a30f4514b410a51393d822e01f272eff65cfee07df97ca298159",
+    "launch.py": "24203cc50619e0b4116be44cecb14d800f6b2845298f998e1384c6adeb369cd1",
+    "reference.py": "69b39e22aca53be843b0fc2d4e5c6adf2c9d1e23e4e8d0a95dea1b9f598e64f8",
+    "split-topp.patch": "c30ca1225f4a3b36b1e015738d9cf34129b1876851122d9da1abea1e5097fc7c",
+    "trace.patch": "64aebd4552feb10b1a3120a521d9ff7df0ed199e7ebf376ee253b0c1aa3996a8",
+    "verify_patch.py": "3ed8f790bf9a5d03a7de6175c34f1d8f2b91f6182e213c681fc89114e0bc6d2c",
+    "native_comparator.py": "1125d27ad9314ddd5ee27bf3f651e18fa0adfb5c3c9364765e9e17683b7e34c6",
+    "UPSTREAM-LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  "configured_model": {
+    "repository": "nvidia/GLM-5.3-Flash-FP4-Local",
+    "revision": "76348ddb2be2e35e39ecfc00e75dc07703f4f3d5",
+    "public_served_label": "served-model-1",
+    "weight_format": "FP4",
+    "kv_dtype": "FP8",
+    "context": 327680,
+    "max_concurrency": 4,
+    "tensor_parallel": 2,
+    "decode_context_parallel": 2,
+    "speculative_tokens": 3
+  },
+  "kernel_measured_hardware": "One RTX PRO 6000 Blackwell Max-Q GPU on Primary Node",
+  "configured_model_topology": "Two RTX PRO 6000 Blackwell Max-Q GPUs; one measured C1 candidate request",
+  "independent_review": "approved; new license packaging carries no executable change",
+  "candidate_requests": 1
+}

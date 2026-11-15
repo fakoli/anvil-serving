@@ -1,0 +1,28 @@
+{
+  "schema": "anvil-serving.startup-failure-decision/v1",
+  "observed_at": "2026-10-14T01:14:39.072252+00:00",
+  "status": "failed_before_weights",
+  "classification": "model_configuration_trust_gate",
+  "cause": "Exactlocalconfig auto_map custom MiMoV2Config requires trust_remote_code; originalrecipe omitted --trust-remote-code. NativeModelConfig ValidationError/repo_utils earliestowningerror.",
+  "model_quality_score": null,
+  "fit_outcome": "unmeasured/no modelweightload or request",
+  "next": "AuditbothpinnedlocalPythonfiles andnativevLLMload/controlsource; oneflagrecipe remedy requiresnewindependentpreloadgate.",
+  "sources": [
+    {
+      "path": "private-evidence-path-002",
+      "sha256": "3fc9eeb0049ea680f05eb16f74a94d5683c985e5930101f0cb5423b08c792ca2"
+    },
+    {
+      "path": "private-evidence-path-004",
+      "sha256": "3f8bf1c9118e877f83e94bdd0d0f0a81474b460d75e3c30e7a6ed3a707ccac25"
+    },
+    {
+      "path": "private-evidence-path-003",
+      "sha256": "55bf374d73917a2d4e4c6e31ac663b9242818b24ffa523d70ca6982021b077da"
+    },
+    {
+      "path": "private-evidence-path-001",
+      "sha256": "a164b946f612283c184b32fdaff71994704d8da987e22273c4c1dd4357d90ea2"
+    }
+  ]
+}

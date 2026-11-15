@@ -1,0 +1,14 @@
+{
+  "schema": "recipe-monitoring/v1",
+  "ports": [
+    39126,
+    39130
+  ],
+  "engine_contracts": {
+    "vllm-b12x-release-10152026": "vllm",
+    "flare-47581cca": "flare"
+  },
+  "model_api_key_files": {
+    "39130": "OPERATOR_PATH_6f3ccf38bed5/flare.key"
+  }
+}

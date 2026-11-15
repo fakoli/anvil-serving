@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import hashlib
+import ipaddress
 import json
 import os
 import re
@@ -63,6 +64,7 @@ _SERVE_ENV_PREFIXES = ("VLLM_", "FLASHINFER_", "CUDA_")
 # Where model weights are mounted in the container (a named volume, never a C:/ bind
 # mount — see the cold-load gotchas). Reconstructed commands reuse this exactly.
 HFCACHE_MOUNT = "-v vllm-hfcache:/root/.cache/huggingface"
+DEFAULT_CACHE_MOUNT = "/root/.cache/huggingface"
 REGISTRY_SCHEMA = "anvil-serving.serve-recipes/v1"
 _CONTAINER_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
@@ -168,17 +170,29 @@ def _parse_named_volume(spec: str) -> tuple[str, str, bool]:
         raise RecipeError(
             "recipe.serve.named_volumes sources must be named Docker volumes"
         )
-    target_parts = target.split("/")
-    if (
-        not target.startswith("/")
-        or "\\" in target
-        or any(ch.isspace() for ch in target)
-        or any(not part or part in {".", ".."} for part in target_parts[1:])
-    ):
-        raise RecipeError(
-            "recipe.serve.named_volumes targets must be normalized absolute POSIX paths"
-        )
+    _validate_container_path(target, "recipe.serve.named_volumes targets")
     return source, target, len(parts) == 3
+
+
+def _validate_container_path(value: object, field: str) -> str:
+    """Return one normalized absolute POSIX container path."""
+    parts = value.split("/") if isinstance(value, str) else []
+    if (
+        not isinstance(value, str)
+        or not value.startswith("/")
+        or "\\" in value
+        or ":" in value
+        or any(ord(ch) < 32 or ord(ch) == 127 for ch in value)
+        or any(ch.isspace() for ch in value)
+        or any(not part or part in {".", ".."} for part in parts[1:])
+    ):
+        raise RecipeError("%s must be a normalized absolute POSIX path" % field)
+    return value
+
+
+def _container_paths_overlap(left: str, right: str) -> bool:
+    """Return whether either normalized path would mask the other mount."""
+    return left == right or left.startswith(right + "/") or right.startswith(left + "/")
 
 
 # --------------------------------------------------------------------------- #
@@ -469,6 +483,12 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         recipe_memory.limits(serve)
     except ValueError as exc:
         raise RecipeError(str(exc)) from exc
+    download = recipe.get("download") or {}
+    custom_cache_mount = "cache_mount" in download
+    cache_mount = _validate_container_path(
+        download.get("cache_mount", DEFAULT_CACHE_MOUNT),
+        "recipe.download.cache_mount",
+    )
     if not require_loadable:
         return
     serve = recipe.get("serve")
@@ -481,21 +501,16 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError("recipe.serve.image must be a Docker image reference, not an option")
     model_path = serve.get("model_path")
     if model_path is not None:
-        path_parts = model_path.split("/") if isinstance(model_path, str) else []
-        if (
-            not isinstance(model_path, str)
-            or not model_path.startswith("/")
-            or "\\" in model_path
-            or any(ch in model_path for ch in ("\n", "\r", "\x00"))
-            or any(ch.isspace() for ch in model_path)
-            or any(not part or part in {".", ".."} for part in path_parts[1:])
-        ):
-            raise RecipeError(
-                "recipe.serve.model_path must be a normalized absolute POSIX path"
-            )
+        _validate_container_path(model_path, "recipe.serve.model_path")
         if serve.get("model_env"):
             raise RecipeError(
                 "recipe.serve.model_path is incompatible with recipe.serve.model_env"
+            )
+        if custom_cache_mount and (
+            model_path != cache_mount and not model_path.startswith(cache_mount + "/")
+        ):
+            raise RecipeError(
+                "recipe.serve.model_path must be inside recipe.download.cache_mount"
             )
     if "\x00" in model:
         raise RecipeError("recipe.model must not contain NUL bytes")
@@ -511,7 +526,6 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError(
             "recipe.serve.startup_timeout_seconds must be an integer from 1 to 86400"
         )
-    download = recipe.get("download") or {}
     require_complete_cache = download.get("require_complete_cache")
     if require_complete_cache is not None and not isinstance(
         require_complete_cache, bool
@@ -584,7 +598,11 @@ def validate_recipe(recipe: dict, *, require_loadable: bool = False) -> None:
         raise RecipeError(
             "recipe.serve.named_volumes must not repeat a source or target"
         )
-    if "/root/.cache/huggingface" in targets:
+    if any(
+        (custom_cache_mount and _container_paths_overlap(target, cache_mount))
+        or target == DEFAULT_CACHE_MOUNT
+        for target in targets
+    ):
         raise RecipeError(
             "recipe.serve.named_volumes cannot shadow the managed model-cache mount"
         )
@@ -733,10 +751,10 @@ def docker_run_argv(
     serve = recipe["serve"]
     hw = recipe.get("hardware") or {}
     argv = ["docker", "run", "-d"]
-    bounds = recipe_memory.limits(serve)
+    bounds = recipe_memory.docker_limits(serve)
     if bounds is not None:
-        memory, total, _reserve = bounds
-        argv += ["--memory", str(memory * recipe_memory.MIB), "--memory-swap", str(total * recipe_memory.MIB)]
+        memory, total = bounds
+        argv += ["--memory", str(memory), "--memory-swap", str(total)]
     if container:
         argv += ["--name", container]
     gpu_uuid = gpu_device or hw.get("gpu_uuid")
@@ -861,7 +879,10 @@ def docker_run_argv(
             raise RecipeError("recipe.serve.env entries must be NAME=value without newlines")
         argv += ["-e", env]
     cache_volume = download.get("volume", "vllm-hfcache")
-    argv += ["-v", "%s:/root/.cache/huggingface" % cache_volume]
+    argv += [
+        "-v",
+        "%s:%s" % (cache_volume, download.get("cache_mount", DEFAULT_CACHE_MOUNT)),
+    ]
     for spec in serve.get("named_volumes", []):
         source, target, read_only = _parse_named_volume(spec)
         mount = "type=volume,source=%s,target=%s" % (source, target)
@@ -980,6 +1001,48 @@ def _recipe_bound_ports(row: dict) -> list[int]:
     return sorted(ports)
 
 
+def _recipe_bound_endpoints(row: dict) -> list[dict[str, int | str]]:
+    """Return exact, inspect-reported TCP host bindings suitable for ownership checks."""
+    bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+    endpoints = set()
+    if not isinstance(bindings, dict):
+        return []
+    for container_binding, rows in bindings.items():
+        if not isinstance(container_binding, str) or not isinstance(rows, list):
+            continue
+        parts = container_binding.rsplit("/", 1)
+        if len(parts) != 2 or parts[1].lower() != "tcp":
+            continue
+        if not parts[0].isdecimal():
+            continue
+        container_port = int(parts[0])
+        if not 1 <= container_port <= 65535:
+            continue
+        for binding in rows:
+            if not isinstance(binding, dict):
+                continue
+            host_ip = binding.get("HostIp")
+            raw_host_port = binding.get("HostPort")
+            if not isinstance(host_ip, str) or isinstance(raw_host_port, bool):
+                continue
+            if isinstance(raw_host_port, int):
+                host_port = raw_host_port
+            elif isinstance(raw_host_port, str) and raw_host_port.isdecimal():
+                host_port = int(raw_host_port)
+            else:
+                continue
+            try:
+                normalized_ip = str(ipaddress.ip_address(host_ip))
+            except ValueError:
+                continue
+            if 1 <= host_port <= 65535:
+                endpoints.add((normalized_ip, host_port, container_port))
+    return [
+        {"host_ip": host_ip, "host_port": host_port, "container_port": container_port}
+        for host_ip, host_port, container_port in sorted(endpoints)
+    ]
+
+
 def _recipe_gpu_selection(row: dict) -> list[str]:
     selected = []
     requests = (row.get("HostConfig") or {}).get("DeviceRequests") or []
@@ -1006,15 +1069,25 @@ def _recipe_served_identity(row: dict, fallback: str) -> str:
         tokens = config.get("Cmd")
     if not isinstance(tokens, list):
         return fallback
-    for index, token in enumerate(tokens):
-        if not isinstance(token, str):
-            continue
-        if token == "--served-model-name" and index + 1 < len(tokens):
-            value = _bounded_container_value(tokens[index + 1], maximum=512)
-            return value or fallback
-        if token.startswith("--served-model-name="):
-            value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
-            return value or fallback
+    # TensorFold's --name is a served identity only on its known native launchers.
+    entrypoint = config.get("Entrypoint")
+    executable = entrypoint[0] if isinstance(entrypoint, list) and entrypoint else row.get("Path")
+    flags = ("--served-model-name", "--model-id")
+    if isinstance(executable, str) and executable.rsplit("/", 1)[-1] in {
+        "tensorfold-native", "anvil-tensorfold-ranks",
+    }:
+        flags += ("--name",)
+    # Preserve the existing served-name override before the model-id alias.
+    for flag in flags:
+        for index, token in enumerate(tokens):
+            if not isinstance(token, str):
+                continue
+            if token == flag:
+                value = tokens[index + 1] if index + 1 < len(tokens) else None
+                return _bounded_container_value(value, maximum=512) or fallback
+            if token.startswith(flag + "="):
+                value = _bounded_container_value(token.split("=", 1)[1], maximum=512)
+                return value or fallback
     return fallback
 
 
@@ -1052,6 +1125,7 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         return None
     state = row.get("State") or {}
     state_name = _bounded_container_value(state.get("Status"), maximum=32) or "unknown"
+    started_at = _bounded_container_value(state.get("StartedAt"), maximum=64)
     health = _bounded_container_value(
         (state.get("Health") or {}).get("Status"), maximum=32
     )
@@ -1059,6 +1133,8 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
     if not isinstance(image_digest, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest):
         image_digest = None
     ports = _recipe_bound_ports(row)
+    endpoints = _recipe_bound_endpoints(row)
+    host_memory = recipe_memory.observation(row, _run=_run)
     return {
         "container": name,
         "container_id": container_id,
@@ -1070,18 +1146,21 @@ def _recipe_container_record(row: dict, *, _run=subprocess.run) -> dict | None:
         "served_identity": _recipe_served_identity(row, model),
         "bound_port": ports[0] if len(ports) == 1 else None,
         "bound_ports": ports,
+        "bound_endpoints": endpoints,
         "gpu_selection": _recipe_gpu_selection(row),
         "state": state_name,
+        "started_at": started_at,
         "running": bool(state.get("Running")),
         "health": health,
-        "host_memory": recipe_memory.observation(row, _run=_run),
+        "host_memory": host_memory,
+        "containment_error": recipe_memory.containment_error(host_memory),
         "native_kv_offload": (
             None if native_raw is None else native_raw == "true"
         ),
     }
 
 
-def discover_recipe_containers(*, _run=subprocess.run) -> dict:
+def discover_recipe_containers(*, _run=subprocess.run, strict=False) -> dict:
     """Return bounded, secret-free identities for Anvil recipe containers."""
     try:
         listed = _run(
@@ -1108,6 +1187,8 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         container_id = line.strip()
         if re.fullmatch(r"[0-9a-f]{12,64}", container_id) and container_id not in ids:
             ids.append(container_id)
+        elif strict and container_id:
+            raise RecipeError("Docker recipe discovery contains an invalid or duplicate ID")
     if len(ids) > MAX_DISCOVERED_RECIPE_CONTAINERS:
         raise RecipeError(
             "recipe container discovery exceeds the %d-container safety bound"
@@ -1133,12 +1214,29 @@ def discover_recipe_containers(*, _run=subprocess.run) -> dict:
         raise RecipeError("Docker recipe identity inspection returned malformed JSON") from None
     if not isinstance(rows, list):
         raise RecipeError("Docker recipe identity inspection returned malformed JSON")
+    if strict and len(rows) != len(ids):
+        raise RecipeError("Docker recipe identity inspection is incomplete")
     containers = []
     for row in rows[:MAX_DISCOVERED_RECIPE_CONTAINERS]:
+        if strict and (not isinstance(row, dict) or any(
+                row.get(key) is not None and not isinstance(row[key], dict)
+                for key in ("State", "HostConfig", "Config"))):
+            raise RecipeError("Docker recipe identity inspection contains malformed owner metadata")
+        if strict and isinstance(row, dict) and (row.get("State") or {}).get("Running"):
+            bindings = (row.get("HostConfig") or {}).get("PortBindings") or {}
+            if (not isinstance(bindings, dict)
+                    or any(not isinstance(value, list) for value in bindings.values())
+                    or sum(len(value) for value in bindings.values()) != len(_recipe_bound_endpoints(row))):
+                raise RecipeError("monitoring requires unambiguous exact TCP bindings")
         record = _recipe_container_record(row, _run=_run)
         if record is not None:
             containers.append(record)
+        elif strict:
+            raise RecipeError("Docker recipe identity inspection contains an invalid owner")
     containers.sort(key=lambda item: item["container"].casefold())
+    if strict and (len({r["container_id"] for r in containers}) != len(ids)
+                   or any(sum(r["container_id"].startswith(i) for r in containers) != 1 for i in ids)):
+        raise RecipeError("Docker recipe inspection does not match discovered IDs")
     return {"schema": RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": containers}
 
 
@@ -1760,11 +1858,58 @@ def load_recipe(
         recipe_memory.check_host(recipe["serve"], _run=_run)
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         raise RecipeError("host memory containment refused: %s" % exc) from exc
+    bounded = recipe_memory.limits(recipe["serve"]) is not None
+    from . import recipe_monitoring
     try:
-        completed = _run(argv, check=False)
+        recipe_monitoring.withdraw(port=recipe["serve"].get("port"), container=container, pending=True)
+    except (ValueError, OSError, TypeError) as exc:
+        raise RecipeError("monitoring withdrawal failed before Docker start") from exc
+    try:
+        completed = _run(argv, check=False, **({"stdout": subprocess.PIPE, "text": True} if bounded else {}))
     except OSError:
         return argv, 127
-    return argv, int(getattr(completed, "returncode", completed))
+    rc = int(getattr(completed, "returncode", completed))
+    if rc or not bounded:
+        return argv, rc
+    # Only the immutable ID returned by this successful run may be stopped.
+    # Never recover ownership from the reusable requested name after a failure.
+    created_id = (completed.stdout or "").strip()
+    if not _HEX_DIGEST_RE.fullmatch(created_id):
+        raise RecipeError("memory containment refused: Docker did not return a full created ID; cleanup ownership unknown")
+    observed = {}
+    try:
+        inspected = _run(["docker", "inspect", created_id], check=True,
+                         capture_output=True, text=True, timeout=10)
+        rows = json.loads(inspected.stdout)
+        if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+            raise ValueError("malformed created container inspection")
+        row = rows[0]
+        labels = (row.get("Config") or {}).get("Labels") or {}
+        if (row.get("Id") != created_id
+                or labels.get(RECIPE_MANAGED_LABEL) != RECIPE_MANAGED_VALUE
+                or labels.get(RECIPE_DIGEST_LABEL) != recipe_digest(recipe)):
+            raise ValueError("created container identity mismatch")
+        observed = recipe_memory.observation(row, _run=_run)
+        error = recipe_memory.containment_error(observed, recipe["serve"])
+        if error:
+            raise ValueError(error)
+    except (OSError, ValueError, TypeError, AttributeError, subprocess.SubprocessError) as exc:
+        cleanup = "stop failed; use managed logs/unload recovery"
+        try:
+            stopped = _run(["docker", "stop", "--time", "10", created_id],
+                           capture_output=True, text=True, timeout=20)
+            if stopped.returncode == 0:
+                cleanup = "stopped; container and logs retained for managed logs/unload"
+        except (OSError, subprocess.SubprocessError):
+            pass
+        # Do not expose subprocess output (inspect may contain credentials).
+        reason = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
+        evidence = recipe_memory.failure_evidence(
+            created_id, "stopped_logs_retained" if cleanup.startswith("stopped;") else "stop_failed", observed)
+        raise RecipeError("memory containment refused: %s; created_id=%s; %s; host_memory=%s\n%s%s"
+                          % (reason, created_id, cleanup, json.dumps(observed, sort_keys=True),
+                             recipe_memory.FAILURE_PREFIX, json.dumps(evidence, sort_keys=True))) from None
+    return argv, 0
 
 
 # --------------------------------------------------------------------------- #

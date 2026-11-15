@@ -79,7 +79,7 @@ SAFE_GPU_UUID_SHA256 = frozenset(
     }
 )
 LOCAL_HOST_PATTERN = re.compile(
-    r"\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.local\b(?!\.)", re.I
+    r"\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.local\b(?![a-z0-9.-])", re.I
 )
 REFERENCE_HOST_EXPRESSION = r"(?:fakoli-(?:dark|mini|mid-mod)(?:-2)?|ai-laptop-node)"
 NETWORK_CONTEXT_PATTERN = re.compile(
@@ -169,6 +169,16 @@ PUBLIC_METADATA_FILES = frozenset({
 PUBLIC_PI_HOME_FILES = frozenset({
     "anvil_serving/workbench_app/pi_runner.py", "tests/workbench/test_pi_runner.py",
 })
+PUBLIC_NATIVE_AGENT_HOME_FILES = frozenset({
+    "anvil_serving/native_agents/sandbox.py", "tests/native_agents/fixtures/rootfs_probe.py",
+})
+# Exact public Flare container paths. These are fixed image-internal volume
+# targets, not operator homes; keep the exception limited to the adapter and
+# its focused offline tests so adjacent paths remain reportable.
+PUBLIC_CONTAINER_HOME_PATHS = {
+    "anvil_serving/flare_package_prepare.py": frozenset({"/".join(("", "home", "flare"))}),
+    "tests/test_flare_package_prepare.py": frozenset({"/".join(("", "home", "flare"))}),
+}
 
 
 def run_git(root: Path, *args: str) -> bytes:
@@ -349,7 +359,12 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
         ):
             for match in pattern.finditer(line):
                 if (match.group("name").lower() not in SAFE_HOME_NAMES
-                        and not (normalized_path in PUBLIC_PI_HOME_FILES and match.group("name") == "pi")):
+                        and not (normalized_path in PUBLIC_PI_HOME_FILES and match.group("name") == "pi")
+                        and not (normalized_path in PUBLIC_NATIVE_AGENT_HOME_FILES
+                                 and pattern is UNIX_HOME_PATTERN
+                                 and match.group(0) == "/".join(("", "home", "agent")))
+                        and not (match.group(0) in PUBLIC_CONTAINER_HOME_PATHS.get(normalized_path, ())
+                                 and pattern is UNIX_HOME_PATTERN)):
                     findings.append(
                         {
                             "kind": "operator-home-path",
@@ -471,6 +486,7 @@ def self_test() -> int:
     private_tailnet_v6 = ":".join(("fd7a", "115c", "a1e0", "", "8701", "2247"))
     safe_tailnet_v6_prefix = ":".join(("fd7a", "115c", "a1e0", "", ""))
     private_local_host = "private-node.local"
+    public_local_prefix_hostname = "evals.local-inference-lab.ai"
     reference_host = "-".join(("fakoli", "mini"))
     private_operator_user = "-".join(("private", "operator"))
     sample = (
@@ -536,8 +552,40 @@ def self_test() -> int:
         and len(scan_text(public_home + " " + slash_home, public_home_path, "self-test")) == 1
         and len(scan_text(PUBLIC_METADATA_ADDRESS + " " + public_home, "docs/other.md", "self-test")) == 2
     )
+    native_home = "/".join(("", "home", "agent"))
+    native_constants_safe = all(
+        not scan_text(native_home, path, "self-test")
+        and len(scan_text(native_home + " " + slash_home, path, "self-test")) == 1
+        and len(scan_text("/".join(("", "Users", "agent")), path, "self-test")) == 1
+        and len(scan_text(separator.join(("C:", "Users", "agent")), path, "self-test")) == 1
+        for path in PUBLIC_NATIVE_AGENT_HOME_FILES
+    ) and len(scan_text(native_home, "docs/other.md", "self-test")) == 1
+    flare_container_home = "/".join(("", "home", "flare"))
+    container_home_safe = all(
+        not scan_text(flare_container_home, path, "self-test")
+        and len(scan_text(flare_container_home + " " + slash_home, path, "self-test")) == 1
+        for path in PUBLIC_CONTAINER_HOME_PATHS
+    ) and len(scan_text(flare_container_home, "docs/other.md", "self-test")) == 1
+    local_hostname_boundary_safe = (
+        not scan_text(
+            f"https://{public_local_prefix_hostname}/aider",
+            "docs/findings/fixture.json",
+            "self-test",
+        )
+        and len(
+            scan_text(
+                f"https://{private_local_host}:3000/path",
+                "docs/findings/fixture.json",
+                "self-test",
+            )
+        )
+        == 1
+    )
     passed = (
         scoped_constants_safe
+        and native_constants_safe
+        and container_home_safe
+        and local_hostname_boundary_safe
         and
         Counter(finding["kind"] for finding in findings) == expected_semantic_kinds
         and file_kinds
