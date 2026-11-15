@@ -16,6 +16,7 @@ from ....media.downloads import ArtifactDownloadLinks
 from ....media.errors import MediaError
 from ....media.jobs import MediaJobStore
 from ....media.operations import MediaOperations
+from ....media.selection import TASKS
 from ....media.workflows import WorkflowRegistry
 from ..arguments import schema as _schema
 from ..arguments import str_arg as _str_arg
@@ -135,6 +136,16 @@ def tool_media_workflow_prepare(args: dict) -> dict:
         args.get("parameters", {}), principal=caller.principal,
         idempotency_key=_str_arg(args, "idempotency_key", required=True),
         brief=args.get("brief"), quality_profile=_str_arg(args, "quality_profile", "")))
+
+
+def tool_media_workflow_select(args: dict) -> dict:
+    caller = require_scope("media:read")
+    operations, _ = _services()
+    return _translate(lambda: operations.workflow_select(
+        _str_arg(args, "task", required=True), args.get("parameters", {}),
+        principal=caller.principal, idempotency_key=_str_arg(args, "idempotency_key", required=True),
+        recipe_id=_str_arg(args, "recipe_id", ""), quality_profile=_str_arg(args, "quality_profile", ""),
+        duration_seconds=args.get("duration_seconds"), brief=args.get("brief")))
 
 
 def tool_media_workflow_run(args: dict) -> dict:
@@ -315,6 +326,20 @@ FAMILY = ToolFamily(
              "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128}},
             tool_media_workflow_prepare, scope="media:read",
             required=("workflow_id", "version", "idempotency_key"),
+        ),
+        "media_workflow_select": _tool(
+            "Start media requests here: interpret the user's request as a task, then select only an approved operator recipe/profile. Read media_capabilities for recipe choices and parameter names. Honor an explicitly requested recipe; otherwise use operator preference. Supply creative prompt/seed and owned artifact IDs as parameters, never paths or graphs. Returns missing inputs, clarification, or exact runArguments for media_workflow_run. Do not submit unless status is prepared. Character replacement notes require tracking-mask review and the existing cold-worker boundary. This tool never starts a worker or submits a job; execution retains all lifecycle gates.",
+            {"task": {"type": "string", "enum": list(TASKS)},
+             "recipe_id": {"type": "string", "maxLength": 128},
+             "quality_profile": {"type": "string", "maxLength": 128},
+             "duration_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 7200,
+                                  "description": "Approximate requested duration. A fixed approved output must be within 0.5 seconds; the exact duration is returned. Other lengths require clarification."},
+             "parameters": {"type": "object", "additionalProperties": True, "maxProperties": 32},
+             "brief": {"type": "object", "additionalProperties": False, "maxProperties": 8,
+                       "properties": {name: {"type": "string", "maxLength": 4096} for name in
+                                      ("scene", "subjects", "action", "setting", "camera", "lighting", "style", "dialogue")}},
+             "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128}},
+            tool_media_workflow_select, scope="media:read", required=("task", "idempotency_key"),
         ),
         "media_workflow_run": _tool(
             "Submit one allowlisted named workflow and return an opaque durable job.",

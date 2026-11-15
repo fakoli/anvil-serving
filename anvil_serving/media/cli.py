@@ -15,6 +15,7 @@ from .errors import MediaError
 from .jobs import MediaJobStore
 from .operations import MediaOperations, parameters_from_json, stable_request_key
 from .qualification import qualify as qualify_media
+from .selection import TASKS
 from .workflows import WorkflowRegistry, render_request as _render_request
 from .worker import MediaArtifactCapture, MediaJobReconciler
 
@@ -64,6 +65,16 @@ def _parser() -> argparse.ArgumentParser:
     workflow_sub = workflow.add_subparsers(dest="action", required=True)
     workflow_list = workflow_sub.add_parser("list")
     _storage_options(workflow_list)
+    select = workflow_sub.add_parser("select")
+    _storage_options(select)
+    select.add_argument("--task", choices=TASKS, required=True)
+    select.add_argument("--recipe-id", default="")
+    select.add_argument("--quality-profile", default="")
+    select.add_argument("--duration-seconds", type=float)
+    select.add_argument("--parameters", default="{}")
+    select.add_argument("--brief", default="")
+    select.add_argument("--principal", required=True)
+    select.add_argument("--idempotency-key", required=True)
     show = workflow_sub.add_parser("show")
     _storage_options(show)
     _workflow_identity(show)
@@ -249,6 +260,12 @@ def run(args: argparse.Namespace) -> dict:
     if args.family == "capabilities":
         return operations.capabilities()
     if args.family == "workflow":
+        if args.action == "select":
+            return operations.workflow_select(args.task, parameters_from_json(args.parameters),
+                principal=args.principal, idempotency_key=args.idempotency_key,
+                recipe_id=args.recipe_id, quality_profile=args.quality_profile,
+                duration_seconds=args.duration_seconds,
+                brief=parameters_from_json(args.brief) if args.brief else None)
         if args.action == "list":
             return operations.workflow_list()
         if args.action == "show":

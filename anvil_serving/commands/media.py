@@ -175,6 +175,24 @@ def commands() -> CommandNode:
                 "Inspect, validate, and run named workflows.",
                 children=(
                     _resource_node(
+                        "select",
+                        "Select an approved recipe from an interpreted media request and prepare its exact plan.",
+                        "anvil_serving.media.cli",
+                        role="media-gateway",
+                        options=IDENTITY_OPTIONS + tuple(
+                            _option(flag, summary=summary, value_name=value)
+                            for flag, summary, value in (
+                                ("--task", "Media task interpreted from the request.", "TASK"),
+                                ("--recipe-id", "Explicit operator recipe preference.", "RECIPE"),
+                                ("--quality-profile", "Explicit declared profile.", "PROFILE"),
+                                ("--duration-seconds", "Approximate fixed output duration.", "SECONDS"),
+                                ("--parameters", "Bounded workflow inputs.", "JSON"),
+                                ("--brief", "Supported structured brief.", "JSON"),
+                                ("--idempotency-key", "Stable caller request key.", "KEY"),
+                            )),
+                        argv_prefix=("workflow", "select"),
+                    ),
+                    _resource_node(
                         "list",
                         "List named workflows.",
                         "anvil_serving.media.cli",

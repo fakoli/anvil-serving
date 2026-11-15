@@ -57,6 +57,7 @@ TOOL_NAMES = [
     "media_workflow_show",
     "media_workflow_validate",
     "media_workflow_prepare",
+    "media_workflow_select",
     "media_workflow_run",
     "media_job_status",
     "media_job_cancel",
@@ -174,7 +175,8 @@ def _normalize_benchmark_profile_catalog_delta(public_tools):
 
 
 def _normalize_router_config_export_delta(public_tools):
-    public_tools[:] = [tool for tool in public_tools if tool["name"] != "router_config_export"]
+    public_tools[:] = [tool for tool in public_tools
+                       if tool["name"] not in {"router_config_export", "media_workflow_select"}]
 
 
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():
@@ -353,7 +355,7 @@ def test_direct_handler_map_is_stable_and_uses_dictionary_lookup():
     handlers = [
         (name, specification["handler"].__name__)
         for name, specification in mcp.TOOLS.items()
-            if name not in {"propagation_capabilities", "router_config_export"}
+            if name not in {"propagation_capabilities", "router_config_export", "media_workflow_select"}
     ]
 
     assert type(mcp.TOOLS) is dict

@@ -87,6 +87,7 @@ class MediaOperations:
                 "workflow.list",
                 "workflow.show",
                 "workflow.validate",
+                "workflow.select",
                 "workflow.prepare",
                 "workflow.run",
                 "job.status",
@@ -135,6 +136,13 @@ class MediaOperations:
                                          "artifact": artifact.as_public_dict()} for name, artifact in inputs.items()],
                          "backendChecked": False, "qualified": descriptor.available},
                 "runArguments": request}
+
+    def workflow_select(self, task, parameters, *, principal, idempotency_key, recipe_id="",
+                        quality_profile="", duration_seconds=None, brief=None):
+        from .selection import select_workflow
+        return select_workflow(self, task, parameters, principal=principal,
+            idempotency_key=idempotency_key, recipe_id=recipe_id, quality_profile=quality_profile,
+            duration_seconds=duration_seconds, brief=brief)
 
     @_owned_media
     def workflow_run(
