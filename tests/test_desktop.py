@@ -220,6 +220,9 @@ def test_failed_stop_rechecks_new_workloads_and_keeps_original_snapshot(monkeypa
 
 @pytest.mark.parametrize("command", [
     ["docker", "--context", "remote", "compose", "up"],
+    ["docker", "-c", "remote", "compose", "up"],
+    ["docker", "-c=remote", "compose", "up"],
+    ["docker", "-cremote", "compose", "up"],
     ["docker", "-Htcp://100.64.0.10:2376", "ps"],
     ["docker-compose", "--host", "ssh://example.test", "up"],
     ["ssh", "example.test", "docker", "start", "model"],

@@ -164,6 +164,24 @@ def test_wrong_model_identity_is_refused_and_controls_restored(monkeypatch, tmp_
     assert not (tmp_path / "state" / "desktop-switch-cooldown.json").exists()
 
 
+@pytest.mark.parametrize('advertised', ['public-api', 'example-model'])
+def test_secondary_uses_declared_api_identity(monkeypatch, tmp_path, advertised):
+    import json
+    from tests.conftest import Response
+    from anvil_serving.serves import _serve_identity_ready as original
+    docker, _ = setup(monkeypatch, tmp_path)
+    with (tmp_path / 'secondary.toml').open('a', encoding='utf-8') as f:
+        f.write('served_name="public-api"\n')
+    def identity(target):
+        return original(target, _open=lambda *a, **k: Response(json.dumps({'data':[{'id':advertised}]}).encode()))
+    monkeypatch.setattr(desktop.serves, '_serve_identity_ready', identity)
+    if advertised == 'public-api':
+        assert desktop_modes.select_mode('secondary', confirm=True, run=docker)['mode'] == 'secondary'
+    else:
+        with pytest.raises(RuntimeError, match='identity'):
+            desktop_modes.select_mode('secondary', confirm=True, run=docker)
+
+
 @pytest.mark.parametrize("mode", ["gaming", "secondary", "media"])
 def test_undeclared_running_workload_is_preserved_and_refused(monkeypatch, tmp_path, mode):
     docker, ops = setup(monkeypatch, tmp_path)
@@ -257,6 +275,45 @@ def test_owned_idle_worker_released_after_gateway_freeze(monkeypatch, tmp_path, 
     assert desktop_modes.select_mode(mode, confirm=True, run=docker)["mode"] == mode
     assert ("teardown", ["worker"]) in ops
     assert not any(action == "down" and "worker" in names for action,names in ops)
+
+
+def test_gateway_starting_after_preflight_is_frozen_before_release(monkeypatch, tmp_path):
+    docker, ops = setup(monkeypatch, tmp_path)
+    idle_binding(tmp_path)
+    docker.rows[1]['status'] = 'exited'
+    docker.rows.append(dict(id='e'*64, name='/worker', status='running', restart='no', health=None))
+    original = desktop._containers
+    reads = []
+    def snapshot(run):
+        rows = original(run)
+        if not reads:
+            docker.rows[1]['status'] = 'running'
+        reads.append(True)
+        return rows
+    def release(profile, *, apply, run):
+        if apply:
+            assert docker.rows[1]['status'] == 'exited'
+            docker.rows[:] = [r for r in docker.rows if r['name'] != '/worker']
+        return {'idle':True, 'applied':apply, 'reason':'owned_worker_idle'}
+    monkeypatch.setattr(desktop, '_containers', snapshot)
+    monkeypatch.setattr(desktop_modes, '_release_idle_worker', release)
+    assert desktop_modes.select_mode('secondary', confirm=True, run=docker)['mode'] == 'secondary'
+    assert ('down', ['gateway']) in ops
+
+
+def test_unverified_gateway_stop_refuses_before_teardown(monkeypatch, tmp_path):
+    docker, _ = setup(monkeypatch, tmp_path)
+    idle_binding(tmp_path)
+    docker.rows.append(dict(id='e'*64, name='/worker', status='running', restart='no', health=None))
+    monkeypatch.setattr(desktop.serves, 'cmd_down', lambda *a, **k: 0)
+    def release(profile, *, apply, run):
+        assert not apply, 'must verify submission freeze before teardown'
+        return {'idle':True, 'applied':False, 'reason':'owned_worker_idle'}
+    monkeypatch.setattr(desktop_modes, '_release_idle_worker', release)
+    with pytest.raises(RuntimeError, match='gateway'):
+        desktop_modes.select_mode('secondary', confirm=True, run=docker)
+    assert docker.rows[0]['status'] == 'exited'
+    assert docker.rows[-1]['status'] == 'running'
 
 
 def test_bound_worker_busy_unknown_or_racing_refuses_safely(monkeypatch, tmp_path):

@@ -235,15 +235,21 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                 if mode != "media" or idle_workers:
                     # Stop submissions first; keep lifecycle authority alive for owned teardown.
                     for owner in [s for s in profile["media"] if s.get("up")]:
-                        if any(r["name"] == "/" + owner["container"] and r["status"] != "exited" for r in rows):
+                        current = desktop._containers(run)
+                        if any(r["name"] == "/" + owner["container"] and r["status"] not in {"exited", "dead"} for r in current):
+                            controls_were_running = True
                             controls_stopped = True
                             _lifecycle("stop", [owner], [owner["name"]], run, timeout)
                             result["changed"] = True
-                    released = _prepare_workers(profile, desktop._containers(run), apply=True, run=run)
+                    frozen = desktop._containers(run)
+                    gateways = {s["container"] for s in profile["media"] if s.get("up")}
+                    if any(r["name"].lstrip("/") in gateways and r["status"] not in {"exited", "dead"} for r in frozen):
+                        raise RuntimeError("Media submission gateway did not stop; worker teardown refused.")
+                    released = _prepare_workers(profile, frozen, apply=True, run=run)
                     result["changed"] = result["changed"] or bool(released)
                     if mode != "media":
                         for owner in [s for s in profile["media"] if not s.get("up")]:
-                            if any(r["name"] == "/" + owner["container"] and r["status"] != "exited" for r in rows):
+                            if any(r["name"] == "/" + owner["container"] and r["status"] not in {"exited", "dead"} for r in desktop._containers(run)):
                                 controls_stopped = True
                                 _lifecycle("stop", [owner], [owner["name"]], run, timeout)
                                 result["changed"] = True
@@ -253,7 +259,7 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                 for owner in models.values():
                     if mode == "secondary" and owner["container"] == target["container"]:
                         continue
-                    if any(r["name"] == "/" + owner["container"] and r["status"] != "exited" for r in rows):
+                    if any(r["name"] == "/" + owner["container"] and r["status"] not in {"exited", "dead"} for r in desktop._containers(run)):
                         _lifecycle("stop", [owner], [owner["name"]], run, timeout)
                         result["changed"] = True
                 if mode == "gaming":
@@ -271,7 +277,7 @@ def select_mode(mode, *, confirm=False, dry_run=False, timeout=600, run=desktop.
                         result["changed"] = True
                     elif not serves._await_healthy(target, timeout, 2):
                         raise RuntimeError("Secondary readiness timed out.")
-                    if not serves._serve_identity_ready({**target, "served_name": target["model"]}):
+                    if not serves._serve_identity_ready(target):
                         raise RuntimeError("Secondary served-model identity differs from its declared assignment.")
                 else:
                     if not _media_running(profile, desktop._containers(run)):

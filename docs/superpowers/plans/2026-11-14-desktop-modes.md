@@ -92,3 +92,12 @@ zero unfinished jobs or open ownership phases, and unrelated containers preserve
 Native running/pending render refusal was checked in automated tests; no render
 was submitted and no physical key press was performed. Private receipts preserve
 the initial stale-profile failure and the final passing cycles.
+
+PR integration review: bind teardown to the exact inspected lease, reject all
+Docker context selectors, verify a fresh gateway stop before release, preserve
+the declared API served name, and refuse lost/ambiguous backend outcomes. The
+shared drain predicate treats the schema's empty prompt ID as never submitted;
+canceled jobs with a nonempty ID remain ambiguous. Focused regressions failed
+before these corrections and passed afterward; native platform CI also runs
+the desktop checks. Runtime revalidation does not override a subsequently
+selected desktop mode.

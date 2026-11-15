@@ -29,7 +29,7 @@ INSPECT = (
 def _local_command(argv):
     if not argv or argv[0].lower() not in {"docker", "docker.exe", "tasklist.exe"}:
         raise ValueError("Desktop restoration requires local docker commands, without wrappers.")
-    if any(token.startswith("-H") or any(token == flag or token.startswith(flag + "=")
+    if any(token.startswith(("-H", "-c")) or any(token == flag or token.startswith(flag + "=")
            for flag in ("--host", "--context", "--config")) for token in argv[1:]):
         raise ValueError("Explicit Docker host/context/config selectors are forbidden for this switch.")
 

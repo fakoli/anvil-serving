@@ -1,10 +1,12 @@
 """Idle release preserves job ownership and checks both durable and native work."""
 import pytest
+from types import SimpleNamespace
 
 from anvil_serving.media import idle_teardown
 from anvil_serving.media.contracts import JobState
 from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.lifecycle import MediaWorkerLifecycle
+from anvil_serving.media.worker import MediaReconciliationLoop
 
 
 def setup(tmp_path, *, terminal=True):
@@ -39,6 +41,7 @@ def test_idle_owned_worker_preview_then_managed_teardown(tmp_path):
     life, store, job, binding, stops = setup(tmp_path)
     def queue(_):
         return {"running":0, "pending":0}
+    assert MediaReconciliationLoop(SimpleNamespace(store=store)).drain_readback() == (0, False)
     preview = idle_teardown.release(life, binding, queue=queue)
     assert preview == {"idle":True, "applied":False, "reason":"owned_worker_idle"}
     assert stops == []
@@ -61,6 +64,20 @@ def test_unlinked_warm_job_blocks_release(tmp_path):
     store.create(principal="operator", workflow_id="image.test", workflow_version="v1",
                  input_digest="b" * 64, idempotency_key="warm-job-not-linked-to-cold-lease")
     assert idle_teardown.release(life, binding, queue=lambda _: {"running":0,"pending":0}, apply=True)["reason"] == "unfinished_media_jobs"
+    assert stops == []
+
+
+@pytest.mark.parametrize('outcome', ['canceled_prompt', 'lost_prompt'])
+def test_terminal_facade_with_ambiguous_backend_never_releases(tmp_path, outcome):
+    life, store, job, binding, stops = setup(tmp_path, terminal=False)
+    if outcome == 'canceled_prompt':
+        store.set_backend_prompt(job.id, 'backend-prompt', principal='operator')
+        store.transition(job.id, JobState.CANCELED, principal='operator', reason='canceled_by_principal')
+    else:
+        store.transition(job.id, JobState.FAILED, principal='operator', reason='backend_prompt_lost')
+    assert MediaReconciliationLoop(SimpleNamespace(store=store)).drain_readback() == (0, True)
+    result = idle_teardown.release(life, binding, queue=lambda _: {'running':0,'pending':0}, apply=True)
+    assert not result['idle'] and not result['applied']
     assert stops == []
 
 

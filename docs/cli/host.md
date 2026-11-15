@@ -332,10 +332,11 @@ the switch checks durable jobs, native running/pending queues and existing
 lifecycle ownership. An idle owned worker is released through its normal managed
 teardown, bound to that exact lease. Every durable job must be terminal and both
 native queues empty before release. Unknown, unowned, paused or starting workers
-remain a refusal.
+remain a refusal. Lost backend prompts and cancellations retaining a backend
+prompt ID also block release, even when their facade jobs are terminal.
 
-The switch stops the declared media submission gateway first, leaving the
-lifecycle controller available, then rechecks the worker and applies teardown.
+The switch stops the declared media submission gateway first and verifies it is
+stopped, leaving the lifecycle controller available, then rechecks the worker and applies teardown.
 If the pre-teardown recheck finds new work or uncertainty, controls are restored
 and the switch refuses without stopping the worker. A healthy Media reselection leaves its worker alone.
 No raw worker stop or automatic job cancellation is used. Gaming also stops the
@@ -343,7 +344,7 @@ declared models before stopping Docker, so their restart policies cannot load th
 wrong mode on the next boot.
 
 Secondary mode starts the existing declared model and verifies its health and
-served identity. Media mode stops declared models while keeping their containers,
+declared API served name. Media mode stops declared models while keeping their containers,
 starts the media controls and verifies the gateway and host-memory safety signal.
 Its media worker stays on demand. Missing secondary containers fail rather than
 creating or selecting another model. Explicit selections archive a pending legacy
