@@ -22,6 +22,40 @@ def commands() -> tuple[CommandNode, ...]:
             children=(
                 host_services(),
                 _node(
+                    "desktop",
+                    "Switch this Windows PC between Docker serving and gaming.",
+                    children=(_node(
+                        "mode", "Select a declared local gaming, secondary, or media mode.",
+                        handler=_handler("anvil_serving.desktop_modes", argv_prefix=(), forward_confirm_flag=True),
+                        options=CONFIRM_OPTIONS + (
+                            _option("--timeout", summary="Operation/readiness timeout in seconds.", value_name="SECONDS"),
+                        ),
+                        mutation_class="mutate", docs_anchor="docs/cli/host.md#explicit-desktop-modes",
+                    ),) + tuple(
+                        _node(
+                            action,
+                            summary,
+                            handler=_handler(
+                                "anvil_serving.desktop", argv_prefix=(action,),
+                                forward_confirm_flag=action != "status",
+                            ),
+                            options=(() if action == "status" else CONFIRM_OPTIONS) + (
+                                _option("--timeout", summary="Operation/readiness timeout in seconds.",
+                                        value_name="SECONDS"),
+                            ),
+                            mutation_class="read" if action == "status" else "mutate",
+                            docs_anchor="docs/cli/host.md#desktop-gaming-switch",
+                        )
+                        for action, summary in (
+                            ("status", "Inspect local Desktop state and pending restoration."),
+                            ("stop", "Save running serves and gracefully shut down Docker Desktop."),
+                            ("start", "Start Docker Desktop and restore saved serves."),
+                            ("toggle", "Choose start or stop from live state; resume interrupted work."),
+                        )
+                    ),
+                    docs_anchor="docs/cli/host.md#desktop-gaming-switch",
+                ),
+                _node(
                     "config",
                     "Inventory and safely export operator-owned configuration.",
                     children=(

@@ -338,6 +338,12 @@ required operands, choices, and defaults.
 | `host services restart` | Restart one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services enable` | Enable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services disable` | Disable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host desktop` | Switch this Windows PC between Docker serving and gaming. | `read` / `bounded` | - |
+| `host desktop mode` | Select a declared local gaming, secondary, or media mode. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
+| `host desktop status` | Inspect local Desktop state and pending restoration. | `read` / `bounded` | `--timeout` |
+| `host desktop stop` | Save running serves and gracefully shut down Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
+| `host desktop start` | Start Docker Desktop and restore saved serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
+| `host desktop toggle` | Choose start or stop from live state; resume interrupted work. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
 | `host config` | Inventory and safely export operator-owned configuration. | `read` / `bounded` | - |
 | `host config inventory` | Classify operator-home files and verify dependency closure. | `read` / `bounded` | `--home`<br>`--max-bytes` |
 | `host config export` | Export safe config and sanitized Anvil-owned gateway fragments. | `read` / `bounded` | `--home`<br>`--gateway-path`<br>`--path`<br>`--max-bytes` |
