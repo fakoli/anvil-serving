@@ -325,17 +325,19 @@ The configuration declares `schema = "anvil-serving.desktop-modes/v1"`, one
 `worker_containers`, `guard_cli`, and `guard_config`. Paths resolve relative to
 that configuration file. Keep real assignments and local paths private.
 
-Gaming and secondary modes refuse running or queued renders and unfinished media
-jobs. An optional private `[idle_teardown]` binding declares `worker`, `controller`,
+Gaming and secondary modes refuse active media workers unless their idle state
+and lifecycle ownership can be verified. An optional private `[idle_teardown]` binding declares `worker`, `controller`,
 `service`, controller-local `manifest`, and `principal`. For that exact worker,
 the switch checks durable jobs, native running/pending queues and existing
 lifecycle ownership. An idle owned worker is released through its normal managed
-teardown; unknown, unowned, paused or starting workers remain a refusal.
+teardown, bound to that exact lease. Every durable job must be terminal and both
+native queues empty before release. Unknown, unowned, paused or starting workers
+remain a refusal.
 
 The switch stops the declared media submission gateway first, leaving the
 lifecycle controller available, then rechecks the worker and applies teardown.
-If new work or uncertainty is found, controls are restored and the switch refuses
-without stopping the worker. A healthy Media reselection leaves its worker alone.
+If the pre-teardown recheck finds new work or uncertainty, controls are restored
+and the switch refuses without stopping the worker. A healthy Media reselection leaves its worker alone.
 No raw worker stop or automatic job cancellation is used. Gaming also stops the
 declared models before stopping Docker, so their restart policies cannot load the
 wrong mode on the next boot.

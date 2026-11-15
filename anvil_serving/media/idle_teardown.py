@@ -75,16 +75,27 @@ def _inspect(state_path, binding, status_operation, queue):
         return refuse("native_queue_unavailable")
     if native["running"] or native["pending"]:
         return refuse("native_queue_busy")
-    return {"idle": True, "applied": False, "reason": "owned_worker_idle", "_job_id": job["id"]}
+    return {"idle": True, "applied": False, "reason": "owned_worker_idle",
+            "_job_id": job["id"], "_transaction_id": row["id"]}
 
 
 def release(lifecycle, binding, *, apply=False, queue=None):
     result = _inspect(lifecycle.store.path, binding, lifecycle._status_operation, queue or _native_queue)
     job_id = result.pop("_job_id", None)
+    transaction_id = result.pop("_transaction_id", None)
     if not apply or result["idle"] is not True:
         return result
-    receipt = lifecycle.teardown(job_id, principal=binding["principal"],
-                                 manifest=binding["manifest"], confirm=True, human_approved=True)
+    lookup = lifecycle._transaction_for_job
+    def checked_transaction(requested_job):
+        row = lookup(requested_job)
+        return row if row is not None and row["id"] == transaction_id else None
+    # Pin the lookup inside teardown's lock, before any ownership mutation.
+    lifecycle._transaction_for_job = checked_transaction
+    try:
+        receipt = lifecycle.teardown(job_id, principal=binding["principal"],
+                                     manifest=binding["manifest"], confirm=True, human_approved=True)
+    finally:
+        lifecycle._transaction_for_job = lookup
     if not receipt.applied or not receipt.owns_instance:
         return {"idle": False, "applied": False, "reason": "managed_teardown_refused"}
     args = {"manifest": binding["manifest"], "names": [binding["service"]]}
@@ -109,6 +120,7 @@ def main():
             if sys.argv[2] == "preview":
                 result = _inspect(os.environ["ANVIL_MEDIA_STATE_DB"], binding, _resource_status, _native_queue)
                 result.pop("_job_id", None)
+                result.pop("_transaction_id", None)
             else:
                 result = release(_lifecycle(), binding, apply=True)
     except Exception:

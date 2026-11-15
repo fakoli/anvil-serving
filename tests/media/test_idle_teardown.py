@@ -7,18 +7,20 @@ from anvil_serving.media.jobs import MediaJobStore
 from anvil_serving.media.lifecycle import MediaWorkerLifecycle
 
 
-def setup(tmp_path):
+def setup(tmp_path, *, terminal=True):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
     job = store.create(principal="operator", workflow_id="image.test", workflow_version="v1",
                        input_digest="a" * 64, idempotency_key="idle-release-check")[0]
-    running = [False]
+    running = {}
     stops = []
-    def status(_):
-        return {"data":{"serves":[{"name":"worker", "container":"worker-container",
-                "running":running[0], "health_status":200 if running[0] else None, "port":8188}]}}
+    def status(args):
+        service = args['names'][0]
+        active = running.get(service, False)
+        return {"data":{"serves":[{"name":service, "container":service + "-container",
+                "running":active, "health_status":200 if active else None, "port":8188}]}}
     def manage(args):
         if not args["dry_run"]:
-            running[0] = args["action"] == "up"
+            running[args['names'][0]] = args["action"] == "up"
             if args["action"] == "down":
                 stops.append(args)
         return {"applied":not args["dry_run"]}
@@ -26,7 +28,8 @@ def setup(tmp_path):
     preview = life.prepare(job.id, principal="operator", service="worker", manifest="serves.toml")
     life.prepare(job.id, principal="operator", service="worker", manifest="serves.toml",
                  transaction_id=preview.transaction_id, confirm=True, human_approved=True)
-    store.transition(job.id, JobState.CANCELED, principal="operator", reason="test_without_render")
+    if terminal:
+        store.transition(job.id, JobState.CANCELED, principal="operator", reason="test_without_render")
     binding = dict(worker="worker-container", controller="lifecycle", service="worker",
                    manifest="serves.toml", principal="operator")
     return life, store, job, binding, stops
@@ -91,6 +94,26 @@ def test_missing_health_does_not_consume_the_owned_lease(tmp_path):
     assert not result['idle'] and not result['applied']
     assert life._transaction_for_job(job.id)['status'] == 'active'
     assert stops == []
+
+
+def test_job_with_newer_other_service_lease_cannot_stop_that_worker(tmp_path):
+    life, store, job, binding, stops = setup(tmp_path, terminal=False)
+    target = life._transaction_for_job(job.id)
+    other_job = store.create(principal="operator", workflow_id="image.test", workflow_version="v1",
+                             input_digest="b" * 64, idempotency_key="other-worker")[0]
+    other = life.prepare(other_job.id, principal="operator", service="other", manifest="serves.toml")
+    life.prepare(other_job.id, principal="operator", service="other", manifest="serves.toml",
+                 transaction_id=other.transaction_id, confirm=True, human_approved=True)
+    life._link(other.transaction_id, job.id)
+    store.transition(job.id, JobState.CANCELED, principal="operator", reason="test_without_render")
+    store.transition(other_job.id, JobState.CANCELED, principal="operator", reason="test_without_render")
+    assert life._transaction_for_job(job.id)['id'] == other.transaction_id
+    result = idle_teardown.release(life, binding, queue=lambda _: {'running':0,'pending':0}, apply=True)
+    assert not result['applied']
+    assert stops == []
+    with life._connect() as db:
+        assert {r['id']:r['status'] for r in db.execute('SELECT id,status FROM media_lifecycle_transactions')} == {
+            target['id']:'active', other.transaction_id:'active'}
 
 
 def test_controller_preview_never_constructs_mutating_lifecycle(tmp_path, monkeypatch, capsys):
