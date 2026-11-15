@@ -95,6 +95,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m json.tool "$env:RUNNER_TEMP/command-manifest.json" > $null
           exit $LASTEXITCODE
+      - name: Verify desktop modes and job-owned worker release
+        run: python -m pytest -q tests/test_desktop.py tests/test_desktop_modes.py tests/media/test_idle_teardown.py
       - name: Verify synthetic topology and typed remote dispatch
         run: >-
           python -m pytest -q

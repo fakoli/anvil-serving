@@ -162,7 +162,7 @@ required operands, choices, and defaults.
 | `serves rm` | Remove a model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves adopt` | Adopt an existing model serve. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `serves switch` | Switch a deployment role to an activation-ready recipe. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--manifest`<br>`--registry`<br>`--recipe` |
-| `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--skip-preflight-checks`<br>`--derive`<br>`--router-config`<br>`--rollback-router-config`<br>`--out` |
+| `serves promote` | Promote a staged model recipe with preflight and full rollback. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--skip-preflight-checks`<br>`--recover-prepared`<br>`--derive`<br>`--router-config`<br>`--rollback-router-config`<br>`--out` |
 | `serves mode` | Preview or transact split and exclusive TP=2 operating modes. | `read` / `bounded` | - |
 | `serves mode restore-retained` | Restore an exact stopped exclusive owner without router changes or replacement models. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--expected-container-id`<br>`--expected-image`<br>`--manifest-sha256`<br>`--registry-sha256` |
 | `serves mode status` | Show the active split or exclusive TP=2 mode. | `read` / `bounded` | - |
@@ -211,6 +211,13 @@ required operands, choices, and defaults.
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
 | `router reload` | Reload router configuration. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
 | `router install-config` | Validate and atomically install a router config, including tier-set migrations. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--router-url`<br>`--drain-timeout` |
+| `router routes` | Preview and apply scoped live route updates without restarting the router. | `read` / `bounded` | - |
+| `router routes init` | Initialize the protected live route authority during managed installation. | `mutate` / `bounded` | `--config`<br>`--compose`<br>`--env-file`<br>`--container`<br>`--current-stop-receipt`<br>`--native`<br>`--confirm` |
+| `router routes preview` | Validate a bounded candidate route configuration. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--drain-timeout` |
+| `router routes apply` | Apply one content-bound live route preview. | `mutate` / `bounded` | `--preview-id`<br>`--router-url`<br>`--confirm` |
+| `router routes status` | Show durable live route transaction state. | `read` / `bounded` | `--router-url` |
+| `router routes rollback` | Preview rollback to one retained route revision. | `read` / `bounded` | `--revision`<br>`--router-url` |
+| `router routes resume` | Preview recovery of a held route transaction. | `read` / `bounded` | `--transaction-id`<br>`--router-url` |
 | `router endpoint` | Show the router listen address and this node's Tailscale DNS name. | `read` / `bounded` | - |
 | `router status` | Show router status. | `read` / `bounded` | - |
 | `router fleet-status` | Report which configured capabilities have a reachable backing serve. | `read` / `bounded` | `--config`<br>`--live`<br>`--container`<br>`--installed-config`<br>`--probe-perspective`<br>`--timeout` |
@@ -398,6 +405,12 @@ required operands, choices, and defaults.
 | `host services restart` | Restart one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services enable` | Enable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
 | `host services disable` | Disable automatic start for one declared service. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--no-dry-run`<br>`--manifest`<br>`--tail`<br>`--timeout-seconds` |
+| `host desktop` | Switch this Windows PC between Docker serving and gaming. | `read` / `bounded` | - |
+| `host desktop mode` | Select a declared local gaming, secondary, or media mode. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
+| `host desktop status` | Inspect local Desktop state and pending restoration. | `read` / `bounded` | `--timeout` |
+| `host desktop stop` | Save running serves and gracefully shut down Docker Desktop. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
+| `host desktop start` | Start Docker Desktop and restore saved serves. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
+| `host desktop toggle` | Choose start or stop from live state; resume interrupted work. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--timeout` |
 | `host config` | Inventory and safely export operator-owned configuration. | `read` / `bounded` | - |
 | `host config inventory` | Classify operator-home files and verify dependency closure. | `read` / `bounded` | `--home`<br>`--max-bytes` |
 | `host config export` | Export safe config and sanitized Anvil-owned gateway fragments. | `read` / `bounded` | `--home`<br>`--gateway-path`<br>`--path`<br>`--max-bytes` |
@@ -469,7 +482,7 @@ required operands, choices, and defaults.
 | `connect users reset-password` | Request password setup; preserve groups, grants and registered factors. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
 | `connect users reset-mfa` | Remove passkeys and TOTP; suspend first for a lost or compromised device. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users code` | Export a fresh enrollment code or setup link when using filesystem delivery. | `mutate` / `bounded` | `--manifest`<br>`--output`<br>`--dry-run`<br>`--confirm` |
-| `connect users backup` | Back up all authentication accounts and factors. | `mutate` / `bounded` | `--manifest`<br>`--include-gateway`<br>`--dry-run`<br>`--confirm` |
+| `connect users backup` | Back up all authentication accounts and factors. | `mutate` / `bounded` | `--manifest`<br>`--include-gateway`<br>`--scheduled`<br>`--dry-run`<br>`--confirm` |
 | `connect users sync-roles` | Reconcile explicitly bound native application roles and session revocation. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users sync-operators` | Reconcile the derived Connect-operator identity-provider group. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |
 | `connect users schedule` | Install the daily authentication and gateway backup timer. | `mutate` / `bounded` | `--manifest`<br>`--dry-run`<br>`--confirm` |

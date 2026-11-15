@@ -243,6 +243,117 @@ copy of the remote operator home, and never copy the complete OpenClaw document.
 See [Public Product and Private Operator State](../OPERATOR-PRIVACY.md#typed-inventory-and-private-repository-handoff)
 for the review, secret-hygiene, and cutover boundary.
 
+## Desktop gaming switch
+
+On a Windows PC with Docker Desktop's Linux engine, use a local power switch:
+
+```bash
+anvil-serving host desktop status
+anvil-serving host desktop toggle --dry-run
+anvil-serving host desktop toggle --confirm
+anvil-serving host desktop stop --confirm
+anvil-serving host desktop start --confirm
+```
+
+`stop` records running containers in the private operator home's
+`state/desktop-switch.json`, then gracefully shuts down Docker Desktop. This
+stops **all local containers**, including non-Anvil workloads. Finish active
+requests/jobs first: Desktop shutdown is not an application-level request drain.
+It does not remove containers, images, volumes, or shut down other WSL distros.
+
+`start` brings Docker Desktop back, restores saved manifest-owned serves through
+the existing managed lifecycle, and checks their declared health endpoints.
+Containers that were already stopped remain unselected. Other saved containers
+must have an `always` or `unless-stopped` restart policy; otherwise shutdown is
+refused before mutation because Anvil cannot safely restore them. Recipe-only
+containers without such a policy must first be declared in a serve manifest or
+unloaded through their recipe lifecycle. Non-Anvil readiness is limited to
+Docker health checks when present, and running state otherwise. With no prior
+snapshot, startup relies on Docker's existing restart policies.
+To start a selected model whenever AI mode is entered, add `"desktop-start"`
+to that local recipe-backed Docker serve's `groups` in the private `serves*.toml` manifest.
+The switch starts and health-checks that explicitly selected serve even without
+a prior running snapshot; previews list it under `startup`. Its container must
+already exist from a managed recipe load. Missing containers fail with a clear
+error; this startup group rejects Compose and native serves, does not recreate
+models, and does not select benchmark candidates.
+Parked containers with an `always` policy also block shutdown, because Docker
+would start them on the next engine boot; use `unless-stopped` in their managed
+configuration first.
+
+`toggle` checks live state, resumes an interrupted operation in the same
+direction, and ignores overlapping button presses without queuing them. After a
+successful switch, `start`, `stop`, and `toggle` ignore further presses for 10
+seconds. Ignored presses return a message and do not extend the cooldown;
+status and previews remain available. Failed operations can be retried immediately.
+An unreachable engine with
+live Desktop processes is an error, not evidence that Desktop is stopped.
+Removed/replaced saved containers or changed serve ownership block restoration;
+the journal remains for diagnosis. `--timeout SECONDS` controls each Desktop
+operation and readiness wait (default 180, maximum 1800).
+
+These commands always operate on this Windows PC's `desktop-linux` named pipe.
+They ignore remote Docker environment overrides and do not expose a controller
+tool that could turn off its own transport.
+Executed restore commands must use `docker` directly, without explicit
+host/context/config selectors or shell/SSH wrappers. A recipe-backed serve's
+existing container can resume through the managed lifecycle; its original
+creation command is not rerun.
+
+For Stream Deck, create a Windows shortcut that runs
+`anvil-serving host desktop toggle --confirm`, then drag that shortcut onto a
+key using **System > Open**. Use the same action on every press: Anvil determines
+the direction. A static key image is a button label, not a live status indicator.
+Keep the command window visible long enough to see its result or errors.
+
+## Explicit desktop modes
+
+For dedicated buttons, configure the private operator home's `desktop-modes.toml`
+and select the desired mode explicitly:
+
+```bash
+anvil-serving host desktop mode gaming --dry-run
+anvil-serving host desktop mode gaming --confirm
+anvil-serving host desktop mode secondary --confirm
+anvil-serving host desktop mode media --confirm
+```
+
+These selections are idempotent. They share the existing desktop lock and
+10-second cooldown; they never alternate into another mode on a repeated press.
+The configuration declares `schema = "anvil-serving.desktop-modes/v1"`, one
+`secondary_manifest`, a `media_manifest`, additional `model_manifests`,
+`worker_containers`, `guard_cli`, and `guard_config`. Paths resolve relative to
+that configuration file. Keep real assignments and local paths private.
+
+Gaming and secondary modes refuse active media workers unless their idle state
+and lifecycle ownership can be verified. An optional private `[idle_teardown]` binding declares `worker`, `controller`,
+`service`, controller-local `manifest`, and `principal`. For that exact worker,
+the switch checks durable jobs, native running/pending queues and existing
+lifecycle ownership. An idle owned worker is released through its normal managed
+teardown, bound to that exact lease. Every durable job must be terminal and both
+native queues empty before release. Unknown, unowned, paused or starting workers
+remain a refusal. Lost backend prompts and cancellations retaining a backend
+prompt ID also block release, even when their facade jobs are terminal.
+
+The switch stops the declared media submission gateway first and verifies it is
+stopped, leaving the lifecycle controller available, then rechecks the worker and applies teardown.
+If the pre-teardown recheck finds new work or uncertainty, controls are restored
+and the switch refuses without stopping the worker. A healthy Media reselection leaves its worker alone.
+No raw worker stop or automatic job cancellation is used. Gaming also stops the
+declared models before stopping Docker, so their restart policies cannot load the
+wrong mode on the next boot.
+
+Secondary mode starts the existing declared model and verifies its health and
+declared API served name. Media mode stops declared models while keeping their containers,
+starts the media controls and verifies the gateway and host-memory safety signal.
+Its media worker stays on demand. Missing secondary containers fail rather than
+creating or selecting another model. Explicit selections archive a pending legacy
+restore journal privately, without restoring the competing mode first.
+
+For Stream Deck, use one **System > Open** action for each selection. Retain the
+original shortcut and a profile backup for rollback. No new model promotion or
+media generation is implicit in selecting a mode.
+
 ## Repair the host
 
 Use one consent spelling for public host mutations: preview with `--dry-run`,
