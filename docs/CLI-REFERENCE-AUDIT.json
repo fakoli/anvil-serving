@@ -117,7 +117,7 @@
         "tests": 595,
         "tooling": 41
       },
-      "files_scanned": 1716,
+      "files_scanned": 1717,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
