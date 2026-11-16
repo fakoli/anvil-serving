@@ -890,6 +890,26 @@ observed subtotals can remain available with explicit coverage gaps. Restart and
 pruning retain the recorded epoch/time. No aggregate purge command is introduced;
 any future authorized purge must record its new epoch and actual time atomically.
 
+## Implemented immutable route association (schema v4)
+
+Schema v4 keeps the existing `usage_starts.route_association` column and writes a
+chat request's selected route association atomically with its durable start. The
+complete association records the selected route and backend, immutable generation
+revision and effective configuration digest, the configured model, and the
+configured fingerprint when declared. The nullable `observed_model` is currently
+unknown (`null`): binding happens before readiness probes, and later probes do
+not rewrite the immutable start identity. Decode accepts only that complete
+shape or the historical five-key association shape; incomplete or malformed data is
+not silently repaired. A pre-v4 unresolved chat association is unknown for a
+destructive scoped route drain and blocks the one-time v3-to-v4 upgrade. Unresolved
+non-chat entries do not block a valid route scope. This adds no credential or
+Connect wire-format change.
+
+Tier replacement is available only when the router has both its managed usage
+store and the current managed authority scope. Missing or unreadable accounting
+fails the destructive drain closed; an alias-only update does not require that
+ledger because it does not release a selected tier.
+
 ## Implemented native barrier and roster producer (T023 source)
 
 `RouterAdmission` owns one condition lock for all root acquisition, inherited

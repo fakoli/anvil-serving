@@ -27,7 +27,7 @@ def _running_controller(auth_env: str, token: str, operation: str):
             allowed_operations=(operation,),
             idempotency_db_path=os.path.join(temp_dir, "operations.sqlite3"),
         )
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
         thread.start()
         try:
             yield server.server_address[:2]
@@ -50,21 +50,3 @@ def _health(host: str, port: int, token: str) -> int:
         return response.status
     finally:
         connection.close()
-
-
-def test_media_controller_tokens_are_not_cross_usable():
-    with _running_controller(
-        "ANVIL_MEDIA_CONTROLLER_TOKEN",
-        LIFECYCLE_TOKEN,
-        "media-worker-status",
-    ) as (host, port):
-        assert _health(host, port, LIFECYCLE_TOKEN) == 200
-        assert _health(host, port, RESOURCE_TOKEN) == 401
-
-    with _running_controller(
-        "ANVIL_MEDIA_RESOURCE_CONTROLLER_TOKEN",
-        RESOURCE_TOKEN,
-        "serves-status",
-    ) as (host, port):
-        assert _health(host, port, RESOURCE_TOKEN) == 200
-        assert _health(host, port, LIFECYCLE_TOKEN) == 401

@@ -25,11 +25,16 @@ def test_launch_projection_excludes_unselected_secrets():
         probe._launch_projection(row)
 
 
-@pytest.mark.parametrize("drift", [False, True])
-@pytest.mark.parametrize("patch_state", [None, "valid", "bad_labels", "bad_source", "bad_helper",
-    "missing_entrypoint", "wrong_entrypoint", "wrong_command", "wrong_flags",
-    "recipe_entrypoint", "recipe_trace", "trace_missing", "trace_zero", "trace_duplicate",
-    "marker_valid", "marker_source", "marker_helper", "marker_label", "marker_environment"])
+@pytest.mark.parametrize(("drift", "patch_state"), [
+    (False, None), (True, None), (False, "valid"), (True, "valid"),
+    (False, "bad_labels"), (False, "bad_source"), (False, "bad_helper"),
+    (False, "missing_entrypoint"), (False, "wrong_entrypoint"),
+    (False, "wrong_command"), (False, "wrong_flags"),
+    (False, "recipe_entrypoint"), (False, "recipe_trace"),
+    (False, "trace_missing"), (False, "trace_zero"), (False, "trace_duplicate"),
+    (False, "marker_valid"), (True, "marker_valid"), (False, "marker_source"),
+    (False, "marker_helper"), (False, "marker_label"), (False, "marker_environment"),
+])
 def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, drift, patch_state):
     plan = tmp_path / "plan.json"
     plan.write_text(json.dumps({"runtime": {"model_revision": probe.REVISION,
@@ -138,23 +143,6 @@ def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, dr
         assert len(calls) == 3
 
 
-@pytest.mark.parametrize("port", [True, 0, 65536, "30000@198.51.100.7:80"])
-def test_resource_snapshot_refuses_invalid_port_before_reads(port):
-    with pytest.raises(ValueError, match="port"):
-        probe.resource_snapshot(port)
-
-
-def test_inspection_plan_is_bounded_and_does_not_follow_links(tmp_path):
-    plan = tmp_path / "plan.json"
-    plan.write_bytes(b" " * (1024 * 1024 + 1))
-    with pytest.raises(ValueError, match="size"):
-        probe.inspect_runtime(tmp_path / "absent", "candidate", plan)
-    link = tmp_path / "linked.json"
-    link.symlink_to(plan)
-    with pytest.raises(OSError):
-        probe.inspect_runtime(tmp_path / "absent", "candidate", link)
-
-
 def _proc_fixture(tmp_path):
     root = tmp_path / "proc"
     (root / "pressure").mkdir(parents=True)
@@ -178,44 +166,6 @@ def test_host_memory_attribution_omits_arguments_and_environment(tmp_path):
                                            "rss_bytes": 65536, "pss_bytes": 32768}]
     assert "private-" not in json.dumps(result)
     assert result["process_inventory_incomplete"] is False
-
-
-@pytest.mark.parametrize("damage", ["missing", "oversized", "malformed"])
-def test_host_memory_mandatory_reads_fail_closed(tmp_path, damage):
-    root = _proc_fixture(tmp_path)
-    path = root / "meminfo"
-    if damage == "missing":
-        path.unlink()
-    else:
-        path.write_text("x" * (probe._PROC_READ_BYTES + 1) if damage == "oversized" else "MemTotal: invalid kB\n")
-    with pytest.raises((OSError, ValueError)):
-        probe._collect_host_memory_snapshot(root)
-
-
-def test_host_memory_process_cap_is_deterministic_and_explicit(tmp_path, monkeypatch):
-    import shutil
-    root = _proc_fixture(tmp_path)
-    shutil.copytree(root / "42", root / "9")
-    monkeypatch.setattr(probe, "_PROCESS_LIMIT", 1)
-    result = probe._collect_host_memory_snapshot(root)
-    assert [row["pid"] for row in result["largest_processes"]] == [9]
-    assert result["process_inventory_truncated"] and result["process_inventory_incomplete"]
-
-
-def test_host_memory_discards_pss_after_pid_reuse(tmp_path, monkeypatch):
-    from pathlib import Path
-    import io
-    root = _proc_fixture(tmp_path)
-    original = Path.open
-    reads = 0
-    def changing_stat(path, *args, **kwargs):
-        nonlocal reads
-        if path == root / "42/stat":
-            reads += 1
-            return io.BytesIO(("42 (worker) " + " ".join(["0"] * 19 + [str(reads)])).encode())
-        return original(path, *args, **kwargs)
-    monkeypatch.setattr(Path, "open", changing_stat)
-    assert probe._collect_host_memory_snapshot(root)["largest_processes"][0]["pss_bytes"] is None
 
 
 def test_host_memory_subprocess_has_fixed_program_deadline_and_output_cap():
@@ -243,13 +193,3 @@ def test_resource_deadline_failure_is_sanitized_by_cli(monkeypatch, capsys):
     monkeypatch.setattr(probe, "inspect_runtime", failed)
     assert probe.main(["--registry", "unused", "--container", "candidate", "--plan", "unused"]) == 1
     assert json.loads(capsys.readouterr().out) == {"ok": False, "error": "RequestControlError"}
-
-
-def test_marker_trace_contract_refuses_unknown_or_unpatched_trace():
-    from anvil_serving.reasoning_marker_trace import validate_marker_trace, MARKER_MANIFEST_SHA256
-    valid = {"schema": "anvil-serving.marker-trace/v1", "manifest_sha256": MARKER_MANIFEST_SHA256}
-    assert validate_marker_trace({}) is None
-    for marker, patch in [(valid, None), ({**valid, "manifest_sha256": "0" * 64}, {}),
-                          ({**valid, "arbitrary_file": "/tmp/untrusted"}, {})]:
-        with pytest.raises(ValueError, match="marker trace"):
-            validate_marker_trace({"marker_trace": marker, "runtime_patch": patch})

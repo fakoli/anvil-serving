@@ -167,6 +167,7 @@ def main(argv: list[str] | None = None) -> int:
         if options.timeout is not None and (not 0 < options.timeout < float("inf")):
             problems.append("--timeout must be finite and positive")
         env = dict(os.environ)
+        env["ANVIL_SERVING_NO_HOME_ENV"] = "1"
         env["PATH"] = str(Path(sys.executable).parent) + os.pathsep + env.get("PATH", "")
         problems.extend(preflight(Path.cwd(), env))
         if not problems:

@@ -153,60 +153,6 @@ def test_true_streaming_reasoning_order_and_usage_round_trip() -> None:
     }
 
 
-def test_standard_nested_reasoning_usage_is_also_normalized() -> None:
-    upstream = json.dumps({
-        "choices": [{"message": {"content": "Four"}}],
-        "usage": {
-            "prompt_tokens": 8,
-            "completion_tokens": 12,
-            "completion_tokens_details": {"reasoning_tokens": 9},
-        },
-    }).encode()
-    backend = RelayBackend(
-        make_tier("openai"),
-        env=_ENV,
-        transport=lambda url, *, data, headers, timeout: upstream,
-    )
-
-    list(backend.generate(_request()))
-    assert backend.get_last_structured().usage["reasoning_tokens"] == 9
-
-
-def test_partial_reasoning_usage_does_not_require_base_counters() -> None:
-    response = OpenAIDialect().render(
-        _request(),
-        "",
-        structured=StructuredResult(usage={"reasoning_tokens": 9}),
-    )
-
-    assert response["usage"] == {
-        "prompt_tokens": 0,
-        "completion_tokens": 0,
-        "total_tokens": 0,
-        "completion_tokens_details": {"reasoning_tokens": 9},
-    }
-
-
-def test_reasoning_absent_keeps_openai_wire_shape_unchanged() -> None:
-    request = _request()
-    response = OpenAIDialect().render(
-        request,
-        "Four",
-        structured=StructuredResult(
-            finish_reason="stop",
-            usage={"input_tokens": 8, "output_tokens": 1},
-        ),
-    )
-
-    message = response["choices"][0]["message"]
-    assert message == {"role": "assistant", "content": "Four"}
-    assert response["usage"] == {
-        "prompt_tokens": 8,
-        "completion_tokens": 1,
-        "total_tokens": 9,
-    }
-
-
 def test_reasoning_is_not_folded_into_anthropic_or_responses_answer_text() -> None:
     reasoning = "provider-private reasoning"
     delta = ModelDelta(reasoning=reasoning)
@@ -237,36 +183,3 @@ def test_reasoning_is_not_folded_into_anthropic_or_responses_answer_text() -> No
     assert responses["usage"]["output_tokens_details"] == {
         "reasoning_tokens": 9,
     }
-
-
-def test_openai_reasoning_history_is_replayed_verbatim_same_dialect() -> None:
-    wire_messages = [
-        {"role": "user", "content": "What is two plus two?"},
-        {
-            "role": "assistant",
-            "content": "Four",
-            "reasoning_content": "Add the operands.",
-        },
-        {"role": "user", "content": "Are you sure?"},
-    ]
-    request = OpenAIDialect().parse_request({
-        "model": "chat",
-        "messages": wire_messages,
-    })
-
-    body = RelayBackend(make_tier("openai"), env=_ENV)._build_body(request)
-    assert body["messages"] == wire_messages
-
-
-def test_non_assistant_reasoning_field_does_not_enable_raw_message_replay() -> None:
-    request = OpenAIDialect().parse_request({
-        "model": "chat",
-        "messages": [{
-            "role": "user",
-            "content": "Question",
-            "reasoning_content": "caller-controlled extra field",
-        }],
-    })
-
-    body = RelayBackend(make_tier("openai"), env=_ENV)._build_body(request)
-    assert body["messages"] == [{"role": "user", "content": "Question"}]

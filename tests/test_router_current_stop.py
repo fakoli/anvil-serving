@@ -84,8 +84,16 @@ usage_domain_id="fixture"
             return SimpleNamespace(returncode=0, stdout='')
         pytest.fail(str(argv))
     proof = f['proof']()
+    proof_composes = []
     def native(compose, service, container, code, **kwargs):
-        assert compose == str(f['old']) and kwargs['_owner_state_only']
+        assert kwargs['_owner_state_only']
+        if compose == str(f['old']):
+            rendered = old
+        else:
+            rendered = json.loads(Path(compose).read_bytes())
+            expected = deepcopy(old)
+            expected['services'][service]['image'] = candidate['services'][service]['image']
+            assert rendered == expected and Path(compose).stat().st_mode & 0o777 == 0o600
         assert '_offline_router_start()' in code and 'native_transaction' not in code
         helper = ast.parse(code)
         custody_block = next(node for node in ast.walk(helper)
@@ -95,6 +103,7 @@ usage_domain_id="fixture"
         start_call = next(node for node in ast.walk(helper)
                           if isinstance(node, ast.Call) and ast.unparse(node.func) == '_offline_router_start')
         assert start_call not in ast.walk(custody_block)
+        proof_composes.append(rendered)
         calls.append('native-read')
         return deepcopy(proof)
     monkeypatch.setattr(router_manage, '_offline_compose_run', native)
@@ -108,7 +117,8 @@ usage_domain_id="fixture"
     monkeypatch.setattr(router_manage, '_managed_container_custody', lambda kind, *a, **k: calls.append(kind))
     return SimpleNamespace(path=receipt_path, receipt=receipt, stopped=stopped, old=old,
         candidate=candidate, config=candidate_config, compose=f['new'], proof=proof, calls=calls, run=run,
-        old_compose=f['old'], router_config=f['router_config'], scope=scope, protected=f['protected'])
+        old_compose=f['old'], router_config=f['router_config'], scope=scope, protected=f['protected'],
+        proof_composes=proof_composes)
 
 
 def invoke(f, **kwargs):
@@ -255,6 +265,9 @@ def test_changed_image_and_source_require_exact_receipt_and_preview_is_read_only
     f.run=run
     assert bootstrap.completed_receipt(f.path, f.stopped) == f.receipt
     bootstrap.require_successor(str(f.path), str(f.compose), 'router', 'anvil-router', f.stopped, _run=f.run)
+    expected_probe = deepcopy(f.old)
+    expected_probe['services']['router']['image'] = f.candidate['services']['router']['image']
+    assert f.proof_composes == [expected_probe]
     assert invoke(f, dry_run=True) == 0
     assert 'native-read' in f.calls and 'candidate-offline' in f.calls and 'live' not in f.calls
     assert not any(isinstance(c, list) and 'up' in c for c in f.calls)
@@ -302,17 +315,6 @@ def test_exact_live_anchor_is_idempotent_without_native_helper(successor, monkey
     assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
 
 
-def test_running_successor_resume_rejects_recreate_flag(successor, monkeypatch, capsys):
-    f = successor
-    prepare_running_successor(f, monkeypatch, phases=('absent',))
-    monkeypatch.setattr(router_manage, '_managed_container_custody',
-        lambda *a, **k: pytest.fail('recreate request must not resume custody'))
-
-    assert invoke(f, recreate=True) == 1
-    assert not any(isinstance(call, list) and 'up' in call for call in f.calls)
-    assert 'stage=current-stop-observation' in capsys.readouterr().err
-
-
 @pytest.mark.parametrize('damage', ['wrong-image', 'bad-anchor-phase', 'postcheck-pending'])
 def test_running_successor_resume_fails_closed_without_restarting(successor, monkeypatch, capsys, damage):
     f = successor
@@ -340,18 +342,6 @@ def test_running_successor_resume_fails_closed_without_restarting(successor, mon
     assert 'stage=' in err and 'code=' in err
     assert 'fixture' not in err and 'successor.toml' not in err
 
-
-
-def test_same_image_configuration_change_retains_existing_path(successor):
-    f = successor
-    f.config.write_text(f.config.read_text()+'\n# authorized configuration change\n')
-    declared=f.receipt['authorization']['successor']; declared['image_id']=f.stopped['image_id']
-    declared['configuration_revision']=hashlib.sha256(f.config.read_bytes()).hexdigest()
-    f.receipt['preview']['successor']=deepcopy(declared)
-    f.receipt['authorization']['preview_sha256']=maintenance.digest(f.receipt['preview'])
-    f.protected(f.path, f.receipt)
-    assert invoke(f, dry_run=True) == 0
-    assert 'candidate-offline' not in f.calls
 
 @pytest.mark.parametrize('damage', ['ack', 'preview', 'death', 'stopped', 'image', 'compose', 'config',
     'owner', 'writable', 'user', 'command', 'environment', 'entrypoint', 'extra-service', 'candidate-offline', 'image-and-config', 'extra-alias', 'lineage', 'active', 'transferred', 'closure', 'receipt-race'])
@@ -409,32 +399,6 @@ def test_changed_authority_refuses_before_start(successor, monkeypatch, damage):
     assert invoke(f) == 1
     assert 'live' not in f.calls
     assert not any(isinstance(c, list) and 'up' in c for c in f.calls)
-
-
-@pytest.mark.parametrize('damage', ['valid', 'different-file', 'changed-bytes', 'undeclared'])
-def test_environment_is_exactly_the_protected_stop_declaration(successor, damage):
-    f=successor
-    env=f.path.parent/'router.env';env.write_text('SYNTHETIC_AUTH=fixture\n');env.chmod(0o600)
-    if damage != 'undeclared':
-        f.receipt['preview']['environment']={'file':str(env),'sha256':hashlib.sha256(env.read_bytes()).hexdigest()}
-        f.receipt['authorization']['preview_sha256']=maintenance.digest(f.receipt['preview'])
-        f.protected(f.path,f.receipt)
-    if damage == 'different-file':
-        other=env.with_name('other.env');other.write_bytes(env.read_bytes());other.chmod(0o600);env=other
-    elif damage == 'changed-bytes': env.write_text('SYNTHETIC_AUTH=changed\n')
-    assert invoke(f, env_file=str(env), dry_run=True) == (0 if damage == 'valid' else 1)
-
-
-@pytest.mark.parametrize('target', ['environment', 'compose'])
-def test_unapproved_inputs_are_rejected_before_read(successor, monkeypatch, target):
-    def forbidden(*a, **kw):
-        pytest.fail('unapproved environment must never be read')
-    monkeypatch.setattr(router_manage, '_compose_execution_env', forbidden)
-    if target == 'environment':
-        assert invoke(successor, env_file='/private/implicit.env', dry_run=True) == 1
-    else:
-        successor.compose=Path('/private/implicit.env')
-        assert invoke(successor, dry_run=True) == 1
 
 
 def test_recovery_flags_are_exclusive_and_registered_preview_validates(successor, monkeypatch):

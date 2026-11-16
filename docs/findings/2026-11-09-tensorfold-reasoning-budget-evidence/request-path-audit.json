@@ -1,0 +1,81 @@
+{
+  "schema": "anvil-serving.reasoning-control-audit/v1",
+  "scope": "Read-only pinned-source and loaded-template metadata findings; no forced-budget inference was performed.",
+  "engine_source_tree": "e7acc47a4a42ba8ac5fbaf74fff20ed4e7856c17",
+  "findings": [
+    {
+      "id": "effort_is_instruction",
+      "observation": "The actual loaded template renders distinct Low, High and Max instructions. Explicit request effort overrides the configured default high. Each retained dummy verification prompt is17tokens.",
+      "evidence": "qualification/loaded-template-summary.json",
+      "source": [
+        "server/fields.zig:241-278",
+        "server/server.zig:237-240",
+        "server/prompt.zig:46-54"
+      ]
+    },
+    {
+      "id": "shared_cap",
+      "observation": "The total output cap includes thinking and answer. Native reasoning accounting counts through the closing token, or all generated tokens when it never appears. No positive separate thinking budget is configured.",
+      "source": [
+        "server/chat.zig:190-200",
+        "server/reply_text.zig:281-285",
+        "server/cli.zig:207-208"
+      ]
+    },
+    {
+      "id": "native_numeric_budget_exists",
+      "observation": "The engine accepts request-local thinking_budget and can force closing tokens through the shared lane engine, including DFlash. Closing-token accounting need not equal the budget exactly. thinking_reserve expands the total allowance and is a different control.",
+      "source": [
+        "server/openai.zig:154-163",
+        "server/chat.zig:190-200",
+        "core/lanes/stream.zig:378-409",
+        "core/lanes/engine.zig:396-408",
+        "server/thinking_reserve.zig:5-9"
+      ]
+    },
+    {
+      "id": "installed_path_gap",
+      "observation": "Installed Aider controls did not expose numeric thinking budget; the relay reconstructed the body without forwarding thinking_budget. Effort controls were preserved. Proposed Anvil control/relay repair is source-only, not deployed or measured here."
+    },
+    {
+      "id": "cache_keeps_effort_tokens",
+      "observation": "Text request cache identity uses the full rendered prompt token sequence, including effort. RAM/disk matching cannot reuse state beyond Low/Max token divergence; compatible identical prefixes may still be reused. This source-contract result is not cold-cache or stochastic equivalence.",
+      "source": [
+        "server/prompt.zig:105-123",
+        "core/engine_api.zig:119-124",
+        "core/prompt_cache_index.zig:7-14",
+        "core/rows_store.zig:276-280"
+      ]
+    }
+  ],
+  "private_source_commitments": [
+    {
+      "source_id": "qualification/request-path-audit.md",
+      "sha256": "9d613f6a3d59f7b7dc2c083175c9a280d5997dc3b4051fcc87c68140306d9f0c",
+      "bytes": 9892
+    },
+    {
+      "source_id": "qualification/engine-audit.md",
+      "sha256": "6a9ba2db44cce8df8510cfe97bc9e18b2b414b4ec999d399c00ed04c0b7ea249",
+      "bytes": 12034
+    },
+    {
+      "source_id": "qualification/current-request-overrides.json",
+      "sha256": "2a7a340e9381ab1d008b730ab4f1da8ab811750d3e9a6522d2dc5dcd03bf282a",
+      "bytes": 499
+    },
+    {
+      "source_id": "qualification/loaded-template-summary.json",
+      "sha256": "967a563ff33fb908d66db3b7086289f525fc2217a69907f5f15fdc8e00b1a006",
+      "bytes": 773
+    }
+  ],
+  "source_proposal": {
+    "url": "https://github.com/fakoli/anvil-serving/pull/751",
+    "reviewed_head": "bba218350aff8ee4b59f446977192bebc5af8174",
+    "base_commit": "d65d6fc25533c4d95ff9da92b0b8ac22df929cd1",
+    "status": "source proposal; not deployed",
+    "mapping": "benchmark thinking_budget_tokens to wire thinking_budget; preserve through existing relay"
+  },
+  "boundary": "Source establishes control semantics and a missing forwarding seam. It does not prove a forced-budget coding pass or explain the semantic necessity of every reasoning token."
+}

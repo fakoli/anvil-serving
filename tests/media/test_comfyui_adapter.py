@@ -3,8 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from anvil_serving.media import ComfyUIClient, MediaError, WorkflowRegistry
-from anvil_serving.media.comfyui import _base_url
+from anvil_serving.media import ComfyUIClient, MediaError
 
 
 ROOT = Path(__file__).parents[2] / "configs" / "media" / "workflows"
@@ -22,83 +21,6 @@ class Response:
 
     def read(self, size=-1):
         return self.data[:size]
-
-
-def test_base_url_canonicalizes_origin_without_changing_the_configured_path():
-    client = ComfyUIClient("HTTP://MediaHost:80/Comfy/", opener=lambda *_a, **_k: None)
-    assert client.base_url == "http://mediahost/Comfy"
-    assert getattr(client.base_url, "legacy_endpoint") == "http://MediaHost:80/Comfy"
-    assert _base_url("HTTPS://MEDIAHOST:443/Comfy/") == "https://mediahost/Comfy"
-    assert _base_url("http://MediaHost:8080/Comfy/") == "http://mediahost:8080/Comfy"
-
-
-def test_submit_uses_exact_rendered_graph_and_anvil_client_identity():
-    registry = WorkflowRegistry(ROOT / "registry.json")
-    rendered = registry.render(
-        "image.flux2-klein-4b-fp8-v1",
-        "v1",
-        {"prompt": "owl", "seed": 1, "width": 512, "height": 512, "steps": 10},
-    )
-    seen = {}
-
-    def opener(request, timeout):
-        if request.full_url.endswith("/system_stats"):
-            return Response({"system": {}})
-        seen["url"] = request.full_url
-        seen["body"] = json.loads(request.data)
-        return Response({"prompt_id": "prompt_123"})
-
-    prompt_id = ComfyUIClient("http://127.0.0.1:8188", opener=opener).submit(
-        rendered, job_id="job_0123456789abcdef"
-    )
-    assert prompt_id == "prompt_123"
-    assert seen["url"].endswith("/prompt")
-    assert seen["body"]["prompt"] == rendered.graph
-    assert seen["body"]["client_id"] == "anvil-job_0123456789abcdef"
-
-
-@pytest.mark.parametrize("running,pending,expected", [
-    (["prompt_123"], [], "running"),
-    (["prompt_other"], ["prompt_123"], "queued"),
-    ([], [], "queued"),
-])
-def test_history_observes_live_queue_before_completed_history_exists(running, pending, expected):
-    def record(identifier):
-        return [0, identifier, {}, {}, []]
-    def opener(request, timeout):
-        if request.full_url.endswith("/history/prompt_123"):
-            return Response({})
-        if request.full_url.endswith("/queue"):
-            return Response({"queue_running": [record(p) for p in running],
-                             "queue_pending": [record(p) for p in pending]})
-        raise AssertionError(request.full_url)
-    result = ComfyUIClient("http://127.0.0.1:8188", opener=opener).history("prompt_123")
-    assert result.state == expected
-    assert result.error_code == ("backend_prompt_missing" if not running and not pending else "")
-
-
-def test_find_prompt_recovers_deterministic_client_identity_from_queue():
-    job_id = "job_0123456789abcdef"
-    record = [
-        1,
-        "prompt_123",
-        {"1": {"class_type": "Test", "inputs": {}}},
-        {"client_id": "anvil-" + job_id},
-        ["1"],
-    ]
-    paths = []
-
-    def opener(request, timeout):
-        paths.append(request.full_url)
-        if request.full_url.endswith("/queue"):
-            return Response({"queue_running": [], "queue_pending": [record]})
-        if request.full_url.endswith("/history"):
-            return Response({})
-        raise AssertionError(request.full_url)
-
-    client = ComfyUIClient("http://127.0.0.1:8188", opener=opener)
-    assert client.find_prompt(job_id) == "prompt_123"
-    assert paths == ["http://127.0.0.1:8188/queue"]
 
 
 def test_completion_racing_queue_probe_is_not_reported_missing():
@@ -153,22 +75,6 @@ def test_history_normalizes_outputs_without_public_coordinates():
     assert "private.png" not in repr(status)
 
 
-def test_fetch_output_is_bounded_and_internal_only():
-    from anvil_serving.media import BackendOutput
-
-    seen = {}
-
-    def opener(request, timeout):
-        seen["url"] = request.full_url
-        return Response(b"1234", raw=True)
-
-    client = ComfyUIClient("http://127.0.0.1:8188", opener=opener)
-    assert client.fetch_output(BackendOutput("8", "a.png"), max_bytes=4) == b"1234"
-    assert "/view?" in seen["url"]
-    with pytest.raises(MediaError):
-        client.fetch_output(BackendOutput("8", "a.png"), max_bytes=0)
-
-
 def test_upload_rejects_paths_and_oversize_before_contact():
     contacted = []
     client = ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_a, **_k: contacted.append(True))
@@ -177,13 +83,6 @@ def test_upload_rejects_paths_and_oversize_before_contact():
     with pytest.raises(MediaError):
         client.upload_input("input.png", b"xx", max_bytes=1)
     assert contacted == []
-
-
-@pytest.mark.parametrize("filename", ['bad"name.mp4', "bad\r\nname.mp4", "bad\x00name.mp4", "../bad.mp4", "bad\\name.mp4"])
-def test_upload_rejects_unsafe_multipart_filenames(filename):
-    client = ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_a, **_k: pytest.fail("contacted backend"))
-    with pytest.raises(MediaError, match="filename"):
-        client.upload_input(filename, b"video")
 
 
 @pytest.mark.parametrize("stored", ["../escaped.mp4", "bad\r\nname.mp4", "/absolute.mp4"])

@@ -14,7 +14,7 @@ USER_OPERATIONS = {
     "reset-password": ("Request password setup; preserve groups, grants and registered factors.", ("output",)),
     "reset-mfa": ("Remove passkeys and TOTP; suspend first for a lost or compromised device.", ()),
     "code": ("Export a fresh enrollment code or setup link when using filesystem delivery.", ("output",)),
-    "backup": ("Back up all authentication accounts and factors.", ("include-gateway",)),
+    "backup": ("Back up all authentication accounts and factors.", ("include-gateway", "scheduled")),
     "sync-roles": ("Reconcile explicitly bound native application roles and session revocation.", ()),
     "sync-operators": ("Reconcile the derived Connect-operator identity-provider group.", ()),
     "schedule": ("Install the daily authentication and gateway backup timer.", ()),

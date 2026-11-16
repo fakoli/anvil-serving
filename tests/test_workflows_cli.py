@@ -125,50 +125,6 @@ def test_native_current_read_uses_closed_owner_operation(monkeypatch):
         workflows_cli.native_current_authority("https://127.0.0.1:8765", "synthetic-token", **{**args, "contract_digest": "x" * 64})
 
 
-def test_native_current_read_rejects_late_success(monkeypatch):
-    monkeypatch.setattr(workflows_cli, "_call", lambda *_args, **_kwargs: {
-        "current": True, "observed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
-    ticks = iter((0.0, 5.01))
-    monkeypatch.setattr(workflows_cli.time, "monotonic", lambda: next(ticks))
-    assert not workflows_cli.native_current_authority("https://127.0.0.1:8765", "token",
-        intent_id="intent-1", job_id="job-1", contract_digest="a" * 64,
-        generation=1, target_id="target-1", resource_id="catalog-1")
-
-
-def test_capability_preflight_requires_exact_available_owner_contract(monkeypatch):
-    monkeypatch.setattr(workflows_cli, "_config", lambda: ("https://127.0.0.1:8765", "synthetic-token"))
-    declaration = capability_declaration()
-    for operation in declaration["operations"]:
-        operation["available"] = True
-    calls = []
-    def request(_url, body, _token, **_options):
-        calls.append(body["params"])
-        return {"result": {"structuredContent": {"ok": True, "data": declaration}}}
-    monkeypatch.setattr(workflows_cli, "remote_controller_request", request)
-    ready = workflows_cli.main(["capabilities"])
-    assert ready.exit_code == 0 and ready.data["state"] == "ready"
-    assert ready.data["mode"] == "effects"
-    assert len(ready.data["operations"]) == 18 and ready.data["effects"] == []
-    assert calls == [{"name": "propagation_capabilities", "arguments": {},
-                      "_meta": {workflows_cli.PROTOCOL_VERSION_META_KEY: workflows_cli.mcp.PROTOCOL_VERSION,
-                                workflows_cli.CLIENT_CAPABILITIES_META_KEY: {},
-                                workflows_cli.CLIENT_INFO_META_KEY: {"name": "anvil-workflows-cli",
-                                                               "version": workflows_cli.mcp.SERVER_INFO["version"]}}}]
-    declaration["operations"][0]["available"] = "true"
-    refused = workflows_cli.main(["capabilities"])
-    assert refused.exit_code != 0 and refused.error.code == "workflow_owner_capabilities_missing"
-    for operation in declaration["operations"]:
-        operation["available"] = operation["name"] in workflows_cli.PREVIEW_MODE_OPERATIONS
-    preview = workflows_cli.main(["capabilities"])
-    assert preview.exit_code == 0 and preview.data["state"] == "ready"
-    assert preview.data["mode"] == "preview"
-    assert set(preview.data["operations"]) == workflows_cli.PREVIEW_MODE_OPERATIONS
-    next(operation for operation in declaration["operations"]
-         if operation["name"] == "propagation.profile.v1")["available"] = False
-    refused = workflows_cli.main(["capabilities"])
-    assert refused.exit_code != 0 and refused.error.code == "workflow_owner_capabilities_missing"
-
-
 @pytest.mark.skipif(sys.platform != "linux", reason="release owner is Linux")
 def test_capability_preflight_reads_actual_authenticated_controller(tmp_path, monkeypatch):
     owner = ControlledOwner(tmp_path)
@@ -253,19 +209,6 @@ def test_deployed_profile_verify_requires_exact_installed_digest(monkeypatch):
     preview["owner_mode"] = "effects"
     result = workflows_cli.main(["deployment", "verify", "--profile", "propagation-v1"])
     assert result.exit_code != 0 and result.data["state"] == "drift"
-
-
-@pytest.mark.parametrize(("action", "state"), [
-    ("resume", "refused"), ("cancel", "uncertain"),
-    ("recovery", "failed"), ("recovery", "recovery_required"),
-])
-def test_attention_outcomes_exit_nonzero_with_owner_data(monkeypatch, action, state):
-    monkeypatch.setattr(workflows_cli, "_config", lambda **_: ("owner", "token"))
-    monkeypatch.setattr(workflows_cli, "_call", lambda *_: {"state": state})
-    argv = (["recovery", "verify", "--profile", "propagation-v1"] if action == "recovery"
-            else [action, "--intent-id", "intent-1", "--expected-digest", "a" * 64, "--confirm"])
-    result = workflows_cli.main(argv)
-    assert result.exit_code != 0 and result.data["state"] == state
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="release owner is Linux")

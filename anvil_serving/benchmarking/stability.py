@@ -201,6 +201,7 @@ def new_evidence(config, output):
     evidence = {"schema": EVIDENCE_SCHEMA, "scenario": config,
                 "scenario_sha256": fingerprint(config), "started_at": utc_now(),
                 "status": "running", "rounds": [], "promoted": False,
+                "overlap_contract": "contender-stream-active/v1",
                 "configuration_identity": "unverified", "identity_observations": [],
                 "scheduler_overlap": "not_measured", "performance_eligible": False}
     atomic_write_json(output, evidence)
@@ -261,6 +262,9 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
                         if "response_headers_at" in contender and "first_output" not in contender and "end" not in contender:
                             pair["anchor_output_during_contender_response_wait"] = True
                             pair.setdefault("overlap_output_at", now)
+                        if "first_output" in contender and "end" not in contender:
+                            pair["anchor_output_during_contender_active"] = True
+                            pair.setdefault("active_overlap_output_at", now)
                     event.set()
                     if first:
                         save()
@@ -325,6 +329,7 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
             check_identity(f"round_{index}_before")
             salt = f"{run_salt}:{0 if config['prefix_mode'] == 'repeat' else index}"
             pair = {"index": index, "anchor": {}, "contender": {},
+                    "anchor_output_during_contender_active": False,
                     "anchor_output_during_contender_response_wait": False}
             evidence["rounds"].append(pair)
             evidence["stage"] = "tokenization"
@@ -352,7 +357,7 @@ def run(config, output, *, stream=stream_chat, calibrate=calibrated_prompt, meta
             pair["runtime_passed"] = all(pair[r].get("status") == "completed" for r in ("anchor", "contender"))
             pair["coverage_passed"] = (pair["runtime_passed"]
                                        and all(pair[r].get("usage_verified") for r in ("anchor", "contender"))
-                                       and (config["mode"] == "serial" or pair["anchor_output_during_contender_response_wait"]))
+                                       and (config["mode"] == "serial" or pair["anchor_output_during_contender_active"]))
             pair["retrieval_passed"] = all(pair[r].get("retrieval_passed") is True for r in ("anchor", "contender"))
             pair["failure_classes"] = sorted({c for r in ("anchor", "contender")
                                                for c in pair[r].get("failure_classes", [])})

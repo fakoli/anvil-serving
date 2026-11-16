@@ -6,12 +6,13 @@ import math
 import platform
 import time
 from collections.abc import Callable, Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
 
 from ..macos_primitives import macos_identity_snapshot, macos_memory_snapshot, run_command
 from ..schema import CapabilityStatus, TelemetrySample
 from ..status import prepare_sample
+from . import normalize_collection_time as _timestamp
 
 
 RawProvider = Callable[[], Mapping[str, Any]]
@@ -431,13 +432,3 @@ def _degraded_samples(
         )
     )
     return samples
-
-
-def _timestamp(value: datetime | None) -> datetime:
-    if value is None:
-        return datetime.now(timezone.utc)
-    if not isinstance(value, datetime):
-        raise TypeError("collected_at must be a datetime or None")
-    if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("collected_at must be timezone-aware")
-    return value.astimezone(timezone.utc)

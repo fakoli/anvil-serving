@@ -1,0 +1,252 @@
+{
+  "observed_date": "2026-10-31",
+  "source_revision": "7b5158b724ca715c85a3302091d2a2b40f253da0",
+  "source_state": "clean during collection and focused profile",
+  "scope": "Tracked Python under tests/ and anvil_serving/; tracked Go, Node *.test.mjs and Playwright *.spec.mjs counted separately. Physical lines include comments and blanks.",
+  "python": {
+    "collected_cases": 14095,
+    "collection_seconds": 12.37,
+    "distinct_collected_functions": 8104,
+    "parameter_expansion_cases": 5991,
+    "test_tree_files": 572,
+    "test_tree_lines": 197587,
+    "assert_statements": 25257,
+    "sleep_call_sites": 130,
+    "production_tree_files": 458,
+    "production_tree_lines": 208537,
+    "exact_ast_duplicate_functions": 0,
+    "exact_duplicate_method": "Ignore function name and AST source positions only; retain arguments, decorators and body. This does not measure semantic duplication.",
+    "by_directory": {
+      "a2a": 19,
+      "computer_use": 3,
+      "connect": 983,
+      "control_plane": 199,
+      "external_benchmarks": 49,
+      "fixtures": 4,
+      "media": 335,
+      "native_agents": 169,
+      "native_memory_gateway": 50,
+      "observability": 789,
+      "router": 2513,
+      "service_runtime": 210,
+      "root": 7547,
+      "voice": 768,
+      "workbench": 457
+    },
+    "largest_case_files": {
+      "tests/test_cli.py": 461,
+      "tests/test_topology.py": 334,
+      "tests/test_fleet_bootstrap.py": 324,
+      "tests/test_serves.py": 203,
+      "tests/test_benchmark.py": 183,
+      "tests/test_models.py": 150,
+      "tests/connect/test_manage.py": 148,
+      "tests/test_manifest_workloads.py": 139,
+      "tests/router/test_config.py": 133,
+      "tests/test_transports.py": 127,
+      "tests/test_operator_config.py": 118,
+      "tests/test_benchmark_report.py": 115,
+      "tests/voice/test_voice_cli.py": 114,
+      "tests/observability/test_workload_http.py": 104,
+      "tests/test_client_catalog_sync.py": 104,
+      "tests/test_host.py": 103,
+      "tests/router/test_usage_drain.py": 100,
+      "tests/test_controller.py": 100,
+      "tests/router/test_usage_webui_identity.py": 99,
+      "tests/router/test_replica_scheduler.py": 95
+    },
+    "largest_line_files": [
+      {
+        "path": "tests/test_serves.py",
+        "lines": 3140,
+        "functions": 164,
+        "asserts": 388,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/test_client_catalog_sync.py",
+        "lines": 3005,
+        "functions": 74,
+        "asserts": 318,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/test_topology.py",
+        "lines": 2557,
+        "functions": 149,
+        "asserts": 292,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/test_controller.py",
+        "lines": 2494,
+        "functions": 87,
+        "asserts": 370,
+        "sleeps": 1
+      },
+      {
+        "path": "tests/test_fleet_bootstrap.py",
+        "lines": 2488,
+        "functions": 97,
+        "asserts": 129,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/test_benchmark.py",
+        "lines": 2437,
+        "functions": 104,
+        "asserts": 390,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/test_models.py",
+        "lines": 2325,
+        "functions": 127,
+        "asserts": 443,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/test_cli.py",
+        "lines": 2283,
+        "functions": 83,
+        "asserts": 356,
+        "sleeps": 0
+      },
+      {
+        "path": "tests/voice/test_voice_cli.py",
+        "lines": 2204,
+        "functions": 81,
+        "asserts": 268,
+        "sleeps": 1
+      },
+      {
+        "path": "tests/connect/test_manage.py",
+        "lines": 2152,
+        "functions": 98,
+        "asserts": 255,
+        "sleeps": 0
+      }
+    ]
+  },
+  "other_languages": {
+    "go": {
+      "test_files": 84,
+      "test_file_lines": 21142,
+      "static_top_level_Test_functions": 368
+    },
+    "node": {
+      "test_files": 12,
+      "test_file_lines": 2593,
+      "static_line_start_test_or_it_declarations": 125
+    },
+    "limitations": "Static declarations, not executed or normalized for dynamic cases, subtests, fixture opt-ins or platform selection. Browser timeout budgets are not measured durations.",
+    "playwright": {
+      "test_files": 3,
+      "test_file_lines": 2826,
+      "static_line_start_test_declarations": 31,
+      "files": [
+        {
+          "path": "connect/test/browser.spec.mjs",
+          "lines": 281,
+          "static_test_declarations": 8,
+          "conditional_skip_sites": 0,
+          "explicit_test_timeout_ms": []
+        },
+        {
+          "path": "connect/test/browser_edge.spec.mjs",
+          "lines": 2440,
+          "static_test_declarations": 19,
+          "conditional_skip_sites": 16,
+          "explicit_test_timeout_ms": [
+            90000,
+            120000,
+            150000,
+            180000,
+            210000
+          ]
+        },
+        {
+          "path": "connect/test/browser_router_keys.spec.mjs",
+          "lines": 105,
+          "static_test_declarations": 4,
+          "conditional_skip_sites": 0,
+          "explicit_test_timeout_ms": []
+        }
+      ],
+      "execution_status": "not run; selected/skipped counts and actual durations unmeasured",
+      "session_expiry_case": {
+        "path": "connect/test/browser_edge.spec.mjs",
+        "name": "container-gated browser and CLI streams close on session expiry",
+        "fixture_expiry_seconds": 120,
+        "test_timeout_seconds": 210,
+        "conditional_on_disposable_fixture": true
+      }
+    }
+  },
+  "ci": {
+    "url": "https://github.com/fakoli/anvil-serving/actions/runs/40523966590",
+    "revision": "7b5158b724ca715c85a3302091d2a2b40f253da0",
+    "date": "2026-10-27",
+    "python313": {
+      "job_id": 122258315589,
+      "pytest_seconds": 827.48,
+      "test_step_seconds": 831,
+      "passed": 13961,
+      "skipped": 134,
+      "subtests_passed": 76,
+      "coverage_percent_combined": 79.55,
+      "coverage_fail_under": 70
+    },
+    "python311": {
+      "job_id": 122258315537,
+      "test_step_seconds": 793
+    },
+    "limitations": "CI did not publish per-case duration output; aggregate runtime does not prove a single slow case."
+  },
+  "focused_profile": {
+    "python_version": "3.12.14",
+    "pytest_seconds": 44.51,
+    "passed": 124,
+    "whole_run_timeout_seconds": 120,
+    "by_module": {
+      "tests.test_controller": {
+        "cases": 100,
+        "junit_seconds": 32.089
+      },
+      "tests.router.test_front_door": {
+        "cases": 24,
+        "junit_seconds": 12.11
+      }
+    },
+    "cases_at_least_0_45_seconds": 82,
+    "slowest_reported_call_seconds": 1.03,
+    "limitations": "Single local sample, two modules, no coverage instrumentation. Not comparable directly to full CI runtime."
+  },
+  "stdlib_shutdown_experiment": {
+    "results": [
+      {
+        "poll_interval_seconds": 0.5,
+        "shutdown_seconds": [
+          0.500771,
+          0.500542,
+          0.500811
+        ]
+      },
+      {
+        "poll_interval_seconds": 0.01,
+        "shutdown_seconds": [
+          0.010162,
+          0.010158,
+          0.010141
+        ]
+      }
+    ],
+    "limitations": "Three shutdown samples per interval on synthetic local HTTP server; not a measured suite speedup."
+  },
+  "targets": {
+    "max_retained_python_cases": 2819,
+    "minimum_net_removed_python_cases": 11276,
+    "normal_offline_suite_seconds": 120,
+    "status": "proposed, feasibility not established"
+  }
+}

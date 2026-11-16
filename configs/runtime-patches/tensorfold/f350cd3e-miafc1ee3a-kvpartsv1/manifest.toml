@@ -1,0 +1,30 @@
+schema = "anvil-tensorfold-patches/v1"
+metric_contract_version = 1
+engine_base = "f350cd3ea253a042e205746928271f9d8f71a82d"
+recipe_commit = "fc1ee3a5381031e2357662b46c2fb44b20190429"
+author_patch_count = 110
+author_source_tree = "c2afa0ff2c0fa878589d9a362c5878c9f7e82979"
+
+[[patches]]
+file = "anvil-stream-count.patch"
+sha256 = "e812fe99b19b57225f91750102a9163e5cc207367f78d103a0f0988f62f00991"
+
+[[patches]]
+file = "anvil-kv-pages-abi.patch"
+sha256 = "a0a68ad1bc40e9cfb8200c0f6a386b762d81e1132fe6e36ac7edcd57d69cd64f"
+
+[[patches]]
+file = "anvil-queue-admission-timing.patch"
+sha256 = "3e6b6af145b5fca676849f7edd95384a68386f0ea787f45a4fdb1ddbd7bfb229"
+
+[[patches]]
+file = "anvil-full-context-derived-bound.patch"
+sha256 = "e0bfe68b8b28fbfd310e83d11db85425182f0c8571088a34561394c5844966a2"
+
+[[patches]]
+file = "anvil-telemetry-validation.patch"
+sha256 = "cc9e6bd2305e3eb703601037b7c4f5bc1490c01c3ce1f12986b80ac2b7bc0ffe"
+
+[[patches]]
+file = "anvil-kv-partitions.patch"
+sha256 = "33dbb63232092fe09285c2e7b8e24531ccf23b40d6b181aa5a91e62713359c0f"

@@ -1069,8 +1069,16 @@ def _recipe_served_identity(row: dict, fallback: str) -> str:
         tokens = config.get("Cmd")
     if not isinstance(tokens, list):
         return fallback
+    # TensorFold's --name is a served identity only on its known native launchers.
+    entrypoint = config.get("Entrypoint")
+    executable = entrypoint[0] if isinstance(entrypoint, list) and entrypoint else row.get("Path")
+    flags = ("--served-model-name", "--model-id")
+    if isinstance(executable, str) and executable.rsplit("/", 1)[-1] in {
+        "tensorfold-native", "anvil-tensorfold-ranks",
+    }:
+        flags += ("--name",)
     # Preserve the existing served-name override before the model-id alias.
-    for flag in ("--served-model-name", "--model-id"):
+    for flag in flags:
         for index, token in enumerate(tokens):
             if not isinstance(token, str):
                 continue

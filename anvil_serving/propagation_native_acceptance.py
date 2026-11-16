@@ -18,7 +18,7 @@ import sys
 import time
 import uuid
 
-from .control_plane.propagation import ReceiptIdentity, _utc
+from .control_plane.propagation import ReceiptIdentity, _digest, _utc
 from .propagation_pi_acceptance import (
     PiAcceptanceError, PiQuiescenceError, PiFixtureAcceptance, PiFixtureProfile, PiWebFixtureAcceptance, PiWebFixtureProfile, _write_private_json,
     write_acceptance_receipt,
@@ -73,8 +73,11 @@ def _custody(path, *, directory=False, digest=None, trusted_admin_groups=frozens
     return path
 
 
-def validate_native_runtime(target):
-    """Static preview only: no process, turn, fixture creation, or credential read."""
+def validate_native_runtime(target, *, managed_hermes_home=None):
+    """Static preview only; distinct Hermes executables require the pinned managed home.
+
+    No process, turn, fixture creation, or credential read occurs here.
+    """
     sessions = target.get("native_sessions", [])
     if not sessions:
         return
@@ -91,7 +94,6 @@ def validate_native_runtime(target):
     if web:
         if target["client"] != "pi" or type(runtime["port"]) is not int or not 1024 <= runtime["port"] <= 65535:
             raise NativeAcceptanceError("invalid Pi Web transport")
-        from .control_plane.propagation import _digest
         _digest(runtime["bridge_artifact_digest"])
         _digest(runtime["loaded_catalog_digest"])
         token_path = _custody(runtime["acceptance_token_file"])
@@ -123,9 +125,25 @@ def validate_native_runtime(target):
     if target["client"] == "pi" and not web:
         _custody(runtime["agent_dir"], directory=True)
     elif target["client"] == "hermes":
+        home = _custody(target["hermes"]["home"], directory=True)
         if runtime["executable"] != target["hermes"]["bin"]:
-            raise NativeAcceptanceError("Hermes runtime differs from catalog writer")
-        _custody(target["hermes"]["home"], directory=True)
+            managed = managed_hermes_home
+            if (sys.platform != 'linux' or type(managed) is not dict
+                    or set(managed) != {'path', 'device', 'inode', 'uid'}
+                    or type(managed['path']) is not str or managed['path'] != target['hermes']['home']
+                    or any(type(managed[key]) is not int or managed[key] < 0 for key in ('device', 'inode', 'uid'))
+                    or managed['uid'] != os.geteuid()):
+                raise NativeAcceptanceError("Hermes runtime differs without a managed home binding")
+            identity = home.stat()
+            if (identity.st_dev, identity.st_ino, identity.st_uid) != (managed['device'], managed['inode'], managed['uid']):
+                raise NativeAcceptanceError("managed Hermes home identity differs")
+            try:
+                metadata_digest = _digest(target['hermes'].get('bin_sha256'))
+                for item in sessions:
+                    _digest(item.get('executable_digest'))
+            except ValueError:
+                raise NativeAcceptanceError("managed Hermes executable pins are required") from None
+            _custody(target['hermes']['bin'], digest=metadata_digest, trusted_admin_groups=trusted_groups)
 
 
 def _cleanup_binding(profile, contract, job, job_digest):
@@ -215,7 +233,7 @@ class NativeFixtureLifecycle:
         return PiWebFixtureProfile(runtime["port"], token, runtime["bridge_artifact_digest"], runtime["loaded_catalog_digest"])
 
     def _pi_profile(self, target):
-        validate_native_runtime(target)
+        validate_native_runtime(target, managed_hermes_home=self.profile.get('managed_hermes_home'))
         runtime = target["native_runtime"]
         return PiFixtureProfile(Path(runtime["executable"]), target["native_sessions"][0]["executable_digest"],
             Path(runtime["agent_dir"]), Path(runtime["fixture_root"]),
@@ -232,7 +250,7 @@ class NativeFixtureLifecycle:
         finally:
             os.close(descriptor)
         def runner(argv, timeout):
-            validate_native_runtime(target)
+            validate_native_runtime(target, managed_hermes_home=self.profile.get('managed_hermes_home'))
             if target["client"] == "hermes":
                 argv = (argv[0], "-p", target["hermes"]["profile"], *argv[1:])
             return self.run(argv, min(timeout, self._timeout()), self._environment(target))
@@ -289,7 +307,7 @@ class NativeFixtureLifecycle:
         if self.prepared:
             raise NativeAcceptanceError("native fixtures already prepared")
         for target in self.targets:
-            validate_native_runtime(target)
+            validate_native_runtime(target, managed_hermes_home=self.profile.get('managed_hermes_home'))
             if any(Path(item[key]).exists() or Path(item[key]).is_symlink()
                    for item in target["native_sessions"] for key in ("fixture_file", "receipt_file")):
                 raise NativeAcceptanceError("native fixture evidence already exists")

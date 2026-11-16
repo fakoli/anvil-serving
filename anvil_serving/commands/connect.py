@@ -23,6 +23,7 @@ _USER_OPTIONS = (
     _option("--output", summary="Exclusive private handoff file; default is beside the manifest.", value_name="PATH"),
     _option("--input", summary="Private authentication archive to restore.", value_name="PATH"),
     _option("--include-gateway", summary="Also capture gateway authority after the authentication backup."),
+    _option("--scheduled", summary="Run the verified installed full backup worker now; exclusive with --include-gateway."),
     _option("--sha256", summary="Independently retained authentication archive checksum for restore.", value_name="DIGEST"),
     _option("--destination", summary="Fresh private recovery directory; does not activate restored accounts.", value_name="PATH"),
 )
@@ -46,6 +47,10 @@ def commands() -> CommandNode:
     return _node(
         "connect", "Manage authenticated API and browser access with Anvil Connect.",
         children=(
+            _node("native-agents-check", "Run finite local Agents checks without browser or email sign-in.",
+                handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("native-agents-check",), forward_confirm_flag=True),
+                options=(_option("--config", summary="Optional protected guest-only broker config; omission uses synthetic owners.", value_name="PATH"),) + _CONFIRM,
+                mutation_class="mutate", execution_policy="offline", docs_anchor="docs/cli/connect.md#native-agents-check"),
             _node("native-agents", "Run the native Agents broker behind a managed TLS edge.",
                 handler=_handler("anvil_serving.connect.cli", attribute="dispatch", argv_prefix=("native-agents",)),
                 options=(_option("--config", summary="Protected native broker configuration.", value_name="PATH"),),

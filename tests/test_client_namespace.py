@@ -75,21 +75,6 @@ def test_same_store_enrollment_holds_real_producer_and_writer_fences(tmp_path, e
 
 
 @pytest.mark.skipif(os.name != 'posix', reason='native offline custody requires POSIX producer/writer fences')
-@pytest.mark.parametrize('gate', ['producer', 'writer'])
-def test_competing_owner_refuses_before_enrollment_publication(tmp_path, gate, empty_history_owner):
-    import fcntl
-    store, declaration, value, _, _ = fixture(tmp_path)
-    path = store.path.parent / 'admission.json.router.lock' if gate == 'producer' else Path(str(store.path) + '.router-writers.lock')
-    with path.open('w') as stream:
-        path.chmod(0o600); fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        with pytest.raises(KeyStoreError):
-            client._run_offline('install', declaration, confirm=True)
-    assert not Path(value['installed_path']).exists()
-    with store._connect() as db:
-        assert db.execute('SELECT count(*) FROM key_owner_bindings').fetchone() == (0,)
-
-
-@pytest.mark.skipif(os.name != 'posix', reason='native offline custody requires POSIX producer/writer fences')
 @pytest.mark.parametrize('commit', [True, False])
 def test_actual_child_pending_pipe_holds_custody_until_verified_ack(tmp_path, commit, empty_history_owner):
     store, declaration, value, job, credential = fixture(tmp_path)

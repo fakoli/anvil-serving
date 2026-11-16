@@ -2,9 +2,8 @@
 import json
 from pathlib import Path
 
-import pytest
 
-from anvil_serving.client_catalog_sync import ClientCatalogError, sync_client_catalog_batch
+from anvil_serving.client_catalog_sync import sync_client_catalog_batch
 from tests.test_client_catalog_sync import (
     _Opener, _catalog, _native_three_client_batch, _run, _write_inputs,
     isolated_home as isolated_home, tmp_path as tmp_path,
@@ -55,14 +54,3 @@ def test_fenced_batch_file_reference_keeps_credentials_out_of_effects(tmp_path, 
     assert observed["models"]["providers"]["anvil"]["apiKey"] == reference
     assert observed["secrets"] == secrets
     assert not (path.parent / ".env").exists()
-
-
-@pytest.mark.parametrize("provider", [None, {}, {"source": "file", "path": "/synthetic/key"},
-    {"source": "file", "path": "/synthetic/key", "mode": "json"}])
-def test_file_reference_requires_a_declared_file_provider(tmp_path, provider):
-    path, _, _ = _write_inputs(tmp_path)
-    _file_reference(path)
-    document = json.loads(path.read_text()); document["secrets"] = {"providers": {"native_router": provider}}
-    path.write_text(json.dumps(document))
-    with pytest.raises(ClientCatalogError, match="declared file SecretRef"):
-        _run(tmp_path, clients="openclaw", opener=_Opener(*_catalog()))

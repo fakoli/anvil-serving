@@ -1,0 +1,142 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "output": "artifact-manifest.json",
+  "campaign": {
+    "id": "2026-11-08-tensorfold-go-validation",
+    "capability": "targeted Go coding",
+    "repository_revision": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "dirty_state": "clean executing source; publication is a separate docs-only change",
+    "started_at": "2026-11-08T23:43:47.812644Z",
+    "completed_at": "2026-11-08T23:59:36.564004Z",
+    "evidence_labels": [
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "inputs/source.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "go-16384/aider/preparation/oracle.json",
+        "go-16384/aider/selection.json",
+        "go-32768/aider/preparation/oracle.json",
+        "go-32768/aider/selection.json",
+        "inputs/aider-diagnostic-16k-v1.json",
+        "inputs/aider-diagnostic-32k-v1.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "inputs-r2/go-16384-spec.json",
+        "inputs-r2/go-32768-spec.json",
+        "inputs-r2/plan.json",
+        "inputs/plan.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration.json",
+        "inputs/source.json",
+        "projection-ledger.json",
+        "qualification/harness-tests-r2.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "go-16384/aider/adapter-result.json",
+        "go-16384/aider/preparation/oracle.json",
+        "go-16384/aider/process.json",
+        "go-16384/aider/requests.jsonl",
+        "go-16384/aider/result.json",
+        "go-16384/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "go-16384/aider/retention.json",
+        "go-16384/aider/selection.json",
+        "go-16384/artifact.json",
+        "go-32768/aider/adapter-result.json",
+        "go-32768/aider/preparation/oracle.json",
+        "go-32768/aider/process.json",
+        "go-32768/aider/requests.jsonl",
+        "go-32768/aider/result.json",
+        "go-32768/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+        "go-32768/aider/retention.json",
+        "go-32768/aider/selection.json",
+        "go-32768/artifact.json",
+        "setup-failure.json",
+        "native-evidence-validation.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "setup-failure.json",
+        "independent-review.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json",
+        "counter-reconciliation.json",
+        "qualification/frozen-comparison-integrity.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "case-diagnostics.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social publication copy was requested for this focused diagnostic."
+    }
+  ]
+}

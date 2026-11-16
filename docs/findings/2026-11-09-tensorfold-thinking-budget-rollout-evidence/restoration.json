@@ -1,0 +1,79 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-11-09-tensorfold-thinking-budget-rollout",
+  "status": "verified",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "evidence": [
+      "deployment.json",
+      "source-delivery.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "observed_at": "2026-11-09T22:35:37.071220+00:00",
+    "evidence": [
+      "preservation.json",
+      "completion-proofs.json",
+      "counter-reconciliation.json"
+    ]
+  },
+  "differences": [
+    "Local CLI/router code updated; model/global controls/cache policy and controller preserved.",
+    "Router roster changed with process namespace/start; protected stores/owners/policy/route preserved."
+  ],
+  "post_run_checks": [
+    {
+      "name": "model_incarnation_recipe_registry_GPU_and_limits_preserved",
+      "passed": true
+    },
+    {
+      "name": "route_base_effective_revision_preserved",
+      "passed": true
+    },
+    {
+      "name": "controller_incarnation_preserved",
+      "passed": true
+    },
+    {
+      "name": "protected_store_binding_preserved",
+      "passed": true
+    },
+    {
+      "name": "legacy_uncertainty_preserved",
+      "passed": true
+    },
+    {
+      "name": "owner_roster_changed_for_new_PID_namespace_and_start",
+      "passed": true
+    },
+    {
+      "name": "native_OOM_high_max_event_deltas",
+      "passed": true
+    },
+    {
+      "name": "owner_admitting",
+      "passed": true
+    },
+    {
+      "name": "frozen_inputs_unchanged",
+      "passed": true
+    },
+    {
+      "name": "host_RAM_and_effective_swap_limits_verified_unchanged",
+      "passed": true
+    },
+    {
+      "name": "router_and_native_advertised_model_metadata_verified_unchanged",
+      "passed": true
+    }
+  ],
+  "verified": true,
+  "not_applicable_reason": null,
+  "limits": [
+    "Remote memory terminal remains UNKNOWN and drained=false.",
+    "No rollback, reboot, fresh-host rebuild or fleet acceptance.",
+    "Private operator identities are withheld; selected observations and original hashes are retained."
+  ]
+}

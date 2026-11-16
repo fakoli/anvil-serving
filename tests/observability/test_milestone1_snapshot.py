@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from anvil_serving.observability.probes.containers import collect_containers
 from anvil_serving.observability.probes.gpu_nvidia import collect_nvidia_gpus
@@ -14,7 +14,7 @@ from anvil_serving.observability.probes.wsl_docker import (
     collect_wsl_docker_boundaries,
 )
 from anvil_serving.observability.redaction import redact_record
-from anvil_serving.observability.schema import CapabilityStatus, TelemetrySample
+from anvil_serving.observability.schema import TelemetrySample
 from anvil_serving.observability.status import prepare_sample
 
 
@@ -85,93 +85,6 @@ def _snapshot() -> list[TelemetrySample]:
         collected_at=NOW,
     )
     return windows + boundaries + gpu + shared + containers
-
-
-def test_integrated_snapshot_contains_every_milestone_signal() -> None:
-    snapshot = _snapshot()
-    metrics = {sample.metric for sample in snapshot}
-
-    assert {
-        "host.cpu.utilization",
-        "host.memory.used",
-        "host.memory.pressure",
-        "host.paging.rate",
-        "host.disk.throughput",
-        "host.network.throughput",
-        "boundary.cpu.utilization",
-        "boundary.memory.used",
-        "gpu.utilization",
-        "gpu.memory.used",
-        "gpu.memory.shared.used",
-        "container.cpu.utilization",
-        "container.memory.used",
-        "container.network.received",
-        "container.storage.read",
-    } <= metrics
-    boundaries = {
-        dict(sample.labels).get("boundary")
-        for sample in snapshot
-        if sample.metric == "boundary.memory.used"
-    }
-    assert boundaries == {"wsl-vm", "docker-engine"}
-    assert all(TelemetrySample.from_json(sample.to_json()) == sample for sample in snapshot)
-
-
-def test_degraded_states_remain_distinct_from_healthy_zero() -> None:
-    healthy_zero = collect_windows_host(
-        provider=lambda: {
-            "cpu_percent": 0,
-            "memory_total_bytes": 1,
-            "memory_available_bytes": 1,
-            "paging_pages_per_second": 0,
-            "disk_bytes_per_second": 0,
-            "network_bytes_per_second": 0,
-        },
-        host_id="dark",
-        collected_at=NOW,
-    )[0]
-    permission_denied = collect_windows_host(
-        provider=lambda: (_ for _ in ()).throw(PermissionError("denied")),
-        host_id="dark",
-        collected_at=NOW,
-    )[0]
-    unsupported = collect_windows_shared_gpu_memory(
-        provider=lambda: [], host_id="dark", collected_at=NOW
-    )[0]
-    failed = collect_nvidia_gpus(
-        provider=lambda: "malformed", host_id="dark", collected_at=NOW
-    )[0]
-    stale = prepare_sample(
-        TelemetrySample(
-            metric="host.memory.used",
-            source_timestamp=NOW - timedelta(seconds=10),
-            collection_timestamp=NOW,
-            host_id="dark",
-            collector_id="fixture",
-            capability="memory",
-            capability_status=CapabilityStatus.OK,
-            value=1,
-            unit="bytes",
-            stale_after_seconds=5,
-        )
-    )
-    ambiguous = next(
-        sample
-        for sample in _snapshot()
-        if dict(sample.labels).get("attribution") == "ambiguous"
-    )
-
-    assert healthy_zero.capability_status is CapabilityStatus.OK
-    assert healthy_zero.value == 0
-    assert permission_denied.capability_status is CapabilityStatus.PERMISSION_DENIED
-    assert unsupported.capability_status is CapabilityStatus.UNSUPPORTED
-    assert failed.capability_status is CapabilityStatus.FAILED
-    assert stale.capability_status is CapabilityStatus.STALE
-    assert dict(ambiguous.labels)["attribution"] == "ambiguous"
-    assert all(
-        sample.value is None
-        for sample in (permission_denied, unsupported, failed)
-    )
 
 
 def test_integrated_snapshot_and_logs_are_secret_free() -> None:

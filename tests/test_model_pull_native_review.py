@@ -25,8 +25,6 @@ def test_receipt_creation_is_exclusive_and_never_replaces_another_file(tmp_path)
             native._reserve_receipt(target)
         native._write_receipt(target, {"status": "downloading"}, first)
         if os.name == "nt":
-            # The Windows handle denies deletion/rename while reserved. The
-            # POSIX replacement attempt below is prevented at the OS boundary.
             with pytest.raises(PermissionError):
                 target.rename(tmp_path / "original.json")
             assert not (tmp_path / "original.json").exists()
@@ -35,21 +33,21 @@ def test_receipt_creation_is_exclusive_and_never_replaces_another_file(tmp_path)
             assert json.loads(target.read_text())["status"] == "verified"
             return
         target.rename(tmp_path / "original.json")
-        target.write_text('prior evidence')
+        target.write_text("prior evidence")
         with pytest.raises(native.NativePullError, match="path changed"):
             native._write_receipt(target, {"status": "verified"}, first)
-        assert target.read_text() == 'prior evidence'
+        assert target.read_text() == "prior evidence"
         assert json.loads((tmp_path / "original.json").read_text())["status"] == "downloading"
     finally:
         os.close(first)
 
 
 def test_filtered_snapshot_refuses_prior_excluded_files_without_deletion(tmp_path):
-    (tmp_path / "config.json").write_text('{}')
-    (tmp_path / "excluded.py").write_text('unexpected runtime code')
+    (tmp_path / "config.json").write_text("{}")
+    (tmp_path / "excluded.py").write_text("unexpected runtime code")
     with pytest.raises(native.NativePullError, match="outside the declared selection"):
         native._exact_snapshot_entries(tmp_path, {"files": [{"path": "config.json"}]})
-    assert (tmp_path / "excluded.py").read_text() == 'unexpected runtime code'
+    assert (tmp_path / "excluded.py").read_text() == "unexpected runtime code"
 
 
 def test_receipt_repeated_writes_remain_complete_json(tmp_path):

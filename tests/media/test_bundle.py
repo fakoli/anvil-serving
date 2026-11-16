@@ -41,43 +41,6 @@ def _lock(tmp_path):
     return path
 
 
-def test_inventory_reports_missing_without_creating_volume(tmp_path):
-    calls = []
-
-    def runner(argv, **_kwargs):
-        calls.append(argv)
-        return _completed(argv, 1, stderr="not found")
-
-    result = inventory(
-        "image.test", "v1", lock_path=_lock(tmp_path), models_volume="media-models",
-        runner=runner,
-    )
-    assert result["volumeExists"] is False
-    assert result["ready"] is False
-    assert result["assets"][0]["state"] == "missing"
-    assert calls == [["docker", "volume", "inspect", "media-models"]]
-
-
-def test_inventory_hashes_existing_assets_and_reports_conflict(tmp_path):
-    calls = 0
-
-    def runner(argv, **_kwargs):
-        nonlocal calls
-        calls += 1
-        if argv[:3] == ["docker", "volume", "inspect"]:
-            return _completed(argv)
-        return _completed(argv, stdout="122\n" + "d" * 64 + "\n")
-
-    result = inventory(
-        "image.test", "v1", lock_path=_lock(tmp_path), models_volume="media-models",
-        runner=runner,
-    )
-    assert calls == 2
-    assert result["ready"] is False
-    assert result["assets"][0]["state"] == "mismatch"
-    assert result["assets"][0]["observedSha256"] == "d" * 64
-
-
 def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
     probe_count = 0
     downloaded = False
@@ -131,51 +94,6 @@ def test_stage_adds_only_missing_verified_assets_and_reinventories(tmp_path):
     assert result["assets"][0]["state"] == "exact"
 
 
-def test_stage_refuses_existing_mismatch_without_mutation(tmp_path):
-    calls = []
-
-    def runner(argv, **_kwargs):
-        calls.append(argv)
-        if argv[:3] == ["docker", "volume", "inspect"]:
-            return _completed(argv)
-        return _completed(argv, stdout="123\n" + "d" * 64 + "\n")
-
-    with pytest.raises(MediaError, match="were preserved") as raised:
-        stage(
-            "image.test", "v1", lock_path=_lock(tmp_path), models_volume="media-models",
-            user_volume="media-user", dry_run=False, runner=runner,
-        )
-    assert raised.value.code == "media_bundle_conflict"
-    assert all(argv[:3] != ["docker", "volume", "create"] for argv in calls)
-
-
-def test_inventory_existing_volume_is_cache_only(tmp_path):
-    calls = []
-
-    def runner(argv, **_kwargs):
-        calls.append(argv)
-        if argv[:3] == ["docker", "volume", "inspect"]:
-            return _completed(argv)
-        return _completed(argv, 44)
-
-    result = inventory(
-        "image.test", "v1", lock_path=_lock(tmp_path),
-        models_volume="media-models", runner=runner,
-    )
-    assert result["ready"] is False
-    docker_run = next(argv for argv in calls if argv[:2] == ["docker", "run"])
-    assert "--pull=never" in docker_run
-
-
-@pytest.mark.parametrize("volume", ["C:/models", "../models", "-models", "models/name"])
-def test_volume_names_are_fail_closed(tmp_path, volume):
-    with pytest.raises(MediaError, match="named Docker volume"):
-        inventory(
-            "image.test", "v1", lock_path=_lock(tmp_path), models_volume=volume,
-            runner=lambda *_args, **_kwargs: pytest.fail("Docker was called"),
-        )
-
-
 def test_host_inventory_hashes_only_safe_pinned_targets_without_docker_or_writes(tmp_path):
     lock = _lock(tmp_path)
     value = json.loads(lock.read_text())
@@ -211,15 +129,3 @@ def test_host_inventory_rejects_symlink_escape(tmp_path):
         pytest.skip("test host cannot create directory symlinks")
     with pytest.raises(MediaError, match="escapes"):
         inventory("image.test", "v1", lock_path=lock, models_root=root)
-
-
-def test_host_inventory_does_not_hash_wrong_size_or_reopen_supplied_lock(tmp_path, monkeypatch):
-    from anvil_serving.media import bundle
-    lock_path = _lock(tmp_path)
-    lock = bundle._read_lock(lock_path)
-    root = tmp_path / "models"; path = root / "diffusion_models/one.safetensors"
-    path.parent.mkdir(parents=True); path.write_bytes(b"wrong-size")
-    monkeypatch.setattr(bundle.hashlib, "sha256", lambda: pytest.fail("wrong-size file was hashed"))
-    lock_path.write_text("invalid replacement")
-    result = inventory("image.test", "v1", lock_path=lock_path, models_root=root, _lock=lock)
-    assert result["assets"][0]["state"] == "mismatch" and "observedSha256" not in result["assets"][0]

@@ -90,7 +90,29 @@ installed CLI only as a verified fallback.
    public alias and maps it to the expected rollback model identity. Treat an
    auxiliary alias such as `llm.rollback` as profile-specific, not a universal
    rollback contract. Unknown or unavailable routes must remain fail-closed.
-3. Promotion provisioning: run the declared infrastructure capture and fleet
+3. For a promotion with several declared harnesses, use parallel read-only
+   preparation with explicit ownership:
+   - The lead retains authority for route/model lifecycle, promotion, and the
+     final catalog binding. It supplies the verified post-cutover router
+     generation, catalog digest, selected activation binding, and recovery
+     policy before any harness write.
+   - A harness-update worker inventories current owners and supported native
+     provisioning paths, prepares a bound update, and performs writes only
+     after receiving that verified binding. It must not infer a replacement
+     path from a retired legacy writer or bypass a workflow-retirement fence.
+   - An independent acceptance worker inventories only actually deployed
+     harnesses, records which profiles and sessions need testing, and validates
+     the resulting catalog, real client-shaped turns, preservation, and repeat
+     convergence. Retired installations are evidence, not active targets.
+   Keep worker evidence separate and have the lead join it against the same
+   route/catalog binding. Concurrent work is limited to isolated read-only
+   discovery; serialize client writes, owner recovery, and service reloads.
+   If the supported updater refuses an immutable-image, revision, or native
+   workflow-owner check, preserve the failure and use its reviewed fix-forward
+   path. Do not weaken the guard, re-enable a retired writer, or claim client
+   convergence. Report `harness_convergence_pending` while the accepted route
+   remains live.
+4. Promotion provisioning: run the declared infrastructure capture and fleet
    reconciliation on **every approved promotion**, even if alias names or token
    limits did not change. Derive the rebuild snapshot from the selected and
    rollback activation profiles, including their router, recipes and startup
@@ -240,15 +262,15 @@ installed CLI only as a verified fallback.
    Do not increase fixed budgets
    or omit a target to turn a failed preview green. Requalify the consumer and
    prepare a fresh successor rather than modifying a failed immutable packet.
-4. Reasoning/output: use the deployed default reasoning effort and enough
+5. Reasoning/output: use the deployed default reasoning effort and enough
    visible-answer headroom to observe a real answer. For an output cap, prove
    both the applied value and the explicit warning; an exhausted tiny probe is
    not a model failure.
-5. Exclusive mode: prove both GPU roles have the intended owner, every competing
+6. Exclusive mode: prove both GPU roles have the intended owner, every competing
    managed GPU workload is blocked, and shared-memory ownership is clean.
-6. OpenClaw: verify the Mini gateway path, selected model alias/context/reasoning
+7. OpenClaw: verify the Mini gateway path, selected model alias/context/reasoning
    settings, no silent fallback, and the expected MCP tool inventory.
-7. Re-run the post-deploy smoke after any hotfix. Record exact versions,
+8. Re-run the post-deploy smoke after any hotfix. Record exact versions,
    revisions, checks, failures, rollback state, and live result in the release
    evidence.
 

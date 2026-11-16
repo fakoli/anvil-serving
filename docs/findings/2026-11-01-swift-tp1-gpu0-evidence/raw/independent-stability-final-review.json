@@ -1,0 +1,56 @@
+{
+  "finding": {
+    "impact": "The artifacts establish observed successful behavior under the named new contract, but do not prove that the reviewed b158 implementation generated it. The successful observations must not close the amended stability gate or support promotion until that binding is repaired.",
+    "minimal_remedy": "Preserve all existing artifacts and the original failure. Run only the bounded successor stability scenarios from the clean isolated b158 worktree with an immutable execution receipt that records CWD, git revision/clean state, imported stability and evidence module paths plus individual SHA-256 values, and the canonical aggregate digest method/value. Bind that receipt and the scenario/result hashes in a new amendment; do not overwrite r2 evidence.",
+    "severity": "blocker_for_amended_live_stability_acceptance",
+    "summary": "The amended live results have no execution-time CWD, imported-module path, or source digest. The amendment declares python_source_sha256 1e6d1aa5..., but the documented canonical digest of all Python files at its clean b158 revision is abb70f1b..., so that aggregate pin is not independently reproducible from the stated source contract."
+  },
+  "reviewed_at": "2026-11-02T02:20:00+00:00",
+  "schema": "independent-stability-final-review/v1",
+  "scope": "read-only review of final-r4 stability validation; no lifecycle or model requests issued",
+  "scope_caveat": "Even after provenance repair, these are client-stream stability observations only. They do not establish scheduler batching, throughput ranking, or decode during contender prefill. Capacity and resource closure remain independent.",
+  "validated_observations": {
+    "amendment_chain": {
+      "amendment_path": "final-r4/stability-observer-amendment.json",
+      "amendment_sha256": "c6db965529bbf19d62fd13439ba79ac630f8508353a1d150283ae9ce38b3dff7",
+      "clean_tested_revision": "b15823d74379548f567ce68e117b350f89a521b6",
+      "full_suite_receipt_sha256_verified": "d10237760c766c0f24af8cfc79466df8e674f92e036c611e6f9474ae99087261",
+      "original_failed_artifact_sha256_verified": "9c7ec97c3112d65df00d6756acf3b58aec1b3a4da1dcb4bc3ec96eb8195b9c6b",
+      "review_sha256_verified": "02348700eab0746c42fdc66af0b4f18f39e05a4e5b8eb3a342c57b7abc9bd925"
+    },
+    "artifacts": [
+      {
+        "all_runtime_coverage_retrieval_gates_passed": true,
+        "contract": "contender-response-wait/v1",
+        "path": "final-r4/stability-serial-unique.json",
+        "rounds": 3,
+        "sha256": "83816d9b69b64315381feb65cf541659813c4f06bd0b26091beb2ced0ca89b51"
+      },
+      {
+        "all_runtime_coverage_retrieval_gates_passed": true,
+        "contract": "contender-stream-active/v1",
+        "path": "final-r4/stability-overlap-unique-r2.json",
+        "rounds": 3,
+        "sha256": "f339c2e30fff126d1ac57846f3ecfbaed3d66da737f5f9803ca39e763b49dc72",
+        "timestamp_order_verified": "anchor first output <= contender first output <= active anchor delta <= contender end, in all three rounds"
+      },
+      {
+        "all_runtime_coverage_retrieval_gates_passed": true,
+        "contract": "contender-stream-active/v1",
+        "path": "final-r4/stability-overlap-repeat-r2.json",
+        "rounds": 3,
+        "sha256": "1ca4bcf2a790e36454971ae568a4c90096ecda4230fa82302a404ee7e9e56497",
+        "timestamp_order_verified": "anchor first output <= contender first output <= active anchor delta <= contender end, in all three rounds"
+      }
+    ],
+    "identity": {
+      "distinct_complete_identity_tuples": 1,
+      "identity_observations": 63,
+      "result": "all retained samples bind the same final activation identity"
+    },
+    "validation_receipt": {
+      "path": "final-r4/stability-final-validation.json",
+      "sha256": "7eb39b5aadf11edf088587effa2a108e28e8d9d70e901816061a7c01874d7099"
+    }
+  }
+}

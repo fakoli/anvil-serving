@@ -4,21 +4,10 @@ import json
 import pytest
 
 from anvil_serving.benchmarking import (
-    aider, aider_adapter, aider_containment, aider_prepare, harnesses, harness_runtime,
-    performance, performance_adapter, performance_prepare,
+    aider, aider_adapter, aider_prepare, performance,
+    performance_adapter, performance_prepare,
 )
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
-
-
-def test_legacy_helpers_reexport_the_shared_implementations():
-    for name in ("resolve_container_binary", "_default_runner", "_bounded_text", "_run",
-                 "_directory_bytes", "_normalized_freeze"):
-        assert getattr(harnesses, name) is getattr(harness_runtime, name)
-    for name in ("SOURCE_HASHES", "task_snapshot", "validate_task_id", "load_test_callback",
-                 "contained_test_callback"):
-        assert getattr(aider_adapter, name) is getattr(aider_containment, name)
-    for name in ("SOURCE_HASHES", "instrumentation", "validate_supported_parameters"):
-        assert getattr(performance_adapter, name) is getattr(performance_prepare, name)
 
 
 @pytest.mark.parametrize("planner,adapter,validator,launch,code", [

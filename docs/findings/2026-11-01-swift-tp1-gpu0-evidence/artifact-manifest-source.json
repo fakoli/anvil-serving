@@ -1,0 +1,259 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-11-01-swift-tp1-gpu0",
+    "capability": "text and image serving",
+    "repository_revision": "269bc88e3cb84bd82d14d170058d1c1e493c71cc",
+    "dirty_state": "public redacted qualification derivatives",
+    "started_at": "2026-11-01T00:00:00Z",
+    "completed_at": "2026-11-02T03:00:00Z",
+    "evidence_labels": [
+      "functional",
+      "capacity",
+      "quality",
+      "historical-comparison"
+    ],
+    "decision_labels": [
+      "qualification-accepted",
+      "deployment-private"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.benchmark-result/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "summary.json",
+        "evidence-summary.md",
+        "missing-data.md"
+      ],
+      "reason": "public-safe campaign index and bounded outcome."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json",
+        "redaction-ledger.json"
+      ],
+      "reason": "provenance and redaction bindings."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "plans/metrics-coverage-erratum-r4.json"
+      ],
+      "reason": "frozen measurement-coverage correction."
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "plans/run-plan-r4-summary-complete.json"
+      ],
+      "reason": "retained plan and matching controls."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "configuration/identity-mtp3-r4-final.json",
+        "configuration/mtp3-r4-final-allocation-admission.json",
+        "configuration/model-config.json"
+      ],
+      "reason": "sanitized final identity and admission."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "README.md",
+        "campaign-state.json",
+        "configuration/identity-mtp3-r4-final.json",
+        "configuration/model-config.json",
+        "configuration/mtp3-r4-final-allocation-admission.json",
+        "coverage-and-gaps.md",
+        "dispatch-packet.md",
+        "evidence-summary.md",
+        "friction-log.md",
+        "graph-manifest.json",
+        "graphs/context-update.sha256",
+        "graphs/first.sha256",
+        "graphs/historical-r4-ordinary-summary-data.json",
+        "graphs/historical-r4-ordinary-summary.svg",
+        "graphs/second.sha256",
+        "missing-data.md",
+        "numerical-import-projection.json",
+        "plans/metrics-coverage-erratum-r4.json",
+        "plans/run-plan-r4-summary-complete.json",
+        "raw/agentic-native-evidence.json",
+        "raw/agentic-pilot-native-evidence.json",
+        "raw/c2-evidence-amendment.json",
+        "raw/capacity-summary.json",
+        "raw/context-admission.json",
+        "raw/context-concurrent/prompt-0.txt",
+        "raw/context-concurrent/prompt-1.txt",
+        "raw/context-concurrent/requests.jsonl",
+        "raw/context-concurrent/result.json",
+        "raw/context-native-validation.json",
+        "raw/context-native/artifact.json",
+        "raw/context-native/evidence/0-assets.json",
+        "raw/context-native/evidence/0-context.json",
+        "raw/context-native/evidence/0-preflight.json",
+        "raw/context-native/native-evidence.json",
+        "raw/controls.jsonl",
+        "raw/correlation.jsonl",
+        "raw/deep-health.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c1-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c16-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c2-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c4-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx32768-c8-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c1-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c16-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c2-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c4-r1-a1.json",
+        "raw/final-capacity/mtp3/mtp3-final-r4-summary-ctx8192-c8-r1-a1.json",
+        "raw/images-validation.json",
+        "raw/images.json",
+        "raw/independent-digest-c2-review.json",
+        "raw/independent-stability-final-review.json",
+        "raw/independent-stability-observer-r3-review.json",
+        "raw/independent-stability-source-binding-correction.json",
+        "raw/mtp3-r4-summary.json",
+        "raw/mtp3-r5-rejection.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c1-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c1-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c1-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c16-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c16-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c16-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c2-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c2-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c2-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c4-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c4-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c4-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c8-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c8-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx32768-c8-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c1-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c16-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c16-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c16-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c2-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c4-r3-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r1-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r2-a1.json",
+        "raw/native-capacity/mtp3/mtp3-summary-ctx8192-c8-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c1-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c1-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c1-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c16-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c16-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c16-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c2-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c2-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c2-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c4-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c4-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c4-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c8-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c8-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx32768-c8-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c1-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c16-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c16-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c16-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c2-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c4-r3-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r1-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r2-a1.json",
+        "raw/native-capacity/nospec/nospec-summary-ctx8192-c8-r3-a1.json",
+        "raw/nospec-summary.json",
+        "raw/r4-comparison-decision.json",
+        "raw/resource-final-validation.json",
+        "raw/resource-observation/binding.json",
+        "raw/resource-observation/result.json",
+        "raw/stability-final-validation.json",
+        "raw/stability-observer-amendment.json",
+        "raw/stability-observer-full-tests-r2-receipt.json",
+        "raw/stability-observer-full-tests-r2.log",
+        "raw/stability-overlap-repeat-r2.json",
+        "raw/stability-overlap-unique-r2.json",
+        "raw/stability-overlap-unique.json",
+        "raw/stability-serial-unique.json",
+        "raw/strict-attempt2-adjudication.json",
+        "raw/swe-native-validation.json",
+        "raw/swe-native/artifact.json",
+        "raw/swe-native/evidence/0-assets.json",
+        "raw/swe-native/evidence/0-preflight.json",
+        "raw/swe-native/evidence/0-swe-canonical-retention.json",
+        "raw/swe-native/evidence/2-swe.json",
+        "raw/swe-native/evidence/swe-canonical/official-grader/official-grader-report.json",
+        "raw/swe-native/native-evidence.json",
+        "raw/swe-native/official-grader-report-binding.json",
+        "redaction-ledger.json",
+        "restoration.json",
+        "source-registry.json",
+        "summary.json"
+      ],
+      "reason": "Sanitized qualification snapshots, retained failures, charts and validation."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "retained strict, R5, and observer failures."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Explicit private operational boundary; no public restoration assertion."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "raw/r4-comparison-decision.json"
+      ],
+      "reason": "bounded decision and historical comparison."
+    },
+    {
+      "role": "publication-summary",
+      "status": "retained",
+      "files": [
+        "evidence-summary.md",
+        "missing-data.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": "Qualification coverage and bounded public scope."
+    }
+  ]
+}

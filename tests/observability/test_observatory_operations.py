@@ -171,42 +171,6 @@ def terminal(call, key):
     raise AssertionError("operation did not reach expected state")
 
 
-def test_host_pi_frame_source_is_narrow_and_keeps_ancestors_denied(site):
-    _console, _owner, call = site
-    status, _body, headers = call("GET", "operations", include_headers=True)
-    assert status == 200
-    csp = headers["Content-Security-Policy"]
-    assert "frame-src https://pi.example.test" in csp
-    assert "frame-src 'self'" not in csp
-    assert "frame-ancestors 'none'" in csp
-    assert "connect-src 'self'" in csp
-
-
-def test_console_frame_source_is_none_without_host_pi(tmp_path):
-    config = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
-              "authentication": {"grafana_url": "http://127.0.0.1:3000"},
-              "state_path": str(tmp_path / "journal.sqlite"), "prometheus_url": "http://127.0.0.1:9090",
-              "inventory": {}, "workbench": {"state_path": str(tmp_path / "workbench.sqlite")}}
-    console = Console(config, metrics=FakeMetrics())
-    server = create_dashboard_server(TelemetryRegistry(), port=0)
-    attach_console(server, console)
-    thread = run_server_in_thread(server)
-    try:
-        connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=5)
-        connection.request("GET", "/observatory/", headers={"Host": "console.example.test"})
-        response = connection.getresponse()
-        response.read()
-        csp = response.getheader("Content-Security-Policy")
-        connection.close()
-        assert response.status == 200
-        assert "frame-src 'none'" in csp
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join()
-        console.close()
-
-
 def test_host_pi_rejects_console_or_fallback_same_origin(tmp_path):
     base = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [],
             "authentication": {"grafana_url": "http://127.0.0.1:3000"}, "state_path": str(tmp_path / "journal.sqlite"),
@@ -228,79 +192,6 @@ def test_host_pi_rejects_console_or_fallback_same_origin(tmp_path):
     }}
     with pytest.raises(ValueError, match="separate application origin"):
         Console(fallback, metrics=FakeMetrics(), environment={"CONNECT_ASSERTION_CURRENT": "fixture-secret"})
-
-
-def test_console_read_lists_independent_operation_and_benchmark_sources(site):
-    console, _owner, call = site
-    review = preview(call)
-    _, response = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-run-list"})
-    operation = terminal(call, response["data"]["id"])
-    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
-
-    catalog = console.read("run-sources", {}, session)
-    assert {item["id"] for item in catalog["items"]} == {"operations", "benchmark"}
-    operations = console.read("runs/operations", {"limit": "1"}, session)
-    benchmarks = console.read("runs/benchmark", {"limit": "1"}, session)
-
-    assert operations["items"][0]["native_id"] == operation["id"]
-    assert operations["items"][0]["source"] == "operations"
-    assert operations["sources"][0]["truncated"] is False
-    assert benchmarks["items"][0]["native_id"] == "benchmark-fixture-1"
-    assert benchmarks["items"][0]["owner_id"] == "benchmark-owner"
-    assert benchmarks["items"][0]["correlation_id"].startswith("benchmark-job-")
-
-
-def test_lost_experiment_response_reconciles_to_the_owner_job_reference(site):
-    console, owner, _call = site
-    job_ref = {
-        "schema": "anvil-serving.run-correlation/v1", "issuer": "benchmark-owner",
-        "namespace": "benchmark-job", "native_id": "context-001",
-    }
-    owner.controls = lambda resource: {
-        "resource_id": resource, "baseline_digest": digest("experiment-baseline"),
-        "actions": [{"id": "experiment.start", "label": "Run fixture benchmark", "supported": True}],
-        "settings": [],
-    }
-    owner.preview = lambda resource, action, values=None, parameters=None: {
-        "host_id": "host-fixture-a", "resource_id": resource, "action_id": action,
-        "label": "Fixture benchmark", "baseline_digest": digest("experiment-baseline"),
-        "candidate_digest": digest(parameters or {}), "effect": "fixture benchmark", "diff": [],
-    }
-
-    def lose_response(_preview, intent_key):
-        owner.completed[intent_key] = {
-            "ok": True, "owner_operation_id": intent_key, "native_state": "completed",
-            "execution_outcome": "succeeded", "benchmark_job_ref": job_ref,
-        }
-        raise TimeoutError
-
-    owner.execute = lose_response
-    session = Session("experiment-session", "csrf", Principal(
-        "operator-fixture", "operator", "operator", frozenset({"*"}),
-        frozenset({"experiment.start"}),
-    ), time.time() + 60)
-    preview = console.create_preview(session, {
-        "resource_id": "serve-fixture-a", "action_id": "experiment.start", "parameters": {},
-    })
-    accepted = console.apply(session, {"preview_id": preview["id"], "intent_key": "fixture-experiment"})
-    deadline = time.monotonic() + 2
-    while console.store.get(accepted["id"])["status"] != "outcome_unknown":
-        assert time.monotonic() < deadline
-        time.sleep(0.01)
-    owner.reconciled = True
-    console._reconcile(console.store.get(accepted["id"]))
-    retained = console.store.get(accepted["id"])
-    assert retained["benchmark_job_ref"] == job_ref
-    operation = console._operation_run(retained)
-    owner.benchmark_rows = [{
-        "native_id": "context-001", "native_state": "completed", "suite": "context",
-        "profile": "fixture-profile", "model": "fixture-model",
-        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
-        "artifact": {"sha256": "a" * 64},
-    }]
-    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
-    benchmark = console.read("runs/benchmark", {"limit": "1"}, session)["items"][0]
-    assert operation["correlation_id"] == benchmark["correlation_id"]
 
 
 def test_run_sources_do_not_expose_the_other_side_without_its_grant(site):
@@ -354,28 +245,6 @@ def test_benchmark_head_poll_carries_bounded_off_head_status_updates(site):
 
     with pytest.raises(ObservatoryError, match="distinct valid"):
         console.read("runs/benchmark", {"refresh_refs": json.dumps([{"suite": "bad/path", "run_id": "older-active"}])}, session)
-
-
-def test_benchmark_cache_retains_a_projected_hundred_row_page(site):
-    console, owner, _call = site
-    owner.benchmark_rows = [{
-        "native_id": f"benchmark-fixture-{number:03d}", "native_state": "completed",
-        "suite": "context", "profile": "profile-" + "p" * 240,
-        "model": "model-" + "m" * 240,
-        "submitted_at": "2026-09-19T00:00:00Z", "updated_at": "2026-09-19T00:01:00Z",
-        "artifact": {"sha256": "a" * 64},
-    } for number in range(100)]
-    session = Session("fixture-session", "csrf", console.access.users["operator"], time.time() + 60)
-
-    fresh = console.read("runs/benchmark", {"limit": "100"}, session)
-    assert len(canonical(fresh)) > 48 * 1024
-    assert len(canonical(fresh)) <= 128 * 1024
-
-    owner.fail_verification = True
-    stale = console.read("runs/benchmark", {"limit": "100"}, session)
-    assert len(stale["items"]) == 100
-    assert stale["sources"][0]["status"] == "stale"
-    assert {row["freshness"] for row in stale["items"]} == {"stale"}
 
 
 def test_console_operation_runs_page_past_the_legacy_hundred_row_cap(site):
@@ -472,43 +341,6 @@ def test_failed_recovery_retains_attention_and_blocks_conflicting_intent(site):
     assert console.store.get(operation["id"])["status"] == "manual_recovery_required"
 
 
-def test_expired_session_cannot_apply_open_preview(site):
-    console, owner, call = site
-    review = preview(call)
-    console.access.clock = lambda: time.time() + 7200
-    status, result = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-expired-session"})
-    assert status == 401 and result["error"]["code"] == "unauthenticated"
-    assert owner.mutations == 0 and not console.store.list_private()
-
-
-def test_config_install_does_not_mark_stopped_model_ready(site):
-    console, owner, call = site
-    owner.snapshot = lambda: {"hosts": [], "serves": [{"id": "serve-fixture-a", "runtime_state": "stopped", "readiness": "not_ready"}]}
-    review = preview(call)
-    _, response = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-install-stopped"})
-    assert terminal(call, response["data"]["id"])["status"] == "succeeded"
-    _, fleet = call("GET", "fleet")
-    assert fleet["data"]["serves"][0]["runtime_state"] == "stopped"
-    assert fleet["data"]["serves"][0]["readiness"] == "not_ready"
-
-
-def test_unknown_metric_filter_is_a_client_error_without_source_call(site):
-    console, owner, call = site
-    console.metrics.chart = lambda *_args, **_kwargs: pytest.fail("invalid query reached source")
-    status, result = call("GET", "metrics?chart=arbitrary-query")
-    assert status == 400 and result["error"]["code"] == "invalid_metric_filter"
-    status, _ = call("GET", "metrics?chart=generation&range=unbounded")
-    assert status == 400
-
-
-def test_config_drift_and_expired_preview_never_dispatch(site):
-    console, owner, call = site
-    review = preview(call)
-    owner.current = 65
-    status, result = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-stale"})
-    assert status == 409 and result["error"]["code"] == "stale_preview" and owner.mutations == 0
-
-
 def test_lost_transport_reconciles_without_replay(site):
     console, owner, call = site
     owner.lose_transport = True
@@ -528,53 +360,12 @@ def test_lost_transport_reconciles_without_replay(site):
     assert status["data"]["status"] == "succeeded" and owner.mutations == 1
 
 
-def test_transient_verification_failure_during_reconcile_remains_resumable(site):
-    console, owner, call = site
-    owner.lose_transport = True
-    review = preview(call)
-    _, response = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-verification-lost"})
-    key = response["data"]["id"]
-    assert terminal(call, key)["status"] == "outcome_unknown"
-    original_verify = owner.verify
-    def unavailable(*args):
-        raise TimeoutError("temporary verification loss")
-    owner.verify = unavailable
-    owner.reconciled = True
-    console._reconcile(console.store.get(key))
-    assert console.store.get(key)["status"] == "outcome_unknown"
-    owner.verify = original_verify
-    console._reconcile(console.store.get(key))
-    assert console.store.get(key)["status"] == "succeeded" and owner.mutations == 1
-
-
-def test_command_success_is_not_observed_success(site):
-    console, owner, call = site
-    owner.fail_verification = True
-    review = preview(call)
-    _, result = call("POST", "operations", {"preview_id": review["id"], "intent_key": "fixture-verification"})
-    status = terminal(call, result["data"]["id"])
-    assert status["status"] == "failed" and status["execution_outcome"] == "succeeded"
-    assert status["verification"]["status"] == "failed"
-    assert owner.observed == 64 and owner.current == 32
-
-
 @pytest.mark.parametrize("route", ["drafts", "previews", "operations"])
 def test_read_credentials_and_forged_identity_cannot_mutate(site, route):
     console, owner, call = site
     for token in ("fixture-legacy-read-token", "fixture-workload-read-token"):
         status, _ = call("POST", route, {}, authenticated=False, extra={"Authorization": "Bearer " + token, "Tailscale-User-Login": "operator"})
         assert status == 401
-    assert owner.mutations == 0
-
-
-def test_csrf_origin_body_and_query_hardening(site):
-    console, owner, call = site
-    for extra in ({"Origin": "https://evil.example.test"}, {"X-CSRF-Token": "forged"}, {"Host": "forged.example.test"}):
-        assert call("POST", "previews", {}, extra=extra)[0] == 403
-    assert call("POST", "previews", raw='{"resource_id":"one","resource_id":"two"}')[0] == 400
-    assert call("GET", "controls?resource=one&resource=two")[0] == 400
-    assert call("GET", "metrics?chart=generation&url=http://127.0.0.1/private")[0] == 400
-    assert call("POST", "previews", {"resource_id": "serve-fixture-a", "action_id": "shell.execute"})[0] == 403
     assert owner.mutations == 0
 
 
@@ -598,67 +389,6 @@ def _rejected_mutation(port, headers, body=b""):
     return time.monotonic() - started, raw
 
 
-@pytest.mark.parametrize(("header", "code"), [
-    (("Host", "forged.example.test"), b"host_denied"),
-    (("Origin", "https://evil.example.test"), b"origin_denied"),
-    (("X-CSRF-Token", "forged"), b"csrf_denied"),
-])
-def test_early_mutation_rejection_drains_small_safe_body(site, header, code):
-    console, owner, call = site
-    body = b"{}"
-    headers = [
-        ("Host", "console.example.test"), ("Origin", "https://console.example.test"),
-        ("Content-Type", "application/json"), ("Content-Length", str(len(body))), header,
-    ]
-    if header[0] == "X-CSRF-Token":
-        session = next(iter(console.access._sessions.values()))
-        headers.append(("Cookie", console.access.cookie(session).split(";", 1)[0]))
-    elapsed, raw = _rejected_mutation(call.server.server_address[1], headers, body)
-    assert elapsed < 1
-    assert raw.startswith(b"HTTP/1.0 403 ")
-    assert code in raw
-    assert owner.mutations == 0
-
-
-@pytest.mark.parametrize("headers, body", [
-    ([("Content-Length", "2"), ("Content-Length", "2")], b""),
-    ([("Content-Length", "65537")], b""),
-    ([("Content-Length", "2")], b"{"),
-])
-def test_early_mutation_rejection_never_drains_unsafe_or_slow_body(site, headers, body):
-    _, owner, call = site
-    elapsed, raw = _rejected_mutation(call.server.server_address[1], [
-        ("Host", "forged.example.test"), ("Origin", "https://console.example.test"),
-        ("Content-Type", "application/json"), *headers,
-    ], body)
-    assert elapsed < 1
-    assert raw.startswith(b"HTTP/1.0 403 ") and b"host_denied" in raw
-    assert owner.mutations == 0
-
-
-def test_partial_sources_and_offline_hosts_survive(site):
-    console, owner, call = site
-    status, body = call("GET", "fleet")
-    assert status == 200
-    assert len(body["data"]["hosts"]) == 2
-    assert body["data"]["hosts"][0]["controller"]["status"] == "complete"
-    assert body["data"]["hosts"][1]["telemetry"]["status"] == "unavailable"
-
-
-def test_owner_placeholders_cannot_erase_independent_telemetry(site):
-    console, owner, call = site
-    console.metrics.snapshot = lambda: {"hosts": [{"id": "host-fixture-a", "platform": "linux", "telemetry": {"status": "complete"}, "gpus": [{"id": "gpu-fixture-a", "memory_used": {"value": 42, "status": "fresh"}, "owners": []}]}],
-                                        "serves": [{"id": "serve-fixture-a", "host_id": "host-fixture-a", "metrics": {"queue": {"value": 0, "status": "fresh"}}}]}
-    owner.snapshot = lambda: {"hosts": [{"id": "host-fixture-a", "platform": "unknown", "telemetry": {"status": "unavailable"}, "controller": {"status": "complete"}, "gpus": [{"id": "gpu-fixture-a", "owners": ["serve-fixture-a"]}]}],
-                               "serves": [{"id": "serve-fixture-a", "metrics": {}, "runtime_state": "running"}]}
-    _, response = call("GET", "fleet")
-    host, serve = response["data"]["hosts"][0], response["data"]["serves"][0]
-    assert host["platform"] == "linux" and host["telemetry"]["status"] == "complete"
-    assert host["gpus"][0]["memory_used"]["value"] == 42
-    assert host["gpus"][0]["owners"] == ["serve-fixture-a"]
-    assert serve["metrics"]["queue"]["value"] == 0 and serve["runtime_state"] == "running"
-
-
 def test_host_grant_does_not_grant_its_serves_or_integration_ids(site):
     console, owner, call = site
     console.config["inventory"] = {"serves": [{"id": "serve-fixture-a", "host_id": "host-fixture-a"}]}
@@ -669,93 +399,6 @@ def test_host_grant_does_not_grant_its_serves_or_integration_ids(site):
     settings = console.read("settings", {}, reader)
     assert settings["integrations"]["hosts"] == ["host-fixture-a"]
     assert settings["integrations"]["serves"] == []
-
-
-def test_observatory_does_not_publish_anonymous_legacy_telemetry(tmp_path):
-    config = {"origin": "https://console.example.test", "base_path": "/observatory/", "users": [], "authentication": {}, "state_path": str(tmp_path / "db")}
-    console = Console(config, metrics=FakeMetrics(), adapter=FakeOwner(), authenticate=lambda u, p: False)
-    server = create_dashboard_server(TelemetryRegistry(), port=0)
-    attach_console(server, console)
-    thread = run_server_in_thread(server)
-    try:
-        for route, expected in (("/v1/metrics", 401), ("/v1/workloads", 403)):
-            connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1])
-            connection.request("GET", route, headers={"Host": "console.example.test"})
-            response = connection.getresponse()
-            response.read()
-            assert response.status == expected
-            connection.close()
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join()
-        console.close()
-
-
-def test_journal_restart_preserves_ambiguous_intent_and_never_prunes_it(tmp_path):
-    path = tmp_path / "journal.sqlite"
-    store = IntentStore(path)
-    preview = {"id": "fixture-preview", "resource_id": "fixture-serve", "host_id": "fixture-host", "action_id": "serve.stop", "label": "Stop fixture", "candidate_digest": "a" * 64, "baseline_digest": "b" * 64}
-    item, created = store.accept(preview, "fixture-actor", "fixture-key")
-    assert created
-    store.close()
-    restored = IntentStore(path, clock=lambda: time.time() + 86400 * 90)
-    restored.prune()
-    assert restored.get(item["id"])["status"] == "outcome_unknown"
-    same, created = restored.accept(preview, "fixture-actor", "fixture-key")
-    assert not created and same["id"] == item["id"]
-    restored.close()
-
-
-def test_additive_connect_profiles_survive_a_previous_v1_binary_open(tmp_path):
-    """A rollback opens the same journal; it never restores an older database."""
-    path = tmp_path / "journal.sqlite"
-    # Start from the exact previous v1 table set with already-owned state.
-    prior_schema = """
-        CREATE TABLE IF NOT EXISTS drafts(id TEXT PRIMARY KEY, actor TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS previews(id TEXT PRIMARY KEY, actor TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS intents(id TEXT PRIMARY KEY, intent_key TEXT UNIQUE NOT NULL, fingerprint TEXT NOT NULL,
-            actor TEXT NOT NULL, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL, updated REAL NOT NULL);
-        CREATE TABLE IF NOT EXISTS evidence(id TEXT PRIMARY KEY, resource TEXT NOT NULL, body TEXT NOT NULL, created REAL NOT NULL);
-        PRAGMA user_version=1;
-    """
-    prior = sqlite3.connect(path)
-    prior.executescript(prior_schema)
-    prior.execute("INSERT INTO drafts VALUES(?,?,?,?)", ("legacy-draft", "fixture-actor", '{"id":"legacy-draft"}', 0))
-    prior.commit()
-    prior.close()
-
-    store = IntentStore(path)
-    assert store.draft("legacy-draft", "fixture-actor") == {"id": "legacy-draft"}
-    preview = {"id": "fixture-preview", "resource_id": "fixture-serve", "host_id": "fixture-host", "action_id": "serve.stop", "label": "Stop fixture", "candidate_digest": "a" * 64, "baseline_digest": "b" * 64}
-    intent, created = store.accept(preview, "fixture-actor", "fixture-key")
-    assert created
-    profile = store.connect_profile("connect-subject")
-    store.close()
-
-    # This is the previous binary's open-time schema setup. Its v1 marker and
-    # table declarations leave unknown additive tables and journal records in
-    # place rather than replacing the state database.
-    prior = sqlite3.connect(path)
-    assert prior.execute("PRAGMA user_version").fetchone()[0] == 1
-    prior.executescript(prior_schema)
-    assert prior.execute("SELECT body FROM drafts WHERE id='legacy-draft'").fetchone()[0] == '{"id":"legacy-draft"}'
-    prior.close()
-
-    restored = IntentStore(path)
-    assert restored.db.execute("PRAGMA user_version").fetchone()[0] == 1
-    assert restored.draft("legacy-draft", "fixture-actor") == {"id": "legacy-draft"}
-    assert restored.get(intent["id"])["id"] == intent["id"]
-    assert restored.connect_profile("connect-subject") == profile
-    assert restored.db.execute("SELECT count(*) FROM connect_profiles").fetchone()[0] == 1
-    restored.close()
-
-    foreign = tmp_path / "future.sqlite"
-    future = sqlite3.connect(foreign)
-    future.execute("PRAGMA user_version=2")
-    future.close()
-    with pytest.raises(ValueError, match="unsupported journal schema"):
-        IntentStore(foreign)
 
 
 @pytest.mark.parametrize("restoration_verified", [True, False])

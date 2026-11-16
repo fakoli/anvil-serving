@@ -409,6 +409,9 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
         scenario = _mapping(raw.get("scenario"))
         config = _mapping(scenario.get("configuration"))
         errors = []
+        overlap_contract = raw.get("overlap_contract", "contender-response-wait/v1")
+        if overlap_contract not in {"contender-response-wait/v1", "contender-stream-active/v1"}:
+            errors.append("unsupported stability overlap contract")
         try:
             validate_scenario(raw.get("scenario"))
             if raw.get("scenario_sha256") != fingerprint(scenario):
@@ -452,10 +455,15 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
                        for role in ("anchor", "contender")):
                     errors.append("completed claim lacks request-level gates")
                 if scenario["mode"] == "overlap":
+                    contender = _mapping(pair.get("contender"))
+                    active = overlap_contract == "contender-stream-active/v1"
+                    flag = ("anchor_output_during_contender_active" if active
+                            else "anchor_output_during_contender_response_wait")
                     times = [_mapping(pair.get("anchor")).get("first_output"),
-                             _mapping(pair.get("contender")).get("response_headers_at"),
-                             pair.get("overlap_output_at"), _mapping(pair.get("contender")).get("first_output")]
-                    if (pair.get("anchor_output_during_contender_response_wait") is not True
+                             contender.get("first_output" if active else "response_headers_at"),
+                             pair.get("active_overlap_output_at" if active else "overlap_output_at"),
+                             contender.get("end" if active else "first_output")]
+                    if (pair.get(flag) is not True
                             or any(type(t) not in (int, float) or not math.isfinite(t) for t in times)
                             or times != sorted(times)):
                         errors.append("completed claim lacks client overlap timing")
@@ -466,6 +474,7 @@ def summarize_payload(raw: Mapping[str, Any], display_path: str | Path) -> dict[
             "completeness": _text(raw.get("status")), "quality": {"suites": []},
             "protocol": {"repetitions": _number(scenario.get("rounds"))},
             "stability": {"rounds_observed": len(rounds),
+                          "overlap_contract": overlap_contract,
                           "mode": _text(scenario.get("mode")),
                           "prefix_mode": _text(scenario.get("prefix_mode")),
                           **{gate: _bool(raw.get(gate)) for gate in

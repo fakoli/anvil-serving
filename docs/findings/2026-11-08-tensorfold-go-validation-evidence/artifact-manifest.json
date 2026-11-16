@@ -1,0 +1,324 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-08-tensorfold-go-validation",
+    "capability": "targeted Go coding",
+    "repository_revision": "a5faf7f7b4ffe37b9838b1bfdf70ae724306c6bb",
+    "dirty_state": "clean executing source; publication is a separate docs-only change",
+    "started_at": "2026-11-08T23:43:47.812644Z",
+    "completed_at": "2026-11-08T23:59:36.564004Z",
+    "evidence_labels": [
+      "quality"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false
+  },
+  "native_evidence_schemas": [
+    "anvil-serving.benchmark-result/v1",
+    "anvil-serving.benchmark-evidence/v1",
+    "anvil-serving.aider-run/v1",
+    "anvil-serving.aider-adapter-result/v1",
+    "anvil-serving.swe-agent-observation/v1"
+  ],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "394c657ed2fef6b6f004e21b35d5b4210bb5ee06f69f9504e3e2f32b7e5bdf8c",
+          "bytes": 3144
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "20113819985afaa17fc1f9cd8e4462cad88fc2b994089367c340bea578fd9633",
+          "bytes": 255
+        },
+        {
+          "path": "inputs/source.json",
+          "sha256": "3ecad3a8ced1383f43b6c5dfbf1240623edda05e704fa815cdfce3abbc647551",
+          "bytes": 1388
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        {
+          "path": "go-16384/aider/preparation/oracle.json",
+          "sha256": "eae93047dac2bd6ba131cff75473e415b10b02fac82f4b6caf91321af235d974",
+          "bytes": 39488
+        },
+        {
+          "path": "go-16384/aider/selection.json",
+          "sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+          "bytes": 1405
+        },
+        {
+          "path": "go-32768/aider/preparation/oracle.json",
+          "sha256": "b645c2475ef216812804611a63bea5bd6440e7fbd783784652d7dcee3b6ae660",
+          "bytes": 39493
+        },
+        {
+          "path": "go-32768/aider/selection.json",
+          "sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+          "bytes": 1405
+        },
+        {
+          "path": "inputs/aider-diagnostic-16k-v1.json",
+          "sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+          "bytes": 1325
+        },
+        {
+          "path": "inputs/aider-diagnostic-32k-v1.json",
+          "sha256": "767e9553471b6464d0b8ea764bb0dbf9e4b1ca2daa25ebbe41002b950cacbe91",
+          "bytes": 1325
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        {
+          "path": "inputs-r2/go-16384-spec.json",
+          "sha256": "52107eed618c1bf0904096cab5167001d6801bb0e69459113aa01dd2da6953ab",
+          "bytes": 979
+        },
+        {
+          "path": "inputs-r2/go-32768-spec.json",
+          "sha256": "f6d45b28e5e982bccc762be95df5de88a6883dd1c98eb88ed8d9712f6b6df7d8",
+          "bytes": 979
+        },
+        {
+          "path": "inputs-r2/plan.json",
+          "sha256": "87858b99d4fd38ef0e564b524ef775be10c8307c5fc99eaaf17d2a054ced5c81",
+          "bytes": 4682
+        },
+        {
+          "path": "inputs/plan.json",
+          "sha256": "ca81c953e934dff66156dd9668558d648a60ea8958aaed6eca8919a35d0c24e0",
+          "bytes": 3897
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        {
+          "path": "configuration.json",
+          "sha256": "f0b3e2310feb22c1b8f98cca8c36ca6fb1f2fcac36ac902895cfaaaa027e0816",
+          "bytes": 2345
+        },
+        {
+          "path": "inputs/source.json",
+          "sha256": "3ecad3a8ced1383f43b6c5dfbf1240623edda05e704fa815cdfce3abbc647551",
+          "bytes": 1388
+        },
+        {
+          "path": "projection-ledger.json",
+          "sha256": "2a51b58d5fd11a91a8bbbf5afe6b339a50096582fca4c845911bab7607549851",
+          "bytes": 16645
+        },
+        {
+          "path": "qualification/harness-tests-r2.json",
+          "sha256": "21476f991fba16d1728f2c449f9f109964d7cee0b1a9c9cb715c29661652cc3b",
+          "bytes": 1245
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        {
+          "path": "go-16384/aider/adapter-result.json",
+          "sha256": "329298ef27652fbe2744fcb26cdb11b6fb892cd44f07f111e34198db6d0e0845",
+          "bytes": 767
+        },
+        {
+          "path": "go-16384/aider/preparation/oracle.json",
+          "sha256": "eae93047dac2bd6ba131cff75473e415b10b02fac82f4b6caf91321af235d974",
+          "bytes": 39488
+        },
+        {
+          "path": "go-16384/aider/process.json",
+          "sha256": "0ba4e5b8fbf7f29d4f90fb7c0b42f9806dc826ff247d2b7a2fbbf13d89d9a8cc",
+          "bytes": 69993
+        },
+        {
+          "path": "go-16384/aider/requests.jsonl",
+          "sha256": "ee45884c0b2b4c61d3e8941d1606615fdd0328d8cf71c049b5edbb476cbfca4f",
+          "bytes": 4274
+        },
+        {
+          "path": "go-16384/aider/result.json",
+          "sha256": "3517510d8f084cea5049d19a6a203f74dfac1e0df4ebcacfde6a5d5e298bf838",
+          "bytes": 74964
+        },
+        {
+          "path": "go-16384/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "aa22bacb4bc56b9b307cd5008581597c1057247e40f469c085dbc4a98d3287c7",
+          "bytes": 808
+        },
+        {
+          "path": "go-16384/aider/retention.json",
+          "sha256": "108aa2178d71140b955ee74b3091a017d1feeaca4d5a810b36632d61d76df330",
+          "bytes": 1447
+        },
+        {
+          "path": "go-16384/aider/selection.json",
+          "sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+          "bytes": 1405
+        },
+        {
+          "path": "go-16384/artifact.json",
+          "sha256": "c06a2623fff7fd8b64ececf0486728564d2a4a748d4e5d99a8d225e86b46e593",
+          "bytes": 5031
+        },
+        {
+          "path": "go-32768/aider/adapter-result.json",
+          "sha256": "df1bbae409f83745ebc41f13282faa39ab6a5cf08ce993fa04a888439a75081d",
+          "bytes": 767
+        },
+        {
+          "path": "go-32768/aider/preparation/oracle.json",
+          "sha256": "b645c2475ef216812804611a63bea5bd6440e7fbd783784652d7dcee3b6ae660",
+          "bytes": 39493
+        },
+        {
+          "path": "go-32768/aider/process.json",
+          "sha256": "c06be491df1a35e9388cb1cbd741aa3b7efaf2e1e705d4f3948f22e5e85e7184",
+          "bytes": 68892
+        },
+        {
+          "path": "go-32768/aider/requests.jsonl",
+          "sha256": "86011f426a2cd08c2d72d50f2c42b7c6d74091b0fc1e7c3ba864fbecf5799460",
+          "bytes": 3643
+        },
+        {
+          "path": "go-32768/aider/result.json",
+          "sha256": "c1808e63fb9177079f4cf021aef64519192a7dc66cb2fb927ca3be4764b31906",
+          "bytes": 73845
+        },
+        {
+          "path": "go-32768/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+          "sha256": "82aa752ddb2425b48c6eaf03517240e1e15fff33f99b67c4e89925eec209f07b",
+          "bytes": 690
+        },
+        {
+          "path": "go-32768/aider/retention.json",
+          "sha256": "17fcfc82213006a71ddfe5872aaa80131a86a310030bc0f96f662767141baee9",
+          "bytes": 1446
+        },
+        {
+          "path": "go-32768/aider/selection.json",
+          "sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+          "bytes": 1405
+        },
+        {
+          "path": "go-32768/artifact.json",
+          "sha256": "367b38c5eaa09d492361fb0f05aeae1533694974d450093fc621e7f0a6a4d4e1",
+          "bytes": 5031
+        },
+        {
+          "path": "setup-failure.json",
+          "sha256": "01f592923e85f56399b7ec984ebebfdb4218aea5c37de1388d3b01531a22f774",
+          "bytes": 4005
+        },
+        {
+          "path": "native-evidence-validation.json",
+          "sha256": "4539ffa512ff8c52b1244b95979e7b935e7105cb28cc81a2c27865cde12bdf21",
+          "bytes": 795
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "e646ca71c252884323198567542e310a3050f760f7322ec63aa4174e1cfec67f",
+          "bytes": 2676
+        },
+        {
+          "path": "setup-failure.json",
+          "sha256": "01f592923e85f56399b7ec984ebebfdb4218aea5c37de1388d3b01531a22f774",
+          "bytes": 4005
+        },
+        {
+          "path": "independent-review.md",
+          "sha256": "00b1667ff240bda84381fe6622d0a10577b86532b889146c459c54becb64b03b",
+          "bytes": 5964
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "fab3031a6969e863a7da5c6239a4c3881f2ca1e413e42c306bf6a146b520f542",
+          "bytes": 2261
+        },
+        {
+          "path": "counter-reconciliation.json",
+          "sha256": "7ff2ceacc8f38111e4a3ababded9f5b227fcc690cf3e368ecdd5bb41840eac62",
+          "bytes": 885
+        },
+        {
+          "path": "qualification/frozen-comparison-integrity.json",
+          "sha256": "55d0094427dd05b17ed578b117c7feb9fb044da95b2c913244ade93075acfa61",
+          "bytes": 113
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "d36ce67f00a6e4193b5a58594c84e0d83201573cd94f758f9f3da4dd1dd77035",
+          "bytes": 3080
+        },
+        {
+          "path": "case-diagnostics.json",
+          "sha256": "bd79e262907139c344f637f8c5bc06e37941ca7a9a1555f0215e7179f12f862a",
+          "bytes": 6631
+        }
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social publication copy was requested for this focused diagnostic."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}

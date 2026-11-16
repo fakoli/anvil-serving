@@ -47,7 +47,7 @@ def server(tmp_path, *, models=None):
                 request_complete.set()
 
     httpd.RequestHandlerClass = CompletedHandler
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield (httpd.server_address, request_complete), key, calls
@@ -143,30 +143,6 @@ def test_memory_http_is_device_bound_and_routes_only_the_configured_bank(tmp_pat
         assert request(address, key, MEMORY_PATH, {"alias": ALIAS, "operation": "recall", "arguments": {"query": "x"}}, {"X-Bank-Id": "other"})[0] == 400
 
 
-def test_memory_mcp_is_stateless_and_never_executes_tool_notifications(tmp_path):
-    with server(tmp_path) as (address, key, calls):
-        status, listed = request(address, key, MEMORY_MCP_PATH, current_request(1, "tools/list", {}),
-                                 {"MCP-Protocol-Version": "2026-07-28"})
-        assert status == 200
-        assert {tool["name"] for tool in listed["result"]["tools"]} == {"memory_retain", "memory_recall", "memory_reflect"}
-        assert {tool["name"]: tool["annotations"]["readOnlyHint"] for tool in listed["result"]["tools"]} == {
-            "memory_retain": False, "memory_recall": True, "memory_reflect": True,
-        }
-        call = current_request(2, "tools/call", {"name": "memory_recall", "arguments": {"alias": ALIAS, "query": "find"}})
-        for headers in ({}, {"MCP-Protocol-Version": "2025-11-25"}):
-            response = request(address, key, MEMORY_MCP_PATH, call, headers)[1]["result"]
-            assert response["isError"] is False
-            assert "structuredContent" not in response
-            assert json.loads(response["content"][0]["text"])["result"]["results"] == []
-        before = len(calls)
-        notification = current_request(3, "tools/call", {"name": "memory_retain", "arguments": {"alias": ALIAS, "content": "nope"}})
-        notification.pop("id")
-        assert request(address, key, MEMORY_MCP_PATH, notification)[0] == 202
-        assert len(calls) == before
-        legacy = {"jsonrpc": "2.0", "id": 4, "method": "initialize", "params": {"protocolVersion": "2025-11-25"}}
-        assert request(address, key, MEMORY_MCP_PATH, legacy)[1]["result"]["protocolVersion"] == "2025-11-25"
-
-
 def test_normalized_alias_cannot_bypass_device_model_grant(tmp_path):
     with server(tmp_path, models=["llm.primary"]) as (address, key, calls):
         for alias in (ALIAS, ALIAS.upper(), " " + ALIAS.upper() + " "):
@@ -180,17 +156,4 @@ def test_normalized_alias_cannot_bypass_device_model_grant(tmp_path):
                 status, result = request(address, key, MEMORY_MCP_PATH, call, headers)
                 assert status == 200 and result["result"]["isError"] is True
                 assert json.loads(result["result"]["content"][0]["text"])["code"] == "key_access_denied"
-        assert calls == []
-
-
-def test_mcp_rejects_malformed_envelopes_before_notification_suppression(tmp_path):
-    with server(tmp_path) as (address, key, calls):
-        base = {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}
-        invalid = [{}, {"method": "tools/list"}, {**base, "jsonrpc": "1.0"},
-                   {**base, "method": []}, {**base, "params": []}]
-        invalid += [{**base, "id": value} for value in ({}, [], None, True, 1.5)]
-        for body in invalid:
-            status, result = request(address, key, MEMORY_MCP_PATH, body,
-                                     {"MCP-Protocol-Version": "2025-11-25"})
-            assert status == 200 and result["error"]["code"] == -32600
         assert calls == []

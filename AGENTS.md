@@ -169,6 +169,11 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
   and real Pi/OpenClaw client smokes; do not close while an in-scope outage
   remains.
 - **Return dicts, not print-side-effects** in library code. CLI wrappers print; modules return.
+- **Keep changes economical.** Start from one observable outcome; search callers and shared seams,
+  make the smallest stdlib-first implementation, and delay abstractions until repeated real use.
+  Measure CPU, RAM, I/O, subprocess, and elapsed-time cost before optimizing; bound each resource
+  while preserving security, data-loss, ownership, recovery, and protocol guards. Follow the
+  representative-test and 120-second offline-suite policy in [CONTRIBUTING.md](CONTRIBUTING.md#tests).
 - **Never self-verify.** Don't write a check that uses the same model to validate its own
   output. Preflight and benchmark gates must be independent.
 - **Credentials through secret references.** Use declared environment references

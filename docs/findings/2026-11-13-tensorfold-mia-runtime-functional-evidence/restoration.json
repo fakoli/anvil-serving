@@ -1,0 +1,39 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-11-13-tensorfold-mia-runtime-functional",
+  "status": "rollback-rehearsal-verified; isolated candidate currently running",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "image": "sha256:a3f640bf24ade689f926f54dd32cfbd752da70845f18cf1d12adf0c176617a36"
+  },
+  "rollback_rehearsal_ending_state": {
+    "captured": true,
+    "evidence": [
+      "raw/restore-result.json",
+      "raw/readmit-restore.json",
+      "raw/restore-routed-smoke.json",
+      "raw/restore-prometheus.json"
+    ]
+  },
+  "ending_state": {
+    "captured": true,
+    "owner": "isolated candidate",
+    "router": "quiesced; activation not yet applied",
+    "evidence": [
+      "raw/extended-custody-after.json"
+    ]
+  },
+  "differences": [
+    "Incumbent start time changed; monitor registration refreshed.",
+    "A later separately authorized delta window loaded the same candidate again; no claim that incumbent is currently active."
+  ],
+  "post_run_checks": [
+    "exact retained ID/image and readiness",
+    "router readmit",
+    "authenticated RESTORE_OK",
+    "observer and Prometheus readiness"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}

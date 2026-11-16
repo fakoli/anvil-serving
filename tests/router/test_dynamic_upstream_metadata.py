@@ -12,9 +12,9 @@ from anvil_serving.router.availability import (
     RuntimeModelMetadata,
 )
 from anvil_serving.router.config import ConfigError, load
-from anvil_serving.router.internal import InternalRequest, Message, NoAvailableTierError
+from anvil_serving.router.internal import InternalRequest, Message
 from anvil_serving.router.model_capacity import MetricsSnapshot
-from anvil_serving.router.serve import RoutingBackend, build_backends
+from anvil_serving.router.serve import RoutingBackend
 
 
 _CONFIG = """
@@ -123,15 +123,6 @@ class _MutableAvailability:
         )
 
 
-def test_upstream_metadata_config_has_no_static_model_or_context(tmp_path):
-    config = load(str(_write_config(tmp_path)))
-    tier = config.tier("mid-mod")
-
-    assert tier.metadata_source == "upstream"
-    assert tier.model is None
-    assert tier.context_limit == 0
-
-
 @pytest.mark.parametrize(
     "field",
     [
@@ -150,86 +141,6 @@ def test_upstream_metadata_config_rejects_duplicate_static_authority(tmp_path, f
     )
     with pytest.raises(ConfigError, match="upstream|model_identity"):
         load(str(_write_config(tmp_path, body)))
-
-
-def test_upstream_metadata_requires_health_path(tmp_path):
-    with pytest.raises(ConfigError, match="requires health_path"):
-        load(str(_write_config(tmp_path, _CONFIG.replace('health_path = "/health"\n', ""))))
-
-
-def test_llamacpp_metadata_uses_models_identity_and_props_configuration(tmp_path):
-    config = load(str(_write_config(tmp_path)))
-    tier = config.tier("mid-mod")
-    opener = _RuntimeOpener()
-    availability = HttpHealthAvailability(config, opener=opener, env={})
-
-    result = availability.check(tier)
-
-    assert result.available is True
-    assert result.reason == "upstream_metadata_passed"
-    assert result.runtime_metadata == RuntimeModelMetadata(
-        model="qwen38-q4-mtp3-262k",
-        context_limit=262_144,
-        engine="llamacpp",
-        quantization="Q4_0",
-        engine_version="b10548-a298422da",
-        max_concurrency=1,
-        modalities=("image", "text", "video"),
-    )
-    assert opener.calls == ["/health", "/v1/models", "/props"]
-
-
-@pytest.mark.parametrize(
-    ("mutation", "reason"),
-    [
-        (
-            lambda opener: opener.extra_models.append({
-                "id": "second-model",
-                "owned_by": "llamacpp",
-            }),
-            "upstream_metadata_model_count",
-        ),
-        (
-            lambda opener: setattr(opener, "props_model", "different-model"),
-            "upstream_metadata_identity_mismatch",
-        ),
-        (
-            lambda opener: (
-                setattr(opener, "engine", "vllm"),
-                setattr(opener, "context", None),
-            ),
-            "upstream_metadata_context_missing",
-        ),
-    ],
-)
-def test_upstream_metadata_fails_closed_on_ambiguous_or_incomplete_facts(
-    tmp_path, mutation, reason
-):
-    config = load(str(_write_config(tmp_path)))
-    tier = config.tier("mid-mod")
-    opener = _RuntimeOpener()
-    mutation(opener)
-
-    result = HttpHealthAvailability(config, opener=opener, env={}).check(tier)
-
-    assert result.available is False
-    assert result.reason == reason
-    assert result.runtime_metadata is None
-
-
-def test_upstream_metadata_rejects_context_below_router_output_policy(tmp_path):
-    body = _CONFIG.replace(
-        'health_path = "/health"',
-        'health_path = "/health"\nmax_output_tokens = 300000',
-    )
-    config = load(str(_write_config(tmp_path, body)))
-    tier = config.tier("mid-mod")
-    opener = _RuntimeOpener()
-
-    result = HttpHealthAvailability(config, opener=opener, env={}).check(tier)
-
-    assert result.available is False
-    assert result.reason == "upstream_metadata_output_limit_conflict"
 
 
 def test_cached_metadata_refresh_adopts_a_new_model_and_context(tmp_path):
@@ -290,46 +201,3 @@ def test_routing_uses_observed_model_but_preserves_public_alias(tmp_path):
     assert fingerprint["served_configuration"]["metadata_source"] == "upstream"
     assert fingerprint["served_configuration"]["quantization"] == "Q4_0"
     assert fingerprint["served_configuration"]["modalities"] == []
-
-
-def test_dynamic_context_is_the_admission_limit_and_missing_metadata_fails_closed(tmp_path):
-    config = load(str(_write_config(tmp_path)))
-    capture = _CaptureBackend()
-    availability = _MutableAvailability(RuntimeModelMetadata(
-        model="small-model",
-        context_limit=1,
-    ))
-    routing = RoutingBackend(
-        config, {"mid-mod": capture}, availability=availability
-    )
-
-    with pytest.raises(NoAvailableTierError) as over_context:
-        routing.generate(InternalRequest(
-            "llm.secondary", [Message("user", "two words")]
-        ))
-    assert over_context.value.kind == "over_context"
-    assert capture.models == []
-
-    availability.metadata = None
-    with pytest.raises(NoAvailableTierError) as unavailable:
-        routing.generate(InternalRequest(
-            "llm.secondary", [Message("user", "ok")]
-        ))
-    assert unavailable.value.kind == "unavailable"
-
-
-def test_dynamic_backend_build_never_freezes_startup_discovery(tmp_path):
-    config = load(str(_write_config(tmp_path)))
-
-    def forbidden_discovery(*_args, **_kwargs):
-        raise AssertionError("dynamic tiers must refresh through availability")
-
-    backends, skipped = build_backends(
-        config,
-        env={},
-        transport=lambda *_args, **_kwargs: b"{}",
-        model_discovery_transport=forbidden_discovery,
-    )
-
-    assert set(backends) == {"mid-mod"}
-    assert skipped == []

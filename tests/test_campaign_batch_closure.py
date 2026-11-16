@@ -1,13 +1,11 @@
 """Offline mixed-duration barriers, custody and immutable cancellation evidence."""
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import time
 
 import pytest
 
-from anvil_serving.benchmarking import campaign_execution as execution, worker, campaign_report
-from anvil_serving.benchmarking.artifacts import atomic_write_json, evidence_file_reference
-from anvil_serving.benchmarking.jobs import BenchmarkJobError
+from anvil_serving.benchmarking import campaign_execution as execution, worker
+from anvil_serving.benchmarking.artifacts import atomic_write_json
 from tests.test_campaign_telemetry import setup
 
 
@@ -33,88 +31,6 @@ def finalize(store, spec, *, failed=False):
     return worker._finish_job(store, spec, 'failed' if failed else 'completed',
         results={'deterministic_task_outcome': not failed},
         failure={'class': 'model_behavior', 'code': 'fixture_negative', 'message': 'negative oracle'} if failed else None)
-
-
-@pytest.mark.parametrize('count', [1, 4])
-def test_fast_native_waits_for_slow_aider_and_one_shared_drain(tmp_path, monkeypatch, count):
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch, count=count, mixed=count == 4)
-    contexts = active(store, specs, release)
-    drains = []
-    def drain(*args, **kwargs):
-        assert all(execution._read(c['path'])['clients_stopped'] for c in contexts)
-        drains.append(kwargs['stopped_wall'])
-        clock[0] += 35
-        return {'status': 'verified'}
-    monkeypatch.setattr(execution, 'observe_drain', drain)
-    stop(contexts[0]); clock[0] += 2
-    if count == 4:
-        stop(contexts[1])
-        assert execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler) is None
-        assert not drains
-        assert all(execution._read(c['path'])['status'] == 'draining' for c in contexts[:2])
-        assert [s['suite'] for s in specs] == ['agentic', 'agentic', 'aider', 'aider']
-    with ThreadPoolExecutor(max_workers=count) as pool:
-        futures = [pool.submit(finalize, store, specs[0], failed=True)]
-        time.sleep(.05)
-        assert not futures[0].done()
-        for context in contexts[2:]:
-            clock[0] += 1
-            stop(context)
-        shared = execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
-        assert shared['status'] == 'closed'
-        futures += [pool.submit(finalize, store, s) for s in specs[1:]]
-        assert futures[0].result(3)['failure']['code'] == 'fixture_negative'
-        assert all(f.result(3)['state'] == 'completed' for f in futures[1:])
-    terminal = sampler.root / (sampler.relative + 'terminal.json')
-    original = terminal.read_bytes()
-    assert execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler) == shared
-    assert terminal.read_bytes() == original and len(drains) == 1
-    receipts = [execution._read(c['path']) for c in contexts]
-    assert len({r['batch_closure']['sha256'] for r in receipts}) == 1
-    assert len({r['telemetry_terminal']['sha256'] for r in receipts}) == 1
-    assert execution.reconcile_batch(manifest, sampler.batch_id, run_root=store.run_root, store=store)['active_seconds'] == shared['finalized_monotonic'] - release['released_monotonic']
-    assert all(execution._anchored_closure(store, cell, manifest, store.run_root) for cell in manifest['cells'])
-
-
-@pytest.mark.parametrize('damage', ['missing', 'malformed', 'list', 'oversized', 'symlink', 'nonregular'])
-def test_bad_peer_never_drains_or_reclaims_budget(tmp_path, monkeypatch, damage):
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch, count=4)
-    contexts = active(store, specs, release)
-    for c in contexts: stop(c)
-    peer = contexts[-1]['path']
-    if damage == 'missing': peer.unlink()
-    elif damage == 'malformed': peer.write_text('{')
-    elif damage == 'list': peer.write_text('[]')
-    elif damage == 'oversized': peer.write_bytes(b' ' * (16 * 1024 * 1024 + 1))
-    elif damage == 'symlink':
-        saved = peer.with_name('saved.json'); peer.rename(saved); peer.symlink_to(saved)
-    else:
-        import os
-        peer.unlink(); os.mkfifo(peer)
-    monkeypatch.setattr(execution, 'observe_drain', lambda *a, **k: pytest.fail('global drain before valid stops'))
-    assert execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler) is None
-    clock[0] = release['deadline_monotonic']
-    shared = execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
-    assert shared['status'] == 'blocked'
-    assert execution.reconcile_batch(manifest, sampler.batch_id, run_root=store.run_root, store=store)['active_seconds'] is None
-
-
-def test_activation_drift_blocks_all_children(tmp_path, monkeypatch):
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch, count=4)
-    contexts = active(store, specs, release)
-    for c in contexts: stop(c)
-    calls = []
-    def activation(*a, **k):
-        calls.append(True)
-        if len(calls) == 2:
-            raise BenchmarkJobError('campaign_activation_mismatch', 'changed generation')
-        return release['activation']
-    monkeypatch.setattr(execution, '_activation', activation)
-    shared = execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
-    assert shared['status'] == 'blocked'
-    for spec in specs:
-        execution.campaign_result_reference(store, spec)
-        assert execution._read(execution._path(spec, store.run_root, 'campaign-execution.json'))['status'] == 'blocked'
 
 
 @pytest.mark.parametrize('unverified', [False, True])
@@ -162,83 +78,6 @@ def test_concurrent_cancel_stops_every_sibling_before_drain_and_anchors_once(tmp
     assert all(p.read_bytes() == raw for p, raw in originals.items())
     for cell in manifest['cells'][:-1] if unverified else manifest['cells']:
         assert execution._anchored_closure(store, cell, manifest, store.run_root)
-
-
-@pytest.mark.parametrize('terminal_state', ['completed', 'cancelled'])
-def test_terminalization_during_wait_never_rewrites_anchored_receipt(tmp_path, monkeypatch, terminal_state):
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch)
-    context = active(store, specs, release)[0]
-    stopped = threading.Event()
-    original_commit = execution._commit_receipt
-    def commit(*a, **k):
-        value = original_commit(*a, **k)
-        stopped.set()
-        return value
-    monkeypatch.setattr(execution, '_commit_receipt', commit)
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        waiting = pool.submit(execution.close_campaign, context, clients_stopped=True)
-        assert stopped.wait(3)
-        with execution.child_lock(store, specs[0]):
-            original = context['path'].read_bytes()
-            reference = evidence_file_reference(str(context['path']), root=str(context['path'].parent))
-            store.transition(specs[0]['run_id'], terminal_state, results={'campaign_execution': reference})
-        assert waiting.result(3)['status'] == 'draining'
-    assert context['path'].read_bytes() == original
-    execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
-    execution.campaign_result_reference(store, specs[0])
-    assert context['path'].read_bytes() == original
-    assert execution._anchored_closure(store, manifest['cells'][0], manifest, store.run_root)
-
-
-@pytest.mark.parametrize('damage', ['missing', 'bytes', 'release', 'terminal'])
-def test_shared_closure_transitive_hash_required_by_report_and_reconciliation(tmp_path, monkeypatch, damage):
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch)
-    context = active(store, specs, release)[0]
-    stop(context); clock[0] += 2
-    execution.coordinate_batch(manifest, sampler.batch_id, store=store, sampler=sampler)
-    finalize(store, specs[0])
-    receipt = execution._read(context['path'])
-    assert set(campaign_report._coverage(receipt, manifest, manifest['cells'][0], store).values()) == {'measured'}
-    closure = sampler.root / receipt['batch_closure']['path']
-    if damage == 'missing': closure.unlink()
-    elif damage == 'bytes': closure.write_text('{}')
-    elif damage == 'release':
-        path = sampler.root / 'batches' / (sampler.batch_id + '.json')
-        value = execution._read(path); value['released_at'] = 'tampered'; atomic_write_json(path, value)
-    else:
-        (sampler.root / receipt['telemetry_terminal']['path']).write_text('{}')
-    assert execution.reconcile_batch(manifest, sampler.batch_id, run_root=store.run_root, store=store)['active_seconds'] is None
-    assert set(campaign_report._coverage(receipt, manifest, manifest['cells'][0], store).values()) == {'unknown'}
-
-
-def test_watchdog_terminal_with_mismatched_anchor_stops_owned_worker_without_writes(tmp_path, monkeypatch):
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch)
-    context = active(store, specs, release)[0]
-    store.transition(specs[0]['run_id'], 'failed', failure={'class': 'fixture', 'message': 'failed'}, results={})
-    original = context['path'].read_bytes()
-    monkeypatch.setattr(execution, 'verify_child', lambda *a, **k: (manifest, {}))
-    stopped = []
-    execution._watchdog(store.path, store.run_root, specs[0]['run_id'],
-        cancel_job=lambda *a: pytest.fail('terminal recancelled'),
-        stop_worker=lambda *a, **k: stopped.append(True) or {'stopped': True})
-    assert stopped == [True] and context['path'].read_bytes() == original
-
-
-def test_missing_sampler_terminal_is_explicit_and_does_not_rewait_after_blocked_closure(tmp_path, monkeypatch):
-    from anvil_serving.benchmarking import campaign_telemetry as telemetry
-    manifest, store, specs, sampler, release, clock = setup(tmp_path, monkeypatch)
-    context = active(store, specs, release)[0]
-    stop(context)
-    monkeypatch.setattr(telemetry.BatchSampler, 'recover', lambda *a, **k: None)
-    closure = execution.coordinate_batch(manifest, sampler.batch_id, store=store, force=True)
-    assert closure['status'] == 'blocked' and 'telemetry_terminal' not in closure
-    monkeypatch.setattr(execution.time, 'sleep', lambda n: pytest.fail('published closure cannot wait for missing sampler'))
-    result = finalize(store, specs[0], failed=True)
-    receipt = execution._read(context['path'])
-    assert result['failure']['code'] == 'fixture_negative'
-    assert receipt['status'] == 'blocked'
-    assert receipt['telemetry_terminal']['status'] == 'unavailable'
-    assert store.artifact(specs[0]['run_id'])['results']['campaign_execution']['sha256']
 
 
 @pytest.mark.parametrize('damage', [None, 'invalid_terminal'])

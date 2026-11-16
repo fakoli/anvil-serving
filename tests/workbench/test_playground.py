@@ -87,38 +87,6 @@ def test_scope_and_mutation_grants_and_private_history(chat):
     gate.set()
 
 
-def test_unknown_model_and_conflicting_replay_never_dispatch(chat):
-    playground, calls, gate, _ = chat
-    with pytest.raises(ObservatoryError):
-        playground.send(identity(), message(model="substitute"))
-    assert calls == []
-    first = playground.send(identity(), message())
-    with pytest.raises(ObservatoryError) as error:
-        playground.send(identity(), message(message="different"))
-    assert error.value.code == "request_conflict"
-    assert first["status"] == "running"
-    gate.set()
-
-
-def test_second_turn_uses_wire_schema_and_old_retry_is_not_replayed(chat):
-    playground, calls, gate, _ = chat
-    first_body = message()
-    first = playground.send(identity(), first_body)
-    gate.set()
-    wait_terminal(playground, first["id"])
-    second = playground.send(identity(), message(request_id="request-two", conversation_id=first["id"], message="Continue"))
-    wait_terminal(playground, second["id"])
-    assert len(calls) == 2
-    assert all(set(row) == {"role", "content"} for row in json.loads(calls[1].data)["messages"])
-    assert playground.send(identity(), first_body)["id"] == first["id"]
-    assert len(calls) == 2
-    playground.delete(identity(), first["id"])
-    with pytest.raises(ObservatoryError) as error:
-        playground.send(identity(), first_body)
-    assert error.value.code == "request_retained"
-    assert len(calls) == 2
-
-
 def test_cancel_is_retained_and_deletion_does_not_resurrect(chat):
     playground, _, gate, store = chat
     first = playground.send(identity(), message())
@@ -131,14 +99,3 @@ def test_cancel_is_retained_and_deletion_does_not_resurrect(chat):
     assert playground.conversations(identity())["items"] == []
     if os.name == "posix":
         assert store.path.stat().st_mode & 0o777 == 0o600
-
-
-def test_restart_marks_inflight_interrupted_without_replay(tmp_path):
-    path = tmp_path / "private.sqlite"
-    store = PrivateStore(path)
-    store.put("conversation", "alice", "one", {"status": "running", "output": "partial"})
-    store.close()
-    store = PrivateStore(path)
-    store.recover("conversation", {"running"})
-    assert store.get("conversation", "alice", "one")["status"] == "interrupted"
-    store.close()

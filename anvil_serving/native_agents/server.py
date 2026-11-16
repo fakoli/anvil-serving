@@ -14,8 +14,12 @@ from .auth import AdmissionDenied, strict_json, protected_read
 
 def load_config(path):
     data = strict_json(protected_read(path,1048576))
-    if set(data) != {"version","deployment_id","listen_port","store_file","workspaces","auth"} or data["version"] != 1:
+    required = {"version","deployment_id","listen_port","store_file","workspaces","auth"}
+    if set(data) not in (required, required | {"personal_principal"}) or data["version"] != 1:
         raise ValueError("invalid broker configuration")
+    personal_principal = data.get("personal_principal")
+    if "personal_principal" in data and (not isinstance(personal_principal, str) or not PRINCIPAL.fullmatch(personal_principal)):
+        raise ValueError("invalid personal principal")
     if type(data["listen_port"]) is not int or not 1024 <= data["listen_port"] <= 65535: raise ValueError("invalid listen port")
     workspaces = []
     if not isinstance(data["workspaces"], list) or len(data["workspaces"]) > 256: raise ValueError("invalid workspaces")
@@ -35,6 +39,10 @@ def load_config(path):
             directories.append(Directory(d["id"],d["label"],p,d["display_path"],runtime))
         if len({d.id for d in directories}) != len(directories): raise ValueError("duplicate directory")
         workspaces.append(Workspace(w["id"],w["principal"],w["label"],tuple(directories),canonical_origin(w["owner_url"]),Path(w["owner_token_file"]),w["isolation"]))
+    if len({w.principal for w in workspaces}) > 1 and personal_principal is None:
+        raise ValueError("multiple principals require an explicit personal principal")
+    if personal_principal is not None and any(w.isolation == "personal" and w.principal != personal_principal for w in workspaces):
+        raise ValueError("personal workspaces are reserved for the personal principal")
     # A workspace has a dedicated owner. Reusing a shared personal endpoint would
     # collapse isolation, even if the broker's directory picker looked scoped.
     if len({w.owner_url for w in workspaces}) != len(workspaces): raise ValueError("workspace owners must be distinct")

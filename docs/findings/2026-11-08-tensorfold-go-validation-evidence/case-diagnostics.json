@@ -1,0 +1,206 @@
+{
+  "schema": "anvil-serving.focused-quality-observations/v1",
+  "cells": [
+    {
+      "cell_id": "go-16384",
+      "completion_cap_tokens_per_response_including_reasoning": 16384,
+      "selected": 1,
+      "graded": 1,
+      "resolved": 0,
+      "instances": [
+        {
+          "artifact_id": "68a6ed0e3075f2dcd929984b6bdafa76c9b76ef7a0e024f98de176ea22107198",
+          "first_attempt_passed": false,
+          "instance_id": "go/exercises/practice/alphametics",
+          "native": {
+            "path": "<private-path>",
+            "sha256": "46e52e1e2e0f857b90205e0e8a2fa1c5221aa4dc6e780a066fb0e6c2aef9e583"
+          },
+          "resolved": false,
+          "second_attempt_passed": false
+        }
+      ],
+      "response_generation_limit": {
+        "classification": "budget_exhausted",
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 0,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 16384,
+              "total_tokens": 17517
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 0,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1465,
+              "reasoning_tokens": 16384,
+              "total_tokens": 17849
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 143.761525,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "contained_tests": [
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "event": "aider_contained_command_finished",
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "schema": "anvil-serving.swe-agent-observation/v1",
+          "seq": 6,
+          "task": "aider/results/go/exercises/practice/alphametics",
+          "timed_out": false,
+          "utc_observed_at": "2026-11-08T23:53:43.337261Z"
+        },
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "event": "aider_contained_command_finished",
+          "returncode": 1,
+          "rust_compiler_error_codes": null,
+          "schema": "anvil-serving.swe-agent-observation/v1",
+          "seq": 10,
+          "task": "aider/results/go/exercises/practice/alphametics",
+          "timed_out": false,
+          "utc_observed_at": "2026-11-08T23:54:55.025508Z"
+        }
+      ],
+      "native_result": "go-16384/aider/result.json",
+      "native_events": "go-16384/aider/requests.jsonl"
+    },
+    {
+      "cell_id": "go-32768",
+      "completion_cap_tokens_per_response_including_reasoning": 32768,
+      "selected": 1,
+      "graded": 1,
+      "resolved": 1,
+      "instances": [
+        {
+          "artifact_id": "68a6ed0e3075f2dcd929984b6bdafa76c9b76ef7a0e024f98de176ea22107198",
+          "first_attempt_passed": true,
+          "instance_id": "go/exercises/practice/alphametics",
+          "native": {
+            "path": "<private-path>",
+            "sha256": "bf046a278d5ec1eb8adf8e74a91eef08e46ceadaf8fb5a86d26382190f863db9"
+          },
+          "resolved": true,
+          "second_attempt_passed": null
+        }
+      ],
+      "response_generation_limit": {
+        "classification": null,
+        "configured_output_cap_tokens": 32768,
+        "responses": [
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 1721,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 32745,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 31024,
+              "total_tokens": 33878
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 541,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 1296,
+              "prompt_tokens": 2399,
+              "reasoning_tokens": 755,
+              "total_tokens": 3695
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 32768,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 148.777392,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "contained_tests": [
+        {
+          "compilation_failure": null,
+          "compilation_failure_signals": null,
+          "compiler_diagnostics_truncated": false,
+          "event": "aider_contained_command_finished",
+          "returncode": 0,
+          "rust_compiler_error_codes": null,
+          "schema": "anvil-serving.swe-agent-observation/v1",
+          "seq": 7,
+          "task": "aider/results/go/exercises/practice/alphametics",
+          "timed_out": false,
+          "utc_observed_at": "2026-11-08T23:58:34.205010Z"
+        }
+      ],
+      "native_result": "go-32768/aider/result.json",
+      "native_events": "go-32768/aider/requests.jsonl"
+    }
+  ],
+  "interpretation": {
+    "unique_tasks": 1,
+    "profile_checks": 2,
+    "passed_profile_checks": 1,
+    "setup_failures_excluded_from_grades": 1,
+    "transport_calls_are_not_edit_attempts": true,
+    "causal_cap_benefit_established": false,
+    "performance_measured": false,
+    "visible_token_counts": "unknown"
+  }
+}

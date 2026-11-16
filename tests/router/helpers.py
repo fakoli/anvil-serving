@@ -42,7 +42,7 @@ def make_tier(dialect: str, privacy: str = "local", extra_body: Optional[dict] =
 def server_context(routing: Any, *, token: str):
     """Start ``make_server`` on a background thread, yielding ``(host, port)``."""
     httpd = make_server("127.0.0.1", 0, routing, auth_token=token)
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield httpd.server_address[:2]

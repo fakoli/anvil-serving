@@ -1,0 +1,283 @@
+{
+  "schema": "private-cache-layout-screen/v1",
+  "measured_requests": 144,
+  "failure_count": 0,
+  "restored": true,
+  "promoted": false,
+  "statistics": "Pooled median of 12 request timings per cell; throughput is total output tokens / total measured batch wall time.",
+  "workload_limits": [
+    "Synthetic one-line summaries, not fixed output length or controlled decode.",
+    "No request canaries; exact counters and prompt-token populations reconciled.",
+    "Only approximately 6K/25K inputs; full-context capacity, hard coding and vision are not qualified.",
+    "Container peak is lifetime accounting; original and fresh-start peaks are not comparable memory gains."
+  ],
+  "cells": [
+    {
+      "nominal_context": 8192,
+      "concurrency": 1,
+      "arms": {
+        "baseline-before": {
+          "time_to_first_output_ms": 699.2145855329,
+          "ttft_ms": 1516.0566795093473,
+          "e2e_ms": 1735.313165030675,
+          "decode_tok_s": 196.084336824319,
+          "requests": 12,
+          "output_tokens": 2556,
+          "throughput_tok_s": 119.22095604192137
+        },
+        "candidate": {
+          "time_to_first_output_ms": 724.3279030371923,
+          "ttft_ms": 1590.291418513516,
+          "e2e_ms": 1819.165974011412,
+          "decode_tok_s": 193.56544695005744,
+          "requests": 12,
+          "output_tokens": 2685,
+          "throughput_tok_s": 119.31693240451223
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 716.5274709986988,
+          "ttft_ms": 1528.6585070134606,
+          "e2e_ms": 1760.5067230178975,
+          "decode_tok_s": 191.6604820040102,
+          "requests": 12,
+          "output_tokens": 2510,
+          "throughput_tok_s": 117.69407126397992
+        }
+      },
+      "actual_input_range": [
+        6065,
+        6068
+      ],
+      "candidate_change_percent": {
+        "baseline-before": {
+          "time_to_first_output_ms": 3.591646688141159,
+          "ttft_ms": 4.896567523332562,
+          "e2e_ms": 4.8321427319578225,
+          "decode_tok_s": -1.2845951466885164,
+          "throughput_tok_s": 0.08050292983483587
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 1.0886438209579241,
+          "ttft_ms": 4.031829948761256,
+          "e2e_ms": 3.3319526830865698,
+          "decode_tok_s": 0.9939268262966205,
+          "throughput_tok_s": 1.3788809607005126
+        }
+      }
+    },
+    {
+      "nominal_context": 8192,
+      "concurrency": 4,
+      "arms": {
+        "baseline-before": {
+          "time_to_first_output_ms": 2628.2632870133966,
+          "ttft_ms": 4674.492049962282,
+          "e2e_ms": 5222.451773006469,
+          "decode_tok_s": 97.75375073737585,
+          "requests": 12,
+          "output_tokens": 2835,
+          "throughput_tok_s": 145.1641221824835
+        },
+        "candidate": {
+          "time_to_first_output_ms": 2707.808256498538,
+          "ttft_ms": 4288.946077518631,
+          "e2e_ms": 4958.092352026142,
+          "decode_tok_s": 98.5151670632604,
+          "requests": 12,
+          "output_tokens": 2616,
+          "throughput_tok_s": 136.94302986650342
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 2719.958856498124,
+          "ttft_ms": 4406.20091999881,
+          "e2e_ms": 4671.993294527056,
+          "decode_tok_s": 98.89878409106744,
+          "requests": 12,
+          "output_tokens": 2484,
+          "throughput_tok_s": 130.7351256355558
+        }
+      },
+      "actual_input_range": [
+        6065,
+        6068
+      ],
+      "candidate_change_percent": {
+        "baseline-before": {
+          "time_to_first_output_ms": 3.026522109797125,
+          "ttft_ms": -8.247868823453498,
+          "e2e_ms": -5.061979171291419,
+          "decode_tok_s": 0.7789126454392115,
+          "throughput_tok_s": -5.663308669097644
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": -0.4467199924939158,
+          "ttft_ms": -2.661132449679815,
+          "e2e_ms": 6.12370436905878,
+          "decode_tok_s": -0.3878885178747904,
+          "throughput_tok_s": 4.748459299494701
+        }
+      }
+    },
+    {
+      "nominal_context": 32768,
+      "concurrency": 1,
+      "arms": {
+        "baseline-before": {
+          "time_to_first_output_ms": 2891.547378501855,
+          "ttft_ms": 3882.560461992398,
+          "e2e_ms": 4129.3499384773895,
+          "decode_tok_s": 195.67149146476146,
+          "requests": 12,
+          "output_tokens": 2994,
+          "throughput_tok_s": 59.72435793023725
+        },
+        "candidate": {
+          "time_to_first_output_ms": 2964.578453480499,
+          "ttft_ms": 3866.556415479863,
+          "e2e_ms": 4106.842514476739,
+          "decode_tok_s": 199.0868598523536,
+          "requests": 12,
+          "output_tokens": 3157,
+          "throughput_tok_s": 61.402245544979586
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 2951.1958794901147,
+          "ttft_ms": 3966.526390518993,
+          "e2e_ms": 4209.8883430007845,
+          "decode_tok_s": 190.19236651548698,
+          "requests": 12,
+          "output_tokens": 3132,
+          "throughput_tok_s": 60.480111303286634
+        }
+      },
+      "actual_input_range": [
+        25279,
+        25281
+      ],
+      "candidate_change_percent": {
+        "baseline-before": {
+          "time_to_first_output_ms": 2.525674506377351,
+          "ttft_ms": -0.4122034072412628,
+          "e2e_ms": -0.5450597390869172,
+          "decode_tok_s": 1.7454603948819036,
+          "throughput_tok_s": 2.8093857730580263
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 0.45346274991060476,
+          "ttft_ms": -2.5203406002310635,
+          "e2e_ms": -2.4477093007791106,
+          "decode_tok_s": 4.676577456720565,
+          "throughput_tok_s": 1.5246900540059727
+        }
+      }
+    },
+    {
+      "nominal_context": 32768,
+      "concurrency": 4,
+      "arms": {
+        "baseline-before": {
+          "time_to_first_output_ms": 8977.689465507865,
+          "ttft_ms": 11150.050350028323,
+          "e2e_ms": 11354.635054507526,
+          "decode_tok_s": 111.3263538081468,
+          "requests": 12,
+          "output_tokens": 2792,
+          "throughput_tok_s": 58.748235495263586
+        },
+        "candidate": {
+          "time_to_first_output_ms": 9869.887417531572,
+          "ttft_ms": 12028.77690299647,
+          "e2e_ms": 12404.437843011692,
+          "decode_tok_s": 104.14214527787018,
+          "requests": 12,
+          "output_tokens": 3146,
+          "throughput_tok_s": 62.40135845627222
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 9185.440243483754,
+          "ttft_ms": 11227.148685487919,
+          "e2e_ms": 11494.341217010515,
+          "decode_tok_s": 104.53969260055271,
+          "requests": 12,
+          "output_tokens": 2743,
+          "throughput_tok_s": 56.45129194395939
+        }
+      },
+      "actual_input_range": [
+        25279,
+        25281
+      ],
+      "candidate_change_percent": {
+        "baseline-before": {
+          "time_to_first_output_ms": 9.937946232730788,
+          "ttft_ms": 7.880920044149531,
+          "e2e_ms": 9.245588109742187,
+          "decode_tok_s": -6.453286472183805,
+          "throughput_tok_s": 6.218268395998305
+        },
+        "baseline-after": {
+          "time_to_first_output_ms": 7.451435705908294,
+          "ttft_ms": 7.140087300569253,
+          "e2e_ms": 7.9177797911055725,
+          "decode_tok_s": -0.3802836155273215,
+          "throughput_tok_s": 10.540177748668022
+        }
+      }
+    }
+  ],
+  "resources": {
+    "baseline-before": {
+      "engine_reported_cache_tokens": 1330579,
+      "samples": 156,
+      "engine_active_requests_max": 4.0,
+      "minimum_host_available_GiB": 70.96283340454102,
+      "container_lifetime_peak_GiB": 44.93199920654297,
+      "oom_kill_counts": [
+        0
+      ],
+      "maximum_telemetry_gap_seconds": 2.1209969520568848
+    },
+    "candidate": {
+      "engine_reported_cache_tokens": 1844162,
+      "samples": 161,
+      "engine_active_requests_max": 4.0,
+      "minimum_host_available_GiB": 67.93192672729492,
+      "container_lifetime_peak_GiB": 32.550559997558594,
+      "oom_kill_counts": [
+        0
+      ],
+      "maximum_telemetry_gap_seconds": 2.127565860748291
+    },
+    "baseline-after": {
+      "engine_reported_cache_tokens": 1330579,
+      "samples": 157,
+      "engine_active_requests_max": 3.0,
+      "minimum_host_available_GiB": 68.35643768310547,
+      "container_lifetime_peak_GiB": 42.45143508911133,
+      "oom_kill_counts": [
+        0
+      ],
+      "maximum_telemetry_gap_seconds": 2.136337995529175
+    }
+  },
+  "preflights": {
+    "baseline-before": true,
+    "candidate": true,
+    "restored": true,
+    "baseline-after": true,
+    "routed-restored": true
+  },
+  "restoration_matches": {
+    "model": true,
+    "revision": true,
+    "recipe_digest": true,
+    "registry_digest": true,
+    "image_digest": true,
+    "served_identity": true,
+    "bound_port": true,
+    "bound_endpoints": true,
+    "gpu_selection": true
+  },
+  "reported_capacity_change_percent": 38.5984597682663,
+  "publication_identity": "withheld; descriptive scout only, not independently reproducible model qualification"
+}

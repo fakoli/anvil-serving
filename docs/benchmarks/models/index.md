@@ -9,6 +9,7 @@ evidence by measured hardware.
 
 | Model / configuration | Measured result | Limitation / decision | Evidence date | Dossier |
 | --- | --- | --- | --- | --- |
+| Private-target cache-layout and DFlash2 K3 scouts | 144/144 timed requests per trial; no 10% E2E win against both controls; cache slots +38.60% / −40.63% | retain original; natural-output scout, private identity, no promotion | 2026-11-01 | [Private runtime scouts](private-runtime-scouts.md) |
 | Nemotron 3.5 Super VL 120B-A12B NVFP4 TP2 scout | preflight 6/6, vision 18/18, context 2/2; Oracle 48/54; C1 0/4 eligible | exact Oracle and capacity prerequisite fail; no coding qualification, C4, speed, or promotion | 2026-10-16 | [Nemotron 3.5 Super VL](nemotron35-super-vl-120b.md) |
 | 2026-10-16 SGLang, Qwen, and Nemotron comparison | terminal SGLang/Qwen SWE failures; bounded Nemotron functional evidence | no candidate meets replacement gates; no performance comparison | 2026-10-16 | [Campaign finding](../../findings/2026-10-16-sglang-qwen-comparison.md) |
 | Mistral Medium 3.5 TP2 | bounded protocol and native reliability evidence | r2 resource-policy and r3 campaign reliability rejection; no promotion | 2026-10-15 | [Mistral Medium 3.5](mistral-medium-35.md) |

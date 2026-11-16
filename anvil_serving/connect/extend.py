@@ -976,6 +976,12 @@ def extend(
                 unit_root=system_root,
             )
             for unit in gateway_units:
+                if unit == "anvil-connect-gateway.service":
+                    manage._oidc_ready(
+                        data["gateway"]["oidc"]["issuer"], data["caddy"].get("listen", ":443"),
+                        runner, manage._role_service_identity(data, "edge"),
+                        data["caddy"]["tls"]["certificate_file"],
+                    )
                 active, unit_file_state = prior_gateway[unit]
                 _apply_unit_lifecycle(runner, unit, active, unit_file_state, start=True)
             manage._gateway_ready(data, runner)
@@ -1102,5 +1108,8 @@ def _apply_unit_lifecycle(
 
 
 def _restore_gateway_units(runner: Any, root: Path, data: dict[str, Any], prior: dict[str, tuple[bool, str]]) -> None:
-    for unit, (active, unit_file_state) in prior.items():
-        _apply_unit_lifecycle(runner, unit, active, unit_file_state, start=False)
+    manage._restore_running(
+        runner, tuple(prior), prior,
+        gateway_dependency=lambda: manage._restored_gateway_ready(data, root, runner, before_start=True),
+        gateway_ready=lambda: manage._restored_gateway_ready(data, root, runner),
+    )

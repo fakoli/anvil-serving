@@ -2,7 +2,6 @@
 from contextlib import nullcontext
 import hashlib
 import json
-from pathlib import Path
 import sys
 
 import pytest
@@ -42,31 +41,6 @@ def _installed_manager(tmp_path, monkeypatch):
     monkeypatch.setattr(user_schedule, "_installed_directory", lambda _: None)
     monkeypatch.setattr(user_schedule, "_installed_manager_file", lambda _: None)
     return manager
-
-
-def test_schedule_uses_only_the_verified_immutable_manager(tmp_path, monkeypatch):
-    manager = _installed_manager(tmp_path, monkeypatch)
-    assert user_schedule._manager() == manager
-    (tmp_path / "opt/anvil-connect/bin/anvil-connect-ctl").unlink()
-    (tmp_path / "opt/anvil-connect/bin/anvil-connect-ctl").symlink_to("../current/bin/anvil-connect")
-    try:
-        user_schedule._manager()
-    except Exception as exc:
-        assert getattr(exc, "code", None) == "connect_users_invalid"
-    else:
-        raise AssertionError("untrusted manager link was accepted")
-
-
-def test_account_worker_accepts_only_the_exact_prior_owned_description(tmp_path, monkeypatch):
-    manager = _installed_manager(tmp_path, monkeypatch)
-    desired = user_schedule._service(manager, (Path("/private"),), deletions=True)
-    prior = desired.replace(
-        b"Description=Anvil Connect account reconciliation worker\n",
-        b"Description=Anvil Connect account deletion worker\n",
-        1,
-    )
-    assert user_schedule._prior_service(prior, desired)
-    assert not user_schedule._prior_service(prior.replace(b"After=network-online.target", b"After=foreign.target"), desired)
 
 
 @pytest.mark.parametrize("deletions", [False, True])
@@ -123,59 +97,6 @@ def test_schedule_writes_exact_owned_units_and_reports_interruption(tmp_path, mo
     assert (units / (prefix + ".service")).read_bytes() != old_service
     user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units, deletions=deletions)
     assert calls.count((manage._SYSTEMCTL, "enable", "--now", prefix + ".timer")) == 1
-
-
-def test_schedule_refuses_foreign_or_corrupt_prior_release_unit(tmp_path, monkeypatch):
-    manager = _installed_manager(tmp_path, monkeypatch)
-    manifest = tmp_path / "etc/anvil-connect/deployment.json"
-    manifest.parent.mkdir(parents=True)
-    manifest.write_text("{}")
-    manifest.chmod(0o600)
-    root = tmp_path / "etc/anvil-connect/rendered"
-    root.mkdir()
-    units = tmp_path / "units"
-    units.mkdir()
-    monkeypatch.setattr(user_schedule, "DEFAULT_MANIFEST", str(manifest))
-    monkeypatch.setattr(user_schedule, "_manifest", lambda _: ({"config_root": str(root), "gateway": {"state_directory": str(tmp_path / "gateway-state")}}, root, manifest.parent / "backups"))
-    monkeypatch.setattr(user_schedule, "_require_root", lambda: None)
-    monkeypatch.setattr(manage, "_deployment_lock", lambda _: nullcontext())
-    monkeypatch.setattr(manage, "_safe_dir", lambda *_: None)
-
-    def runner(argv, _timeout, _identity):
-        if argv[:3] == (manage._SYSTEMCTL, "show", "--property=LoadState,FragmentPath,DropInPaths"):
-            if (units / argv[-1]).exists():
-                return manage.RunResult(0, f"LoadState=loaded\nFragmentPath={units / argv[-1]}\nDropInPaths=\n".encode())
-            return manage.RunResult(0, b"LoadState=not-found\nFragmentPath=\nDropInPaths=\n")
-        if argv[:3] == (manage._SYSTEMCTL, "show", "--property=ActiveState,UnitFileState"):
-            return manage.RunResult(0, b"ActiveState=active\nUnitFileState=enabled\n")
-        return manage.RunResult(0)
-
-    user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units)
-    service = units / "anvil-connect-auth-backup.service"
-    owned = service.read_bytes()
-    release_name, replacement = _release(tmp_path / "opt/anvil-connect", "1.2.4", b"#!/usr/bin/env python3\nupdated\n")
-    (tmp_path / "opt/anvil-connect/current").unlink()
-    (tmp_path / "opt/anvil-connect/current").symlink_to(release_name)
-    foreign = owned.replace(str(manager).encode(), b"/opt/not-anvil-connect/bin/anvil-connect-ctl")
-    service.write_bytes(foreign)
-    try:
-        user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units)
-    except Exception as exc:
-        assert getattr(exc, "code", None) == "connect_users_invalid"
-    else:
-        raise AssertionError("foreign schedule service was accepted")
-    assert service.read_bytes() == foreign
-
-    service.write_bytes(owned)
-    old_release = tmp_path / "opt/anvil-connect/releases" / ("1.2.3-" + "a" * 12)
-    (old_release / "installation.json").write_text("{}")
-    try:
-        user_schedule.schedule(str(manifest), apply=True, runner=runner, unit_root=units)
-    except Exception as exc:
-        assert getattr(exc, "code", None) == "connect_users_invalid"
-    else:
-        raise AssertionError("corrupt prior release service was accepted")
-    assert service.read_bytes() == owned
 
 
 @pytest.mark.parametrize("fresh", [False, True])

@@ -2587,7 +2587,11 @@ def _native_events(runner: Runner | None, unit: str, tail: int = 200, deadline: 
     if match is None:
         return []
     identifier = match[1].decode("ascii")
-    observed = _observe(runner, (_JOURNALCTL, "--no-pager", "--output=json", "--lines=" + str(tail),
+    # Project only needed fields and match the native 64-event ring. Journal
+    # cursor/time metadata is always included, even with --output-fields.
+    tail = min(tail, 64)
+    observed = _observe(runner, (_JOURNALCTL, "--no-pager", "--output=json",
+                                 "--output-fields=MESSAGE,_SYSTEMD_INVOCATION_ID,_SYSTEMD_UNIT", "--lines=" + str(tail),
                                  "--unit", unit, "_SYSTEMD_INVOCATION_ID=" + identifier), deadline)
     if observed.returncode != 0:
         return []

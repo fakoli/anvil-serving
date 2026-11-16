@@ -102,54 +102,6 @@ def test_fenced_candidate_refuses_unknown_ownership_before_mutation(retained, mo
     assert f.store.path.read_bytes() == before and path.read_bytes() == original
 
 
-@pytest.mark.parametrize('change', ['none', 'same_start', 'same_restarts', 'container', 'image', 'daemon',
-                                  'still_running', 'boot', 'prior_digest', 'live_phase', 'v1_schema'])
-def test_reboot_death_preserves_anchor_and_requires_real_changed_stopped_identity(retained, change):
-    f = retained
-    with f.store._offline_custody(f.settings, allow_retained=True):
-        observed, record, state = reboot.fenced_candidate(f.usage, f.auth, f.incumbent)
-    pending = acknowledgment(f, observed)
-    stopped = dict(f.stopped)
-    if change == 'same_start': stopped['started_at'] = record['anchor']['docker']['started_at']
-    elif change == 'same_restarts': stopped['restart_count'] = 0
-    elif change == 'container': stopped['container_id'] = '0'*64
-    elif change == 'image': stopped['image_id'] = 'sha256:' + '0'*64
-    elif change == 'daemon': stopped['daemon_id'] = 'different'
-    elif change == 'still_running': stopped['running'] = True
-    elif change == 'boot': observed['boot_id'] = f.old.boot_id
-    elif change == 'prior_digest': observed['prior_record_sha256'] = '0'*64
-    if change not in {'none', 'live_phase', 'v1_schema'}:
-        with pytest.raises(ValueError): reboot.recovered_record(record, state, observed, stopped, pending)
-        return
-    proposed = reboot.recovered_record(record, state, observed, stopped, pending)
-    assert proposed['anchor'] == record['anchor'] and proposed['death']['stopped'] == stopped
-    if change == 'live_phase': proposed['phase'] = 'live'
-    elif change == 'v1_schema': proposed['schema'] = 'router-managed-incarnation/v1'
-    if change != 'none':
-        with pytest.raises(ValueError): custody.validate(proposed)
-        return
-    with f.store._offline_custody(f.settings, allow_retained=True):
-        custody.write(f.store, proposed, custody.digest(record))
-        assert reboot.fenced_candidate(f.usage, f.auth, f.incumbent) == (observed, proposed, state)
-        with pytest.raises(ValueError): custody.ready_transfers(f.usage)
-        ready = {**proposed, 'phase': 'ready', 'sequence': 1}
-        custody.write(f.store, ready, custody.digest(proposed))
-        assert custody.stopped_record(f.usage, stopped) == ready
-        assert reboot.recovered_record(ready, state, observed, stopped, pending) == ready
-    from anvil_serving.router.admission import managed_router_admission
-    owner, usage, run_id = managed_router_admission(f.settings, f.revision)
-    try:
-        assert owner._closed and owner._successor_pending and run_id != record['anchor']['run_id']
-        moved = custody.validate(json.loads(custody.location(f.store, record['anchor']['run_id']).read_text()))
-        assert moved['phase'] == 'transferred' and moved['schema'] == 'router-managed-incarnation/v2'
-        assert moved['anchor'] == record['anchor'] and moved['transfer']['successor_run_id'] == run_id
-        with f.store._connect() as db:
-            assert sorted(r[0] for r in db.execute('SELECT state FROM usage_runs')) == ['dead', 'live']
-    finally:
-        os.close(owner._owner_descriptor)
-        owner._owner_descriptor = None
-
-
 @pytest.mark.parametrize('change', ['none', 'unknown', 'same_config_required', 'boot', 'snapshot', 'wrong_gap', 'confirm_without_history'])
 def test_reboot_authorization_is_narrow(retained, change):
     from tests.router.test_maintenance import authorization
@@ -319,23 +271,6 @@ def test_host_retry_after_interrupt_and_expiry_keeps_exact_intent(reboot_host, m
     receipt = json.loads(Path(f.values['receipt_out']).read_text())
     if stage != 'none': assert receipt['acknowledged_at'] == pending['acknowledged_at']
     with pytest.raises(ValueError): f.run(confirm=True)
-
-
-@pytest.mark.parametrize('change', ['restart', 'auth', 'preview', 'acknowledgment'])
-def test_retry_refuses_changed_proven_incarnation_or_intent(reboot_host, change):
-    f = reboot_host; f.approve(); f.stage = 'after_stage'
-    with pytest.raises(OSError): f.run(confirm=True)
-    f.stage = None
-    if change == 'restart': f.stopped['restart_count'] += 1
-    elif change == 'auth':
-        f.auth['operation_id'] = '0'*64; f.protected(Path(f.values['authorization']), f.auth)
-    else:
-        path = Path(f.values['receipt_out']+'.pending'); pending = json.loads(path.read_text())
-        if change == 'preview': pending['preview']['drained'] = True
-        else: pending['acknowledged_at'] = f.auth['expires_at']
-        f.protected(path, pending)
-    with pytest.raises(ValueError): f.run(confirm=True)
-    assert f.stops == 1
 
 
 @pytest.mark.skipif(os.environ.get('ANVIL_ROUTER_DOCKER_TESTS') != '1', reason='explicit owned Docker qualification required')

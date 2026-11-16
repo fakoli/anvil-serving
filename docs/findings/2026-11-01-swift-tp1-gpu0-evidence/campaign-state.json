@@ -1,0 +1,97 @@
+{
+  "schema": "anvil-serving.benchmark-campaign-state/v1",
+  "campaign_id": "2026-11-01-swift-tp1-gpu0",
+  "updated_at": "2026-11-02T02:32:25Z",
+  "status": "qualification_accepted_deployment_private",
+  "current_stage": "qualification-closed",
+  "launcher": {
+    "invocation": "python -m anvil_serving.cli",
+    "version": null,
+    "repository_revision": "269bc88e3cb84bd82d14d170058d1c1e493c71cc",
+    "module_source": "anvil_serving/cli.py",
+    "verified": true
+  },
+  "stages": [
+    {
+      "id": "research",
+      "status": "completed",
+      "evidence": [
+        "source-registry.json"
+      ],
+      "failures": []
+    },
+    {
+      "id": "feasibility",
+      "status": "completed",
+      "evidence": [
+        "raw/mtp3-r5-rejection.json"
+      ],
+      "failures": [
+        "r5 resource reserve policy rejection"
+      ]
+    },
+    {
+      "id": "scout",
+      "status": "completed",
+      "evidence": [
+        "raw/nospec-summary.json",
+        "raw/mtp3-r4-summary.json"
+      ],
+      "failures": [
+        "strict controlled-output diagnostic failed"
+      ]
+    },
+    {
+      "id": "finalist",
+      "status": "partial",
+      "evidence": [
+        "raw/r4-comparison-decision.json"
+      ],
+      "failures": [
+        "ordinary-summary comparison is not exact controlled decode"
+      ]
+    },
+    {
+      "id": "quality",
+      "status": "completed",
+      "evidence": [
+        "raw/images.json",
+        "raw/agentic-native-evidence.json",
+        "raw/agentic-pilot-native-evidence.json",
+        "raw/context-native/native-evidence.json",
+        "raw/context-admission.json",
+        "raw/swe-native/native-evidence.json",
+        "raw/swe-native-validation.json",
+        "raw/swe-native/official-grader-report-binding.json",
+        "raw/c2-evidence-amendment.json",
+        "raw/context-concurrent/result.json",
+        "raw/context-concurrent/requests.jsonl",
+        "raw/independent-digest-c2-review.json",
+        "raw/stability-serial-unique.json",
+        "raw/stability-overlap-unique.json",
+        "raw/stability-overlap-unique-r2.json",
+        "raw/stability-overlap-repeat-r2.json",
+        "raw/stability-final-validation.json",
+        "raw/stability-observer-amendment.json",
+        "raw/independent-stability-observer-r3-review.json",
+        "raw/independent-stability-final-review.json",
+        "raw/independent-stability-source-binding-correction.json",
+        "raw/stability-observer-full-tests-r2-receipt.json",
+        "raw/capacity-summary.json",
+        "raw/deep-health.json",
+        "raw/resource-final-validation.json",
+        "numerical-import-projection.json"
+      ],
+      "failures": [
+        "fixed SWE campaign floor: one unresolved task",
+        "original overlap stability coverage not exercised; immutable historical failure retained",
+        "C2 32K decode soft miss versus 15 tokens/s objective"
+      ]
+    }
+  ],
+  "active_assignments": [],
+  "completed_cells": [],
+  "next_actions": [],
+  "supersession": "Qualification accepted; deployment, routing, and catalog status are private.",
+  "scope": "Historical qualification ledger; operational assignments and restoration are private."
+}

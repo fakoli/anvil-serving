@@ -1,0 +1,16 @@
+{
+  "completeness": "completed",
+  "evidence_kind": "measured",
+  "kind": "campaign",
+  "locally_measured": true,
+  "model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+  "profile": "scout",
+  "promotion_authorized": false,
+  "recorded_at": "2026-11-02T01:35:51.321630Z",
+  "run_id": "swift-gpu0-20261101-context-mtp3-r4",
+  "schema": "anvil-serving.benchmark-evidence/v1",
+  "suite": "context",
+  "summary": {},
+  "validation_errors": [],
+  "warnings": []
+}

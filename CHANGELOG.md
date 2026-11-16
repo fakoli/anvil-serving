@@ -6,8 +6,18 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- Native Connect gateway restarts preserve exact refused Unix socket leftovers
+  under exclusive authority ownership before rebinding, while refusing active
+  listeners, unsafe custody and unknown liveness.
+
 ### Added
 
+- Approved media recipe selection prepares an exact bounded workflow from the
+  requested task, references, and duration, returning missing inputs or clarification.
+- Media requests share a durable FIFO queue with configurable execution slots,
+  restart recovery, queue positions, and optional bounded MCP/CLI waits.
 - Media artifact inspection returns authenticated download URLs and native MP4
   resource links, with explicit bounded-range metadata for larger downloads.
 - Opt-in artifact-scoped, expiring read links support direct browser video

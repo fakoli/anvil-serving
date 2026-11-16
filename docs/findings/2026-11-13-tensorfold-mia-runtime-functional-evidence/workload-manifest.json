@@ -1,0 +1,17 @@
+{
+  "scope": "deterministic synthetic functional probes",
+  "selection": "runtime delta plus unchanged core capability regression",
+  "tool_execution": "none; response validation only",
+  "requests": "full bodies in extended HTTP receipts; preflight identifies exact checks",
+  "cache": "synthetic indexed records; first19k cold, first99k partially cached; warm and restart exact retrieval",
+  "fixtures": {
+    "check_candidate.py": "d3792b099850f17835fa2e7010966a229b76f2636217e99c4adc6535fc1f440e",
+    "check_mia_delta.py": "f534d04df129942ec1758738fe5ffbd6408166403d43b252dea49f07a75b18ce",
+    "check_extended_delta.py": "26ee701d277a17c71be54d8017e881ea4fb0d528163535118cdf07a5e03e61f1",
+    "cache_checks.py": "5e3c662494d05b3f52fe24ad11fda5b6afaca357f9eead5b6d8d72d5e1f09d7f",
+    "cache-fixtures.json": "fd4302d1e32faf936d7f115c78bd3148b16d0e0d2354d32f149a4f0560968e0a",
+    "request-1000.json": "400116fe0470c06a4b2c3805fd33bf2c1ea27bc4ca8c5ba89119d7463c5108c2",
+    "request-5000.json": "3ff6fa7fd962018f0679429e30ecf2ee53debe0be65215180f5bb6bf48d3357c",
+    "request-long-map.json": "7e9263f2f71c95ff41f81beafe2d2074580acb46c02eaf6e72daabecaf50adba"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "anvil-serving.benchmark-source-registry/v1",
+  "campaign_id": "2026-11-13-tensorfold-mia-runtime-functional",
+  "observed_at": "2026-11-13",
+  "sources": [
+    {
+      "id": "mia",
+      "url": "https://github.com/MiaAI-Lab/GLM-5.3-Flash-2x-RTX-PRO-6000-TensorFold/tree/fc1ee3a5381031e2357662b46c2fb44b20190429",
+      "published_or_observed": "2026-11-13",
+      "observed_at": "2026-11-13",
+      "age_class": "current",
+      "evidence_type": "pinned author source",
+      "hardware_runtime_relevance": "same GPU family; author power envelope differs",
+      "decision_impact": "110 patches plus six owned telemetry patches; main rechecked unchanged"
+    },
+    {
+      "id": "video-pr",
+      "url": "https://github.com/MiaAI-Lab/GLM-5.3-Flash-2x-RTX-PRO-6000-TensorFold/pull/3",
+      "published_or_observed": "2026-11-11",
+      "observed_at": "2026-11-13",
+      "age_class": "current",
+      "evidence_type": "unmerged community change",
+      "hardware_runtime_relevance": "Max-Q peer with different CPU; WITH_VIDEO=1 only",
+      "decision_impact": "separate optional video build; not adopted into image-only route"
+    }
+  ]
+}

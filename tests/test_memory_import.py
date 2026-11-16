@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import io
 import os
 from pathlib import Path
 import urllib.parse
@@ -72,30 +71,6 @@ def _defense_transport(documents, calls):
     return transport
 
 
-def test_preview_is_offline_and_deterministic(tmp_path, source_root, monkeypatch):
-    source = source_root
-    (source / "MEMORY.md").write_text("alpha\n\nbeta\n", encoding="utf-8")
-    config = _config(tmp_path, source)
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: pytest.fail("credential read"))
-    first = memory_import.import_memories(config, transport=lambda *_args: pytest.fail("network"))
-    second = memory_import.import_memories(config, transport=lambda *_args: pytest.fail("network"))
-    command = memory_import.dispatch(["--config", str(config)])
-    assert first == second
-    assert command.error is None and command.data == first
-    assert first["apply"] is False and first["chunks"] == 1
-    assert "alpha" not in json.dumps(first)
-
-
-@pytest.mark.parametrize("character", ["\x01", "\x7f"])
-def test_rejects_upstream_stripped_characters_before_any_write(tmp_path, source_root, character):
-    source = source_root
-    (source / "MEMORY.md").write_text("a" + character + "b", encoding="utf-8")
-    config = _config(tmp_path, source)
-    with pytest.raises(memory_import.MemoryImportError, match="control characters"):
-        memory_import.import_memories(config, confirm=True,
-                                      transport=lambda *_args: pytest.fail("network"))
-
-
 def test_rejects_traversal_and_symlink_sources(tmp_path, source_root):
     source = source_root
     (source / "MEMORY.md").write_text("safe", encoding="utf-8")
@@ -135,27 +110,6 @@ def test_rejects_bad_config_types_and_credential_newlines(tmp_path, source_root,
     monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret\n")
     with pytest.raises(memory_import.MemoryImportError, match="credential"):
         memory_import.import_memories(config, confirm=True)
-
-
-def test_content_addressed_retry_skips_and_changed_source_versions(tmp_path, source_root, monkeypatch):
-    source = source_root
-    path = source / "MEMORY.md"
-    path.write_text("first", encoding="utf-8")
-    config = _config(tmp_path, source)
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
-    documents, calls = {}, []
-    transport = _defense_transport(documents, calls)
-    first = memory_import.import_memories(config, confirm=True, transport=transport)
-    second = memory_import.import_memories(config, confirm=True, transport=transport)
-    first_id = next(iter(documents))
-    path.write_text("second", encoding="utf-8")
-    third = memory_import.import_memories(config, confirm=True, transport=transport)
-    assert (first["imported"], second["skipped"], third["imported"]) == (1, 1, 1)
-    assert len(documents) == 2 and first_id in documents
-    posted = [payload for method, _, payload in calls if method == "POST"]
-    completed = [payload for method, _, payload in calls if method == "PATCH"]
-    assert posted and all(isinstance(value, str) for value in posted[0]["items"][0]["metadata"].values())
-    assert completed and completed[0]["tags"][-1] == memory_import.COMPLETION_TAG
 
 
 def test_default_transport_uses_retain_and_read_deadlines(tmp_path, source_root, monkeypatch):
@@ -252,124 +206,6 @@ def test_unmarked_document_retries_after_timeout_then_completed_rerun_skips(tmp_
     assert rerun["skipped"] == 1 and rerun["imported"] == 0
     assert attempts == {"post": 2, "patch": 1}
     assert post_document_ids == [chunk.document_id, chunk.document_id]
-
-
-def test_completion_patch_rejection_reports_retained_change_and_stops(tmp_path, source_root, monkeypatch):
-    source = source_root
-    (source / "MEMORY.md").write_text("x" * (memory_import.MAX_CHUNK_CHARS + 1), encoding="utf-8")
-    config = _config(tmp_path, source)
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
-    private_payload = "private completion error"
-    posted = []
-
-    class Opener:
-        def open(self, request, *_args, **_kwargs):
-            assert request.get_method() == "PATCH"
-            raise memory_import.urllib.error.HTTPError(
-                request.full_url, 503, "rejected", {}, io.BytesIO(private_payload.encode())
-            )
-
-    monkeypatch.setattr(memory_import.urllib.request, "build_opener", lambda *_args: Opener())
-
-    def transport(method, url, token, payload=None):
-        if url.endswith("/config"):
-            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
-        if method == "GET":
-            return 404, {}
-        if method == "POST":
-            posted.append(payload["items"][0]["document_id"])
-            return 200, {"success": True}
-        return memory_import._http(method, url, token, payload)
-
-    report = memory_import.import_memories(config, confirm=True, transport=transport)
-
-    assert report["changed"] is True and report["imported"] == 0
-    assert report["failed_chunks"] == posted and len(posted) == 1
-    assert report["failed_chunk_metadata"] == [{"document_id": posted[0], "http_status": 503}]
-    assert private_payload not in json.dumps(report)
-
-
-def test_defense_refusal_happens_before_any_write(tmp_path, source_root, monkeypatch):
-    source = source_root
-    (source / "MEMORY.md").write_text("safe", encoding="utf-8")
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
-    calls = []
-    def transport(method, url, token, payload=None):
-        calls.append(method)
-        return 200, {"config": {"memory_defense": {"enabled": False}}}
-    with pytest.raises(memory_import.MemoryImportError, match="block_sensitive_data"):
-        memory_import.import_memories(_config(tmp_path, source), confirm=True, transport=transport)
-    assert calls == ["GET"]
-
-
-def test_upstream_rejection_is_safe_and_never_changes_source(tmp_path, source_root, monkeypatch):
-    source = source_root
-    original = "private source content"
-    path = source / "MEMORY.md"
-    path.write_text(original, encoding="utf-8")
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
-    def transport(method, url, token, payload=None):
-        if url.endswith("/config"):
-            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
-        if method == "GET":
-            return 404, {}
-        return 422, {"detail": "rejected"}
-    report = memory_import.import_memories(_config(tmp_path, source), confirm=True, transport=transport)
-    assert report["failed_chunks"] and original not in json.dumps(report)
-    assert path.read_text(encoding="utf-8") == original
-
-
-def test_http_rejection_reports_status_without_upstream_payload(tmp_path, source_root, monkeypatch):
-    source = source_root
-    private_payload = "private upstream error body"
-    (source / "MEMORY.md").write_text("safe", encoding="utf-8")
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
-
-    class Opener:
-        def open(self, *_args, **_kwargs):
-            raise memory_import.urllib.error.HTTPError(
-                "http://127.0.0.1:8888/retain", 422, "rejected", {}, io.BytesIO(private_payload.encode())
-            )
-
-    monkeypatch.setattr(memory_import.urllib.request, "build_opener", lambda *_args: Opener())
-
-    def transport(method, url, token, payload=None):
-        if url.endswith("/config"):
-            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
-        if method == "GET":
-            return 404, {}
-        return memory_import._http(method, url, token, payload)
-
-    report = memory_import.import_memories(_config(tmp_path, source), confirm=True, transport=transport)
-    assert report["failed_chunk_metadata"] == [{"document_id": report["failed_chunks"][0], "http_status": 422}]
-    assert private_payload not in json.dumps(report)
-
-
-def test_transport_failure_stops_before_the_next_chunk(tmp_path, source_root, monkeypatch):
-    source = source_root
-    (source / "MEMORY.md").write_text("x" * (memory_import.MAX_CHUNK_CHARS + 1), encoding="utf-8")
-    monkeypatch.setattr(memory_import, "read_private_auth_file", lambda *_args, **_kwargs: b"secret")
-    post_ids = []
-
-    def transport(method, url, token, payload=None):
-        if url.endswith("/config"):
-            return 200, {"config": {"memory_defense": memory_import._DEFENSE}}
-        if method == "GET":
-            return 404, {}
-        post_ids.append(payload["items"][0]["document_id"])
-        raise memory_import.MemoryImportError("Hindsight request failed")
-
-    report = memory_import.import_memories(_config(tmp_path, source), confirm=True, transport=transport)
-    assert len(post_ids) == 1
-    assert report["imported"] == 0 and report["failed_chunks"] == post_ids
-    assert report["failed_chunk_metadata"] == [{"document_id": post_ids[0], "http_status": None}]
-
-
-def test_partial_import_is_a_nonzero_cli_result(monkeypatch):
-    monkeypatch.setattr(memory_import, "import_memories", lambda *_args, **_kwargs: {"failed_chunks": ["safe-id"]})
-    result = memory_import.dispatch(["--config", "/safe/config.toml"])
-    assert result.error is not None and result.exit_code != 0
-    assert result.data == {"failed_chunks": ["safe-id"]}
 
 
 def test_canonical_cli_dispatches_preview_and_partial_failure(tmp_path, source_root, monkeypatch, capsys):

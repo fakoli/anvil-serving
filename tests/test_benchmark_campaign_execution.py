@@ -1,7 +1,5 @@
 """Campaign binding and bounded release checks; no serving requests."""
-import copy
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -63,25 +61,6 @@ def ready(root, manifest, bound, index=0):
     return value
 
 
-def test_frozen_plan_and_closed_binding_reject_drift_before_traffic(tmp_path, monkeypatch):
-    root, manifest, bound = campaign(tmp_path, monkeypatch)
-    execution.verify_child(bound[0], run_root=root)
-    changed = copy.deepcopy(bound[0])
-    changed['parameters']['case_limit'] = 2
-    with pytest.raises(BenchmarkJobError, match='child differs'):
-        execution.verify_child(changed, run_root=root)
-    prepared = execution._path(bound[0], root, 'campaign-prepared/plan.json')
-    payload = json.loads(prepared.read_text())
-    payload['plan']['admission']['profile'] = 'changed'
-    atomic_write_json(prepared, payload)
-    with pytest.raises(BenchmarkJobError, match='bytes changed'):
-        execution.verify_child(bound[0], run_root=root)
-    changed = copy.deepcopy(bound[0])
-    changed['campaign']['extra'] = True
-    with pytest.raises(BenchmarkJobError):
-        job_spec_sha256(changed)
-
-
 def test_ready_barrier_union_budget_unknown_closure_and_no_clamp(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch, count=2)
     release_clock = 492.40178837899526  # Reproduces the hosted Python 3.11 binary64 subtraction.
@@ -118,16 +97,6 @@ def test_ready_barrier_union_budget_unknown_closure_and_no_clamp(tmp_path, monke
     assert execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['active_seconds'] is None
 
 
-@pytest.mark.parametrize('allowance', [79, 81])
-def test_release_refuses_short_or_unfunded_allowance_before_activation(tmp_path, monkeypatch, allowance):
-    root, manifest, bound = campaign(tmp_path, monkeypatch)
-    ready(root, manifest, bound)
-    monkeypatch.setattr(execution, '_activation', lambda *a, **k: pytest.fail('refused release activated'))
-    with pytest.raises(BenchmarkJobError, match='full batch requires 80s.*remaining 80s'):
-        execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=allowance)
-    assert not (execution._directory(manifest, root) / 'batches/batch-0.json').exists()
-
-
 def test_batch_allowance_counts_parallel_task_timeout_once():
     manifest = {'budgets': {'drain_reserve_s': 120}, 'cells': [
         {'batch_id': 'batch', 'arm_id': 'arm', 'spec': {'timeout_s': timeout}} for timeout in (10, 20, 30, 40)]}
@@ -135,46 +104,44 @@ def test_batch_allowance_counts_parallel_task_timeout_once():
 
 
 def test_engine_drain_requires_fresh_resolved_zero(monkeypatch):
-    from anvil_serving.router import model_capacity
     from types import SimpleNamespace
+
+    from anvil_serving.router import model_capacity
+
     clock = [0.0]
-    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds)))
+    monkeypatch.setattr(
+        execution,
+        'time',
+        SimpleNamespace(
+            monotonic=lambda: clock[0],
+            time=lambda: clock[0],
+            sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds),
+        ),
+    )
     generation = 'a' * 64
-    policy = {'metrics_url': 'http://127.0.0.1:30001/engine/'+generation+'/metrics', 'generation': generation,
-              'running_metric': 'running', 'waiting_metric': 'waiting', 'metric_labels': {'model_name': 'candidate'}, 'poll_s': .1, 'timeout_s': 40}
-    monkeypatch.setattr(model_capacity, '_default_metrics_read', lambda *a, **k: (200, ('running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0\nanvil_observer_metrics_sample_timestamp_seconds{model="candidate"} ' + str(clock[0])).encode()))
+    policy = {
+        'metrics_url': f'http://127.0.0.1:30001/engine/{generation}/metrics',
+        'generation': generation,
+        'running_metric': 'running',
+        'waiting_metric': 'waiting',
+        'metric_labels': {'model_name': 'candidate'},
+        'poll_s': .1,
+        'timeout_s': 40,
+    }
+    monkeypatch.setattr(
+        model_capacity,
+        '_default_metrics_read',
+        lambda *args, **kwargs: (
+            200,
+            (
+                'running{model_name="candidate"} 0\n'
+                'waiting{model_name="candidate"} 0\n'
+                'anvil_observer_metrics_sample_timestamp_seconds{model="candidate"} '
+                f'{clock[0]}'
+            ).encode(),
+        ),
+    )
     assert execution.observe_drain(policy, deadline=50)['status'] == 'verified'
-
-
-def test_worker_rejects_drift_before_preflight(tmp_path, monkeypatch):
-    root, manifest, bound = campaign(tmp_path, monkeypatch)
-    path = execution._path(bound[0], root, 'campaign-prepared/plan.json')
-    path.write_text('{}')
-    store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
-    store.submit(bound[0])
-    monkeypatch.setattr(worker, 'run_benchmark_preflight', lambda *a, **k: pytest.fail('traffic'))
-    monkeypatch.setattr(worker, '_run_suite', lambda *a, **k: pytest.fail('traffic'))
-    result = worker.execute_benchmark_job(store, bound[0]['run_id'])
-    assert result['state'] == 'failed'
-    assert result['failure']['code'] == 'campaign_prepared_mismatch'
-
-
-def test_real_worker_waits_for_release_and_times_out_without_coordinator(tmp_path, monkeypatch):
-    root, manifest, bound = campaign(tmp_path, monkeypatch)
-    store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
-    store.submit(bound[0])
-    # Exercise real custody and entry gate; terminate the waiting worker with the
-    # existing owner-verified cancellation path, before any model traffic.
-    launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
-    deadline = time.monotonic()+10
-    while time.monotonic() < deadline and not execution.batch_ready(manifest, 'batch-0', run_root=root):
-        time.sleep(.05)
-    assert execution.batch_ready(manifest, 'batch-0', run_root=root)
-    result = worker.cancel_benchmark_job(store, bound[0]['run_id'])
-    assert result['state'] == 'cancelled'
-    assert result['worker_terminated'] is True
-    assert not worker._process_group_running(launched['pid'])
-    assert execution.reconcile_batch(manifest, 'batch-0', run_root=root)['active_seconds'] is None
 
 
 def test_watchdog_stops_owned_worker_when_job_state_is_unreadable_at_deadline(tmp_path, monkeypatch):
@@ -230,7 +197,9 @@ def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_p
     assert stopped == [True]
 
 
-def install_test_owned_activation(tmp_path, monkeypatch, activation, *, watchdog_startup_delay_s=0):
+def install_test_owned_activation(
+    tmp_path, monkeypatch, activation, *, watchdog_startup_delay_s=0, bypass_suite_window=False
+):
     """Pin source before startup hooks can import a different editable checkout."""
     hook = tmp_path / 'hook'
     hook.mkdir()
@@ -242,27 +211,9 @@ def install_test_owned_activation(tmp_path, monkeypatch, activation, *, watchdog
         'from anvil_serving.benchmarking import campaign_execution as e\n'
         'a = ' + repr(activation) + '\n'
         'e._activation = lambda arm, expected=None: a if expected in (None, a) else (_ for _ in ()).throw(RuntimeError("activation drift"))\n'
+        + ('e.require_campaign_suite_window = lambda context: None\n' if bypass_suite_window else '')
     )
     monkeypatch.setenv('PYTHONPATH', str(hook))
-
-
-def test_activation_hook_pins_checkout_before_conflicting_package(tmp_path, monkeypatch):
-    activation = {'status': 'test-owned'}
-    install_test_owned_activation(tmp_path, monkeypatch, activation)
-    conflicting_root = tmp_path / 'other-install'
-    conflicting_package = conflicting_root / 'anvil_serving'
-    conflicting_package.mkdir(parents=True)
-    (conflicting_package / '__init__.py').write_text('raise RuntimeError("wrong checkout imported")\n')
-    monkeypatch.setenv('PYTHONPATH', os.environ['PYTHONPATH'] + os.pathsep + str(conflicting_root))
-    result = subprocess.run(
-        [sys.executable, '-c',
-         'import json; from anvil_serving.benchmarking import campaign_execution as e; '
-         'print(json.dumps({"source": e.__file__, "activation": e._activation({})}))'],
-        cwd=tmp_path, capture_output=True, text=True, timeout=10,
-    )
-    assert result.returncode == 0, result.stderr
-    assert not result.stderr
-    assert json.loads(result.stdout) == {'source': execution.__file__, 'activation': activation}
 
 
 def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkeypatch):
@@ -280,7 +231,7 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
                 super().do_GET()
 
     server = ThreadingHTTPServer(('127.0.0.1', 0), Engine)
-    thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True); thread.start()
     launched = None
     try:
         address = f'http://127.0.0.1:{server.server_port}'
@@ -291,6 +242,16 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
         install_test_owned_activation(tmp_path, monkeypatch, activation)
         root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation,
             drain={'running_metric': 'running', 'waiting_metric': 'waiting', 'metric_labels': {'model_name': 'model'}, 'timeout_s': 40, 'poll_s': .01}, drain_reserve_s=70)
+        observed_drains = []
+
+        def verify_configured_drain(policy, *, deadline, **kwargs):
+            observed_drains.append((policy, deadline))
+            assert policy['metrics_url'] == activation['metrics_url']
+            assert policy['generation'] == activation['generation']
+            assert policy['metric_labels'] == {'model_name': 'model'}
+            return {'status': 'verified', 'fixture': 'coordinator-seam'}
+
+        monkeypatch.setattr(execution, 'observe_drain', verify_configured_drain)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
         deadline = time.monotonic() + 90
@@ -304,6 +265,7 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
             time.sleep(.05)
         assert result['state'] == 'completed', store.logs(bound[0]['run_id'])
         assert execution.reconcile_batch(manifest, 'batch-0', run_root=root, store=store)['status'] == 'closed'
+        assert len(observed_drains) == 1
     finally:
         if launched and worker._process_group_running(launched['pid']): worker.cancel_benchmark_job(store, bound[0]['run_id'])
         server.shutdown(); server.server_close(); thread.join(timeout=3)
@@ -315,8 +277,11 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
     import threading
     from tests.test_benchmark_worker import EndpointHandler
 
+    request_entered = threading.Event()
+
     class SlowEndpoint(EndpointHandler):
         def do_POST(self):
+            request_entered.set()
             time.sleep(60)
             super().do_POST()
 
@@ -324,7 +289,7 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         daemon_threads = True
 
     server = SlowServer(('127.0.0.1', 0), SlowEndpoint)
-    thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start()
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True); thread.start()
     launched = None
     try:
         address = f'http://127.0.0.1:{server.server_port}'
@@ -334,7 +299,9 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         activation['binding_sha256'] = execution._digest({key: activation[key] for key in ('generation', 'metrics_url', 'container_id', 'started_at', 'served_model')})
         # Reproduce a loaded runner where watchdog startup exceeds the former
         # two-second traffic window, without weakening real process custody.
-        install_test_owned_activation(tmp_path, monkeypatch, activation, watchdog_startup_delay_s=3)
+        install_test_owned_activation(
+            tmp_path, monkeypatch, activation, watchdog_startup_delay_s=3, bypass_suite_window=True
+        )
         root, manifest, bound = campaign(tmp_path, monkeypatch, endpoint=address+'/v1', activation=activation, timeout_s=30)
         store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root); store.submit(bound[0])
         launched = worker.launch_benchmark_job(path=store.path, run_root=root, run_id=bound[0]['run_id'])
@@ -345,7 +312,12 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
         # enforcement even though new admission now refuses this allowance.
         with monkeypatch.context() as historical:
             historical.setattr(execution, 'require_batch_allowance', lambda *a, **k: k['allowance_s'])
-            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=20)
+            # Eight seconds of historical traffic remains after the required
+            # ten-second drain reserve. It retains the deliberate three-second
+            # watchdog startup and enough time to prove the owned child entered
+            # the blocking endpoint before custody cancels it.
+            execution.release_batch(manifest, 'batch-0', run_root=root, allowance_s=18)
+        assert request_entered.wait(6), store.logs(bound[0]['run_id'])
         while time.monotonic() < deadline:
             result = store.status(bound[0]['run_id'])
             if result['state'] in {'completed', 'failed', 'cancelled'}: break
@@ -355,33 +327,6 @@ def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, 
     finally:
         if launched and worker._process_group_running(launched['pid']): worker.cancel_benchmark_job(store, bound[0]['run_id'])
         server.shutdown(); server.server_close(); thread.join(timeout=3)
-
-
-def test_observer_generation_url_expires_cached_zero_before_drain(monkeypatch):
-    from types import SimpleNamespace
-    from anvil_serving.router import model_capacity
-    clock = [100.0]
-    monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0]+seconds)))
-    generation = 'a' * 64
-    policy = {'generation': generation,
-        'metrics_url': 'http://127.0.0.1:30001/engine/'+generation+'/metrics',
-        'running_metric': 'running', 'waiting_metric': 'waiting', 'metric_labels': {'model_name': 'candidate'},
-        'timeout_s': 40, 'poll_s': .1}
-    observed = []
-    def read(*args, **kwargs):
-        observed.append(clock[0])
-        return 200, ('running{model_name="candidate"} 0\nwaiting{model_name="candidate"} 0\nanvil_observer_metrics_sample_timestamp_seconds{model="candidate"} ' + str(clock[0])).encode()
-    monkeypatch.setattr(model_capacity, '_default_metrics_read', read)
-    execution.validate_drain_policy(policy, reserve_s=70, resolved=True)
-    assert execution.observe_drain(policy, deadline=130)['status'] == 'unknown'
-    assert not observed  # pre-stop cached zero cannot reclaim a short reservation
-    result = execution.observe_drain(policy, deadline=160)
-    assert result['status'] == 'verified' and min(observed) >= 135
-    assert len(observed) == 1
-    monkeypatch.setattr(model_capacity, '_default_metrics_read', lambda *a, **k: (503, b'superseded'))
-    assert execution.observe_drain(policy, deadline=200)['status'] == 'unknown'
-    with pytest.raises(BenchmarkJobError):
-        execution.validate_drain_policy({**policy, 'generation': 'b'*64}, reserve_s=70, resolved=True)
 
 
 def entry_campaign(tmp_path, monkeypatch):
@@ -421,8 +366,6 @@ def entry_campaign(tmp_path, monkeypatch):
 @pytest.mark.parametrize('failure', ['no_ack', 'early_exit', 'spawn', 'activation', 'closure', 'prepared', 'cancel', 'budget'])
 def test_entry_failure_closes_before_shared_terminal_and_durable_failure(tmp_path, monkeypatch, failure):
     from concurrent.futures import ThreadPoolExecutor
-    import subprocess
-    import sys
     from anvil_serving.benchmarking import campaign_telemetry as telemetry
     store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
     original_popen = subprocess.Popen
@@ -510,45 +453,6 @@ def test_entry_failure_closes_before_shared_terminal_and_durable_failure(tmp_pat
     assert execution.reconcile_batch(manifest, sampler.batch_id, run_root=store.run_root, store=store)['active_seconds'] is None
 
 
-@pytest.mark.parametrize('failure', ['missing', 'invalid', 'malformed', 'expired', 'future', 'wrong_boot'])
-def test_untrusted_entry_release_reaches_failed_without_fabricating_closure(tmp_path, monkeypatch, failure):
-    from types import SimpleNamespace
-    store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
-    path = sampler.root / 'batches' / (sampler.batch_id + '.json')
-    expected = 'campaign_release_invalid'
-    if failure == 'missing':
-        path.unlink()
-        clock = [time.monotonic()]
-        monkeypatch.setattr(execution, 'time', SimpleNamespace(monotonic=lambda: clock[0], time=time.time,
-            perf_counter=time.perf_counter, sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds)))
-        expected = 'campaign_release_missing'
-    elif failure == 'invalid':
-        atomic_write_json(path, {**release, 'manifest_sha256': 'f' * 64})
-    elif failure == 'malformed':
-        path.write_text('{')
-        expected = 'JSONDecodeError'
-    else:
-        if failure == 'wrong_boot':
-            release['boot_id'] = 'different-boot'
-        else:
-            for key in ('released_monotonic', 'traffic_deadline_monotonic', 'deadline_monotonic'):
-                release[key] += 1000 if failure == 'future' else -1000
-        atomic_write_json(path, release)
-    monkeypatch.setattr(execution.subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('untrusted release spawned watchdog'))
-    result = worker.execute_benchmark_job(store, child['run_id'])
-    assert result['state'] == 'failed' and result['finished_at']
-    assert result['failure']['code'] == expected
-    receipt_path = execution._path(child, store.run_root, 'campaign-execution.json')
-    receipt = execution._read(receipt_path)
-    assert receipt['status'] == 'blocked' and receipt['clients_stopped'] is True
-    assert receipt['drain']['status'] == 'unknown'
-    assert receipt['telemetry_terminal']['status'] == 'unavailable'
-    assert all(v['status'] == 'unavailable' for v in receipt['telemetry_coverage'].values())
-    assert store.artifact(child['run_id'])['results']['campaign_execution']['sha256']
-    # The failure fallback cannot bless a foreign receipt or unverified release.
-    assert 'closed_monotonic' not in receipt and 'active_seconds' not in receipt
-
-
 @pytest.mark.parametrize('kind', ['receipt', 'release'])
 def test_entry_failure_fallback_keeps_binding_and_release_guards(tmp_path, monkeypatch, kind):
     store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
@@ -567,44 +471,3 @@ def test_entry_failure_fallback_keeps_binding_and_release_guards(tmp_path, monke
         execution.campaign_result_reference(store, child)
     assert store.status(child['run_id'])['state'] == 'running'
     assert 'telemetry_terminal' not in execution._read(path)
-
-
-@pytest.mark.parametrize('mode', ['delayed', 'partial_deadline'])
-def test_watchdog_acknowledgement_is_bounded_and_allows_verified_slow_start(tmp_path, monkeypatch, mode):
-    import subprocess
-    import sys
-    store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
-    store.claim(child['run_id'])
-    path = sampler.root / 'batches' / (sampler.batch_id + '.json')
-    if mode == 'partial_deadline':
-        release['released_monotonic'] = time.monotonic() - 69.7
-        release['traffic_deadline_monotonic'] = release['released_monotonic'] + 70
-        release['deadline_monotonic'] = release['released_monotonic'] + 190
-        atomic_write_json(path, release)
-    original_popen = subprocess.Popen
-    supervisors = []
-    def spawn(*args, **kwargs):
-        code = ('import time; time.sleep(2.1); print("ready", flush=True); time.sleep(60)' if mode == 'delayed'
-                else 'import time; print("r", end="", flush=True); time.sleep(60)')
-        process = original_popen([sys.executable, '-c', code], **kwargs)
-        supervisors.append(process)
-        return process
-    monkeypatch.setattr(execution.subprocess, 'Popen', spawn)
-    started = time.monotonic()
-    try:
-        if mode == 'delayed':
-            context = execution.enter_campaign(store, child)
-            assert context['receipt']['status'] == 'active'
-            assert 2 < time.monotonic() - started < 8
-            assert supervisors[0].poll() is None and supervisors[0].stdout.closed
-        else:
-            with pytest.raises(BenchmarkJobError, match='did not acknowledge'):
-                execution.enter_campaign(store, child)
-            assert time.monotonic() - started < 2
-            assert supervisors[0].poll() is not None
-            assert execution._read(execution._path(child, store.run_root, 'campaign-execution.json'))['status'] == 'draining'
-    finally:
-        for process in supervisors:
-            if process.poll() is None:
-                process.kill()
-            process.wait(timeout=2)

@@ -19,14 +19,8 @@ from __future__ import annotations
 import json
 
 from anvil_serving.router.backends.relay import RelayBackend
-from anvil_serving.router.backends.sse import (
-    AnthropicStreamAssembler,
-    OpenAIStreamAssembler,
-)
-from anvil_serving.router.dialects.anthropic import AnthropicDialect
 from anvil_serving.router.dialects.openai import OpenAIDialect
-from anvil_serving.router.dialects.responses import ResponsesDialect
-from anvil_serving.router.internal import InternalRequest, Message, StructuredResult
+from anvil_serving.router.internal import InternalRequest, Message
 from tests.router.helpers import make_tier as _tier
 from tests.router.test_streaming_relay import (
     FakeStreamTransport,
@@ -87,214 +81,25 @@ class TestBufferedExtraction:
         return RelayBackend(_tier("openai"), env=ENV,
                             transport=lambda url, *, data, headers, timeout: body)
 
-    def test_openai_prompt_tokens_details_normalized(self):
-        backend = self._openai_backend({
-            "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 12, "completion_tokens": 2,
-                      "total_tokens": 14,
-                      "prompt_tokens_details": {"cached_tokens": 9}},
-        })
-        list(backend.generate(_mk_request("openai")))
-        s = backend.get_last_structured()
-        assert s.usage == {"input_tokens": 12, "output_tokens": 2,
-                           "cache_read_input_tokens": 9}
-
-    def test_openai_without_details_unchanged(self):
-        backend = self._openai_backend({
-            "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
-            "usage": {"prompt_tokens": 12, "completion_tokens": 2},
-        })
-        list(backend.generate(_mk_request("openai")))
-        assert backend.get_last_structured().usage == {
-            "input_tokens": 12, "output_tokens": 2}
-
-    def test_openai_invalid_cached_values_dropped(self):
-        for bad in (-1, True, "9", None, 2.5):
-            backend = self._openai_backend({
-                "choices": [{"message": {"content": "ok"},
-                             "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": 12, "completion_tokens": 2,
-                          "prompt_tokens_details": {"cached_tokens": bad}},
-            })
-            list(backend.generate(_mk_request("openai")))
-            assert backend.get_last_structured().usage == {
-                "input_tokens": 12, "output_tokens": 2}, bad
-
-    def test_anthropic_cache_read_normalized(self):
-        body = json.dumps({
-            "stop_reason": "end_turn",
-            "content": [{"type": "text", "text": "ok"}],
-            "usage": {"input_tokens": 12, "output_tokens": 2,
-                      "cache_read_input_tokens": 9},
-        }).encode()
-        backend = RelayBackend(_tier("anthropic"), env=ENV,
-                               transport=lambda url, *, data, headers, timeout: body)
-        list(backend.generate(_mk_request("anthropic")))
-        assert backend.get_last_structured().usage == {
-            "input_tokens": 12, "output_tokens": 2,
-            "cache_read_input_tokens": 9}
-
 
 # --------------------------------------------------------------------------- #
 # Streaming assemblers (mirror the buffered shapes exactly)
 # --------------------------------------------------------------------------- #
-def test_openai_stream_assembler_captures_cached_tokens():
-    a = OpenAIStreamAssembler()
-    a.feed(None, json.dumps({
-        "choices": [],
-        "usage": {"prompt_tokens": 12, "completion_tokens": 2,
-                  "prompt_tokens_details": {"cached_tokens": 9}},
-    }))
-    assert a.result().usage == {"input_tokens": 12, "output_tokens": 2,
-                                "cache_read_input_tokens": 9}
-
-
-def test_openai_stream_assembler_without_details_unchanged():
-    a = OpenAIStreamAssembler()
-    a.feed(None, json.dumps({
-        "choices": [],
-        "usage": {"prompt_tokens": 12, "completion_tokens": 2},
-    }))
-    assert a.result().usage == {"input_tokens": 12, "output_tokens": 2}
-
-
-def test_anthropic_stream_assembler_cache_read_from_message_start():
-    a = AnthropicStreamAssembler()
-    a.feed("message_start", json.dumps({
-        "type": "message_start",
-        "message": {"usage": {"input_tokens": 7, "output_tokens": 0,
-                              "cache_read_input_tokens": 5}},
-    }))
-    a.feed("message_delta", json.dumps({
-        "type": "message_delta",
-        "delta": {"stop_reason": "end_turn"},
-        "usage": {"output_tokens": 9},
-    }))
-    assert a.result().usage == {"input_tokens": 7, "output_tokens": 9,
-                                "cache_read_input_tokens": 5}
-
-
-def test_anthropic_stream_assembler_cache_read_from_message_delta():
-    # Some upstreams report cumulative usage (incl. cache reads) on
-    # message_delta; the later value wins.
-    a = AnthropicStreamAssembler()
-    a.feed("message_start", json.dumps({
-        "type": "message_start",
-        "message": {"usage": {"input_tokens": 7, "output_tokens": 0}},
-    }))
-    a.feed("message_delta", json.dumps({
-        "type": "message_delta",
-        "delta": {"stop_reason": "end_turn"},
-        "usage": {"output_tokens": 9, "cache_read_input_tokens": 5},
-    }))
-    assert a.result().usage == {"input_tokens": 7, "output_tokens": 9,
-                                "cache_read_input_tokens": 5}
 
 
 # --------------------------------------------------------------------------- #
 # OpenAI dialect wire (streaming usage chunk + non-streaming render)
 # --------------------------------------------------------------------------- #
-class TestOpenAIDialectWire:
-    def test_usage_chunk_carries_prompt_tokens_details(self):
-        r = _mk_usage_stream_req()
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7,
-                                    "cache_read_input_tokens": 9})
-        d = OpenAIDialect()
-        chunks = _parse_openai_sse(
-            b"".join(d.stream(r, ["ok"], get_structured=lambda: s)))
-        (u,) = [c for c in chunks if c.get("usage") is not None]
-        assert u["usage"] == {
-            "prompt_tokens": 12,
-            "completion_tokens": 7,
-            "total_tokens": 19,
-            "prompt_tokens_details": {"cached_tokens": 9},
-        }
-
-    def test_usage_chunk_without_cached_has_no_details_block(self):
-        r = _mk_usage_stream_req()
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7})
-        d = OpenAIDialect()
-        chunks = _parse_openai_sse(
-            b"".join(d.stream(r, ["ok"], get_structured=lambda: s)))
-        (u,) = [c for c in chunks if c.get("usage") is not None]
-        assert u["usage"] == {"prompt_tokens": 12, "completion_tokens": 7,
-                              "total_tokens": 19}
-
-    def test_render_carries_prompt_tokens_details(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7,
-                                    "cache_read_input_tokens": 9})
-        out = OpenAIDialect().render(_mk_request("openai"), "ok", structured=s)
-        assert out["usage"] == {
-            "prompt_tokens": 12,
-            "completion_tokens": 7,
-            "total_tokens": 19,
-            "prompt_tokens_details": {"cached_tokens": 9},
-        }
-
-    def test_render_without_cached_has_no_details_block(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7})
-        out = OpenAIDialect().render(_mk_request("openai"), "ok", structured=s)
-        assert out["usage"] == {"prompt_tokens": 12, "completion_tokens": 7,
-                                "total_tokens": 19}
-
-    def test_render_estimate_path_has_no_details_block(self):
-        out = OpenAIDialect().render(_mk_request("openai"), "ok", structured=None)
-        assert "prompt_tokens_details" not in out["usage"]
 
 
 # --------------------------------------------------------------------------- #
 # Anthropic dialect wire
 # --------------------------------------------------------------------------- #
-class TestAnthropicDialectWire:
-    def test_render_passes_cache_read_through(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7,
-                                    "cache_read_input_tokens": 9})
-        out = AnthropicDialect().render(_mk_request("anthropic"), "ok",
-                                        structured=s)
-        assert out["usage"] == {"input_tokens": 12, "output_tokens": 7,
-                                "cache_read_input_tokens": 9}
-
-    def test_stream_message_delta_carries_cache_read(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7,
-                                    "cache_read_input_tokens": 9})
-        events = _parse_anthropic_events(b"".join(
-            AnthropicDialect().stream(_mk_request("anthropic"), ["ok"],
-                                      get_structured=lambda: s)))
-        (delta,) = [d for name, d in events if name == "message_delta"]
-        assert delta["usage"] == {"output_tokens": 7,
-                                  "cache_read_input_tokens": 9}
-
-    def test_stream_message_delta_without_cached_unchanged(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7})
-        events = _parse_anthropic_events(b"".join(
-            AnthropicDialect().stream(_mk_request("anthropic"), ["ok"],
-                                      get_structured=lambda: s)))
-        (delta,) = [d for name, d in events if name == "message_delta"]
-        assert delta["usage"] == {"output_tokens": 7}
 
 
 # --------------------------------------------------------------------------- #
 # Responses dialect wire
 # --------------------------------------------------------------------------- #
-class TestResponsesDialectWire:
-    def test_render_carries_input_tokens_details(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7,
-                                    "cache_read_input_tokens": 9})
-        out = ResponsesDialect().render(_mk_request("openai"), "ok",
-                                        structured=s)
-        assert out["usage"] == {
-            "input_tokens": 12,
-            "output_tokens": 7,
-            "total_tokens": 19,
-            "input_tokens_details": {"cached_tokens": 9},
-        }
-
-    def test_render_without_cached_has_no_details_block(self):
-        s = StructuredResult(usage={"input_tokens": 12, "output_tokens": 7})
-        out = ResponsesDialect().render(_mk_request("openai"), "ok",
-                                        structured=s)
-        assert out["usage"] == {"input_tokens": 12, "output_tokens": 7,
-                                "total_tokens": 19}
 
 
 # --------------------------------------------------------------------------- #

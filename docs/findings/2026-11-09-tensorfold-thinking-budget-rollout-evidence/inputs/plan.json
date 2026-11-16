@@ -1,0 +1,103 @@
+{
+  "schema": "anvil-serving.focused-quality-plan/v1",
+  "status": "frozen-awaiting-independent-dispatch-approval",
+  "created_at": "2026-11-09T21:48:55.191635+00:00",
+  "scope": "Deploy typed request-local thinking budget to an existing local benchmark/router path; qualify enforcement and one-task Go outcomes while preserving model and global controls.",
+  "order": [
+    "max-budget-1",
+    "low-unset",
+    "max-budget-2"
+  ],
+  "controls": {
+    "profile": "aider-diagnostic-16k-v1",
+    "profile_sha256": "59cf12be50467c04b43d6830e268b9f788e631fcb4230414c648a8480d1ab309",
+    "output_cap_tokens_per_response": 16384,
+    "output_cap_includes_reasoning": true,
+    "thinking_budget_tokens": 8192,
+    "reasoning_effort": "max except explicit low-unset regression control",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "concurrency": 1,
+    "max_coding_attempts": 2,
+    "max_transport_calls_per_job": 12,
+    "retries": 0,
+    "deadline_seconds_per_job": 600,
+    "cache": "unchanged policy; uncontrolled state, no resets",
+    "seed": "unsupported; no seeded comparison"
+  },
+  "oracle": {
+    "receipt_path": "<private-path>",
+    "sha256": "7054074e8d74b4754965ad759b6e74e4fa07fafd674a4241217fd75a5f97f9f2"
+  },
+  "custody": "Same selected model/process/image/recipe, unchanged route/defaults/cache. One owned C1 job; native waiting zero and running at most two under existing C4; complete owned HTTP accounting and worker exit before the next job. User traffic preserved.",
+  "criteria": {
+    "enforcement": "Actual routed budget reaches native engine; one forced-close boundary near8192 followed by answer, or mark forced behavior unobserved. Delimiter overhead is not an exact thinking-token ceiling.",
+    "quality": "Independent pinned Go starter/reference grader; retain every failure. No broad quality or speedup claim.",
+    "unset_regression": "Low effort without numeric budget accepted with existing shape, produces answer independently checked.",
+    "safety": "Stop submissions on identity/admission/transport/cgroup/OOM failures. No rollback. Ordinary coding failure retained and continue frozen safe controls. No unchanged rerun until pass."
+  },
+  "budgets": {
+    "jobs": 3,
+    "transport_call_ceiling": 36,
+    "suite_seconds_each": 600,
+    "combined_validation_call_ceiling": 45
+  },
+  "exclusions": [
+    "No model restart/replacement or settings/cache change",
+    "No client/provider/catalog changes",
+    "No secondary activation or fleet acceptance",
+    "No engine patch needed",
+    "No rollback",
+    "No public package release/tag implied"
+  ],
+  "baseline": "deployment.json",
+  "source_candidate": {
+    "schema": "anvil-serving.source-delivery/v1",
+    "pr": "https://github.com/fakoli/anvil-serving/pull/751",
+    "merged": true,
+    "merge_commit": "0f55c039bc5661e51421d0b65c51186155abffa7",
+    "reviewed_head": "d06ce92d7ff4cf834650d8ccb0a82e0d5d37419f",
+    "tree": "b3e6b76646b74c4e7900bbe99cf2adae25b92477",
+    "tree_equal": true,
+    "hosted_checks": {
+      "passed": 14,
+      "skipped": 1
+    },
+    "wheel_sha256": "d34825a38967de332b9c173bd58ace17fe48a774e9690b141eb6b1dd9bbf1335",
+    "router_image": "sha256:3fb7a08b71c529ad9141a45f96e215acc6cdcda442a8e2e08a4b0991cd56c3d3"
+  },
+  "preflight": {
+    "scope": "Router code regression, separately labeled from the three Go jobs",
+    "checks": [
+      "smoke",
+      "json",
+      "tools",
+      "streaming-tools",
+      "tool-result"
+    ],
+    "tool_batch": 2,
+    "thinking_mode": "default",
+    "reasoning_effort": "deployed default",
+    "temperature": 0.6,
+    "visible_answer_tokens": 1024,
+    "reasoning_headroom_tokens": 8192,
+    "total_response_cap_tokens": 9216,
+    "socket_timeout_seconds": 120,
+    "call_ceiling": 9,
+    "retries": 0,
+    "command_timeout_seconds": 600
+  },
+  "controller_scope": "deferred: current legacy activation-observer profile would refuse after candidate upgrade; preserving held fleet/observer owner. Do not claim remote-controller budget support.",
+  "authority": {
+    "deployment": "User explicitly requested deploying the reviewed patch into the existing setup",
+    "mutation_scope": "Local CLI selectors and image-only router successor with identical configuration bytes; preserve current model/controller/observer/startup owners",
+    "recovery": "fix forward under current selected model; no rollback",
+    "traffic": "Managed whole-router ingress barrier for replacement; never cancel unrelated work; separate native UNKNOWN-memory acknowledgement retained"
+  },
+  "frozen_before_generation": true,
+  "deployment_approval_payload": {
+    "path": "inputs/deployment-approval-plan.json",
+    "sha256": "4ba02922e08edf3019d79669e98fd32bdc28f3014c8fd1932d59fe47d3154295"
+  },
+  "readiness": "Selected historical oracle image is requalified by each fresh worker before generation; no same-ID standalone prepare step. Current strict Python environment independently verified before deployment."
+}

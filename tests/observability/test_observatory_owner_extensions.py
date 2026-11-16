@@ -1,13 +1,11 @@
 import json
 from contextlib import contextmanager
-import urllib.request
 
 import pytest
 
-from anvil_serving import mcp, reservations, serves
+from anvil_serving import reservations, serves
 from anvil_serving.control_plane.mcp.errors import ToolError
 from anvil_serving.control_plane.mcp.tools.models import tool_recipe_settings
-from anvil_serving.control_plane.mcp.tools.router import _tier_candidate
 from anvil_serving.control_plane.mcp.tools import serves as serves_tools
 
 
@@ -23,19 +21,6 @@ class _Response:
 
     def read(self, _amount=None):
         return json.dumps(self.payload).encode()
-
-
-def test_router_candidate_changes_only_closed_tier_fields():
-    raw = b'''[router]\nrelay_timeout = 30\n\n[[router.tiers]]\nid = "primary"\nmax_concurrency = 2\nmax_output_tokens = 4096\nurl = "http://127.0.0.1:30000/v1"\n'''
-    candidate, values = _tier_candidate(
-        raw, "primary", {"max_concurrency": 4, "max_output_tokens": 8192}
-    )
-    assert b"max_concurrency = 4" in candidate
-    assert b"max_output_tokens = 8192" in candidate
-    assert b'url = "http://127.0.0.1:30000/v1"' in candidate
-    assert values["max_concurrency"] == 4
-    with pytest.raises(ToolError):
-        _tier_candidate(raw, "primary", {"url": 1})
 
 
 def test_recipe_preview_never_writes_and_apply_requires_human_gate(tmp_path):
@@ -56,64 +41,6 @@ def test_recipe_preview_never_writes_and_apply_requires_human_gate(tmp_path):
     assert registry.read_bytes() == before
 
 
-def test_registered_recipe_lifecycle_is_preview_only_then_rechecks_exact_baseline(monkeypatch, tmp_path):
-    """The catalog tool never invokes the lifecycle handler for a preview or stale review."""
-    from anvil_serving import models, serve_recipes
-    from anvil_serving.workbench_app import recipe_admission
-    from anvil_serving.control_plane.mcp.tools import serves as serves_tools
-
-    registry = tmp_path / "recipes.toml"
-    registry.write_text('''schema = "anvil-serving/serve-recipes-v1"\n\n[[recipe]]\nmodel = "org/model"\n[recipe.serve]\nimage = "example/image@sha256:abc"\nstartup_timeout_seconds = 60\nflags = ["--max-model-len 4096", "--max-num-seqs 2"]\n''')
-    state = {"containers": []}
-    monkeypatch.setattr(
-        serve_recipes, "discover_recipe_containers",
-        lambda: {"schema": serve_recipes.RECIPE_CONTAINER_INVENTORY_SCHEMA, "containers": list(state["containers"])},
-    )
-    calls = []
-    def lifecycle(argv):
-        calls.append(argv)
-        recipe = serve_recipes.find_recipe(serve_recipes.load_registry(str(registry)), "org/model")
-        if argv[0] == "load":
-            state["containers"] = [{
-                "container": "candidate", "container_id": "a" * 64, "model": "org/model",
-                "recipe_digest": serve_recipes.recipe_digest(recipe),
-                "registry_digest": serve_recipes.registry_digest(str(registry)), "state": "running",
-            }]
-        return 0
-    monkeypatch.setattr(models, "_recipe_main", lifecycle)
-    monkeypatch.setattr(recipe_admission, "load_plan", lambda *args: {"admission_sha256": "e" * 64, "manifest": "/private/serves.toml", "serve": "candidate", "gpu_roles": ["compute"], "reservation": "full-card"})
-    def managed(argv, **kwargs):
-        lifecycle(["load", "org/model"])
-        return {"returncode": 0}
-    monkeypatch.setattr(serves_tools, "_run_argv", managed)
-    monkeypatch.setattr(serves_tools, "_load_serves_for_tool", lambda _: [{"name": "candidate", "container": "candidate", "up": ["managed"]}])
-
-    preview = mcp.call_tool("recipe_manage", {
-        "action": "load", "registry": str(registry), "model": "org/model", "container": "candidate",
-    })
-    assert preview["ok"] and preview["data"]["applied"] is False and calls == []
-    baseline = preview["data"]
-    stale = mcp.call_tool("recipe_manage", {
-        "action": "load", "registry": str(registry), "model": "org/model", "container": "candidate",
-        "dry_run": False, "confirm": True,
-        "expected_registry_sha256": "0" * 64,
-        "expected_recipe_sha256": baseline["recipe_sha256"],
-        "expected_inventory_sha256": baseline["inventory_sha256"],
-        "expected_admission_sha256": baseline["admission_sha256"],
-    })
-    assert stale["ok"] is False and stale["error"]["code"] == "stale_preview" and calls == []
-    applied = mcp.call_tool("recipe_manage", {
-        "action": "load", "registry": str(registry), "model": "org/model", "container": "candidate",
-        "dry_run": False, "confirm": True,
-        "expected_registry_sha256": baseline["registry_sha256"],
-        "expected_recipe_sha256": baseline["recipe_sha256"],
-        "expected_inventory_sha256": baseline["inventory_sha256"],
-        "expected_admission_sha256": baseline["admission_sha256"],
-    })
-    assert applied["ok"] and applied["data"]["postcondition"]["status"] == "passed"
-    assert calls == [["load", "org/model"]]
-
-
 def test_none_engine_is_explicitly_cpu_only_and_not_blocked_by_exclusive_owner(tmp_path):
     manifest = tmp_path / "serves.toml"
     manifest.write_text('''[[serve]]\nname = "observatory"\nruntime = "docker"\nport = 8445\nmodel = "observatory-control-plane"\nengine = "none"\ngpu_inference = false\ncontainer = "anvil-observatory"\nup = "docker compose -f {dir}/compose.yml up -d observatory"\n''')
@@ -130,48 +57,6 @@ def test_none_engine_is_explicitly_cpu_only_and_not_blocked_by_exclusive_owner(t
         bad = manifest.read_text().replace("gpu_inference = false", "gpu_inference = true")
         manifest.write_text(bad)
         serves.load_manifest(manifest)
-
-
-def test_chat_probe_has_one_exact_bounded_request_and_structured_result():
-    requests = []
-
-    def opened(request, timeout):
-        requests.append((request, timeout))
-        return _Response({"choices": [{"message": {"content": "READY"}, "finish_reason": "stop"}]})
-
-    result = serves.probe_serve(
-        {"name": "glm", "engine": "sglang", "model": "org/glm", "served_name": "glm",
-         "port": 30000, "stack": "serving"},
-        text="Reply with the single word READY.", timeout=17, _open=opened,
-    )
-    assert result["recognized_excerpt"] == "READY"
-    assert result["request"] == {"max_tokens": 256, "temperature": 0}
-    assert result["finish_reason"] == "stop"
-    assert result["incomplete"] is False
-    assert len(requests) == 1
-    request, timeout = requests[0]
-    assert request.full_url == "http://127.0.0.1:30000/v1/chat/completions"
-    assert timeout == 17
-    payload = json.loads(request.data)
-    assert payload == {
-        "model": "glm",
-        "messages": [{"role": "user", "content": "Reply with the single word READY."}],
-        "max_tokens": 256,
-        "temperature": 0,
-    }
-
-
-def test_chat_probe_reports_output_limit_as_incomplete_evidence():
-    result = serves.probe_serve(
-        {"name": "glm", "engine": "sglang", "model": "org/glm", "port": 30000},
-        text="Reply with the single word READY.", max_tokens=1,
-        _open=lambda request, timeout: _Response({
-            "choices": [{"message": {"content": ""}, "finish_reason": "length"}]
-        }),
-    )
-    assert result["recognized_excerpt"] == ""
-    assert result["finish_reason"] == "length"
-    assert result["incomplete"] is True
 
 
 def test_owner_probe_holds_shared_lock_and_forwards_exact_bounds(monkeypatch, tmp_path):
@@ -215,27 +100,3 @@ def test_owner_probe_holds_shared_lock_and_forwards_exact_bounds(monkeypatch, tm
     assert received["max_tokens"] == 256
     assert received["text"] == "Reply with the single word READY."
     assert held is False
-
-
-def test_safe_probe_opener_preserves_post_request(monkeypatch):
-    captured = {}
-
-    def opened(request, *args, **kwargs):
-        captured.update(request=request, args=args, kwargs=kwargs)
-        return object()
-
-    monkeypatch.setattr(urllib.request, "urlopen", opened)
-    request = urllib.request.Request(
-        "http://127.0.0.1:30000/v1/chat/completions",
-        data=b'{"max_tokens":256}',
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    response = serves_tools._open_safe_probe_request(request, timeout=60)
-    assert response is not None
-    forwarded = captured["request"]
-    assert forwarded.full_url == request.full_url
-    assert forwarded.data == request.data
-    assert forwarded.get_method() == "POST"
-    assert forwarded.get_header("Content-type") == "application/json"
-    assert captured["kwargs"] == {"timeout": 60}

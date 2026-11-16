@@ -1,0 +1,68 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-13-tensorfold-mia-runtime-functional",
+  "complete": true,
+  "identity": {
+    "source_commit": "8fe1767257f26495cb0ce8e65511c33717fb80cc",
+    "engine": "f350cd3ea253a042e205746928271f9d8f71a82d",
+    "mia": "fc1ee3a5381031e2357662b46c2fb44b20190429",
+    "final_tree": "109491764fc5f711705c148da278a708f6c1aeea",
+    "image": "sha256:2824d665f9334db0fe9868706cd26dc7bd2604974625a2602c74c78cf90b5886",
+    "hardware": "2x RTX PRO 6000 Blackwell Max-Q 96GiB, 300W",
+    "context_configured": 327680,
+    "concurrency_configured": 4
+  },
+  "workload": {
+    "scope": "focused quality/compatibility",
+    "manifest": "workload-manifest.json"
+  },
+  "measurement": {
+    "path": "direct native HTTP, restored routed smoke",
+    "warm_cold_state": "mixed; explicit cache receipts",
+    "statistics": []
+  },
+  "gates": [
+    "source and build pass",
+    "tools/image/C4/cache pass",
+    "extended runtime delta pass",
+    "retained restoration pass"
+  ],
+  "headline_results": [
+    "Messages truncated-tool500 fixed to200",
+    "prompt_logprobs128 with distinct requested IDs, repeat, concurrency, limit rejection passed"
+  ],
+  "failures": [
+    "baseline Messages500",
+    "baseline128 cap400"
+  ],
+  "limitations": [
+    "No matched speed benchmark or numerical logprob fidelity",
+    "99k first request has18,432 cached tokens",
+    "C4 canaries do not prove C4 full327k windows",
+    "Guard smoke does not guarantee rejection path activated",
+    "Video unsupported; optional L2PF and THINK_OFF_SPLIT off",
+    "Fleet native owner unavailable; activation/publication closure separately tracked",
+    "harness_convergence_pending"
+  ],
+  "decision": {
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "qualified-runtime-candidate"
+    ],
+    "promotion_authorized": true,
+    "next_gate": "managed activation, client and publication receipts; do not infer complete rollout"
+  },
+  "evidence": [
+    "raw/extended-candidate-result.json",
+    "raw/candidate-preflight.json",
+    "raw/candidate-samples.json",
+    "restoration.json"
+  ],
+  "metrics_coverage": {
+    "profile": "focused-quality",
+    "performance": "not collected; no speed claim"
+  }
+}

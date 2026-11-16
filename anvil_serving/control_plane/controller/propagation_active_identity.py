@@ -65,10 +65,25 @@ class ObservedActiveIdentity:
     """Accept only the exact previously approved container and fresh endpoints."""
 
     def __init__(self, activation_ref: str, catalog_sha256: str, owners: list[dict],
-                 router_base_url: str, router_token_env: str, observer: dict | None = None):
+                 router_base_url: str, router_token_env: str, observer: dict | None = None,
+                 route_revision: int | None = None, effective_route_sha256: str | None = None):
         try:
             self.ref = _id(activation_ref)
             self.catalog_sha256 = _digest(catalog_sha256)
+            # Old activation records have only immutable boot-config custody.
+            # Preserve their parse compatibility, but never treat them as a
+            # current live-route observation: a hot alias publication leaves
+            # that old digest unchanged.
+            if (route_revision is None) != (effective_route_sha256 is None):
+                raise ValueError()
+            if route_revision is not None:
+                if type(route_revision) is not int or route_revision < 0:
+                    raise ValueError()
+                self.route_revision = route_revision
+                self.effective_route_sha256 = _digest(effective_route_sha256)
+            else:
+                self.route_revision = None
+                self.effective_route_sha256 = None
             if (type(router_base_url) is not str or not router_base_url
                     or type(router_token_env) is not str or not router_token_env
                     or type(owners) is not list or not 1 <= len(owners) <= 2):
@@ -94,8 +109,11 @@ class ObservedActiveIdentity:
                     "controller_url", "token_file", "profile_sha256"}):
                 raise ValueError()
             self.observer = observer
-            fingerprint = {"schema": "anvil-propagation-activation/v1",
-                           "catalog_sha256": self.catalog_sha256, "owners": self.owners}
+            fingerprint = {"schema": "anvil-propagation-activation/v2",
+                           "catalog_sha256": self.catalog_sha256,
+                           "route_revision": self.route_revision,
+                           "effective_route_sha256": self.effective_route_sha256,
+                           "owners": self.owners}
             self.digest = hashlib.sha256(json.dumps(fingerprint, sort_keys=True, separators=(",", ":"),
                                                    ensure_ascii=True).encode("ascii")).hexdigest()
         except (TypeError, ValueError):
@@ -105,6 +123,10 @@ class ObservedActiveIdentity:
         if self.observer is not None:
             return self._remote()
         try:
+            # A legacy activation pin must be re-observed and re-approved with
+            # a live route pair; it cannot silently bless an overlay update.
+            if self.route_revision is None:
+                raise ValueError()
             deadline = monotonic() + _OBSERVATION_DEADLINE_SECONDS
             def remaining() -> float:
                 value = deadline - monotonic()
@@ -115,7 +137,9 @@ class ObservedActiveIdentity:
             catalog = fetch_client_catalog(base_url=self.router_base_url,
                                            api_key_env=self.router_token_env, timeout_seconds=5)
             remaining()
-            if catalog["config_sha256"] != self.catalog_sha256:
+            if (catalog["config_sha256"] != self.catalog_sha256
+                    or catalog.get("route_revision") != self.route_revision
+                    or catalog.get("effective_route_sha256") != self.effective_route_sha256):
                 raise ValueError()
             opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
             for owner in self.owners:

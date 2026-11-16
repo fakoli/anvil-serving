@@ -1,0 +1,28 @@
+{
+  "before": {
+    "tensorfold:requests_running": 0.0,
+    "tensorfold:requests_waiting": 0.0,
+    "tensorfold:prompt_tokens_total": 3441388.0,
+    "tensorfold:generation_tokens_total": 224755.0,
+    "tensorfold:request_latency_seconds_count": 147.0
+  },
+  "after": {
+    "tensorfold:requests_running": 0.0,
+    "tensorfold:requests_waiting": 0.0,
+    "tensorfold:prompt_tokens_total": 3451844.0,
+    "tensorfold:generation_tokens_total": 292442.0,
+    "tensorfold:request_latency_seconds_count": 155.0
+  },
+  "observed_deltas": {
+    "tensorfold:prompt_tokens_total": 10456.0,
+    "tensorfold:generation_tokens_total": 67687.0,
+    "tensorfold:request_latency_seconds_count": 8.0
+  },
+  "native_totals": {
+    "responses": 8,
+    "prompt_tokens": 10456,
+    "completion_tokens": 67687,
+    "reasoning_tokens": 65577
+  },
+  "interpretation": "Observed agreement when present; traffic-preserving quality-only trial, no exclusive attribution or performance claim."
+}

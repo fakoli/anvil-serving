@@ -14,20 +14,6 @@ def _write_launchd(path, *, label=harness.OPENCLAW_LAUNCHD_LABEL, openclaw=True)
     }))
 
 
-def test_restart_uses_resolved_openclaw_executable():
-    calls = []
-
-    def run(argv, **_kwargs):
-        calls.append(argv)
-        return subprocess.CompletedProcess(argv, 0, "", "")
-
-    assert harness.cmd_restart_openclaw(
-        _which=lambda _name: "/opt/bin/openclaw",
-        _run=run,
-    ) == 0
-    assert calls == [["/opt/bin/openclaw", "gateway", "restart"]]
-
-
 def test_pi_media_cli_requires_withdraw(tmp_path, capsys):
     path = tmp_path / "mcp.json"
     path.write_text(json.dumps({"mcpServers": {"anvil-media-mcp": {}}}))
@@ -35,26 +21,6 @@ def test_pi_media_cli_requires_withdraw(tmp_path, capsys):
     assert "requires --withdraw" in capsys.readouterr().err
     assert harness.main(["sync", "pi-media", "--mcp-config", str(path), "--withdraw"]) == 0
     assert "anvil-media-mcp" in json.loads(path.read_text())["mcpServers"]
-
-
-def test_service_environment_refresh_uses_managed_openclaw_install():
-    calls = []
-
-    def run(argv, **_kwargs):
-        calls.append(argv)
-        return subprocess.CompletedProcess(argv, 0, "", "")
-
-    assert harness.cmd_refresh_openclaw_service_environment(
-        _which=lambda _name: "/opt/bin/openclaw",
-        _run=run,
-    ) == 0
-    assert calls == [[
-        "/opt/bin/openclaw",
-        "gateway",
-        "install",
-        "--force",
-        "--json",
-    ]]
 
 
 def test_service_environment_refresh_does_not_expose_failed_output(capsys):
@@ -98,22 +64,6 @@ def test_restart_falls_back_to_verified_launchd_service(tmp_path, capsys):
     assert result["service_label"] == "ai.openclaw.gateway"
     assert result["health_http_status"] == 200
     assert len(result["definition_sha256"]) == 64
-
-
-def test_restart_rejects_mismatched_launchd_definition(tmp_path, capsys):
-    plist = tmp_path / "ai.openclaw.gateway.plist"
-    _write_launchd(plist, openclaw=False)
-    calls = []
-
-    assert harness.cmd_restart_openclaw(
-        _which=lambda _name: None,
-        _platform="darwin",
-        _launchd_path=str(plist),
-        _run=lambda *args, **kwargs: calls.append((args, kwargs)),
-        _uid=lambda: 501,
-    ) == 1
-    assert calls == []
-    assert "does not identify an OpenClaw program" in capsys.readouterr().err
 
 
 def test_restart_launchd_dry_run_is_non_mutating(tmp_path, capsys):

@@ -491,6 +491,10 @@ def report_campaign(manifest, store, *, state=None):
                "matching": {key: _digest(cell.get("matching", {}).get(key)) for key in _HASHES},
                "evidence_status": reason or "retained", "samples": counts,
                "outcomes": samples, "native_aggregate_metrics": metrics,
+               "output_budget_classification": (
+                   "budget_exhausted" if spec["suite"] == "aider" and isinstance(native, dict)
+                   and isinstance(native.get("output_budget"), dict)
+                   and native["output_budget"].get("classification") == "budget_exhausted" else None),
                "raw_task_grades": raw_task_evidence["grades"] if raw_task_evidence else None,
                "raw_task_grade_diagnostics": raw_task_evidence["diagnostics"] if raw_task_evidence else None,
                "telemetry_coverage": coverage, "cache": {"requested": requested_cache, "proven": None},

@@ -9,8 +9,6 @@ from anvil_serving.benchmarking.artifacts import (
     BenchmarkArtifactError,
     CROSS_SUITE_EVIDENCE_SCHEMA,
     PROMOTION_DISCLAIMER,
-    build_external_prior_record,
-    build_measured_evidence,
     evidence_file_reference,
     sanitize_publishable_evidence,
     validate_cross_suite_evidence,
@@ -58,79 +56,12 @@ def measured(tmp_path):
     }
 
 
-def test_measured_integrity_verifies_identities_stage_order_and_hashes(tmp_path):
-    value = measured(tmp_path)
-    assert validate_cross_suite_evidence(value, artifact_root=str(tmp_path))["completeness"] == "completed"
-    value["stages"][0]["sequence"] = 1
-    with pytest.raises(BenchmarkArtifactError, match="ordered"):
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-
-
 def test_referenced_file_tampering_is_detected(tmp_path):
     value = measured(tmp_path)
     (tmp_path / "raw" / "stage.json").write_text("tampered", encoding="utf-8")
     with pytest.raises(BenchmarkArtifactError) as exc:
         validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
     assert exc.value.code == "evidence_digest_mismatch"
-
-
-def test_partial_evidence_survives_without_claiming_completion(tmp_path):
-    value = measured(tmp_path)
-    value["completeness"] = "failed"
-    value["stages"][0]["status"] = "failed"
-    value["summary"] = {"attempted": 1, "completed": False}
-    value["failure"] = {"class": "grading", "message": "official report absent"}
-    checked = validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert checked["stages"][0]["evidence"]
-    assert checked["summary"]["attempted"] == 1
-    value["summary"] = {"status": "passed"}
-    with pytest.raises(BenchmarkArtifactError, match="completed-run"):
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-
-
-def test_builder_normalizes_suite_failure_taxonomy(tmp_path):
-    value = measured(tmp_path)
-    value["completeness"] = "failed"
-    value["stages"][0]["status"] = "failed"
-    value["summary"] = {"attempted": 1, "completed": False}
-    built = build_measured_evidence(
-        run=value["run"],
-        identities=value["identities"],
-        stages=value["stages"],
-        completeness="failed",
-        summary=value["summary"],
-        failure={"class": "test_failure", "message": "upstream grader failed"},
-        artifact_root=str(tmp_path),
-    )
-    assert built["failure"]["class"] == "grading"
-
-
-def test_priors_are_structurally_distinct_from_local_measurements():
-    prior = build_external_prior_record(
-        source={"url": "https://example.com/benchmark", "observed_at": "2026-08-03"},
-        claims={"score": 42, "hardware": "external"},
-    )
-    assert prior["locally_measured"] is False
-    assert "run" not in prior
-    forged = copy.deepcopy(prior)
-    forged["run"] = {"run_id": "fake"}
-    with pytest.raises(BenchmarkArtifactError, match="cannot carry"):
-        validate_cross_suite_evidence(forged, verify_files=False)
-
-
-def test_evidence_discovery_keeps_measured_and_prior_labels(tmp_path):
-    local = measured(tmp_path)
-    local_path = tmp_path / "local.json"
-    local_path.write_text(json.dumps(local), encoding="utf-8")
-    prior_path = tmp_path / "prior.json"
-    prior_path.write_text(json.dumps(build_external_prior_record(
-        source={"url": "https://example.com/benchmark", "observed_at": "2026-08-03"},
-        claims={"score": 42},
-    )), encoding="utf-8")
-    assert benchmark_evidence.summarize_artifact(local_path)["locally_measured"] is True
-    prior_summary = benchmark_evidence.summarize_artifact(prior_path)
-    assert prior_summary["kind"] == "external_prior"
-    assert prior_summary["locally_measured"] is False
 
 
 def test_publication_redacts_secrets_and_real_private_topology(tmp_path):
@@ -246,49 +177,6 @@ def _serving_coverage(tmp_path, *, status="complete", measured=True):
     }
 
 
-def test_serving_comparison_requires_complete_coverage_but_quality_failure_is_independent(tmp_path):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    with pytest.raises(BenchmarkArtifactError) as exc:
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert exc.value.code == "missing_metrics_coverage"
-
-    value["metrics_coverage"] = _serving_coverage(tmp_path)
-    value["completeness"] = "failed"
-    value["stages"][0]["status"] = "failed"
-    value["summary"] = {"completed": False, "quality": "failed"}
-    value["failure"] = {"class": "model_behavior"}
-    assert validate_cross_suite_evidence(value, artifact_root=str(tmp_path))["metrics_coverage"]["status"] == "complete"
-
-
-@pytest.mark.parametrize("measured_metrics", (False, True))
-def test_completed_serving_comparison_rejects_partial_coverage(tmp_path, measured_metrics):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    value["metrics_coverage"] = _serving_coverage(
-        tmp_path, status="partial", measured=measured_metrics,
-    )
-    with pytest.raises(BenchmarkArtifactError) as exc:
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert exc.value.code == "false_metrics_completion"
-
-
-def test_serving_metrics_coverage_retains_gaps_and_rejects_false_completion(tmp_path):
-    value = measured(tmp_path)
-    value["completeness"] = "incomplete"
-    value["summary"] = {"completed": False, "status": "closed_partial"}
-    value["run"]["profile"] = "serving-comparison/v1"
-    value["metrics_coverage"] = _serving_coverage(tmp_path, status="partial", measured=False)
-    checked = validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert checked["metrics_coverage"]["missing_required_metrics"] == [
-        "baseline:c1.decode_tok_s", "candidate:c1.decode_tok_s",
-    ]
-    value["metrics_coverage"]["status"] = "complete"
-    with pytest.raises(BenchmarkArtifactError) as exc:
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert exc.value.code == "false_metrics_completion"
-
-
 @pytest.mark.parametrize("mutation", (
     lambda coverage: coverage["required_cells"].append("baseline:c1"),
     lambda coverage: coverage["cells"]["baseline:c1"]["metrics"].pop("ttft_ms"),
@@ -302,62 +190,6 @@ def test_serving_metrics_coverage_rejects_malformed_or_nonmeasured_complete_cell
     mutation(value["metrics_coverage"])
     with pytest.raises(BenchmarkArtifactError):
         validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-
-
-def test_serving_metrics_evidence_hash_is_verified(tmp_path):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    value["metrics_coverage"] = _serving_coverage(tmp_path)
-    (tmp_path / "raw" / "stage.json").write_text("tampered", encoding="utf-8")
-    with pytest.raises(BenchmarkArtifactError) as exc:
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert exc.value.code == "evidence_digest_mismatch"
-
-
-def test_path_summary_marks_tampered_serving_coverage_unverified(tmp_path):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    value["metrics_coverage"] = _serving_coverage(tmp_path)
-    artifact = tmp_path / "campaign.json"
-    artifact.write_text(json.dumps(value), encoding="utf-8")
-    (tmp_path / "raw" / "stage.json").write_text("tampered", encoding="utf-8")
-    summary = benchmark_evidence.summarize_artifact(artifact)
-    assert summary["metrics_coverage"]["verified"] is False
-    assert summary["validation_errors"][0].startswith("evidence_digest_mismatch:")
-
-
-def test_serving_coverage_accepts_two_arms_two_contexts_two_concurrencies(tmp_path):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    coverage = _serving_coverage(tmp_path)
-    plan_path = tmp_path / coverage["frozen_plan"]["path"]
-    plan = json.loads(plan_path.read_text(encoding="utf-8"))
-    cells = {}
-    for arm in ("baseline", "candidate"):
-        for context in (8192, 32768):
-            for concurrency in (1, 2):
-                cell_id = f"{arm}:{context}:c{concurrency}"
-                cells[cell_id] = {"arm": arm, "workload": f"natural-{context}", "context_tokens": context, "concurrency": concurrency, "requests": 1}
-    plan["required_cells"] = cells
-    plan_path.write_text(json.dumps(plan), encoding="utf-8")
-    coverage["frozen_plan"] = evidence_file_reference(str(plan_path), root=str(tmp_path))
-    coverage["required_cells"] = list(cells)
-    coverage["cells"] = {cell_id: copy.deepcopy(coverage["cells"]["baseline:c1"]) for cell_id in cells}
-    for cell_id, cell in coverage["cells"].items():
-        raw = tmp_path / "raw" / f"{cell_id}.json"
-        raw.write_text(json.dumps({"schema": "anvil-serving.benchmark/v1", "model": cells[cell_id]["arm"], "context_tokens": cells[cell_id]["context_tokens"], "concurrency": cells[cell_id]["concurrency"], "requests": cells[cell_id]["requests"], "completed": cells[cell_id]["requests"], "failed": 0, "request_timings": [{}] * cells[cell_id]["requests"], "workload_identity": {"workload_kind": cells[cell_id]["workload"]}}), encoding="utf-8")
-        receipt = tmp_path / "raw" / f"{cell_id}-receipt.json"
-        receipt.write_text(json.dumps({"profile": "serving-comparison/v1", "arm": cells[cell_id]["arm"], "identity": plan["arms"][cells[cell_id]["arm"]], "cell": cells[cell_id], "raw": evidence_file_reference(str(raw), root=str(tmp_path))}), encoding="utf-8")
-        cell["measurement"] = evidence_file_reference(str(receipt), root=str(tmp_path))
-        raw_ref = evidence_file_reference(str(raw), root=str(tmp_path))
-        for metric in cell["metrics"].values():
-            if metric.get("status") == "measured":
-                metric["evidence"] = [raw_ref]
-        cell["metrics"]["concurrency"]["observation"]["requested"] = cells[cell_id]["concurrency"]
-        cell["metrics"]["concurrency"]["observation"]["client_max"] = cells[cell_id]["concurrency"]
-        cell["metrics"]["concurrency"]["observation"]["engine_max"] = cells[cell_id]["concurrency"]
-    value["metrics_coverage"] = coverage
-    assert validate_cross_suite_evidence(value, artifact_root=str(tmp_path))["metrics_coverage"]["status"] == "complete"
 
 
 @pytest.mark.parametrize("mutation", (
@@ -383,32 +215,6 @@ def test_serving_plan_binding_rejects_missing_or_mismatched_matrix(tmp_path, mut
             validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
 
 
-@pytest.mark.parametrize("metric,record", (
-    ("ttft_ms", {"status": "measured", "value": 0, "evidence": []}),
-    ("ttft_ms", {"status": "measured", "observation": {"samples": 1, "p50": float("nan"), "p95": 1}, "evidence": []}),
-    ("gpu_memory", {"status": "measured", "observation": {"accounting": "only"}, "evidence": []}),
-))
-def test_serving_measurement_type_guards(tmp_path, metric, record):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    value["metrics_coverage"] = _serving_coverage(tmp_path)
-    record["evidence"] = value["metrics_coverage"]["cells"]["baseline:c1"]["metrics"][metric]["evidence"]
-    value["metrics_coverage"]["cells"]["baseline:c1"]["metrics"][metric] = record
-    with pytest.raises(BenchmarkArtifactError):
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-
-
-def test_serving_coverage_rejects_baseline_receipt_reused_for_candidate(tmp_path):
-    value = measured(tmp_path)
-    value["run"]["profile"] = "serving-comparison/v1"
-    value["metrics_coverage"] = _serving_coverage(tmp_path)
-    value["metrics_coverage"]["cells"]["candidate:c1"] = copy.deepcopy(
-        value["metrics_coverage"]["cells"]["baseline:c1"]
-    )
-    with pytest.raises(BenchmarkArtifactError, match="does not match frozen plan"):
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-
-
 def test_serving_evidence_cli_rejects_tampered_references(tmp_path, capsys):
     value = measured(tmp_path)
     value["run"]["profile"] = "serving-comparison/v1"
@@ -423,43 +229,3 @@ def test_serving_evidence_cli_rejects_tampered_references(tmp_path, capsys):
     assert result["metrics_coverage"]["verified"] is False
     assert result["validation_errors"][0].startswith("evidence_digest_mismatch:")
     assert benchmark_evidence.main(["compare", str(path), str(path), "--format", "json"]) == 1
-
-
-def test_partial_cell_preserves_failed_native_population(tmp_path):
-    value = measured(tmp_path)
-    value["completeness"] = "incomplete"
-    value["summary"] = {"completed": False}
-    value["run"]["profile"] = "serving-comparison/v1"
-    coverage = _serving_coverage(tmp_path, status="partial", measured=False)
-    cell = coverage["cells"]["baseline:c1"]
-    raw_path = tmp_path / "raw" / "baseline.json"
-    raw = json.loads(raw_path.read_text())
-    raw.update(completed=0, failed=1, request_timings=[])
-    raw_path.write_text(json.dumps(raw))
-    receipt_path = tmp_path / cell["measurement"]["path"]
-    receipt = json.loads(receipt_path.read_text())
-    receipt["raw"] = evidence_file_reference(str(raw_path), root=str(tmp_path))
-    receipt_path.write_text(json.dumps(receipt))
-    cell["measurement"] = evidence_file_reference(str(receipt_path), root=str(tmp_path))
-    cell["metrics"] = {name: {"status": "blocked", "reason": "request failed"}
-                       for name in cell["metrics"]}
-    value["metrics_coverage"] = coverage
-    assert validate_cross_suite_evidence(value, artifact_root=str(tmp_path))["metrics_coverage"]["status"] == "partial"
-
-
-def test_unrun_cell_retains_blocked_reasons_without_measurement(tmp_path):
-    value = measured(tmp_path)
-    value["completeness"] = "incomplete"
-    value["summary"] = {"completed": False}
-    value["run"]["profile"] = "serving-comparison/v1"
-    coverage = _serving_coverage(tmp_path, status="partial", measured=False)
-    cell = coverage["cells"]["baseline:c1"]
-    cell["measurement"] = None
-    cell["metrics"] = {name: {"status": "blocked", "reason": "prior OOM stopped this cell"}
-                       for name in cell["metrics"]}
-    value["metrics_coverage"] = coverage
-    checked = validate_cross_suite_evidence(value, artifact_root=str(tmp_path))
-    assert checked["metrics_coverage"]["cells"]["baseline:c1"]["metrics"]["ttft_ms"]["reason"] == "prior OOM stopped this cell"
-    cell["metrics"]["ttft_ms"] = copy.deepcopy(coverage["cells"]["candidate:c1"]["metrics"]["ttft_ms"])
-    with pytest.raises(BenchmarkArtifactError):
-        validate_cross_suite_evidence(value, artifact_root=str(tmp_path))

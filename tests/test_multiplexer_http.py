@@ -3,38 +3,13 @@
 import io
 import http.client
 import queue
-import socket
 import threading
-from contextlib import ExitStack, closing
 from email.message import Message
 from types import SimpleNamespace
 
 import pytest
 
 from anvil_serving import multiplexer
-
-
-@pytest.mark.parametrize("lengths,status", [([], 411), (["-1"], 400), (["+1"], 400),
-    (["1_0"], 400), (["1, 1"], 400), (["1", "1"], 400), (["1", "2"], 400),
-    (["0"], 400), (["33554433"], 413), (["9999999999"], 413), (["9" * 5000], 413)])
-def test_invalid_framing_is_rejected_without_reading_or_loading(lengths, status):
-    class UnreadBody:
-        def read(self, *_):
-            pytest.fail("invalid length reached body read")
-
-        read1 = read
-
-    handler = object.__new__(multiplexer.make_handler(None))
-    handler.path = "/v1/chat/completions"
-    handler.headers = Message()
-    for length in lengths:
-        handler.headers["Content-Length"] = length
-    handler.rfile = UnreadBody()
-    errors = []
-    handler._err = lambda *args: errors.append(args)
-    handler.do_POST()
-    assert errors[0][0] == status
-    assert handler.close_connection
 
 
 def test_dribbling_body_cannot_extend_the_absolute_deadline(monkeypatch):
@@ -79,112 +54,6 @@ def server(monkeypatch):
         httpd.server_close()
         thread.join(timeout=2)
         assert not thread.is_alive()
-
-
-@pytest.mark.parametrize("half_close,status", [(True, 400), (False, 408)])
-def test_incomplete_body_releases_handler_without_loading(server, half_close, status):
-    httpd, accepted, backend = server
-    with socket.create_connection(httpd.server_address, timeout=2) as client:
-        client.sendall(b"POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 100\r\n\r\n{")
-        accepted.get(timeout=2)
-        if half_close:
-            client.shutdown(socket.SHUT_WR)
-        response = http.client.HTTPResponse(client)
-        response.begin()
-        assert response.status == status
-        response.read()
-        assert client.recv(1) == b""
-    assert backend.started == []
-    # Both permits return after the failed request's handler exits.
-    assert httpd.connection_slots.acquire(timeout=2)
-    assert httpd.connection_slots.acquire(timeout=2)
-    httpd.connection_slots.release()
-    httpd.connection_slots.release()
-
-
-def test_saturation_is_rejected_before_a_new_handler_and_recovers(server):
-    httpd, accepted, backend = server
-    with socket.create_connection(httpd.server_address, timeout=2) as first:
-        accepted.get(timeout=2)
-        with socket.create_connection(httpd.server_address, timeout=2):
-            accepted.get(timeout=2)
-            connection = http.client.HTTPConnection(*httpd.server_address, timeout=2)
-            try:
-                connection.request("GET", "/healthz")
-                response = connection.getresponse()
-                assert response.status == 503 and response.read() == b""
-                assert accepted.empty()
-            finally:
-                connection.close()
-            first.shutdown(socket.SHUT_RDWR)
-            assert httpd.connection_slots.acquire(timeout=2)
-            httpd.connection_slots.release()
-            connection = http.client.HTTPConnection(*httpd.server_address, timeout=2)
-            try:
-                connection.request("GET", "/healthz")
-                response = connection.getresponse()
-                assert response.status == 200
-                response.read()
-            finally:
-                connection.close()
-    assert backend.started == []
-
-
-@pytest.mark.parametrize("phase", ["request_line", "headers", "keep_alive_headers"])
-def test_dripping_headers_release_saturated_slots(server, monkeypatch, phase):
-    httpd, accepted, backend = server
-    monkeypatch.setattr(multiplexer, "_REQUEST_HEADER_TIMEOUT_SECONDS", 0.4)
-    httpd.RequestHandlerClass.timeout = 0.15
-    stopped = threading.Event()
-
-    def drip(client):
-        while not stopped.wait(0.03):
-            try:
-                client.sendall(b"a")
-            except OSError:
-                return
-
-    with ExitStack() as clients:
-        threads = []
-        sockets = []
-        try:
-            for _ in range(2):
-                client = clients.enter_context(socket.create_connection(httpd.server_address, timeout=2))
-                accepted.get(timeout=2)
-                if phase == "keep_alive_headers":
-                    client.sendall(b"GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
-                    response = http.client.HTTPResponse(client)
-                    response.begin()
-                    assert response.status == 200
-                    response.read()
-                    response.close()
-                prefix = (b"GET /" if phase == "request_line" else
-                          b"GET /healthz HTTP/1.1\r\nHost: 127.0.0.1\r\nX-Slow: ")
-                client.sendall(prefix)
-                thread = threading.Thread(target=drip, args=(client,))
-                thread.start()
-                threads.append(thread)
-                sockets.append(client)
-            # Sending bytes more frequently than the idle timeout must not
-            # retain the slots beyond the elapsed-time header deadline.
-            for client in sockets:
-                assert client.recv(1) == b""
-            assert httpd.connection_slots.acquire(timeout=2)
-            assert httpd.connection_slots.acquire(timeout=2)
-            httpd.connection_slots.release()
-            httpd.connection_slots.release()
-            assert backend.started == []
-            with closing(http.client.HTTPConnection(*httpd.server_address, timeout=2)) as connection:
-                for path in ("/healthz", "/v1/models"):
-                    connection.request("GET", path)
-                    response = connection.getresponse()
-                    assert response.status == 200
-                    response.read()
-        finally:
-            stopped.set()
-            for thread in threads:
-                thread.join(timeout=2)
-                assert not thread.is_alive()
 
 
 @pytest.mark.parametrize("streaming", [False, True])

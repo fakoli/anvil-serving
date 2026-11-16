@@ -1,0 +1,23 @@
+{
+  "schema": "anvil-serving.public-workload-description/v1",
+  "classification": "bounded coding quality plus synthetic compatibility and performance diagnostics; not a complete serving comparison",
+  "coding": {
+    "task_names": [
+      "apply_edits",
+      "decode_uvarint",
+      "lru_trace",
+      "merge_intervals",
+      "normalize_posix_path",
+      "parse_csv_line",
+      "stable_toposort"
+    ],
+    "repetitions": 3,
+    "total_cases": 123,
+    "acceptance": "Manually reviewed generated Python; AST allowlist; independent deterministic behavioral oracle; isolated child;2-second deadline;256MiB OS limit. Not a security sandbox.",
+    "prompts_and_generated_source": "Withheld in public copy; frozen protected suite and grader retained."
+  },
+  "context": "Five synthetic retrieval types x three positions(0.05,0.5,0.95); large-profile three buckets x one repetition=45; reference one bucket x one repetition=15. No long-context reasoning claim.",
+  "images": "Seven synthetic images across six case types x three repeats=18; required facts only, independent visual review separately retained.",
+  "agentic": "Ten deterministic scenario types x three repeats=30; short-message sessions, no repository repair.",
+  "capacity": "Separate120-request C1 unique-prefix/canary16-word cells; original128-word scouts failed and are ineligible."
+}

@@ -1,6 +1,53 @@
 # Benchmarks
 
-**Current primary recommendation, 2026-10-17:** the operator selected
+**2026-11-09 TensorFold reasoning investigation:** the
+[Max/Low Go controls](../findings/2026-11-09-tensorfold-reasoning-budget.md)
+retain the same 16K total response budget and separate effort instructions
+from a numeric thinking limit. The two reviewed Low repetitions passed their
+first contained tests; proposed forwarding support is not deployed or
+measured here. No broad Go or performance claim follows.
+
+**2026-11-09 source and rollout follow-up:** merged request-local
+[thinking-budget support](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+is deployed in the local CLI/router. A separate three-job check on one Go task
+retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset passed 1/1 at a
+16,384 response cap. The second Max job failed both coding attempts at that
+cap; 8,192 is not established as a reliable fix or default. Its sharded-KV
+runtime differs from the original disk-only matrix, with no contemporary
+unbounded-Max control or causal quality/speed claim. Remote-controller
+numeric admission remains unsupported (B10 partial); no global model-policy
+change or promotion follows.
+[Summary](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+· [Evidence index](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+**2026-11-08 TensorFold Go validation:** the
+[focused quality check](../findings/2026-11-08-tensorfold-go-validation.md)
+records a passing first attempt at 32K and length-finished failures at 16K on
+one selected Go task. It establishes no broad coding score, performance
+comparison, causal cap benefit or promotion.
+[GLM dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08).
+
+**2026-11-03 RTX5090 research update:** the
+[candidate campaign](../findings/2026-11-03-rtx5090-campaign.md) records bounded
+coding and synthetic capability results without changing any deployment decision.
+The [Ignis note](../findings/2026-11-03-ignis-improvements.md) separates model,
+runtime and evaluator improvements. [Dossier](models/rtx5090-campaign-candidates.md).
+
+**Current review, 2026-11-01:** Swift TP1 has qualification accepted on one
+RTX PRO 6000 Blackwell Max-Q. This is a qualification result; the measured C2/C1 tradeoff, strict-format
+failure, and SWE limit are retained in the [dated finding](../findings/2026-11-01-swift-tp1-gpu0.md).
+
+**Separate private-target scouts, 2026-11-01: original configuration retained.**
+The [cache-layout and DFlash scouts](../findings/2026-11-01-runtime-scouts.md)
+each completed 144 timed requests on the dual RTX PRO 6000 pair. Neither
+candidate improved median response latency by 10% against both controls.
+Cache slots increased 38.60% with the layout change and decreased 40.63% with
+DFlash2 K3. Both candidates were removed and the original configuration was
+restored. That scout target identity is private; the named October reference
+below is historical evidence, not a statement of today's selected checkpoint.
+[Private-target dossier](models/private-runtime-scouts.md).
+
+**Historical primary recommendation, 2026-10-17:** the operator selected
 `nvidia/GLM-5.3-Flash-FP4-Local` as the best current fit for this deployment.
 The pinned TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is promoted;
 EXL3 r11 is retained as rollback. The matched two-recipe comparison measured
@@ -27,7 +74,7 @@ an exhaustive quality ranking.
 
 Compare local models by useful context, quality, and serving performance.
 Start with the latest decision, choose your hardware, then follow the exact
-configuration and retained evidence. **Evidence reviewed: 2026-10-17 FP4 promotion and client acceptance.**
+configuration and retained evidence. **Evidence reviewed: 2026-11-01 Swift TP1 qualification and separate private-target runtime scouts; publication readback remains partial.**
 
 ## Engine testing
 

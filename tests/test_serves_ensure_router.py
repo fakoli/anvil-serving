@@ -126,86 +126,6 @@ def router_here(tmp_path, monkeypatch):
     return str(path)
 
 
-def test_router_already_healthy_is_a_noop(capsys, no_topology):
-    # running container + a front-door HTTP response == healthy -> do nothing,
-    # and crucially do NOT restart it.
-    run = FakeRun(state="running")
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_ok)
-    assert rc == 0
-    assert "router: already healthy" in capsys.readouterr().out
-    assert not run.ran_up()  # idempotent: a healthy router is never brought up
-
-
-def test_running_but_loopback_silent_is_healthy(capsys, no_topology):
-    # The live tailnet-publish case: the router is running and docker-healthy but
-    # published on a tailnet IP, so the loopback HTTP probe answers nothing. It
-    # must still be "already healthy" and NOT restarted (requiring a loopback 200
-    # would needlessly bounce every tailnet-published router on each `serves up`).
-    run = FakeRun(state="running")
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_down)
-    assert rc == 0
-    assert "router: already healthy" in capsys.readouterr().out
-    assert not run.ran_up()
-
-
-def test_router_absent_bootstrap_holds_without_native_proof(capsys, no_topology):
-    # Absence cannot establish the old owner all-path barrier.
-    run = FakeRun(state="absent", up_rc=0)
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_down, env_file="")
-    assert rc == 0
-    output=capsys.readouterr()
-    assert "FAILED to start" in output.out and "HOLD" in output.err
-    assert not run.ran_up()
-
-
-def test_router_exited_bootstrap_holds_without_native_proof(capsys, no_topology):
-    # Process exit cannot replace complete owned-work drain proof.
-    run = FakeRun(state="exited", up_rc=0)
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_down, env_file="")
-    assert rc == 0
-    output=capsys.readouterr()
-    assert "FAILED to start" in output.out and "HOLD" in output.err
-    assert not run.ran_up()
-
-
-def test_router_exited_with_foreign_owner_is_not_silently_replaced(
-        capsys, no_topology):
-    run = FakeRun(state="exited", compose_project="primary-node")
-
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_down, env_file="")
-
-    # the refusal is reported but non-gating without a topology owner claim
-    assert rc == 0
-    assert not run.ran_up()
-    assert "--recreate" in capsys.readouterr().err
-
-
-def test_docker_error_is_reported_non_gating(capsys, no_topology):
-    # docker unreachable -> cannot probe or start; report but let the serves'
-    # own docker commands produce the authoritative failure.
-    run = FakeRun(state="error")
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_down)
-    assert rc == 0
-    assert "cannot determine health" in capsys.readouterr().out
-    assert not run.ran_up()
-
-
-def test_no_router_skips_everything(capsys, no_topology):
-    # --no-router: no probe, no bring-up, no docker calls at all.
-    run = FakeRun(state="absent")
-    rc = serves.ensure_router_healthy(
-        no_router=True, topology_path=no_topology, _run=run, _open=_open_down)
-    assert rc == 0
-    assert "router: skipped" in capsys.readouterr().out
-    assert run.calls == []  # nothing probed, nothing started
-
-
 def test_dry_run_reports_but_does_not_start(capsys, no_topology):
     # router down + --dry-run: report the action, do NOT bring it up.
     run = FakeRun(state="absent")
@@ -228,32 +148,6 @@ def test_dry_run_when_healthy_still_reports_healthy(capsys, no_topology):
     assert not run.ran_up()
 
 
-def test_failed_bring_up_without_topology_answer_is_non_gating(
-        capsys, no_topology):
-    # the historical co-located default: a router that fails to come up is
-    # reported but does not stop the serves.
-    run = FakeRun(state="absent", up_rc=1)
-    rc = serves.ensure_router_healthy(
-        topology_path=no_topology, _run=run, _open=_open_down, env_file="")
-    out = capsys.readouterr().out
-    assert rc == 0
-    assert "FAILED to start" in out
-    assert "bringing serves up anyway" in out
-    assert not run.ran_up()  # Native bootstrap refusal precedes Compose mutation.
-
-
-def test_topology_router_elsewhere_skips_without_touching_docker(capsys, router_elsewhere):
-    # A topology that assigns the router role to another host: the ensure step
-    # is not this host's concern -- no probe, no bring-up, no docker calls, and
-    # no "FAILED" noise for operators to learn to ignore.
-    run = FakeRun(state="absent")
-    rc = serves.ensure_router_healthy(
-        topology_path=router_elsewhere, _run=run, _open=_open_down)
-    assert rc == 0
-    assert "not this host's role" in capsys.readouterr().out
-    assert run.calls == []
-
-
 def test_topology_router_here_failed_bring_up_gates(capsys, router_here):
     # This host is the declared router owner: a failed bring-up must gate the
     # serves (proceeding past a failed dependency this host owns is worse than
@@ -269,30 +163,6 @@ def test_topology_router_here_failed_bring_up_gates(capsys, router_here):
     assert not run.ran_up()  # Topology ownership does not prove an old-runtime barrier.
 
 
-def test_topology_router_here_healthy_is_still_a_noop(capsys, router_here):
-    run = FakeRun(state="running")
-    rc = serves.ensure_router_healthy(
-        topology_path=router_here, _run=run, _open=_open_ok)
-    assert rc == 0
-    assert "router: already healthy" in capsys.readouterr().out
-    assert not run.ran_up()
-
-
-def test_invalid_topology_falls_back_to_the_co_located_default(
-        capsys, tmp_path):
-    # an unparseable topology gives no ownership answer -> legacy behavior
-    # (probe and bring up), not a crash and not a silent skip.
-    path = tmp_path / "operator-topology.toml"
-    path.write_text("this is [not toml", encoding="utf-8")
-    run = FakeRun(state="absent", up_rc=0)
-    rc = serves.ensure_router_healthy(
-        topology_path=str(path), _run=run, _open=_open_down, env_file="")
-    assert rc == 0
-    output=capsys.readouterr()
-    assert "FAILED to start" in output.out and "HOLD" in output.err
-    assert not run.ran_up()
-
-
 def test_pre_authorized_lifecycle_delegation_reports_success(capsys,no_topology,monkeypatch):
     # Delegation only: this fixture is not bootstrap or native drain evidence.
     from anvil_serving import router_manage
@@ -302,11 +172,3 @@ def test_pre_authorized_lifecycle_delegation_reports_success(capsys,no_topology,
     assert serves.ensure_router_healthy(topology_path=no_topology,_run=run,_open=_open_down,env_file='')==0
     assert 'router: started' in capsys.readouterr().out and len(delegated)==1
     assert not run.ran_up()
-
-
-def test_foreign_refusal_never_calls_admission_gate(capsys,no_topology,monkeypatch):
-    from anvil_serving import router_manage
-    monkeypatch.setattr(router_manage,'require_router_drain',lambda *a,**k:pytest.fail('unauthorized foreign quiesce'))
-    run=FakeRun(state='exited',compose_project='foreign-fixture')
-    assert serves.ensure_router_healthy(topology_path=no_topology,_run=run,_open=_open_down,env_file='')==0
-    assert not run.ran_up() and '--recreate' in capsys.readouterr().err

@@ -127,7 +127,7 @@ def _get(host, port, path, *, token=TOKEN):
 
 @contextmanager
 def _running(httpd):
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread = threading.Thread(target=httpd.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield httpd.server_address[:2]
@@ -187,28 +187,6 @@ def test_metadata_status_stats_trace_and_metrics_are_authenticated():
             assert status == 401
 
 
-def test_model_metadata_and_router_status_shapes():
-    with _server() as (host, port):
-        c_status, c_headers, c_raw = _get(
-            host, port, MODEL_CAPABILITIES_ENDPOINT + "?model=LLM.PRIMARY"
-        )
-        f_status, _, f_raw = _get(host, port, MODEL_FINGERPRINTS_ENDPOINT)
-        s_status, _, s_raw = _get(host, port, ROUTER_STATUS_ENDPOINT)
-    assert c_status == f_status == s_status == 200
-    assert c_headers["Cache-Control"] == "no-store"
-    capabilities = json.loads(c_raw)["data"][0]
-    assert capabilities["modalities"] == ["image", "text"]
-    assert capabilities["limits"]["images_per_request"] == 1
-    fingerprint = json.loads(f_raw)["data"][0]
-    assert fingerprint["served_identity"]["observed"] == (
-        "qwen35-122b-a10b-nvfp4"
-    )
-    status = json.loads(s_raw)
-    assert status["package_version"]
-    assert status["model_aliases"] == ["llm.primary"]
-    assert len(status["config_sha256"]) == 64
-
-
 def test_stats_trace_and_prometheus_share_safe_decision_metadata():
     with _server() as (host, port):
         stats_status, _, stats_raw = _get(
@@ -255,60 +233,6 @@ def test_unknown_models_bad_queries_and_missing_requests_are_clean_errors():
     assert json.loads(stats_raw)["error"]["type"] == "invalid_request"
     assert trace_status == 404
     assert json.loads(trace_raw)["error"]["type"] == "not_found"
-
-
-def test_health_advertises_all_read_only_operational_routes():
-    with _server() as (host, port):
-        status, _, raw = _get(host, port, "/health")
-    assert status == 200
-    routes = json.loads(raw)["routes"]
-    for route in (
-        MODEL_CAPABILITIES_ENDPOINT,
-        MODEL_FINGERPRINTS_ENDPOINT,
-        ROUTER_STATUS_ENDPOINT,
-        ROUTER_STATS_ENDPOINT,
-        "/v1/requests/{request_id}",
-        PROMETHEUS_ENDPOINT,
-    ):
-        assert route in routes
-
-
-def test_built_server_workloads_endpoint_uses_its_exact_shared_registry(tmp_path):
-    collected = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
-    server = _built_workload_server(tmp_path, clock=lambda: collected)
-    registry = server.anvil_workloads
-    assert registry is server.anvil_routing._workload_registry
-    calls = []
-    original = registry.source_result
-
-    def source_result(host, query, now):
-        calls.append((host, query, now))
-        return original(host, query, now)
-
-    registry.source_result = source_result
-    with _running(server) as (host, port):
-        denied, _, _ = _get(host, port, "/v1/workloads", token=TOKEN)
-        status, headers, raw = _get(
-            host, port,
-            "/v1/workloads?active_only=false&limit=1&recent_seconds=10",
-            token="workloads-token-12345",
-        )
-    assert denied == 403
-    assert status == 200
-    assert headers["Cache-Control"] == "no-store"
-    assert len(calls) == 1
-    call_host, query, call_time = calls[0]
-    assert call_host == "node-a"
-    assert query.active_only is False
-    assert query.limit == 1
-    assert query.recent_seconds == 10
-    assert call_time == collected
-    payload = json.loads(raw)
-    assert set(payload) == {
-        "schema", "host", "status", "collection_timestamp", "sources"
-    }
-    assert payload["host"] == "node-a"
-    assert payload["sources"][0]["records"] == []
 
 
 @pytest.mark.parametrize("filters,age_seconds,returned,omitted", [

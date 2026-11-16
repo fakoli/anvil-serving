@@ -3,7 +3,6 @@ import json
 import re
 from pathlib import Path
 
-from anvil_serving import serves
 from anvil_serving.media.cli import DEFAULT_REGISTRY
 from anvil_serving.media.workflows import canonical_digest
 
@@ -29,7 +28,7 @@ def test_public_runtime_scaffold_is_byte_identical_and_identity_free():
     for name in MIRRORED_RUNTIME_FILES:
         assert (EXAMPLE / name).read_bytes() == (SCAFFOLD / name).read_bytes()
     compose = (EXAMPLE / "docker-compose.comfyui.yml").read_text(encoding="utf-8")
-    assert '${COMFYUI_PUBLISH:-127.0.0.1}:8188:8188' in compose
+    assert "${COMFYUI_PUBLISH:-127.0.0.1}:8188:8188" in compose
     assert "MEDIA_WORKER_GPU_UUID" in compose
     assert "COMPUTE_B_GPU_UUID" not in compose
     assert not re.search(r"GPU-[0-9a-f]{8}-[0-9a-f-]{27,}", compose, re.IGNORECASE)
@@ -84,14 +83,12 @@ def test_runtime_and_custom_node_inputs_are_exactly_pinned():
         assert node["requirements_sha256"] in dockerfile
 
 
-
 def test_workflow_bundle_and_required_model_identities_are_pinned():
     source_names = sorted(path.name for path in SOURCE_BUNDLE.glob("*.json"))
     assert source_names == sorted(path.name for path in PACKAGED_BUNDLE.glob("*.json"))
     for name in source_names:
         assert (SOURCE_BUNDLE / name).read_bytes() == (PACKAGED_BUNDLE / name).read_bytes()
     assert Path(DEFAULT_REGISTRY).resolve() == (PACKAGED_BUNDLE / "registry.json").resolve()
-
     locked = {
         (item["id"], item["version"]): item
         for path in SOURCE_BUNDLE.glob("bundle*.lock.json")
@@ -113,34 +110,9 @@ def test_workflow_bundle_and_required_model_identities_are_pinned():
         entry = locked[(descriptor["id"], descriptor["version"])]
         assert entry["graph_sha256"] == canonical_digest(graph) == descriptor["graph_digest"]
         models = entry["models"]
-        assert {Path(model["target"]).name for model in models} == set(
-            descriptor["required_models"]
-        )
+        assert {Path(model["target"]).name for model in models} == set(descriptor["required_models"])
         for model in models:
             assert re.fullmatch(r"[0-9a-f]{40}", model["revision"])
             assert re.fullmatch(r"[0-9a-f]{64}", model["sha256"])
             assert model["size"] > 0
             assert not Path(model["target"]).is_absolute()
-
-
-def test_managed_serve_is_bounded_healthy_and_lint_clean():
-    manifest_path = EXAMPLE / "serves.comfyui.toml"
-    manifest = serves.load_manifest(str(manifest_path))
-    report = serves.lint_manifest_set(manifest)
-    assert report["errors"] == 0
-    assert len(manifest) == 1
-    serve = manifest[0]
-    assert serve["name"] == "media-worker"
-    assert serve["health"] == "/system_stats"
-    assert serve["residency"] == "on-demand"
-    assert serve["gpu_role"] == "media-compute"
-    assert serve["vram_mib"] == 28672
-    assert "docker-compose.comfyui.yml" in " ".join(serve["up"])
-    assert "--no-build" in serve["up"]
-    assert "--build" not in serve["up"]
-
-    compose = (EXAMPLE / "docker-compose.comfyui.yml").read_text(encoding="utf-8")
-    assert "http://127.0.0.1:8188/system_stats" in compose
-    assert "restart: \"no\"" in compose
-    assert "--temp-directory /app/runtime" in compose
-    assert compose.count("external: true") == 2

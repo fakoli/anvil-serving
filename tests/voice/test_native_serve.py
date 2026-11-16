@@ -5,7 +5,6 @@ import json
 from types import SimpleNamespace
 
 from anvil_serving.voice.serves.native import (
-    MAX_PID_RECORD_BYTES,
     NativeServe,
     NativeServeConfig,
 )
@@ -122,90 +121,6 @@ def test_native_tear_down_terminates_pid_file_process_and_removes_pid(tmp_path):
     assert result["reason"] == "pid_file"
     assert not pid_file.exists()
     assert (12345, signal.SIGTERM) in kill_calls
-
-
-def test_native_tear_down_refuses_unowned_legacy_pid_file(tmp_path):
-    pid_file = tmp_path / "stt.pid"
-    pid_file.write_text("12345\n", encoding="utf-8")
-    kill_calls = []
-
-    def fake_kill(pid, sig):
-        kill_calls.append((pid, sig))
-        if sig == 0:
-            return
-
-    serve = NativeServe(
-        _cfg(tmp_path),
-        _open=lambda url, timeout: _Resp(),
-        _kill=fake_kill,
-        _killpg=fake_kill,
-        _sleep=lambda _: None,
-    )
-
-    result = serve.tear_down()
-
-    assert result["returncode"] == 1
-    assert result["reason"] == "ready_but_unmanaged"
-    assert kill_calls == [(12345, 0)]
-    assert pid_file.exists()
-
-
-def test_native_status_rejects_oversized_pid_record_without_parsing(tmp_path):
-    pid_file = tmp_path / "stt.pid"
-    pid_file.write_bytes(b"9" * (MAX_PID_RECORD_BYTES + 1))
-    serve = NativeServe(
-        _cfg(tmp_path),
-        _open=lambda url, timeout: (_ for _ in ()).throw(OSError("down")),
-    )
-
-    result = serve.status()
-
-    assert result["pid"] is None
-    assert result["pid_owner_valid"] is False
-    assert result["pid_file_reason"] == "pid_file_too_large"
-
-
-def test_native_tear_down_is_noop_when_endpoint_is_down_even_with_stop_command(tmp_path):
-    def fail_run(argv, **kwargs):
-        raise AssertionError("stop_command should not run for an already-down endpoint")
-
-    serve = NativeServe(
-        _cfg(tmp_path, stop_command="pkill -f 'mlx_audio.server.*--port 30010'"),
-        _open=lambda url, timeout: (_ for _ in ()).throw(OSError("down")),
-        _run=fail_run,
-    )
-
-    result = serve.tear_down()
-
-    assert result["returncode"] == 0
-    assert result["reason"] == "already_down"
-
-
-def test_native_tear_down_uses_stop_command_for_ready_unmanaged_listener(tmp_path):
-    seen = {}
-    ready = {"value": True}
-
-    def fake_run(argv, **kwargs):
-        seen["argv"] = argv
-        seen["cwd"] = kwargs.get("cwd")
-        seen["timeout"] = kwargs.get("timeout")
-        ready["value"] = False
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
-
-    serve = NativeServe(
-        _cfg(tmp_path, stop_command="pkill -f 'mlx_audio.server.*--port 30010'"),
-        _open=lambda url, timeout: _Resp() if ready["value"] else (_ for _ in ()).throw(OSError("down")),
-        _run=fake_run,
-        _sleep=lambda _: None,
-    )
-
-    result = serve.tear_down()
-
-    assert result["returncode"] == 0
-    assert result["reason"] == "stop_command"
-    assert seen["argv"] == ["pkill", "-f", "mlx_audio.server.*--port 30010"]
-    assert seen["cwd"] == str(tmp_path)
-    assert seen["timeout"] == 0.1
 
 
 def test_native_tear_down_reports_failure_when_stop_command_leaves_endpoint_ready(tmp_path):

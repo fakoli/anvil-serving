@@ -116,9 +116,11 @@ def build_propagation_service(path: str, sha256: str) -> PropagationService:
         execution.verify_executable()
         readback.verify_executable()
         identity = value["activation"]
-        if type(identity) is not dict or set(identity) not in ({
-                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}, {
-                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env", "observer"}):
+        legacy_identity = {"activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}
+        live_route_identity = {*legacy_identity, "route_revision", "effective_route_sha256"}
+        if type(identity) is not dict or set(identity) not in (
+                legacy_identity, {*legacy_identity, "observer"},
+                live_route_identity, {*live_route_identity, "observer"}):
             raise ValueError()
         if "observer" in identity:
             from ..mcp.controller_client import resolve_controller_token_file
@@ -165,8 +167,9 @@ def build_activation_observer(path: str, sha256: str) -> ObservedActiveIdentity:
         if type(value) is not dict or set(value) != {"schema", "activation"} or value["schema"] != "anvil-serving.propagation-activation-observer/v1":
             raise ValueError()
         activation = value["activation"]
-        if type(activation) is not dict or set(activation) != {
-                "activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}:
+        legacy_identity = {"activation_ref", "catalog_sha256", "owners", "router_base_url", "router_token_env"}
+        live_route_identity = {*legacy_identity, "route_revision", "effective_route_sha256"}
+        if type(activation) is not dict or set(activation) not in (legacy_identity, live_route_identity):
             raise ValueError()
         return ObservedActiveIdentity(**activation)
     except Exception:

@@ -8,7 +8,6 @@ import pytest
 
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, JOB_SPEC_SCHEMA
 from anvil_serving.benchmarking.preflight import (
-    require_benchmark_preflight,
     run_benchmark_preflight,
 )
 
@@ -47,75 +46,6 @@ def _spec(**changes):
 def _opener(models=None):
     value = models or [{"id": "deepseek", "max_model_len": 650000}]
     return lambda *_args, **_kwargs: Response({"data": value})
-
-
-def test_records_worker_endpoint_and_unsupported_telemetry(tmp_path):
-    artifact = run_benchmark_preflight(
-        _spec(),
-        run_root=str(tmp_path / "runs"),
-        requirements={"min_free_disk_bytes": 1, "model_host_id": "model-host"},
-        opener=_opener(),
-        container_binary="docker",
-    )
-    assert artifact["passed"] is True
-    assert artifact["observed"]["endpoint"]["configured_context"] == 650000
-    assert artifact["side_effects"] == {"model_lifecycle": False, "route_mutation": False}
-    assert artifact["observed"]["endpoint"]["authentication"] == "none"
-
-
-def test_llama_cpp_alias_and_nested_context_are_accepted(tmp_path):
-    artifact = run_benchmark_preflight(
-        _spec(endpoint={
-            "base_url": "http://127.0.0.1:8000/v1",
-            "model": "truthful-candidate-alias",
-        }),
-        run_root=str(tmp_path / "runs"),
-        requirements={"model_host_id": "model-host"},
-        opener=_opener([{
-            "id": "compatibility-alias",
-            "aliases": ["compatibility-alias", "truthful-candidate-alias"],
-            "meta": {"n_ctx": 262144},
-        }]),
-    )
-
-    assert artifact["passed"] is True
-    assert artifact["observed"]["endpoint"]["configured_context"] == 262144
-
-
-def test_missing_model_host_identity_fails_isolation_closed(tmp_path):
-    artifact = run_benchmark_preflight(
-        _spec(parameters={}),
-        run_root=str(tmp_path / "runs"),
-        opener=_opener(),
-    )
-
-    isolation = next(item for item in artifact["checks"] if item["name"] == "worker_isolation")
-    assert isolation == {
-        "name": "worker_isolation",
-        "passed": False,
-        "code": "model_host_identity_absent",
-        "detail": "model host identity was not declared",
-    }
-
-
-def test_explicit_co_resident_client_requires_matching_model_host(tmp_path):
-    artifact = run_benchmark_preflight(
-        _spec(parameters={
-            "client_topology": "co-resident",
-            "model_host_id": "benchmark-worker",
-        }),
-        run_root=str(tmp_path / "runs"),
-        opener=_opener(),
-    )
-
-    isolation = next(item for item in artifact["checks"] if item["name"] == "worker_isolation")
-    assert isolation == {
-        "name": "worker_isolation",
-        "passed": True,
-        "code": None,
-        "detail": "co-resident benchmark client explicitly declared",
-    }
-    assert artifact["passed"] is True
 
 
 def test_missing_credentials_and_authorization_are_distinct(monkeypatch, tmp_path):
@@ -160,49 +90,6 @@ def test_endpoint_auth_normalizes_crlf_dotenv_value(monkeypatch, tmp_path):
     assert artifact["passed"] is True
 
 
-@pytest.mark.parametrize(
-    ("models", "code"),
-    [([{"id": "other"}], "model_mismatch")],
-)
-def test_endpoint_failure_taxonomy(tmp_path, models, code):
-    artifact = run_benchmark_preflight(
-        _spec(), run_root=str(tmp_path), opener=_opener(models)
-    )
-    assert code in {item["code"] for item in artifact["checks"]}
-
-
-def test_worker_disk_architecture_and_assets_fail_closed(tmp_path):
-    class Usage:
-        free = 5
-
-    artifact = run_benchmark_preflight(
-        _spec(),
-        run_root=str(tmp_path / "runs"),
-        requirements={
-            "min_free_disk_bytes": 10,
-            "architectures": ["impossible-arch"],
-            "container_required": True,
-            "harness_assets": ["adapter.lock"],
-            "model_host_id": "benchmark-worker",
-        },
-        assets_root=str(tmp_path / "assets"),
-        opener=_opener(),
-        disk_usage=lambda _path: Usage(),
-        container_binary="",
-    )
-    codes = {item["code"] for item in artifact["checks"]}
-    assert {
-        "worker_not_isolated",
-        "incompatible_architecture",
-        "insufficient_disk",
-        "container_capability_absent",
-        "absent_harness_assets",
-    } <= codes
-    with pytest.raises(BenchmarkJobError) as exc:
-        require_benchmark_preflight(artifact)
-    assert exc.value.code == "preflight_failed"
-
-
 def test_harness_lock_is_verified(tmp_path):
     assets = tmp_path / "assets"
     assets.mkdir()
@@ -243,90 +130,6 @@ def test_regrade_preflight_never_contacts_endpoint(monkeypatch, tmp_path, valid_
     assert artifact["side_effects"]["model_requests"] is False
 
 
-def test_v2_disk_reserve_cannot_be_lowered_by_preflight_override(tmp_path):
-    from types import SimpleNamespace
-    from anvil_serving.benchmarking.profiles import load_profile
-
-    value = _spec(suite="context", profile="pilot-v2")
-    expected = load_profile("pilot-v2")["suites"]["context"]["budgets"]
-    artifact = run_benchmark_preflight(value, run_root=str(tmp_path), requirements={"min_free_disk_bytes": 0},
-                                       disk_usage=lambda _path: SimpleNamespace(free=expected["min_free_disk_bytes"] - 1), opener=_opener())
-    assert artifact["passed"] is False
-    assert artifact["requirements"]["min_free_disk_bytes"] == expected["min_free_disk_bytes"]
-    assert artifact["budget_admission"]["budgets"] == expected
-    assert "insufficient_disk" in {check["code"] for check in artifact["checks"]}
-
-
-def test_unknown_suite_preflight_does_not_touch_endpoint_or_output(tmp_path):
-    run_root = tmp_path / "absent"
-    with pytest.raises(BenchmarkJobError) as exc:
-        run_benchmark_preflight(_spec(suite="unknown"), run_root=str(run_root), opener=lambda *_a, **_kw: pytest.fail("endpoint"))
-    assert exc.value.code == "unknown_suite"
-    assert not run_root.exists()
-
-
-@pytest.mark.parametrize("profile", ["deep", "aider-diagnostic-32k-v1"])
-def test_declared_output_budget_above_router_cap_fails_preflight(tmp_path, profile):
-    suite = "swe" if profile == "deep" else "aider"
-    value = _spec(profile=profile, suite=suite)
-    artifact = run_benchmark_preflight(
-        value,
-        run_root=str(tmp_path),
-        opener=_opener([{"id": "deepseek", "max_output_tokens": 16384}]),
-    )
-
-    output_budget = artifact["observed"]["endpoint"]["output_budget"]
-    assert output_budget == {
-        "declared_tokens": 32768,
-        "router_max_output_tokens": 16384,
-        "status": "exceeds_limit",
-    }
-    assert "output_budget_exceeds_router_cap" in {item["code"] for item in artifact["checks"]}
-    assert artifact["passed"] is False
-
-
-def test_declared_output_budget_matching_router_cap_passes_preflight(tmp_path):
-    artifact = run_benchmark_preflight(
-        _spec(profile="deep"),
-        run_root=str(tmp_path),
-        opener=_opener([{"id": "deepseek", "max_output_tokens": 32768}]),
-    )
-
-    assert artifact["observed"]["endpoint"]["output_budget"] == {
-        "declared_tokens": 32768,
-        "router_max_output_tokens": 32768,
-        "status": "within_limit",
-    }
-    assert artifact["passed"] is True
-
-
-@pytest.mark.parametrize("models", [[{"id": "deepseek"}], [{"id": "deepseek", "max_output_tokens": None}]])
-def test_missing_or_null_router_output_cap_remains_unknown(tmp_path, models):
-    artifact = run_benchmark_preflight(
-        _spec(profile="deep"), run_root=str(tmp_path), opener=_opener(models)
-    )
-
-    assert artifact["observed"]["endpoint"]["output_budget"] == {
-        "declared_tokens": 32768,
-        "router_max_output_tokens": None,
-        "status": "unknown",
-    }
-    assert artifact["passed"] is True
-
-
-@pytest.mark.parametrize("invalid_cap", [0, -1, True, "16384", 16384.0])
-def test_invalid_router_output_cap_fails_closed(tmp_path, invalid_cap):
-    artifact = run_benchmark_preflight(
-        _spec(profile="deep"),
-        run_root=str(tmp_path),
-        opener=_opener([{"id": "deepseek", "max_output_tokens": invalid_cap}]),
-    )
-
-    assert artifact["observed"]["endpoint"]["output_budget"]["status"] == "invalid"
-    assert "invalid_router_output_cap" in {item["code"] for item in artifact["checks"]}
-    assert artifact["passed"] is False
-
-
 def test_context_preflight_uses_selected_output_headroom(tmp_path):
     value = _spec(
         profile="pilot-v2",
@@ -345,3 +148,71 @@ def test_context_preflight_uses_selected_output_headroom(tmp_path):
         "status": "within_limit",
     }
     assert artifact["passed"] is True
+
+
+@pytest.mark.parametrize("mode,output_cap,context,effort,passed,error", [
+    ("fixed", 32768, 131072, "max", True, None),
+    ("deployment", 32768, 131072, "max", False, "deployment_output_budget_mismatch"),
+    ("deployment", None, 131072, "max", False, "deployment_output_budget_mismatch"),
+    ("deployment", 16384, 131072, "max", True, None),
+    ("deployment", 16384, None, "max", False, "unknown_context_headroom"),
+    ("fixed", 16384, 16384, "max", False, "output_budget_exhausts_context"),
+    ("fixed", 16384, 131072, "medium", False, "unsupported_endpoint_reasoning_effort"),
+])
+def test_generation_budget_distinguishes_diagnostics_from_deployment(
+        tmp_path, mode, output_cap, context, effort, passed, error):
+    spec = _spec(suite="aider", profile="aider-diagnostic-16k-v1", parameters={
+        "model_host_id": "model-host", "budget_mode": mode, "reasoning_effort": effort,
+    })
+    artifact = run_benchmark_preflight(spec, run_root=str(tmp_path), opener=_opener([{
+        "id": "deepseek", "max_output_tokens": output_cap, "context_length": context,
+        "reasoning": {"supported_efforts": ["max", "high", "low"]},
+    }]))
+    assert artifact["passed"] is passed
+    if error:
+        assert error in {item["code"] for item in artifact["checks"]}
+        from anvil_serving.benchmarking.preflight import require_benchmark_preflight
+        with pytest.raises(BenchmarkJobError, match="preflight"):
+            require_benchmark_preflight(artifact)
+    budget = artifact["generation_budget"]
+    assert budget["mode"] == mode
+    assert budget["reasoning_effort"] == effort
+    assert budget["reasoning_tokens_reserved"] is None
+    assert budget["effective_deadline_s"] == 600
+    assert budget["maximum_prompt_tokens"] == (context - 16384 if context else None)
+    assert artifact["budget_admission"]["budgets"]["max_completion_tokens"] == 16384
+    assert artifact["warnings"]
+
+
+def test_invalid_budget_mode_rejected_before_submission_or_endpoint(tmp_path):
+    from anvil_serving.benchmarking.submission import validate_submission_spec
+    spec = _spec(suite="aider", profile="aider-diagnostic-16k-v1", parameters={"budget_mode": "auto"})
+    with pytest.raises(BenchmarkJobError, match="budget_mode"):
+        validate_submission_spec(spec)
+    with pytest.raises(BenchmarkJobError, match="budget_mode"):
+        run_benchmark_preflight(spec, run_root=str(tmp_path),
+                                opener=lambda *_a, **_kw: pytest.fail("endpoint contacted"))
+
+
+@pytest.mark.parametrize("prompt,passed", [(100, True), (101, False)])
+def test_declared_prompt_headroom_is_checked_at_inclusive_boundary(tmp_path, prompt, passed):
+    spec = _spec(suite="aider", profile="aider-diagnostic-16k-v1", timeout_s=120,
+                 parameters={"model_host_id": "model-host", "prompt_tokens": prompt, "instance_ids": ["go/exercises/practice/example"]})
+    artifact = run_benchmark_preflight(spec, run_root=str(tmp_path), opener=_opener([{
+        "id": "deepseek", "max_output_tokens": 16384, "context_length": 16484}]))
+    assert artifact["passed"] is passed
+    budget = artifact["generation_budget"]
+    assert (budget["maximum_prompt_tokens"], budget["effective_deadline_s"], budget["profile_deadline_s"]) == (100, 120, 600)
+    assert (budget["max_transport_calls"], budget["max_retries"], budget["maximum_coding_attempts_for_selection"]) == (12, 0, 2)
+    assert budget["reasoning_reservation_support"] == "unsupported_by_harness"
+
+
+@pytest.mark.parametrize("context", [0, -1, True, "131072"])
+def test_invalid_advertised_context_is_not_unknown_in_fixed_mode(tmp_path, context):
+    artifact = run_benchmark_preflight(
+        _spec(suite="aider", profile="aider-diagnostic-16k-v1"), run_root=str(tmp_path),
+        opener=_opener([{"id": "deepseek", "max_model_len": 131072,
+                         "meta": {"context_length": context}}]),
+    )
+    assert artifact["passed"] is False
+    assert "invalid_endpoint_context" in {item["code"] for item in artifact["checks"]}

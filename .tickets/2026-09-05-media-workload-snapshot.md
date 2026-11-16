@@ -15,3 +15,26 @@ The 82-test focused gate includes fixed mappings, cancellation spellings,
 approval phases, exact freshness/recent boundaries, privacy, concurrent writer
 consistency and no database creation on absent read. Existing WAL coordination
 sidecars remain SQLite-owned; no lifecycle or schema mutations occur on read.
+
+## Deployment gap observed 2026-11-08
+
+A deployed Windows media node using CLI 1.5.0 returned
+`workload_source_unavailable` for an authenticated operator workload query while
+its four media lifecycle tools remained reachable. Native queue visibility alone
+did not establish whether durable jobs remained unfinished. A bounded,
+read-only, count-only store inspection was needed before maintenance; no job
+payloads, events, artifacts, credentials or private host identities are published
+here.
+
+The cause is not yet distinguished between deployment configuration and an older
+wire contract. The existing [wire-contract repair record](2026-09-05-workload-wire-contract-repairs.md)
+describes a previously fixed serializer defect with the same outer error; this
+observation does not prove that defect recurred or that the store projection is
+missing. Inspect the owning controller's underlying error and installed revision
+before adding another queue API or changing credentials.
+
+Remaining acceptance: the installed operator path must return bounded, fresh
+durable-job state through `MediaJobStore.list_workloads`, distinguish an empty
+result from unavailable/unauthorized/partial evidence, and agree with the native
+queue under maintenance. Preserve existing authorization and read-only storage
+semantics. A healthy lifecycle endpoint or low GPU use is not proof of idleness.

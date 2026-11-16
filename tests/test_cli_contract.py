@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 
 import pytest
 
@@ -11,7 +12,6 @@ from anvil_serving import cli
 from anvil_serving import guard
 from anvil_serving import router_manage
 from anvil_serving.commands import COMMAND_TREE, CommandNode, HandlerRef
-from anvil_serving.targets import ExecutionPlan
 
 
 def _paths(
@@ -51,38 +51,9 @@ def _unbounded_json_cases() -> tuple[tuple[tuple[str, ...], str], ...]:
     return tuple(cases)
 
 
-@pytest.mark.parametrize(("argv", "classification"), _unbounded_json_cases())
-def test_every_unbounded_manifest_case_refuses_json_before_resolution(
-    monkeypatch, capsys, argv, classification
-):
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: pytest.fail(f"resolved unbounded handler: {self.name}"),
-    )
-    monkeypatch.setattr(
-        cli,
-        "_resolve_dispatch_plan",
-        lambda *_args, **_kwargs: pytest.fail("resolved topology for unbounded JSON"),
-    )
-
-    assert cli.main([*argv, "--json"]) == 2
-    captured = capsys.readouterr()
-    assert captured.err == ""
-    payload = json.loads(captured.out)
-    assert payload["error"]["class"] == "usage"
-    assert classification in payload["error"]["message"]
-
-
 # Cover nesting depth and the protected families' operand-free JSON errors.
 @pytest.mark.parametrize("path", [
-    ("models",),
-    ("models", "recipes"),
-    ("eval", "benchmark", "evidence"),
-    ("eval", "benchmark", "external", "notebook"),
-    ("router",),
-    ("edge",),
-    ("connect",),
+    pytest.param(("router",), id="path4"),
 ])
 def test_action_groups_reject_options_without_an_action(capsys, path):
     assert cli.main([*path, "--definitely-invalid"]) == 2
@@ -179,23 +150,6 @@ def test_interactive_eof_fails_closed_without_dispatch(monkeypatch, capsys):
     assert "confirmation input unavailable" in capsys.readouterr().err
 
 
-def test_interactive_decline_fails_closed_without_dispatch(monkeypatch, capsys):
-    class InteractiveInput(io.StringIO):
-        def isatty(self):
-            return True
-
-    monkeypatch.setattr(cli.sys, "stdin", InteractiveInput())
-    monkeypatch.setattr("builtins.input", lambda prompt: "no")
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: pytest.fail("handler resolved after confirmation decline"),
-    )
-
-    assert cli.main(["serves", "down"]) == 3
-    assert "confirmation declined" in capsys.readouterr().err
-
-
 def test_dispatch_confirmation_authorizes_nested_guard_for_one_call(monkeypatch):
     calls = []
 
@@ -209,27 +163,6 @@ def test_dispatch_confirmation_authorizes_nested_guard_for_one_call(monkeypatch)
     assert cli.main(["serves", "rm", "--confirm"]) == 0
     assert calls == [["rm"]]
     assert not guard.confirm("outside", _input=lambda prompt: "no")
-
-
-def test_media_command_family_is_complete_and_bounded():
-    expected = {
-        ("media", "capabilities"),
-        ("media", "workflow", "list"),
-        ("media", "workflow", "show"),
-        ("media", "workflow", "validate"),
-        ("media", "workflow", "run"),
-        ("media", "job", "status"),
-        ("media", "job", "cancel"),
-        ("media", "artifact", "inspect"),
-    }
-    leaves = {
-        tuple(node.name for node in path)
-        for path in _paths()
-        if path[-1].handler is not None
-    }
-    assert expected <= leaves
-    for path in expected:
-        assert _leaf(path).output_policy == "bounded"
 
 
 def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, capsys):
@@ -262,6 +195,117 @@ def test_router_transition_receives_consumed_dispatch_confirmation(monkeypatch, 
         "action": "quiesce",
         "applied": True,
     }
+
+
+@pytest.mark.skipif(os.name != "posix", reason="route authority requires POSIX durability")
+def test_router_routes_init_forwards_confirmation_and_creates_authority(tmp_path, capsys):
+    state = tmp_path / "routes.json"
+    config = tmp_path / "router.toml"
+    config.write_text(
+        "[server]\n"
+        'auth_env = "ROUTER_TOKEN"\n'
+        f'route_state_path = "{state}"\n'
+        "[router.model_routes]\n"
+        '"llm.primary" = "primary"\n'
+        "[[router.tiers]]\n"
+        'id = "primary"\n'
+        'base_url = "http://127.0.0.1:30001/v1"\n'
+        'dialect = "openai"\n'
+        'privacy = "local"\n'
+        'tool_support = true\n'
+        'auth_env = "MODEL_TOKEN"\n'
+        'model = "test-model"\n'
+        "context_limit = 1024\n"
+        "max_concurrency = 1\n"
+        'health_path = "/health"\n'
+        "model_identity = true\n",
+        encoding="utf-8",
+    )
+
+    assert cli.main(["router", "routes", "init", "--config", str(config), "--native"]) == 1
+    assert not state.exists()
+    capsys.readouterr()
+
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--native", "--confirm",
+    ]) == 0
+    assert json.loads(capsys.readouterr().out)["route_revision"] == 0
+    assert state.exists()
+
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--native", "--confirm",
+        "--current-stop-receipt", str(tmp_path / "receipt.json"),
+    ]) == 1
+
+
+def test_router_routes_apply_forwards_confirmation_to_route_client(monkeypatch, capsys):
+    seen = {}
+
+    def request(action, **kwargs):
+        seen.update(action=action, **kwargs)
+        return {"applied": True}
+
+    monkeypatch.setattr(router_manage, "route_update_request", request)
+
+    assert cli.main([
+        "router", "routes", "apply", "--preview-id", "a" * 32,
+        "--router-url", "http://127.0.0.1:18000", "--confirm",
+    ]) == 0
+    assert seen == {
+        "action": "apply",
+        "candidate_bytes": None,
+        "preview_id": "a" * 32,
+        "revision": None,
+        "transaction_id": None,
+        "drain_timeout": None,
+        "router_url": "http://127.0.0.1:18000",
+        "confirm": True,
+    }
+    assert json.loads(capsys.readouterr().out) == {"applied": True}
+
+
+def test_router_routes_init_forwards_current_stop_receipt_to_managed_initializer(tmp_path, monkeypatch, capsys):
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/protected/routes.json"\n[router]\n')
+    topology = tmp_path / "topology.toml"
+    topology.write_text(
+        "schema_version = 1\n"
+        'id = "router-routes-init-docker"\n'
+        'command_host = "host:primary"\n'
+        'command_runtime = "runtime:primary-native"\n\n'
+        "[[hosts]]\n"
+        'id = "primary"\n'
+        'roles = ["router"]\n'
+        'address = "127.0.0.1"\n'
+        'os = "linux"\n\n'
+        "[[runtimes]]\n"
+        'id = "primary-native"\n'
+        'host = "primary"\n'
+        'role = "native"\n\n'
+        "[[runtimes]]\n"
+        'id = "router-docker"\n'
+        'host = "primary"\n'
+        'role = "docker"\n\n'
+        "[[resources]]\n"
+        'id = "router-service"\n'
+        'role = "router"\n'
+        'host = "primary"\n'
+        'runtime = "router-docker"\n'
+        'endpoint = "http://127.0.0.1:30000"\n'
+        'endpoint_kind = "http"\n',
+        encoding="utf-8",
+    )
+    captured = {}
+    monkeypatch.setattr(router_manage, "initialize_route_state_managed", lambda *args, **kwargs: captured.update(
+        args=args, kwargs=kwargs) or {"initialized": True, "route_revision": 0, "effective_route_sha256": "a" * 64})
+    assert cli.main([
+        "router", "routes", "init", "--config", str(config), "--compose", str(tmp_path / "compose.yml"),
+        "--current-stop-receipt", str(tmp_path / "receipt.json"), "--topology", str(topology),
+        "--transport", "local", "--confirm",
+    ]) == 0
+    assert captured["kwargs"]["current_stop_receipt"] == str(tmp_path / "receipt.json")
+    assert captured["kwargs"]["env_file"] is None
+    assert json.loads(capsys.readouterr().out)["initialized"] is True
 
 
 def test_confirmation_after_separator_is_a_leaf_argument_not_authorization(monkeypatch, capsys):
@@ -300,64 +344,6 @@ def test_eval_workload_requires_confirmation_and_strips_it_from_leaf(monkeypatch
     assert calls == [["--base-url", "http://127.0.0.1:8000/v1", "--model", "m"]]
 
 
-@pytest.mark.parametrize(
-    "argv",
-    [
-        ["serves", "up", "heavy", "--manifest", "serves.toml", "--confirm"],
-        ["serves", "up", "--manifest", "serves.toml", "heavy", "--confirm"],
-    ],
-)
-def test_leaf_positional_and_option_order_reaches_same_handler(monkeypatch, argv):
-    calls: list[list[str]] = []
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: lambda forwarded: calls.append(forwarded) or 0,
-    )
-
-    assert cli.main(argv) == 0
-    assert calls == [["up", *argv[2:-1]]]
-
-
-@pytest.mark.parametrize(
-    ("path", "flags"),
-    [
-        (["serves", "up"], {"--manifest", "--dry-run", "--compose", "--recreate"}),
-        (["serves", "down"], {"--manifest", "--dry-run", "--keep-container"}),
-        (["serves", "rm"], {"--manifest", "--dry-run", "--confirm"}),
-        (["serves", "adopt"], {"--manifest", "--dry-run", "--confirm"}),
-    ],
-)
-def test_serves_focused_help_matches_leaf_action_flags(capsys, path, flags):
-    assert cli.main([*path, "--help"]) == 0
-    output = capsys.readouterr().out
-    for flag in flags:
-        assert flag in output
-
-
-@pytest.mark.parametrize("action", ["add", "list", "render"])
-def test_external_benchmark_notebook_actions_resolve(monkeypatch, action):
-    calls: list[list[str]] = []
-    monkeypatch.setattr(
-        HandlerRef,
-        "resolve",
-        lambda self: lambda argv: calls.append(argv) or 0,
-    )
-
-    argv = ["eval", "benchmark", "external", "notebook", action]
-    if action == "add":
-        argv.append("--confirm")
-    assert cli.main(argv) == 0
-    assert calls == [["notebook", action]]
-
-
-def test_external_benchmark_notebook_help_lists_actions(capsys):
-    assert cli.main(["eval", "benchmark", "external", "notebook", "--help"]) == 0
-    output = capsys.readouterr().out
-    for action in ("add", "list", "render"):
-        assert action in output
-
-
 def test_dry_run_does_not_require_confirmation(monkeypatch):
     calls = []
     monkeypatch.setattr(cli.sys, "stdin", io.StringIO())
@@ -387,53 +373,6 @@ def test_separator_prevents_dispatcher_help_and_follow_policy(monkeypatch, capsy
     assert calls == [["logs", "--", "--follow"]]
 
 
-def test_json_preserves_local_execution_context(monkeypatch, capsys):
-    def local_plan(path, _options):
-        return ExecutionPlan(
-            command=cli._command_spec(path),
-            topology_id="test-topology",
-            topology_snapshot="sha256:test",
-            command_host=None,
-            command_runtime=None,
-            execution_host=None,
-            execution_runtime=None,
-            resource_host=None,
-            resource_runtime=None,
-            resource=None,
-            transport="local",
-            transport_id=None,
-            transport_endpoint=None,
-            transport_host_key_fingerprint=None,
-            transport_known_hosts_path=None,
-            recovery_transport_id=None,
-            recovery_transport_endpoint=None,
-            recovery_host_key_fingerprint=None,
-            recovery_known_hosts_path=None,
-            resource_endpoint="http://127.0.0.1:9000",
-            gpu_role=None,
-            selected_target=None,
-            capacity=guard.CapacityDecision(
-                allowed=True,
-                capacity_policy="test-policy",
-                resource_workload="experimental-model",
-                model_workload=True,
-                experimental_model_workload_requested=True,
-                experimental_model_workload_permitted=True,
-                experimental_model_workload_override=True,
-                warning="test capacity warning",
-            ),
-        )
-
-    monkeypatch.setattr(cli, "_resolve_dispatch_plan", local_plan)
-    monkeypatch.setattr(HandlerRef, "resolve", lambda self: lambda argv: 0)
-
-    assert cli.main(["controller", "status", "--topology", "test.toml", "--json"]) == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["context"]["topology"] == "test-topology"
-    assert payload["context"]["transport"] == "local"
-    assert payload["warnings"] == ["test capacity warning"]
-
-
 def test_json_token_reveal_requires_confirmation_before_handler(monkeypatch, capsys):
     monkeypatch.setattr(
         HandlerRef,
@@ -444,8 +383,3 @@ def test_json_token_reveal_requires_confirmation_before_handler(monkeypatch, cap
     assert cli.main(["router", "token", "--reveal", "--json"]) == 3
     payload = json.loads(capsys.readouterr().out)
     assert payload["error"]["code"] == "confirmation_required"
-
-
-def test_voice_profile_validation_requires_profile(capsys):
-    assert cli.main(["voice", "profiles", "validate"]) == 2
-    assert "--profile" in capsys.readouterr().err

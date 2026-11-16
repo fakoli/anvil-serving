@@ -1,0 +1,158 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-11-13-tensorfold-mia-runtime-functional",
+    "capability": "text and image",
+    "repository_revision": "8fe1767257f26495cb0ce8e65511c33717fb80cc",
+    "dirty_state": "product source clean at qualification; fixtures outside checkout",
+    "observed_date": "2026-11-13",
+    "evidence_labels": [
+      "functional",
+      "quality"
+    ],
+    "decision_labels": [
+      "qualified-runtime-candidate"
+    ],
+    "promotion_authorized": true
+  },
+  "native_evidence_schemas": [
+    "preflight/v2",
+    "anvil-serving.benchmark/v1"
+  ],
+  "bundle_size_policy_verified": true,
+  "size_policy": "each retained public artifact is under 1 MiB",
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "workload-manifest",
+      "status": "retained",
+      "files": [
+        "workload-manifest.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "run-plan",
+      "status": "retained",
+      "files": [
+        "qualification-plan-r3.json",
+        "qualification-plan-r5.json",
+        "campaign-state.json",
+        "dispatch-packet.md",
+        "artifact-source.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "retained",
+      "files": [
+        "raw/source-validation-final.json",
+        "raw/candidate-v1-models.json",
+        "raw/extended-custody-before.json",
+        "raw/extended-custody-after.json",
+        "raw/image-inspect-labels.json",
+        "raw/build-result.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "retained",
+      "files": [
+        "raw/build-result.json",
+        "raw/candidate-c4.json",
+        "raw/candidate-cache-cold.json",
+        "raw/candidate-cache-restarted.json",
+        "raw/candidate-cache-warm.json",
+        "raw/candidate-image.json",
+        "raw/candidate-long-map.json",
+        "raw/candidate-preflight.json",
+        "raw/candidate-samples.json",
+        "raw/candidate-smoke.json",
+        "raw/candidate-v1-models.json",
+        "raw/extended-baseline-chat-completions-stream.json",
+        "raw/extended-baseline-chat-completions-whole.json",
+        "raw/extended-baseline-messages-stream.json",
+        "raw/extended-baseline-messages-whole.json",
+        "raw/extended-baseline-scores128.json",
+        "raw/extended-candidate-chat-completions-stream.json",
+        "raw/extended-candidate-chat-completions-whole.json",
+        "raw/extended-candidate-ids129-refused.json",
+        "raw/extended-candidate-messages-stream.json",
+        "raw/extended-candidate-messages-whole.json",
+        "raw/extended-candidate-post-wave-plain.json",
+        "raw/extended-candidate-result.json",
+        "raw/extended-candidate-scores128-control.json",
+        "raw/extended-candidate-scores128-extras.json",
+        "raw/extended-candidate-scores128-repeat.json",
+        "raw/extended-candidate-scores128.json",
+        "raw/extended-candidate-scores129-refused.json",
+        "raw/extended-candidate-wave-0.json",
+        "raw/extended-candidate-wave-1.json",
+        "raw/extended-candidate-wave-plain.json",
+        "raw/extended-custody-after.json",
+        "raw/extended-custody-before.json",
+        "raw/extended-health.json",
+        "raw/extended-oracle-selfcheck.json",
+        "raw/image-inspect-labels.json",
+        "raw/logprobs-first.json",
+        "raw/logprobs-repeat.json",
+        "raw/mia-delta-result.json",
+        "raw/readmit-restore.json",
+        "raw/restore-prometheus.json",
+        "raw/restore-result.json",
+        "raw/restore-routed-smoke.json",
+        "raw/tool-guard-false.json",
+        "raw/tool-guard-true.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md",
+        "coverage-and-gaps.md"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json"
+      ],
+      "reason": ""
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social copy requested; dated finding supplies narrative."
+    }
+  ]
+}

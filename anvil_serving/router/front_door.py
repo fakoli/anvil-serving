@@ -140,6 +140,14 @@ MODEL_CAPACITY_ENDPOINT = "/v1/models/capacity"
 MODEL_CAPABILITIES_ENDPOINT = "/v1/models/capabilities"
 MODEL_FINGERPRINTS_ENDPOINT = "/v1/models/fingerprints"
 ROUTER_STATUS_ENDPOINT = "/v1/router/status"
+ROUTE_UPDATE_PREFIX = "/v1/router/routes"
+ROUTE_UPDATE_PATHS = {
+    ROUTE_UPDATE_PREFIX + "/preview",
+    ROUTE_UPDATE_PREFIX + "/apply",
+    ROUTE_UPDATE_PREFIX + "/status",
+    ROUTE_UPDATE_PREFIX + "/rollback",
+    ROUTE_UPDATE_PREFIX + "/resume",
+}
 ROUTER_STATS_ENDPOINT = "/v1/stats"
 PROMETHEUS_ENDPOINT = "/metrics"
 REQUEST_TRACE_PREFIX = "/v1/requests/"
@@ -489,7 +497,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
                   usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None,
-                  media_signed_downloads: str | None = None):
+                  media_signed_downloads: str | None = None, route_manager=None):
     if gateway is not None:
         signed_downloads = (os.environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0")
                             if media_signed_downloads is None else media_signed_downloads)
@@ -847,7 +855,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._device_error(503, "router_quiesced", "router admission is closed")
                 return False
 
-        def _admit_usage(self, kind, model, *, normalize=True):
+        def _admit_usage(self, kind, model, *, normalize=True, route_association=None):
             family = "chat" if kind == "chat" else "audio" if kind in {"stt", "tts"} else "purpose" if kind in {"embedding", "rerank"} else kind
             if not self._admit_router(family):
                 return False
@@ -884,7 +892,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     scope = usage_authority() if callable(usage_authority) else None
                     self._anvil_usage = UsageInvocation(usage_store, usage_run_id, scope, caller, kind, model,
                                                        registry=workload_registry, clock=collection_clock,
-                                                       gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"))
+                                                       gateway_request_id=(self._anvil_correlation or {}).get("gateway_request_id"),
+                                                       route_association=route_association)
                 return True
             except IdentityError:
                 self._device_error(401, "identity_invalid", "forwarded identity invalid")
@@ -1064,6 +1073,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self._anvil_caller = configured_scope_caller(decision)
                     return True
             return False
+
+        def _management_authenticated(self) -> bool:
+            """Route mutations require the configured operator token, never a device grant."""
+            if auth_token is None:
+                return False
+            supplied = _extract_bearer_token(self.headers)
+            return supplied is not None and hmac.compare_digest(
+                supplied.encode("utf-8"), auth_token.encode("utf-8")
+            )
 
         def _operator_route(self, method: str) -> Optional[OperatorRoute]:
             path, _, _query = self.path.partition("?")
@@ -2117,6 +2135,53 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 _MANAGEMENT_MUTATION_LIMIT.release()
             self._json(200, {"applied": True, "action": action, "result": result})
 
+        def _handle_route_update(self, route: str, body: dict) -> None:
+            """Authenticated, bounded management facade for durable route state."""
+            if route_manager is None:
+                self._error(404, "not_found", f"no route {route}")
+                return
+            if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
+                self._error(503, "server_busy", "route management busy")
+                return
+            try:
+                from .route_updates import RouteUpdateError
+                action = route.rsplit("/", 1)[-1]
+                if action == "preview":
+                    if set(body) - {"config", "mode", "drain_timeout"}:
+                        raise RouteUpdateError("route_request_invalid", status=400)
+                    text = body.get("config")
+                    if not isinstance(text, str):
+                        raise RouteUpdateError("route_request_invalid", status=400)
+                    result = route_manager.preview(text.encode("utf-8"), mode=body.get("mode"),
+                                                   drain_timeout=body.get("drain_timeout", 30))
+                elif action == "apply":
+                    if set(body) - {"preview_id", "confirm", "prepare_only"}:
+                        raise RouteUpdateError("route_request_invalid", status=400)
+                    result = route_manager.apply(body.get("preview_id"), confirm=body.get("confirm"),
+                                                 prepare_only=body.get("prepare_only", False))
+                elif action == "rollback":
+                    if set(body) != {"revision"}:
+                        raise RouteUpdateError("route_request_invalid", status=400)
+                    result = route_manager.rollback(body.get("revision"))
+                elif action == "resume":
+                    if set(body) - {"transaction_id", "owner_evidence"}:
+                        raise RouteUpdateError("route_request_invalid", status=400)
+                    result = route_manager.resume(body.get("transaction_id"),
+                                                  owner_evidence=body.get("owner_evidence"))
+                elif action == "status":
+                    if body:
+                        raise RouteUpdateError("route_request_invalid", status=400)
+                    result = route_manager.status()
+                else:
+                    raise RouteUpdateError("route_request_invalid", status=400)
+                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+            except Exception as exc:
+                status = getattr(exc, "status", 503)
+                code = getattr(exc, "code", "route_update_failed")
+                self._error(status, code, "route update could not be completed")
+            finally:
+                _MANAGEMENT_MUTATION_LIMIT.release()
+
         # --- routes ----------------------------------------------------------
         @router_entry
         def do_HEAD(self) -> None:
@@ -2157,7 +2222,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 finally:
                     _PROTOCOL_CONCURRENCY_LIMIT.release()
                 return
-            if route == TRANSITION_ENDPOINT:
+            if route == TRANSITION_ENDPOINT or route in ROUTE_UPDATE_PATHS:
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
                     return
@@ -2170,6 +2235,20 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         self._reject_get_body_framing(
                             "management GET must not include a body"
                         )
+                    elif route in ROUTE_UPDATE_PATHS:
+                        if route_manager is None or auth_token is None:
+                            self._error(404, "not_found", f"no route {route}")
+                        elif self._anvil_device is not None:
+                            self._error(403, "key_access_denied", "device API keys cannot manage routes")
+                        elif not self._management_authenticated():
+                            self._error(401, "authentication_error", "invalid or missing API key")
+                        elif route != ROUTE_UPDATE_PREFIX + "/status":
+                            self._json(405, {"error": {"type": "method_not_allowed", "message": "use POST"}},
+                                       extra_headers={"Allow": "POST"})
+                        elif urllib.parse.urlparse(self.path).query:
+                            self._error(400, "invalid_request", "route status accepts no query")
+                        else:
+                            self._json(200, route_manager.status(), extra_headers={"Cache-Control": "no-store"})
                     elif auth_token is None:
                         self._error(404, "not_found", f"no route {route}")
                     elif not self._authenticated():
@@ -2648,7 +2727,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 finally:
                     _PROTOCOL_CONCURRENCY_LIMIT.release()
                 return
-            if route == TRANSITION_ENDPOINT:
+            if route == TRANSITION_ENDPOINT or route in ROUTE_UPDATE_PATHS:
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
                     return
@@ -2692,12 +2771,21 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     delivery = self._anvil_delivery_outcome
                     status = self._anvil_http_status
                     def finish_delivery():
-                        if invocation is not None:
-                            if invocation.generation is None:
-                                invocation.capture(None, "success" if status is not None and status < 400 else "rejected" if invocation.dispatched is False else "error")
-                            invocation.finish(delivery.value if delivery is not None else "success" if status is not None and status < 400 else "error")
-                        if stream is not None:
-                            stream.finish_delivery(delivery)
+                        try:
+                            if invocation is not None:
+                                if invocation.generation is None:
+                                    invocation.capture(None, "success" if status is not None and status < 400 else "rejected" if invocation.dispatched is False else "error")
+                                invocation.finish(delivery.value if delivery is not None else "success" if status is not None and status < 400 else "error")
+                            if stream is not None:
+                                stream.finish_delivery(delivery)
+                        finally:
+                            # Transport capacity is released after delivery.
+                            # A committed unresolved accounting start is the
+                            # durable drain barrier and survives a failed
+                            # terminal write or lost response.
+                            getattr(backend, "finish_route_request", lambda _request: None)(
+                                getattr(self, "_anvil_request", None)
+                            )
                     worker = self._anvil_worker
                     if worker is not None:
                         worker.when_finished(finish_delivery)
@@ -2738,6 +2826,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # of 404ing on the slash.
             path = self.path.split("?", 1)[0].rstrip("/")
             is_transition = path == TRANSITION_ENDPOINT
+            is_route_update = path in ROUTE_UPDATE_PATHS
             is_memory = memory is not None and path in _MEMORY_PATHS
 
             # --- Strict framing: gather and validate headers -----------------
@@ -2782,13 +2871,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             # via the same drainable/n framing state just computed, exactly
             # like the other pre-body rejections below, so a pooled keep-alive
             # socket stays in sync.
-            if not self._authenticated():
+            if is_route_update and self._anvil_device is not None:
+                self._fail_framing(403, "key_access_denied", "device API keys cannot manage routes", drainable, n)
+                return
+            if not (self._management_authenticated() if is_route_update else self._authenticated()):
                 self._fail_framing(
                     401, "authentication_error", "invalid or missing API key",
                     drainable, n,
                 )
                 return
-            if is_transition and auth_token is None:
+            if (is_transition or is_route_update) and auth_token is None:
                 self._fail_framing(404, "not_found", f"no route {path}", drainable, n)
                 return
 
@@ -2811,7 +2903,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if dialect is None and audio_kind is not None:
                 dialect = _OPENAI_DIALECT
             if (
-                dialect is None and not is_transition and not is_memory
+                dialect is None and not is_transition and not is_route_update and not is_memory
             ):
                 # Unknown route — drain body if well-framed to keep the
                 # keep-alive socket in sync, then 404.
@@ -2819,7 +2911,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                                    drainable, n)
                 return
 
-            if not is_transition:
+            if not is_transition and not is_route_update:
                 self._start_request_correlation()
 
             # Audio requests carry a base64 blob, so cap the *encoded* body
@@ -2969,9 +3061,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self._error(400, "invalid_request", "incomplete request body", dialect=dialect)
                 return
             try:
-                body = json.loads(raw or b"{}")
+                body = strict_json(raw or b"{}") if is_route_update else json.loads(raw or b"{}")
             except Exception as e:
-                self._error(400, "invalid_request", f"bad JSON body: {e}",
+                self._error(400, "invalid_request", "bad management JSON body" if is_route_update else f"bad JSON body: {e}",
                             dialect=dialect)
                 return
             if not isinstance(body, dict):
@@ -2981,6 +3073,9 @@ def _make_handler(backend: Backend, timeout: Optional[float],
 
             if is_transition:
                 self._handle_transition(body)
+                return
+            if is_route_update:
+                self._handle_route_update(path, body)
                 return
 
             # /v1/embeddings + /v1/rerank (T010): routed by MODEL NAME through
@@ -3005,7 +3100,23 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not self._device_model_allowed(request.model):
                 return
 
-            if not self._admit_usage("chat", request.model):
+            bind_route = getattr(backend, "bind_route_request", None)
+            route_binding = None
+            if callable(bind_route):
+                try:
+                    route_binding = bind_route(request)
+                except NoAvailableTierError as exc:
+                    if getattr(exc, "kind", None) == "unknown_model":
+                        self._error(404, "model_not_found", "unknown model", dialect=dialect)
+                    else:
+                        self._error(exhaustion_status, "model_unavailable", "selected model is unavailable", dialect=dialect)
+                    return
+            if route_binding is not None:
+                request.raw["_anvil_route_delivery_owned"] = True
+            self._anvil_request = request
+            if not self._admit_usage("chat", request.model,
+                                     route_association=(route_binding.route_association if route_binding is not None else None)):
+                getattr(backend, "finish_route_request", lambda _request: None)(request)
                 return
             request.raw.pop("_anvil_usage", None)
             request.raw.pop("_anvil_parent", None)
@@ -3276,6 +3387,7 @@ def make_server(host: str, port: int,
                 usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=None,
                 usage_domain_id=None, usage_metrics=None, router_admission=None,
                 media_signed_downloads: str | None = None,
+                route_manager=None,
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the front-door server.
 
@@ -3356,6 +3468,9 @@ def make_server(host: str, port: int,
     for dispatcher in (backend, purpose, audio, memory):
         if dispatcher is not None:
             dispatcher._router_admission = router_admission
+    configure_route_drain_usage = getattr(backend, "set_route_drain_usage", None)
+    if callable(configure_route_drain_usage):
+        configure_route_drain_usage(usage_store, usage_authority)
     if gateway is not None:
         operations = getattr(getattr(gateway, "tasks", None), "operations", None)
         if operations is not None:
@@ -3372,7 +3487,7 @@ def make_server(host: str, port: int,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
             usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics, router_admission,
-            media_signed_downloads,
+                    media_signed_downloads, route_manager,
         ),
     )
     httpd.anvil_router_admission = router_admission

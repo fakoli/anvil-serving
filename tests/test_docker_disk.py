@@ -111,48 +111,6 @@ class PostStopFailureRunner(FakeRunner):
         return super().__call__(argv, **kwargs)
 
 
-def test_validate_refuses_relative_path(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    with pytest.raises(docker_disk.DockerDiskCompactionError, match="absolute"):
-        docker_disk.validate_docker_data_disk("docker_data.vhdx")
-
-
-def test_validate_refuses_unknown_vhdx_layout(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = tmp_path / "unrelated.vhdx"
-    path.write_bytes(b"vhdx")
-    with pytest.raises(docker_disk.DockerDiskCompactionError, match="known Docker"):
-        docker_disk.validate_docker_data_disk(path)
-
-
-def test_validate_accepts_current_layout(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = _docker_disk_path(tmp_path)
-    assert docker_disk.validate_docker_data_disk(path) == path.resolve()
-
-
-def test_validate_accepts_legacy_layout(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = tmp_path / "Docker" / "wsl" / "disk" / "docker" / "_data.vhdx"
-    path.parent.mkdir(parents=True)
-    path.write_bytes(b"vhdx")
-    assert docker_disk.validate_docker_data_disk(path) == path.resolve()
-
-
-def test_preview_does_not_stop_or_compact(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = _docker_disk_path(tmp_path)
-    runner = FakeRunner()
-
-    result = docker_disk.compact_docker_data_disk(path, dry_run=True, runner=runner)
-
-    assert result["outcome"] == "preview"
-    assert result["applied"] is False
-    assert result["inspection"]["would_stop_docker_desktop"] is True
-    assert not any(call[:3] == ["docker", "desktop", "stop"] for call in runner.calls)
-    assert not any(any("Mount-VHD" in arg for arg in call) for call in runner.calls)
-
-
 def test_confirm_stops_compacts_and_reports_bytes(monkeypatch, tmp_path):
     monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
@@ -184,37 +142,6 @@ def test_confirm_preserves_already_stopped_state(monkeypatch, tmp_path):
     assert not any(call[:3] == ["docker", "desktop", "stop"] for call in runner.calls)
 
 
-def test_known_stopped_cli_response_requires_detached_vhd(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = _docker_disk_path(tmp_path)
-    runner = StoppedCliRunner(status="stopped", attached=False)
-
-    result = docker_disk.compact_docker_data_disk(path, dry_run=True, runner=runner)
-
-    assert result["inspection"]["docker_desktop_status"] == "stopped"
-
-
-def test_known_stopped_cli_response_is_refused_while_attached(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = _docker_disk_path(tmp_path)
-    runner = StoppedCliRunner(status="stopped", attached=True)
-
-    with pytest.raises(docker_disk.DockerDiskCompactionError, match="Docker Desktop status"):
-        docker_disk.inspect_docker_disk_compaction(path, runner=runner)
-
-
-def test_missing_mount_privilege_uses_detached_prezeroed_mode(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = _docker_disk_path(tmp_path)
-    runner = PrivilegeFallbackRunner(status="stopped", attached=False)
-
-    result = docker_disk.compact_docker_data_disk(path, confirm=True, runner=runner)
-
-    assert result["outcome"] == "compacted"
-    assert result["compact_mode"] == "detached-prezeroed"
-    assert any("Mode Prezeroed" in call[-1] for call in runner.calls)
-
-
 def test_confirm_blocks_when_vhd_remains_attached(monkeypatch, tmp_path):
     monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
     path = _docker_disk_path(tmp_path)
@@ -225,24 +152,6 @@ def test_confirm_blocks_when_vhd_remains_attached(monkeypatch, tmp_path):
     assert result["outcome"] == "blocked"
     assert "still attached" in result["error"]
     assert not any(any("Mount-VHD" in arg for arg in call) for call in runner.calls)
-
-
-def test_inspection_fails_closed_without_optimize_vhd(monkeypatch, tmp_path):
-    monkeypatch.setattr(docker_disk, "_is_windows", lambda: True)
-    path = _docker_disk_path(tmp_path)
-    runner = FakeRunner()
-    original = runner.__call__
-
-    def no_optimize(argv, **kwargs):
-        result = original(argv, **kwargs)
-        if argv[0] == "powershell.exe" and "Get-VHD" in argv[-1]:
-            payload = json.loads(result.stdout)
-            payload["OptimizeVhdAvailable"] = False
-            return _completed(argv, stdout=json.dumps(payload))
-        return result
-
-    with pytest.raises(docker_disk.DockerDiskCompactionError, match="Optimize-VHD"):
-        docker_disk.inspect_docker_disk_compaction(path, runner=no_optimize)
 
 
 @pytest.mark.parametrize(

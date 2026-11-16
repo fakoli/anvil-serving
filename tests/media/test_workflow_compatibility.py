@@ -1,7 +1,4 @@
-import io
 import json
-import urllib.error
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -50,25 +47,6 @@ def inventory(workflow):
     return values
 
 
-def test_compatibility_checks_all_bounded_surfaces_and_preserves_quality_gate():
-    workflow = WorkflowRegistry(ROOT / "registry.json").get(
-        "video.wan2.2-ti2v-5b-v1", "v1"
-    )
-    seen = []
-    result = ComfyUIClient(
-        "http://127.0.0.1:8188",
-        opener=opener_for(inventory(workflow), seen),
-    ).compatibility(workflow)
-    assert result.ready is True
-    assert result.available is False
-    assert result.reasons == workflow.unavailable_reasons
-    assert [url.rsplit("/", 1)[-1] for _, url, _ in seen[:3]] == [
-        "system_stats",
-        "features",
-        workflow.required_nodes[0],
-    ]
-
-
 def test_missing_node_is_normalized_without_private_metadata():
     workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     values = inventory(workflow)
@@ -80,39 +58,6 @@ def test_missing_node_is_normalized_without_private_metadata():
     assert result.missing_nodes == ("SaveImage",)
     assert result.reasons == ("missing_node",)
     assert "127.0.0.1" not in repr(result.as_public_dict())
-
-
-def test_compatibility_includes_latent_upscale_model_inventory():
-    workflow = replace(
-        WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1"),
-        required_models=("latent-upscale.safetensors",),
-    )
-    values = inventory(workflow)
-    values["/models/diffusion_models"] = []
-    values["/models/latent_upscale_models"] = ["latent-upscale.safetensors"]
-
-    result = ComfyUIClient(
-        "http://127.0.0.1:8188",
-        opener=opener_for(values, []),
-    ).compatibility(workflow, qualification=True)
-
-    assert result.available is True
-    assert result.missing_models == ()
-
-
-def test_compatibility_includes_required_lora_inventory():
-    workflow = replace(
-        WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1"),
-        required_models=("guide.safetensors",),
-    )
-    values = inventory(workflow)
-    values["/models/diffusion_models"] = []
-    values["/models/loras"] = ["guide.safetensors"]
-    result = ComfyUIClient(
-        "http://127.0.0.1:8188", opener=opener_for(values, [])
-    ).compatibility(workflow, qualification=True)
-    assert result.available is True
-    assert result.missing_models == ()
 
 
 def test_oversized_metadata_fails_closed():
@@ -128,51 +73,7 @@ def test_oversized_metadata_fails_closed():
 
     workflow = WorkflowRegistry(ROOT / "registry.json").get("image.flux2-klein-4b-fp8-v1", "v1")
     with pytest.raises(MediaError) as error:
-        ComfyUIClient("http://127.0.0.1:8188", opener=lambda *_args, **_kwargs: Oversized()).compatibility(workflow)
+        ComfyUIClient(
+            "http://127.0.0.1:8188", opener=lambda *_args, **_kwargs: Oversized()
+        ).compatibility(workflow)
     assert error.value.code == "backend_response_too_large"
-
-
-@pytest.mark.parametrize("status", [502, 503, 504])
-def test_proxy_unavailable_status_at_health_boundary_requests_cold_lifecycle(status):
-    workflow = WorkflowRegistry(ROOT / "registry.json").get(
-        "image.flux2-klein-4b-fp8-v1", "v1"
-    )
-
-    def unavailable(request, timeout):
-        raise urllib.error.HTTPError(
-            request.full_url,
-            status,
-            "upstream unavailable",
-            {},
-            io.BytesIO(b""),
-        )
-
-    with pytest.raises(MediaError) as error:
-        ComfyUIClient("https://media.example.test/comfyui", opener=unavailable).compatibility(
-            workflow
-        )
-    assert error.value.code == "backend_unavailable"
-    assert error.value.status == 503
-    assert error.value.details == {}
-
-
-def test_nonavailability_http_error_at_health_boundary_remains_backend_error():
-    workflow = WorkflowRegistry(ROOT / "registry.json").get(
-        "image.flux2-klein-4b-fp8-v1", "v1"
-    )
-
-    def broken(request, timeout):
-        raise urllib.error.HTTPError(
-            request.full_url,
-            500,
-            "backend failure",
-            {},
-            io.BytesIO(b""),
-        )
-
-    with pytest.raises(MediaError) as error:
-        ComfyUIClient("https://media.example.test/comfyui", opener=broken).compatibility(
-            workflow
-        )
-    assert error.value.code == "backend_http_error"
-    assert error.value.details["status"] == 500

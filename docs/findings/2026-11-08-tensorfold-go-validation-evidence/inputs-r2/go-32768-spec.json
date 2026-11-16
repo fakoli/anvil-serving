@@ -1,0 +1,33 @@
+{
+  "endpoint": {
+    "base_url": "http://127.0.0.1:30000/v1",
+    "model": "llm.primary",
+    "auth_env": "ANVIL_ROUTER_TOKEN"
+  },
+  "ownership_id": "tensorfold-go-validation-20261108",
+  "parameters": {
+    "client_topology": "co-resident",
+    "instance_ids": [
+      "go/exercises/practice/alphametics"
+    ],
+    "model_host_id": "Primary Node",
+    "reasoning_effort": "max",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "offline": true,
+    "aider_oracle": {
+      "receipt_path": "<private-path>",
+      "sha256": "7054074e8d74b4754965ad759b6e74e4fa07fafd674a4241217fd75a5f97f9f2"
+    }
+  },
+  "profile": "aider-diagnostic-32k-v1",
+  "profile_sha256": "cfa62a675f71534ab08827eeb722f1c4d9f244b45b919ea040b4ad9249fb2961",
+  "run_id": "tensorfold-go-validation-20261108-32768-r2",
+  "schema": "anvil-serving.benchmark-job-spec/v1",
+  "submitted_at": "2026-11-08T23:50:27.552764+00:00",
+  "suite": "aider",
+  "timeout_s": 600,
+  "worker": {
+    "id": "Primary Node"
+  }
+}

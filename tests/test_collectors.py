@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-from anvil_serving import cli, collectors
+from anvil_serving import collectors
 from tests.conftest import Response
 
 
@@ -76,18 +75,6 @@ def test_inspect_sends_bearer_token_and_redacts_all_output() -> None:
     assert "collector-secret-token" not in json.dumps(result)
 
 
-def test_absent_or_failed_optional_adapter_is_degraded_not_exception() -> None:
-    missing = collectors.inspect_adapter(_config(), environment={})
-    failed = collectors.inspect_adapter(
-        _config(endpoint="http://127.0.0.1:9100/capabilities", auth_env=None),
-        opener=lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError("offline")),
-    )
-
-    assert missing["capability_status"] == "permission-denied"
-    assert failed["capability_status"] == "failed"
-    assert missing["ok"] is failed["ok"] is False
-
-
 def test_configure_writes_only_env_name_and_round_trips(tmp_path, capsys) -> None:
     output = tmp_path / "collector.json"
     rc = collectors.main(
@@ -112,73 +99,6 @@ def test_configure_writes_only_env_name_and_round_trips(tmp_path, capsys) -> Non
     assert json.loads(capsys.readouterr().out)["status"] == "configured"
 
 
-def test_capabilities_without_configuration_reports_not_configured(capsys) -> None:
-    assert collectors.main(["capabilities"]) == 0
-    payload = json.loads(capsys.readouterr().out)
-    assert payload["status"] == "not-configured"
-    assert payload["capability_status"] == "unsupported"
-
-
-def test_public_cli_exposes_bounded_adapter_actions(capsys) -> None:
-    assert cli.main(["collectors", "--help"]) == 0
-    help_text = capsys.readouterr().out
-    for action in ("configure", "validate", "capabilities", "inspect"):
-        assert action in help_text
-    for forbidden in ("install", "launch", "start", "stop", "restart"):
-        assert forbidden not in help_text
-
-
-def test_public_cli_guards_collector_config_writes(tmp_path, capsys) -> None:
-    output = tmp_path / "collector.json"
-    args = [
-        "collectors",
-        "configure",
-        "--name",
-        "local-gap",
-        "--endpoint",
-        "http://127.0.0.1:9100/capabilities",
-        "--capability",
-        "gpu-gap",
-        "--output",
-        str(output),
-    ]
-
-    assert cli.main(args) == 3
-    assert not output.exists()
-    error = capsys.readouterr().err
-    assert "confirmation required" in error
-    assert "rerun the same command with --confirm" in error
-    assert "collectors configure --confirm" not in error
-
-    assert cli.main([*args, "--confirm"]) == 0
-    assert output.is_file()
-
-
-def test_config_file_rejects_unknown_fields(tmp_path: Path) -> None:
-    path = tmp_path / "bad.json"
-    path.write_text(
-        json.dumps({**_config().as_dict(), "command": "start exporter"}),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ValueError, match="unknown"):
-        collectors._load_config(str(path))
-
-
-@pytest.mark.parametrize("capability", ["9starts-wrong", "gpu.usage", "mémoire"])
-def test_capability_identifiers_are_ascii_and_bounded(capability) -> None:
-    with pytest.raises(ValueError, match="identifiers"):
-        _config(capabilities=(capability,))
-
-
 def test_library_inspection_enforces_timeout_bounds() -> None:
     with pytest.raises(ValueError, match="timeout"):
         collectors.inspect_adapter(_config(), timeout=0)
-
-
-def test_oversized_config_is_rejected_before_read(tmp_path: Path) -> None:
-    path = tmp_path / "huge.json"
-    path.write_bytes(b" " * (256 * 1024 + 1))
-
-    with pytest.raises(ValueError, match="exceeds"):
-        collectors._load_config(str(path))

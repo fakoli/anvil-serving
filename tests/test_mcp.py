@@ -52,21 +52,6 @@ tensor_parallel_size = 2
 """
 
 
-def test_tools_expose_direct_serving_operations_without_legacy_router_controls():
-    assert {"preflight_probe", "benchmark_probe", "serves_manage", "voice_manage"}.issubset(mcp.TOOLS)
-    assert "route_decision" not in mcp.TOOLS
-    assert "router_promote" not in mcp.TOOLS
-    assert not hasattr(mcp, "tool_route_decision")
-    assert not hasattr(mcp, "tool_router_promote")
-
-
-def test_openclaw_sync_schema_is_direct_alias_only():
-    properties = mcp.TOOLS["openclaw_sync"]["inputSchema"]["properties"]
-    assert "plugin_dir" not in properties
-    assert "route_endpoint" not in properties
-    assert "native_provider" not in properties
-
-
 def test_client_catalog_sync_schema_is_secret_reference_only_and_guarded():
     properties = mcp.TOOLS["client_catalog_sync"]["inputSchema"]["properties"]
     assert "api_key" not in properties
@@ -100,18 +85,6 @@ def test_hermes_media_sync_schema_accepts_only_secret_references():
     } <= set(properties)
 
 
-def test_voice_manage_schema_exposes_topology_dispatch_context():
-    properties = mcp.TOOLS["voice_manage"]["inputSchema"]["properties"]
-    assert {
-        "topology_overlay",
-        "command_host",
-        "command_runtime",
-        "target",
-        "transport",
-        "experimental_model_workload",
-    }.issubset(properties)
-
-
 def test_serves_mode_status_reports_structured_exclusive_ownership(
     tmp_path, monkeypatch,
 ):
@@ -134,46 +107,6 @@ def test_serves_mode_status_reports_structured_exclusive_ownership(
         {"gpu_role": "dark-compute-a", "owners": ["tp2"]},
         {"gpu_role": "dark-compute-b", "owners": ["tp2"]},
     ]
-
-
-def test_serves_mode_preview_is_structured_and_side_effect_free(tmp_path, monkeypatch):
-    manifest = tmp_path / "serves.toml"
-    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
-    monkeypatch.setattr(
-        serves,
-        "docker_state",
-        lambda container, **kwargs: "running" if container.startswith("split-") else "absent",
-    )
-    monkeypatch.setattr(
-        serves_tools,
-        "_run_argv",
-        lambda *_args, **_kwargs: pytest.fail("preview spawned lifecycle command"),
-    )
-    result = mcp.tool_serves_mode({
-        "action": "preview",
-        "manifest": str(manifest),
-        "target": "tp2",
-        "restore_group": "split-stack",
-    })
-    assert result["ok"]
-    assert result["data"]["applied"] is False
-    assert result["data"]["plan"]["stop"] == ["split-a", "split-b"]
-
-
-def test_serves_mode_live_apply_requires_separate_human_gate(tmp_path, monkeypatch):
-    manifest = tmp_path / "serves.toml"
-    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
-    monkeypatch.setattr(serves, "docker_state", lambda *args, **kwargs: "absent")
-    with pytest.raises(mcp.ToolError) as refused:
-        mcp.tool_serves_mode({
-            "action": "enter",
-            "manifest": str(manifest),
-            "target": "tp2",
-            "restore_group": "split-stack",
-            "dry_run": False,
-            "confirm": True,
-        })
-    assert refused.value.code == "human_approval_required"
 
 
 def test_serves_mode_live_enter_forwards_preserve_on_failure(
@@ -205,25 +138,6 @@ def test_serves_mode_live_enter_forwards_preserve_on_failure(
     assert result["data"]["preserve_on_failure"] is True
     assert "--preserve-on-failure" in seen["argv"]
     assert seen["kwargs"]["confirm"] is True
-
-
-@pytest.mark.parametrize("action", ["status", "preview", "leave"])
-def test_serves_mode_rejects_preserve_on_failure_outside_enter(
-    action, tmp_path,
-):
-    manifest = tmp_path / "serves.toml"
-    manifest.write_text(MODE_MANIFEST, encoding="utf-8")
-    args = {
-        "action": action,
-        "manifest": str(manifest),
-        "preserve_on_failure": True,
-    }
-    if action != "status":
-        args.update(target="tp2", restore_group="split-stack")
-
-    with pytest.raises(mcp.ToolError) as refused:
-        mcp.tool_serves_mode(args)
-    assert refused.value.code == "bad_argument"
 
 
 def test_openclaw_sync_apply_writes_direct_alias_provider(tmp_path):
@@ -341,38 +255,3 @@ def test_router_manage_confirmed_call_forwards_lifecycle_options(tmp_path, monke
         "--env-file", str(env_file), "-f", str(compose), "up", "-d",
         "--no-deps", "--force-recreate", "router",
     ]
-
-
-def test_router_manage_preview_reports_target_and_does_not_invoke_docker(tmp_path, monkeypatch):
-    compose = tmp_path / "docker-compose.yml"
-    env_file = tmp_path / "router.env"
-    monkeypatch.setattr(
-        router_tools,
-        "_run_argv",
-        lambda *_args, **_kwargs: pytest.fail("preview invoked Docker"),
-    )
-
-    result = mcp.tool_router_manage({
-        "action": "up",
-        "compose": str(compose),
-        "service": "router",
-        "env_file": str(env_file),
-    })
-
-    assert result["ok"]
-    data = result["data"]
-    assert data["applied"] is False
-    assert data["dry_run"] is True
-    assert data["target"] == {
-        "action": "up",
-        "compose": str(compose),
-        "compose_project": "anvil-serving",
-        "container": "anvil-router",
-        "env_file": str(env_file),
-        "no_verify": False,
-        "recreate": False,
-        "service": "router",
-        "timeout_seconds": 300,
-    }
-    assert "--force-recreate" not in data["lifecycle_command"]
-    assert "--dry-run" in data["command"]

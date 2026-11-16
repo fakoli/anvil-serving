@@ -139,14 +139,15 @@ def prepare_child(spec, *, run_root, cache_root=None, offline=False):
     admission = validate_submission_spec(spec, profile=profile, require_profile_binding=True)
     cache_root = cache_root or os.environ.get('ANVIL_BENCHMARK_CACHE_ROOT', os.path.expanduser('~/.anvil-serving/benchmark-harness-cache'))
     assets = prepare_harness_assets(profile, suite=spec['suite'], run_root=run_root,
-        ownership_id=spec['ownership_id'], run_id=spec['run_id'], cache_root=cache_root, offline=offline)
+        ownership_id=spec['ownership_id'], run_id=spec['run_id'], cache_root=cache_root, offline=offline,
+        aider_oracle=spec.get('parameters', {}).get('aider_oracle'))
     common = dict(endpoint=spec['endpoint'], run_root=run_root, cache_root=cache_root,
                   ownership_id=spec['ownership_id'], run_id=spec['run_id'], timeout_s=spec['timeout_s'])
     params = spec.get('parameters', {})
     if spec['suite'] == 'aider':
         from .aider import build_aider_run_plan
         plan = build_aider_run_plan(profile, assets, **common, instance_ids=params.get('instance_ids'),
-            request_controls={k: params[k] for k in ('thinking_mode', 'reasoning_effort', 'temperature', 'top_p') if k in params})
+            request_controls={k: params[k] for k in ('thinking_mode', 'reasoning_effort', 'temperature', 'top_p', 'thinking_budget_tokens') if k in params})
     elif spec['suite'] == 'performance':
         from .performance import build_performance_run_plan
         from .submission import _SUITE_PARAMETERS

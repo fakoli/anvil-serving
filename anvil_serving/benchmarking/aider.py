@@ -47,6 +47,29 @@ def _request_event_identity(event):
     return logical_request_id, attempt
 
 
+def _response_budget_observations(events, configured_output_cap_tokens=None):
+    """Project response metadata without attributing transport calls to tasks."""
+    cap = configured_output_cap_tokens if type(configured_output_cap_tokens) is int and configured_output_cap_tokens > 0 else None
+    responses = []
+    for event in events:
+        if event.get("event") != "aider_transport_response":
+            continue
+        usage = event.get("usage")
+        usage = usage if isinstance(usage, Mapping) else {}
+        values = {name: usage.get(name) if type(usage.get(name)) is int and 0 <= usage[name] <= 10**12 else None
+                  for name in _AIDER_USAGE_FIELDS}
+        completion, reasoning = values["completion_tokens"], values["reasoning_tokens"]
+        non_reasoning = completion - reasoning if completion is not None and reasoning is not None and reasoning <= completion else None
+        reason = event.get("finish_reason")
+        if reason not in {"stop", "length", "tool_calls", "content_filter", "function_call"}:
+            reason = None
+        responses.append({"finish_reason": reason, "usage": values, "visible_tokens": None,
+                          "non_reasoning_tokens": non_reasoning,
+                          "output_cap_reached": completion >= cap if cap is not None and completion is not None and completion > 0 else None})
+    return {"classification": "budget_exhausted" if any(row["finish_reason"] == "length" for row in responses) else None,
+            "scope": "response_generation_limit", "configured_output_cap_tokens": cap, "responses": responses}
+
+
 def _validate_request_accounting(events, adapter_result):
     """Validate the opt-in request-accounting contract without reclassifying legacy evidence."""
     if not events or any(not isinstance(event, Mapping) for event in events):
@@ -119,7 +142,7 @@ def validate_aider_parameters(profile, parameters):
     validated = validate_profile(profile)
     if "aider" not in validated["suites"] or not isinstance(parameters, Mapping):
         raise BenchmarkJobError("bad_aider_parameters", "Aider parameters require an Aider suite")
-    if set(parameters) - {"instance_ids", "thinking_mode", "reasoning_effort", "temperature", "top_p"}:
+    if set(parameters) - {"instance_ids", "thinking_mode", "reasoning_effort", "temperature", "top_p", "thinking_budget_tokens"}:
         raise BenchmarkJobError("bad_aider_parameters", "unsupported Aider parameters")
     ids = parameters.get("instance_ids")
     if ids is not None:
@@ -132,7 +155,8 @@ def validate_aider_parameters(profile, parameters):
         except ValueError as exc:
             raise BenchmarkJobError("bad_aider_selection", "invalid Aider task selection") from exc
     return {"selection": {"instance_ids": ids}, "request_controls": resolve_job_request_controls(
-        {key: value for key, value in parameters.items() if key != "instance_ids"})}
+        {key: value for key, value in parameters.items() if key != "instance_ids"},
+        max_completion_tokens=validated["suites"]["aider"]["max_completion_tokens"])}
 
 
 def _source_root(cache, asset, revision):
@@ -198,7 +222,8 @@ def build_aider_run_plan(profile, assets_manifest, *, endpoint, run_root, cache_
     plan = {"schema": AIDER_PLAN_SCHEMA, "ownership_id": ownership_id, "run_id": run_id,
             "run_root": real_path(run_root), "run_path": run_path, "cache_root": cache,
             "profile": profile["name"], "profile_sha256": profile["content_sha256"],
-            "endpoint": target, "request_controls": resolve_job_request_controls(request_controls),
+            "endpoint": target, "request_controls": resolve_job_request_controls(
+                request_controls, max_completion_tokens=budgets["max_completion_tokens"]),
             "budgets": budgets, "timeout_s": timeout, "paths": paths,
             "execution_contract": {"edit_format": "whole", "attempts": 2, "test_timeout_s": 180,
                 "lint": "pinned upstream flake8_lint in prepared image via python3 -I, not host Python",
@@ -329,6 +354,7 @@ def run_aider_benchmark(plan, *, command_runner=partial(_budget_runner, max_outp
         result["request_observations"] = evidence_file_reference(str(events_path), root=plan["run_path"])
         if request_accounting is not None:
             result["request_accounting"] = request_accounting
+        result["output_budget"] = _response_budget_observations(events, plan["budgets"]["max_completion_tokens"])
         if terminal["budget"]["exhausted"]:
             result["failure"] = {"class": "budget_exhausted", "code": terminal["budget"]["reason"]}
         elif (terminal.get("outcome") != "completed" or terminal.get("plan_sha256") != plan["plan_sha256"]

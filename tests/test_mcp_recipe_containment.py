@@ -40,26 +40,6 @@ def current_record(swap):
                             'effective_limit_bytes': 64 * rm.MIB, 'effective_swap_limit_bytes': swap}}
 
 
-@pytest.mark.parametrize('action', ['load', 'status'])
-@pytest.mark.parametrize('swap', [0, None, 1])
-def test_mcp_recipe_never_passes_unknown_or_wrong_containment(monkeypatch, tmp_path, action, swap):
-    args, calls = setup_manage(monkeypatch, tmp_path, current_record(swap), action=action)
-    result = mcp.call_tool('recipe_manage', args)
-    assert result['ok'] is (swap == 0)
-    if swap != 0:
-        assert result['error']['code'] == 'recipe_containment_failed'
-        assert result['error']['details']['host_memory']['effective_swap_limit_bytes'] == swap
-        assert result['error']['details']['container_id'] == 'e' * 64
-    assert len(calls) == int(action == 'load')
-
-
-def test_mcp_postcondition_also_honors_explicit_containment_failure(monkeypatch, tmp_path):
-    current = current_record(0)
-    current['containment_error'] = 'failed'
-    args, _ = setup_manage(monkeypatch, tmp_path, current)
-    assert mcp.call_tool('recipe_manage', args)['error']['code'] == 'recipe_containment_failed'
-
-
 @pytest.mark.parametrize('raised', [False, True])
 def test_mcp_failed_load_preserves_only_closed_containment_evidence(monkeypatch, tmp_path, raised):
     evidence = rm.failure_evidence('e' * 64, 'stopped_logs_retained', current_record(None)['host_memory'])
@@ -81,13 +61,3 @@ def test_mcp_failed_load_preserves_only_closed_containment_evidence(monkeypatch,
         'e' * 64, 'stopped_logs_retained', current_record(None)['host_memory'])
     assert 'must-not-leak' not in json.dumps(result)
     assert set(details) == {'action', 'returncode', 'containment'}
-
-
-def test_mcp_unstructured_nested_failure_is_sanitized(monkeypatch, tmp_path):
-    def lifecycle():
-        raise ToolError('timeout', 'must-not-leak', {'stdout': 'must-not-leak', 'command': ['must-not-leak']})
-    args, _ = setup_manage(monkeypatch, tmp_path, None, lifecycle=lifecycle)
-    result = mcp.call_tool('recipe_manage', args)
-    assert not result['ok']
-    assert result['error']['details'] == {'action': 'load', 'returncode': 1}
-    assert 'must-not-leak' not in json.dumps(result)

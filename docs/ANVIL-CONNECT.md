@@ -137,6 +137,16 @@ process status is not application readiness. Gateway service certificates are
 currently renewed by a supervised process restart before 24-hour expiry, not by
 zero-downtime certificate rotation.
 
+On Linux gateway startup, exact owned `admin.sock` and declared `ingress.sock`
+crash leftovers can be recovered after exclusive authority-store ownership is
+acquired. Both names are checked before recovery. Only a stable, single-link
+socket with the declared owner, group and mode that returns `ECONNREFUSED` is
+moved into a fresh owner-private `refused-sockets-*` directory on the same mount.
+Active listeners, unknown liveness, symlinks, other file types and custody drift
+remain refusals. Recovery never overwrites another listener or deletes retained
+evidence. This also runs during autonomous supervised restarts; ordinary socket
+listener helpers still refuse existing names. See [ADR-0047](adr/0047-gateway-socket-recovery.md).
+
 ## Cloudflare edge publishing
 
 The public side of a Connect deployment is one Cloudflare tunnel plus one DNS
@@ -208,6 +218,13 @@ store, not the username. And the Cloudflare-side DNS record and tunnel ingress
 for the new host are published with `connect edge-apply`.
 
 ## Recovery
+
+Additional confidential OIDC clients may declare `token_endpoint_auth_method`
+as `client_secret_basic` or `client_secret_post` to match their native client.
+The default remains `client_secret_post`. Public clients retain PKCE with
+`none` authentication and cannot set this confidential-client field. This
+selection changes client authentication only; it preserves browser grants,
+MFA policy, exact callback validation, and the PKCE requirement.
 
 Stop the gateway before `connect backup`. It takes a consistent read-only logical
 snapshot under the database lock and includes the two private CA bundles. Unknown

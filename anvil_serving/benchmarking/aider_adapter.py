@@ -18,6 +18,7 @@ import time
 import types
 from urllib.parse import urlsplit
 
+from ..model_controls import validate_thinking_budget_tokens
 from .swe_agent_adapter import BudgetStopped, EventRecorder, SuiteBudget
 from .aider_containment import (
     AIDER_REVISION as AIDER_REVISION,
@@ -210,6 +211,10 @@ class AiderTransportGuard:
 def install_transport_guard(client, model_class, *, endpoint, controls, budget, recorder):
     """Count actual synchronous HTTP attempts, including provider and SDK retries."""
     guard = AiderTransportGuard(client, model_class, budget, recorder)
+    if "thinking_budget_tokens" in controls:
+        validate_thinking_budget_tokens(controls["thinking_budget_tokens"],
+            max_output_tokens=budget.configured["max_completion_tokens"],
+            reasoning_effort=controls.get("reasoning_effort"))
     target = urlsplit(endpoint["base_url"] + "/chat/completions")
 
     def completion(self, *args, **kwargs):
@@ -241,6 +246,16 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
                     or body.get("max_tokens") != budget.configured["max_completion_tokens"]):
                 raise BudgetStopped("unexpected Aider endpoint, alias, or token cap")
             expected = request_body_controls(controls)
+            if "thinking_budget_tokens" in controls:
+                template_controls = body.get("chat_template_kwargs")
+                try:
+                    validate_thinking_budget_tokens(body.get("thinking_budget"),
+                        max_output_tokens=budget.configured["max_completion_tokens"],
+                        reasoning_effort=body.get("reasoning_effort"),
+                        thinking_enabled=template_controls.get("enable_thinking")
+                            if isinstance(template_controls, dict) else None)
+                except ValueError as exc:
+                    raise BudgetStopped("Aider thinking budget was not preserved") from exc
             if any(body.get(key) != value for key, value in expected.items()):
                 raise BudgetStopped("Aider request controls were not preserved")
             budget.before_send(request, context, self, kwargs)
@@ -248,7 +263,9 @@ def install_transport_guard(client, model_class, *, endpoint, controls, budget, 
             fields = {"logical_request_id": context["logical_request_id"],
                       "attempt": context["sdk_transport_attempt_ordinal"]}
             guard.started += 1
-            recorder.record("aider_transport_started", **fields, model_call=budget.model_calls)
+            requested_limit = ({"thinking_budget_tokens": controls["thinking_budget_tokens"]}
+                               if "thinking_budget_tokens" in controls else {})
+            recorder.record("aider_transport_started", **fields, model_call=budget.model_calls, **requested_limit)
             guard.local.retry_context = context
         try:
             response = guard.original_send(self, request, **kwargs)
@@ -324,6 +341,8 @@ def install_summary_guard(coder_class, budget):
 
 def request_body_controls(controls):
     result = {}
+    if "thinking_budget_tokens" in controls:
+        result["thinking_budget"] = controls["thinking_budget_tokens"]
     if controls.get("reasoning_effort") is not None:
         result["reasoning_effort"] = controls["reasoning_effort"]
     if controls.get("chat_template_kwargs") is not None:

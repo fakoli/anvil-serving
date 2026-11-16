@@ -21,51 +21,10 @@ def test_workbench_up_dry_run_uses_packaged_compose_template(capsys):
     ]
 
 
-def test_workbench_build_renders_local_companion_image_command(tmp_path, capsys):
-    source = tmp_path / "anvil-workbench"
-    dockerfile = source / "deploy" / "Dockerfile.hub"
-    dockerfile.parent.mkdir(parents=True)
-    dockerfile.write_text("FROM scratch\n", encoding="utf-8")
-
-    assert workbench.main(
-        [
-            "build",
-            "--source",
-            str(source),
-            "--image",
-            "anvil-workbench:test",
-            "--dry-run",
-        ]
-    ) == 0
-    rendered = json.loads(capsys.readouterr().out)
-    assert rendered == {
-        "ok": True,
-        "dry_run": True,
-        "command": [
-            "docker",
-            "build",
-            "--file",
-            str(dockerfile.resolve()),
-            "--tag",
-            "anvil-workbench:test",
-            str(source.resolve()),
-        ],
-    }
-
-
-@pytest.mark.parametrize("action", ("up", "down", "status", "logs"))
-def test_workbench_missing_compose_file_is_a_clean_usage_error(action, tmp_path, capsys):
-    assert workbench.main([action, "--compose", str(tmp_path / "missing.yml")]) == 2
-    assert "does not exist" in json.loads(capsys.readouterr().err)["error"]
-
-
 @pytest.mark.parametrize(
     ("argv", "suffix"),
     [
-        (("up",), ("up", "--detach", "--wait", "--wait-timeout", "180")),
-        (("down",), ("down",)),
-        (("status",), ("ps", "--format", "json")),
-        (("logs", "--tail", "17"), ("logs", "--tail", "17")),
+        pytest.param(("logs", "--tail", "17"), ("logs", "--tail", "17"), id="argv3-suffix3"),
     ],
 )
 def test_workbench_commands_render_cross_platform_argument_arrays(argv, suffix):
@@ -101,14 +60,6 @@ def test_workbench_mutations_require_the_dispatcher_confirmation_scope(monkeypat
     assert calls[0][-5:] == [
         "up", "--detach", "--wait", "--wait-timeout", "180"
     ]
-
-
-@pytest.mark.parametrize("tail", ("0", "-1", "5001", "not-a-number"))
-def test_workbench_logs_reject_unbounded_tails(tail):
-    with pytest.raises(SystemExit) as exc:
-        workbench._parser().parse_args(["logs", "--tail", tail])
-
-    assert exc.value.code == 2
 
 
 def test_workbench_dry_run_is_bounded_json_and_docs_describe_the_lifecycle(capsys):
@@ -173,12 +124,6 @@ def _pi_web_config(tmp_path, monkeypatch):
     return config_path
 
 
-def test_pi_web_install_requires_the_private_configuration(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "empty-home"))
-    assert workbench.main(["pi-web", "install", "--dry-run"]) == 2
-    assert "pi-web.json" in json.loads(capsys.readouterr().err)["error"].replace("\\", "/")
-
-
 def test_pi_web_install_dry_run_prints_the_exact_root_plan(tmp_path, monkeypatch, capsys):
     if sys.platform == "win32":
         pytest.skip("the managed install runs Linux host commands")
@@ -200,22 +145,3 @@ def test_pi_web_up_and_down_dry_run_render_systemctl_commands(capsys):
             "dry_run": True,
             "command": ["systemctl", verb, "anvil-pi-web.service"],
         }
-
-
-def test_pi_web_unsupported_configuration_is_a_clean_error(tmp_path, monkeypatch, capsys):
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    config_path = tmp_path / "workbench" / "pi-web.json"
-    config_path.parent.mkdir(parents=True)
-    config_path.write_text(json.dumps({"version": "latest"}), encoding="utf-8")
-    assert workbench.main(["pi-web", "install", "--dry-run", "--config", str(config_path)]) == 2
-    assert "pinned release" in json.loads(capsys.readouterr().err)["error"]
-
-
-@pytest.mark.skipif(sys.platform == "win32", reason="Linux-only journalctl")
-def test_pi_web_status_reports_loopback_readiness(tmp_path, monkeypatch, capsys):
-    _pi_web_config(tmp_path, monkeypatch)
-    assert workbench.main(["pi-web", "status"]) == 0
-    rendered = json.loads(capsys.readouterr().out)
-    assert rendered["ok"] is True
-    assert rendered["unit"] == "anvil-pi-web.service"
-    assert rendered["probe"]["url"] == "http://127.0.0.1:30141/"

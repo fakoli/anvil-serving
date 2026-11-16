@@ -358,7 +358,7 @@ class MediaReconciliationLoop:
                         count = db.execute("SELECT COUNT(*) FROM media_jobs WHERE state NOT IN ('completed','failed','canceled')").fetchone()[0]
                         # Terminal facades and cancellation cannot attest remote death.
                         ambiguous = db.execute("SELECT 1 FROM media_jobs j WHERE "
-                            "(j.state='canceled' AND j.backend_prompt_id IS NOT NULL) OR "
+                            "(j.state='canceled' AND j.backend_prompt_id <> '') OR "
                             "EXISTS(SELECT 1 FROM media_job_events e WHERE e.job_id=j.id AND "
                             "e.reason IN ('backend_submission_recovery_failed','backend_submission_outcome_unknown',"
                             "'backend_submission_recovery_unavailable','backend_prompt_lost','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None

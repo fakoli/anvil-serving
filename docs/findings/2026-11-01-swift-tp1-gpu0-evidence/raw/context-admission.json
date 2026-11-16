@@ -1,0 +1,28 @@
+{
+  "activation": {
+    "binding_sha256": "[QUALIFICATION_FINAL_BINDING]",
+    "container_id": "[QUALIFICATION_FINAL_CONTAINER]",
+    "generation": "[QUALIFICATION_FINAL_ACTIVATION]",
+    "metrics_url": "[LOOPBACK_ENDPOINT]/engine/[QUALIFICATION_FINAL_ACTIVATION]/metrics",
+    "served_model": "swift15-bf16-sglang-gpu0-262k-c16-mtp3-r4",
+    "started_at": "2026-11-02T00:43:12.309284535Z"
+  },
+  "actual_prompt_token_range": [
+    8176,
+    245626
+  ],
+  "attempted": 36,
+  "context_limit": 262144,
+  "large_bucket_actual_range": [
+    245596,
+    245626
+  ],
+  "latency_scope": "quality jobs overlapped; not isolated performance evidence",
+  "minimum_input_coverage": 0.998046875,
+  "native_validation": "final-r4/context-native-validation.json",
+  "output_reserve": 16384,
+  "passed": true,
+  "passed_count": 36,
+  "source": "final-r4/context-native/native-evidence.json",
+  "source_sha256": "aa6a1136e2bfb5076dd629eaceae42ebbefd78d58c4bb1b8a787d40e6e34c5a1"
+}

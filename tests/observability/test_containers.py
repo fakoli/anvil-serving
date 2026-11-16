@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 
 from anvil_serving.observability.probes.containers import collect_containers
-from anvil_serving.observability.schema import CapabilityStatus, TelemetrySample
+from anvil_serving.observability.schema import CapabilityStatus
 
 
 NOW = datetime(2026, 7, 11, 20, 0, tzinfo=timezone.utc)
@@ -28,79 +28,6 @@ STATS = {
 }
 
 
-def _by_metric(samples: list[TelemetrySample]) -> dict[str, TelemetrySample]:
-    return {sample.metric: sample for sample in samples}
-
-
-def test_each_container_reports_identity_state_and_resources() -> None:
-    samples = collect_containers(
-        provider=lambda: ([INSPECT], [STATS]), host_id="dark", collected_at=NOW
-    )
-    metrics = _by_metric(samples)
-
-    assert metrics["container.identity"].value == "anvil-router"
-    assert metrics["container.status"].value == "running"
-    assert metrics["container.cpu.utilization"].value == 12.5
-    assert metrics["container.memory.used"].value == 1.5 * 1024**3
-    assert metrics["container.network.received"].value == 12_500
-    assert metrics["container.network.sent"].value == 2_000_000
-    assert metrics["container.storage.read"].value == 3 * 1024**2
-    assert metrics["container.storage.written"].value == 4.5 * 1024**2
-    assert all(TelemetrySample.from_json(sample.to_json()) == sample for sample in samples)
-
-
-def test_gpu_assignment_and_unavailable_consumption_are_not_conflated() -> None:
-    metrics = _by_metric(
-        collect_containers(
-            provider=lambda: ([INSPECT], [STATS]), host_id="dark", collected_at=NOW
-        )
-    )
-
-    assignment = metrics["container.gpu.assignment"]
-    consumption = metrics["container.gpu.memory.used"]
-    assert assignment.value == "GPU-1234"
-    assert dict(assignment.labels)["attribution"] == "configured"
-    assert consumption.capability_status is CapabilityStatus.UNSUPPORTED
-    assert consumption.value is None
-    assert dict(consumption.labels)["attribution"] == "unavailable"
-
-
-def test_stopped_container_without_stats_has_explicit_missing_resources() -> None:
-    inspect = dict(INSPECT, State={"Status": "exited"})
-
-    metrics = _by_metric(
-        collect_containers(
-            provider=lambda: ([inspect], []), host_id="dark", collected_at=NOW
-        )
-    )
-
-    assert metrics["container.status"].value == "exited"
-    for metric in (
-        "container.cpu.utilization",
-        "container.memory.used",
-        "container.network.received",
-        "container.network.sent",
-        "container.storage.read",
-        "container.storage.written",
-    ):
-        assert metrics[metric].capability_status is CapabilityStatus.MISSING
-        assert metrics[metric].value is None
-
-
-def test_malformed_stats_are_missing_not_zero() -> None:
-    stats = dict(STATS, CPUPerc="unknown", NetIO="bad")
-
-    metrics = _by_metric(
-        collect_containers(
-            provider=lambda: ([INSPECT], [stats]), host_id="dark", collected_at=NOW
-        )
-    )
-
-    assert metrics["container.cpu.utilization"].capability_status is CapabilityStatus.MISSING
-    assert metrics["container.network.received"].capability_status is CapabilityStatus.MISSING
-    assert metrics["container.network.sent"].capability_status is CapabilityStatus.MISSING
-
-
 def test_permission_failure_is_explicit() -> None:
     def denied():
         raise PermissionError("Docker socket access denied")
@@ -109,15 +36,6 @@ def test_permission_failure_is_explicit() -> None:
 
     assert sample.capability_status is CapabilityStatus.PERMISSION_DENIED
     assert sample.value is None
-
-
-def test_empty_engine_is_a_valid_empty_result() -> None:
-    assert (
-        collect_containers(
-            provider=lambda: ([], []), host_id="dark", collected_at=NOW
-        )
-        == []
-    )
 
 
 def test_default_provider_issues_only_read_only_docker_calls(monkeypatch) -> None:

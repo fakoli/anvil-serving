@@ -1,5 +1,51 @@
 # Findings index
 
+**2026-11-13 Mia TensorFold runtime:** [functional validation](2026-11-13-tensorfold-mia-runtime-functional.md) reproduces and fixes a truncated-tool Messages HTTP500, validates128-entry prompt scoring, and preserves tools/image/C4/cache behavior. No speed claim; fleet rollout closure remains separate.
+
+**2026-11-09 numeric-control rollout follow-up:**
+[merged local CLI/router control](2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+has source-backed boundary evidence, with a separate one-task check retaining
+Max/8192 at 1/2 jobs and Low/unset at 1/1. The second Max job failed twice at
+the total response cap; 8192 is not a reliable fix/default. A newer sharded-KV
+baseline prevents causal comparison with the preserved historical matrix.
+Remote-controller admission remains deferred.
+[Evidence](2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+**2026-11-09 TensorFold reasoning investigation:**
+[bounded Max/Low Go controls](2026-11-09-tensorfold-reasoning-budget.md)
+separate prompt effort from a hard thinking-token allocation under the same
+16K response cap. The two reviewed Low repetitions passed their first
+contained tests. The source-control proposal remains separate from deployed
+behavior; this supplies no broad Go score, performance ranking or promotion.
+
+**2026-11-08 TensorFold Go validation:** the pinned GLM EXL3 configuration
+passed one of two bounded profile checks on the same Go task: first-attempt
+success at 32K, two length-finished failures at 16K. This is targeted quality
+evidence, not a broad Go score, causal cap benefit or performance comparison.
+[Finding](2026-11-08-tensorfold-go-validation.md) ·
+[Evidence index](2026-11-08-tensorfold-go-validation-evidence/README.md).
+
+**2026-11-03 RTX5090 candidate campaign:** three families reached123/123 on selected
+coding configurations; private reference114/123. Different capabilities, seven task
+types repeated three times, no equivalent replacement or promotion.
+[Campaign finding](2026-11-03-rtx5090-campaign.md) ·
+[Ignis use and improvements](2026-11-03-ignis-improvements.md) ·
+[Sanitized evidence](2026-11-03-rtx5090-campaign-evidence/README.md).
+
+**2026-11-01 Swift TP1 GPU0 qualification and qualification accepted:** retained
+functional, context, image, agentic, SWE (4/5 resolved), stability, capacity
+(72/72) and resource-window checks supported qualification acceptance. Fresh C2 is the user-preference throughput setting with
+a 32K decode soft miss; C1 remains latency-first. Strict formatting 4/4 failure
+and R5 rejection are retained. Deployment and client assignments are private. [Finding](2026-11-01-swift-tp1-gpu0.md).
+
+**2026-11-01 cache-layout and DFlash scouts:**
+[bounded local results](2026-11-01-runtime-scouts.md) retain 144/144 timed
+requests per experiment on the dual RTX PRO 6000 pair, no 10% E2E improvement
+against both controls, and +38.60% / −40.63% reported cache-slot changes.
+The original private-target configuration was restored after both trials;
+retain it, `no-promotion`. Natural output, absent canaries and withheld identity
+limit qualification and public reproduction. [Evidence index](2026-11-01-runtime-scouts-evidence/README.md).
+
 **2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion:** [finding](2026-10-26-flash-next-engine-qualification.md) records bounded agentic (6/6 each) and context (9/9 each; max observed prompt 114,588) outcomes for distinct Ignis, vLLM, and Flare recipes, plus mixed Aider and official SWE grades. A shared-router whitespace defect makes historical coding attribution uncertain; original HTTP bodies were not retained. vLLM and Flare C1 each ended 0/8 eligible. Exact prior route/output-cap config and GLM incumbent readmission passed local direct/routed checks and one Pi real read-tool turn; router runtime uses reviewed PR #704 overlay, not the original image. No speed ranking or promotion. [Evidence index](2026-10-26-flash-next-engine-qualification-evidence/README.md).
 
 **2026-10-26 Ignis 0.8 mandatory-tool qualification:** the [one-card functional finding](2026-10-26-ignis-080-preflight.md) preserves the original `tool_choice: "auto"` miss at 3/4, then records a separately frozen same-runtime follow-up. `tool_choice: "required"` with normal thinking passed 3/3 mechanism cells, the selected 5/5-check and 9/9-observation preflight, and a 4/4 seed-18 repeat. All 16 phase-two requests have terminal engine events; literal HTTP 200 was retained for 12 captured tool requests. Exact operational restoration passed after both phases. This qualifies the request-level mandatory-tool path only—not automatic-choice reliability, a global agent default, coding/SWE, capacity, performance, or promotion. [Summary](2026-10-26-ignis-080-preflight-evidence/summary.json) · [Evidence index](2026-10-26-ignis-080-preflight-evidence/README.md).
@@ -97,7 +143,7 @@ Multiple STT/TTS and local LLM profiles were tested for English personal, noncom
 
 ## Policy
 
-Latest runtime decision: [NVIDIA FP4 primary promotion](2026-10-17-glm53-nvidia-fp4-promotion.md) — operator-selected current primary with EXL3 r11 retained rollback. The dated APC, DCP1 and earlier restoration decisions below remain historical evidence.
+Latest runtime decision: [NVIDIA FP4 primary promotion](2026-10-17-glm53-nvidia-fp4-promotion.md) — operator-selected tested configuration with EXL3 r11 retained rollback. The dated APC, DCP1 and earlier restoration decisions below remain historical evidence.
 
 Historical 2026-09-11 bounded run: [GLM output-budget diagnosis](2026-09-11-glm53-output-budget.md), 2026-09-11 — retain 4K; 16 valid tasks, eight invalid coding runs.
 

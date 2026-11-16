@@ -1,0 +1,10 @@
+{
+  "decision": "Return exact r4 .90 recipe, no further memory retuning. Final full quality runs on r4. C2context uses229376input+16384reserve each,491520pool requirement<504384; do not claim two full262144windows.",
+  "minimum_free_mib": 2711,
+  "not_claimed": "No engine OOM inferred from reserve failure; initial preflight passed9/9. Current full preflight allowed to drain; no further r5 jobs.",
+  "observed_at": "2026-11-02T00:42:15.796017+00:00",
+  "required_free_mib": 3072,
+  "shortfall_mib": 361,
+  "source": "final-r5/resource-observation/slow.jsonl",
+  "status": "policy-infeasible under required GPU reserve"
+}

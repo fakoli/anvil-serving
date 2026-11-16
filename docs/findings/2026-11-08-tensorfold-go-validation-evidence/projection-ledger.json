@@ -1,0 +1,387 @@
+{
+  "schema": "anvil-serving.sanitized-public-projection-ledger/v1",
+  "transformation": "Retain selected native fields and schemas; replace private filesystem paths, host/GPU identities and the deployed router port. Unchanged files remain byte-exact. Native reference hashes bind original private bytes and are not rewritten to imply public custody.",
+  "files": [
+    {
+      "path": "go-16384/artifact.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "7c3a9825a5407c1657290d97c968defea9e14e2339f8a67da4bae18d9f9b8cf7",
+      "original_private_bytes": 5027,
+      "published_sha256": "c06a2623fff7fd8b64ececf0486728564d2a4a748d4e5d99a8d225e86b46e593",
+      "published_bytes": 5031,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.identities.hardware.id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    },
+    {
+      "path": "go-16384/aider/result.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/result.json",
+      "native_schema": "anvil-serving.aider-run/v1",
+      "original_private_sha256": "19a1c98f2d0808c98e11fb4cd5b5337e3a8842ad75535c8b9298af3a0ef55004",
+      "original_private_bytes": 76593,
+      "published_sha256": "3517510d8f084cea5049d19a6a203f74dfac1e0df4ebcacfde6a5d5e298bf838",
+      "published_bytes": 74964,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.instances[0].native.path",
+        "$.stage.command[0]",
+        "$.stage.command[5]",
+        "$.stage.command[7]",
+        "$.stage.stdout"
+      ]
+    },
+    {
+      "path": "go-16384/aider/requests.jsonl",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/requests.jsonl",
+      "native_schema": [
+        "anvil-serving.swe-agent-observation/v1"
+      ],
+      "original_private_sha256": "ee45884c0b2b4c61d3e8941d1606615fdd0328d8cf71c049b5edbb476cbfca4f",
+      "original_private_bytes": 4274,
+      "published_sha256": "ee45884c0b2b4c61d3e8941d1606615fdd0328d8cf71c049b5edbb476cbfca4f",
+      "published_bytes": 4274,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-16384/aider/adapter-result.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/adapter-result.json",
+      "native_schema": "anvil-serving.aider-adapter-result/v1",
+      "original_private_sha256": "329298ef27652fbe2744fcb26cdb11b6fb892cd44f07f111e34198db6d0e0845",
+      "original_private_bytes": 767,
+      "published_sha256": "329298ef27652fbe2744fcb26cdb11b6fb892cd44f07f111e34198db6d0e0845",
+      "published_bytes": 767,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-16384/aider/process.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/process.json",
+      "native_schema": null,
+      "original_private_sha256": "a9342f17b0c47f881ddb5b77fbb1b02224c7ea4c6cebf6b4a23efd9c6b959d49",
+      "original_private_bytes": 71433,
+      "published_sha256": "0ba4e5b8fbf7f29d4f90fb7c0b42f9806dc826ff247d2b7a2fbbf13d89d9a8cc",
+      "published_bytes": 69993,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.command[0]",
+        "$.command[5]",
+        "$.command[7]",
+        "$.stdout"
+      ]
+    },
+    {
+      "path": "go-16384/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "native_schema": null,
+      "original_private_sha256": "46e52e1e2e0f857b90205e0e8a2fa1c5221aa4dc6e780a066fb0e6c2aef9e583",
+      "original_private_bytes": 1071,
+      "published_sha256": "aa22bacb4bc56b9b307cd5008581597c1057247e40f469c085dbc4a98d3287c7",
+      "published_bytes": 808,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.testdir"
+      ]
+    },
+    {
+      "path": "go-16384/aider/preparation/oracle.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/preparation/oracle.json",
+      "native_schema": null,
+      "original_private_sha256": "eae93047dac2bd6ba131cff75473e415b10b02fac82f4b6caf91321af235d974",
+      "original_private_bytes": 39488,
+      "published_sha256": "eae93047dac2bd6ba131cff75473e415b10b02fac82f4b6caf91321af235d974",
+      "published_bytes": 39488,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-16384/aider/selection.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/selection.json",
+      "native_schema": null,
+      "original_private_sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+      "original_private_bytes": 1405,
+      "published_sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+      "published_bytes": 1405,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-16384/aider/retention.json",
+      "source_id": "tensorfold-go-validation-20261108-16384-r2/aider/retention.json",
+      "native_schema": "anvil-serving.aider-retention/v1",
+      "original_private_sha256": "108aa2178d71140b955ee74b3091a017d1feeaca4d5a810b36632d61d76df330",
+      "original_private_bytes": 1447,
+      "published_sha256": "108aa2178d71140b955ee74b3091a017d1feeaca4d5a810b36632d61d76df330",
+      "published_bytes": 1447,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-32768/artifact.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "8dfad4753172bf089ed814bd103fedd35e08a0ed6aab0923bc9f06977e36ceb0",
+      "original_private_bytes": 5027,
+      "published_sha256": "367b38c5eaa09d492361fb0f05aeae1533694974d450093fc621e7f0a6a4d4e1",
+      "published_bytes": 5031,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.identities.hardware.id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    },
+    {
+      "path": "go-32768/aider/result.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/result.json",
+      "native_schema": "anvil-serving.aider-run/v1",
+      "original_private_sha256": "9e24ae3a3c3601226f03b3c7d5a7bbfea5014be791d012c60eb15766c1e74746",
+      "original_private_bytes": 74923,
+      "published_sha256": "c1808e63fb9177079f4cf021aef64519192a7dc66cb2fb927ca3be4764b31906",
+      "published_bytes": 73845,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.instances[0].native.path",
+        "$.stage.command[0]",
+        "$.stage.command[5]",
+        "$.stage.command[7]",
+        "$.stage.stdout"
+      ]
+    },
+    {
+      "path": "go-32768/aider/requests.jsonl",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/requests.jsonl",
+      "native_schema": [
+        "anvil-serving.swe-agent-observation/v1"
+      ],
+      "original_private_sha256": "86011f426a2cd08c2d72d50f2c42b7c6d74091b0fc1e7c3ba864fbecf5799460",
+      "original_private_bytes": 3643,
+      "published_sha256": "86011f426a2cd08c2d72d50f2c42b7c6d74091b0fc1e7c3ba864fbecf5799460",
+      "published_bytes": 3643,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-32768/aider/adapter-result.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/adapter-result.json",
+      "native_schema": "anvil-serving.aider-adapter-result/v1",
+      "original_private_sha256": "df1bbae409f83745ebc41f13282faa39ab6a5cf08ce993fa04a888439a75081d",
+      "original_private_bytes": 767,
+      "published_sha256": "df1bbae409f83745ebc41f13282faa39ab6a5cf08ce993fa04a888439a75081d",
+      "published_bytes": 767,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-32768/aider/process.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/process.json",
+      "native_schema": null,
+      "original_private_sha256": "9db08195e16dc607e22bc83611413b622d470c132f25d3373d2ae79f873cb5be",
+      "original_private_bytes": 69781,
+      "published_sha256": "c06be491df1a35e9388cb1cbd741aa3b7efaf2e1e705d4f3948f22e5e85e7184",
+      "published_bytes": 68892,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.command[0]",
+        "$.command[5]",
+        "$.command[7]",
+        "$.stdout"
+      ]
+    },
+    {
+      "path": "go-32768/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/results/go/exercises/practice/alphametics/.aider.results.json",
+      "native_schema": null,
+      "original_private_sha256": "bf046a278d5ec1eb8adf8e74a91eef08e46ceadaf8fb5a86d26382190f863db9",
+      "original_private_bytes": 929,
+      "published_sha256": "82aa752ddb2425b48c6eaf03517240e1e15fff33f99b67c4e89925eec209f07b",
+      "published_bytes": 690,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.testdir"
+      ]
+    },
+    {
+      "path": "go-32768/aider/preparation/oracle.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/preparation/oracle.json",
+      "native_schema": null,
+      "original_private_sha256": "b645c2475ef216812804611a63bea5bd6440e7fbd783784652d7dcee3b6ae660",
+      "original_private_bytes": 39493,
+      "published_sha256": "b645c2475ef216812804611a63bea5bd6440e7fbd783784652d7dcee3b6ae660",
+      "published_bytes": 39493,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-32768/aider/selection.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/selection.json",
+      "native_schema": null,
+      "original_private_sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+      "original_private_bytes": 1405,
+      "published_sha256": "b397d14aa84ecd0cfa91f4a3089fe885d90c4b7e3c11cef8bd93252c95f94ade",
+      "published_bytes": 1405,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "go-32768/aider/retention.json",
+      "source_id": "tensorfold-go-validation-20261108-32768-r2/aider/retention.json",
+      "native_schema": "anvil-serving.aider-retention/v1",
+      "original_private_sha256": "17fcfc82213006a71ddfe5872aaa80131a86a310030bc0f96f662767141baee9",
+      "original_private_bytes": 1446,
+      "published_sha256": "17fcfc82213006a71ddfe5872aaa80131a86a310030bc0f96f662767141baee9",
+      "published_bytes": 1446,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "inputs/plan.json",
+      "source_id": "inputs/plan.json",
+      "native_schema": "anvil-serving.focused-quality-plan/v1",
+      "original_private_sha256": "46d6f4fc0b4372108a511a47f54083bb92d3067520d726cb09cdb7c63d7db5ea",
+      "original_private_bytes": 3912,
+      "published_sha256": "ca81c953e934dff66156dd9668558d648a60ea8958aaed6eca8919a35d0c24e0",
+      "published_bytes": 3897,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.route.revision",
+        "$.route.sha256"
+      ]
+    },
+    {
+      "path": "inputs/source.json",
+      "source_id": "inputs/source.json",
+      "native_schema": null,
+      "original_private_sha256": "d5b0682b3255e28b8a494eb2c303768c23ea11a28f1913b754fde3ddfaae075a",
+      "original_private_bytes": 1421,
+      "published_sha256": "3ecad3a8ced1383f43b6c5dfbf1240623edda05e704fa815cdfce3abbc647551",
+      "published_bytes": 1388,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.installed_prefix"
+      ]
+    },
+    {
+      "path": "inputs/aider-diagnostic-16k-v1.json",
+      "source_id": "inputs/aider-diagnostic-16k-v1.json",
+      "native_schema": "anvil-serving.benchmark-profile/v2",
+      "original_private_sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+      "original_private_bytes": 1325,
+      "published_sha256": "45fd92d1fb3544232bb002f47ceb9141956fcedfe7f414e8880d042422ad802f",
+      "published_bytes": 1325,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "inputs/aider-diagnostic-32k-v1.json",
+      "source_id": "inputs/aider-diagnostic-32k-v1.json",
+      "native_schema": "anvil-serving.benchmark-profile/v2",
+      "original_private_sha256": "767e9553471b6464d0b8ea764bb0dbf9e4b1ca2daa25ebbe41002b950cacbe91",
+      "original_private_bytes": 1325,
+      "published_sha256": "767e9553471b6464d0b8ea764bb0dbf9e4b1ca2daa25ebbe41002b950cacbe91",
+      "published_bytes": 1325,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "inputs-r2/plan.json",
+      "source_id": "inputs-r2/plan.json",
+      "native_schema": "anvil-serving.focused-quality-plan/v1",
+      "original_private_sha256": "981dbe54dc71239a9395cecd3719f70b46bf3e0828edf5c048d41413843d6901",
+      "original_private_bytes": 4697,
+      "published_sha256": "87858b99d4fd38ef0e564b524ef775be10c8307c5fc99eaaf17d2a054ced5c81",
+      "published_bytes": 4682,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.route.revision",
+        "$.route.sha256"
+      ]
+    },
+    {
+      "path": "inputs-r2/go-16384-spec.json",
+      "source_id": "inputs-r2/go-16384-spec.json",
+      "native_schema": "anvil-serving.benchmark-job-spec/v1",
+      "original_private_sha256": "e2215b630bcd12647737e78ca66a1bd518b8f2c23e0b347162b0a1301d607886",
+      "original_private_bytes": 1074,
+      "published_sha256": "52107eed618c1bf0904096cab5167001d6801bb0e69459113aa01dd2da6953ab",
+      "published_bytes": 979,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.parameters.model_host_id",
+        "$.parameters.aider_oracle.receipt_path",
+        "$.worker.id"
+      ]
+    },
+    {
+      "path": "inputs-r2/go-32768-spec.json",
+      "source_id": "inputs-r2/go-32768-spec.json",
+      "native_schema": "anvil-serving.benchmark-job-spec/v1",
+      "original_private_sha256": "a29af99b71d5f875c81639dc5187205ed8f6589a4cc075fae97d61feed02a4be",
+      "original_private_bytes": 1074,
+      "published_sha256": "f6d45b28e5e982bccc762be95df5de88a6883dd1c98eb88ed8d9712f6b6df7d8",
+      "published_bytes": 979,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.endpoint.base_url",
+        "$.parameters.model_host_id",
+        "$.parameters.aider_oracle.receipt_path",
+        "$.worker.id"
+      ]
+    },
+    {
+      "path": "qualification/harness-tests-r2.json",
+      "source_id": "qualification/harness-tests-r2.json",
+      "native_schema": "anvil-serving.test-run/v1",
+      "original_private_sha256": "2d7ee639aef835929c440234b2251046f12c48732867ed0c4fd4902bd025b5ed",
+      "original_private_bytes": 1384,
+      "published_sha256": "21476f991fba16d1728f2c449f9f109964d7cee0b1a9c9cb715c29661652cc3b",
+      "published_bytes": 1245,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.base_temp",
+        "$.command[0]",
+        "$.command[10]",
+        "$.cwd",
+        "$.interpreter"
+      ]
+    },
+    {
+      "path": "qualification/frozen-comparison-integrity.json",
+      "source_id": "qualification/frozen-comparison-integrity.json",
+      "native_schema": null,
+      "original_private_sha256": "55d0094427dd05b17ed578b117c7feb9fb044da95b2c913244ade93075acfa61",
+      "original_private_bytes": 113,
+      "published_sha256": "55d0094427dd05b17ed578b117c7feb9fb044da95b2c913244ade93075acfa61",
+      "published_bytes": 113,
+      "exact_unmodified_raw": true,
+      "redactions": []
+    },
+    {
+      "path": "setup-failure.json",
+      "source_id": "initial-setup/artifact.json",
+      "native_schema": "anvil-serving.benchmark-result/v1",
+      "original_private_sha256": "6e0d85171b9b46cc62a1ab33944ac87f9b3f159981e2eacbab7ee16a549bef03",
+      "original_private_bytes": 4365,
+      "published_sha256": "01f592923e85f56399b7ec984ebebfdb4218aea5c37de1388d3b01531a22f774",
+      "published_bytes": 4005,
+      "exact_unmodified_raw": false,
+      "redactions": [
+        "$.failure.message",
+        "$.provenance.endpoint.base_url",
+        "$.provenance.worker.id",
+        "$.results.evidence.failure.message",
+        "$.results.evidence.identities.hardware.worker_id",
+        "$.results.evidence.identities.topology.worker_id"
+      ]
+    }
+  ]
+}

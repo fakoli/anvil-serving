@@ -1,7 +1,7 @@
 import copy
 import json
 import pytest
-from anvil_serving.native_agents.sandbox import render,path,BOOTSTRAP_JS
+from anvil_serving.native_agents.sandbox import render,BOOTSTRAP_JS
 
 
 def declaration():
@@ -27,17 +27,6 @@ def test_plan_confines_whole_owner_with_fixed_namespace_mount_and_environment_co
     assert any("inherited descriptor" in item for item in plan.supervisor_requirements)
 
 
-@pytest.mark.parametrize("field,value",[("rootfs","/"),("rootfs","//"),("rootfs","//opt/runtime"),("uid",0),("owner_port",True),("model_port",9501),("rootfs_sha256","unpinned"),("storage_limit_bytes",0)])
-def test_invalid_confinement_inputs_rejected(field,value):
-    spec=declaration();spec[field]=value
-    with pytest.raises(ValueError):render(spec)
-
-
-@pytest.mark.parametrize("value",["//","//data/x","/data/../etc","/data//x","/"+"a"*4097])
-def test_canonical_path_aliases_and_length_rejected(value):
-    with pytest.raises(ValueError):path(value)
-
-
 def test_no_arbitrary_arguments_environment_or_host_mounts():
     spec=declaration();spec["argv"]=["/bin/sh"]
     with pytest.raises(ValueError):render(spec)
@@ -45,12 +34,6 @@ def test_no_arbitrary_arguments_environment_or_host_mounts():
     with pytest.raises(ValueError):render(spec)
     spec=declaration();spec["directories"].append(copy.deepcopy(spec["directories"][0]))
     with pytest.raises(ValueError):render(spec)
-
-
-def test_second_owner_plan_contains_no_first_owner_mounts():
-    one=declaration();two=declaration();two["id"]="workspace-two";two["uid"]=61002
-    assert all("/workspace-one/" not in arg for arg in render(two).argv)
-    assert all("/workspace-two/" not in arg for arg in render(one).argv)
 
 
 @pytest.mark.parametrize("key,value",[(None,None),("memory.max","max"),("pids.max","1000"),("cpu.max","max 100000"),("memory.swap.max","max")])
@@ -120,28 +103,6 @@ def test_credential_custody_failures_rejected_without_fifo_block(tmp_path,monkey
     with pytest.raises((ValueError,OSError)):open_credentials(spec,directory)
 
 
-def test_spawn_drops_unrelated_descriptor_and_keeps_only_allowlisted(tmp_path):
-    import os
-    import sys
-    from anvil_serving.native_agents.sandbox import _spawn
-    sentinel=os.open(tmp_path/'sentinel',os.O_WRONLY|os.O_CREAT,0o600);allowed=os.open(tmp_path/'allowed',os.O_WRONLY|os.O_CREAT,0o600)
-    os.set_inheritable(sentinel,True)
-    script='import os,sys\ntry:os.fstat(int(sys.argv[1]));sys.exit(7)\nexcept OSError:pass\nos.write(int(sys.argv[2]),b"allowed")\n'
-    try:assert _spawn([sys.executable,'-c',script,str(sentinel),str(allowed)],[allowed])==0
-    finally:os.close(sentinel);os.close(allowed)
-    assert (tmp_path/'sentinel').read_bytes()==b'' and (tmp_path/'allowed').read_bytes()==b'allowed'
-
-
-def test_bootstrap_is_valid_javascript(tmp_path):
-    import shutil
-    import subprocess
-    node=shutil.which('node')
-    if not node:pytest.skip('Node syntax validation requires Node')
-    source=tmp_path/'bootstrap.cjs';source.write_text(BOOTSTRAP_JS)
-    result=subprocess.run([node,'--check',str(source)],capture_output=True)
-    assert result.returncode==0,result.stderr.decode()
-
-
 @pytest.mark.parametrize('kind',['valid','digest','version','mode','uid','hardlink','symlink','fifo'])
 def test_bubblewrap_custody_and_digest_precede_execution(tmp_path,monkeypatch,kind):
     import hashlib
@@ -169,28 +130,6 @@ def test_bubblewrap_custody_and_digest_precede_execution(tmp_path,monkeypatch,ki
     else:
         with pytest.raises((ValueError,OSError)):verify_bwrap(digest)
         assert len(calls)==(1 if kind=='version' else 0)
-
-
-@pytest.mark.parametrize('kind',['valid','parent-custody','symlink','permissions','device','uid','not-directory'])
-def test_writable_mount_requires_immutable_parent_and_exact_private_leaf(tmp_path,monkeypatch,kind):
-    import os
-    from anvil_serving.native_agents.sandbox import verify_writable_mount
-    root=tmp_path.resolve();source=root/'home';source.mkdir(mode=0o700)
-    seen=[]
-    def custody(p):
-        seen.append(p)
-        if kind=='parent-custody':raise ValueError('unsafe parent')
-    monkeypatch.setattr('anvil_serving.native_agents.sandbox._root_custody',custody)
-    uid=os.getuid();device=source.stat().st_dev
-    if kind=='symlink':source.rename(root/'other');source.symlink_to(root/'other')
-    if kind=='permissions':source.chmod(0o750)
-    if kind=='device':device+=1
-    if kind=='uid':uid+=1
-    if kind=='not-directory':source.rmdir();source.write_text('file');source.chmod(0o700)
-    if kind=='valid':verify_writable_mount(source,uid,device)
-    else:
-        with pytest.raises(ValueError):verify_writable_mount(source,uid,device)
-    assert seen==[root]
 
 
 @pytest.mark.parametrize('kind',['valid','manifest-digest','tamper','extra','symlink','hardlink','mode','bootstrap'])

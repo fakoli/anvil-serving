@@ -1,0 +1,59 @@
+{
+  "schema": "anvil-serving.public-quality-configuration/v1",
+  "observation_date": "2026-11-08",
+  "model": {
+    "repository": "Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold",
+    "revision": "76c0b5173166d2795dd48860f45d8224817f894c",
+    "served_identity": "served-model-1",
+    "served_identity_is_synthetic": true
+  },
+  "runtime": {
+    "engine": "TensorFold",
+    "upstream_commit": "f350cd3ea253a042e205746928271f9d8f71a82d",
+    "author_recipe_commit": "0a5297c912e118490b8bb3734d9e20107df7f6f2",
+    "author_patch_count_unchanged": 101,
+    "anvil_patch_count": 5,
+    "anvil_manifest_sha256": "fbf6b5b9a919e772c3cd9b8e369419aae5c94c2828a212424c4b3a83d7604e1f",
+    "source_tree": "e7acc47a4a42ba8ac5fbaf74fff20ed4e7856c17",
+    "image_digest": "sha256:8f5604d13d319adac8dc708b2e8bf8ce54096e181313a2a8de83cbfdd2902b06",
+    "patch_catalog": "../../../configs/runtime-patches/tensorfold/f350cd3e-anviltelemetryv1/manifest.toml"
+  },
+  "hardware": {
+    "host": "Primary Node",
+    "os": "native Linux",
+    "gpus": 2,
+    "gpu_model": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+    "gpu_capacity_class_gb_each": 96,
+    "tensor_parallel_size": 2,
+    "client_topology": "co-resident"
+  },
+  "configured_serving_policy": {
+    "weights": "EXL3 4bpw; dense q8; BF16 head",
+    "kv": "FP8 paged KV",
+    "context_tokens": 327680,
+    "admission_limit": 4,
+    "max_output_tokens": 32768,
+    "thinking": true,
+    "reasoning_effort": "high",
+    "drafter": "incoai/GLM-5.3-Flash-DFlash2",
+    "drafter_revision": "bf582e4eacc1810f76656d1811693ff6c6737d2a",
+    "drafter_bits": 4,
+    "cache_policy": "preserved; no reset; uncontrolled warm state"
+  },
+  "requested_job_controls": {
+    "reasoning_effort": "max",
+    "thinking_mode": "default",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "concurrency": 1,
+    "completion_caps_per_response_including_reasoning": [
+      16384,
+      32768
+    ],
+    "deadline_s_per_job": 600,
+    "max_model_calls_per_job": 12,
+    "max_retries": 0,
+    "max_edit_attempts_per_task": 2
+  },
+  "boundary": "Configured serving policy and requested job controls are distinct. No numerical reasoning reservation or effective internal thinking budget is inferred. Hardware capacity classes are configured identity, not measurements of peak memory or simultaneous full-context capacity."
+}

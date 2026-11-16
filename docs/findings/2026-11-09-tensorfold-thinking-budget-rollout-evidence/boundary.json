@@ -1,0 +1,23 @@
+{
+  "schema": "anvil-serving.source-backed-thinking-boundary/v1",
+  "classification": "source-backed functional enforcement; not directly instrumented trigger evidence",
+  "requested_reply_position_budget": 8192,
+  "matching_reported_reasoning_tokens": 8193,
+  "matching_coding_responses": 4,
+  "reported_reasoning_includes_closing_delimiter": true,
+  "native_trigger_flag_retained": false,
+  "raw_token_ids_retained": false,
+  "exact_reasoning_token_ceiling_claimed": false,
+  "visible_answer_reserve_guaranteed": false,
+  "historical_engine_tree": "e7acc47a4a42ba8ac5fbaf74fff20ed4e7856c17",
+  "current_engine_tree": "1c7fffb5975b3cc2e4a6c57b05b37f9c04e04cf6",
+  "byte_identical_relevant_files": [
+    "core/lanes/stream.zig",
+    "core/lanes/engine.zig",
+    "server/server.zig",
+    "server/reply_text.zig",
+    "server/openai.zig",
+    "server/chat.zig"
+  ],
+  "interpretation": "The request reaches the native reply-position cutoff and close sequence. Inclusive reasoning accounting matches the observed offset; no tokenizer probe or direct trigger event was retained. Total-cap exhaustion can still prevent a completed answer and code application."
+}

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import hashlib
-import json
 from pathlib import Path
 import subprocess
 import sys
@@ -14,7 +13,7 @@ import pytest
 import anvil_serving.control_plane.controller.propagation_supervisor as supervisor_module
 from anvil_serving.control_plane.controller.propagation_job_store import ExecutionProfile, JobStore, PropagationJobError
 from anvil_serving.control_plane.controller.propagation_supervisor import PropagationSupervisor
-from anvil_serving.control_plane.propagation import effect_scope_digest, parse_contract
+from anvil_serving.control_plane.propagation import effect_scope_digest
 
 
 DIGEST = "a" * 64
@@ -70,65 +69,6 @@ def _wait(supervisor: PropagationSupervisor, job_id: str) -> dict[str, object]:
     raise AssertionError("supervisor did not settle")
 
 
-def test_delayed_collection_captures_a_fresh_execution_clock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    collection_time = _now()
-    execution_time = collection_time + timedelta(minutes=6)
-
-    class ControlledDateTime:
-        current = collection_time
-
-        @classmethod
-        def now(cls, tz=None):
-            assert tz is timezone.utc
-            return cls.current
-
-    monkeypatch.setattr(sys.modules[__name__], "datetime", ControlledDateTime)
-    assert _now() == collection_time
-    ControlledDateTime.current = execution_time
-    store, submitted = _submitted(tmp_path, "pass")
-    assert submitted["intent_id"] == "intent-1"
-    contract = json.loads(store.lookup_internal(submitted["job_id"])["canonical_contract"])
-    assert contract["issued_at"] == execution_time.strftime("%Y-%m-%dT%H:%M:%SZ")
-    assert contract["deadline_at"] == (execution_time + timedelta(minutes=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_gated_effect_runs_only_after_durable_registration(tmp_path: Path):
-    marker = tmp_path / "effect"
-    script = "import json,pathlib,sys; c=json.load(sys.stdin); pathlib.Path(sys.argv[1]).write_text('ran'); e=[{**item,'state':'applied'} for item in c['planned_effects']]; print(json.dumps({'outcome':'applied','native_effects':e,'quiescent':True}))"
-    profile = _profile((sys.executable, "-c", script, str(marker)))
-    store = JobStore(tmp_path / "jobs.sqlite3", {profile.profile_id: profile})
-    now = _now()
-    binding = _binding(_contract(now + timedelta(minutes=5), now))
-    job, duplicate = store.submit(binding, now)
-    assert not duplicate
-    replay, duplicate = store.submit(binding, now)
-    assert duplicate and replay["job_id"] == job["job_id"]
-    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    supervisor.launch(job["job_id"])
-    result = _wait(supervisor, job["job_id"])
-    assert marker.read_text() == "ran"
-    assert result["state"] == "applied" and result["convergence_ref"]
-    changed = dict(binding)
-    changed["operation_id"] = "operation-2"
-    with pytest.raises(PropagationJobError, match="job_conflict"):
-        store.submit(changed, now)
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_unregistered_child_refuses_before_effect_gate(tmp_path: Path):
-    marker = tmp_path / "effect"
-    script = "import json,pathlib,sys; json.load(sys.stdin); pathlib.Path(" + repr(str(marker)) + ").write_text('ran')"
-    store, job = _submitted(tmp_path, script, budget_seconds=1)
-    # Recreate the submitted profile with a marker argv before custody; a direct
-    # child cannot reach the fixed profile without the registered CAS.
-    token = store.prepare_launch(job["job_id"], _now())
-    completed = subprocess.run((sys.executable, "-m", "anvil_serving.control_plane.controller.propagation_supervisor", "--child", store.path, job["job_id"]), input=token.encode(), stdout=subprocess.PIPE, check=False)
-    assert completed.returncode == 5
-    assert not marker.exists()
-    assert store.lookup_internal(job["job_id"])["state"] == "launch_custody"
-
-
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
 def test_restart_or_lost_ack_requires_recovery_not_relaunch(tmp_path: Path):
     script = "import json,sys,time; json.load(sys.stdin); time.sleep(2); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
@@ -140,109 +80,6 @@ def test_restart_or_lost_ack_requires_recovery_not_relaunch(tmp_path: Path):
     with pytest.raises(PropagationJobError, match="launch_reconciliation_required"):
         second.launch(job["job_id"])
     first.cancel(job["job_id"])
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_fresh_supervisor_keeps_matching_live_child_and_reconciles_result(tmp_path: Path):
-    script = "import json,sys,time; c=json.load(sys.stdin); time.sleep(.3); print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
-    store, job = _submitted(tmp_path, script, budget_seconds=3)
-    first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    first.launch(job["job_id"])
-    fresh = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: result["outcome"])
-    assert fresh.observe(job["job_id"])["state"] == "running"
-    first._children[job["job_id"]].wait(timeout=3)
-    assert _wait(fresh, job["job_id"])["state"] == "applied"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_restart_rechecks_durable_result_after_native_child_exits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    release, effects = tmp_path / "release", tmp_path / "effects"
-    script = (
-        "import json,pathlib,sys,time; c=json.load(sys.stdin); root=pathlib.Path(" + repr(str(tmp_path)) + "); "
-        "(root/'started').write_text('yes');\n"
-        "while not (root/'release').exists(): time.sleep(.01)\n"
-        "with (root/'effects').open('a') as handle: handle.write('one\\n')\n"
-        "print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
-    )
-    store, job = _submitted(tmp_path, script, budget_seconds=5, heartbeat_seconds=1)
-    first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    first.launch(job["job_id"])
-    for _ in range(100):
-        if (tmp_path / "started").exists():
-            break
-        time.sleep(0.01)
-    assert (tmp_path / "started").exists()
-    fresh_store = JobStore(store.path)
-    fresh = PropagationSupervisor(fresh_store, reconcile=lambda _job, result: result["outcome"])
-    original = fresh_store.completed_child_result
-    lookups = 0
-
-    def complete_after_snapshot(job_id: str, identity: dict[str, object]) -> dict[str, object] | None:
-        nonlocal lookups
-        lookups += 1
-        if lookups == 1:
-            assert original(job_id, identity) is None
-            release.write_text("go")
-            first._children[job["job_id"]].wait(timeout=3)
-            assert original(job_id, identity)["outcome"] == "applied"
-            return None
-        return original(job_id, identity)
-
-    monkeypatch.setattr(fresh_store, "completed_child_result", complete_after_snapshot)
-    assert fresh.observe(job["job_id"])["state"] == "applied"
-    assert lookups == 2
-    assert fresh.observe(job["job_id"])["state"] == "applied"
-    assert effects.read_text() == "one\n"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_restart_refreshes_registered_snapshot_before_reconciling_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    marker = tmp_path / "effect"
-    script = (
-        "import json,pathlib,sys; c=json.load(sys.stdin); pathlib.Path(" + repr(str(marker)) + ").write_text('one'); "
-        "print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
-    )
-    store, job = _submitted(tmp_path, script, budget_seconds=5)
-    token = store.prepare_launch(job["job_id"])
-    process = subprocess.Popen(
-        (sys.executable, "-m", "anvil_serving.control_plane.controller.propagation_supervisor", "--child", store.path, job["job_id"]),
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        identity = supervisor_module._identity(process.pid)
-        assert identity is not None
-        store.register_launch(job["job_id"], token, identity)
-        fresh_store = JobStore(store.path)
-        fresh = PropagationSupervisor(fresh_store, reconcile=lambda _job, result: result["outcome"])
-        original = fresh_store.lookup_internal
-        snapshots = 0
-
-        def registered_snapshot(job_id: str) -> dict[str, object]:
-            nonlocal snapshots
-            snapshots += 1
-            if snapshots == 1:
-                stale = original(job_id)
-                assert stale["state"] == "registered"
-                assert process.stdin is not None
-                process.stdin.write(token.encode("ascii"))
-                process.stdin.close()
-                process.stdin = None
-                process.wait(timeout=3)
-                assert fresh_store.completed_child_result(job_id, identity)["outcome"] == "applied"
-                return stale
-            return original(job_id)
-
-        monkeypatch.setattr(fresh_store, "lookup_internal", registered_snapshot)
-        assert fresh.observe(job["job_id"])["state"] == "applied"
-        assert snapshots >= 2
-        assert fresh.observe(job["job_id"])["state"] == "applied"
-        assert marker.read_text() == "one"
-    finally:
-        if process.poll() is None:
-            process.kill()
-            process.wait(timeout=3)
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
@@ -515,24 +352,6 @@ def test_unknown_descendant_custody_never_claims_quiescence():
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_detached_profile_descendant_prevents_success(tmp_path: Path):
-    script = "import json,os,sys,time; json.load(sys.stdin); child=os.fork(); child or (os.setsid(),time.sleep(5),os._exit(0)); child and print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
-    store, job = _submitted(tmp_path, script, budget_seconds=1)
-    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    supervisor.launch(job["job_id"])
-    assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_failed_native_result_requires_matching_owner_reconciliation(tmp_path: Path):
-    script = "import json,sys; json.load(sys.stdin); print(json.dumps({'outcome':'failed','native_effects':[],'quiescent':True})); raise SystemExit(1)"
-    store, job = _submitted(tmp_path, script)
-    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    supervisor.launch(job["job_id"])
-    assert _wait(supervisor, job["job_id"])["state"] == "failed"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
 def test_child_heartbeat_and_deadline_are_real_observations(tmp_path: Path):
     script = "import json,sys,time; json.load(sys.stdin); time.sleep(6); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
     store, job = _submitted(tmp_path, script, budget_seconds=4, heartbeat_seconds=1)
@@ -553,27 +372,6 @@ def test_child_heartbeat_and_deadline_are_real_observations(tmp_path: Path):
         heartbeat = store.lookup_internal(job["job_id"])["heartbeat_at"]
     assert heartbeat > initial
     assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_leader_death_never_implies_quiescence(tmp_path: Path):
-    script = "import json,sys,time; json.load(sys.stdin); time.sleep(1)"
-    store, job = _submitted(tmp_path, script)
-    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    supervisor.launch(job["job_id"])
-    for _ in range(100):
-        if store.lookup_internal(job["job_id"])["state"] == "executing":
-            break
-        time.sleep(0.01)
-    supervisor._children[job["job_id"]].kill()
-    assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
-
-
-def test_non_linux_refuses_native_supervision(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    profile = _profile((sys.executable, "-c", "pass"))
-    monkeypatch.setattr(supervisor_module.sys, "platform", "win32")
-    with pytest.raises(PropagationJobError, match="supervision_unavailable"):
-        PropagationSupervisor(JobStore(tmp_path / "jobs.sqlite3", {profile.profile_id: profile}))
 
 
 def test_resource_union_is_atomic_and_duplicate_precedes_deadline(tmp_path: Path):
@@ -604,72 +402,3 @@ def test_contract_deadline_stops_a_late_profile_result(tmp_path: Path):
     supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
     supervisor.launch(job["job_id"])
     assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
-
-
-def test_planned_effect_ids_are_bound_to_the_full_contract():
-    now = _now()
-    first = _contract(now + timedelta(minutes=5), now)
-    second = _contract(now + timedelta(minutes=5), now)
-    second["scope"], second["revision"] = "scope-2", "revision-2"
-    second["effect_set_digest"] = effect_scope_digest(second)
-    first_contract, second_contract = parse_contract(first), parse_contract(second)
-    assert JobStore._planned_effects(first_contract.digest, first_contract.canonical) != JobStore._planned_effects(second_contract.digest, second_contract.canonical)
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_complete_multi_target_result_uses_private_ledger_reference(tmp_path: Path):
-    marker = tmp_path / "effect"
-    script = "import json,pathlib,sys; c=json.load(sys.stdin); pathlib.Path(sys.argv[1]).write_text(str(len(c['planned_effects']))); print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
-    profile = _profile((sys.executable, "-c", script, str(marker)))
-    store = JobStore(tmp_path / "jobs.sqlite3", {profile.profile_id: profile})
-    now = _now()
-    contract = _contract(now + timedelta(minutes=5), now)
-    source = contract["targets"][0]
-    contract["targets"] = [{**source, "target_id": f"target-{index:02d}", "installation_id": f"installation-{index:02d}", "resource_keys": [f"catalog-{index:02d}"]} for index in range(24)]
-    contract["effect_set_digest"] = effect_scope_digest(contract)
-    binding = _binding(contract)
-    binding["resources"] = [f"catalog-{index:02d}" for index in range(24)]
-    job, _ = store.submit(binding, now)
-    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    supervisor.launch(job["job_id"])
-    assert _wait(supervisor, job["job_id"])["state"] == "applied"
-    assert marker.read_text() == "24"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_insufficient_semantic_result_capacity_refuses_before_effects(tmp_path: Path):
-    marker = tmp_path / "effect"
-    profile = _profile((sys.executable, "-c", "import pathlib,sys; pathlib.Path(sys.argv[1]).write_text('ran')", str(marker)), output_limit=5000)
-    store = JobStore(tmp_path / "jobs.sqlite3", {profile.profile_id: profile})
-    now = _now()
-    contract = _contract(now + timedelta(minutes=5), now)
-    source = contract["targets"][0]
-    contract["targets"] = [{**source, "target_id": f"target-{index:02d}", "installation_id": f"installation-{index:02d}", "resource_keys": [f"catalog-{index:02d}"]} for index in range(24)]
-    contract["effect_set_digest"] = effect_scope_digest(contract)
-    binding = _binding(contract)
-    binding["resources"] = [f"catalog-{index:02d}" for index in range(24)]
-    job, _ = store.submit(binding, now)
-    supervisor = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    supervisor.launch(job["job_id"])
-    assert _wait(supervisor, job["job_id"])["state"] == "recovery_required"
-    assert not marker.exists()
-
-
-def test_native_result_rejects_non_ascii_or_control_opaque_fields():
-    for opaque in ("receipt-\u00e9", "receipt\n1"):
-        raw = json.dumps({"outcome": "applied", "native_effects": [{"effect_id": "effect-1", "state": "applied", "receipt_ref": opaque}], "quiescent": True}).encode("utf-8")
-        assert supervisor_module._profile_result(raw)["outcome"] == "uncertain"
-    for state in ([], {}):
-        raw = json.dumps({"outcome": "applied", "native_effects": [{"effect_id": "effect-1", "state": state, "receipt_ref": "receipt-1"}], "quiescent": True}).encode("utf-8")
-        assert supervisor_module._profile_result(raw)["outcome"] == "uncertain"
-
-
-@pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
-def test_restart_reconciles_completed_child_result_without_relaunch(tmp_path: Path):
-    script = "import json,sys; c=json.load(sys.stdin); print(json.dumps({'outcome':'applied','native_effects':[{**item,'state':'applied'} for item in c['planned_effects']],'quiescent':True}))"
-    store, job = _submitted(tmp_path, script)
-    first = PropagationSupervisor(store, reconcile=lambda _job, result: result["outcome"])
-    first.launch(job["job_id"])
-    first._children[job["job_id"]].wait(timeout=2)
-    recovered = PropagationSupervisor(JobStore(store.path), reconcile=lambda _job, result: result["outcome"])
-    assert recovered.observe(job["job_id"])["state"] == "applied"

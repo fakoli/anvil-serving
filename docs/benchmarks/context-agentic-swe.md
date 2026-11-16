@@ -479,6 +479,28 @@ Each task gets at most two upstream attempts with test feedback. The pilot
 caps the suite at 12 transport attempts, 16,384 completion tokens per request,
 and one hour of execution. Preparation time is recorded separately.
 
+For an endpoint that supports the OpenAI-compatible `thinking_budget`
+extension, an Aider job may explicitly set `parameters.thinking_budget_tokens`.
+It must be a positive integer strictly below the pinned profile's per-response
+completion cap and cannot accompany disabled thinking. Effort remains a
+separate qualitative control; for example, `reasoning_effort="max"` and
+`thinking_budget_tokens=4096` request max effort with a numerical thinking
+ceiling. Other benchmark suites reject this parameter until their request
+paths support it. Omitting it preserves the existing request and defaults.
+
+The Aider wire guard checks that the value reaches its outgoing HTTP body as
+`thinking_budget`. The router preserves it only for OpenAI-to-OpenAI requests;
+unsupported cross-dialect use fails before dispatch. Tier soft defaults and
+hard overrides keep their existing precedence, with the effective budget
+required to leave positive output headroom. An explicit output cap is required
+when requesting this extension through the router.
+
+This is a requested limit, not an independently verified reasoning allowance
+or answer reservation. Metadata preflight records enforcement as unverified;
+qualify the selected engine's support, token counting and forced-close behavior
+before relying on it. Closing markers may consume additional tokens, and a
+thinking ceiling does not guarantee a correct or complete answer.
+
 Preparation must prove that every selected starter fails and its reference
 solution passes the same upstream test command in the exact prepared image.
 Missing or failed oracle evidence blocks model traffic. The image receipt

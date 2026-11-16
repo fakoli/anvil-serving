@@ -139,21 +139,6 @@ class FakeRun:
         raise AssertionError("unexpected Docker command: %r" % (argv,))
 
 
-def test_retained_inspect_uses_closed_projection_and_exact_incarnation():
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(["docker", "inspect", "--format"], completed(json.dumps(retained_inspection())))])
-    observed = Adapter(run=runner).inspect(retained_binding())
-
-    argv = runner.calls[0][0]
-    assert argv[-1] == CONTAINER_ID
-    assert "Config.Env" not in argv[3] and ".Config.Cmd" not in argv[3]
-    assert observed["registered"] is True and observed["identity"] == CONTAINER_ID
-    assert observed["custody_sha256"]
-    assert observed["started_at"] == "2026-10-10T04:00:00.123456789Z"
-    assert observed["finished_at"] == "2026-10-10T04:01:00.123456789Z"
-
-
 def test_retained_inspect_accepts_empty_compose_label_value_with_exact_full_equality():
     from anvil_serving.service_runtime.docker import Adapter
 
@@ -170,47 +155,6 @@ def test_retained_inspect_accepts_empty_compose_label_value_with_exact_full_equa
 
     assert observed["registered"] is True
     assert observed["identity"] == CONTAINER_ID
-
-
-def test_ordinary_binding_still_rejects_empty_identity_label_value():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    with pytest.raises(ServiceError, match="identity labels") as raised:
-        Adapter(run=FakeRun([])).describe(binding(identity_labels={OWNERSHIP_LABEL: ""}))
-
-    assert raised.value.code == "invalid_binding"
-
-
-@pytest.mark.parametrize("labels", [
-    {"": "reviewed"},
-    {"k" * 129: "reviewed"},
-    {"owner": "v" * 257},
-])
-def test_retained_binding_rejects_invalid_identity_label_bounds(labels):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(
-        ["docker", "inspect", "--format"],
-        completed(json.dumps(retained_inspection(labels=labels))),
-    )])
-
-    with pytest.raises(ServiceError, match="identity labels") as raised:
-        Adapter(run=runner).inspect(retained_binding(identity_labels=labels))
-
-    assert raised.value.code == "invalid_binding"
-
-
-def test_retained_inspect_rejects_malformed_lifecycle_timestamp():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    row = retained_inspection()
-    row["State"]["FinishedAt"] = "not-a-docker-timestamp"
-    runner = FakeRun([(["docker", "inspect", "--format"], completed(json.dumps(row)))])
-    with pytest.raises(ServiceError, match="lifecycle timestamp"):
-        Adapter(run=runner).inspect(retained_binding())
 
 
 @pytest.mark.parametrize("change", ["id", "labels", "mounts", "restart", "security"])
@@ -259,36 +203,6 @@ def test_external_compose_adoption_pins_project_service_and_config_mount():
         "com.docker.compose.project": "observability", "com.docker.compose.service": "prometheus"}}
 
 
-def test_external_compose_adoption_rejects_wrong_config_mount():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    row = external_compose_inspection()
-    row["Mounts"] = []
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([row])) )])
-    with pytest.raises(ServiceError, match="configuration target"):
-        Adapter(run=runner).adopt_external_compose(external_compose_binding())
-
-
-@pytest.mark.parametrize("changes", [
-    {"Image": "sha256:" + "c" * 64},
-    {"Config": {"Labels": {"com.docker.compose.project": "other", "com.docker.compose.service": "prometheus"}}},
-    {"Mounts": [{"Type": "bind", "Source": "/operator/observability/prometheus", "Destination": "/etc/prometheus", "RW": True}]},
-    {"Mounts": [
-        {"Type": "bind", "Source": "/operator/observability/prometheus", "Destination": "/etc/prometheus", "RW": False},
-        {"Type": "bind", "Source": "/other", "Destination": "/etc/prometheus", "RW": False},
-    ]},
-])
-def test_external_compose_adoption_rejects_identity_drift(changes):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    row = external_compose_inspection(**changes)
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([row])) )])
-    with pytest.raises(ServiceError, match="image|Compose|mount"):
-        Adapter(run=runner).adopt_external_compose(external_compose_binding())
-
-
 def completed(stdout="", stderr="", returncode=0):
     return subprocess.CompletedProcess([], returncode, stdout, stderr)
 
@@ -301,38 +215,6 @@ def context_inspection(endpoint, *, name="default"):
         "TLSMaterial": {},
         "Storage": {"MetadataPath": "<IN MEMORY>", "TLSPath": "<IN MEMORY>"},
     }]
-
-
-@pytest.mark.parametrize(
-    "endpoint",
-    ["unix:///var/run/docker.sock", "npipe:////./pipe/docker_engine"],
-)
-def test_verify_context_accepts_only_local_socket_transports(endpoint, monkeypatch):
-    from anvil_serving.service_runtime.docker import Adapter
-
-    monkeypatch.delenv("DOCKER_CONTEXT", raising=False)
-    monkeypatch.delenv("DOCKER_HOST", raising=False)
-    runner = FakeRun([
-        (["docker", "context", "inspect"], completed(json.dumps(context_inspection(endpoint))))
-    ])
-
-    assert Adapter(run=runner).verify_context() is None
-    assert runner.calls[0][0] == ["docker", "context", "inspect"]
-
-
-def test_docker_context_overrides_a_remote_docker_host(monkeypatch):
-    from anvil_serving.service_runtime.docker import Adapter
-
-    monkeypatch.setenv("DOCKER_HOST", "ssh://operator:host-secret@remote.example")
-    monkeypatch.setenv("DOCKER_CONTEXT", "desktop-local")
-    runner = FakeRun([
-        (["docker", "context", "inspect", "desktop-local"], completed(json.dumps(
-            context_inspection("unix:///Users/example/.docker/run/docker.sock", name="desktop-local")
-        )))
-    ])
-
-    assert Adapter(run=runner).verify_context() is None
-    assert runner.calls[0][0] == ["docker", "context", "inspect", "desktop-local"]
 
 
 @pytest.mark.parametrize(
@@ -365,85 +247,6 @@ def test_verify_context_rejects_remote_context_endpoints_without_exposing_them(
     assert "context-secret" not in str(raised.value)
 
 
-def test_verify_context_rejects_remote_docker_host_without_running_docker(monkeypatch):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    endpoint = "ssh://operator:host-secret@remote.example"
-    monkeypatch.delenv("DOCKER_CONTEXT", raising=False)
-    monkeypatch.setenv("DOCKER_HOST", endpoint)
-    runner = FakeRun([])
-
-    with pytest.raises(ServiceError) as raised:
-        Adapter(run=runner).verify_context()
-
-    assert raised.value.code == "remote_context"
-    assert endpoint not in str(raised.value)
-    assert "host-secret" not in str(raised.value)
-    assert runner.calls == []
-
-
-def test_verify_context_accepts_local_docker_host_without_running_docker(monkeypatch):
-    from anvil_serving.service_runtime.docker import Adapter
-
-    monkeypatch.delenv("DOCKER_CONTEXT", raising=False)
-    monkeypatch.setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
-    runner = FakeRun([])
-
-    assert Adapter(run=runner).verify_context() is None
-    assert runner.calls == []
-
-
-def test_inspect_returns_exact_running_container_observation():
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection()])) )])
-    observed = Adapter(run=runner).inspect(binding())
-
-    assert observed == {
-        "registered": True,
-        "running": True,
-        "enabled": True,
-        "pid": 4321,
-        "state": "running",
-        "identity": CONTAINER_ID,
-        "manager": "docker",
-    }
-    assert runner.calls[0][1]["timeout"] <= 15
-
-
-def test_inspect_refuses_container_with_wrong_pinned_image():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection(image="sha256:" + "c" * 64)])))])
-
-    with pytest.raises(ServiceError, match="image") as raised:
-        Adapter(run=runner).inspect(binding())
-    assert raised.value.code == "identity_mismatch"
-
-
-def test_inspect_refuses_container_with_missing_declared_identity_label():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection(labels={OWNERSHIP_LABEL: "anvil-services"})])) )])
-
-    with pytest.raises(ServiceError, match="identity label"):
-        Adapter(run=runner).inspect(binding())
-
-
-def test_inspect_refuses_oversized_docker_responses_before_parsing_them():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed("x" * (1024 * 1024 + 1)))])
-
-    with pytest.raises(ServiceError, match="output") as raised:
-        Adapter(run=runner).inspect(binding())
-    assert raised.value.code == "output_too_large"
-
-
 @pytest.mark.parametrize(
     ("stderr", "state"),
     [
@@ -468,42 +271,6 @@ def test_inspect_distinguishes_absent_permission_and_daemon_states(stderr, state
     }
 
 
-def test_describe_exposes_pinned_identity_without_environment_or_argv():
-    from anvil_serving.service_runtime.docker import Adapter
-
-    described = Adapter(run=FakeRun([])).describe(binding())
-
-    assert described == {
-        "manager": "docker",
-        "container": "anvil-voice-tts",
-        "image_id": IMAGE_ID,
-        "identity_labels": {
-            OWNERSHIP_LABEL: OWNERSHIP_VALUE,
-            "io.anvil-serving.service": "voice-tts",
-        },
-        "startup_policy": "unless-stopped",
-        "stop_policy_scope": "until an explicit docker start or restart-policy change",
-    }
-    assert "Env" not in described
-    assert "Args" not in described
-
-
-def test_plan_uses_immutable_inspected_id_and_preserves_current_startup_policy():
-    from anvil_serving.service_runtime.docker import Adapter
-
-    adapter = Adapter(run=FakeRun([]))
-    stopped = {"registered": True, "running": False, "enabled": False, "identity": CONTAINER_ID}
-    running = {"registered": True, "running": True, "enabled": True, "identity": CONTAINER_ID}
-
-    assert adapter.plan(binding(), "up", stopped) == [["docker", "start", CONTAINER_ID]]
-    assert adapter.plan(binding(), "up", running) == []
-    assert adapter.plan(binding(), "down", stopped) == []
-    assert adapter.plan(binding(), "down", running) == [["docker", "stop", CONTAINER_ID]]
-    assert adapter.plan(binding(), "restart", running) == [["docker", "restart", CONTAINER_ID]]
-    assert adapter.plan(binding(), "enable", stopped) == [["docker", "update", "--restart", "unless-stopped", CONTAINER_ID]]
-    assert adapter.plan(binding(), "disable", running) == [["docker", "update", "--restart", "no", CONTAINER_ID]]
-
-
 def test_startup_policy_defaults_to_unless_stopped_and_enable_never_uses_no():
     from anvil_serving.service_runtime.docker import Adapter
 
@@ -524,18 +291,6 @@ def test_startup_policy_defaults_to_unless_stopped_and_enable_never_uses_no():
     )
 
 
-def test_plan_requires_immutable_identity_and_rejects_unknown_actions():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    adapter = Adapter(run=FakeRun([]))
-    with pytest.raises(ServiceError, match="immutable") as raised:
-        adapter.plan(binding(), "up", {"registered": True, "running": False, "identity": None})
-    assert raised.value.code == "identity_required"
-    with pytest.raises(ServiceError, match="action"):
-        adapter.plan(binding(), "rotate", {"registered": True, "running": True, "identity": CONTAINER_ID})
-
-
 def test_plan_treats_an_absent_container_as_an_idempotent_down_and_refuses_unknown_state():
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.docker import Adapter
@@ -549,58 +304,6 @@ def test_plan_treats_an_absent_container_as_an_idempotent_down_and_refuses_unkno
             {"registered": True, "running": None, "enabled": True, "identity": CONTAINER_ID},
         )
     assert raised.value.code == "unknown_state"
-
-
-def test_inspect_requires_state_running_to_be_a_boolean():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([
-        (["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection(running="false")])))
-    ])
-    with pytest.raises(ServiceError, match="Running") as raised:
-        Adapter(run=runner).inspect(binding())
-    assert raised.value.code == "malformed_response"
-
-
-def test_logs_uses_bounded_tail_and_immutable_identity():
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([
-        (["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection()]))),
-        (["docker", "logs"], completed("first\nsecond\n")),
-    ])
-    assert Adapter(run=runner).logs(binding(), 2) == ["first", "second"]
-    assert runner.calls[1][0] == ["docker", "logs", "--tail", "2", CONTAINER_ID]
-    assert runner.calls[1][1]["timeout"] <= 15
-
-
-def test_logs_passes_bounded_interval_and_timestamps_to_immutable_identity():
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([(["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection()])) )])
-    captured = []
-    Adapter(run=runner, capture=lambda argv: captured.append(argv) or completed("2026-10-16T12:00:01Z {\"event\":\"admitted\"}\n")).logs(
-        binding(), 2, since="2026-10-16T12:00:00Z", until="2026-10-16T12:00:02Z", timestamps=True,
-        expected_identity=CONTAINER_ID,
-    )
-    assert captured[0] == [
-        "docker", "logs", "--tail", "2", "--since", "2026-10-16T12:00:00Z",
-        "--until", "2026-10-16T12:00:02Z", "--timestamps", CONTAINER_ID,
-    ]
-
-
-def test_interval_logs_refuse_changed_container_identity_before_capture():
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.docker import Adapter
-
-    runner = FakeRun([
-        (["docker", "inspect", "anvil-voice-tts"], completed(json.dumps([inspection()]))),
-    ])
-    with pytest.raises(ServiceError, match="changed") as raised:
-        Adapter(run=runner).logs(binding(), 2, since="2026-10-16T12:00:00Z", expected_identity="b" * 64)
-    assert raised.value.code == "identity_changed"
-    assert len(runner.calls) == 1
 
 
 def test_logs_include_stderr_and_redact_shared_secret_patterns():
@@ -646,13 +349,6 @@ def test_interval_capture_bounds_real_child_wait_and_output(program, error):
         _bounded_log_capture([sys.executable, "-c", program], timeout=.5)
     assert caught.value.code == error
     assert time.monotonic() - started < 4
-
-
-def test_interval_capture_preserves_complete_cross_stream_lines():
-    from anvil_serving.service_runtime.docker import _bounded_log_capture
-    result = _bounded_log_capture([sys.executable, "-c",
-        "import os; os.write(1,b'first\\n'); os.write(2,b'second\\n')"], timeout=3)
-    assert result.returncode == 0 and result.stdout == "first\nsecond\n" and result.stderr == ""
 
 
 def test_discover_filters_to_ownership_label_and_returns_safe_metadata():

@@ -1,0 +1,27 @@
+{
+  "command": "[private operator or asset text withheld]",
+  "context": {
+    "command": null,
+    "command_host": null,
+    "command_runtime": null,
+    "controller_endpoint": null,
+    "controller_endpoint_kind": null,
+    "execution_host": null,
+    "execution_runtime": null,
+    "gpu_role": null,
+    "gpu_uuid": null,
+    "overlay": null,
+    "resource": null,
+    "resource_endpoint": null,
+    "resource_endpoint_kind": null,
+    "resource_host": null,
+    "resource_runtime": null,
+    "target": null,
+    "topology": null,
+    "transport": null
+  },
+  "data": "{\"bound_port\": \"[private topology withheld]\", \"bound_ports\": \"[private topology withheld]\", \"container\": \"[private identity withheld]\", \"container_id\": \"[private identity withheld]\", \"containment_error\": null, \"gpu_selection\": [\"0\"], \"health\": null, \"host_memory\": {\"current_bytes\": 4155502592, \"effective_limit_bytes\": null, \"effective_swap_limit_bytes\": null, \"events\": {\"high\": 0, \"low\": 0, \"max\": 0, \"oom\": 0, \"oom_group_kill\": 0, \"oom_kill\": 0}, \"exit_code\": 0, \"limit_bytes\": 0, \"oom_killed\": false, \"peak_bytes\": 5589078016, \"ram_plus_swap_limit_bytes\": 0}, \"image_digest\": \"[private identity withheld]\", \"model\": \"[private identity withheld]\", \"native_kv_offload\": false, \"recipe_digest\": \"[private identity withheld]\", \"registry_digest\": \"[private identity withheld]\", \"revision\": \"[private identity withheld]\", \"running\": true, \"served_identity\": \"[private identity withheld]\", \"state\": \"running\"}",
+  "error": null,
+  "ok": true,
+  "warnings": []
+}

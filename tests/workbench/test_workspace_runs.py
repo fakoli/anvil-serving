@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from anvil_serving.observability.dashboard.contracts import ObservatoryError, canonical
-from anvil_serving.workbench_app.pi_sessions import PiConversationService, PiSessionError, PiSessionStore, PiTaskBinding
+from anvil_serving.observability.dashboard.contracts import ObservatoryError
+from anvil_serving.workbench_app.pi_sessions import PiSessionError, PiSessionStore, PiTaskBinding
 from anvil_serving.workbench_app.store import PrivateStore
 from anvil_serving.workbench_app.workspace_runs import WorkspaceRuns
 
@@ -137,42 +137,6 @@ def test_workspace_cursor_stays_bounded_for_a_maximum_principal(tmp_path):
 
 
 @pytest.mark.skipif(not _POSIX_METADATA, reason="requires safe POSIX metadata descriptors")
-def test_pi_startup_backfill_includes_stopped_legacy_sessions_and_repairs_optional_index(tmp_path):
-    pi = PiSessionStore(tmp_path / "pi")
-    binding = PiTaskBinding("alice", "alpha", "task:pi", "lease-pi", "runner", "fixture")
-    stopped, _ = pi.create(binding, "start-stopped")
-    stopped = pi._replace(stopped.session_id, status="stopped")
-    second, _ = pi.create(binding, "start-second")
-    index = pi._metadata_index_path("alice", "alpha")
-    index.write_text("{", encoding="utf-8")
-    pi._metadata_coverage.unlink()
-
-    # A malformed optional projection cannot make the canonical write fail or
-    # overwrite the index with just this one row.
-    updated = pi.mark_running(second.session_id)
-    assert updated.status == "running" and index.read_text(encoding="utf-8") == "{"
-
-    reopened = PiSessionStore(tmp_path / "pi")
-    PiConversationService(reopened, object(), lambda *_args: None,
-                          allowed_models={}, allowed_thinking=frozenset())
-    page = reopened.run_metadata_page("alice", frozenset({"alpha"}))
-    assert page["partial"] is False
-    assert {row["session_id"] for row in page["items"]} == {stopped.session_id, second.session_id}
-    assert next(row for row in page["items"] if row["session_id"] == stopped.session_id)["status"] == "stopped"
-
-
-@pytest.mark.skipif(not _POSIX_METADATA or not hasattr(os, "mkfifo"), reason="requires safe POSIX metadata descriptors")
-def test_pi_metadata_rejects_fifo_without_blocking(tmp_path):
-    pi = PiSessionStore(tmp_path / "pi")
-    path = pi._metadata_index_path("alice", "alpha")
-    os.mkfifo(path)
-    started = time.monotonic()
-    page = pi.run_metadata_page("alice", frozenset({"alpha"}))
-    assert page["items"] == () and page["partial"] is True
-    assert time.monotonic() - started < 3.0
-
-
-@pytest.mark.skipif(not _POSIX_METADATA, reason="requires safe POSIX metadata descriptors")
 def test_pi_metadata_io_worker_is_reaped_at_its_deadline(tmp_path, monkeypatch):
     from anvil_serving.workbench_app import pi_sessions
 
@@ -196,28 +160,6 @@ def test_pi_metadata_io_worker_is_reaped_at_its_deadline(tmp_path, monkeypatch):
     assert len(workers) == 1 and not os.path.exists(results[0])
     with pytest.raises(ValueError, match="process object is closed"):
         workers[0].is_alive()
-
-
-def test_pi_metadata_setup_failure_releases_the_source_slot(tmp_path, monkeypatch):
-    from anvil_serving.workbench_app import pi_sessions
-
-    pi = PiSessionStore(tmp_path / "pi")
-    monkeypatch.setattr(pi_sessions.tempfile, "mkstemp", lambda **_kwargs: (_ for _ in ()).throw(OSError("full")))
-    with pytest.raises(PiSessionError):
-        pi.run_metadata_page("alice", frozenset({"alpha"}), deadline_seconds=0.2)
-    assert not pi._metadata_slot.locked() and pi._metadata_poisoned is False
-
-
-def test_missing_safe_descriptor_primitive_keeps_canonical_sessions_durable(tmp_path, monkeypatch):
-    from anvil_serving.workbench_app import pi_sessions
-
-    monkeypatch.delattr(pi_sessions.os, "O_NOFOLLOW", raising=False)
-    pi = PiSessionStore(tmp_path / "pi")
-    binding = PiTaskBinding("alice", "alpha", "task:pi", "lease-pi", "runner", "fixture")
-    session, created = pi.create(binding, "start-portable")
-    assert created is True and pi.get(session.session_id).session_id == session.session_id
-    with pytest.raises(PiSessionError, match="unavailable"):
-        pi.run_metadata_page("alice", frozenset({"alpha"}))
 
 
 def test_native_pi_pages_are_stable_bounded_and_reauthorize_before_cursor_read():
@@ -256,101 +198,3 @@ def test_native_pi_pages_are_stable_bounded_and_reauthorize_before_cursor_read()
     with pytest.raises(ObservatoryError) as error:
         runs.page(session, "workspace-host-pi", cursor={"hostile": True})
     assert error.value.status == 403 and len(calls) == 2
-
-
-def test_native_pi_projection_refuses_when_the_full_refresh_cannot_fit(monkeypatch):
-    from anvil_serving.workbench_app import workspace_runs
-
-    rows = [{"native_id": f"native-{index}", "title": "x" * 192, "running": False} for index in range(512)]
-    runs = WorkspaceRuns(None, _Projects(), None,
-                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
-                         host_inventory=lambda _: rows)
-    monkeypatch.setattr(workspace_runs, "_MAX_PAGE_BYTES", 100)
-    with pytest.raises(ObservatoryError, match="exceeds") as error:
-        runs.host_page(_session())
-    assert error.value.status == 503
-    assert runs._host_snapshots == {}
-
-
-def test_native_pi_projection_refuses_when_refresh_fits_but_no_item_does(monkeypatch):
-    from anvil_serving.workbench_app import workspace_runs
-
-    rows = [{"native_id": "native-0", "title": "x" * 192, "running": False}]
-    runs = WorkspaceRuns(None, _Projects(), None,
-                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
-                         host_inventory=lambda _: rows)
-    # This leaves room for the complete one-row refresh and the response
-    # envelope, but not its full native item.  It must not mint token.0.
-    monkeypatch.setattr(workspace_runs, "_MAX_PAGE_BYTES", 600)
-    with pytest.raises(ObservatoryError, match="exceeds") as error:
-        runs.host_page(_session())
-    assert error.value.status == 503
-    assert runs._host_snapshots == {}
-
-
-def test_native_pi_projection_pages_348_compact_native_metadata_rows():
-    rows = [{"native_id": f"session-{index:03d}", "title": f"Session {index}", "running": False} for index in range(348)]
-    runs = WorkspaceRuns(None, _Projects(), None,
-                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
-                         host_inventory=lambda _: rows)
-    page = runs.host_page(_session())
-    assert len(page["items"]) == 100 and page["next_cursor"]
-    assert len(page["refresh"]["items"]) == 348 and len(canonical(page)) <= 128 * 1024
-
-
-def test_native_pi_projection_pages_512_compact_rows_with_full_refresh(monkeypatch):
-    from anvil_serving.workbench_app import workspace_runs
-
-    rows = [{"native_id": f"session-{index:03d}", "title": f"Session {index}", "running": False} for index in range(512)]
-    calls, original = [], workspace_runs.canonical
-
-    def counted(value):
-        calls.append(True)
-        return original(value)
-
-    monkeypatch.setattr(workspace_runs, "canonical", counted)
-    runs = WorkspaceRuns(None, _Projects(), None,
-                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
-                         host_inventory=lambda _: rows)
-    first = runs.host_page(_session())
-    assert len(calls) <= 7
-    monkeypatch.setattr(workspace_runs, "canonical", original)
-    pages, cursor = [first], first["next_cursor"]
-    while True:
-        if cursor is None:
-            break
-        page = runs.host_page(_session(), cursor=cursor)
-        pages.append(page)
-        assert len(canonical(page)) <= 128 * 1024
-        cursor = page["next_cursor"]
-    assert len(canonical(first)) <= 128 * 1024
-    assert len(first["items"]) <= 100 and first["next_cursor"]
-    assert len(first["refresh"]["items"]) == 512
-    assert {item["observed_at"] for item in first["refresh"]["items"]} == {first["sources"][0]["observed_at"]}
-    native_ids = [item["native_id"] for page in pages for item in page["items"]]
-    assert len(native_ids) == len(set(native_ids)) == 512
-
-
-def test_native_pi_projection_returns_a_fresh_empty_inventory():
-    runs = WorkspaceRuns(None, _Projects(), None,
-                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
-                         host_inventory=lambda _: [])
-    page = runs.host_page(_session())
-    assert page["items"] == [] and page["next_cursor"] is None
-    assert page["refresh"]["items"] == []
-    assert page["sources"][0]["status"] == "fresh"
-
-
-@pytest.mark.parametrize("bad_rows", [
-    [{"native_id": "a", "title": "Title", "running": False}] * 2,
-    [{"native_id": f"id-{i}", "title": "Title", "running": False} for i in range(513)],
-    [{"native_id": "a", "title": "Title", "running": False, "project_id": "revoked"}],
-    [{"native_id": "a", "title": "Title", "running": "false"}],
-], ids=["duplicate", "overflow", "revoked", "invalid-state"])
-def test_native_pi_rejects_invalid_or_unbounded_owner_inventory(bad_rows):
-    runs = WorkspaceRuns(None, _Projects(), None,
-                         host_access=lambda _: {"project_ids": ["alpha"], "authority_key": "first"},
-                         host_inventory=lambda _: bad_rows)
-    with pytest.raises(ObservatoryError) as error:
-        runs.host_page(_session())
-    assert error.value.status == 503

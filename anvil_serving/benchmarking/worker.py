@@ -209,7 +209,7 @@ def _run_suite(
             run_root=store.run_root, cache_root=cache_root,
             ownership_id=spec["ownership_id"], run_id=spec["run_id"],
             request_controls={key: parameters[key] for key in (
-                "thinking_mode", "reasoning_effort", "temperature", "top_p"
+                "thinking_mode", "reasoning_effort", "temperature", "top_p", "thinking_budget_tokens"
             ) if key in parameters}, timeout_s=spec["timeout_s"],
         )
         return run_aider_benchmark(plan)
@@ -314,6 +314,7 @@ def execute_benchmark_job(store: BenchmarkJobStore, run_id: str) -> dict[str, An
                     os.path.expanduser("~/.anvil-serving/benchmark-harness-cache"),
                 ),
                 offline=bool(spec.get("parameters", {}).get("offline", False)),
+                aider_oracle=spec.get("parameters", {}).get("aider_oracle"),
             )
         stages.append(_stage(len(stages), "asset_preparation", "completed", _write_stage(store, record, "assets", assets)))
         if store.status(run_id)["state"] != "running":

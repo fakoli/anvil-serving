@@ -74,9 +74,14 @@ _UNCHECKED = object()
 class _HeldFiles:
     """Native directory custody for one lock lifetime; no pathname-only writes."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, external_effect_paths: tuple[Path, ...] = ()) -> None:
         self.root = root
+        self.external_effect_paths = frozenset(external_effect_paths)
         self.directories: dict[Path, int] = {}
+
+    def _allows(self, path: Path) -> bool:
+        return (path.is_absolute() and ".." not in path.parts
+                and (path.is_relative_to(self.root) or path in self.external_effect_paths))
 
     def close(self) -> None:
         try:
@@ -158,7 +163,7 @@ class _HeldFiles:
         return descriptor
 
     def read(self, path: Path, *, private: bool = False) -> bytes | None:
-        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+        if not self._allows(path):
             raise PropagationFenceError("untrusted_target_path")
         try:
             parent = self.directory(path.parent)
@@ -193,10 +198,10 @@ class _HeldFiles:
             os.close(descriptor)
 
     def mode(self, path: Path) -> int:
+        if not self._allows(path):
+            raise PropagationFenceError("untrusted_target_path")
         if os.name == "nt":
             return 0o600  # Windows custody is an ACL contract, not POSIX mode bits.
-        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
-            raise PropagationFenceError("untrusted_target_path")
         parent = self.directory(path.parent)
         info = os.stat(path if os.name == "nt" else path.name, follow_symlinks=False,
                        **({} if os.name == "nt" else {"dir_fd": parent}))
@@ -209,7 +214,7 @@ class _HeldFiles:
               pre_replace: Callable[[], None] | None = None) -> None:
         if len(data) > 2 * 1024 * 1024:
             raise PropagationFenceError("document_too_large")
-        if not path.is_absolute() or ".." in path.parts or not path.is_relative_to(self.root):
+        if not self._allows(path):
             raise PropagationFenceError("untrusted_target_path")
         parent = self.directory(path.parent, private=private)
         if expected is not _UNCHECKED and self.read(path) != expected:
@@ -276,6 +281,8 @@ class TrustedNativeOwner:
     recovery_quiescent: Callable[[str, str, int], bool] | None = field(default=None, repr=False, compare=False)
     recovery_authority: Callable[[str, str, str, str, str], bool] | None = field(default=None, repr=False, compare=False)
     bound_cancellation_proof: Callable[[str, str, str, str, int], str] | None = field(default=None, repr=False, compare=False)
+    # Installation-bound files only; journals, locks and backups stay under storage_root.
+    external_effect_paths: tuple[Path, ...] = field(default=(), repr=False)
 
     def __post_init__(self) -> None:
         _token(self.owner_id)
@@ -293,15 +300,24 @@ class TrustedNativeOwner:
             raise PropagationFenceError("malformed_owner_context")
         if not isinstance(self.effect_bindings, Mapping):
             raise PropagationFenceError("malformed_owner_context")
+        external = self.external_effect_paths
+        if (type(external) is not tuple or any(not isinstance(path, Path)
+                or not path.is_absolute() or ".." in path.parts
+                or path == path.parent or path.is_relative_to(root) for path in external)
+                or len(set(external)) != len(external)):
+            raise PropagationFenceError("malformed_owner_context")
         bindings = {}
         for effect, binding in self.effect_bindings.items():
             _token(effect)
             if type(binding) is not tuple or len(binding) != 2 or type(binding[0]) is not str or binding[0] not in _EFFECTS:
                 raise PropagationFenceError("malformed_owner_context")
             path = Path(binding[1]).absolute()
-            if ".." in path.parts or not path.is_relative_to(root) or path == root:
+            if (".." in path.parts or path == root
+                    or not path.is_relative_to(root) and path not in external):
                 raise PropagationFenceError("untrusted_target_path")
             bindings[effect] = (binding[0], path)
+        if not set(external) <= {path for _, path in bindings.values()}:
+            raise PropagationFenceError("untrusted_target_path")
         object.__setattr__(self, "effect_bindings", MappingProxyType(bindings))
         object.__setattr__(self, "storage_root", root)
         object.__setattr__(self, "backup_root", backup)
@@ -1331,7 +1347,8 @@ class NativeMutationFence:
 
     def _trusted_path(self, path: str | Path) -> Path:
         selected = Path(path).absolute()
-        if ".." in selected.parts or not selected.is_relative_to(self.owner.storage_root):
+        if (".." in selected.parts or not selected.is_relative_to(self.owner.storage_root)
+                and selected not in self.owner.external_effect_paths):
             raise PropagationFenceError("untrusted_target_path")
         return selected
 
@@ -1487,7 +1504,7 @@ class NativeMutationFence:
 
     @contextmanager
     def _lock(self) -> Iterator[None]:
-        files = _HeldFiles(self.owner.storage_root)
+        files = _HeldFiles(self.owner.storage_root, self.owner.external_effect_paths)
         token = self._files.set(files)
         fd = None
         try:

@@ -51,7 +51,7 @@ def configuration():
             or not isinstance(value["engine_contracts"], dict)
             or not 1 <= len(value["engine_contracts"]) <= 16
             or any(not isinstance(k, str) or not 1 <= len(k) <= 128
-                   or not isinstance(v, str) or v not in {"vllm", "sglang", "flare", "ignis"}
+                   or not isinstance(v, str) or v not in {"vllm", "sglang", "flare", "ignis", "tensorfold"}
                    for k, v in value["engine_contracts"].items())):
         raise ValueError("invalid recipe-monitoring.json contract")
     keys = value.get("model_api_key_files", {})
@@ -196,6 +196,13 @@ def publish(recipe, container, *, registry_digest=None, _run=subprocess.run, _fe
             or len(models["data"]) != 1 or not isinstance(models["data"][0], dict)
             or models["data"][0].get("id") != identity["served_identity"]):
         raise ValueError("monitoring live model identity differs from recipe container")
+    if contract == "tensorfold":
+        from .tensorfold_telemetry import parse_metrics, parse_request_counts
+        raw_metrics = fetcher("/metrics").decode("utf-8")
+        telemetry = parse_metrics(raw_metrics)
+        if telemetry["version"] != 1:
+            raise ValueError("monitoring requires the TensorFold v1 telemetry contract")
+        parse_request_counts(raw_metrics)
     if discover() != identity:
         raise ValueError("monitoring container changed during verification")
     with serve_recipes.registry_lock(receipt_path()):

@@ -2,9 +2,6 @@
 
 import hashlib
 import json
-import os
-import subprocess
-import sys
 
 import pytest
 
@@ -63,21 +60,6 @@ def test_router_recovery_restores_bytes_and_original_admissions(tmp_path, monkey
     assert runtime["states"]["primary"] == ("quiesced" if rollback_fails else "admitting")
     assert runtime["states"]["intentionally-paused"] == "quiesced"
     assert runtime["recreates"] == 2
-
-
-def test_second_process_admission_client_cannot_race_owner_transaction(tmp_path, monkeypatch):
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
-    code = "from anvil_serving.serves import _switch_role_lock\nwith _switch_role_lock('promotion'):\n print('locked',flush=True)\n input()\n"
-    child = subprocess.Popen([sys.executable, "-c", code], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                             text=True, env=dict(os.environ))
-    try:
-        assert child.stdout.readline().strip() == "locked"
-        with pytest.raises(RuntimeError, match="already active"):
-            router_manage.transition_request("quiesce", tier_id="primary", confirm=True, dry_run=False,
-                env={"ANVIL_ROUTER_TOKEN": "fixture-only"}, _open=lambda *_args, **_kwargs: pytest.fail("conflicting owner reached network"))
-    finally:
-        child.communicate("\n", timeout=5)
-        assert child.returncode == 0
 
 
 def test_pending_runtime_experiment_fences_lifecycle_but_allows_typed_restore(

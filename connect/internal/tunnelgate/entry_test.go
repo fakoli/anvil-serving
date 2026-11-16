@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -20,6 +21,10 @@ import (
 )
 
 func gateFixture(t *testing.T) (*Gate, *authority, string) {
+	return gateFixtureWithPendingBackend(t, nil)
+}
+
+func gateFixtureWithPendingBackend(t *testing.T, pending func(*http.Request)) (*Gate, *authority, string) {
 	t.Helper()
 	ca := testpki.New(t)
 	a := &authority{}
@@ -38,6 +43,10 @@ func gateFixture(t *testing.T) (*Gate, *authority, string) {
 	backend := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Host != BackendPeer || r.Header.Get("Authorization") != "Bearer "+strings.Repeat("b", 64) || len(r.TLS.VerifiedChains) == 0 {
 			t.Error("backend authority changed")
+		}
+		if pending != nil {
+			pending(r)
+			return
 		}
 		conn, _, err := w.(http.Hijacker).Hijack()
 		if err != nil {
@@ -60,6 +69,113 @@ func gateFixture(t *testing.T) (*Gate, *authority, string) {
 	gate.transport.DialContext = backendListener.DialContext
 	t.Cleanup(gate.Close)
 	return gate, a, token
+}
+
+func TestPendingHandshakeRetainsCapacityAndAuthorityBounds(t *testing.T) {
+	for _, disposition := range []string{"revoke", "expire", "cancel"} {
+		t.Run(disposition, func(t *testing.T) {
+			entered := make(chan struct{}, 3)
+			gate, authority, token := gateFixtureWithPendingBackend(t, func(r *http.Request) {
+				entered <- struct{}{}
+				<-r.Context().Done()
+			})
+			began := time.Now()
+			var elapsed atomic.Int64
+			gate.leases.now = func() time.Time { return began.Add(time.Duration(elapsed.Load())) }
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			finished := make(chan int, 3)
+			for range 3 {
+				go func() {
+					w := httptest.NewRecorder()
+					gate.ServeHTTP(w, entryRequest(token, "tunnel.example.test").WithContext(ctx))
+					finished <- w.Code
+				}()
+			}
+			for range 3 {
+				select {
+				case <-entered:
+				case <-time.After(time.Second):
+					t.Fatal("pending backend was not reached")
+				}
+			}
+			if gate.Registrations()["public"]["router"] != 0 {
+				t.Fatal("pending handshake reported established")
+			}
+			full := httptest.NewRecorder()
+			gate.ServeHTTP(full, entryRequest(token, "tunnel.example.test"))
+			if full.Code != http.StatusTooManyRequests {
+				t.Fatal("pending handshakes escaped shared capacity", full.Code)
+			}
+			switch disposition {
+			case "revoke":
+				authority.revoked.Store(true)
+			case "expire":
+				elapsed.Store(int64(TransportLeaseLifetime + time.Second))
+			case "cancel":
+				cancel()
+			}
+			for range 3 {
+				select {
+				case code := <-finished:
+					if code != http.StatusBadGateway {
+						t.Fatal("pending handshake cancellation changed", code)
+					}
+				case <-time.After(time.Second):
+					t.Fatal("pending handshake outlived authority or caller")
+				}
+			}
+			if len(gate.routes["router"].slots) != 0 {
+				t.Fatal("pending handshake leaked admission slots")
+			}
+			wantReason := "tunnel_establishment_failed"
+			if disposition == "cancel" {
+				wantReason = "tunnel_disconnected"
+			}
+			events := gate.Events.Snapshot()
+			if len(events) != 3 {
+				t.Fatal("pending outcomes missing", events)
+			}
+			for _, event := range events {
+				if event.Reason != wantReason {
+					t.Fatal("caller disconnect and authority failure conflated", event)
+				}
+			}
+		})
+	}
+}
+
+type cancelOnErrorWriter struct {
+	*httptest.ResponseRecorder
+	cancel context.CancelFunc
+}
+
+func (w cancelOnErrorWriter) WriteHeader(status int) {
+	w.cancel()
+	w.ResponseRecorder.WriteHeader(status)
+}
+
+func TestBackendFailureRemainsFailureWhenCallerDisconnectsAfterError(t *testing.T) {
+	for _, lateCancellation := range []bool{false, true} {
+		t.Run(fmt.Sprint(lateCancellation), func(t *testing.T) {
+			gate, _, token := gateFixture(t)
+			gate.transport.DialContext = func(context.Context, string, string) (net.Conn, error) {
+				return nil, errors.New("synthetic backend dial failure")
+			}
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			recorder := httptest.NewRecorder()
+			var writer http.ResponseWriter = recorder
+			if lateCancellation {
+				writer = cancelOnErrorWriter{recorder, cancel}
+			}
+			gate.ServeHTTP(writer, entryRequest(token, "tunnel.example.test").WithContext(ctx))
+			events := gate.Events.Snapshot()
+			if recorder.Code != http.StatusBadGateway || len(events) != 1 || events[0].Reason != "tunnel_establishment_failed" {
+				t.Fatal("genuine backend failure was hidden", recorder.Code, events)
+			}
+		})
+	}
 }
 
 func entryRequest(token, host string) *http.Request {
@@ -200,6 +316,9 @@ func TestLocalAdmissionDeadlineAndEntryCancellation(t *testing.T) {
 	local.ServeHTTP(w, entryRequest(token, "local-http.example.test"))
 	if w.Code != 502 || time.Since(began) > 4*time.Second || calls.Load() != 1 {
 		t.Fatal("local establishment not bounded", w.Code, time.Since(began))
+	}
+	if events := gate.Events.Snapshot(); len(events) != 1 || events[0].Reason != "tunnel_establishment_failed" {
+		t.Fatal("local admission timeout was mislabeled as caller disconnect", events)
 	}
 }
 

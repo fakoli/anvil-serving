@@ -1,0 +1,15 @@
+{
+  "schema": "anvil-serving.source-delivery/v1",
+  "pr": "https://github.com/fakoli/anvil-serving/pull/751",
+  "merged": true,
+  "merge_commit": "0f55c039bc5661e51421d0b65c51186155abffa7",
+  "reviewed_head": "d06ce92d7ff4cf834650d8ccb0a82e0d5d37419f",
+  "tree": "b3e6b76646b74c4e7900bbe99cf2adae25b92477",
+  "tree_equal": true,
+  "hosted_checks": {
+    "passed": 14,
+    "skipped": 1
+  },
+  "wheel_sha256": "d34825a38967de332b9c173bd58ace17fe48a774e9690b141eb6b1dd9bbf1335",
+  "router_image": "sha256:3fb7a08b71c529ad9141a45f96e215acc6cdcda442a8e2e08a4b0991cd56c3d3"
+}

@@ -1,0 +1,21 @@
+{
+  "method": "Validate exact embedded native evidence through existing product APIs without rewriting native jobs. Evidence-show CLI rejects the outer benchmark-result wrapper; original nonzero inspections retained.",
+  "results": [
+    {
+      "cap": 16384,
+      "source_sha256": "7c3a9825a5407c1657290d97c968defea9e14e2339f8a67da4bae18d9f9b8cf7",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "validated": true,
+      "summary_validation_errors": []
+    },
+    {
+      "cap": 32768,
+      "source_sha256": "8dfad4753172bf089ed814bd103fedd35e08a0ed6aab0923bc9f06977e36ceb0",
+      "native_schema": "anvil-serving.benchmark-evidence/v1",
+      "status": "completed",
+      "validated": true,
+      "summary_validation_errors": []
+    }
+  ]
+}

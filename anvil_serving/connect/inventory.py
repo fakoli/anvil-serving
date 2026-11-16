@@ -19,6 +19,7 @@ def resources(manifest: str) -> dict:
             "url": "https://" + rule["host"] + rule["path_prefix"],
             "native_auth": rule["native_auth"],
             "grants": [rule["id"] + ":member", rule["id"] + ":admin"],
+            **({"operator_only": True} if resource.get("operator_only") else {}),
         })
     for row in rows:
         if row["id"] in managed:

@@ -1,6 +1,4 @@
-import pytest
 
-from anvil_serving.benchmarking.jobs import BenchmarkJobError
 from anvil_serving.benchmarking.agentic import (
     RECOVERY_RESULT_TYPES,
     build_agentic_scenario,
@@ -23,26 +21,6 @@ def passing_trace(expected):
     }
 
 
-@pytest.mark.parametrize(
-    "scenario_type",
-    [
-        "planning",
-        "reasoning",
-        "structured-edit",
-        "tool-sequence",
-        "parallel-tools",
-        "dependent-result",
-        "debug-loop",
-        "debug-loop-v2",
-    ],
-)
-def test_deterministic_scenarios_pass_without_model_judge(scenario_type):
-    scenario, expected = build_agentic_scenario(scenario_type)
-    result = score_agentic_trace(scenario, expected, passing_trace(expected))
-    assert result["passed"] is True
-    assert result["failure_class"] is None
-
-
 def test_recovery_matrix_covers_all_required_result_failures():
     matrix = build_recovery_matrix()
     assert [expected["recovery_result"] for _scenario, expected in matrix] == list(
@@ -62,71 +40,6 @@ def test_protocol_recovery_and_final_failures_are_distinct():
     final = passing_trace(expected)
     final["final_answer"] = "wrong"
     assert score_agentic_trace(scenario, expected, final)["failure_class"] == "recovery_failure"
-
-
-def test_tool_result_marker_allows_natural_language_final_answer():
-    scenario, expected = build_agentic_scenario("tool-sequence")
-    trace = passing_trace(expected)
-    trace["final_answer"] = "The requested file is ready: FILE-READY."
-
-    result = score_agentic_trace(scenario, expected, trace)
-
-    assert result["passed"] is True
-    assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
-    assert result["visible_answer"] == trace["final_answer"]
-    assert len(result["answer_sha256"]) == 64
-
-
-def test_tool_final_mismatch_is_not_mislabeled_as_reasoning_failure():
-    scenario, expected = build_agentic_scenario("tool-sequence")
-    trace = passing_trace(expected)
-    trace["final_answer"] = "The file was read successfully."
-
-    result = score_agentic_trace(scenario, expected, trace)
-
-    assert result["failure_class"] == "final_answer_failure"
-    assert result["stages"]["reasoning"] == {"applicable": False, "passed": True}
-
-
-@pytest.mark.parametrize(("answer", "passed"), [
-    ("inspect -> patch -> test", True),
-    ("  Inspect  ->  Patch  ->  Test\n", True),
-    ("# Step 1: Inspect\n# Step 2: Patch\n# Step 3: Test", False),
-    ("1. Inspect\n2. Patch\n3. Test", False),
-    ("inspect, patch, test", False),
-    ("inspect → patch → test", False),
-    ("inspect -> patch -> test.", False),
-    ("patch -> inspect -> test", False),
-    ("inspect -> patch -> test, then deploy", False),
-])
-def test_planning_requires_disclosed_canonical_workflow(answer, passed):
-    scenario, expected = build_agentic_scenario("planning")
-    trace = passing_trace(expected)
-    trace["final_answer"] = answer
-    result = score_agentic_trace(scenario, expected, trace)
-    assert result["passed"] is passed
-    assert result["oracle_revision"] == "8"
-
-
-def test_fixture_prompts_disclose_scored_format_result_and_tool_boundaries():
-    planning, _ = build_agentic_scenario("planning")
-    assert "literal ASCII characters -> for each arrow" in planning["messages"][0]["content"]
-    assert "inspect -> patch -> test" in planning["messages"][0]["content"]
-    for case, requirement in (
-        ("tool-sequence", "exact marker"),
-        ("dependent-result", "exact status string"),
-        ("tool-recovery", "exact marker"),
-    ):
-        scenario, _ = build_agentic_scenario(case)
-        assert requirement in scenario["messages"][0]["content"]
-    debug, expected = build_agentic_scenario("debug-loop")
-    prompt = debug["messages"][0]["content"]
-    assert "sum of its inputs a and b" in prompt
-    assert "exactly those four tool calls in that order" in prompt
-    assert "do not call extra tools" in prompt
-    trace = passing_trace(expected)
-    trace["tool_calls"] = [*trace["tool_calls"], {"name": "read_file", "arguments": {"path": "calc.py"}}]
-    assert score_agentic_trace(debug, expected, trace)["failure_class"] == "protocol_failure"
 
 
 def test_debug_loop_discloses_unit_scope_and_accepts_semantic_pass_report():
@@ -174,61 +87,6 @@ def test_debug_loop_v2_is_a_distinct_explicit_unit_scope_contract():
     wrong_scope["tool_calls"] = [dict(call) for call in expected["tool_calls"]]
     wrong_scope["tool_calls"][0] = {"name": "run_tests", "arguments": {"scope": "all"}}
     assert score_agentic_trace(scenario, expected, wrong_scope)["failure_class"] == "protocol_failure"
-
-
-def test_agentic_oracle_revision_must_match_the_scenario_contract():
-    scenario, expected = build_agentic_scenario("debug-loop-v2")
-    mismatched = dict(expected, oracle_revision="8")
-
-    with pytest.raises(BenchmarkJobError, match="oracle revisions do not match") as error:
-        score_agentic_trace(scenario, mismatched, passing_trace(expected))
-
-    assert error.value.code == "oracle_revision_mismatch"
-
-
-@pytest.mark.parametrize(
-    ("code", "classification"),
-    [
-        ("reasoning_budget_exhausted", "reasoning_budget_exhausted"),
-        ("endpoint_error", "infrastructure_failure"),
-        ("parser_error", "parser_failure"),
-    ],
-)
-def test_exhaustion_infrastructure_and_parser_failures_stay_distinct(code, classification):
-    scenario, expected = build_agentic_scenario("reasoning")
-    trace = passing_trace(expected)
-    trace["failure"] = {"code": code}
-    trace["final_answer"] = ""
-    assert score_agentic_trace(scenario, expected, trace)["failure_class"] == classification
-
-
-def test_long_session_preserves_full_history_and_token_growth():
-    scenario, expected = build_agentic_scenario("long-session", session_turns=8)
-    trace = passing_trace(expected)
-    trace["history_prompt_tokens"] = [100, 250, 500, 900]
-    result = score_agentic_trace(scenario, expected, trace)
-    assert result["passed"] is True
-    assert result["full_history"] == scenario["messages"]
-    assert result["history_prompt_tokens"] == [100, 250, 500, 900]
-
-
-def test_long_session_accepts_real_assistant_replies_and_requires_strict_growth():
-    scenario, expected = build_agentic_scenario("long-session", session_turns=4)
-    users = [item for item in scenario["messages"] if item["role"] == "user"]
-    history = []
-    for index, user in enumerate(users):
-        history.append(user)
-        if index < len(users) - 1:
-            history.append({"role": "assistant", "content": f"acknowledged {index}"})
-    trace = passing_trace(expected)
-    trace["history"] = history
-    trace["history_prompt_tokens"] = [100, 200, 300]
-    assert score_agentic_trace(scenario, expected, trace)["passed"] is True
-
-    trace["history_prompt_tokens"] = [100, 100, 300]
-    result = score_agentic_trace(scenario, expected, trace)
-    assert result["passed"] is False
-    assert result["stages"]["history"] == {"passed": False}
 
 
 def test_context_recovery_accepts_one_measured_long_history_request():

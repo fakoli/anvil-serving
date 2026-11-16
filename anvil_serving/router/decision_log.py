@@ -332,6 +332,8 @@ class DecisionRecord:
     admission_wait_ms: Optional[int] = None
     config_sha256: Optional[str] = None
     router_version: Optional[str] = None
+    route_revision: Optional[int] = None
+    effective_route_sha256: Optional[str] = None
     # ADR-0033: wall-clock creation stamp for durable evidence. Stamped by
     # :meth:`DecisionLog.record` when left at the zero default; aggregate views
     # remain snapshots of the buffer, never historical windows.
@@ -657,6 +659,8 @@ def _sanitize_history_metadata(record: DecisionRecord) -> DecisionRecord:
         "admission_wait_ms": _optional_nonnegative(record.admission_wait_ms),
         "config_sha256": _config_sha256(record.config_sha256),
         "router_version": safe_correlation(record.router_version),
+        "route_revision": _optional_nonnegative(record.route_revision),
+        "effective_route_sha256": _config_sha256(record.effective_route_sha256),
     }
     if all(getattr(record, key) == value for key, value in values.items()):
         return record
@@ -769,6 +773,8 @@ def summarize_decisions(records: Iterable[Any], *, limit: int = 20) -> dict:
             ),
             "config_sha256": _config_sha256(_field(record, "config_sha256")),
             "router_version": _summary_safe(safe_correlation(_field(record, "router_version"))),
+            "route_revision": _optional_nonnegative(_field(record, "route_revision")),
+            "effective_route_sha256": _config_sha256(_field(record, "effective_route_sha256")),
             "workload_outcome": _workload_outcome(_field(record, "workload_outcome")),
             **_replica_metadata(record),
         }
@@ -1009,6 +1015,7 @@ class DecisionLogWriter:
                 "output_limit_applied", "output_limit_clamped", "unix_ts",
                 "workload_created_at", "workload_updated_at", "workload_outcome",
                 "cache_read_input_tokens", "admission_wait_ms", "config_sha256", "router_version",
+                "route_revision", "effective_route_sha256",
             )
         }
         payload["attempts"] = [
@@ -1025,7 +1032,7 @@ class DecisionLogWriter:
         for field_name in (
             "workload_created_at", "workload_updated_at", "workload_outcome",
             "session_id", "client_id", "cache_read_input_tokens", "admission_wait_ms",
-            "config_sha256", "router_version",
+            "config_sha256", "router_version", "route_revision", "effective_route_sha256",
         ):
             if payload[field_name] is None:
                 del payload[field_name]

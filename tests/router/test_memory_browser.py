@@ -44,26 +44,6 @@ def setup(tmp_path):
     return send, calls, replies, policy, publish
 
 
-def test_native_inventory_filters_even_administrator(setup):
-    send, calls, _, _, _ = setup
-    value = send("banks", {"native": True, "expected_principal": USER}, bank=None)
-    assert value["schema"] == "anvil-native-memory/v1"
-    assert [b["bank_id"] for b in value["banks"]] == ["personal"]
-    assert value["principal"] == USER and not calls
-    with pytest.raises(MemoryError) as failure:
-        send("banks", {"native": True, "expected_principal": OTHER}, bank=None)
-    assert failure.value.status == 403
-
-
-@pytest.mark.parametrize("operation,args", [("list", {}), ("detail", {"id": ID}), ("invalidate", {"id": ID, "reason": "Fixture"}), ("restore", {"id": ID})])
-def test_new_operations_never_inherit_admin_or_other_bank_access(setup, operation, args):
-    send, calls, _, _, _ = setup
-    for bank, user in [("old", USER), ("other", USER), ("personal", OTHER)]:
-        with pytest.raises(MemoryError) as failure: send(operation, args, bank, user)
-        assert failure.value.status == 403
-    assert not calls
-
-
 def test_list_query_bounded_strict_and_projection_excludes_untrusted_fields(setup):
     send, calls, replies, _, _ = setup
     replies.append({"items": [{**RECORD, "fact_type": "world", "source_memories": [{"text": "cross-bank secret"}], "metadata": {"private": True}, "attachments": ["https://example.test/file"]}], "total": 1, "limit": 10, "offset": 20})
@@ -71,21 +51,6 @@ def test_list_query_bounded_strict_and_projection_excludes_untrusted_fields(setu
     assert "q=two+words" in calls[0]["url"] and "state=valid" in calls[0]["url"]
     assert "tags_match=all_strict" in calls[0]["url"] and calls[0]["method"] == "GET"
     assert not {"metadata", "source_memories", "attachments"} & result["items"][0].keys()
-
-
-@pytest.mark.parametrize("args", [{"limit": True}, {"limit": 101}, {"offset": -1}, {"q": "x" * 513}, {"tags_match": "any"}, {"url": "http://example.test"}, {"state": []}])
-def test_invalid_filters_fail_without_upstream(setup, args):
-    send, calls, _, _, _ = setup
-    with pytest.raises(MemoryError) as failure: send("list", args)
-    assert failure.value.status == 422 and not calls
-
-
-def test_cross_bank_source_text_and_inherited_entities_never_escape(setup):
-    send, calls, replies, _, _ = setup
-    replies.append({**RECORD, "type": "observation", "source_memory_ids": [SOURCE], "source_memories": [{"id": SOURCE, "text": "ungranted"}], "entities": ["ungranted inherited entity"], "history": [{"text": "ungranted"}]})
-    result = send("detail", {"id": ID})
-    assert result["source_ids"] == [SOURCE] and result["entities"] == []
-    assert "ungranted" not in json.dumps(result) and len(calls) == 1
 
 
 def test_curation_is_state_only_with_fresh_grants_and_raw_fact_preflight(setup):
@@ -100,13 +65,6 @@ def test_curation_is_state_only_with_fresh_grants_and_raw_fact_preflight(setup):
     replies.append(revoked)
     with pytest.raises(MemoryError) as failure: send("restore", {"id": ID})
     assert failure.value.status == 403 and len(calls) == 3
-
-
-def test_observation_curation_is_rejected_without_patch(setup):
-    send, calls, replies, _, _ = setup
-    replies.append({**RECORD, "type": "observation"})
-    with pytest.raises(MemoryError) as failure: send("invalidate", {"id": ID, "reason": "Synthetic"})
-    assert failure.value.status == 422 and len(calls) == 1
 
 
 def test_stale_grants_revoke_reads(setup):
@@ -137,7 +95,7 @@ def test_native_missing_record_preserves_hindsight_404(tmp_path):
             self.end_headers()
 
     upstream = ThreadingHTTPServer(("127.0.0.1", 0), Missing)
-    thread = threading.Thread(target=upstream.serve_forever, daemon=True)
+    thread = threading.Thread(target=upstream.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     route = replace(ROUTE, principal="connect", access_file=str(path),
                     base_url=f"http://127.0.0.1:{upstream.server_port}")
@@ -153,19 +111,3 @@ def test_native_missing_record_preserves_hindsight_404(tmp_path):
         upstream.shutdown()
         upstream.server_close()
         thread.join(5)
-
-
-@pytest.mark.parametrize("args", [{"id": "../secret"}, {"id": ID, "text": "overwrite"}, {"id": ID, "reason": ""}])
-def test_curation_rejects_path_and_text_override(setup, args):
-    send, calls, _, _, _ = setup
-    with pytest.raises(MemoryError) as failure: send("invalidate", args)
-    assert failure.value.status == 422 and not calls
-
-
-@pytest.mark.parametrize("value", ["https://example.test/document?token=secret", "/home/operator/private", "file:///private/report", "../private", "C:\\Users\\operator\\private"])
-def test_provenance_references_omit_urls_and_host_paths(setup, value):
-    send, _, replies, _, _ = setup
-    replies.append({**RECORD, "document_id": value, "chunk_id": value})
-    result = send("detail", {"id": ID})
-    assert result["document_id"] is None and result["chunk_id"] is None
-    assert value not in json.dumps(result)

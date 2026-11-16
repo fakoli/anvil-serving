@@ -72,7 +72,7 @@ def _phase(value: object) -> dict:
                 or type(value["original_active"]) is not bool):
             raise _invalid("Permanent deletion recovery state is invalid.")
         return value
-    if set(value) != {
+    if set(value) - {"intent_username"} != {
         "schema", "request_id", "principal", "username", "subject", "generation", "original_active", "idp_delete",
     } or value.get("schema") != _PHASE_SCHEMA:
         raise _invalid("Permanent deletion recovery state is invalid.")
@@ -84,6 +84,8 @@ def _phase(value: object) -> dict:
             or type(value["original_active"]) is not bool or type(value["idp_delete"]) is not bool):
         raise _invalid("Permanent deletion recovery state is invalid.")
     if value["idp_delete"] != bool(value["subject"]) or (value["username"] == "" and value["idp_delete"]):
+        raise _invalid("Permanent deletion recovery state is invalid.")
+    if "intent_username" in value and (value["intent_username"] != "" or not value["idp_delete"]):
         raise _invalid("Permanent deletion recovery state is invalid.")
     return value
 
@@ -274,20 +276,22 @@ def _intents(data: dict, manifest: str, runner) -> list[dict]:
     return result
 
 
-def _mapped_subject(data: dict, config: Path, principal: str, username: str, runner) -> str:
+def _mapped_identity(data: dict, config: Path, principal: str, username: str, runner) -> tuple[str, str]:
     issuer = data["gateway"]["oidc"]["issuer"]
     records = users._oidc_identifiers(data, config, runner, missing_ok=True)
     matches = [row for row in records if row["service"] == "openid" and row["sector_id"] == ""
                and users._principal(issuer, row["identifier"]) == principal]
-    same_username = [row for row in records if row["service"] == "openid" and row["sector_id"] == "" and row["username"] == username]
     if username == "":
-        if matches:
-            raise _invalid("Native deletion metadata is incomplete for an IdP-linked account.")
-        return ""
+        if not matches:
+            return "", ""
+        if len(matches) != 1:
+            raise _invalid("Native deletion metadata has an ambiguous IdP mapping.")
+        username = matches[0]["username"]
+    same_username = [row for row in records if row["service"] == "openid" and row["sector_id"] == "" and row["username"] == username]
     if len(matches) != 1 or matches[0]["username"] != username or any(
             users._principal(issuer, row["identifier"]) != principal for row in same_username):
         raise _invalid("Authelia identifier does not match the native deletion intent.")
-    return matches[0]["identifier"]
+    return username, matches[0]["identifier"]
 
 
 def _preflight(data: dict, manifest: str, runner) -> tuple[Path, bool]:
@@ -303,7 +307,8 @@ def _preflight(data: dict, manifest: str, runner) -> tuple[Path, bool]:
 
 
 def _phase_matches_intent(phase: dict, intent: dict) -> None:
-    if any(phase[key] != intent[key] for key in ("request_id", "principal", "username", "generation")) or intent["complete"]:
+    if (any(phase[key] != intent[key] for key in ("request_id", "principal", "generation"))
+            or phase.get("intent_username", phase["username"]) != intent["username"] or intent["complete"]):
         raise _invalid("Permanent deletion recovery state does not match the native intent.")
 
 
@@ -508,7 +513,8 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
         _phase_matches_intent(phase, intent)
     elif phase["idp_delete"]:
         raise _invalid("Permanent deletion phase is held until its native intent is available.")
-    data = _withdraw_memory_defaults(data, manifest, phase["username"])
+    if "intent_username" not in phase:
+        data = _withdraw_memory_defaults(data, manifest, phase["username"])
     # A legacy Connect-only identity has no supported IdP mapping. It remains
     # disabled at native prepare and can be finalized without touching IdP data.
     if not phase["idp_delete"]:
@@ -536,6 +542,10 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
             # missing file is not a recoverable per-account completion proof.
             raise _invalid("Authelia users file is unavailable; native intent remains held.") from None
         prior_removed = phase["username"] not in database["users"]
+        if "intent_username" in phase and not prior_removed:
+            raise _invalid("Legacy deletion account exists again; recovery remains held.")
+        if "intent_username" in phase:
+            data = _withdraw_memory_defaults(data, manifest, phase["username"])
         uid, gid = role_identity(data, "idp")
         preview = _purge_as_idp(Path(data["authelia"]["state_directory"]) / "authelia.sqlite3", phase["username"], phase["subject"],
                                 validate_only=True, uid=uid, gid=gid)
@@ -543,9 +553,10 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
             if not prior_removed or any(preview[key] for key in (
                     "username_records", "opaque_identifiers", "oauth_sessions", "consent_sessions", "consent_preconfigurations")):
                 raise _invalid("Authelia account no longer matches the prepared deletion; native intent remains held.")
-        if raw is not None and phase["username"] in database["users"]:
+        if not prior_removed or "intent_username" in phase:
             from .user_backup import snapshot
             snapshot(data, manifest, users_raw=raw)
+        if phase["username"] in database["users"]:
             del database["users"][phase["username"]]
             users._replace_users(Path(data["authelia"]["users_file"]),
                                  (json.dumps(database, indent=2, ensure_ascii=True) + "\n").encode(), info)
@@ -567,11 +578,19 @@ def _run_phase(data: dict, manifest: str, path: Path, phase: dict, runner, unit_
 def _new_phase(data: dict, manifest: str, intent: dict, runner) -> dict:
     root = Path(data["config_root"])
     config = root / "authelia/configuration.yml"
-    subject = _mapped_subject(data, config, intent["principal"], intent["username"], runner)
+    username, subject = _mapped_identity(data, config, intent["principal"], intent["username"], runner)
     active, _ = manage._unit_state(runner, users._UNIT)
-    return {"schema": _PHASE_SCHEMA, "request_id": intent["request_id"], "principal": intent["principal"],
-            "username": intent["username"], "subject": subject, "generation": intent["generation"],
-            "original_active": active, "idp_delete": bool(subject)}
+    phase = {"schema": _PHASE_SCHEMA, "request_id": intent["request_id"], "principal": intent["principal"],
+             "username": username, "subject": subject, "generation": intent["generation"],
+             "original_active": active, "idp_delete": bool(subject)}
+    if username != intent["username"]:
+        raw, _info = users._read_users(data)
+        if username in users._database(raw)["users"]:
+            raise _invalid("Legacy deletion account still exists; native metadata repair is required.")
+        # Preserve the native fence while pinning the uniquely proven IdP binding.
+        # A retry must not remap a username after the IdP subject has been purged.
+        phase["intent_username"] = intent["username"]
+    return phase
 
 
 def delete(manifest: str, username: str, *, apply: bool = False, runner=None, unit_root: Path = Path("/etc/systemd/system")) -> dict:

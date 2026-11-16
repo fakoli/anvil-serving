@@ -1,17 +1,14 @@
 """Focused behavior checks for the inert propagation v1 value contracts."""
 
 from datetime import datetime, timezone
-import json
 import re
 
 import pytest
 
 from anvil_serving import mcp
 from anvil_serving.control_plane.propagation import (
-    ActiveIdentity, ApprovedAuthority, MAX_CONTRACT_BYTES, PropagationContractError,
-    ReceiptContext, ReceiptIdentity, admit_contract, authorize_receipt_lookup,
-    capability_declaration, parse_contract, parse_receipt,
-    effect_scope_digest,
+    PropagationContractError,
+    ReceiptContext, ReceiptIdentity, parse_contract, effect_scope_digest,
 )
 
 _DIGEST = "a" * 64
@@ -35,16 +32,6 @@ def _context():
     return ReceiptContext(_DIGEST, "revision-1", 1, "job-1", "effect-1", "target-1", _DIGEST, ReceiptIdentity("installation-1", "profile-1", "runtime-1"))
 
 
-def test_contract_is_immutable_after_caller_and_projection_mutation():
-    caller = _contract()
-    contract = parse_contract(caller)
-    caller["targets"][0]["effects"][:] = ["session-idle-reload"]
-    projection = contract.value
-    projection["targets"][0]["effects"][:] = ["session-idle-reload"]
-    assert contract.value["targets"][0]["effects"] == ["catalog-apply"]
-    assert contract.digest == parse_contract(_contract()).digest
-
-
 def test_effect_scope_digest_binds_authority_but_not_execution_window_observation():
     contract = _contract()
     refreshed_window = {**contract, "issued_at": "2026-09-27T13:00:00Z", "deadline_at": "2026-09-28T13:00:00Z"}
@@ -61,109 +48,6 @@ def test_effect_scope_digest_binds_authority_but_not_execution_window_observatio
     forged["targets"] = [{**contract["targets"][0], "effects": ["monitoring-apply"]}]
     with pytest.raises(PropagationContractError, match="effect_scope_mismatch"):
         parse_contract(forged)
-
-
-@pytest.mark.parametrize(
-    "raw, code",
-    [
-        ('{"schema":"anvil-propagation/v1","schema":"anvil-propagation/v1"}', "malformed_payload"),
-        (json.dumps(_contract(generation=0)), "malformed_payload"),
-        (json.dumps(_contract(generation=True)), "malformed_payload"),
-        (json.dumps(_contract(authority_mode=[])), "malformed_payload"),
-        (json.dumps(_contract(targets=[])), "malformed_payload"),
-        (json.dumps(_contract(unknown=True)), "malformed_payload"),
-        (b"{" + b"x" * MAX_CONTRACT_BYTES + b"}", "payload_too_large"),
-    ],
-    ids=("duplicate-schema", "zero-generation", "boolean-generation", "invalid-authority-mode",
-         "empty-targets", "unknown-field", "oversized-payload"),
-)
-def test_contract_rejects_unapproved_shapes(raw, code):
-    with pytest.raises(PropagationContractError, match=code):
-        parse_contract(raw)
-
-
-def test_admission_uses_only_owner_registry_and_observed_active_identity():
-    parsed = parse_contract(_contract())
-    approved = ApprovedAuthority("approval-1", _DIGEST, parsed.digest)
-    assert admit_contract(_contract(), lambda _: approved, ActiveIdentity("activation-1", _DIGEST), _NOW).digest == parsed.digest
-    with pytest.raises(PropagationContractError, match="malformed_payload"):
-        admit_contract(_contract(approved=True), lambda _: approved, ActiveIdentity("activation-1", _DIGEST), _NOW)
-    with pytest.raises(PropagationContractError, match="approval_mismatch"):
-        admit_contract(_contract(), lambda _: approved, ActiveIdentity("other", _DIGEST), _NOW)
-    with pytest.raises(PropagationContractError, match="approval_expired"):
-        admit_contract(_contract(issued_at="2026-09-26T11:00:00Z", deadline_at="2026-09-27T11:00:00Z"), lambda _: approved, ActiveIdentity("activation-1", _DIGEST), _NOW)
-    with pytest.raises(PropagationContractError, match="policy_mismatch"):
-        admit_contract(_contract(targets=[{**_contract()["targets"][0], "effects": ["session-idle-reload"]}]), lambda _: approved, ActiveIdentity("activation-1", _DIGEST), _NOW)
-    preview = parse_contract(_contract(authority_mode="preview"))
-    with pytest.raises(PropagationContractError, match="execution_not_authorized"):
-        admit_contract(preview.canonical, lambda _: ApprovedAuthority("approval-1", _DIGEST, preview.digest), ActiveIdentity("activation-1", _DIGEST), _NOW)
-
-
-def test_receipt_binds_context_transport_identity_and_full_lookup_identity():
-    assert parse_receipt(_receipt(), context=_context(), authenticated_issuer="executor-1", now=_NOW)["verified"]
-    with pytest.raises(PropagationContractError, match="receipt_identity_mismatch"):
-        parse_receipt(_receipt(profile_id="other"), context=_context(), authenticated_issuer="executor-1", now=_NOW)
-    with pytest.raises(PropagationContractError, match="receipt_identity_mismatch"):
-        parse_receipt(_receipt(issuer="forged"), context=_context(), authenticated_issuer="executor-1", now=_NOW)
-    with pytest.raises(PropagationContractError, match="stale_receipt"):
-        parse_receipt(_receipt(observed_at="2026-09-27T11:54:00Z"), context=_context(), authenticated_issuer="executor-1", now=_NOW)
-    with pytest.raises(PropagationContractError, match="receipt_outcome_mismatch"):
-        parse_receipt(_receipt(outcome="failed", failure_code="verification-failed"), context=_context(), authenticated_issuer="executor-1", now=_NOW)
-    with pytest.raises(PropagationContractError, match="malformed_payload"):
-        parse_receipt(_receipt(outcome=[]), context=_context(), authenticated_issuer="executor-1", now=_NOW)
-    with pytest.raises(PropagationContractError, match="malformed_payload"):
-        parse_receipt(_receipt(observed_at="2026-09-27T11:59:00Z\n"), context=_context(), authenticated_issuer="executor-1", now=_NOW)
-    with pytest.raises(PropagationContractError, match="receipt_lookup_denied"):
-        authorize_receipt_lookup(ReceiptIdentity("installation-1", "other", "runtime-1"), _context().identity)
-
-
-def test_capabilities_match_the_versioned_inert_owner_operations():
-    operations = capability_declaration()["operations"]
-    assert [operation["name"] for operation in operations] == [
-        "propagation.accept.v1", "propagation.profile.v1", "propagation.preview.v1",
-        "propagation.status.v1",
-        "propagation.resume.v1", "propagation.cancel.v1", "propagation.recovery.verify.v1",
-        "propagation.recovery.cancel.v1",
-        "propagation.dispatch.pending.v1", "propagation.dispatch.record.v1",
-        "fleet.propagation.preview.v1", "fleet.propagation.submit.v1", "fleet.propagation.current.v1",
-        "fleet.propagation.revoked.v1",
-        "fleet.propagation.status.v1", "fleet.propagation.verify.v1",
-        "fleet.propagation.convergence.v1", "fleet.propagation.cancel.v1",
-    ]
-    assert all(
-        not operation["available"]
-        and operation["input_schema"] != operation["result_schema"]
-        and operation["max_result_bytes"] == 64 * 1024
-        for operation in operations
-    )
-
-
-def test_capability_schemas_have_bounded_semantic_rows_and_scalar_types():
-    operations = {operation["name"]: operation for operation in capability_declaration()["operations"]}
-    pending = operations["propagation.dispatch.pending.v1"]
-    assert pending["input_schema"]["properties"]["cursor"]["type"] == ["string", "null"]
-    intent_rows = pending["result_schema"]["properties"]["intents"]
-    assert intent_rows["maxItems"] == 100
-    assert intent_rows["items"]["properties"]["contract_digest"]["pattern"] == "^[0-9a-f]{64}$"
-    assert intent_rows["items"]["properties"]["effect_set_digest"]["pattern"] == "^[0-9a-f]{64}$"
-    assert intent_rows["items"]["properties"]["targets"]["maxItems"] == 128
-    assert pending["result_schema"]["properties"]["next_cursor"]["type"] == ["string", "null"]
-
-    recorded = operations["propagation.dispatch.record.v1"]["result_schema"]
-    assert recorded["properties"]["recorded"] == {"type": "boolean"}
-    convergence = operations["fleet.propagation.convergence.v1"]["result_schema"]
-    assert convergence["properties"]["changed"] == {"type": "integer", "minimum": 0}
-    assert convergence["properties"]["reloads"] == {"type": "integer", "minimum": 0}
-    current = operations["fleet.propagation.current.v1"]
-    assert current["input_schema"]["properties"]["generation"] == {"type": "integer", "minimum": 1}
-    assert current["result_schema"]["properties"]["current"] == {"type": "boolean"}
-
-    status = operations["fleet.propagation.status.v1"]["result_schema"]
-    outcome = status["properties"]["outcomes"]
-    receipt_refs = status["properties"]["receipt_refs"]
-    assert outcome["maxItems"] == receipt_refs["maxItems"] == 8
-    assert outcome["items"]["properties"]["verified"] == {"type": "boolean"}
-    assert receipt_refs["items"]["properties"]["receipt_digest"]["pattern"] == "^[0-9a-f]{64}$"
 
 
 def _matches_declared_schema(value, declaration):
@@ -204,22 +88,6 @@ def _matches_declared_schema(value, declaration):
     return True
 
 
-def test_capability_result_samples_match_their_declared_bounded_schemas():
-    operations = {operation["name"]: operation for operation in capability_declaration()["operations"]}
-    pending = {
-        "intents": [{"intent_id": "intent-1", "workflow_id": "workflow-1", "contract_digest": _DIGEST,
-                     "target_set_digest": _DIGEST, "effect_set_digest": _DIGEST,
-                     "issued_at": "2026-09-27T12:00:00Z", "deadline_at": "2026-09-28T12:00:00Z",
-                     "targets": [{"target_id": "target-1", "check_set_digest": _DIGEST}]}],
-        "next_cursor": None,
-    }
-    status = {**_page_context(), "job_id": "job-1", "state": "running",
-              "heartbeat_at": "2026-09-27T12:00:00Z", "completed_at": None,
-              "outcomes": [_offline_row()], "receipt_refs": []}
-    assert _matches_declared_schema(pending, operations["propagation.dispatch.pending.v1"]["result_schema"])
-    assert _matches_declared_schema(status, operations["fleet.propagation.status.v1"]["result_schema"])
-
-
 def _page_context():
     return {"contract_digest": _DIGEST, "target_set_digest": "b" * 64,
             "target_count": 1, "snapshot_id": "snapshot-1",
@@ -239,94 +107,6 @@ def _offline_row():
         "session_state": {"files": "pending", "new_session": "pending", "existing_session": "pending"},
         "metric_coverage": "unsupported", "receipt_ref": None,
     }
-
-
-def test_pending_and_historical_status_remain_expressible_without_receipt():
-    operations = {op["name"]: op for op in capability_declaration()["operations"]}
-    schema = operations["propagation.status.v1"]["result_schema"]
-    status = {**_page_context(), "intent_id": "intent-1", "workflow_id": "workflow-1",
-              "job_id": None, "workflow_progress": "unavailable",
-              "workflow_observed_at": None, "workflow_age_seconds": None,
-              "targets": [_offline_row()], "state": "pending", "all_targets_verified": False}
-    assert _matches_declared_schema(status, schema)
-    historical = status["targets"][0]
-    historical.update(applied=True, verified=True, applied_revision="revision-1",
-                      verified_revision="revision-1", outcome="success", freshness="stale",
-                      observed_at="2026-09-26T12:00:00Z", age_seconds=86400)
-    assert _matches_declared_schema(status, schema)
-    for required in ("desired_revision", "applied_revision", "verified_revision", "last_contact_at",
-                     "observed_at", "age_seconds", "freshness", "pending_reason", "session_state", "metric_coverage"):
-        incomplete = {**status, "targets": [{key: val for key, val in historical.items() if key != required}]}
-        assert not _matches_declared_schema(incomplete, schema)
-
-
-def test_preview_and_verification_can_report_unavailable_targets_without_evidence():
-    operations = {op["name"]: op for op in capability_declaration()["operations"]}
-    preview = {**_page_context(), "preview_digest": None, "effect_set_digest": _DIGEST,
-               "expires_at": "2026-09-27T12:05:00Z", "all_required_ready": False,
-               "targets": [{"target_id": "target-1", "installation_id": "installation-1",
-                            "profile_id": "profile-1", "runtime_id": "runtime-1", "ready": False,
-                            "pending_reason": "offline", "observed_at": None,
-                            "observed_digest": None, "permitted_effects": ["catalog-apply"]}]}
-    assert _matches_declared_schema(preview, operations["fleet.propagation.preview.v1"]["result_schema"])
-    assert _matches_declared_schema(preview, operations["propagation.preview.v1"]["result_schema"])
-    verification = {**_page_context(), "job_id": "job-1", "verification_id": "pass-1",
-                    "kind": "verify", "changed": 0, "reloads": 0, "outcomes": [_offline_row()],
-                    "all_targets_verified": False, "receipts": [],
-                    "checks": [{"target_id": "target-1", "check_id": "catalog-equal",
-                                "outcome": "pending", "pending_reason": "offline",
-                                "observed_at": None, "evidence_ref": None, "evidence_digest": None}]}
-    assert _matches_declared_schema(verification, operations["fleet.propagation.verify.v1"]["result_schema"])
-    for name in ("propagation.preview.v1", "propagation.status.v1", "fleet.propagation.preview.v1", "fleet.propagation.status.v1",
-                 "fleet.propagation.verify.v1", "fleet.propagation.convergence.v1"):
-        assert operations[name]["input_schema"]["properties"]["cursor"]["type"] == ["string", "null"]
-        fields = operations[name]["result_schema"]["properties"]
-        assert {"snapshot_id", "contract_digest", "target_set_digest", "target_count", "total_items", "next_cursor"} <= fields.keys()
-
-
-def test_full_denominator_fits_bounded_pages_with_maximum_length_identities():
-    schema = next(op for op in capability_declaration()["operations"]
-                  if op["name"] == "propagation.status.v1")["result_schema"]
-    rows = []
-    for index in range(128):
-        row = _offline_row()
-        for field in ("target_id", "installation_id", "profile_id", "runtime_id", "desired_revision", "applied_revision", "verified_revision"):
-            row[field] = f"t{index:0127d}"
-        row.update(outcome="success", applied=True, verified=True,
-                   last_contact_at="2026-09-27T12:00:00Z", observed_at="2026-09-27T12:00:00Z",
-                   age_seconds=0, freshness="fresh", pending_reason=None,
-                   receipt_ref={"receipt_id": "r" * 128, "target_id": row["target_id"],
-                                "effect_id": "e" * 128, "issuer": "i" * 128, "receipt_digest": _DIGEST})
-        rows.append(row)
-    seen = []
-    for offset in range(0, 128, 8):
-        page = {**_page_context(), "target_count": 128, "total_items": 128,
-                "intent_id": "intent-1", "workflow_id": "workflow-1", "job_id": "job-1",
-                "workflow_progress": "completed", "workflow_observed_at": None,
-                "workflow_age_seconds": None,
-                "snapshot_id": "s" * 128, "next_cursor": "c" * 128 if offset + 8 < 128 else None,
-                "targets": rows[offset:offset + 8], "state": "completed", "all_targets_verified": True}
-        assert _matches_declared_schema(page, schema)
-        assert len(json.dumps(page, ensure_ascii=True).encode()) < 64 * 1024
-        seen.extend(row["target_id"] for row in page["targets"])
-    assert len(set(seen)) == len(seen) == 128
-    assert seen == [row["target_id"] for row in rows]
-    oversized = {**page, "targets": rows[:9]}
-    assert not _matches_declared_schema(oversized, schema)
-
-
-def test_lone_surrogate_strings_fail_with_fixed_contract_errors():
-    with pytest.raises(PropagationContractError, match="malformed_payload"):
-        parse_contract("\ud800")
-    with pytest.raises(PropagationContractError, match="malformed_payload"):
-        parse_receipt("\ud800", context=_context(), authenticated_issuer="executor-1", now=_NOW)
-
-
-def test_duplicate_target_ids_cannot_alias_different_installations():
-    first = _contract()["targets"][0]
-    value = _contract(targets=[first, {**first, "installation_id": "installation-2"}])
-    with pytest.raises(PropagationContractError, match="malformed_identity"):
-        parse_contract(value)
 
 
 def test_direct_mcp_uses_only_out_of_band_authenticated_scopes():

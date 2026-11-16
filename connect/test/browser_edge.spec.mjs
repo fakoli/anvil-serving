@@ -1479,7 +1479,7 @@ test('container-gated CLI streams close on browser logout', async () => {
 
 test('container-gated browser and CLI streams close on session expiry', async () => {
   test.setTimeout(210_000);
-  test.skip(process.env.ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE !== '1', 'requires the disposable 120-second session-expiry fixture');
+  test.skip(process.env.ANVIL_CONNECT_BROWSER_EXPIRY_FIXTURE !== '1', 'requires the disposable 60-second session-expiry fixture');
   const edgeFixture = fixture;
   let loginSession;
   let streams;

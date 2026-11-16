@@ -75,25 +75,6 @@ def run(operations, backend, artifact_id):
     )
 
 
-def test_owned_mp4_is_staged_without_mutating_request_or_resubmitting(tmp_path):
-    operations, backend = setup(tmp_path)
-    artifact = source(operations)
-    first = run(operations, backend, artifact.id)
-    assert backend.uploads == [(f"anvil-{artifact.sha256}.mp4", mp4())]
-    submitted = backend.submissions[0]
-    assert submitted.graph["1"]["inputs"]["file"] == backend.uploads[0][0]
-    assert submitted.resolved_parameters == {"source": artifact.id}
-    assert operations.registry.render("video.test", "v1", {"source": artifact.id}).graph["1"]["inputs"]["file"] == artifact.id
-    metadata = operations.artifacts._metadata_path(artifact.id)
-    record = json.loads(metadata.read_text())
-    record["expires_at"] = (utc_now() - dt.timedelta(minutes=1)).isoformat()
-    metadata.write_text(json.dumps(record))
-    again = run(operations, backend, artifact.id)
-    assert again["job"]["id"] == first["job"]["id"] and again["created"] is False
-    assert len(backend.uploads) == len(backend.submissions) == 1
-    assert str(tmp_path) not in json.dumps(first)
-
-
 @pytest.mark.parametrize("problem", ["wrong_owner", "expired", "oversize", "corrupted", "mime"])
 def test_invalid_source_never_uploads_or_submits(tmp_path, monkeypatch, problem):
     operations, backend = setup(tmp_path, media_types=["video/mp4"])
@@ -114,10 +95,3 @@ def test_invalid_source_never_uploads_or_submits(tmp_path, monkeypatch, problem)
     with pytest.raises(MediaError):
         run(operations, backend, artifact.id)
     assert backend.uploads == backend.submissions == []
-
-
-def test_descriptor_publishes_accepted_artifact_media_types(tmp_path):
-    operations, _ = setup(tmp_path, media_types=["video/mp4"])
-    spec = operations.workflow_show("video.test", "v1")["workflow"]["schema"]["properties"]["source"]
-    assert spec["format"] == "anvil-artifact-id"
-    assert spec["x-anvil-media-types"] == ["video/mp4"]

@@ -1,16 +1,13 @@
+import base64
 import hashlib
+import io
 import json
-import sys
 import types
+import urllib.error
 
 import pytest
 
-from anvil_serving import router_manage, serves
-from anvil_serving.commands import COMMAND_TREE
-from anvil_serving.router.topology_validation import (
-    ReplicaTopologyValidationError,
-    load_validated_router_snapshot,
-)
+from anvil_serving import router_manage
 from tests.conftest import proc
 
 
@@ -76,33 +73,6 @@ def _run(argv, **_kwargs):
     return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
 
-def test_up_delegates_to_compose_without_model_dependencies():
-    calls = []
-    assert router_manage.cmd_up("compose.yml", "router", _run=lambda argv, **kw: calls.append(argv) or _run(argv, **kw)) == 0
-    assert calls[-1] == [
-        "docker", "compose", "--project-name", "anvil-serving", "-f",
-        "compose.yml", "up", "-d", "--no-deps", "router",
-    ]
-
-
-def test_up_recreate_forces_only_the_router_service():
-    calls = []
-    assert router_manage.cmd_up(
-        "compose.yml",
-        "router",
-        recreate=True,
-        _run=lambda argv, **kw: calls.append(argv) or _run(argv, **kw),
-    ) == 0
-    assert calls[-1] == [
-        "docker", "compose", "--project-name", "anvil-serving", "-f",
-        "compose.yml", "up", "-d", "--no-deps", "--force-recreate", "router",
-    ]
-
-
-def test_up_without_recreate_omits_force_recreate():
-    assert "--force-recreate" not in router_manage._compose_up_argv("compose.yml", "router")
-
-
 def test_up_env_file_credentials_override_ambient_without_leaking(tmp_path, capsys):
     compose = tmp_path / "docker-compose.yml"
     compose.write_text(
@@ -152,20 +122,6 @@ services:
     assert "AMBIENT_VALUE" not in output.out + output.err
 
 
-def test_down_uses_stable_anvil_serving_compose_project():
-    calls = []
-
-    assert router_manage.cmd_down(
-        "compose.yml",
-        "router",
-        _run=lambda argv, **kwargs: calls.append(argv) or _run(argv, **kwargs),
-    ) == 0
-    assert [argv for argv in calls if argv[:2] == ["docker", "compose"] and "stop" in argv] == [[
-        "docker", "compose", "--project-name", "anvil-serving",
-        "-f", "compose.yml", "stop", "router",
-    ]]
-
-
 def test_dry_run_reports_exact_target_without_invoking_docker(tmp_path, monkeypatch, capsys):
     compose = tmp_path / "docker-compose.yml"
     env_file = tmp_path / "router.env"
@@ -195,40 +151,6 @@ def test_dry_run_reports_exact_target_without_invoking_docker(tmp_path, monkeypa
     }
 
 
-def test_explicit_compose_path_wins_over_operator_home_default(tmp_path, monkeypatch):
-    operator_compose = tmp_path / "operator" / "docker-compose.yml"
-    explicit_compose = tmp_path / "checked-in" / "docker-compose.yml"
-    operator_compose.parent.mkdir()
-    operator_compose.write_text("services: {}", encoding="utf-8")
-    monkeypatch.setattr(router_manage, "default_compose_candidates", lambda: [str(operator_compose)])
-
-    assert router_manage.resolve_compose_path(str(explicit_compose)) == str(explicit_compose)
-
-
-def test_status_reports_unavailable_docker(capsys):
-    assert router_manage.cmd_status("router", _run=lambda *_args, **_kwargs: types.SimpleNamespace(returncode=1, stdout="", stderr="")) == 1
-    assert "UNKNOWN" in capsys.readouterr().out
-
-
-def test_up_refuses_foreign_compose_owner_without_recreate(capsys):
-    calls = []
-
-    def run(argv, **kwargs):
-        calls.append(argv)
-        native = _native_gate_output(argv, "primary-node")
-        if native is not None:
-            return native
-        if "State.Status" in " ".join(argv):
-            return types.SimpleNamespace(returncode=0, stdout="running\n", stderr="")
-        if argv[:2] == ["docker", "inspect"]:
-            return types.SimpleNamespace(returncode=0, stdout="primary-node\n", stderr="")
-        return _run(argv, **kwargs)
-
-    assert router_manage.cmd_up("compose.yml", "router", _run=run) == 1
-    assert not any(argv[:2] == ["docker", "compose"] for argv in calls)
-    assert "--recreate" in capsys.readouterr().err
-
-
 def test_up_recreate_replaces_foreign_compose_owner():
     calls = []
 
@@ -256,6 +178,82 @@ def test_router_parser_does_not_offer_profile_promotion():
     parser = router_manage._build_parser()
     actions = next(item for item in parser._actions if item.dest == "action")
     assert "promote" not in actions.choices
+
+
+def test_route_update_http_error_exposes_only_a_safe_structured_code():
+    body = b'{"error":{"type":"route_drain_timeout","message":"secret response body"}}'
+    stream = io.BytesIO(body)
+
+    def opened(_request, **_kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:18000", 409, "conflict", {}, stream)
+
+    with pytest.raises(router_manage.RouteUpdateError) as raised:
+        router_manage.route_update_request("status", env={"ANVIL_ROUTER_TOKEN": "synthetic"}, _open=opened)
+    assert raised.value.code == "route_update_http_error"
+    assert raised.value.status == 409
+    assert raised.value.remote_code == "route_drain_timeout"
+    assert "secret" not in str(raised.value)
+    assert stream.closed
+
+
+@pytest.mark.parametrize("body", (
+    b'{"error":{"type":"NOT_SAFE","message":"secret"}}',
+    b'{"error":{"type":"route_drain_timeout","type":"other"}}',
+    b'[]',
+    b'{"error":[]}',
+    b'{"error":{"type":"route_drain\\ntimeout"}}',
+    b'{"error":{"type":"' + b"a" * 65 + b'"}}',
+    b"{" + b"x" * (256 * 1024 + 1),
+))
+def test_route_update_http_error_rejects_untrusted_remote_codes(body):
+    def opened(_request, **_kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:18000", 409, "conflict", {}, io.BytesIO(body))
+
+    with pytest.raises(router_manage.RouteUpdateError) as raised:
+        router_manage.route_update_request("status", env={"ANVIL_ROUTER_TOKEN": "synthetic"}, _open=opened)
+    assert raised.value.remote_code is None
+
+
+def test_route_update_http_error_bounds_reads_and_closes_after_a_read_failure():
+    class FailedBody:
+        def __init__(self):
+            self.read_size = None
+            self.closed = False
+
+        def read(self, size):
+            self.read_size = size
+            raise OSError("body unavailable")
+
+        def close(self):
+            self.closed = True
+
+    body = FailedBody()
+
+    def opened(_request, **_kwargs):
+        raise urllib.error.HTTPError("http://127.0.0.1:18000", 409, "conflict", {}, body)
+
+    with pytest.raises(router_manage.RouteUpdateError) as raised:
+        router_manage.route_update_request("status", env={"ANVIL_ROUTER_TOKEN": "synthetic"}, _open=opened)
+    assert raised.value.remote_code is None
+    assert body.read_size == 256 * 1024 + 1
+    assert body.closed
+
+
+def test_route_update_cli_prints_safe_remote_code_without_response_body(monkeypatch, capsys):
+    monkeypatch.setattr(router_manage, "route_update_request", lambda *_args, **_kwargs: (_ for _ in ()).throw(
+        router_manage.RouteUpdateError("route_update_http_error", "secret response body", status=409,
+                                       remote_code="route_drain_timeout")
+    ))
+    assert router_manage.main(["routes", "apply", "--preview-id", "a" * 32,
+                               "--router-url", "http://127.0.0.1:18000", "--confirm"]) == 1
+    output = capsys.readouterr().err
+    assert output == "router route update failed: route_update_http_error:route_drain_timeout\n"
+    assert "secret" not in output
+
+
+def test_route_update_error_constructor_rejects_an_untrusted_remote_code():
+    error = router_manage.RouteUpdateError("route_update_http_error", "local", remote_code="unsafe\\ncode")
+    assert error.remote_code is None
 
 
 def test_install_config_migrates_current_tiers_and_verifies_desired(tmp_path):
@@ -300,6 +298,9 @@ llm.voice = "omni-local"
         confirm=True,
         dry_run=False,
         _transition=transition,
+        _route_status=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            router_manage.RouteUpdateError("route_update_http_error", "not found", status=404)
+        ),
         _install=lambda path: installed.append(path) or 0,
         _sleep=lambda _seconds: None,
     )
@@ -320,20 +321,10 @@ llm.voice = "omni-local"
     assert installed[0].config_bytes == config.read_bytes()
 
 
-def test_install_config_accepts_exact_desired_tiers_when_a_serve_is_unavailable(tmp_path):
+def test_install_config_refuses_protected_route_base_drift_before_quiesce_or_write(tmp_path):
     config = tmp_path / "router.toml"
-    config.write_text(
-        """
+    config.write_text('''
 [router]
-[[router.tiers]]
-id = "primary-local"
-base_url = "http://127.0.0.1:30002/v1"
-model = "primary"
-dialect = "openai"
-context_limit = 262144
-privacy = "local"
-tool_support = true
-auth_env = "ANVIL_PRIMARY_LOCAL_KEY"
 [[router.tiers]]
 id = "omni-local"
 base_url = "http://127.0.0.1:30003/v1"
@@ -344,254 +335,271 @@ privacy = "local"
 tool_support = true
 auth_env = "ANVIL_OMNI_LOCAL_KEY"
 [router.model_routes]
-llm.primary = "primary-local"
 llm.voice = "omni-local"
-""",
-        encoding="utf-8",
-    )
-
-    statuses = iter([
-        {"tiers": [{"tier_id": "primary-local", "ready": True}]},
-        {"tiers": [
-            {"tier_id": "primary-local", "ready": True},
-            {
-                "tier_id": "omni-local",
-                "ready": False,
-                "readiness_state": "unavailable",
-                "readiness_reason": "health_transport_URLError",
+''', encoding="utf-8")
+    calls = []
+    with pytest.raises(ValueError, match="protected route state"):
+        router_manage.install_config(
+            str(config), topology_path=str(_topology(tmp_path)), confirm=True, dry_run=False,
+            _transition=lambda action, **_kwargs: calls.append(action) or {"tiers": []},
+            _route_status=lambda *_args, **_kwargs: {
+                "enabled": True, "authority_available": True, "base_config_sha256": "a" * 64,
             },
-        ]},
-    ])
-
-    def transition(action, **_kwargs):
-        if _kwargs.get("scope") == "router":
-            return _barrier(action,hashlib.sha256(config.read_bytes()).hexdigest())
-        if action == "status":
-            return next(statuses)
-        if action == "drain":
-            return {"result": {"drained": True}}
-        return {"result": {"applied": True}}
-
-    result = router_manage.install_config(
-        str(config),
-        topology_path=str(_topology(tmp_path)),
-        confirm=True,
-        dry_run=False,
-        _transition=transition,
-        _install=lambda _path: 0,
-        _sleep=lambda _seconds: None,
-    )
-
-    assert result["applied"] is True
-    assert result["unavailable_tiers"] == ["omni-local"]
-    assert result["tier_status"][0]["tier_id"] == "primary-local"
-    assert result["tier_status"][1]["readiness_reason"] == "health_transport_URLError"
+            _install=lambda *_args, **_kwargs: pytest.fail("must not write protected base config"),
+        )
+    assert calls == ["status"]
 
 
-def test_install_config_retains_closure_when_whole_owner_drain_fails(tmp_path):
+def test_restart_refuses_route_base_drift_before_drain_or_container_stop(monkeypatch):
+    monkeypatch.setattr(router_manage, "_mounted_router_boot_config", lambda *_args, **_kwargs: b"router = {}\n")
+    monkeypatch.setattr(router_manage, "require_router_drain",
+                        lambda *_args, **_kwargs: pytest.fail("drain must not run after route-base drift"))
+    def forbidden_run(*_args, **_kwargs):
+        pytest.fail("restart must not stop or restart a drifted router")
+    assert router_manage.cmd_restart(
+        "anvil-router", dry_run=False, _run=forbidden_run,
+        _route_status=lambda *_args, **_kwargs: {"enabled": True, "authority_available": True, "base_config_sha256": "a" * 64},
+    ) == 1
+
+
+def test_restart_legacy_route_status_404_does_not_require_mounted_boot_config(monkeypatch):
+    monkeypatch.setattr(router_manage, "_mounted_router_boot_config",
+                        lambda *_args, **_kwargs: pytest.fail("legacy restart must not capture boot config"))
+    monkeypatch.setattr(router_manage, "require_router_drain",
+                        lambda *_args, **_kwargs: {"owner_backend": "native-process"})
+    calls = []
+    def run(argv, **_kwargs):
+        calls.append(argv)
+        return proc(0, "")
+    assert router_manage.cmd_restart(
+        "anvil-router", dry_run=False, _run=run,
+        _route_status=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            router_manage.RouteUpdateError("route_update_http_error", "not found", status=404)
+        ),
+    ) == 0
+    assert calls == [["docker", "restart", "anvil-router"]]
+
+
+def test_route_authority_guard_rejects_enabled_status_without_base_digest():
+    with pytest.raises(ValueError, match="status is malformed"):
+        router_manage._guard_route_authority_base_config(
+            b"router = {}\n", _route_status=lambda *_args, **_kwargs: {"enabled": True, "authority_available": True},
+        )
+
+
+def test_mounted_boot_config_reads_bounded_runtime_bytes_when_host_source_is_private():
+    raw = b"[router]\n"
+    custody = {"container_id": "a" * 64, "image_id": "sha256:" + "b" * 64,
+               "image_reference": "anvil-serving:synthetic", "started_at": "2026-01-01T00:00:00Z",
+               "restart_count": 0, "compose_project": "anvil-serving", "compose_service": "router",
+               "mounts": [{"Type": "bind", "Name": "", "Source": "/container-private/router.toml",
+                           "Destination": router_manage.DEFAULT_INSTALLED_CONFIG, "RW": False}]}
+
+    def run(argv, **_kwargs):
+        if argv[:3] == ["docker", "inspect", "--format"]:
+            return proc(0, json.dumps(custody))
+        if argv[:3] == ["docker", "image", "inspect"]:
+            return proc(0, custody["image_id"])
+        if argv[:3] == ["docker", "exec", custody["container_id"]]:
+            if "base64" in argv[-1]:
+                return proc(0, base64.b64encode(raw).decode())
+            if "hashlib" in argv[-1]:
+                return proc(0, hashlib.sha256(raw).hexdigest())
+        pytest.fail("unexpected runtime config probe")
+
+    assert router_manage._mounted_router_boot_config("anvil-router", _run=run) == raw
+
+def test_managed_route_state_initializer_uses_compose_volume_and_container_config(tmp_path, monkeypatch):
+    from anvil_serving import router_manage
+
     config = tmp_path / "router.toml"
-    config.write_text(
-        """
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/route-state.json"\n[router]\n')
+    state_mount = {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router"}
+    config_mount = {"type": "bind", "source": str(config), "target": "/etc/anvil/config.toml", "read_only": True}
+    roster = {"rendered": {"services": {"router": {"image": "router:test", "volumes": [config_mount, state_mount]}}}}
+    captured = {}
+    def roster_run(*args, **kwargs):
+        captured["roster_owner_state_only"] = kwargs.get("_owner_state_only")
+        return roster
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", roster_run)
+
+    def run(compose, service, container, code, **kwargs):
+        captured.update(compose=compose, service=service, container=container, code=code,
+                        run_owner_state_only=kwargs.get("_owner_state_only"))
+        return {"initialized": True, "route_revision": 0, "effective_route_sha256": "a" * 64}
+
+    monkeypatch.setattr(router_manage, "_offline_compose_run", run)
+    def docker(*args, **kwargs):
+        return type("Result", (), {"returncode": 0, "stdout": "sha256:" + "c" * 64})()
+    result = router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"), _run=docker)
+    assert result["initialized"] is True
+    assert captured["service"] == "router" and captured["container"] == "anvil-router"
+    assert captured["roster_owner_state_only"] is True
+    assert captured["run_owner_state_only"] is True
+    assert "/etc/anvil/config.toml" in captured["code"]
+    assert "/var/lib/anvil-router/route-state.json" in captured["code"]
+
+
+def test_current_stop_route_initializer_revalidates_the_exact_successor_before_and_after_helper(tmp_path, monkeypatch):
+    from anvil_serving import router_current_stop
+
+    config = tmp_path / "router.toml"
+    old_config = tmp_path / "old-router.toml"
+    router = '''
 [router]
 [[router.tiers]]
-id = "omni-local"
-base_url = "http://127.0.0.1:30003/v1"
-model = "omni"
+id = "synthetic"
+base_url = "http://127.0.0.1:18000/v1"
+model = "synthetic"
 dialect = "openai"
-context_limit = 65536
+context_limit = 4096
 privacy = "local"
 tool_support = true
-auth_env = "ANVIL_OMNI_LOCAL_KEY"
+auth_env = "SYNTHETIC_UPSTREAM"
 [router.model_routes]
-llm.voice = "omni-local"
-""",
-        encoding="utf-8",
-    )
-    calls = []
+llm.primary = "synthetic"
+'''
+    old_config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\n' + router)
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/route-state.json"\n' + router)
+    mounts = [
+        {"type": "bind", "source": str(config), "target": router_manage.DEFAULT_INSTALLED_CONFIG, "read_only": True},
+        {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router", "read_only": False},
+    ]
+    stopped = {"container_id": "a" * 64, "image_id": "sha256:" + "b" * 64,
+               "started_at": "2026-01-01T00:00:00Z", "restart_count": 0,
+               "compose_project": "anvil-serving", "compose_service": "router"}
+    candidate = {"services": {"router": {"image": stopped["image_id"], "volumes": mounts}}}
+    predecessor = {"services": {"router": {"image": stopped["image_id"], "volumes": [
+        {"type": "bind", "source": str(old_config), "target": router_manage.DEFAULT_INSTALLED_CONFIG, "read_only": True},
+        mounts[1],
+    ]}}}
+    checks = []
+    runner_envs = []
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: pytest.fail("generic roster must stay strict"))
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: {"PATH": "/usr/bin"})
+    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {"stopped": stopped, "preview": {}})
+    monkeypatch.setattr(router_current_stop, "require_successor", lambda *args, **kwargs: checks.append(args))
+    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: ({}, {"rendered": predecessor}, candidate, {}))
 
-    def transition(action, **kwargs):
-        calls.append((action, kwargs.get("tier_id")))
-        if kwargs.get("scope") == "router":
-            return _barrier(action,hashlib.sha256(config.read_bytes()).hexdigest(),drained=action!="drain")
-        if action == "status":
-            return {"tiers": [{"tier_id": "fast-local", "ready": True}]}
-        if action == "drain":
-            return {"result": {"drained": False}}
-        return {"result": {"applied": True}}
+    def docker(argv, **kwargs):
+        runner_envs.append(kwargs.get("env"))
+        if argv[:3] == ["docker", "image", "inspect"]:
+            return proc(0, stopped["image_id"])
+        if "run" in argv:
+            return proc(0, json.dumps({"initialized": True, "route_revision": 0, "effective_route_sha256": "d" * 64}))
+        pytest.fail("unexpected command")
 
-    with pytest.raises(ValueError, match="owned-work drain"):
-        router_manage.install_config(
-            str(config),
-            topology_path=str(_topology(tmp_path)),
-            confirm=True,
-            dry_run=False,
-            _transition=transition,
-            _install=lambda _path: pytest.fail("install ran after failed drain"),
+    assert router_manage.initialize_route_state_managed(
+        str(config), str(tmp_path / "compose.yml"), current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
+    )["initialized"] is True
+    assert len(checks) == 2
+    assert runner_envs and all(env == {"PATH": "/usr/bin"} for env in runner_envs)
+
+    candidate["services"]["router"]["image"] = "router:mutable"
+    with pytest.raises(ValueError, match="current_stop_route_init_refused"):
+        router_manage.initialize_route_state_managed(
+            str(config), str(tmp_path / "compose.yml"), current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
+        )
+    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {
+        "stopped": stopped, "preview": {"environment": {"file": str(tmp_path / "bound.env")}},
+    })
+    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: (_ for _ in ()).throw(
+        ValueError("router_current_stop_environment_mismatch")))
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: pytest.fail("must not read unbound environment"))
+    with pytest.raises(ValueError, match="current_stop_environment_mismatch"):
+        router_manage.initialize_route_state_managed(
+            str(config), str(tmp_path / "compose.yml"), env_file=str(tmp_path / "other.env"),
+            current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
+        )
+    monkeypatch.setattr(router_current_stop, "completed_receipt", lambda *_args: {"stopped": stopped, "preview": {}})
+    monkeypatch.setattr(router_current_stop, "_snapshot", lambda *args, **kwargs: ({}, {"rendered": predecessor}, candidate, {}))
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: {"PATH": "/usr/bin"})
+    candidate["services"]["router"]["image"] = stopped["image_id"]
+    old_config.write_text(config.read_text())
+    with pytest.raises(ValueError, match="current_stop_route_init_refused"):
+        router_manage.initialize_route_state_managed(
+            str(config), str(tmp_path / "compose.yml"), current_stop_receipt=str(tmp_path / "receipt.json"), _run=docker,
         )
 
-    assert calls[-1] == ("drain", None)
-    assert not any(action=="readmit" for action,_ in calls)
 
-
-def test_install_config_captures_exact_replica_snapshot_before_transition(tmp_path):
-    config = tmp_path / "router.toml"
-    topology = tmp_path / "topology.toml"
-    raw = b'''[router]\r\n[[router.tiers]]\r\nid = "primary"\r\nmodel = "primary"\r\ndialect = "openai"\r\ncontext_limit = 4096\r\nprivacy = "local"\r\ntool_support = true\r\nauth_env = "ANVIL_PRIMARY_KEY"\r\nmetadata_source = "configured"\r\nhealth_path = "/health"\r\nmodel_identity = true\r\nreplicas = [\r\n  { id = "member-a", base_url = "http://replica-a.example/v1", host_id = "host-a", resource_id = "resource-a", qualification_ref = "qualification:primary-a" },\r\n  { id = "member-b", base_url = "http://replica-b.example/v1", host_id = "host-a", resource_id = "resource-b", qualification_ref = "qualification:primary-b" },\r\n]\r\nreplica_identity = { model_revision = "revision-1", engine_version = "engine-1", image_digest = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", config_fingerprint = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }\r\n[router.model_routes]\r\nllm.primary = "primary"\r\n'''
-    config.write_bytes(raw)
-    topology.write_text(
-        _TOPOLOGY
-        + '''\n[[resources]]\nid = "resource-a"\nrole = "model-serve-a"\nhost = "host-a"\nruntime = "runtime-a"\nendpoint = "http://replica-a.example/v1"\n\n[[resources]]\nid = "resource-b"\nrole = "model-serve-b"\nhost = "host-a"\nruntime = "runtime-a"\nendpoint = "http://replica-b.example/v1"\n''',
-        encoding="utf-8",
-    )
-    installed = []
-    transitions = []
-
-    def transition(action, **_kwargs):
-        transitions.append(action)
-        if _kwargs.get("scope") == "router":
-            return _barrier(action,hashlib.sha256(raw).hexdigest())
-        if action == "status":
-            config.write_text("not the captured config", encoding="utf-8")
-            return {"tiers": [{"tier_id": "primary", "ready": True}]}
-        return {"result": {"applied": True, "drained": True}}
-
-    result = router_manage.install_config(
-        str(config),
-        topology_path=str(topology),
-        confirm=True,
-        dry_run=False,
-        _transition=transition,
-        _install=lambda snapshot: installed.append(snapshot) or 0,
-    )
-
-    assert result["config_sha256"] == hashlib.sha256(raw).hexdigest()
-    assert transitions == ["status", "quiesce", "drain", "consume", "status", "status"]
-    assert len(installed) == 1
-    assert installed[0].config_bytes == raw
-    assert installed[0].replica_tier_count == 1
-
-
-def test_install_config_invalid_topology_refuses_before_transition_or_install(tmp_path):
-    config = tmp_path / "router.toml"
-    config.write_text(
-        "[router]\n[[router.tiers]]\nid = \"direct\"\nbase_url = \"http://127.0.0.1:30000/v1\"\nmodel = \"direct\"\ndialect = \"openai\"\ncontext_limit = 4096\nprivacy = \"local\"\ntool_support = true\nauth_env = \"ANVIL_DIRECT_KEY\"\n[router.model_routes]\nllm.primary = \"direct\"\n",
-        encoding="utf-8",
-    )
-    transitions = []
-    with pytest.raises(ReplicaTopologyValidationError):
-        router_manage.install_config(
-            str(config),
-            topology_path=str(tmp_path / "missing-topology.toml"),
-            confirm=True,
-            dry_run=False,
-            _transition=lambda *args, **kwargs: transitions.append(args) or {},
-            _install=lambda _snapshot: pytest.fail("installer ran"),
-        )
-    assert transitions == []
-
-
-def test_snapshot_installer_preserves_crlf_bytes_for_validation_and_write(tmp_path):
-    config = tmp_path / "router.toml"
-    raw = b"[router]\r\n[[router.tiers]]\r\nid = \"direct\"\r\nbase_url = \"http://127.0.0.1:30000/v1\"\r\nmodel = \"direct\"\r\ndialect = \"openai\"\r\ncontext_limit = 4096\r\nprivacy = \"local\"\r\ntool_support = true\r\nauth_env = \"ANVIL_DIRECT_KEY\"\r\n[router.model_routes]\r\nllm.primary = \"direct\"\r\n"
-    config.write_bytes(raw)
-    snapshot = load_validated_router_snapshot(config, _topology(tmp_path))
-    calls = []
-
-    def run(argv, **kwargs):
-        calls.append((argv, kwargs))
-        native = _native_gate_output(argv)
-        if native is not None:
-            return native
-        if argv[:4] == ["docker", "inspect", "-f", "{{.Config.Image}}"]:
-            return proc(0, "anvil-serving:test\n")
-        if argv[:3] == ["docker", "inspect", "-f"] and '"mounts"' in argv[3]:
-            return proc(0, '{"cmd":["--config","/cfg/config.toml"],"mounts":[{"Type":"volume","Name":"anvil-router-cfg","Destination":"/cfg"}]}')
-        return proc()
-
-    assert serves._install_router_config(snapshot, _run=run) == 0
-    assert next(kwargs["input"] for argv,kwargs in calls if "input" in kwargs) == raw
-    write = next(
-        kwargs for argv, kwargs in calls
-        if argv[:3] == ["docker", "run", "--rm"]
-        and "config.toml.new" in argv[-1]
-    )
-    assert write["input"] == raw
-
-
-def test_direct_path_installer_refuses_replica_without_docker(tmp_path):
-    config = tmp_path / "replica.toml"
-    config.write_text(
-        "[router]\n[[router.tiers]]\nid = \"primary\"\nmodel = \"primary\"\ndialect = \"openai\"\ncontext_limit = 4096\nprivacy = \"local\"\ntool_support = true\nauth_env = \"ANVIL_PRIMARY_KEY\"\nmetadata_source = \"configured\"\nhealth_path = \"/health\"\nmodel_identity = true\nreplicas = [\n  { id = \"member-a\", base_url = \"http://replica-a.example/v1\", host_id = \"host-a\", resource_id = \"resource-a\", qualification_ref = \"qualification:primary-a\" },\n  { id = \"member-b\", base_url = \"http://replica-b.example/v1\", host_id = \"host-a\", resource_id = \"resource-b\", qualification_ref = \"qualification:primary-b\" },\n]\nreplica_identity = { model_revision = \"revision-1\", engine_version = \"engine-1\", image_digest = \"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", config_fingerprint = \"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\" }\n[router.model_routes]\nllm.primary = \"primary\"\n",
-        encoding="utf-8",
-    )
-    calls = []
-    assert serves._install_router_config(
-        str(config), _run=lambda *args, **kwargs: calls.append(args) or proc()
-    ) == 1
-    assert calls == []
-
-
-def test_install_config_cli_forwards_topology_and_scrubs_validation_operands(
-    tmp_path, capsys
-):
-    config = tmp_path / "private-config-marker.toml"
-    topology = tmp_path / "private-topology-marker.toml"
-    config.write_text("not valid TOML =", encoding="utf-8")
-
-    assert router_manage.main([
-        "install-config", "--config", str(config), "--topology", str(topology),
-        "--dry-run",
-    ]) == 1
-
-    output = capsys.readouterr().err
-    assert output.strip() == "router config install failed: router_config_invalid"
-    assert "private-config-marker" not in output
-    assert "private-topology-marker" not in output
-    router = next(node for node in COMMAND_TREE.nodes if node.name == "router")
-    node = next(node for node in router.children if node.name == "install-config")
-    assert node.handler is not None
-    assert node.handler.forward_resolution_options is True
-
-
-@pytest.mark.parametrize("change", ["none", "during-probe", "oversize"])
-def test_installed_probe_hashes_exact_bytes_with_older_runtime_report(tmp_path, monkeypatch, capsys, change):
-    config = tmp_path / "router.toml"
-    raw = b'[router]\r\n# exact installed bytes\r\n'
-    config.write_bytes(raw if change != "oversize" else b"x" * (1048576 + 1))
-    monkeypatch.setattr(sys, "argv", ["probe", str(config), "4"])
-
-    def legacy_report(*_args, **_kwargs):
-        if change == "during-probe":
-            config.write_bytes(raw + b"# changed\n")
-        return {"rows": [], "unreachable_aliases": []}
-
-    monkeypatch.setattr(router_manage, "runtime_fleet_status", legacy_report)
-    if change == "none":
-        with pytest.raises(SystemExit) as ended:
-            exec(compile(router_manage._RUNTIME_INSTALLED_PROBE_CODE, "installed-probe", "exec"), {})
-        assert ended.value.code == 0
-        assert json.loads(capsys.readouterr().out)["config_sha256"] == hashlib.sha256(raw).hexdigest()
-    else:
-        with pytest.raises(ValueError, match="changed|exceeds"):
-            exec(compile(router_manage._RUNTIME_INSTALLED_PROBE_CODE, "installed-probe", "exec"), {})
-
-
-@pytest.mark.parametrize('bad_rows',[
-    [],[{'tier_id':'wrong','ready':True}],
-    [{'tier_id':'direct','ready':True},{'tier_id':'direct','ready':True}],
-    [{'ready':True}],
+@pytest.mark.parametrize("lock_mount", [
+    {"type": "volume", "source": "route-lock", "target": "/var/lib/anvil-router/route-state.json.lock", "read_only": False},
+    {"type": "bind", "source": "/synthetic/route-lock", "target": "/var/lib/anvil-router/route-state.json.lock", "read_only": True},
 ])
-def test_installer_keeps_exact_tier_set_and_bounded_retry_guard(tmp_path,monkeypatch,bad_rows):
-    config=tmp_path/'router.toml'
-    config.write_text('[router]\n[[router.tiers]]\nid="direct"\nbase_url="http://127.0.0.1:1/v1"\nmodel="direct"\ndialect="openai"\ncontext_limit=4096\nprivacy="local"\ntool_support=true\nauth_env="SYNTHETIC"\n[router.model_routes]\nllm.primary="direct"\n')
-    calls=[];statuses=iter([{'tiers':[{'tier_id':'direct','ready':True}]},{'tiers':bad_rows}])
-    def transition(action,**kwargs):
-        calls.append(action)
-        if kwargs.get('scope')=='router':return _barrier(action,hashlib.sha256(config.read_bytes()).hexdigest())
-        return next(statuses)
-    ticks=iter([0,61]);monkeypatch.setattr(router_manage,'time',types.SimpleNamespace(monotonic=lambda:next(ticks)))
-    installed=[]
-    with pytest.raises(ValueError,match='desired tier set'):
-        router_manage.install_config(str(config),topology_path=str(_topology(tmp_path)),confirm=True,dry_run=False,
-            _transition=transition,_install=lambda snapshot:installed.append(snapshot) or 0)
-    assert len(installed)==1 and 'readmit' not in calls
+def test_managed_route_state_initializer_refuses_split_or_readonly_lock_mount(tmp_path, monkeypatch, lock_mount):
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/route-state.json"\n[router]\n')
+    mounts = [
+        {"type": "bind", "source": str(config), "target": router_manage.DEFAULT_INSTALLED_CONFIG, "read_only": True},
+        {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router", "read_only": False},
+        lock_mount,
+    ]
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: {
+        "rendered": {"services": {"router": {"image": "router:test", "volumes": mounts}}}
+    })
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: pytest.fail("must not launch helper"))
+    with pytest.raises(ValueError, match="route_state_mount_unknown"):
+        router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"))
+
+
+def test_managed_offline_migration_limits_roster_to_owner_state(monkeypatch):
+    captured = {}
+    monkeypatch.setattr(router_manage, "_compose_execution_env", lambda *args, **kwargs: None)
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: captured.update(kwargs) or {
+        "schema_version": 4, "migrated": True, "backup_schema_version": 1, "offline": True,
+    })
+    assert router_manage.migrate_router_offline("synthetic.yml", "/var/lib/anvil-serving/router-keys/before.sqlite3") == {
+        "schema_version": 4, "migrated": True, "backup_schema_version": 1, "offline": True,
+    }
+    assert captured["_owner_state_only"] is True
+
+
+def test_managed_route_state_initializer_refuses_uncovered_container_path(tmp_path, monkeypatch):
+    from anvil_serving import router_manage
+
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/container-only/routes.json"\n[router]\n')
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: {
+        "rendered": {"services": {"router": {"image": "router:test", "volumes": [{
+            "type": "bind", "source": str(config), "target": "/etc/anvil/config.toml", "read_only": True,
+        }]}}}
+    })
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: pytest.fail("must not launch helper"))
+    with pytest.raises(ValueError, match="route_state_mount_unknown"):
+        router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"))
+
+
+def test_managed_route_state_initializer_refuses_other_config_mount_source(tmp_path, monkeypatch):
+    from anvil_serving import router_manage
+
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/routes.json"\n[router]\n')
+    other = tmp_path / "other.toml"
+    other.write_text(config.read_text())
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: {
+        "rendered": {"services": {"router": {"image": "router:test", "volumes": [
+            {"type": "bind", "source": str(other), "target": "/etc/anvil/config.toml", "read_only": True},
+            {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router", "read_only": False},
+        ]}}}
+    })
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: pytest.fail("must not launch helper"))
+    with pytest.raises(ValueError, match="route_state_config_mount_unknown"):
+        router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"))
+
+
+def test_managed_route_state_initializer_refuses_unverified_selected_image(tmp_path, monkeypatch):
+    from anvil_serving import router_manage
+
+    config = tmp_path / "router.toml"
+    config.write_text('[server]\nauth_env = "ROUTER_TOKEN"\nroute_state_path = "/var/lib/anvil-router/routes.json"\n[router]\n')
+    monkeypatch.setattr(router_manage, "_offline_compose_roster", lambda *args, **kwargs: {
+        "rendered": {"services": {"router": {"image": "router:test", "volumes": [
+            {"type": "bind", "source": str(config), "target": "/etc/anvil/config.toml", "read_only": True},
+            {"type": "volume", "source": "router-state", "target": "/var/lib/anvil-router", "read_only": False},
+        ]}}}
+    })
+    monkeypatch.setattr(router_manage, "_offline_compose_run", lambda *args, **kwargs: pytest.fail("must not launch helper"))
+    def docker(*args, **kwargs):
+        return type("Result", (), {"returncode": 0, "stdout": "not-an-image-id"})()
+    with pytest.raises(ValueError, match="route_state_image_unknown"):
+        router_manage.initialize_route_state_managed(str(config), str(tmp_path / "compose.yml"), _run=docker)

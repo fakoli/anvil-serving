@@ -1,0 +1,443 @@
+{
+  "schema": "anvil-serving.focused-quality-observations/v1",
+  "order": [
+    "max-budget-1",
+    "low-unset",
+    "max-budget-2"
+  ],
+  "cells": [
+    {
+      "id": "max-budget-1",
+      "reasoning_effort": "max",
+      "thinking_budget_tokens": 8192,
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      },
+      "test_outcomes": [
+        false,
+        true
+      ],
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 4,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 4,
+        "status": "complete"
+      },
+      "output_budget": {
+        "classification": null,
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 1749,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 9942,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 8193,
+              "total_tokens": 11075
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 378,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 662,
+              "prompt_tokens": 2427,
+              "reasoning_tokens": 284,
+              "total_tokens": 3089
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 1643,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 9836,
+              "prompt_tokens": 5865,
+              "reasoning_tokens": 8193,
+              "total_tokens": 15701
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 306,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 1054,
+              "prompt_tokens": 2442,
+              "reasoning_tokens": 748,
+              "total_tokens": 3496
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 103.072385,
+        "exhausted": false,
+        "model_calls": 4,
+        "reason": null
+      },
+      "primary_logical_request_ids_source_backed": [
+        "logical-00000001",
+        "logical-00000003"
+      ],
+      "purpose_attribution_limit": "Metadata events do not contain a request-purpose field; primary versus auxiliary IDs are source/native-attempt review labels, not native event labels.",
+      "responses": [
+        {
+          "logical_request_id": "logical-00000001",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 9942,
+            "prompt_tokens": 1133,
+            "reasoning_tokens": 8193,
+            "total_tokens": 11075
+          },
+          "derived_non_reasoning_tokens": 1749,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000002",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 662,
+            "prompt_tokens": 2427,
+            "reasoning_tokens": 284,
+            "total_tokens": 3089
+          },
+          "derived_non_reasoning_tokens": 378,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000003",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 9836,
+            "prompt_tokens": 5865,
+            "reasoning_tokens": 8193,
+            "total_tokens": 15701
+          },
+          "derived_non_reasoning_tokens": 1643,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000004",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 1054,
+            "prompt_tokens": 2442,
+            "reasoning_tokens": 748,
+            "total_tokens": 3496
+          },
+          "derived_non_reasoning_tokens": 306,
+          "visible_tokens": null
+        }
+      ],
+      "result": "jobs/max-budget-1/aider/result.json",
+      "events": "jobs/max-budget-1/aider/requests.jsonl",
+      "starter_code_sha256": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+      "final_code_sha256": "d67fbb19277040ad1d05294d457829f7fa3ee10f84fb32ecfc2a04d6323e77dc",
+      "edit_applied": true
+    },
+    {
+      "id": "low-unset",
+      "reasoning_effort": "low",
+      "thinking_budget_tokens": null,
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 1.0,
+        "resolved": 1,
+        "selected": 1
+      },
+      "test_outcomes": [
+        false,
+        true
+      ],
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 4,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 4,
+        "status": "complete"
+      },
+      "output_budget": {
+        "classification": null,
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 945,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 951,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 6,
+              "total_tokens": 2084
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 269,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 276,
+              "prompt_tokens": 1623,
+              "reasoning_tokens": 7,
+              "total_tokens": 1899
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 815,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 836,
+              "prompt_tokens": 3312,
+              "reasoning_tokens": 21,
+              "total_tokens": 4148
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "stop",
+            "non_reasoning_tokens": 255,
+            "output_cap_reached": false,
+            "usage": {
+              "completion_tokens": 256,
+              "prompt_tokens": 2939,
+              "reasoning_tokens": 1,
+              "total_tokens": 3195
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 21.943479,
+        "exhausted": false,
+        "model_calls": 4,
+        "reason": null
+      },
+      "primary_logical_request_ids_source_backed": [
+        "logical-00000001",
+        "logical-00000003"
+      ],
+      "purpose_attribution_limit": "Metadata events do not contain a request-purpose field; primary versus auxiliary IDs are source/native-attempt review labels, not native event labels.",
+      "responses": [
+        {
+          "logical_request_id": "logical-00000001",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 951,
+            "prompt_tokens": 1133,
+            "reasoning_tokens": 6,
+            "total_tokens": 2084
+          },
+          "derived_non_reasoning_tokens": 945,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000002",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 276,
+            "prompt_tokens": 1623,
+            "reasoning_tokens": 7,
+            "total_tokens": 1899
+          },
+          "derived_non_reasoning_tokens": 269,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000003",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 836,
+            "prompt_tokens": 3312,
+            "reasoning_tokens": 21,
+            "total_tokens": 4148
+          },
+          "derived_non_reasoning_tokens": 815,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000004",
+          "http_status": 200,
+          "finish_reason": "stop",
+          "usage": {
+            "completion_tokens": 256,
+            "prompt_tokens": 2939,
+            "reasoning_tokens": 1,
+            "total_tokens": 3195
+          },
+          "derived_non_reasoning_tokens": 255,
+          "visible_tokens": null
+        }
+      ],
+      "result": "jobs/low-unset/aider/result.json",
+      "events": "jobs/low-unset/aider/requests.jsonl",
+      "starter_code_sha256": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+      "final_code_sha256": "3d7e45bfbddf796adea9550c7ac5bb3e5a84546924c948e5dc661c18e5c2b62d",
+      "edit_applied": true
+    },
+    {
+      "id": "max-budget-2",
+      "reasoning_effort": "max",
+      "thinking_budget_tokens": 8192,
+      "summary": {
+        "graded": 1,
+        "resolve_rate": 0.0,
+        "resolved": 0,
+        "selected": 1
+      },
+      "test_outcomes": [
+        false,
+        false
+      ],
+      "request_accounting": {
+        "errors": 0,
+        "pending": 0,
+        "responses": 2,
+        "schema": "anvil-serving.aider-request-accounting/v1",
+        "started": 2,
+        "status": "complete"
+      },
+      "output_budget": {
+        "classification": "budget_exhausted",
+        "configured_output_cap_tokens": 16384,
+        "responses": [
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 8191,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 1133,
+              "reasoning_tokens": 8193,
+              "total_tokens": 17517
+            },
+            "visible_tokens": null
+          },
+          {
+            "finish_reason": "length",
+            "non_reasoning_tokens": 8191,
+            "output_cap_reached": true,
+            "usage": {
+              "completion_tokens": 16384,
+              "prompt_tokens": 9645,
+              "reasoning_tokens": 8193,
+              "total_tokens": 26029
+            },
+            "visible_tokens": null
+          }
+        ],
+        "scope": "response_generation_limit"
+      },
+      "whole_job_budget": {
+        "configured": {
+          "deadline_s": 600,
+          "max_completion_tokens": 16384,
+          "max_model_calls": 12,
+          "max_retries": 0,
+          "min_free_disk_bytes": 21474836480
+        },
+        "elapsed_s": 170.490488,
+        "exhausted": false,
+        "model_calls": 2,
+        "reason": null
+      },
+      "primary_logical_request_ids_source_backed": [
+        "logical-00000001",
+        "logical-00000002"
+      ],
+      "purpose_attribution_limit": "Metadata events do not contain a request-purpose field; primary versus auxiliary IDs are source/native-attempt review labels, not native event labels.",
+      "responses": [
+        {
+          "logical_request_id": "logical-00000001",
+          "http_status": 200,
+          "finish_reason": "length",
+          "usage": {
+            "completion_tokens": 16384,
+            "prompt_tokens": 1133,
+            "reasoning_tokens": 8193,
+            "total_tokens": 17517
+          },
+          "derived_non_reasoning_tokens": 8191,
+          "visible_tokens": null
+        },
+        {
+          "logical_request_id": "logical-00000002",
+          "http_status": 200,
+          "finish_reason": "length",
+          "usage": {
+            "completion_tokens": 16384,
+            "prompt_tokens": 9645,
+            "reasoning_tokens": 8193,
+            "total_tokens": 26029
+          },
+          "derived_non_reasoning_tokens": 8191,
+          "visible_tokens": null
+        }
+      ],
+      "result": "jobs/max-budget-2/aider/result.json",
+      "events": "jobs/max-budget-2/aider/requests.jsonl",
+      "starter_code_sha256": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+      "final_code_sha256": "af5b106d430661ed1a9fc8594684124d6d857c2a1e16f872c6344ee46e47170a",
+      "edit_applied": false
+    }
+  ],
+  "transport_totals": {
+    "responses": 10,
+    "prompt_tokens": 31652,
+    "completion_tokens": 56581,
+    "reasoning_tokens": 33839
+  },
+  "unique_tasks": 1,
+  "results_by_control": {
+    "max_budget_8192": {
+      "selected": 2,
+      "resolved": 1
+    },
+    "low_unset": {
+      "selected": 1,
+      "resolved": 1
+    }
+  },
+  "historical_population": "Separate four-job Max/Low matrix used a different engine image; no causal quality/performance comparison."
+}

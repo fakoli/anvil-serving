@@ -1,0 +1,38 @@
+{
+  "observed_at": "2026-11-03T14:49:07.768116+00:00",
+  "failed_profile": "qat-nospec160k-vision",
+  "successful_pair": "qat-text160k",
+  "observed_error": "bf16 linear: unsupported shape",
+  "failed_stage": "finalizing target",
+  "exit_code": 1,
+  "oom_killed": false,
+  "matched_change": "Remove --vision; serving identity and descriptive metadata also renamed; same pinned artifact/image/context/KV/concurrency/output/host-memory policy.",
+  "source_evidence": [
+    {
+      "url": "[private operator or asset text withheld]",
+      "file": "src-bf16-dispatch.cpp",
+      "source_path": "src/ops/linear/bf16/bf16_dispatch.cpp",
+      "git_blob_sha": "[private fingerprint withheld]",
+      "sha256": "[private fingerprint withheld]"
+    },
+    {
+      "url": "[private operator or asset text withheld]",
+      "file": "src-bf16-shapes.h",
+      "source_path": "src/ops/linear/bf16/bf16_shapes.h",
+      "git_blob_sha": "[private fingerprint withheld]",
+      "sha256": "[private fingerprint withheld]"
+    },
+    {
+      "url": "[private operator or asset text withheld]",
+      "file": "src-vision-bindings.cpp",
+      "source_path": "[private operator or asset text withheld]",
+      "git_blob_sha": "[private fingerprint withheld]",
+      "sha256": "[private fingerprint withheld]"
+    }
+  ],
+  "source_supported_diagnosis": "Pinned BF16 dispatch only accepts(N,K)=(14336,5120),(5120,6144),(256,5120). Observed vision-enabled failure and text-only startup success localize compatibility failure to enabled vision path.",
+  "uncertain": "Exact tensor name and dimensions absent from runtime error; no claim of a particular tensor or generic all-model vision defect.",
+  "host_admission": "First text-only attempt refused Windows reserve before container creation; after managed idle cache reclaim21.5GB->0.3GB, unchanged limits admitted it.",
+  "higher_level_symptom": "Memory-containment-unavailable followed process exit; it is not the engine root cause.",
+  "qualification": "Vision rejected; no image requests ran. Text-only coding passed123/123; context remains active."
+}

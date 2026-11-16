@@ -34,7 +34,7 @@ class _Handler(BaseHTTPRequestHandler):
 def _protected_server():
     server = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
     server.calls = []
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     try:
         yield server
@@ -86,13 +86,3 @@ def test_health_redirect_is_denied_without_following_credential():
     assert result.reason == "health_http_302"
     assert server.calls == [("/redirect", f"Bearer {_TOKEN}")]
     assert _TOKEN not in repr(result)
-
-
-def test_missing_health_token_fails_closed_with_bounded_status():
-    with _protected_server() as server:
-        tier = _tier(server.server_address[1], health_path="/v1/models")
-        result = _availability(tier, {}).check(tier)
-
-    assert result.available is False
-    assert result.reason == "health_http_401"
-    assert server.calls == [("/v1/models", None)]

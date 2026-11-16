@@ -33,6 +33,7 @@ from ..workloads import (
     WorkloadErrorCode,
     WorkloadOwner,
     WorkloadQuery,
+    canonical_workload_query,
     fleet_result_from_dict,
     node_result_from_dict,
 )
@@ -146,18 +147,6 @@ def _budgeted_opener(
         return _BudgetedResponse(response, budget)
 
     return open_request
-
-
-def _canonical_query(query: WorkloadQuery) -> WorkloadQuery:
-    return WorkloadQuery(
-        owner=query.owner,
-        kind=query.kind,
-        state=query.state,
-        host=query.host,
-        active_only=query.active_only,
-        recent_seconds=query.recent_seconds,
-        limit=query.limit,
-    )
 
 
 def _failed(
@@ -315,7 +304,7 @@ def read_controller_workloads(
 ) -> NodeResult:
     """Read one expected-node controller workload snapshot with one absolute budget."""
     baseline = build_node_workloads(host, query, now, {})
-    checked_query = _canonical_query(query)
+    checked_query = canonical_workload_query(query)
     collected = baseline.collection_timestamp
     if checked_query.host is not None and checked_query.host != host:
         return normalize_node_workloads(host, checked_query, collected, None)
@@ -372,7 +361,7 @@ def read_controller_fleet_workloads(
             or type(now) is not datetime
         ):
             raise _fleet_failure(WorkloadErrorCode.INVALID)
-        checked_query = _canonical_query(query)
+        checked_query = canonical_workload_query(query)
         receipt = build_node_workloads(expected_node, checked_query, now, {}).collection_timestamp
     except WorkloadError as error:
         code = error.code if type(error.code) is WorkloadErrorCode else WorkloadErrorCode.INVALID

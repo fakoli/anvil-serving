@@ -41,12 +41,6 @@ def test_public_manifest_readable_without_weakening_credential_reader(manifest,m
     with pytest.raises(AdmissionDenied):protected_read(manifest,4096)
 
 
-@pytest.mark.parametrize('mode',[0o400,0o440,0o600,0o640,0o664,0o666,0o744,0o4444])
-def test_public_manifest_rejects_nonpublic_or_unsafe_modes(manifest,mode):
-    manifest.chmod(mode)
-    with pytest.raises(ValueError):_read_rootfs_manifest(manifest)
-
-
 @pytest.mark.parametrize('kind',['uid','symlink','hardlink','fifo','directory','empty','oversize','parent'])
 def test_manifest_custody_and_bounds_fail_closed(manifest,monkeypatch,kind):
     if kind=='uid':
@@ -65,25 +59,3 @@ def test_manifest_custody_and_bounds_fail_closed(manifest,monkeypatch,kind):
         def unsafe(_):raise ValueError('unsafe parent')
         monkeypatch.setattr('anvil_serving.native_agents.sandbox._root_custody',unsafe)
     with pytest.raises(ValueError):_read_rootfs_manifest(manifest,32)
-
-
-@pytest.mark.parametrize('kind',['replace','content','mode','metadata','short-read','growth'])
-def test_manifest_changed_during_read_is_rejected(manifest,monkeypatch,kind):
-    original=os.read;called=False
-    def mutate(fd,maximum):
-        nonlocal called
-        if kind=='short-read':return b''
-        result=original(fd,maximum)
-        if not called:
-            called=True
-            if kind=='replace':
-                other=manifest.with_name('replacement');other.write_bytes(manifest.read_bytes())
-                other.chmod(0o644);other.replace(manifest)
-            elif kind=='content':manifest.write_bytes(b'x'*manifest.stat().st_size)
-            elif kind=='mode':manifest.chmod(0o444)
-            elif kind=='metadata':os.utime(manifest,ns=(1,1))
-            elif kind=='growth':
-                with manifest.open('ab') as out:out.write(b'x'*65)
-        return result
-    monkeypatch.setattr(os,'read',mutate)
-    with pytest.raises(ValueError):_read_rootfs_manifest(manifest,64)

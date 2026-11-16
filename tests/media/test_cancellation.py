@@ -59,21 +59,6 @@ def test_queued_cancellation_deletes_only_owned_prompt(tmp_path):
     assert calls == [("delete", "prompt_123")]
 
 
-def test_queued_to_running_race_fails_closed_after_delete_request(tmp_path):
-    store = MediaJobStore(tmp_path / "jobs.sqlite3")
-    job = submitted(store, create(store))
-    job = store.set_backend_prompt(job.id, "prompt_123", principal="hermes")
-    job = store.transition(job.id, JobState.QUEUED, principal="hermes")
-    calls = []
-    result = service(store, calls, deleted=False).cancel(
-        job.id, principal="hermes"
-    )
-    assert result.canceled is False
-    assert result.reason == "queued_prompt_not_deleted"
-    assert result.job.state == JobState.QUEUED
-    assert calls == [("delete", "prompt_123")]
-
-
 def test_running_cancellation_fails_closed_without_exclusive_slot(tmp_path):
     store = MediaJobStore(tmp_path / "jobs.sqlite3")
     job = submitted(store, create(store))

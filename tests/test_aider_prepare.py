@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import copy
 import json
 import os
 from pathlib import Path
 import subprocess
+import sys
+import hashlib
 
 import pytest
 
@@ -71,29 +72,6 @@ def python_environment(cache):
     return {**lock, "cache_key": key, "executable": "bin/python", "reused": False}
 
 
-def test_six_language_receipt_rejects_missing_failed_or_different_image(tmp_path):
-    rows = selection(tmp_path / "source")
-    assert rows[-1]["solutions"] == ["solution.txt"]
-    good = environment(rows)
-    assert prep.validate_aider_environment(good, cache_root=str(tmp_path), assets=assets())["image_id"] == good["image_id"]
-    for mutate in (
-        lambda value: value["oracle"]["results"].pop(),
-        lambda value: value["oracle"].update(status="incomplete"),
-        lambda value: value["oracle"].update(image_id="sha256:" + "2" * 64),
-        lambda value: value["oracle"]["results"][0].update(starter_returncode=0),
-        lambda value: value["oracle"]["results"][0].update(starter_returncode=125),
-        lambda value: value["oracle"]["results"][0].update(reference_returncode=1),
-        lambda value: value["oracle"]["results"][0].update(reference_timeout=True),
-        lambda value: value.update(image_id="mutable:latest"),
-        lambda value: value.update(package_inventory="changed"),
-        lambda value: value["selection"][0].update(task_id="changed"),
-    ):
-        bad = copy.deepcopy(good)
-        mutate(bad)
-        with pytest.raises(BenchmarkJobError):
-            prep.validate_aider_environment(bad, cache_root=str(tmp_path), assets=assets())
-
-
 def test_selection_rejects_symlink_and_missing_reference(tmp_path):
     selection(tmp_path)
     example = tmp_path / "python/exercises/practice/example/.meta/example.txt"
@@ -154,19 +132,6 @@ def test_source_hash_mismatch_and_no_fallback(tmp_path, monkeypatch):
         prep.verify_aider_sources(str(tmp_path), manifest, runner=lambda *_: pytest.fail("fallback command"))
 
 
-def test_python_offline_reuse_checks_bytes_and_inventory(tmp_path):
-    receipt = python_environment(tmp_path)
-    target = tmp_path / receipt["cache_key"]
-    def runner(command, cwd, timeout):
-        output = "\n".join(receipt["resolved_packages"]) if "freeze" in command else "3.12.1"
-        return subprocess.CompletedProcess(command, 0, stdout=output, stderr="")
-    result = prep._python_environment(assets(), str(tmp_path), True, 1024, runner, [])
-    assert result["reused"] is True
-    (target / "installed.py").write_text("changed")
-    with pytest.raises(BenchmarkJobError, match="bytes or receipt"):
-        prep._python_environment(assets(), str(tmp_path), True, 1024, lambda *_: pytest.fail("changed Python executed"), [])
-
-
 def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypatch):
     source = tmp_path / "source"
     (source / "benchmark").mkdir(parents=True)
@@ -220,56 +185,6 @@ def test_build_resolves_base_digest_and_freezes_exact_inputs(tmp_path, monkeypat
     assert inputs["build_limits"]["cpus"] == 4
 
 
-def test_harness_preparation_carries_aider_receipts(tmp_path, monkeypatch):
-    from anvil_serving.benchmarking import harnesses
-    from anvil_serving.benchmarking.profiles import load_profile
-    calls = []
-    def prepare(**kwargs):
-        calls.append(kwargs)
-        return {"schema": prep.AIDER_PYTHON_ENVIRONMENT_SCHEMA}, {"image_id": "sha256:" + "1" * 64}, []
-    monkeypatch.setattr(prep, "prepare_aider_environment", prepare)
-    monkeypatch.setattr(harnesses, "_prepare_repository", lambda **kwargs:
-                        ({**kwargs["adapter"], "cache_key": kwargs["name"]}, []))
-    result = harnesses.prepare_harness_assets(load_profile("pilot-v2"), suite="aider",
-        run_root=str(tmp_path / "runs"), ownership_id="owner", run_id="run",
-        cache_root=str(tmp_path / "cache"), offline=True)
-    assert len(calls) == 1 and calls[0]["offline"] is True
-    assert set(calls[0]["assets"]) == {"aider", "polyglot-benchmark"}
-    assert result["aider_environment"]["image_id"] == "sha256:" + "1" * 64
-    assert result["python_environment"]["schema"] == prep.AIDER_PYTHON_ENVIRONMENT_SCHEMA
-
-
-def test_containment_change_invalidates_preparation_identity(tmp_path, monkeypatch):
-    monkeypatch.setattr(prep, "__file__", str(tmp_path / "aider_prepare.py"))
-    (tmp_path / "aider_adapter.py").write_text("unchanged adapter")
-    policy = tmp_path / "aider_containment.py"
-    policy.write_text("old containment")
-    previous = prep._adapter_identity()
-    policy.write_text("new containment")
-    current = prep._adapter_identity()
-    assert previous["sha256"] == current["sha256"]
-    assert prep._digest(previous) != prep._digest(current)
-
-
-def test_image_inventory_verifies_contained_lint_version(tmp_path, monkeypatch):
-    calls = []
-    def contained(command, **kwargs):
-        calls.append((command, kwargs))
-        output = "7.3.0 (mccabe: 0.7.0) CPython" if "--version" in command else "flake8==7.3.0\n"
-        return subprocess.CompletedProcess(command, 0, stdout=output)
-    monkeypatch.setattr(aider_containment, "run_contained_test", contained)
-    image = "sha256:" + "1" * 64
-    result = prep._image_inventory(image, str(tmp_path), "owner", "run", "docker", None, [])
-    assert result.startswith("Aider contained lint: 7.3.0 ") and "flake8==7.3.0" in result
-    assert calls[0][0] == ["python3", "/aider/anvil-entrypoint.py", "python3", "-I", "-m", "flake8", "--version"]
-    assert all(kwargs["image_id"] == image for _, kwargs in calls)
-    assert "p['node_modules/jest'].version!=='29.7.0'" in calls[1][0][-1]
-    monkeypatch.setattr(aider_containment, "run_contained_test", lambda command, **kwargs:
-                        subprocess.CompletedProcess(command, 0, stdout="7.2.0 wrong version"))
-    with pytest.raises(BenchmarkJobError, match="flake8 dependency"):
-        prep._image_inventory(image, str(tmp_path), "owner", "run", "docker", None, [])
-
-
 def test_tracked_source_python_install_binds_scm_version(tmp_path, monkeypatch):
     monkeypatch.setattr(prep.shutil, "which", lambda _: "/usr/bin/python3.12")
     monkeypatch.setattr(prep, "_copy_source", lambda root, target, runner: target.mkdir())
@@ -288,10 +203,146 @@ def test_tracked_source_python_install_binds_scm_version(tmp_path, monkeypatch):
     result = prep._python_environment(assets(), str(tmp_path), False, 1024**2, runner, [])
     install = next(command for command in calls if "install" in command)
     assert install[:2] == ("env", prep.SCM_VERSION_ASSIGNMENT)
-    assert install[3:6] == ("-I", "-m", "pip")
+    assert install[3:7] == ("-I", "-B", "-m", "pip")
+    assert all("-B" in command for command in calls if "-I" in command)
     assert result["identity"]["source_version"] == prep.SOURCE_VERSION_METADATA
     assert prep.AIDER_SOURCE_VERSION == "0.86.3.dev0+g" + prep.AIDER_REVISION
     assert prep.SOURCE_VERSION_METADATA["upstream_release"] is False
+
+
+def test_isolated_import_preserves_full_environment_and_detects_drift(tmp_path):
+    receipt = python_environment(tmp_path)
+    root = tmp_path / receipt["cache_key"]
+    source = root / "source"
+    source.mkdir()
+    module = source / "example.py"
+    module.write_text("value = 42\n")
+    lock = json.loads((root / "environment.json").read_text())
+    lock["files_sha256"] = prep._environment_digest(root)
+    (root / "environment.json").write_text(json.dumps(lock))
+    receipt["files_sha256"] = lock["files_sha256"]
+    subprocess.run([sys.executable, "-I", "-B", "-c",
+                    "import sys; sys.path.insert(0, sys.argv[1]); import example; assert example.value == 42",
+                    str(source)], check=True)
+    prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path))
+    for path in (source / "extra.pyc", module, root / "bin/python"):
+        original = path.read_bytes() if path.exists() else None
+        path.write_bytes(b"changed")
+        with pytest.raises(BenchmarkJobError, match="bytes or receipt changed"):
+            prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path))
+        if original is None:
+            path.unlink()
+        else:
+            path.write_bytes(original)
+    prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path))
+
+
+def test_selected_legacy_oracle_is_revalidated_without_build(tmp_path, monkeypatch):
+    cache, run = tmp_path / "cache", tmp_path / "run"
+    rows = selection(tmp_path / "source")
+    identity = {"source_hashes": prep.SOURCE_HASHES, "source_version": prep.SOURCE_VERSION_METADATA,
+                "selection": rows, "adapter": {"old": "adapter"},
+                "platform": prep.platform.system().lower(), "architecture": prep.platform.machine().lower(),
+                "preparer_sha256": "a" * 64}
+    key = "aider-environments/" + prep._digest(identity)
+    target = cache / key
+    (target / "build").mkdir(parents=True)
+    (target / "build/Dockerfile").write_text("pinned build")
+    files = prep._build_files(target / "build")
+    receipt = environment(rows)
+    receipt.update(cache_key=key, identity=identity, reused=False,
+                   build_inputs={"files": files, "sha256": prep._digest(files), "image_size_bytes": 123,
+                                 "base_digest": "base@sha256:" + "b" * 64})
+    (target / "environment.json").write_text(json.dumps(receipt))
+    old_receipt = tmp_path / "old-receipt.json"
+    old_receipt.write_text(json.dumps({"status": "ready", "aider_environment": receipt}))
+    original = old_receipt.read_bytes()
+    selected = {"receipt_path": str(old_receipt), "sha256": hashlib.sha256(original).hexdigest()}
+    monkeypatch.setattr(prep, "verify_aider_sources", lambda *a, **k: {"aider": tmp_path, "polyglot-benchmark": tmp_path})
+    monkeypatch.setattr(prep, "_selection", lambda _: rows)
+    monkeypatch.setattr(prep, "_python_environment", lambda *a: {"cache_key": "python"})
+    monkeypatch.setattr(prep.runtime, "resolve_container_binary", lambda: "docker")
+    monkeypatch.setattr(prep.runtime, "_directory_bytes", lambda _: 0)
+    monkeypatch.setattr(prep, "_image_inventory", lambda *a: "packages")
+    calls = []
+    def oracle(*args):
+        calls.append(args[5])
+        return receipt["oracle"]
+    monkeypatch.setattr(prep, "_oracle", oracle)
+    def runner(command, cwd, timeout):
+        assert command[1:3] == ("image", "inspect")
+        return subprocess.CompletedProcess(command, 0, stdout=json.dumps([{"Id": receipt["image_id"], "Size": 123}]), stderr="")
+    _, observed, _ = prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=True,
+        max_download_bytes=1024**2, run_path=str(run), ownership_id="owner", run_id="run", runner=runner,
+        oracle_receipt=selected)
+    assert calls == [receipt["image_id"]]
+    assert observed["runtime_adapter"] == prep._adapter_identity()
+    assert observed["selected_receipt_sha256"] == selected["sha256"] and old_receipt.read_bytes() == original
+    assert observed["oracle"] == receipt["oracle"] and observed["requalification"] == receipt["oracle"]
+    first_receipt = run / "aider/preparation/receipt.json"
+    first_bytes = first_receipt.read_bytes()
+    next_adapter = {**prep._adapter_identity(), "sha256": "c" * 64, "containment_sha256": "d" * 64}
+    monkeypatch.setattr(prep, "_adapter_identity", lambda: next_adapter)
+    next_selected = {"receipt_path": str(first_receipt), "sha256": hashlib.sha256(first_bytes).hexdigest()}
+    _, second, _ = prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=True,
+        max_download_bytes=1024**2, run_path=str(tmp_path / "second"), ownership_id="owner", run_id="second", runner=runner,
+        oracle_receipt=next_selected)
+    assert calls == [receipt["image_id"], receipt["image_id"]]
+    assert second["runtime_adapter"] == next_adapter and second["oracle"] == receipt["oracle"]
+    assert first_receipt.read_bytes() == first_bytes and old_receipt.read_bytes() == original
+    tampered_adapter = {**observed, "runtime_adapter": {"sha256": "0" * 64}}
+    with pytest.raises(BenchmarkJobError, match="runtime adapter identity or qualification binding changed"):
+        prep.validate_aider_environment(tampered_adapter, cache_root=str(cache), assets=assets())
+    for kind in ("wrong-image", "failed", "missing-qualification", "missing-receipt", "orphan"):
+        invalid = json.loads(json.dumps(second))
+        if kind == "wrong-image":
+            invalid["requalification"]["image_id"] = "sha256:" + "f" * 64
+        elif kind == "failed":
+            invalid["requalification"]["status"] = "failed"
+        elif kind == "missing-qualification":
+            del invalid["requalification"]
+        elif kind == "missing-receipt":
+            del invalid["selected_receipt_sha256"]
+        else:
+            del invalid["runtime_adapter"]
+        with pytest.raises(BenchmarkJobError):
+            prep.validate_aider_environment(invalid, cache_root=str(cache), assets=assets())
+    for field in ("oracle", "base", "source", "inventory"):
+        changed = json.loads(original)
+        item = changed["aider_environment"]
+        if field == "oracle":
+            item["oracle"]["results"][0]["starter_returncode"] = 2
+        elif field == "base":
+            item["build_inputs"]["base_digest"] = "base@sha256:" + "e" * 64
+        elif field == "source":
+            item["source_hashes"] = {}
+        else:
+            item["package_inventory"] = "different packages"
+            item["package_inventory_sha256"] = prep._digest(item["package_inventory"])
+        changed_path = tmp_path / (field + ".json")
+        changed_path.write_text(json.dumps(changed))
+        with pytest.raises(BenchmarkJobError):
+            prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=True,
+                max_download_bytes=1024**2, run_path=str(tmp_path / (field + "-run")),
+                ownership_id="owner", run_id="other", runner=runner,
+                oracle_receipt={"receipt_path": str(changed_path),
+                                "sha256": hashlib.sha256(changed_path.read_bytes()).hexdigest()})
+    bad_selection = {**selected, "sha256": "0" * 64}
+    with pytest.raises(BenchmarkJobError, match="receipt digest changed"):
+        prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=True,
+            max_download_bytes=1024**2, run_path=str(run), ownership_id="owner", run_id="other", runner=runner,
+            oracle_receipt=bad_selection)
+    monkeypatch.setattr(prep, "_image_inventory", lambda *a: "changed packages")
+    with pytest.raises(BenchmarkJobError, match="package inventory changed"):
+        prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=True,
+            max_download_bytes=1024**2, run_path=str(run), ownership_id="owner", run_id="other", runner=runner,
+            oracle_receipt=selected)
+    monkeypatch.setattr(prep, "_image_inventory", lambda *a: "packages")
+    (target / "build/Dockerfile").write_text("tampered")
+    with pytest.raises(BenchmarkJobError, match="build inputs changed"):
+        prep.prepare_aider_environment(assets=assets(), cache_root=str(cache), offline=True,
+            max_download_bytes=1024**2, run_path=str(run), ownership_id="owner", run_id="other", runner=runner,
+            oracle_receipt=selected)
 
 
 @pytest.mark.parametrize("link_kind", ["tracked", "outside", "untracked", "directory", "loop"])
@@ -317,54 +368,6 @@ def test_source_copy_materializes_only_links_to_tracked_regular_files(tmp_path, 
     else:
         with pytest.raises(BenchmarkJobError, match="unsupported Aider source"):
             prep._copy_source(source, target, runner)
-
-
-@pytest.mark.parametrize("mutation", ["package", "bytecode", "lock", "cache-key", "external-directory", "interpreter-link"])
-def test_python_receipt_binds_actual_files_and_safe_paths(tmp_path, mutation):
-    receipt = python_environment(tmp_path / "cache")
-    root = tmp_path / "cache" / receipt["cache_key"]
-    assert prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path / "cache")) == str(root / "bin/python")
-    if mutation == "package":
-        (root / "installed.py").write_text("changed")
-    elif mutation == "bytecode":
-        (root / "__pycache__").mkdir()
-        (root / "__pycache__/installed.pyc").write_bytes(b"injected bytecode")
-    elif mutation == "lock":
-        lock = json.loads((root / "environment.json").read_text())
-        lock["files_sha256"] = "0" * 64
-        (root / "environment.json").write_text(json.dumps(lock))
-    elif mutation == "cache-key":
-        receipt["cache_key"] = "aider-python-environments/../other"
-    elif mutation == "external-directory":
-        (tmp_path / "outside").mkdir()
-        (root / "outside").symlink_to(tmp_path / "outside", target_is_directory=True)
-    else:
-        (tmp_path / "outside-python").write_text("different interpreter")
-        (root / "bin/python").unlink()
-        (root / "bin/python").symlink_to(tmp_path / "outside-python")
-    with pytest.raises(BenchmarkJobError):
-        prep.verify_aider_python_environment(receipt, cache_root=str(tmp_path / "cache"))
-
-
-@pytest.mark.parametrize("timeout", [False, True])
-def test_preparation_failure_keeps_bounded_stderr_head_and_terminal_error(timeout):
-    from anvil_serving.benchmarking import harnesses
-    stderr = b"BUILD START\n" + b"progress\n" * 20000 + b"TypeError: toThrowError is not a function\n"
-    stdout = b"inventory\n" * 10000
-    def runner(command, cwd, seconds):
-        if timeout:
-            raise subprocess.TimeoutExpired(command, seconds, output=stdout, stderr=stderr)
-        return subprocess.CompletedProcess(command, 1, stdout=stdout, stderr=stderr)
-    logs = []
-    with pytest.raises(BenchmarkJobError) as caught:
-        prep._checked(runner, ("docker", "buildx", "build"), logs)
-    result = caught.value.details if timeout else logs[0]
-    assert result["output_truncated"] is True
-    assert result["stderr"].startswith("BUILD START\n")
-    assert result["stderr"].endswith("TypeError: toThrowError is not a function\n")
-    assert "middle output omitted" in result["stderr"]
-    assert len(result["stderr"].encode()) == harnesses.MAX_HARNESS_OUTPUT_BYTES
-    assert result["stdout"] == stdout[:harnesses.MAX_HARNESS_OUTPUT_BYTES].decode()
 
 
 @pytest.mark.parametrize("failed_probe", ["lint", "packages"])

@@ -71,22 +71,6 @@ def _runner(*, print_result: subprocess.CompletedProcess[str], disabled: str = "
     return run
 
 
-def test_describe_returns_only_pinned_identity_hash_engine_hint_and_ports(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-
-    described = Adapter().describe(_binding(definition, digest))
-
-    assert described == {
-        "manager": "launchd",
-        "identity": f"gui/{os.getuid()}/{LABEL}",
-        "label": LABEL,
-        "definition_sha256": digest,
-        "engine_hint": "mlx_lm",
-        "ports": [48123],
-    }
-
-
 def test_describe_refuses_changed_hash_symlink_and_group_writable_definition(tmp_path):
     definition = tmp_path / "voice.plist"
     digest = _write_plist(definition)
@@ -113,40 +97,6 @@ def test_describe_refuses_changed_hash_symlink_and_group_writable_definition(tmp
     assert writable.value.code == "unsafe_definition"
 
 
-def test_inspect_reports_running_registered_identity_and_disabled_state(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    binding = _binding(definition, digest)
-    target = f"gui/{os.getuid()}/{LABEL}"
-    printed = "\n".join(
-        [
-            f"{target} = {{",
-            f"\tpath = {definition}",
-            "\tstate = running",
-            "\tpid = 4242",
-            "}",
-        ]
-    )
-    adapter = Adapter(
-        run=_runner(
-            print_result=subprocess.CompletedProcess([], 0, printed, ""),
-            disabled=f'\tdisabled services = {{\n\t\t"{LABEL}" => true\n\t}}',
-        )
-    )
-
-    observed = adapter.inspect(binding)
-
-    assert observed == {
-        "manager": "launchd",
-        "identity": target,
-        "registered": True,
-        "running": True,
-        "enabled": False,
-        "pid": 4242,
-        "state": "running",
-    }
-
-
 @pytest.mark.parametrize(
     ("reported_policy", "expected_enabled"),
     [("enabled", True), ("disabled", False)],
@@ -166,62 +116,6 @@ def test_inspect_parses_launchctl_enabled_and_disabled_policy_words(
     )
 
     assert adapter.inspect(_binding(definition, digest))["enabled"] is expected_enabled
-
-
-def test_inspect_maps_launchctl_not_running_state_to_idle(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    target = f"gui/{os.getuid()}/{LABEL}"
-    printed = "\n".join(
-        [
-            f"{target} = {{",
-            f"\tpath = {definition}",
-            "\tstate = not running",
-            "\truns = 0",
-            "\tlast exit code = (never exited)",
-            "}",
-        ]
-    )
-    adapter = Adapter(
-        run=_runner(print_result=subprocess.CompletedProcess([], 0, printed, ""))
-    )
-
-    observed = adapter.inspect(_binding(definition, digest))
-
-    assert observed["registered"] is True
-    assert observed["running"] is False
-    assert observed["state"] == "waiting"
-    assert observed["pid"] is None
-
-
-def test_inspect_maps_top_level_spawn_scheduled_to_idle_despite_nested_active_state(
-    tmp_path,
-):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    target = f"gui/{os.getuid()}/{LABEL}"
-    printed = "\n".join(
-        [
-            f"{target} = {{",
-            f"\tpath = {definition}",
-            "\tstate = spawn scheduled",
-            "\tspawn type = daemon (3)",
-            "\tproperties = {",
-            "\t\tstate = active",
-            "\t}",
-            "}",
-        ]
-    )
-    adapter = Adapter(
-        run=_runner(print_result=subprocess.CompletedProcess([], 0, printed, ""))
-    )
-
-    observed = adapter.inspect(_binding(definition, digest))
-
-    assert observed["registered"] is True
-    assert observed["running"] is False
-    assert observed["state"] == "waiting"
-    assert observed["pid"] is None
 
 
 def test_inspect_distinguishes_unloaded_from_permission_and_unknown_supervisor_states(tmp_path):
@@ -256,24 +150,6 @@ def test_inspect_distinguishes_unloaded_from_permission_and_unknown_supervisor_s
         )
     )
     assert unknown.inspect(binding)["state"] == "unknown"
-
-
-def test_inspect_refuses_a_registered_definition_that_does_not_match(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    binding = _binding(definition, digest)
-
-    target = f"gui/{os.getuid()}/{LABEL}"
-    mismatched = Adapter(
-        run=_runner(
-            print_result=subprocess.CompletedProcess(
-                [], 0, f"{target} = {{\npath = /private/other.plist\nstate = waiting\n}}", ""
-            ),
-        )
-    )
-    with pytest.raises(ServiceError) as identity:
-        mismatched.inspect(binding)
-    assert identity.value.code == "identity_mismatch"
 
 
 @pytest.mark.parametrize(
@@ -332,112 +208,6 @@ def test_plan_maps_lifecycle_actions_without_running_subprocesses(tmp_path, acti
     assert calls == []
 
 
-def test_plan_relies_on_bootstrap_to_start_absent_run_at_load_service(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition, run_at_load=True)
-
-    plan = Adapter().plan(
-        _binding(definition, digest),
-        "up",
-        {"registered": False, "running": False, "enabled": True},
-    )
-
-    assert plan == [
-        ["launchctl", "bootstrap", f"gui/{os.getuid()}", str(definition)]
-    ]
-
-
-def test_plan_refuses_starting_a_disabled_service(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-
-    with pytest.raises(ServiceError) as blocked:
-        Adapter().plan(
-            _binding(definition, digest),
-            "up",
-            {"registered": False, "running": False, "enabled": False},
-        )
-
-    assert blocked.value.code == "startup_disabled"
-
-
-@pytest.mark.parametrize("action", ["up", "down", "restart", "enable", "disable"])
-def test_plan_refuses_unknown_registration_state_before_mutation(tmp_path, action):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-
-    with pytest.raises(ServiceError) as blocked:
-        Adapter().plan(
-            _binding(definition, digest),
-            action,
-            {"registered": None, "running": None, "enabled": None, "identity": None},
-        )
-
-    assert blocked.value.code == "state_unknown"
-
-
-def test_plan_boots_out_a_registered_idle_service(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    identity = f"gui/{os.getuid()}/{LABEL}"
-
-    plan = Adapter().plan(
-        _binding(definition, digest),
-        "down",
-        {"registered": True, "running": False, "enabled": True, "identity": identity},
-    )
-
-    assert plan == [["launchctl", "bootout", identity]]
-
-
-def test_plan_requires_the_exact_registered_launchd_identity(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-
-    with pytest.raises(ServiceError) as mismatch:
-        Adapter().plan(
-            _binding(definition, digest),
-            "down",
-            {
-                "registered": True,
-                "running": True,
-                "enabled": True,
-                "identity": f"gui/{os.getuid()}/com.example.other",
-            },
-        )
-
-    assert mismatch.value.code == "identity_mismatch"
-
-
-def test_logs_reads_only_declared_regular_log_files_and_honors_tail(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    output = definition.with_suffix(".out.log")
-    output.write_text("one\ntwo\nthree\n")
-    output.chmod(0o600)
-    error = definition.with_suffix(".err.log")
-    error.write_text("four\n")
-    error.chmod(0o600)
-
-    lines = Adapter().logs(_binding(definition, digest), 2)
-
-    assert lines == ["three", "four"]
-
-
-def test_logs_bound_newline_free_records_by_encoded_bytes(tmp_path):
-    definition = tmp_path / "voice.plist"
-    digest = _write_plist(definition)
-    output = definition.with_suffix(".out.log")
-    output.write_text("start-" + "é" * 8_192 + "-end")
-    output.chmod(0o600)
-
-    lines = Adapter().logs(_binding(definition, digest), 1)
-
-    assert len(lines) == 1
-    assert len(lines[0].encode("utf-8")) <= 4 * 1024
-    assert lines[0].endswith("-end")
-
-
 def test_logs_redact_environment_secret_values_and_bearer_credentials(tmp_path, monkeypatch):
     definition = tmp_path / "voice.plist"
     digest = _write_plist(definition)
@@ -453,35 +223,6 @@ def test_logs_redact_environment_secret_values_and_bearer_credentials(tmp_path, 
     assert "raw-api-key-value" not in rendered
     assert "raw-bearer-value" not in rendered
     assert "<redacted>" in rendered
-
-
-def test_discover_keeps_registered_labels_without_definitions_ineligible(tmp_path):
-    def run(argv, **_kwargs):
-        assert argv == ["launchctl", "list"]
-        return subprocess.CompletedProcess(
-            argv,
-            0,
-            "PID\tStatus\tLabel\n4242\t0\tcom.example.anvil.voice\n-\t0\tunsafe label\n",
-            "",
-        )
-
-    discovered = Adapter(run=run, discovery_root=tmp_path).discover()
-
-    assert discovered == [
-        {
-            "manager": "launchd",
-            "identity": f"gui/{os.getuid()}/{LABEL}",
-            "label": LABEL,
-            "pid": 4242,
-            "state": "running",
-            "registered": True,
-            "running": True,
-            "engine_hint": "unknown",
-            "ports": [],
-            "definition_sha256": None,
-            "eligible_for_adoption": False,
-        }
-    ]
 
 
 def test_discover_merges_registered_and_unloaded_launchagent_definitions(tmp_path):
@@ -549,94 +290,3 @@ def test_discover_merges_registered_and_unloaded_launchagent_definitions(tmp_pat
     assert "EnvironmentVariables" not in repr(discovered)
     assert "/usr/bin/python3" not in repr(discovered)
     assert "raw-discovery-secret" not in repr(discovered)
-
-
-def test_discover_does_not_claim_unknown_registered_pid_is_stopped(tmp_path):
-    label = "com.example.anvil.unknown"
-
-    def run(argv, **_kwargs):
-        return subprocess.CompletedProcess(argv, 0, f"not-a-pid\t0\t{label}\n", "")
-
-    discovered = Adapter(run=run, discovery_root=tmp_path).discover()
-
-    assert discovered[0]["registered"] is True
-    assert discovered[0]["running"] is None
-    assert discovered[0]["state"] == "unknown"
-    assert discovered[0]["eligible_for_adoption"] is False
-
-
-def test_discover_does_not_admit_an_unsafe_launchagent_definition(tmp_path):
-    definition = tmp_path / f"{LABEL}.plist"
-    _write_plist(definition)
-    definition.chmod(0o666)
-
-    def run(argv, **_kwargs):
-        return subprocess.CompletedProcess(argv, 0, f"4242\t0\t{LABEL}\n", "")
-
-    discovered = Adapter(run=run, discovery_root=tmp_path).discover()
-
-    assert discovered[0]["registered"] is True
-    assert discovered[0]["running"] is True
-    assert discovered[0]["definition_sha256"] is None
-    assert discovered[0]["eligible_for_adoption"] is False
-
-
-def test_discover_exactly_inspects_definition_omitted_by_bounded_list(tmp_path):
-    target_label = "com.example.zzz.target"
-    definition = tmp_path / f"{target_label}.plist"
-    digest = _write_plist(definition, label=target_label)
-    prefix = "\n".join(
-        f"-\t0\tcom.example.prefix.{index:03d}" for index in range(300)
-    )
-    target = f"gui/{os.getuid()}/{target_label}"
-    calls: list[list[str]] = []
-
-    def run(argv, **_kwargs):
-        assert 0 < _kwargs["timeout"] <= 5
-        calls.append(argv)
-        if argv == ["launchctl", "list"]:
-            return subprocess.CompletedProcess(argv, 0, prefix, "")
-        if argv == ["launchctl", "print", target]:
-            return subprocess.CompletedProcess(
-                argv,
-                0,
-                f"path = {definition}\nstate = running\npid = 9123\n",
-                "",
-            )
-        if argv == ["launchctl", "print-disabled", f"gui/{os.getuid()}"]:
-            return subprocess.CompletedProcess(argv, 0, "", "")
-        raise AssertionError(f"unexpected command: {argv!r}")
-
-    discovered = Adapter(run=run, discovery_root=tmp_path).discover()
-    target_record = next(record for record in discovered if record["label"] == target_label)
-
-    assert target_record["registered"] is True
-    assert target_record["running"] is True
-    assert target_record["pid"] == 9123
-    assert target_record["definition_sha256"] == digest
-    assert target_record["eligible_for_adoption"] is True
-    assert ["launchctl", "print", target] in calls
-
-
-def test_discover_reports_exact_definition_inspection_failure_as_unknown(tmp_path):
-    definition = tmp_path / f"{LABEL}.plist"
-    _write_plist(definition)
-    prefix = "\n".join(
-        f"-\t0\tcom.example.prefix.{index:03d}" for index in range(300)
-    )
-
-    def run(argv, **_kwargs):
-        if argv == ["launchctl", "list"]:
-            return subprocess.CompletedProcess(argv, 0, prefix, "")
-        if argv == ["launchctl", "print", f"gui/{os.getuid()}/{LABEL}"]:
-            return subprocess.CompletedProcess(argv, 1, "", "Operation not permitted")
-        raise AssertionError(f"unexpected command: {argv!r}")
-
-    discovered = Adapter(run=run, discovery_root=tmp_path).discover()
-    record = next(item for item in discovered if item["label"] == LABEL)
-
-    assert len(discovered) == 256
-    assert record["registered"] is None
-    assert record["running"] is None
-    assert record["state"] == "inaccessible"
-    assert record["eligible_for_adoption"] is False

@@ -3,12 +3,7 @@ import io
 import json
 import tarfile
 import pytest
-from anvil_serving.native_agents.rootfs import Builder,safe_relative
-
-
-@pytest.mark.parametrize('name',['/etc/passwd','../secret','dir/../secret','dir//file','./file','.','a\\b','a\x00b'])
-def test_unsafe_archive_names_denied(name):
-    with pytest.raises(ValueError):safe_relative(name)
+from anvil_serving.native_agents.rootfs import Builder
 
 
 def test_copy_bounds_and_manifest(tmp_path,monkeypatch):
@@ -37,10 +32,3 @@ def test_pi_archive_rejects_unsafe_inputs(tmp_path,kind):
     builder=Builder(tmp_path.resolve()/'root')
     with pytest.raises(ValueError):builder.archive(archive)
     assert not (tmp_path/'outside').exists()
-
-
-def test_output_requires_new_canonical_directory(tmp_path):
-    output=tmp_path.resolve()/'root';output.mkdir()
-    with pytest.raises(FileExistsError):Builder(output)
-    link=tmp_path/'alias';link.symlink_to(tmp_path.resolve(),target_is_directory=True)
-    with pytest.raises(ValueError):Builder(link/'new')

@@ -1,0 +1,607 @@
+{
+  "schema": "anvil-serving.benchmark-decision-summary/v1",
+  "campaign_id": "2026-11-03-rtx5090-campaign",
+  "complete": true,
+  "completion_scope": "Retrospective publication of completed bounded tests; full serving comparison incomplete.",
+  "promotion_authorized": false,
+  "decision": "no-promotion",
+  "measured_hardware": "One RTX 5090; Windows with Docker Desktop Linux VM; direct online requests.",
+  "evidence_labels": [
+    "quality",
+    "functional",
+    "capacity"
+  ],
+  "headline_results": [
+    {
+      "configuration": "reference",
+      "pass_rate": 0.926829268292683,
+      "passed": 114,
+      "total": 123,
+      "whole_solution_pass_rate": 0.7142857142857143,
+      "whole_solutions_passed": 15,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 1427.2461999789812,
+      "sum_wall_s": 27.700565099949017,
+      "raw": "raw/reference-coding.json",
+      "grade": "raw/reference-coding-grade-final.json",
+      "configured_context_tokens": 163840,
+      "reasoning_policy": {
+        "chat_template_kwargs": null,
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "unsupported",
+        "control_requested": null,
+        "control_status": "unsupported",
+        "force_nonempty_content": false,
+        "mode": "unsupported",
+        "reasoning_effort": null,
+        "unsupported": true
+      }
+    },
+    {
+      "configuration": "historical-reference",
+      "pass_rate": 0.975609756097561,
+      "passed": 120,
+      "total": 123,
+      "whole_solution_pass_rate": 0.8571428571428571,
+      "whole_solutions_passed": 18,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 828.0849999864586,
+      "sum_wall_s": 16.151452000020072,
+      "raw": "raw/historical-reference-coding.json",
+      "grade": "raw/historical-reference-coding-grade-final.json",
+      "configured_context_tokens": 262144,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "ignis",
+      "pass_rate": 0.8536585365853658,
+      "passed": 105,
+      "total": 123,
+      "whole_solution_pass_rate": 0.7142857142857143,
+      "whole_solutions_passed": 15,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 584.9912999547087,
+      "sum_wall_s": 11.493347599811386,
+      "raw": "raw/ignis-coding.json",
+      "grade": "raw/ignis-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "ignis-l4-thinking",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 40668.942200019956,
+      "sum_wall_s": 668.1083365001832,
+      "raw": "raw/ignis-l4-thinking-coding.json",
+      "grade": "raw/ignis-l4-thinking-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": true
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": true
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "enabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "qat",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 3271.431399974972,
+      "sum_wall_s": 59.56589449988678,
+      "raw": "raw/qat-coding.json",
+      "grade": "raw/qat-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "coding-candidate",
+      "pass_rate": 0.975609756097561,
+      "passed": 120,
+      "total": 123,
+      "whole_solution_pass_rate": 0.8571428571428571,
+      "whole_solutions_passed": 18,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 3632.2714999550954,
+      "sum_wall_s": 65.45593599998392,
+      "raw": "raw/coding-candidate-coding.json",
+      "grade": "raw/coding-candidate-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "coding-candidate-df",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 870.4018000280485,
+      "sum_wall_s": 16.746998599905055,
+      "raw": "raw/coding-candidate-df-coding.json",
+      "grade": "raw/coding-candidate-df-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "reference-matched",
+      "pass_rate": 0.975609756097561,
+      "passed": 120,
+      "total": 123,
+      "whole_solution_pass_rate": 0.8571428571428571,
+      "whole_solutions_passed": 18,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 787.3106999904849,
+      "sum_wall_s": 15.374919700087048,
+      "raw": "raw/reference-matched-coding.json",
+      "grade": "raw/reference-matched-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "reference-matched-thinking",
+      "pass_rate": 0.8780487804878049,
+      "passed": 108,
+      "total": 123,
+      "whole_solution_pass_rate": 0.8571428571428571,
+      "whole_solutions_passed": 18,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 30641.862100048456,
+      "sum_wall_s": 614.5423083000351,
+      "failure_detail": "Three CSV attempts used whole12288 output budget in reasoning; no visible code. Other six task types passed.",
+      "raw": "raw/reference-matched-thinking-coding.json",
+      "grade": "raw/reference-matched-thinking-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": true
+        },
+        "control_evidence": "[private operator or asset text withheld]",
+        "control_evidence_sha256": "[private fingerprint withheld]",
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": true
+        },
+        "control_status": "verified",
+        "force_nonempty_content": false,
+        "mode": "enabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "reference-budget1024",
+      "pass_rate": 0.7804878048780488,
+      "passed": 96,
+      "total": 123,
+      "whole_solution_pass_rate": 0.7142857142857143,
+      "whole_solutions_passed": 15,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 5146.424599981401,
+      "sum_wall_s": 160.63367209996795,
+      "failure_detail": "LRU visible output includes reasoning prose and violates code-only contract; varint omits shift increment and fails3/10 cases per repetition.",
+      "raw": "raw/reference-budget1024-coding.json",
+      "grade": "raw/reference-budget1024-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": true
+        },
+        "control_evidence": "[private operator or asset text withheld]",
+        "control_evidence_sha256": "[private fingerprint withheld]",
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": true
+        },
+        "control_status": "verified",
+        "force_nonempty_content": false,
+        "mode": "enabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "qat-df",
+      "pass_rate": 0.975609756097561,
+      "passed": 120,
+      "total": 123,
+      "whole_solution_pass_rate": 0.8571428571428571,
+      "whole_solutions_passed": 18,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 754.1533000185154,
+      "sum_wall_s": 14.882241500134114,
+      "failure_detail": "Zero-capacity LRU stores a value; DF3 follow-up also failed separate CSV cases; restored no-spec control passed all123 cases.",
+      "raw": "raw/qat-df-coding.json",
+      "grade": "raw/qat-df-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": "[private operator or asset text withheld]",
+        "control_evidence_sha256": "[private fingerprint withheld]",
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "verified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "qat-draft3",
+      "pass_rate": 0.9512195121951219,
+      "passed": 117,
+      "total": 123,
+      "whole_solution_pass_rate": 0.8571428571428571,
+      "whole_solutions_passed": 18,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 1140.2350999996997,
+      "sum_wall_s": 23.004234100109898,
+      "failure_detail": "CSV quoted-field endings and trailing empty fields regress; LRU recovered. No larger-context qualification for this failed profile.",
+      "raw": "raw/qat-draft3-coding.json",
+      "grade": "raw/qat-draft3-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "qat-reverse",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 3286.2348000053316,
+      "sum_wall_s": 59.58293539995793,
+      "finding": "Original no-spec recipe restored123/123 afterDF7 scored120/123 andDF3 scored117/123.",
+      "raw": "raw/qat-reverse-coding.json",
+      "grade": "raw/qat-reverse-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "ignis-budget1024",
+      "pass_rate": 0.9024390243902439,
+      "passed": 111,
+      "total": 123,
+      "whole_solution_pass_rate": 0.7142857142857143,
+      "whole_solutions_passed": 15,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 4701.712600013707,
+      "sum_wall_s": 99.14507840009173,
+      "failure_detail": "Stable topological sort reselects an emitted zero-indegree node; zero-capacity LRU returns None instead of valid empty-cache result. Shorter reasoning plus loop-guard changes versus original profile; not isolated budget effect.",
+      "raw": "raw/ignis-budget1024-coding.json",
+      "grade": "raw/ignis-budget1024-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": true
+        },
+        "control_evidence": "[private operator or asset text withheld]",
+        "control_evidence_sha256": "[private fingerprint withheld]",
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": true
+        },
+        "control_status": "verified",
+        "force_nonempty_content": false,
+        "mode": "enabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "ignis-budget4096",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 16639.33510001516,
+      "sum_wall_s": 305.5002171001397,
+      "finding": "Recovered123/123 after1024-budget111/123; other recipe controls same as1024. Relative to original reasoning profile, budget/loopguard/switch policy differ.",
+      "raw": "raw/ignis-budget4096-coding.json",
+      "grade": "raw/ignis-budget4096-coding-grade-final.json",
+      "configured_context_tokens": 32768,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": true
+        },
+        "control_evidence": "[private operator or asset text withheld]",
+        "control_evidence_sha256": "[private fingerprint withheld]",
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": true
+        },
+        "control_status": "verified",
+        "force_nonempty_content": false,
+        "mode": "enabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "ignis-256k-vision",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 16591.057000041474,
+      "sum_wall_s": 305.18702039995696,
+      "finding": "All21 visible sources/finish/status identical to32Kbudget4096. Context/KV/vision configuration changed; this is a fresh profile qualification fixture.",
+      "raw": "raw/ignis-256k-vision-coding.json",
+      "grade": "raw/ignis-256k-vision-coding-grade-final.json",
+      "configured_context_tokens": 262144,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": true
+        },
+        "control_evidence": "[private operator or asset text withheld]",
+        "control_evidence_sha256": "[private fingerprint withheld]",
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": true
+        },
+        "control_status": "verified",
+        "force_nonempty_content": false,
+        "mode": "enabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "qat-text160k",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 3268.20630003931,
+      "sum_wall_s": 59.46135480015073,
+      "limitation": "Text-only;30s request timeout chosen before traffic. All21 visible sources match prior32K no-spec reversal; vision-enabled sibling failed startup.",
+      "raw": "raw/qat-text160k-coding.json",
+      "grade": "raw/qat-text160k-coding-grade-final.json",
+      "configured_context_tokens": 163840,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "coding-candidate-128k-recheck",
+      "pass_rate": 1.0,
+      "passed": 123,
+      "total": 123,
+      "whole_solution_pass_rate": 1.0,
+      "whole_solutions_passed": 21,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 886.3491999800317,
+      "sum_wall_s": 16.838372500089463,
+      "limitation": "Fresh process;20s request timeout chosen before traffic; all21 sources identical to respective earlier same-family control; configuration limits remain distinct.",
+      "raw": "raw/coding-candidate-128k-recheck-coding.json",
+      "grade": "raw/coding-candidate-128k-recheck-coding-grade-final.json",
+      "configured_context_tokens": 131072,
+      "reasoning_policy": {
+        "chat_template_kwargs": {
+          "enable_thinking": false
+        },
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "chat_template_kwargs",
+        "control_requested": {
+          "enable_thinking": false
+        },
+        "control_status": "requested_unverified",
+        "force_nonempty_content": false,
+        "mode": "disabled",
+        "reasoning_effort": null,
+        "unsupported": false
+      }
+    },
+    {
+      "configuration": "reference-restored",
+      "pass_rate": 0.926829268292683,
+      "passed": 114,
+      "total": 123,
+      "whole_solution_pass_rate": 0.7142857142857143,
+      "whole_solutions_passed": 15,
+      "whole_solutions_total": 21,
+      "median_wall_ms": 1399.3023000075482,
+      "sum_wall_s": 27.54401349980617,
+      "limitation": "Fresh process;20s request timeout chosen before traffic; all21 sources identical to respective earlier same-family control; configuration limits remain distinct.",
+      "raw": "raw/reference-restored-coding.json",
+      "grade": "raw/reference-restored-coding-grade-final.json",
+      "configured_context_tokens": 163840,
+      "reasoning_policy": {
+        "chat_template_kwargs": null,
+        "control_evidence": null,
+        "control_evidence_sha256": null,
+        "control_mechanism": "unsupported",
+        "control_requested": null,
+        "control_status": "unsupported",
+        "force_nonempty_content": false,
+        "mode": "unsupported",
+        "reasoning_effort": null,
+        "unsupported": true
+      }
+    }
+  ],
+  "workload": {
+    "task_types": 7,
+    "repetitions": 3,
+    "solutions_per_profile": 21,
+    "behavioral_checks_per_profile": 123,
+    "max_completion_tokens": 12288,
+    "temperature": 0,
+    "cache_state": "Sequential repeated prompts; prefix reuse observed; not cold-only."
+  },
+  "limitations": [
+    "Private model/variant and artifact identities withheld; public independent replay and immutable-identity qualification are limited.",
+    "Seven tasks repeated three times are not21 independent tasks; post-hoc tuning needs held-out evaluation.",
+    "Different checkpoints, runtimes, context, reasoning and modality configurations; no general model/engine ranking.",
+    "No repository-task, routed-client, video or simultaneous full-context qualification.",
+    "Initial reference identity capture incomplete; restoration proves declared policy, not exact original-container equality.",
+    "The earlier225/225 retrieval stage has a failed outer job; failure is preserved."
+  ],
+  "evidence_cutoff": "2026-11-03T15:58:20.716978+00:00"
+}

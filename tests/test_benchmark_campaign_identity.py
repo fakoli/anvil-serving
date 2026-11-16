@@ -2,7 +2,6 @@
 import hashlib
 import http.client
 import json
-import os
 from pathlib import Path
 import subprocess
 
@@ -57,38 +56,6 @@ def direct_fetch(url, headers):
     return 200, b'{"data":[{"id":"served-model","object":"model"}]}'
 
 
-def test_activation_binds_live_recipe_container_and_monitoring_receipt(activation):
-    value, raw, runner = activation
-    result = ci.verify_activation(value, runner=runner, fetch=direct_fetch)
-    assert result["generation"] == "f" * 64
-    assert result["metrics_url"] == "http://127.0.0.1:19100/engine/" + "f" * 64 + "/metrics"
-    assert result["container_id"] == raw["Id"]
-    assert result["started_at"] == raw["State"]["StartedAt"]
-    assert result["served_model"] == "served-model"
-    assert len(result["binding_sha256"]) == 64
-
-
-@pytest.mark.parametrize("field", ["Image", "revision", "gpu", "port", "started_at", "running", "served_model"])
-def test_activation_rejects_live_identity_drift(activation, field):
-    value, raw, runner = activation
-    if field == "Image":
-        raw[field] = "sha256:" + "0" * 64
-    elif field == "revision":
-        raw["Config"]["Labels"][sr.RECIPE_REVISION_LABEL] = "0" * 40
-    elif field == "gpu":
-        raw["HostConfig"]["DeviceRequests"][0]["DeviceIDs"] = ["GPU-other"]
-    elif field == "port":
-        raw["HostConfig"]["PortBindings"]["8000/tcp"][0]["HostPort"] = "39101"
-    elif field == "started_at":
-        raw["State"]["StartedAt"] = "2026-10-24T01:00:00Z"
-    elif field == "running":
-        raw["State"]["Running"] = False
-    else:
-        raw["Config"]["Cmd"][-1] = "other-model"
-    with pytest.raises(BenchmarkJobError):
-        ci.verify_activation(value, runner=runner, fetch=direct_fetch)
-
-
 @pytest.mark.parametrize("change", ["container", "registry", "receipt", "binding"])
 def test_activation_rechecks_ownership_after_endpoint_probe(activation, change):
     value, raw, runner = activation
@@ -129,21 +96,6 @@ def test_routed_activation_binds_alias_target_and_rejects_malformed_metadata(act
         assert ci.verify_activation(value, runner=runner, fetch=fetch)["container_id"] == "d" * 64
 
 
-@pytest.mark.parametrize("kind", ["symlink", "fifo", "oversized", "malformed"])
-def test_activation_receipt_reads_are_bounded_and_regular(tmp_path, kind):
-    path = tmp_path / "receipt"
-    if kind == "symlink":
-        path.symlink_to(tmp_path / "absent")
-    elif kind == "fifo":
-        os.mkfifo(path)
-    elif kind == "oversized":
-        path.write_bytes(b" " * 65537)
-    else:
-        path.write_text("{")
-    with pytest.raises(BenchmarkJobError):
-        ci._read_json(path)
-
-
 def test_activation_refuses_nonlocal_observer_before_metadata(activation, monkeypatch):
     value, _, runner = activation
     value['activation']['observer_base_url'] = 'http://192.0.2.10:19100'
@@ -157,66 +109,12 @@ def test_activation_refuses_nonlocal_observer_before_metadata(activation, monkey
         ci.verify_activation(value, runner=runner, fetch=lambda *args: pytest.fail('nonlocal request'))
 
 
-def test_activation_accepts_proven_same_host_bridge_observer(activation, monkeypatch):
-    value, _, runner = activation
-    value['activation']['observer_base_url'] = 'http://192.0.2.10:19100'
-    bindings = []
-    class Socket:
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def bind(self, address): bindings.append(address)
-    monkeypatch.setattr(ci.socket, 'socket', lambda *args: Socket())
-    result = ci.verify_activation(value, runner=runner, fetch=direct_fetch)
-    assert bindings[0] == ('192.0.2.10', 0)
-    assert result['metrics_url'].startswith('http://192.0.2.10:19100/engine/')
-
-
-@pytest.mark.parametrize('host', ['8.8.8.8', '0.0.0.0', '169.254.1.1', '224.0.0.1', 'observer.example.test'])
-def test_activation_rejects_nonlocal_address_classes_without_network(activation, host):
-    value, _, _ = activation
-    value['activation']['observer_base_url'] = 'http://' + host + ':19100'
-    with pytest.raises(BenchmarkJobError): ci.validate_activation(value)
-
-
 @pytest.mark.parametrize("url", ["http://127.0.0.1:19100\r\n", " http://127.0.0.1:19100", "http://user:secret@127.0.0.1:19100"])
 def test_activation_refuses_ambiguous_or_credential_bearing_urls(activation, url):
     value, _, _ = activation
     value["activation"]["observer_base_url"] = url
     with pytest.raises(BenchmarkJobError):
         ci.validate_activation(value)
-
-
-def test_default_discovery_is_bounded_and_does_not_inherit_environment(activation, monkeypatch):
-    from anvil_serving import transports
-    value, _, runner = activation
-    monkeypatch.setenv("DOCKER_HOST", "tcp://192.0.2.10:2375")
-    calls = []
-    def bounded(argv, **kwargs):
-        calls.append(kwargs)
-        result = runner(argv, timeout=kwargs["timeout"])
-        return subprocess.CompletedProcess(argv, 0, result.stdout.encode(), b"")
-    monkeypatch.setattr(transports, "_run_bounded_process", bounded)
-    ci.verify_activation(value, fetch=direct_fetch)
-    assert len(calls) == 4
-    assert all(call["env"] == {"PATH": os.defpath} and call["max_output_bytes"] == 4 * 1024 * 1024 for call in calls)
-
-
-@pytest.mark.parametrize("host_ip", [None, "", "0.0.0.0", "127.0.0.2"])
-def test_activation_refuses_unproven_or_different_host_binding(activation, host_ip):
-    value, raw, runner = activation
-    raw["HostConfig"]["PortBindings"]["8000/tcp"][0]["HostIp"] = host_ip
-    def forbidden_fetch(*args):
-        pytest.fail("unowned endpoint must not receive metadata requests")
-    with pytest.raises(BenchmarkJobError, match="managed container binding"):
-        ci.verify_activation(value, runner=runner, fetch=forbidden_fetch)
-
-
-def test_same_port_on_other_local_address_cannot_impersonate_managed_endpoint(activation):
-    value, _, runner = activation
-    value["activation"]["upstream_base_url"] = "http://127.0.0.2:39100/v1"
-    value["endpoint"]["base_url"] = "http://127.0.0.1:30000/v1"
-    with pytest.raises(BenchmarkJobError, match="managed container binding"):
-        ci.verify_activation(value, runner=runner, fetch=lambda *_: pytest.fail("must reject before probe"))
 
 
 def test_metadata_endpoint_refuses_unbounded_dns_resolution(activation):

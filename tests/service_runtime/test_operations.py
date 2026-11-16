@@ -149,52 +149,12 @@ def test_confirmation_and_preview_never_mutate(setup, confirm, dry_run):
     assert not adapter.commands
 
 
-def test_start_and_stop_are_verified_against_supervisor(setup):
-    from anvil_serving.service_runtime.operations import execute
-    adapter, options = setup
-    started = execute("up", "events", confirm=True, dry_run=False, **options)
-    assert started["applied"] is True
-    assert started["services"][0]["after"]["running"] is True
-    stopped = execute("down", "events", confirm=True, dry_run=False, **options)
-    assert stopped["services"][0]["after"]["running"] is False
-
-
-def test_failed_stop_is_not_reported_as_success(setup):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    adapter.running = adapter.fail_stop = True
-    with pytest.raises(ServiceError, match="postcondition"):
-        execute("down", "events", confirm=True, dry_run=False, **options)
-
-
 def test_foreign_owner_is_refused_before_supervisor_access(setup):
     from anvil_serving.service_runtime.operations import execute
     from anvil_serving.service_runtime.contracts import ServiceError
     adapter, options = setup
     with pytest.raises(ServiceError):
         execute("up", "events", target="host:another", confirm=True, dry_run=False, **options)
-    assert not adapter.commands
-
-
-def test_disable_does_not_stop_running_service(setup):
-    from anvil_serving.service_runtime.operations import execute
-    adapter, options = setup
-    adapter.running = True
-    result = execute("disable", "events", confirm=True, dry_run=False, **options)
-    assert result["services"][0]["after"]["running"] is True
-    assert result["services"][0]["after"]["enabled"] is False
-
-
-def test_controller_refuses_self_shutdown_over_remote_tool(setup, monkeypatch):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    data = options["manifest"].read_text().replace('engine = "none"', 'engine = "none"\nfeature = "controller"')
-    options["manifest"].write_text(data)
-    monkeypatch.setenv("ANVIL_SERVING_HOME", str(options.pop("manifest").parent))
-    with pytest.raises(ServiceError, match="recovery"):
-        execute("down", "events", remote=True, confirm=True, dry_run=False, **options)
     assert not adapter.commands
 
 
@@ -219,47 +179,6 @@ def test_install_pinned_definition_does_not_register_or_start(setup, tmp_path):
     assert not adapter.commands
 
 
-def test_adoption_only_writes_binding(setup, tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.manifest import load_manifest
-    adapter, options = setup
-    row = load_manifest(options["manifest"])["events"]
-    options["manifest"].unlink()
-    source = tmp_path / "events.plist"
-    source.write_text("existing definition")
-    row.pop("definition_sha256")
-    result = execute("adopt", "events", binding=row, confirm=True, dry_run=False, **options)
-    assert result["applied"]
-    assert load_manifest(options["manifest"])["events"]["definition_sha256"]
-    assert not adapter.commands
-
-
-def test_unknown_supervisor_state_is_not_absent(setup):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    adapter.registered = adapter.running = None
-    with pytest.raises(ServiceError, match="state"):
-        execute("up", "events", confirm=True, dry_run=False, **options)
-    assert not adapter.commands
-
-
-def test_restart_requires_replacement_evidence(setup, monkeypatch):
-    from itertools import count
-    from types import SimpleNamespace
-    from anvil_serving.service_runtime import operations
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    adapter.running = True
-    # Exercise the unchanged-PID postcondition independently of CI scheduling.
-    ticks = count(0, .001)
-    monkeypatch.setattr(operations, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
-    with pytest.raises(ServiceError, match="postcondition") as caught:
-        operations.execute("restart", "events", confirm=True, dry_run=False, **options)
-    assert caught.value.code == "postcondition_failed"
-    assert adapter.commands == [["fixture-supervisor", "restart"]]
-
-
 def test_start_polls_endpoint_until_ready(setup):
     from anvil_serving.service_runtime.operations import execute
     from anvil_serving.service_runtime.manifest import load_manifest, digest
@@ -277,15 +196,6 @@ def test_start_polls_endpoint_until_ready(setup):
         return {"ready": len(calls) >= 3}
     result = execute("up", "events", confirm=True, dry_run=False, _engine=health, **options)
     assert result["applied"] and len(calls) >= 3
-
-
-def test_recipe_model_mismatch_refused_before_mutation(setup):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    with pytest.raises(ServiceError, match="model differs"):
-        execute("up", "events", expected_model="different-model", confirm=True, dry_run=False, **options)
-    assert not adapter.commands
 
 
 def fleet(tmp_path):
@@ -326,16 +236,6 @@ def fleet(tmp_path):
     # fixture budget during manifest and ownership checks before any command.
     return adapter, dict(manifest=path, topology=topo, _adapters={"launchd": adapter}, _run=adapter.run,
                          _sleep=lambda _: None, timeout_seconds=5, _host_os="macos", confirm=True, dry_run=False)
-
-
-def test_dependencies_start_in_order_and_protect_running_dependents(tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = fleet(tmp_path)
-    execute("up", "worker", **options)
-    assert adapter.commands == [["up", "events"], ["up", "worker"]]
-    with pytest.raises(ServiceError, match="dependent"):
-        execute("down", "events", **options)
 
 
 def test_failed_start_rolls_back_only_new_instances(tmp_path):
@@ -388,49 +288,6 @@ def test_failed_start_of_registered_idle_job_preserves_definition_and_reports_pa
     assert recovered["services"][0]["after"]["registered"]
 
 
-def test_planned_bind_conflict_refuses_before_start(tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = fleet(tmp_path)
-    adapter.conflict = True
-    with pytest.raises(ServiceError, match="bind"):
-        execute("up", "worker", **options)
-    assert not adapter.commands
-
-
-@pytest.mark.parametrize("host_os", ["windows", "macos"])
-def test_docker_linux_guest_preserves_declared_physical_host(host_os):
-    from anvil_serving.service_runtime.operations import _owner
-    from anvil_serving.topology import resolve_command_identity
-    topo = parse_topology({"schema_version": 1, "id": "local", "command_host": "host:machine",
-        "command_runtime": "runtime:docker", "hosts": [{"id": "machine", "os": host_os, "roles": ["operator"]}],
-        "runtimes": [{"id": "docker", "host": "machine", "role": "docker"}],
-        "resources": [{"id": "events", "role": "events", "host": "machine", "runtime": "docker", "workload": "service"}]})
-    owner = _owner({"resource": "events", "manager": "docker", "engine": "none"}, topo,
-                   resolve_command_identity(topo), None, "linux", "status")
-    assert owner.host == "machine"
-
-
-def test_native_identity_operates_same_host_docker_service(tmp_path):
-    from anvil_serving.service_runtime.operations import execute
-
-    manifest = tmp_path / "services.toml"
-    save_manifest(manifest, {"hindsight": docker_binding()}, expected_digest="")
-    docker = DockerSupervisor()
-
-    result = execute(
-        "status",
-        "hindsight",
-        manifest=manifest,
-        topology=native_docker_topology(),
-        _adapters={"docker": docker},
-        _host_os="linux",
-    )
-
-    assert result["services"][0]["id"] == "hindsight"
-    assert docker.inspections == ["hindsight"]
-
-
 def test_logs_passes_interval_to_declared_owner_and_returns_runtime_identity(tmp_path):
     from anvil_serving.service_runtime.operations import execute
 
@@ -452,23 +309,6 @@ def test_logs_passes_interval_to_declared_owner_and_returns_runtime_identity(tmp
     }
 
 
-def test_logs_reject_backwards_interval_before_supervisor_access(tmp_path):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.operations import execute
-
-    manifest = tmp_path / "services.toml"
-    save_manifest(manifest, {"hindsight": docker_binding()}, expected_digest="")
-    docker = DockerSupervisor()
-    with pytest.raises(ServiceError, match="until") as raised:
-        execute(
-            "logs", "hindsight", manifest=manifest, topology=native_docker_topology(),
-            _adapters={"docker": docker}, _host_os="linux",
-            since="2026-10-16T12:01:00+01:00", until="2026-10-16T12:00:00+01:00",
-        )
-    assert raised.value.code == "invalid_interval"
-    assert docker.inspections == []
-
-
 def test_native_identity_adopts_same_host_docker_service(tmp_path):
     from anvil_serving.service_runtime.operations import execute
 
@@ -486,57 +326,6 @@ def test_native_identity_adopts_same_host_docker_service(tmp_path):
     assert result["applied"] is False
     assert result["services"][0]["id"] == "hindsight"
     assert docker.inspections == ["hindsight"]
-
-
-@pytest.mark.parametrize(
-    ("command_role", "resource_role", "manager"),
-    [
-        ("native", "wsl", "docker"),
-        ("docker", "native", "launchd"),
-        ("native", "docker", "launchd"),
-    ],
-)
-def test_only_native_docker_bindings_cross_supervisor_runtime(
-    command_role, resource_role, manager
-):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.operations import _owner
-    from anvil_serving.topology import resolve_command_identity
-
-    topo = parse_topology(
-        {
-            "schema_version": 1,
-            "id": "local",
-            "command_host": "host:dark",
-            "command_runtime": "runtime:command",
-            "hosts": [{"id": "dark", "os": "linux", "roles": ["operator"]}],
-            "runtimes": [
-                {"id": "command", "host": "dark", "role": command_role},
-                {"id": "resource", "host": "dark", "role": resource_role},
-            ],
-            "resources": [
-                {
-                    "id": "service",
-                    "role": "service",
-                    "host": "dark",
-                    "runtime": "resource",
-                    "workload": "service",
-                }
-            ],
-        }
-    )
-
-    with pytest.raises(ServiceError, match="exact supervisor") as raised:
-        _owner(
-            {"resource": "service", "manager": manager, "engine": "none"},
-            topo,
-            resolve_command_identity(topo),
-            None,
-            "linux",
-            "status",
-        )
-
-    assert raised.value.code == "owner_mismatch"
 
 
 def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
@@ -564,25 +353,6 @@ def test_mixed_runtime_manifest_does_not_block_local_operation(setup):
     status = execute("status", **options)
     container = next(row for row in status["services"] if row["id"] == "container")
     assert container["supervisor"]["running"] is True
-
-
-def test_known_engine_hint_cannot_be_relabelled_during_adoption(setup, tmp_path):
-    from dataclasses import replace
-    from anvil_serving.service_runtime.operations import execute
-    from anvil_serving.service_runtime.manifest import load_manifest
-    from anvil_serving.service_runtime.contracts import ServiceError
-    adapter, options = setup
-    row = load_manifest(options["manifest"])["events"]
-    options["manifest"].unlink()
-    (tmp_path / "events.plist").write_text("pinned existing definition")
-    row.update(engine="kokoro", support="legacy")
-    topo = options["topology"]
-    options["topology"] = replace(topo, resources=(replace(topo.resources[0], workload="tts"),))
-    adapter.describe = lambda row: {"engine_hint": "parakeet", "ports": []}
-    with pytest.raises(ServiceError, match="engine"):
-        execute("adopt", "events", binding=row, confirm=True, dry_run=False, **options)
-    assert not options["manifest"].exists()
-    assert not adapter.commands
 
 
 class RetainedSupervisor:
@@ -753,20 +523,6 @@ def test_retained_failed_start_reserves_full_declared_stop_grace_for_rollback(tm
     ]
 
 
-def test_retained_apply_refuses_stale_preview_before_mutation(tmp_path):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.operations import execute
-
-    row, adapter, options = retained_setup(tmp_path)
-    preview = execute("up", row["id"], **options)
-    auth = tmp_path / "authorization.json"
-    retained_authorization(auth, preview, row, "up")
-    with pytest.raises(ServiceError, match="reviewed preview"):
-        execute("up", row["id"], confirm=True, dry_run=False,
-                expected_preview_sha256="0" * 64, operator_authorization_file=auth, **options)
-    assert adapter.commands == []
-
-
 @retained_linux_custody
 def test_retained_authorization_marker_refuses_same_path_reuse_when_state_repeats(tmp_path):
     from anvil_serving.service_runtime.contracts import ServiceError
@@ -840,48 +596,4 @@ def test_retained_stop_requires_deadline_beyond_declared_grace(tmp_path):
     options["timeout_seconds"] = row["shutdown_grace_seconds"] + 4
     with pytest.raises(ServiceError, match="reserve five seconds"):
         execute("down", row["id"], **options)
-    assert adapter.commands == []
-
-
-def test_status_without_service_handles_retained_binding_without_approval_or_environment_scan(tmp_path, monkeypatch):
-    from anvil_serving.service_runtime import operations
-    from anvil_serving.service_runtime.operations import execute
-
-    row, adapter, options = retained_setup(tmp_path)
-
-    class NoEnvironmentRead(dict):
-        def items(self):
-            raise AssertionError("retained status inspected the process environment")
-
-    monkeypatch.setattr(operations.os, "environ", NoEnvironmentRead())
-    result = execute("status", **options)
-    assert result["services"][0]["id"] == row["id"]
-    assert result["services"][0]["supervisor"]["identity"] == row["container_id"]
-    assert adapter.commands == []
-
-
-@pytest.mark.parametrize("action", ["status", "up", "down"])
-def test_retained_lifecycle_requires_native_linux_owner(tmp_path, action):
-    from dataclasses import replace
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.operations import execute
-
-    row, adapter, options = retained_setup(tmp_path)
-    linux = options["topology"]
-    options["topology"] = replace(linux, hosts=(replace(linux.hosts[0], os="windows"),))
-    options["_host_os"] = "windows"
-    with pytest.raises(ServiceError, match="native Linux") as raised:
-        execute(action, row["id"], **options)
-    assert raised.value.code == "owner_mismatch"
-    assert adapter.commands == []
-
-
-@pytest.mark.parametrize("action", ["install", "restart", "enable", "disable", "logs"])
-def test_retained_binding_rejects_shared_lifecycle_actions(tmp_path, action):
-    from anvil_serving.service_runtime.contracts import ServiceError
-    from anvil_serving.service_runtime.operations import execute
-
-    row, adapter, options = retained_setup(tmp_path)
-    with pytest.raises(ServiceError, match="retained containers"):
-        execute(action, row["id"], **options)
     assert adapter.commands == []

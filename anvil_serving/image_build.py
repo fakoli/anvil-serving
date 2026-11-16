@@ -41,7 +41,7 @@ def build_plan(name: str, config: Path) -> dict:
     row = rows[name]
     required = {"context", "dockerfile", "image", "cpus", "memory_mib"}
     if not isinstance(row, dict) or not required <= row.keys() or row.keys() - required - {
-        "platform", "timeout_seconds"
+        "platform", "timeout_seconds", "base_image"
     }:
         raise ImageBuildError("invalid image build fields")
     for field in ("context", "dockerfile", "image"):
@@ -78,14 +78,28 @@ def build_plan(name: str, config: Path) -> dict:
     platform = row.get("platform", "linux/amd64")
     if not isinstance(platform, str) or platform not in ("linux/amd64", "linux/arm64"):
         raise ImageBuildError("bounded image builds require a Linux platform")
+    base_image = row.get("base_image")
+    if "base_image" in row and (
+        not isinstance(base_image, str) or len(base_image) > 512 or not re.fullmatch(
+            r"(?:[a-z0-9][a-z0-9.-]*(?::[0-9]{1,5})?/)?"
+            r"[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)*"
+            r"(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?@sha256:[0-9a-f]{64}", base_image
+        )
+    ):
+        raise ImageBuildError("base_image must be a repository reference pinned with @sha256")
     argv = ["docker", "buildx", "build", "--load", "--platform", platform,
             "--resource", f"memory={memory}m", "--resource", f"memory-swap={memory}m",
             "--resource", "cpu-period=100000", "--resource", f"cpu-quota={int(cpus * 100000)}",
             "--progress", "plain", "--file", str(dockerfile), "--tag", image, str(context)]
-    return {"schema": "anvil-serving.image-build/v1", "name": name, "image": image,
+    if base_image is not None:
+        argv[-1:-1] = ["--build-arg", f"BASE_IMAGE={base_image}"]
+    plan = {"schema": "anvil-serving.image-build/v1", "name": name, "image": image,
             "dockerfile_sha256": hashlib.sha256(source_bytes).hexdigest(),
             "cpus": cpus, "memory_mib": memory, "platform": platform,
             "timeout_seconds": timeout, "argv": argv}
+    if base_image is not None:
+        plan["base_image"] = base_image
+    return plan
 
 
 def _private_run_directory(log_dir: Path, runner) -> Path:

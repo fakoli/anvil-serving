@@ -1,5 +1,9 @@
 # GLM-5.3-Flash
 
+## Mia runtime update — 2026-11-13
+
+The same-model Mia fc1ee3a runtime passed focused functional qualification on dual RTX PRO6000 Max-Q. The exact matched truncated Messages request changed from HTTP500 to200, and prompt scoring increased from a20 cap to128 with distinct requested-ID, repeat and concurrent checks. Tools, image, C4 canaries and19K/99K retrieval/cache restart passed. This updates runtime evidence, not broad model quality or performance rankings. [Finding and immutable identity](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md). Operational fleet closure remains separate.
+
 **2026-10-26 reasoning-close GPU marker trace:** the [bounded actual-GPU diagnostic](../../findings/2026-10-26-marker-gpu-trace.md) returned one exact-answer C1 response with a single close at index 64. Both TP ranks observed its budget store, but the worker trace contained one token after the 75-token API response, so the frozen analyzer remained `unknown`. No second close reproduced and no end-to-end resolution is established. Exact operational restoration passed; strict JSON functional acceptance remained incomplete. No promotion; Ignis held. [Summary](../../findings/2026-10-26-marker-gpu-trace-evidence/summary.json) · [Evidence index](../../findings/2026-10-26-marker-gpu-trace-evidence/README.md).
 
 **2026-10-25 sampling upstream-tolerance trial:** [Bounded kernel and model evidence](../../findings/2026-10-25-sampling-upstream-tolerance.md). The prospective upstream count gate passed all eight forced cases and 272 ordinary rows. One model request avoided the earlier token-0 loop but emitted closing markers at positions 64 and 126 and failed strict output. Exact operational restoration passed; matched JSON smokes failed before and after, with no established regression. No promotion; Ignis held. [Summary](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md).
@@ -66,6 +70,31 @@ so four full 327K windows are unsupported. See the
 
 ## Current status and review date
 
+**2026-11-09 TensorFold reasoning controls:** the focused
+[Max/Low investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
+separates effort instructions from numeric thinking limits on one Go task
+under a fixed 16K response cap. Two Low repetitions passed their first
+contained tests. The separate source proposal is not deployed; this does
+not revise global model policy or establish a broad coding score.
+
+**2026-11-09 request-control rollout follow-up:** merged support is deployed
+in the local CLI/router. The separate three-job Go check retains Max/8,192
+at 1/2 jobs and Low/unset at 1/1, with ten responses; the second Max job
+failed both coding attempts at the 16,384 response cap. The remaining answer
+region and quality gap means 8,192 is not established as a reliable fix or
+default. Changed KV runtime and no contemporary unbounded-Max control prevent
+causal quality/speed claims. Remote-controller numeric admission remains
+unsupported (B10 partial), with observer migration deferred. No global
+controls or promotion changed.
+[Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09).
+
+**2026-11-08 TensorFold quality diagnostic:** the separate pinned EXL3
+TensorFold lane passed the selected Go task at 32K and failed at 16K after
+response-length limits. This is one task checked once per profile, not a broad
+Go score, cap-effect experiment or performance comparison. No live assignment
+or historical promotion is changed by this record.
+[Finding](../../findings/2026-11-08-tensorfold-go-validation.md).
+
 **2026-10-25 Go/Rust diagnostics:** the [16K/32K Aider completion-cap diagnostic](../../findings/2026-10-25-glm-diagnostics.md) closed six completed measurements with one passing and five failing task grades; two supported cells remained unstarted and four reasoning controls were blocked. Raw grades remain separate from lifecycle and measurement eligibility. The mixed Rust result establishes no causal benefit from the larger cap. Diagnostic only; no Ignis run, broad model ranking or promotion. [Authoritative summary](../../findings/2026-10-25-glm-diagnostics-evidence/summary.json) · [Evidence index](../../findings/2026-10-25-glm-diagnostics-evidence/README.md).
 
 **2026-10-25 R12/R13 successor:** R12 submitted 48 incumbent jobs: 44 completed with complete measurements and grades (38 pass, six fail); four cancelled grades remain unknown. The candidate was never measured. Exact incumbent restoration and explicit minimal-thinking Pi acceptance passed; historical thinking-off failure remains open. This does not change the incumbent assignment or establish a comparative ranking. [Finding](../../findings/2026-10-24-evaluation-platform-ignis.md#2026-10-25-successor-r12-baseline-and-r13-admission-refusal) · [Authoritative summary](../../findings/2026-10-25-evaluation-platform-r12-r13-evidence/summary.json).
@@ -124,7 +153,7 @@ it cannot turn these acceptance gates into capacity or speed evidence.
       memory reached 0.87 GiB. Strict controlled output failed both recipes.
       No new SWE/endurance/MTP-off or four simultaneous full-window result.
       The older native workflow still blocks full fleet convergence.
-    - **Review dates:** evidence cutoff and dossier review 2026-10-17;
+    - **Review dates:** historical promotion evidence cutoff 2026-10-17; dossier functional-evidence review 2026-11-13;
       historical R19/r11 and earlier quality evidence remain separately dated.
 
 ### Review narrative
@@ -283,6 +312,13 @@ No new promotion occurred. See the
 
 ## Immutable identity
 
+The 2026-11-08 TensorFold diagnostic is a separate recipe family:
+`Mia-AiLab/GLM-5.3-Flash-EXL3-4bpw-TensorFold@76c0b5173166d2795dd48860f45d8224817f894c`,
+TensorFold base `f350cd3ea253a042e205746928271f9d8f71a82d` plus the unchanged
+101 author patches and five ordered Anvil telemetry patches. Its runtime
+image is `sha256:8f5604d13d319adac8dc708b2e8bf8ce54096e181313a2a8de83cbfdd2902b06`.
+[Configuration and reconstruction boundary](../../findings/2026-11-08-tensorfold-go-validation-evidence/configuration.json).
+
 The current FP4 recipe pins
 `nvidia/GLM-5.3-Flash-FP4-Local@76348ddb2be2e35e39ecfc00e75dc07703f4f3d5`
 and `ghcr.io/local-inference-lab/vllm:release-10152026` image digest
@@ -422,6 +458,59 @@ graphs, so increasing concurrency requires a managed candidate load and the
 full functional, capacity, quality, endurance, and post-workload VRAM gates.
 
 ## Evidence by measurement class
+
+### TensorFold reasoning controls, 2026-11-09
+
+- **Status:** Closed focused `quality` investigation, `no-promotion`.
+- **Measured:** Two Low repetitions passed the selected Go task on their first
+  contained test, after first responses with 25 and 6 reported reasoning tokens.
+  Both Max repetitions failed both tests after all-reasoning, length-finished
+  16K responses. Eight transport responses have complete accounting.
+- **Limits:** One deliberately selected task, two planned repetitions per
+  effort, uncontrolled cache and possible user traffic. No numeric-budget
+  patch deployment, broad Go score, global-policy or performance claim.
+- **Evidence:** [Finding](../../findings/2026-11-09-tensorfold-reasoning-budget.md).
+
+### TensorFold request-control rollout, 2026-11-09
+
+- **Status:** Local CLI/router deployed from merged source; source-backed
+  `functional` control evidence and focused `quality`, `no-promotion`.
+- **Measured:** Three C1 jobs on one Go task at a 16,384 response cap, in
+  Max/8,192, Low/unset, Max/8,192 order: Max passed 1/2 jobs and Low 1/1.
+  First Max and Low each passed their second coding attempt after a failed
+  first attempt, with four HTTP 200/`stop` responses per job. Second Max
+  failed both attempts with two HTTP 200/`length` responses; each reported
+  16,384 completion and 8,193 reasoning tokens, leaving 8,191 derived
+  non-reasoning tokens. Whole-job time/call budgets did not expire.
+- **Control boundary:** Each Max primary response reported 8,193 reasoning
+  tokens for the 8,192 request, consistent with the source's forced
+  newline/closing-marker transition. Native trigger flags and raw token IDs
+  were not retained; these observations do not directly instrument the trigger
+  or prove an exact reasoning-token ceiling.
+- **Limits:** Sharded-KV runtime differs from the original disk-only
+  eight-response matrix; no contemporary unbounded-Max control or causal
+  quality/speed claim. The answer-region response-cap and quality gap remains
+  open; 8,192 is not established as a reliable fix or default. B10 remains
+  partial: remote-controller numeric admission is unsupported and observer
+  migration is deferred. No global controls, cache policy, fleet acceptance
+  or promotion changed.
+- **Evidence:** [Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09),
+  [summary](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+  and [evidence index](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+### TensorFold Go diagnostic, 2026-11-08
+
+- **Status:** Focused `quality`, `no-promotion`; review dated 2026-11-08.
+- **Measured:** Two C1 profile checks on one Go task: first-attempt success
+  at 32K, two failed contained tests after length-finished 16K responses.
+  Four starts and four responses have complete transport accounting.
+- **Limits:** One stochastic task/profile execution each, uncontrolled cache,
+  no performance or causal cap-benefit claim. An earlier asset-preparation
+  failure is retained separately from grades; repeated preparation remains
+  an open harness defect.
+- **Evidence:** [Finding](../../findings/2026-11-08-tensorfold-go-validation.md),
+  [native observations](../../findings/2026-11-08-tensorfold-go-validation-evidence/case-diagnostics.json)
+  and [evidence index](../../findings/2026-11-08-tensorfold-go-validation-evidence/README.md).
 
 ### Actual-GPU reasoning-marker trace, 2026-10-26
 
@@ -645,6 +734,20 @@ The 524K EXL3/DFlash2 profile is its historical same-model rollback, and the
   an improvement.
 
 ## Dated run history
+
+- 2026-11-09 — [Request-control rollout follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09):
+  merged local CLI/router deployment; separate ten-response Go check,
+  Max/8,192 1/2 and Low/unset 1/1 jobs. Response-cap/quality and remote
+  controller gaps remain; no reliable budget default, causal quality/speed
+  claim or promotion.
+
+- 2026-11-09 — [TensorFold reasoning controls](../../findings/2026-11-09-tensorfold-reasoning-budget.md):
+  fixed 16K Max/Low task diagnostics and audited request-control proposal;
+  source support, deployed behavior and independent grades remain separate.
+
+- 2026-11-08 — [TensorFold Go validation](../../findings/2026-11-08-tensorfold-go-validation.md):
+  first-attempt pass at 32K, two length-finished failures at 16K on one task;
+  targeted quality only, no promotion or performance comparison.
 
 - 2026-10-26 — [Reasoning-close GPU marker trace](../../findings/2026-10-26-marker-gpu-trace.md): one exact-answer response had a single boundary close with matching two-rank budget-store observations, but 76 trace tokens versus 75 API tokens kept the frozen analyzer `unknown`; no second close reproduced. Operational restoration passed, functional JSON acceptance incomplete. No promotion.
 

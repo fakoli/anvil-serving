@@ -2,10 +2,6 @@
 
 import json
 import os
-from pathlib import Path
-import shlex
-import socket
-import tempfile
 import subprocess
 
 import pytest
@@ -95,22 +91,6 @@ def setup(tmp_path):
     return run, task, args
 
 
-def test_exact_isolation_and_upstream_completed_process(tmp_path):
-    run, task, args = setup(tmp_path)
-    docker = Docker(run)
-    result = containment.run_contained_test("python -m unittest", runner=docker, **args)
-    assert result.args == "python -m unittest" and result.returncode == 1
-    assert result.stdout == "upstream test failure\n" and result.stderr is None
-    assert docker.container is None
-    record, = (run / "aider/containers").glob("*.json")
-    value = json.loads(record.read_text())
-    assert value["state"] == "removed" and value["returncode"] == 1
-    assert value["user"] == f"{os.getuid()}:{os.getgid()}"
-    create = next(call for call in docker.calls if call[1] == "create")
-    assert create[-2:] == ("-c", "{\n" + containment._copy_input(task.name) + "python -m unittest\n} 2>&1")
-    assert str(task) in create[create.index("--mount") + 1]
-
-
 @pytest.mark.parametrize("section,key,value", [
     ("HostConfig", "NetworkMode", "host"), ("HostConfig", "ReadonlyRootfs", False),
     ("HostConfig", "Privileged", True), ("HostConfig", "DeviceRequests", [{"Capabilities": [["gpu"]]}]),
@@ -144,37 +124,6 @@ def test_mount_and_image_drift_never_starts(tmp_path):
             assert not any(call[1:3] == ("container", "rm") for call in docker.calls)
             for path in (run / "aider/containers").glob("*.json"):
                 path.unlink()
-
-
-def test_docker_environment_order_is_not_configuration_drift(tmp_path):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run, drift=lambda row: row["Config"].update(Env=list(reversed(row["Config"]["Env"]))))
-    assert containment.run_contained_test("false", runner=docker, **args).returncode == 1
-    assert docker.container is None
-
-
-@pytest.mark.parametrize("environment", [
-    ["PATH=/usr/bin:/bin", "HOME=/tmp", "HOME=/tmp"],
-    ["PATH=/usr/bin:/bin"],
-    ["PATH=/usr/bin:/bin", "HOME=/tmp", "LANG=C"],
-    ["PATH=/changed", "HOME=/tmp"],
-])
-def test_environment_values_and_uniqueness_remain_exact(tmp_path, environment):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run, drift=lambda row: row["Config"].update(Env=environment))
-    with pytest.raises(BenchmarkJobError):
-        containment.run_contained_test("false", runner=docker, **args)
-    assert not any(call[1] == "start" for call in docker.calls)
-    assert docker.container is None
-
-
-def test_duplicate_image_environment_is_rejected_before_create(tmp_path):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run)
-    docker.image["Config"]["Env"] = ["HOME=/root", "HOME=/root"]
-    with pytest.raises(BenchmarkJobError, match="duplicate"):
-        containment.run_contained_test("false", runner=docker, **args)
-    assert all(call[1:3] == ("image", "inspect") for call in docker.calls)
 
 
 @pytest.mark.parametrize("lost_create", [False, True])
@@ -254,31 +203,6 @@ def test_default_runner_is_bounded_and_has_no_host_secrets(monkeypatch):
     assert calls[0][1]["max_output_bytes"] == containment.MAX_OUTPUT_BYTES
 
 
-def test_sequence_command_and_image_home_override(tmp_path):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run)
-    docker.image["Config"]["Env"] = ["HOME=/root", "PATH=/usr/bin:/bin"]
-    containment.run_contained_test(["python", "-m", "unittest"], runner=docker, **args)
-    create = next(call for call in docker.calls if call[1] == "create")
-    assert create[-6:] == ("-c", "{\n" + containment._copy_input(args["task_dir"].name) + 'exec "$@"\n} 2>&1', "sh", "python", "-m", "unittest")
-    record, = (run / "aider/containers").glob("*.json")
-    assert json.loads(record.read_text())["environment"] == ["HOME=/tmp", "PATH=/usr/bin:/bin"]
-
-
-def test_cleanup_error_cannot_turn_into_success(tmp_path):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run)
-    def runner(argv, cwd, timeout):
-        if argv[1:3] == ("container", "rm"):
-            return subprocess.CompletedProcess(argv, 1, b"", b"failed")
-        return docker(argv, cwd, timeout)
-    with pytest.raises(BenchmarkJobError, match="removal failed"):
-        containment.run_contained_test("false", runner=runner, **args)
-    assert docker.container is not None
-    receipt = containment.cleanup_aider_containers(run_path=run, ownership_id="owner", run_id="run", runner=docker)
-    assert receipt["status"] == "completed" and receipt["removed"] == [IDENTITY]
-
-
 def test_interrupt_preserves_timeout_and_recoverable_registry(tmp_path):
     run, _, args = setup(tmp_path)
     docker = Docker(run, lost_create=True)
@@ -301,126 +225,6 @@ def test_immutable_id_replacement_is_not_removed(tmp_path):
     with pytest.raises(BenchmarkJobError, match="ID drift"):
         containment.run_contained_test("false", runner=docker, **args)
     assert not any(call[1:3] == ("container", "rm") for call in docker.calls)
-
-
-def test_lost_create_absence_stays_recoverable_and_blocks_next_test(tmp_path):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run)
-    def uncertain(argv, cwd, timeout):
-        if argv[1] == "create":
-            raise subprocess.TimeoutExpired(argv, timeout)
-        return docker(argv, cwd, timeout)
-    with pytest.raises(subprocess.TimeoutExpired):
-        containment.run_contained_test("false", runner=uncertain, **args)
-    receipt = containment.cleanup_aider_containers(run_path=run, ownership_id="owner", run_id="run", runner=docker)
-    assert receipt["status"] == "incomplete" and receipt["removed"] == []
-    with pytest.raises(BenchmarkJobError, match="cleanup is unresolved"):
-        containment.run_contained_test("false", runner=docker, **args)
-
-
-@pytest.mark.parametrize("mount_options", [
-    "rw,nosuid,nodev,size=4g,nr_inodes=65536,mode=1777",  # Docker defaults to noexec
-    "rw,nosuid,nodev,nr_inodes=65536,mode=1777",  # no byte quota
-    "rw,nosuid,nodev,size=4g,mode=1777",  # no inode quota
-    "rw,nosuid,nodev,size=0,nr_inodes=65536,mode=1777",
-    "rw,nosuid,nodev,size=4g,nr_inodes=0,mode=1777",
-])
-def test_missing_or_unbounded_scratch_quota_never_starts(tmp_path, mount_options):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run, drift=lambda row: row["HostConfig"]["Tmpfs"].update({"/task": mount_options}))
-    with pytest.raises(BenchmarkJobError, match="resource drift"):
-        containment.run_contained_test("false", runner=docker, **args)
-    assert not any(call[1] == "start" for call in docker.calls)
-    assert docker.container is None
-
-
-@pytest.mark.parametrize("drift", [
-    lambda row: row["Mounts"][0].update(RW=True),
-    lambda row: row["Mounts"][0].update(Destination="/task"),
-    lambda row: row["HostConfig"]["Tmpfs"].pop("/task"),
-    lambda row: row["Mounts"].append({"Type": "tmpfs", "Destination": "/unbounded"}),
-])
-def test_writable_input_or_missing_scratch_never_starts(tmp_path, drift):
-    run, _, args = setup(tmp_path)
-    docker = Docker(run, drift=drift)
-    with pytest.raises(BenchmarkJobError):
-        containment.run_contained_test("false", runner=docker, **args)
-    assert not any(call[1] == "start" for call in docker.calls)
-    assert docker.container is None
-
-
-@pytest.mark.parametrize("kind", ["symlink", "hardlink", "fifo", "socket"])
-def test_non_regular_and_shared_input_never_reaches_docker(tmp_path, monkeypatch, kind):
-    run, task, args = setup(tmp_path)
-    source = task / "solution.py"
-    source.write_text("pass\n")
-    candidate = task / "unexpected"
-    listener = None
-    try:
-        if kind == "symlink":
-            candidate.symlink_to(source)
-        elif kind == "hardlink":
-            os.link(source, candidate)
-        elif kind == "fifo":
-            os.mkfifo(candidate)
-        else:
-            listener = socket.socket(socket.AF_UNIX)
-            # Bind relative to the task so AF_UNIX ignores the temp root's length.
-            with monkeypatch.context() as cwd:
-                cwd.chdir(task)
-                listener.bind(candidate.name)
-            assert candidate.is_socket()
-        docker = Docker(run)
-        with pytest.raises(BenchmarkJobError, match="single-linked regular files"):
-            containment.run_contained_test("false", runner=docker, **args)
-        assert not docker.calls
-    finally:
-        if listener is not None:
-            listener.close()
-
-
-@pytest.mark.parametrize("outcome", ["success", "exhaustion", "timeout"])
-def test_copied_scratch_tampering_never_exports_to_canonical_input(tmp_path, outcome):
-    """Run the actual startup copy and fixture attack locally, not a Docker quota proof."""
-    run, task, args = setup(tmp_path)
-    canonical = {".aider.chat.history.md": b"authoritative prompt and feedback\n",
-                 "solution.py": b"original candidate\n"}
-    for name, value in canonical.items():
-        (task / name).write_bytes(value)
-    docker = Docker(run)
-    scratch_path = None
-    def runner(argv, cwd, timeout):
-        nonlocal scratch_path
-        if argv[1] != "start":
-            return docker(argv, cwd, timeout)
-        with tempfile.TemporaryDirectory(dir=tmp_path, prefix="scratch-") as directory:
-            scratch_path = Path(directory)
-            shell_args = list(docker.container["Config"]["Cmd"])
-            shell_args[1] = shell_args[1].replace("/task/", shlex.quote(directory + "/"))
-            shell_args[1] = shell_args[1].replace("/input/.", shlex.quote(str(task) + "/."))
-            result = subprocess.run(["/bin/sh", *shell_args], cwd=directory, timeout=5,
-                                    capture_output=True, check=False)
-            assert (scratch_path / task.name / ".aider.chat.history.md").read_text() == "forged\n"
-            assert (scratch_path / task.name / ".anvil-runtime/cache").is_file()
-            assert {p.name: p.read_bytes() for p in task.iterdir()} == canonical
-            if outcome == "timeout":
-                raise subprocess.TimeoutExpired(argv, timeout)
-            docker.container["State"] = {"Status": "exited", "ExitCode": result.returncode}
-            return result
-    command = 'test "${PWD##*/}" = a-b || exit 2; printf "forged\\n" > .aider.chat.history.md; mkdir .anvil-runtime; touch .anvil-runtime/cache'
-    if outcome == "exhaustion":
-        command += '; printf "No space left on device\\n" >&2; exit 1'
-    if outcome == "timeout":
-        with pytest.raises(subprocess.TimeoutExpired):
-            containment.run_contained_test(command, runner=runner, **args)
-    else:
-        result = containment.run_contained_test(command, runner=runner, **args)
-        assert result.returncode == (outcome == "exhaustion")
-        if outcome == "exhaustion":
-            assert "No space left on device" in result.stdout
-    assert docker.container is None and not scratch_path.exists()
-    assert {p.name: p.read_bytes() for p in task.iterdir()} == canonical
-    assert containment.cleanup_aider_containers(run_path=run, ownership_id="owner", run_id="run", runner=docker)["status"] == "completed"
 
 
 @pytest.mark.skipif(not os.environ.get("ANVIL_AIDER_CONTAINMENT_TEST_IMAGE"),

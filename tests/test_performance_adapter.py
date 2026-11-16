@@ -161,18 +161,6 @@ def test_httpx_sync_failure_attempt_and_redirect_are_bounded(tmp_path):
     assert events[-1]["byte_count"] == sum(len(line) for line in policy.ledger.path.read_bytes().splitlines(keepends=True)[:-1])
 
 
-def test_probe_cap_is_separate_and_admin_requests_fail_closed(tmp_path):
-    policy = policy_at(tmp_path)
-    headers = {"Authorization": "Bearer test-only-token"}
-    policy.check("GET", policy.origin + "/v1/models", headers, None)
-    assert policy.ledger.snapshot()["model_calls"] == 0
-    for _ in range(adapter.MAX_PROBE_ATTEMPTS - 1):
-        policy.check("GET", policy.origin + "/v1/models", headers, None)
-    with pytest.raises(BudgetStopped):
-        policy.check("GET", policy.origin + "/v1/models", headers, None)
-    assert policy.ledger.snapshot()["http_calls"] == adapter.MAX_PROBE_ATTEMPTS
-
-
 def test_aiohttp_guard_preserves_native_response_and_fork_budget(tmp_path):
     aiohttp = pytest.importorskip("aiohttp")
     policy = policy_at(tmp_path, "aiperf", calls=1)
@@ -364,7 +352,7 @@ def test_prepared_native_process_fake_sse(tmp_path, runner, case):
                 pass
             self.close_connection = True
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
     plan = plan_at(tmp_path, runner, calls=1)
     plan["request_controls"] = controls

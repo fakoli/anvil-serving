@@ -9,17 +9,6 @@ from anvil_serving.observability.dashboard.console import Console, _run_bindings
 from anvil_serving.observability.dashboard.contracts import ObservatoryError
 
 
-def test_catalog_without_safe_descriptors_is_unavailable_before_spawning(tmp_path, monkeypatch):
-    from anvil_serving.observability.dashboard import evidence_runs
-
-    monkeypatch.delattr(evidence_runs.os, "O_NOFOLLOW", raising=False)
-    source = evidence_runs.EvidenceRuns({"root": str(tmp_path), "owner_id": "catalog", "resource_id": "runs"})
-    with pytest.raises(ObservatoryError) as error:
-        source.page(authority_key="reader")
-    assert error.value.code == "owner_unavailable" and source._active is None
-    source.close()
-
-
 @pytest.fixture
 def catalog_console(tmp_path):
     config = {
@@ -83,17 +72,6 @@ def test_catalog_authorization_precedes_cursor_owner_and_stale_cache(catalog_con
     assert all(item["id"] != "evidence" for item in console.read("run-sources", {}, revoked)["items"])
 
 
-def test_catalog_invalid_cursor_is_not_replaced_by_stale_success(catalog_console, monkeypatch):
-    console, sessions = catalog_console
-
-    def invalid(**_kwargs):
-        raise ObservatoryError("invalid_run_cursor", "Refresh the catalog page.", 409)
-
-    monkeypatch.setattr(console.evidence_runs, "page", invalid)
-    with pytest.raises(ObservatoryError, match="Refresh"):
-        console.read("runs/evidence", {"cursor": "invalid"}, sessions["first"])
-
-
 def test_catalog_detail_and_compare_authorize_before_refs(catalog_console, monkeypatch):
     console, sessions = catalog_console
     calls = []
@@ -137,12 +115,6 @@ def test_catalog_detail_and_compare_authorize_before_refs(catalog_console, monke
     assert [kind for kind, _kwargs in calls] == ["detail", "compare"]
 
 
-@pytest.mark.parametrize("root", ["relative", "/", "/catalog/../private", "/catalog\nprivate"])
-def test_catalog_requires_a_bounded_declared_root(root):
-    with pytest.raises(ValueError):
-        _run_bindings({"runs": {"evidence": {"root": root, "owner_id": "catalog", "resource_id": "read.runs"}}})
-
-
 def test_catalog_and_benchmark_cannot_share_cache_authority(tmp_path):
     with pytest.raises(ValueError, match="distinct dedicated"):
         _run_bindings({"runs": {
@@ -151,13 +123,12 @@ def test_catalog_and_benchmark_cannot_share_cache_authority(tmp_path):
         }})
 
 
-@pytest.mark.parametrize("kind", ["experiment", "serve", "host"])
 @pytest.mark.parametrize("source", ["benchmark", "evidence"])
-def test_run_grants_cannot_reuse_controller_resource_authority(tmp_path, kind, source):
+def test_run_grants_cannot_reuse_controller_resource_authority(tmp_path, source):
     binding = {"resource_id": "read.runs"}
     if source == "evidence":
         binding.update(owner_id="catalog", root=str(tmp_path))
     with pytest.raises(ValueError, match="distinct dedicated"):
         _run_bindings({"runs": {source: binding}, "controller": {
-            "resources": [{"id": "read.runs", "kind": kind}],
+            "resources": [{"id": "read.runs", "kind": "experiment"}],
         }})

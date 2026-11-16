@@ -1,0 +1,8 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "status": "restored-declared-policy",
+  "verified": true,
+  "evidence": "raw/restoration-final-health.json",
+  "scope": "Historical campaign ending state only; main remained running, candidates unloaded, manifests unchanged, no promotion. Initial immutable capture partial; public identities withheld. Publication performs no lifecycle operation.",
+  "listener_caveat": "Final Windows listener enumeration was empty despite HTTP200 health/model metadata and same managed process; no observed candidate listeners."
+}

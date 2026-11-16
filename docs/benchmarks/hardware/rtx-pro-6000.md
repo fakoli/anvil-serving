@@ -1,5 +1,53 @@
 # RTX PRO 6000 benchmark view
 
+**2026-11-13 Mia TensorFold functional checks:** two96GiB Max-Q cards at300W passed the [runtime delta](../../findings/2026-11-13-tensorfold-mia-runtime-functional.md): truncated Messages500 fixed,128-entry prompt scoring, tools/image, C4 canaries and cache restart.1164 coherent telemetry samples observed four active streams; this is not a speed or simultaneous-full-window capacity measurement.
+
+**2026-11-09 TensorFold reasoning controls:** the dual-card GLM EXL3
+[quality investigation](../../findings/2026-11-09-tensorfold-reasoning-budget.md)
+keeps the response cap at 16K while changing request-local Max/Low effort.
+Both Low repetitions passed their first contained Go test; both Max
+repetitions failed after response-cap starvation. The newer disk-cache/process baseline
+and coexisting user traffic preclude a historical or isolated performance
+comparison. No deployment or global model-policy change follows.
+
+**2026-11-09 request-control rollout follow-up:** merged support is deployed
+in the local CLI/router. The separate dual-card C1 check on one Go task
+retains ten responses: Max/8,192 passed 1/2 jobs and Low/unset 1/1 at a 16,384
+response cap. Second Max failed both attempts at that cap without exhausting
+whole-job time/call budgets; 8,192 is not established as a reliable fix or
+default. Sharded-KV runtime differs from the original disk-only matrix, with
+no contemporary unbounded-Max control or causal quality/speed claim. B10
+remains partial: remote-controller numeric admission is unsupported and
+observer migration is deferred. No hardware-capacity or promotion claim
+follows.
+[Follow-up](../../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09)
+· [Summary](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json)
+· [Evidence index](../../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md).
+
+**2026-11-08 TensorFold Go validation:** the dual-card GLM EXL3 lane passed
+the selected Go task on its first 32K attempt, while both 16K attempts failed
+after length-finished responses. Two targeted profile checks on one task
+provide `quality` evidence, with no hardware-capacity, performance or promotion
+claim. [Finding](../../findings/2026-11-08-tensorfold-go-validation.md) ·
+[Evidence index](../../findings/2026-11-08-tensorfold-go-validation-evidence/README.md).
+
+**2026-11-01 Swift TP1 qualification accepted:** one RTX PRO 6000 Blackwell Max-Q
+measured the final TP1 capacity population (10 cells, 72 requests), resource
+window, and final functional/quality evidence. C2 is the selected interactive
+setting with a retained 32K decode soft miss; C1 remains latency-first. This is
+not sixteen-active-request or stable-p99 evidence. [Finding](../../findings/2026-11-01-swift-tp1-gpu0.md).
+
+**2026-11-01 — keep the current configuration:** the dual-card
+[cache-layout and DFlash scouts](../../findings/2026-11-01-runtime-scouts.md)
+each completed 144 timed requests at ~6K/~25K actual input and requested C1/C4.
+Neither met the 10% E2E improvement gate against both baseline controls.
+The layout candidate added 38.60% reported KV slots; DFlash2 K3 reduced them
+40.63%. Both original configurations were restored; `no-promotion`.
+Target identity is private. These are bounded natural-output scouts, not
+controlled speculative-speedup, full-context or broad quality evidence.
+[Dossier](../models/private-runtime-scouts.md) ·
+[Raw evidence](../../findings/2026-11-01-runtime-scouts-evidence/README.md).
+
 **2026-10-26 Qwen3.8 Flash Next three-recipe scout — final, no-promotion:** Ignis 0.8.0, vLLM r2, and Flare r2 each used one RTX PRO 6000 Blackwell Max-Q in serialized single-request functional/context scouts. Agentic passed 6/6 and context 9/9 per recipe, up to 114,588 observed prompt tokens. Coding results were mixed and historical output attribution is uncertain because the shared router's buffered-text path collapses repeated spaces; original HTTP bodies were not retained. The second card was not used for performance evidence. vLLM and Flare C1 each ended 0/8 performance-eligible. Exact prior route/output-cap configuration and GLM incumbent readmission passed local checks; router uses reviewed PR #704 overlay, not original image. No speed result, capacity qualification, engine ranking, or promotion claim. [Finding](../../findings/2026-10-26-flash-next-engine-qualification.md) · [evidence](../../findings/2026-10-26-flash-next-engine-qualification-evidence/README.md).
 
 **2026-10-26 Ignis 0.8 mandatory-tool qualification:** [one-card functional evidence](../../findings/2026-10-26-ignis-080-preflight.md) retains the original unseeded `auto` tools result at 3/4. On the same immutable Ignis/model/recipe, the documented request-level `required` path with normal thinking passed 3/3 mechanism cells, a 5/5-check and 9/9-observation preflight, and a 4/4 different-seed repeat. The candidate point snapshot recorded 96,027 MiB on the measured card and 0 MiB on the protected equal card; phase-two managed cgroup peak was 41.86 GiB with zero OOM events. Exact operational restoration passed. These are functional/resource observations, not capacity or performance evidence. No promotion.
@@ -27,7 +75,7 @@ bounded diagnostic evidence, not a hardware ranking or a promotion. The
 [engine-testing index](../engine-testing.md) links every retained finding and
 its restoration boundary.
 
-**Current primary, 2026-10-17:** the operator selected the pinned NVIDIA
+**Historical primary decision, 2026-10-17:** the operator selected the pinned NVIDIA
 GLM-5.3-Flash FP4 recipe as the best current fit for this deployment. Its
 TP2/DCP2, FP8-KV, 327,680-token/C4/MTP3 configuration is human-approved and
 promoted; EXL3 r11 is retained as rollback. Direct/routed and fresh C1/C2/C4
@@ -114,8 +162,8 @@ general hardware maximum, speed, crash-rate, or C8 claim. [Finding](../../findin
 **Hardware:** 2× NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition,
 96 GB each (192 GB aggregate), sm_120. **Host:** Primary Node; native Linux
 measurements on 2026-09-09, with retained Windows 11/Docker Desktop/WSL2
-history. **Last locally measured:** 2026-10-26 (actual-CUDA marker/sampling gates on one card and one synchronized diagnostic C1 request on the pair). **Evidence
-interpretation reviewed:** 2026-10-26.
+history. **Last locally measured:** 2026-11-13 (dual-card focused runtime functional and telemetry checks; no new speed ranking). **Evidence
+interpretation reviewed:** 2026-11-13.
 
 > Side-by-side speed and recipe links for every configuration measured on this
 > card or both cards in TP=2: [model comparison table](../comparison.md).

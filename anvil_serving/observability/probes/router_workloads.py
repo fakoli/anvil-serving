@@ -26,6 +26,7 @@ from ..workloads import (
     WorkloadErrorCode,
     WorkloadOwner,
     WorkloadQuery,
+    canonical_workload_query,
     node_result_from_json,
 )
 
@@ -39,18 +40,6 @@ def _single_router_source(node) -> SourceResult:
     if len(node.sources) == 1 and node.sources[0].owner is WorkloadOwner.ROUTER:
         return node.sources[0]
     raise WorkloadError(WorkloadErrorCode.INVALID, "invalid router workload source")
-
-
-def _canonical_query(query: WorkloadQuery) -> WorkloadQuery:
-    return WorkloadQuery(
-        owner=query.owner,
-        kind=query.kind,
-        state=query.state,
-        host=query.host,
-        active_only=query.active_only,
-        recent_seconds=query.recent_seconds,
-        limit=query.limit,
-    )
 
 
 def _router_source(node) -> SourceResult:
@@ -155,7 +144,7 @@ def read_router_node_workloads(
 ) -> NodeResult:
     """Read an exact authenticated router snapshot, preserving its provenance."""
     fallback = build_node_workloads(expected_node, query, now, {})
-    checked_query = _canonical_query(query)
+    checked_query = canonical_workload_query(query)
     checked_now = fallback.collection_timestamp
     if checked_query.host is not None and checked_query.host != expected_node:
         source = SourceResult(

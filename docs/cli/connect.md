@@ -33,6 +33,8 @@ copyable `resource:member` / `resource:admin` values. Use these exact IDs with
 `users create --grant` or `users access --grant`; application names need not match
 resource IDs. API resources are excluded because browser grants do not authorize
 API access. Passthrough applications retain their own internal permissions.
+Resources reporting `operator_only: true` additionally require the configured
+Connect operator identity; an application `admin` grant alone is insufficient.
 
 The command defaults to `/etc/anvil-connect/deployment.json`, accepts `--manifest`,
 and works identically as `anvil-serving connect resources`. It reads only the
@@ -239,6 +241,13 @@ Deletion backs up authentication state before removing it, briefly restarts
 Authelia if active, and retains a protected progress record if interrupted. Retry
 the same deletion to finish; an incomplete deletion stays disabled.
 
+For older pending requests without a username, the worker can recover only an
+already-absent sign-in account with one exact public OIDC subject mapping to the
+authorized principal. It pins that mapping and the original intent in its private
+progress record, backs up the remaining authentication state, and refuses an
+existing or recreated account, ambiguous mapping, or changed native request.
+No new deletion request or direct authority-database repair is needed.
+
 Backups, application data and separately issued API keys are retained; these keys
 have no automatic username association and require separate revocation. An old
 backup can contain a deleted account: review revocations before recovery. Use
@@ -356,6 +365,22 @@ sequential Authelia and gateway snapshots. The timer catches up after downtime.
 It does not send email notifications.
 An existing unrelated unit with the same name is refused.
 
+Run the installed full backup worker immediately with:
+
+```sh
+sudo anvil-connect-ctl users backup --scheduled
+sudo anvil-connect-ctl users backup --scheduled --confirm
+```
+
+The first command previews the operation. The confirmed command verifies the
+selected immutable manager, default manifest and exact installed worker before
+starting it. The worker already includes the gateway snapshot; `--scheduled`
+cannot be combined with `--include-gateway`. Success requires a new worker
+invocation with a successful exit, not an earlier stored result. A timeout or
+uncertain result does not stop or retry the worker: inspect its state and retained
+backup receipts before trying again. The operation briefly interrupts
+authentication and gateway connections, as the nightly backup does.
+
 To enable permanent deletion from the browser, install the verified manager and
 its fixed worker first:
 
@@ -437,6 +462,28 @@ invalidates previous sessions. Passthrough applications without an explicit appl
 a separate Pi deployment without a Connect identity adapter, still manage their own roles;
 their editor says that explicitly and their tiles omit the role badge. Merely storing a role label does not
 grant or restrict an action inside such an application.
+
+### Applications restricted to Connect operators
+
+Set `operator_only: true` on a gateway browser resource, beside `display_name`
+and `rule`, to restrict the application to the existing
+`browser_administration.operators` allowlist. The operator must still hold its
+normal explicit resource grant. Nonoperators cannot reach the origin, including
+through a direct URL or upgraded connection, even with an accidental app grant.
+Both service choosers hide the app from nonoperators. The general access editor
+omits it; use the existing managed `operators-ensure-resource` administrative
+operation to add its grant to configured operators. Changed operators must sign
+in to Connect again; an already-converged request preserves their sessions.
+The operator allowlist is startup configuration; grant changes increment the
+affected human's generation and invalidate their existing Connect sessions.
+
+Omitting the setting or using `false` preserves ordinary browser access.
+Malformed values, API resources, and an enabled restriction without configured
+browser administration are refused. Keep the origin private, retain its native
+Host/Origin checks, and publish the app through the existing managed connector
+and TLS edge. A tile opens the application normally; it does not embed a frame.
+This restriction covers the declared browser resource; separately declared API
+aliases and direct origin access require their own protection.
 
 ### Application roles owned by Connect
 
@@ -795,6 +842,15 @@ Public reverse tunnels open connections on demand. Zero idle registrations are
 reported as idle, not a failed tunnel, and do not trigger a connector restart on
 an unchanged apply. Status does not replace an authenticated application request.
 
+A `tunnel_disconnected` event can also mean that the caller or an intermediary
+canceled an idle pending handshake before HTTP 101. It does not prove prior
+establishment or origin readiness. Intermediary reconnects remain visible;
+backend failures and authority cancellation with a live caller continue to
+report establishment failure.
+The reverse TCP backend waits for demand before completing its HTTP upgrade.
+Pending handshakes retain lease, capacity, cancellation and absolute lifetime
+limits; the 45-second read idle limit starts after the verified upgrade.
+
 `connect status` reports bounded owned service metadata. `--service` narrows it.
 A process reported as running is not a claim that its origin is ready.
 
@@ -816,6 +872,10 @@ narrows the checks. Diagnostics exclude secret file contents and request bodies.
 `connect logs --service SERVICE --tail 100` returns bounded service event metadata.
 The maximum tail is 200. Credential-bearing raw process logs are not a public
 diagnostic contract.
+Native events project only required journal fields and return at most the last
+64 rows from the current service invocation, within the existing output byte
+limit. This is a bounded observation, not complete history. Native event results
+and generic log availability are reported independently.
 
 ## Init
 
@@ -923,6 +983,35 @@ the host. Every operation and stream is scoped to the verified issuer/subject an
 current Connect grant; a browser cookie, email address or WebUI token is not an
 admission credential. Deploy with the managed infrastructure role and retain its
 artifact digests and rollback record before exposing the HTTPS endpoint.
+
+## Native agents check
+
+```bash
+anvil-serving connect native-agents-check
+```
+
+This finite local check needs no email activation or OAuth sign-in. It runs the
+real broker HTTP handler and receipt store with two synthetic users and synthetic
+owners, checking session creation, state, Stop, cross-user denial and local
+admission revocation. A temporary loopback listener uses random credentials held
+only in memory; it closes and its private state is removed when the check ends.
+There is no production authentication setting or persistent development token.
+
+For actual guest owners, supply `--config /absolute/private/guest-check.json` to
+preview, then add `--confirm` to run. This uses the protected broker config format
+but requires exactly two guest principals, two to four sandboxed workspaces, and
+no personal-user workspace. Each owner endpoint and credential must be distinct.
+The command ignores the configured production listen port and broker store. It
+creates empty native sessions, reads their state, checks access boundaries, and
+Stops them. Session IDs are returned for audit; the empty native sessions remain.
+It sends no model prompts and changes no accounts or grants. `--dry-run` overrides
+`--confirm`; without a config only disposable synthetic state is used.
+
+These checks exercise broker behavior and, in configured mode, owner control
+paths. They do not establish OAuth, browser, model, filesystem/network isolation,
+private Hindsight or whole-process revocation acceptance. Those remain separate
+deployment checks. Reading protected owner credentials requires the existing
+local operator permissions; this command does not grant them.
 
 ## Keygen
 

@@ -1,5 +1,50 @@
 # Benchmark run catalog
 
+## 2026-11-13 Mia TensorFold runtime
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Mia fc1ee3a,110 author +6 owned patches; GLM EXL3 TP2, FP8 sharded KV, DFlash2; configured327680/C4 | Two RTX PRO6000 Blackwell Max-Q96GiB,300W; direct native HTTP and rollback routed smoke | Functional candidate accepted: Messages cut-call500 fixed;128 prompt alternatives/requested IDs pass; tools/image/C4/cache regressions pass. No matched speed or full-window C4 claim. | [Dossier](models/glm53-flash.md#mia-runtime-update-2026-11-13) · [Finding](../findings/2026-11-13-tensorfold-mia-runtime-functional.md) |
+
+## 2026-11-09 TensorFold reasoning investigation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Pinned GLM EXL3 TensorFold, TP2, FP8 paged KV, DFlash2; configured 327,680 context/C4; one owned C1 task at a time, fixed 16K response cap, Max/Low/Low/Max order | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online Aider/Polyglot and contained Go tests on native Linux | Focused `quality`, `no-promotion`; Low passed 2/2 on its first test, while Max resolved 0/2 after all-reasoning response-cap exhaustion. Eight complete responses. New disk-cache/process/48-GiB baseline; user traffic could coexist. No numeric-budget deployment, broad Go score or performance comparison. | [Dossier](models/glm53-flash.md#tensorfold-reasoning-controls-2026-11-09) · [Finding](../findings/2026-11-09-tensorfold-reasoning-budget.md) |
+| Separate request-control rollout: merged local CLI/router; three C1 jobs in Max/8,192, Low/unset, Max/8,192 order; 16,384 response cap | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online contained Go tests on a sharded-KV runtime, distinct from the original disk-only matrix | Source-backed `functional` control evidence; focused `quality`: Max 1/2 jobs, Low 1/1 on one unique task, ten HTTP 200 responses. First Max and Low passed their second coding attempt; second Max failed both attempts at the response cap, without exhausting whole-job time/call budgets. No reliable 8,192 fix/default, contemporary unbounded-Max control or causal quality/speed claim. B10 partial: remote-controller numeric admission unsupported; observer migration deferred. `no-promotion`; no global-control or cache-policy change. | [Dossier](models/glm53-flash.md#tensorfold-request-control-rollout-2026-11-09) · [Follow-up](../findings/2026-11-09-tensorfold-reasoning-budget.md#source-and-rollout-follow-up-2026-11-09) · [Summary](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/summary.json) · [Evidence index](../findings/2026-11-09-tensorfold-thinking-budget-rollout-evidence/README.md) |
+
+## 2026-11-08 TensorFold Go validation
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| GLM-5.3-Flash EXL3 4-bpw on pinned TensorFold with the ordered telemetry series; TP2, FP8 paged KV, DFlash2, configured 327,680 context/C4; requested C1 | Two RTX PRO 6000 Blackwell Max-Q GPUs; routed online Aider/Polyglot and contained Go tests on one native Linux owner | `quality`, `no-promotion`: one of two profile checks passed on one unique task, first attempt at 32K; both 16K attempts failed after response-length limits. Four complete transport responses; one earlier setup failure excluded from model grades. No broad Go score, causal cap benefit or performance ranking. | [Dossier](models/glm53-flash.md#tensorfold-go-diagnostic-2026-11-08) · [Finding](../findings/2026-11-08-tensorfold-go-validation.md) · [Evidence index](../findings/2026-11-08-tensorfold-go-validation-evidence/README.md) |
+
+## 2026-11-03 RTX5090 candidate campaign
+
+| Configuration | Measured GPU / path | PRO relationship | Evidence labels | Decision labels | Evidence |
+|---|---|---|---|---|---|
+| Private candidate on Ignis 0.8.0,32K budget pair and256K vision profile | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional, bounded capacity | challenger, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) · [Ignis note](../findings/2026-11-03-ignis-improvements.md) |
+| Private QAT/NInfer text160K and failed vision sibling | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; compatibility-only failure | challenger / rejected, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+| Private coding/NInfer128K fresh recheck and earlier distinct process | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; failed outer context job retained | challenger, no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+| Private historical and restored160K vision references | One RTX5090; direct C1 | Not measured; no extrapolation | quality, functional; historical-invalid (initial identity provenance incomplete) | no-promotion | [Dossier](models/rtx5090-campaign-candidates.md) · [Finding](../findings/2026-11-03-rtx5090-campaign.md) |
+
+Selected candidate configurations passed123/123 coding checks; the restored
+reference114/123. These are seven task types repeated three times with different
+loaded policies/capabilities, not a complete serving comparison or universal ranking.
+
+## 2026-11-01 Swift TP1 GPU0 qualification accepted
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Swift 1.5 Qwen3.8 27B BF16 with FP8 KV, TP1, 262,144 configured context and MTP3; selected C2 interactive operating point | One RTX PRO 6000 Blackwell Max-Q; final fresh capacity population is 10 cells / 72 requests, separate from the historical 60-cell matched comparison | Protocol and bounded qualification gates passed; no current deployment or client assignment claim. C2 32K median decode 13.43 tok/s is below its 15 tok/s soft objective while first-output p95 is 16.69 s under the 30 s ceiling; C1 is latency-first. C16 is queued requested load, not 16 active requests. SWE resolved 4/5; strict formatting failed 4/4. Operational records are private. | [Dossier](models/qwen38-efficient-variants.md) · [Finding](../findings/2026-11-01-swift-tp1-gpu0.md) |
+
+## 2026-11-01 cache-layout and DFlash scouts
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Private target; original MTP3 versus internal 1M cache layout, then exact original restoration | Two RTX PRO 6000 Blackwell Max-Q, TP2/DCP2; direct online ~6K/~25K, requested C1/C4 | 144/144 timed requests; no 10% E2E win against both controls; +38.60% reported cache slots, ~25K/C4 7.92–9.25% slower. Natural output, absent canaries; no full-context or quality qualification. Original restored, `no-promotion`. | [Dossier](models/private-runtime-scouts.md) · [Finding](../findings/2026-11-01-runtime-scouts.md#cache-layout-results) |
+| Same private target; original MTP3 versus DFlash2 K3, then exact original restoration | Two RTX PRO 6000 Blackwell Max-Q, TP2/DCP2; direct online ~6K/~25K, requested C1/C4 | 144/144 timed requests; locally compatible in this screen, no 10% E2E win against both controls; −40.63% reported cache slots. No controlled output, canaries or matched no-speculation arm. Original restored, `no-promotion`. | [Dossier](models/private-runtime-scouts.md) · [Finding](../findings/2026-11-01-runtime-scouts.md#dflash-results) |
+
 ## 2026-10-26 [operator-private] H3 MCP functional smoke
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

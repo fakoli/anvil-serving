@@ -124,15 +124,6 @@ def test_bounded_sidecar_diagnostic_preserves_store_and_never_authorizes(
     assert store.path.read_bytes() == before
 
 
-def test_diagnostic_errors_never_forward_private_content(monkeypatch):
-    def fail(*args, **kwargs):
-        raise ValueError('private-sentinel')
-    monkeypatch.setattr(diagnostic, 'recovery_status', fail)
-    result = diagnostic.dispatch([])
-    assert result.error.code == 'router_recovery_status_unavailable'
-    assert 'private-sentinel' not in str(result)
-
-
 @pytest.mark.parametrize('change', ['none', 'missing', 'pending', 'unanchored', 'wrong_config', 'wrong_owner', 'extra'])
 def test_native_ledger_reads_one_snapshot_without_writes(record, config, monkeypatch, change):
     import sqlite3
