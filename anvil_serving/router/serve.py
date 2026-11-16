@@ -2427,6 +2427,7 @@ def build_server(
                 WorkflowRegistry(registry_path),
                 MediaJobStore(state_path),
                 ArtifactStore(artifact_root),
+                background_dispatch=True,
                 lifecycle_preview=(
                     _media_lifecycle_preview(controller_url, controller_token)
                     if controller_url

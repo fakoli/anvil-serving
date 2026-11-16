@@ -527,7 +527,8 @@ class MediaJobStore:
             uncertain = db.execute("SELECT 1 FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
                 "WHERE q.claimed=1 AND j.state IN ('failed','canceled') LIMIT 1").fetchone() is not None
         return {"sequence": row[0], "position": position if row[2] == 'accepted' else 0,
-                "waiting": row[2] == 'accepted', "blockedByUncertainSubmission": uncertain}
+                "waiting": row[2] == 'accepted', "blockedByUncertainSubmission": uncertain,
+                "terminalConfirmed": row[1] == -1}
 
     def queue_candidates(self, *, slots: int, workflow_limits: Mapping[str, int]):
         """Reserve FIFO starts in SQLite, across independent gateway processes."""
@@ -560,6 +561,22 @@ class MediaJobStore:
                 resumes.append(row[0])
             db.execute("COMMIT")
         return resumes
+
+    def queue_uncertain(self):
+        with self._connect() as db:
+            ids = db.execute("SELECT q.job_id FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
+                "WHERE q.claimed=1 AND j.state IN ('failed','canceled') ORDER BY q.sequence").fetchall()
+        return [self.get(row[0]) for row in ids]
+
+    def confirm_queue_terminal(self, job_id, *, principal):
+        with self._lock, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            job = self.get(job_id, principal=principal)
+            if job.state in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELED}:
+                # -1 records independently confirmed remote termination; the
+                # terminal-state cleanup must not quarantine this claim again.
+                db.execute("UPDATE media_job_queue SET claimed=-1 WHERE job_id=? AND claimed=1", (job_id,))
+            db.execute("COMMIT")
 
     def lookup_idempotency(
         self,
@@ -634,11 +651,14 @@ class MediaJobStore:
         principal: str,
         reason: str = "",
         approval: Mapping[str, Any] | None = None,
+        expected_states: set[JobState] | None = None,
         now: dt.datetime | None = None,
     ) -> MediaJob:
         with self._lock, self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             current = self.get(job_id, principal=principal)
+            if expected_states is not None and current.state not in expected_states:
+                raise MediaError("invalid_transition", "media job state changed", status=409)
             changed = current.transition(state, reason=reason, at=now)
             approval_json = (
                 json.dumps(dict(approval), sort_keys=True, separators=(",", ":"), allow_nan=False)

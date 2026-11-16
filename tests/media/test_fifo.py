@@ -143,6 +143,19 @@ def test_approval_contract_and_unknown_submission_block_execution(tmp_path):
     ops.dispatch_queue(backend=backend)
     assert len(backend.submitted) == 1
     assert ops.job_status(second['job']['id'], principal='caller')['queue']['blockedByUncertainSubmission']
+    backend.ambiguous = False
+    backend.find_prompt = lambda job_id: 'prompt-' + job_id
+    backend.history = lambda prompt: BackendStatus(prompt, 'completed')
+    loop = MediaReconciliationLoop(MediaJobReconciler(ops.jobs, backend.history, find_prompt=backend.find_prompt,
+        backend_endpoint=backend.base_url), dispatch=lambda: ops.dispatch_queue(backend=backend))
+    loop._unknown_jobs.add(first['job']['id'])
+    loop.reconcile_once()
+    assert len(backend.submitted) == 2 and backend.submitted[-1] == second['job']['id']
+    assert ops.jobs.get(first['job']['id']).state == JobState.FAILED
+    assert not ops.job_status(second['job']['id'], principal='caller')['queue']['blockedByUncertainSubmission']
+    assert not loop._unknown_jobs
+    finish(ops, second['job']['id'])
+    assert loop.drain_readback() == (0, False)
 
 
 def test_wait_is_bounded_owned_and_does_not_cancel_and_queue_is_bounded(tmp_path, monkeypatch):
@@ -168,3 +181,60 @@ def test_wait_is_bounded_owned_and_does_not_cancel_and_queue_is_bounded(tmp_path
     ops.dispatch_queue(backend=backend)
     assert ops.jobs.get(second['job']['id']).state == JobState.FAILED
     assert len(backend.submitted) == 1  # Changed contract never executes.
+
+
+def test_background_enqueue_does_not_wait_for_backend(tmp_path):
+    ops, backend = operations(tmp_path), Backend()
+    ops.background_dispatch = True
+
+    def unavailable(_workflow):
+        raise AssertionError('enqueue contacted backend')
+
+    backend.compatibility = unavailable
+    result = submit(ops, backend, 'one')
+    assert result['job']['state'] == 'accepted' and not backend.submitted
+
+
+def test_stale_failure_cannot_release_another_dispatchers_submission(tmp_path):
+    a, b, c = (operations(tmp_path) for _ in range(3))
+    backend = Backend()
+    a.background_dispatch = True
+    first = submit(a, backend, 'first')
+    second = submit(a, backend, 'second')
+    failing = Backend()
+    failing.compatibility = lambda w: WorkflowCompatibility(w.id, w.version, True, False, reasons=('worker_budget_unknown',))
+    before_failure, allow_failure, accepted, allow_response = (threading.Event() for _ in range(4))
+    transition = a.jobs.transition
+
+    def paused_transition(job_id, state, **kwargs):
+        if state == JobState.FAILED:
+            before_failure.set()
+            assert allow_failure.wait(5)
+        return transition(job_id, state, **kwargs)
+
+    a.jobs.transition = paused_transition
+    submit_backend = backend.submit
+
+    def paused_submit(rendered, *, job_id):
+        prompt = submit_backend(rendered, job_id=job_id)
+        accepted.set()
+        assert allow_response.wait(5)
+        return prompt
+
+    backend.submit = paused_submit
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        failed = pool.submit(a.dispatch_queue, backend=failing)
+        assert before_failure.wait(5)
+        submitting = pool.submit(b.dispatch_queue, backend=backend)
+        try:
+            assert accepted.wait(5)
+            allow_failure.set()
+            failed.result(timeout=5)
+            c.dispatch_queue(backend=backend)
+            assert backend.submitted == [first['job']['id']]
+            assert c.jobs.get(first['job']['id']).state == JobState.SUBMITTING
+            assert c.jobs.get(second['job']['id']).state == JobState.ACCEPTED
+        finally:
+            allow_failure.set()
+            allow_response.set()
+        submitting.result(timeout=5)

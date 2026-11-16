@@ -67,11 +67,13 @@ class MediaOperations:
         artifacts: ArtifactStore,
         *,
         lifecycle_preview: LifecyclePreview | None = None,
+        background_dispatch: bool = False,
     ) -> None:
         self.registry = registry
         self.jobs = jobs
         self.artifacts = artifacts
         self._lifecycle_preview = lifecycle_preview
+        self.background_dispatch = background_dispatch
         self._submit_lock = threading.RLock()
         self._dispatch_lock = threading.Lock()
         try:
@@ -193,9 +195,10 @@ class MediaOperations:
                     backend=backend, qualification=qualification)
             if existing.backend_prompt_id or existing.state == JobState.SUBMITTING:
                 self.jobs.check_backend_endpoint(existing.id, backend.base_url, principal=principal)
-            if existing.state == JobState.SUBMITTING:
+            if existing.state == JobState.SUBMITTING and not self.background_dispatch:
                 self._resume_submitting(existing.id, principal=principal, backend=backend)
-            self.dispatch_queue(backend=backend, requested_job=existing.id)
+            if not self.background_dispatch:
+                self.dispatch_queue(backend=backend, requested_job=existing.id)
             return {**self.job_status(existing.id, principal=principal, wait_seconds=wait_seconds), "created": False}
         self._artifact_inputs(rendered, principal=principal)
         decision = MediaAdmissionService(self.jobs).evaluate(rendered.descriptor, resolved_parameters,
@@ -214,7 +217,8 @@ class MediaOperations:
             queue_request=request, queue_depth=self.queue_depth)
         if job is None:
             raise MediaError("media_admission_rejected", "media queue is full", status=409, details={"reason": reason})
-        self.dispatch_queue(backend=backend, requested_job=job.id)
+        if not self.background_dispatch:
+            self.dispatch_queue(backend=backend, requested_job=job.id)
         return {**self.job_status(job.id, principal=principal, wait_seconds=wait_seconds), "created": created}
 
     @staticmethod
@@ -255,7 +259,12 @@ class MediaOperations:
                     if reasons and set(reasons) == {"worker_busy"}:
                         continue  # Native queue owns the resource; retry this head, never overlap.
                     if current.state in {JobState.ACCEPTED, JobState.PREPARING} and exc.code != "invalid_transition":
-                        self.jobs.transition(job.id, JobState.FAILED, principal=job.principal, reason=exc.code)
+                        try:
+                            self.jobs.transition(job.id, JobState.FAILED, principal=job.principal, reason=exc.code,
+                                expected_states={JobState.ACCEPTED, JobState.PREPARING})
+                        except MediaError as race:
+                            if race.code != "invalid_transition":
+                                raise
                     if job.id == requested_job:
                         raise
         finally:
@@ -327,16 +336,13 @@ class MediaOperations:
                     JobState.ACCEPTED,
                     JobState.AWAITING_APPROVAL,
                 }:
-                    self.jobs.transition(
-                        job_id,
-                        JobState.FAILED,
-                        principal=principal,
-                        reason=(
-                            exc.code
-                            if isinstance(exc, MediaError)
-                            else "media_lifecycle_preview_failed"
-                        ),
-                    )
+                    try:
+                        self.jobs.transition(job_id, JobState.FAILED, principal=principal,
+                            reason=exc.code if isinstance(exc, MediaError) else "media_lifecycle_preview_failed",
+                            expected_states={JobState.ACCEPTED, JobState.AWAITING_APPROVAL})
+                    except MediaError as race:
+                        if race.code != "invalid_transition":
+                            raise
                 if isinstance(exc, MediaError):
                     raise
                 raise MediaError(

@@ -488,7 +488,8 @@ The single-worker runtime guard may enforce a stricter limit. It is never
 bypassed, and jobs do not extend a worker's lifetime.
 
 Both `media_workflow_run` and `media_job_status` accept optional `wait_seconds`
-from 0 to 20. Zero returns immediately; a positive value waits for completion
+from 0 to 20. After validation and enqueue, zero returns without waiting for
+execution; a positive value waits for completion
 or required startup approval, returning current state at the deadline without
 canceling. Repeat status with the same job ID for longer waits, or use
 `media job watch` in a client-owned background process. The CLI run/status
@@ -501,8 +502,10 @@ the gateway resumes the stored bounded request without requiring a connected
 caller. Pending parameters live only in private operator state and are cleared
 on terminal completion. Changed contracts, expired/foreign artifacts, or a
 changed backend cannot silently execute. Ambiguous submission outcomes retain
-their slot and report `blockedByUncertainSubmission`; independent operator
-reconciliation is required before more work can use that resource.
+their slot and report `blockedByUncertainSubmission`. The reconciler releases
+that reservation only when the pinned backend positively reports the exact
+owned prompt completed or failed. Missing or unknown history remains blocked
+and requires independent operational recovery; no submission is repeated.
 
 MCP supports asynchronous tasks when both peers negotiate the
 [Tasks extension](https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html).
