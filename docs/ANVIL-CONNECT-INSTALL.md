@@ -17,21 +17,92 @@ local forwarder.
 
 ## Install a bundle
 
-Obtain the platform archive and its independently retained release receipt.
-Verify the archive SHA-256 **before extracting or executing its installer**.
-The receipt also supplies the `manifest_sha256` required below. Checksums detect
-changed bytes; they are not a substitute for trusting the release publisher.
+Download three assets for your platform from the same `connect-vVERSION`
+release into one directory: the archive
+`anvil-connect-VERSION-PLATFORM.tar.gz`, its Sigstore signature
+`anvil-connect-VERSION-PLATFORM.tar.gz.sigstore.json`, and its receipt
+`anvil-connect-VERSION-PLATFORM.receipt.json`. The receipt supplies the
+`manifest_sha256` used below.
+
+### How verification works
+
+The [release workflow](https://github.com/fakoli/anvil-serving/blob/main/.github/workflows/connect-release.yml) builds every
+archive from the tagged source in GitHub Actions and signs it with Sigstore
+keyless signing. No private key exists: GitHub issues a short-lived OIDC token,
+Sigstore's certificate authority binds it to the workflow identity, and the
+signature is recorded in the public Rekor transparency log. A valid signature
+proves that the archive bytes were produced by this repository's workflow at
+that release tag. Replacing a release asset without re-running that workflow
+cannot produce one.
+
+A signature is accepted only for this exact certificate identity and issuer:
+
+| Field | Value |
+|---|---|
+| Identity | `https://github.com/fakoli/anvil-serving/.github/workflows/connect-release.yml@refs/tags/connect-vVERSION` |
+| Issuer | `https://token.actions.githubusercontent.com` |
+
+`install.py --archive` checks the signature with an installed
+[`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/)
+3 or later (preferred) or the [`sigstore`](https://pypi.org/project/sigstore/)
+Python CLI found on `PATH`, pinning that identity and issuer, **before it extracts anything**. It then
+extracts only regular files beneath the expected top directory into a private
+temporary directory, requires the archive name, manifest version and platform
+to agree, and still enforces the receipt's `manifest_sha256` and every member
+checksum. An invalid, foreign or mismatched signature is always refused.
+
+### Verify by hand, then install
+
+An installer shipped inside an archive cannot vouch for that archive, so verify
+the download yourself before extracting or running anything from it:
 
 ```sh
-# Run in the extracted bundle. This previews and verifies every component.
-python3 install.py --role client --prefix "$HOME/.local/anvil-connect" \
+cosign verify-blob \
+  --bundle anvil-connect-VERSION-PLATFORM.tar.gz.sigstore.json \
+  --certificate-identity https://github.com/fakoli/anvil-serving/.github/workflows/connect-release.yml@refs/tags/connect-vVERSION \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  anvil-connect-VERSION-PLATFORM.tar.gz
+# Equivalent with the Python verifier (pip install sigstore):
+python3 -m sigstore verify identity \
+  --bundle anvil-connect-VERSION-PLATFORM.tar.gz.sigstore.json \
+  --cert-identity https://github.com/fakoli/anvil-serving/.github/workflows/connect-release.yml@refs/tags/connect-vVERSION \
+  --cert-oidc-issuer https://token.actions.githubusercontent.com \
+  anvil-connect-VERSION-PLATFORM.tar.gz
+```
+
+Both print a success line and exit 0 only for a genuine release. Then run the
+verified installer against the archive; it re-verifies the same bytes:
+
+```sh
+tar -xzf anvil-connect-VERSION-PLATFORM.tar.gz
+# Preview: verifies the signature, the manifest and every component.
+python3 anvil-connect-VERSION-PLATFORM/install.py \
+  --archive anvil-connect-VERSION-PLATFORM.tar.gz \
+  --role client --prefix "$HOME/.local/anvil-connect" \
   --manifest-sha256 MANIFEST_SHA256
 
 # Install after inspecting the preview.
-python3 install.py --role client --prefix "$HOME/.local/anvil-connect" \
+python3 anvil-connect-VERSION-PLATFORM/install.py \
+  --archive anvil-connect-VERSION-PLATFORM.tar.gz \
+  --role client --prefix "$HOME/.local/anvil-connect" \
   --manifest-sha256 MANIFEST_SHA256 --confirm
 "$HOME/.local/anvil-connect/bin/anvil-connect" --help
 ```
+
+The result's `signature` field records the verifier and identity used.
+
+### Unsigned releases
+
+Releases before signing (`connect-v0.2.0` and earlier) publish no
+`.sigstore.json`. The installer refuses them, and refuses any archive when
+neither `cosign` nor `sigstore` is installed, unless you pass
+`--allow-unsigned`. Installing from an already-extracted bundle directory
+(`--bundle`, for example a retained bundle used for rollback) cannot be checked
+against a signature and also requires `--allow-unsigned`. With that flag the
+installer prints a warning, records `"signature": {"verified": false}`, and
+relies only on the checksums you supplied, so first compare the archive
+SHA-256 with an independently retained receipt. `--allow-unsigned` never
+overrides a signature that fails verification.
 
 Use a dedicated, owned prefix. The installer refuses symlinked or writable
 ancestry, unowned existing files, a mismatched platform/role, or changed bundle
@@ -111,9 +182,9 @@ for an alternate declaration or `--json` for automation. Follow the
 ## Repeat, upgrade, and rollback
 
 Repeating the same installation validates the installed bytes and reports
-`current`. Releases are immutable and retained. Run the installer from a
-different verified bundle with the same role/prefix to switch CLI links; run it
-from a retained prior bundle to roll them back. One atomic link selects both
+`current`. Releases are immutable and retained. Run the installer with a
+different verified `--archive` and the same role/prefix to switch CLI links; run
+it with a retained prior archive and its `.sigstore.json` to roll them back. One atomic link selects both
 the executable release and its receipt. Interrupted first installation never
 publishes a partial prefix. Neither operation restores authority databases,
 revocations, sessions, or native credentials.
@@ -125,7 +196,15 @@ certificate rotation is not implemented.
 
 ## Build a release
 
-Build from a clean committed checkout. `connect/packaging/build_bundle.py`
+Published releases are built and signed by CI, not uploaded by hand: bump
+`connect/VERSION`, tag `connect-vVERSION`, and publish a GitHub release for that
+tag without archive assets. The
+[release workflow](https://github.com/fakoli/anvil-serving/blob/main/.github/workflows/connect-release.yml) builds all three
+platforms from the tag, signs each archive, verifies the pinned identity, and
+attaches the archives, receipts and `.sigstore.json` files. It never overwrites
+an existing asset, and a locally built archive has no valid signature.
+
+For local builds and qualification, build from a clean committed checkout. `connect/packaging/build_bundle.py`
 compiles the platform command, verifies the pinned Linux component binaries,
 packages only Connect, and writes an archive plus `receipt.json`:
 

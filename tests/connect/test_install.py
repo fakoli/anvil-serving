@@ -10,6 +10,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tarfile
 
 import pytest
 
@@ -214,3 +215,137 @@ def test_atomic_upgrade_rollback_and_interrupted_first_install(tmp_path: Path, m
     installer.install(root, prefix, role='client', expected=digest, apply=True)
     assert json.loads((prefix / 'installation.json').read_text())['version'] == '0.1.0'
     assert len(list((prefix / 'releases').iterdir())) == 2
+
+
+SIGNER = 'https://github.com/fakoli/anvil-serving/.github/workflows/connect-release.yml@refs/tags/connect-v0.1.0'
+ISSUER = 'https://token.actions.githubusercontent.com'
+
+
+def release_archive(tmp_path: Path, *, signed: bool = True, extra=None):
+    """Pack the fixture bundle exactly as a published release asset."""
+    installer, root, digest = bundle(tmp_path)
+    top = 'anvil-connect-0.1.0-darwin-arm64'
+    archive = tmp_path / 'downloads' / (top + '.tar.gz')
+    archive.parent.mkdir()
+    with tarfile.open(archive, 'w:gz') as packed:
+        packed.add(root, arcname=top)
+        if extra is not None:
+            extra(packed)
+    if signed:
+        Path(str(archive) + '.sigstore.json').write_text('{"mediaType": "application/vnd.dev.sigstore.bundle.v0.3+json"}')
+    return installer, archive, digest
+
+
+def fake_verifier(monkeypatch, installer, *, available=('cosign',), returncode: int = 0):
+    calls = []
+    monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
+    monkeypatch.setattr(installer, 'checked_directory', private_test_directory)
+    monkeypatch.setattr(installer.shutil, 'which', lambda name: '/usr/bin/' + name if name in available else None)
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return subprocess.CompletedProcess(command, returncode, b'', b'')
+
+    monkeypatch.setattr(installer.subprocess, 'run', run)
+    return calls
+
+
+@requires_posix
+def test_archive_install_verifies_pinned_sigstore_identity_before_extracting(tmp_path: Path, monkeypatch) -> None:
+    installer, archive, digest = release_archive(tmp_path)
+    calls = fake_verifier(monkeypatch, installer)
+    extracted = []
+    original = installer.extract_archive
+    monkeypatch.setattr(installer, 'extract_archive', lambda *args: extracted.append(len(calls)) or original(*args))
+    result = installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=True)
+    assert extracted == [1]
+    [command] = calls
+    assert command[:2] == ['/usr/bin/cosign', 'verify-blob']
+    assert command[command.index('--certificate-identity') + 1] == SIGNER
+    assert command[command.index('--certificate-oidc-issuer') + 1] == ISSUER
+    assert command[command.index('--bundle') + 1].endswith('.tar.gz.sigstore.json')
+    assert result['signature'] == {'verified': True, 'verifier': 'cosign', 'identity': SIGNER, 'issuer': ISSUER}
+    assert result['state'] == 'installed'
+    assert (tmp_path / 'prefix/bin/anvil-connect').read_bytes() == b'fixture bytes'
+
+
+@requires_posix
+def test_archive_install_uses_sigstore_cli_when_cosign_is_absent(tmp_path: Path, monkeypatch) -> None:
+    installer, archive, digest = release_archive(tmp_path)
+    calls = fake_verifier(monkeypatch, installer, available=('sigstore',))
+    installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=False)
+    [command] = calls
+    assert command[:3] == ['/usr/bin/sigstore', 'verify', 'identity']
+    assert command[command.index('--cert-identity') + 1] == SIGNER
+    assert command[command.index('--cert-oidc-issuer') + 1] == ISSUER
+
+
+@requires_posix
+def test_invalid_or_mismatched_signature_is_refused_even_with_allow_unsigned(tmp_path: Path, monkeypatch) -> None:
+    installer, archive, digest = release_archive(tmp_path)
+    fake_verifier(monkeypatch, installer, returncode=1)
+    for allow in (False, True):
+        with pytest.raises(installer.SignatureError, match='verification failed'):
+            installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=True, allow_unsigned=allow)
+    assert not (tmp_path / 'prefix').exists()
+
+
+@requires_posix
+def test_missing_signature_or_verifier_requires_explicit_allow_unsigned(tmp_path: Path, monkeypatch, capsys) -> None:
+    installer, archive, digest = release_archive(tmp_path, signed=False)
+    calls = fake_verifier(monkeypatch, installer)
+    with pytest.raises(installer.SignatureError, match='--allow-unsigned'):
+        installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=True)
+    assert calls == []
+    Path(str(archive) + '.sigstore.json').write_text('{}')
+    fake_verifier(monkeypatch, installer, available=())
+    with pytest.raises(installer.SignatureError, match='--allow-unsigned'):
+        installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=True)
+    assert not (tmp_path / 'prefix').exists()
+    result = installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=True, allow_unsigned=True)
+    assert result['signature']['verified'] is False
+    assert 'WITHOUT publisher signature verification' in capsys.readouterr().err
+
+
+@requires_posix
+def test_verified_archive_still_enforces_the_receipt_checksum(tmp_path: Path, monkeypatch) -> None:
+    installer, archive, digest = release_archive(tmp_path)
+    fake_verifier(monkeypatch, installer)
+    with pytest.raises(ValueError, match='digest does not match'):
+        installer.install_archive(archive, tmp_path / 'prefix', role='client', expected='0' * 64, apply=True)
+
+
+@requires_posix
+def test_archive_rejects_unsafe_members_and_renamed_versions(tmp_path: Path, monkeypatch) -> None:
+    def link(packed):
+        member = tarfile.TarInfo('anvil-connect-0.1.0-darwin-arm64/bin/evil')
+        member.type, member.linkname = tarfile.SYMTYPE, '/etc/passwd'
+        packed.addfile(member)
+
+    installer, archive, digest = release_archive(tmp_path, extra=link)
+    fake_verifier(monkeypatch, installer)
+    with pytest.raises(ValueError, match='unsafe member'):
+        installer.install_archive(archive, tmp_path / 'prefix', role='client', expected=digest, apply=True)
+    renamed = archive.with_name('anvil-connect-0.9.0-darwin-arm64.tar.gz')
+    shutil.copyfile(archive, renamed)
+    Path(str(renamed) + '.sigstore.json').write_text('{}')
+    with pytest.raises(ValueError, match='unsafe member'):
+        installer.install_archive(renamed, tmp_path / 'prefix', role='client', expected=digest, apply=True)
+    assert not (tmp_path / 'prefix').exists()
+
+
+@requires_posix
+def test_extracted_bundle_install_requires_allow_unsigned(tmp_path: Path, monkeypatch, capsys) -> None:
+    installer, root, digest = bundle(tmp_path)
+    monkeypatch.setattr(installer, 'host_platform', lambda: 'darwin-arm64')
+    monkeypatch.setattr(installer, 'checked_directory', private_test_directory)
+    arguments = ['install.py', '--bundle', str(root), '--prefix', str(tmp_path / 'prefix'), '--role', 'client', '--manifest-sha256', digest]
+    monkeypatch.setattr(sys, 'argv', arguments)
+    with pytest.raises(SystemExit) as refused:
+        installer.main()
+    assert refused.value.code == 1 and '--allow-unsigned' in capsys.readouterr().err
+    monkeypatch.setattr(sys, 'argv', [*arguments, '--allow-unsigned'])
+    installer.main()
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)['signature']['verified'] is False
+    assert 'WITHOUT publisher signature verification' in captured.err
