@@ -746,7 +746,7 @@ not restarted. See the
 
 ## Qwen3.8 27B SGLang FP8 single-service promotion (2026-08-15)
 
-The later router-only AI-MBP25 coding-agent campaign passed the agentic smoke
+The later router-only benchmark-worker coding-agent campaign passed the agentic smoke
 2/2, the broader agentic scout 16/18, and a fixed five-instance SWE-bench
 Verified scout 5/5 under the official grader. Both agentic failures were the
 debug-loop repetitions; SWE tasks used 19-57 model requests. This is bounded

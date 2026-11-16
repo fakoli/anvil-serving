@@ -12,7 +12,7 @@ FAILED: Image vllm/vllm-openai@sha256:e4f88a... Pulling
 error getting credentials - err: exit status 1, out: `A specified logon session does not exist. It may already have been terminated.`
 ```
 
-Observed 2026-08-07 during the fakoli-mid-mod auxiliary bring-up (Docker
+Observed 2026-08-07 during the mid-mod auxiliary bring-up (Docker
 Desktop 29.6.2, per-user install, `desktop-linux` context). The failure
 persists after removing `credsStore` from `%USERPROFILE%\.docker\config.json`,
 with empty `auths`, with an isolated `DOCKER_CONFIG`, and for a plain
