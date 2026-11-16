@@ -22,7 +22,7 @@ release into one directory: the archive
 `anvil-connect-VERSION-PLATFORM.tar.gz`, its Sigstore signature
 `anvil-connect-VERSION-PLATFORM.tar.gz.sigstore.json`, and its receipt
 `anvil-connect-VERSION-PLATFORM.receipt.json`. The receipt supplies the
-`manifest_sha256` used below.
+`manifest_sha256` used below; it is informational (see below).
 
 ### How verification works
 
@@ -44,12 +44,28 @@ A signature is accepted only for this exact certificate identity and issuer:
 
 `install.py --archive` checks the signature with an installed
 [`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/)
-3 or later (preferred) or the [`sigstore`](https://pypi.org/project/sigstore/)
-Python CLI found on `PATH`, pinning that identity and issuer, **before it extracts anything**. It then
-extracts only regular files beneath the expected top directory into a private
-temporary directory, requires the archive name, manifest version and platform
-to agree, and still enforces the receipt's `manifest_sha256` and every member
-checksum. An invalid, foreign or mismatched signature is always refused.
+(preferred) or the [`sigstore`](https://pypi.org/project/sigstore/) Python CLI
+found on `PATH`, pinning that identity and issuer, **before it extracts
+anything**. It then extracts only regular files beneath the expected top
+directory into a private temporary directory, requires the archive name,
+manifest version and platform to agree, and still enforces the receipt's
+`manifest_sha256` and every member checksum. An invalid, foreign or mismatched
+signature is always refused.
+
+Minimum verifier versions: **cosign 3.0.5** or **sigstore-python 4.0**.
+Releases are signed by cosign 3.1.4, which can record the signature in Rekor v2
+with a signed timestamp. Older clients cannot verify such a bundle and fail
+closed. Typical errors are `threshold not met for verified log entry
+integrated timestamps` (cosign) and `incompatible with this version of
+sigstore-python`. The installer then refuses, so upgrade the verifier;
+`--allow-unsigned` does not bypass a verification failure.
+
+Receipts are not signed and the installer does not trust them. The signature
+covers the archive, and the archive contains `bundle.json`. A receipt only
+tells you which `manifest_sha256` to pass. For a signed archive, a wrong or
+altered receipt can only make the installation fail, never install other bytes.
+A receipt protects you only for an `--allow-unsigned` installation, and only
+if you retained it independently of the download.
 
 ### Verify by hand, then install
 
