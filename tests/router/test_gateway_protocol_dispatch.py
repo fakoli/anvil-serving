@@ -586,15 +586,15 @@ media_public_origin = "http://127.0.0.1:8080"
     )
     worker = server.anvil_media_worker
     assert forwarded_signed_mode == ["1"]
-    reconciled_after_submit = threading.Event()
+    completed_after_submit = threading.Event()
     submitted_id = None
     reconcile_once = worker.reconcile_once
 
     def observe_reconcile_once():
         observed_submission = submitted_id
         result = reconcile_once()
-        if observed_submission is not None:
-            reconciled_after_submit.set()
+        if any(job.id == observed_submission and job.state == JobState.COMPLETED for job in result):
+            completed_after_submit.set()
         return result
 
     # Observe the server-owned daemon after the durable submission; the test
@@ -605,7 +605,7 @@ media_public_origin = "http://127.0.0.1:8080"
             send_request()["params"], caller=CALLER
         )["task"]
         submitted_id = submitted["id"]
-        assert reconciled_after_submit.wait(10), "media worker did not reconcile the submitted job"
+        assert completed_after_submit.wait(10), "media worker did not complete the submitted job"
         job = server.anvil_gateway.tasks.operations.jobs.get(
             submitted["id"], principal="hermes"
         )
