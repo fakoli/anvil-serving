@@ -498,34 +498,40 @@ def ensure_router_token(out_dir):
     ``.env`` chain. An existing value is never overwritten; other lines in an
     existing file are untouched. New files are created 0600. The value is
     never returned. Result: ``{"status": "present"|"created"|"appended",
-    "path": ..., "loose_mode": bool}``.
+    "path": ..., "tightened": bool}``.
     """
     path = os.path.join(os.path.abspath(os.path.expanduser(out_dir)), ".env")
     if (os.environ.get(ROUTER_TOKEN_ENV) or "").strip():
-        return {"status": "present", "path": "environment", "loose_mode": False}
+        return {"status": "present", "path": "environment", "tightened": False}
     try:
         local_value = envfile.read_dotenv(path).get(ROUTER_TOKEN_ENV, "").strip()
     except (OSError, UnicodeError) as exc:
         raise InitError("could not read %s (%s)" % (path, exc)) from exc
     if local_value or envfile.resolve_env_value(ROUTER_TOKEN_ENV)[0]:
-        return {"status": "present", "path": path, "loose_mode": False}
+        return {"status": "present", "path": path, "tightened": False}
+    if os.path.islink(path):
+        raise InitError("refusing to write the router token through symlink %s; "
+                        "replace it with a regular file and re-run" % path)
     line = "%s=%s\n" % (ROUTER_TOKEN_ENV, secrets.token_urlsafe(32))
     existed = os.path.exists(path)
+    tightened = False
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         prefix = ""
-        if existed:
-            with open(path, "r", encoding="utf-8") as f:
-                text = f.read()
+        flags = os.O_RDWR | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(path, flags, 0o600)
+        with os.fdopen(fd, "a+", encoding="utf-8") as f:
+            if existed and os.name != "nt" and os.fstat(f.fileno()).st_mode & 0o077:
+                os.fchmod(f.fileno(), 0o600)  # before the secret is written
+                tightened = True
+            f.seek(0)
+            text = f.read()
             prefix = "" if not text or text.endswith("\n") else "\n"
-        fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
-        with os.fdopen(fd, "a", encoding="utf-8") as f:
             f.write(prefix + line)
-        loose = existed and bool(os.stat(path).st_mode & 0o077)
     except OSError as exc:
         raise InitError("could not write %s (%s)" % (path, exc)) from exc
     return {"status": "appended" if existed else "created", "path": path,
-            "loose_mode": loose}
+            "tightened": tightened}
 
 
 def _read_catalog(catalog_dir):
@@ -935,10 +941,14 @@ def _main_home(a):
     else:
         print("  Router token: generated %s in %s (not shown)."
               % (ROUTER_TOKEN_ENV, token["path"]))
-        if token["loose_mode"]:
-            print("  WARNING: %s is readable by other users; run: chmod 600 %s"
-                  % (token["path"], token["path"]), file=sys.stderr)
-    print("  Secrets: copy .env.example to .env and fill it in (never committed).")
+        if token["tightened"]:
+            print("  WARNING: %s was readable by other users; permissions set to 0600."
+                  % token["path"], file=sys.stderr)
+        if os.path.dirname(token["path"]) != config_home():
+            print("  NOTE: the router reads %s, not this file; copy %s there or use "
+                  "ANVIL_SERVING_HOME=%s." % (os.path.join(config_home(), ".env"),
+                  ROUTER_TOKEN_ENV, result["out_dir"]))
+    print("  Secrets: add values from .env.example to .env (never committed; do not copy over it).")
     print()
     print("Next steps (zero hand-assembly):")
     print("  1. add host values and secrets from .env.example to %s"

@@ -201,7 +201,9 @@ set -a; . ~/.anvil-serving/.env; set +a
 curl http://127.0.0.1:8000/v1/models -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN"
 ```
 
-`x-api-key: $ANVIL_ROUTER_TOKEN` is accepted too. `init --single-model` writes an unauthenticated
+`x-api-key: $ANVIL_ROUTER_TOKEN` is accepted too. With `--out-dir` pointing elsewhere, `init` writes
+the token beside that `router.toml`, but the router reads `$ANVIL_SERVING_HOME/.env`; `init` says so
+and you must copy the line there (or set `ANVIL_SERVING_HOME` to that directory). `init --single-model` writes an unauthenticated
 loopback `router.toml` into the current directory and does not generate a token.
 
 `init` detects stable NVIDIA GPU UUIDs and total memory, assigns the two largest
