@@ -132,7 +132,7 @@ def build_manifest() -> dict[str, Any]:
             ],
         }],
         "clients": [{"schema": "anvil-connect.client-runtime/v1", "listen": "127.0.0.1:28190", "local_key_env": "ANVIL_CONNECT_DASHBOARD_LOCAL_KEY", "remote_key_env": "ANVIL_CONNECT_DASHBOARD_REMOTE_KEY", "rule": api}],
-        "caddy": {"service_name": "anvil-connect-caddy", "state_directory": "/var/lib/anvil-test/caddy", "tls": {"mode": "provided", "certificate_file": "/etc/anvil-test/tls/service.pem", "key_file": "/etc/anvil-test/tls/service-key.pem"}},
+        "caddy": {"listen": ":443", "service_name": "anvil-connect-caddy", "state_directory": "/var/lib/anvil-test/caddy", "tls": {"mode": "provided", "certificate_file": "/etc/anvil-test/tls/service.pem", "key_file": "/etc/anvil-test/tls/service-key.pem"}},
         "authelia": {
             "service_name": "anvil-connect-authelia", "host": "auth.example.test", "listen": "127.0.0.1:29091", "state_directory": "/var/lib/anvil-test/authelia", "users_file": "/etc/anvil-test/users.yml",
             "client_secret_file": "/etc/anvil-test/secrets/oidc-client-secret-hash", "session_secret_file": "/etc/anvil-test/secrets/authelia-session", "storage_encryption_key_file": "/etc/anvil-test/secrets/authelia-storage",

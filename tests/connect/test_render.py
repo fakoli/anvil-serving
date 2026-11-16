@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.connect import manage as connect_manage
-from anvil_serving.connect.config import ManifestError, validate_manifest
+from anvil_serving.connect.config import ManifestError, manifest_warnings, validate_manifest
 from anvil_serving.connect.render import MAX_OWNED_FILES, plan, render, stage
 
 
@@ -579,6 +579,31 @@ def test_plan_and_stage_reject_symlink_roots_markers_and_staging(tmp_path: Path)
     staging_link.symlink_to(target, target_is_directory=True)
     with pytest.raises(ManifestError, match="staging root"):
         stage(isolated_manifest(), root)
+
+
+def test_edge_listen_omitted_defaults_public_with_warning() -> None:
+    value = isolated_manifest()
+    assert value["caddy"]["listen"] == ":443"
+    assert json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["listen"] == [":443"]
+    del value["caddy"]["listen"]
+    data = validate_manifest(value)
+    assert "listen" not in data["caddy"] and "all interfaces" in manifest_warnings(data)[0]
+    assert manifest_warnings(validate_manifest(manifest())) == []
+    assert json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["listen"] == [":443"]
+
+
+def test_qualification_validate_subprocess_stdout_is_pure_json_without_listen() -> None:
+    # Same form as qualification_vm_run._render_declaration: stderr merged, stdout parsed.
+    import subprocess
+    value = isolated_manifest()
+    del value["caddy"]["listen"]
+    script = ("import json,sys;from anvil_serving.connect.config import validate_manifest;"
+              "from anvil_serving.connect.render import render_for_inspection;"
+              "m=validate_manifest(json.loads(sys.argv[1]));"
+              "print(json.dumps({'manifest':m,'files':render_for_inspection(m)['files']}))")
+    done = subprocess.run([sys.executable, "-I", "-c", script, json.dumps(value)], cwd=ROOT, env={"PYTHONPATH": str(ROOT)},
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True)
+    assert set(json.loads(done.stdout)) == {"manifest", "files"}
 
 
 def test_loopback_edge_keeps_tls_without_implicit_public_listeners() -> None:

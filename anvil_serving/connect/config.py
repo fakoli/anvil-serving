@@ -647,6 +647,15 @@ def _authelia_secret_files(auth: dict[str, Any]) -> list[str]:
     ] + ([auth["smtp"]["password_file"]] if "smtp" in auth else [])
 
 
+def manifest_warnings(data: dict[str, Any]) -> list[str]:
+    """Advisories for a validated manifest; library code returns them, the CLI prints."""
+    if "listen" in data["caddy"]:
+        return []
+    return ["$.caddy.listen is omitted: the edge listens on :443 on all interfaces, which bypasses "
+            "Cloudflare when Cloudflare is meant to front it. Set caddy.listen explicitly "
+            "(loopback for tunnel origins, \":443\" for deliberate direct exposure)."]
+
+
 def validate_manifest(value: Any) -> dict[str, Any]:
     """Validate and normalize a closed deployment manifest without side effects."""
     _reject_literal_credentials(value)

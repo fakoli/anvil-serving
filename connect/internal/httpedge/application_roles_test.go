@@ -45,7 +45,7 @@ func TestExternalRolesAppearInHomeAndAccessChoices(t *testing.T) {
 		read := func(handler http.Handler, host string) struct {
 			Services []portalService
 			Choices  []portalService
-		} { t.Helper(); r := browserRequest(http.MethodGet, "/_anvil-connect/home/data", nil); r.Host = host; r.AddCookie(&http.Cookie{Name: BrowserSessionCookie, Value: "opaque-session"}); w := httptest.NewRecorder(); handler.ServeHTTP(w, r); var data struct {
+		} { t.Helper(); r := browserRequest(http.MethodGet, "/_anvil-connect/home/data", nil); r.Host = host; r.AddCookie(&http.Cookie{Name: BrowserSessionCookie, Value: "opaque-session"}); w := httptest.NewRecorder(); handler.ServeHTTP(w, r); assertNoFraming(t, w, "portal"); var data struct {
 			Services []portalService
 			Choices  []portalService
 		}; if w.Code != http.StatusOK || json.Unmarshal(w.Body.Bytes(), &data) != nil {
