@@ -36,6 +36,7 @@ clients (no chunked encoding) get a close-delimited stream instead, mirroring
 from __future__ import annotations
 
 import hmac
+import io
 import json
 import os
 import re
@@ -1783,6 +1784,26 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.close_connection = True
             self._error(status, etype, message, dialect=dialect)
 
+        def _respond_after_release(self, slot, handle) -> None:
+            """Run ``handle`` under an acquired ``slot``; free it before the reply leaves.
+
+            All handler work, including any state change, stays inside the slot.
+            Only the socket write waits, so a client that sends its next request
+            as soon as it reads this reply never finds its own slot still held.
+            """
+            # ponytail: buffers the whole reply in memory; only for bounded
+            # non-streaming handlers, never SSE relays.
+            wire, self.wfile = self.wfile, io.BytesIO()
+            try:
+                handle()
+            finally:
+                reply, self.wfile = self.wfile.getvalue(), wire
+                slot.release()
+                if reply:
+                    wire.write(reply)
+                    if self.close_connection:
+                        self._flush_closing_response()
+
         def _flush_closing_response(self) -> None:
             """Let a close-after-response error reach the peer before TCP RST.
 
@@ -2731,10 +2752,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.close_connection = True
                     self._protocol_json_error(503, "server_busy", "reference intake busy")
                     return
-                try:
-                    self._handle_asset_upload()
-                finally:
-                    _ASSET_CONCURRENCY_LIMIT.release()
+                self._respond_after_release(_ASSET_CONCURRENCY_LIMIT, self._handle_asset_upload)
                 return
             if gateway is not None and route in {MCP_PATH, A2A_PATH}:
                 if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
@@ -2750,10 +2768,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
                     return
-                try:
-                    self._post_inner()
-                finally:
-                    _MANAGEMENT_LIMIT.release()
+                self._respond_after_release(_MANAGEMENT_LIMIT, self._post_inner)
                 return
             # Acquire the concurrency semaphore before doing any work.  The
             # request line and headers are already parsed by handle_one_request,
