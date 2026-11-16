@@ -22,8 +22,8 @@ jobs:
     name: docs audit (CLI references)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
       - name: Install (editable + dev extras)
@@ -44,12 +44,12 @@ jobs:
         os: [ubuntu-latest]
         # Boundary versions of the support envelope only; a middle version
         # adds a full-suite run without adding coverage for stdlib-only code.
-        python-version: ["3.11", "3.13"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -64,7 +64,7 @@ jobs:
 
       - name: Retain test timings and outcomes
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-results-${{ github.sha }}-py${{ matrix.python-version }}
           path: test-results.xml
@@ -79,8 +79,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.13"
       - name: Install CLI and test dependencies
@@ -129,10 +129,10 @@ jobs:
     name: Connect native contracts (Linux)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: "1.26.0"
 
@@ -146,8 +146,8 @@ jobs:
     name: Connect standalone client (macOS)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: "1.26.0"
       - name: Test native client and secure local key output
@@ -159,8 +159,8 @@ jobs:
     name: Propagation native custody (macOS)
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
       - run: python -m pip install ".[dev,hermes]"
@@ -171,8 +171,8 @@ jobs:
     name: lint (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
       - name: Install ruff
@@ -185,8 +185,8 @@ jobs:
     name: browser owner (Ubuntu)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22"
           cache: npm
@@ -222,15 +222,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 
       - name: Install build tooling
-        run: python -m pip install build twine
+        run: python -m pip install "build==1.6.1" "twine==7.0.0"
 
       - name: Build sdist + wheel
         run: python -m build
@@ -240,3 +240,36 @@ jobs:
 
       - name: Clean-install smoke (fresh venv, Hermes dependency, exact versions, package data)
         run: python scripts/wheel_smoke.py
+
+  mcp-bridge-bundle:
+    name: mcp bridge bundle reproducible
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: mcp_bridge/package-lock.json
+      - name: Rebuild bundle from the lockfile
+        run: |
+          npm ci --prefix mcp_bridge
+          npm run build --prefix mcp_bridge
+      - name: Fail if the committed bundle differs from a clean rebuild
+        run: git diff --exit-code -- anvil_serving/_node
+
+  connect-govulncheck:
+    name: connect govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          # Latest 1.26 patch, not the 1.26.0 floor: govulncheck also scans the
+          # standard library of the toolchain that builds connect/.
+          go-version: "1.26"
+          check-latest: true
+      - name: Scan connect/ dependencies and stdlib
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          cd connect && "$(go env GOPATH)/bin/govulncheck" ./...
