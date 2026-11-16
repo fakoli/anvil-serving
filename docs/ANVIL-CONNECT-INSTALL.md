@@ -68,7 +68,7 @@ CLI links; it does not change a running deployment.
 
 Set `caddy.listen` explicitly. When it is omitted the edge listens on `:443` on
 all interfaces, which bypasses Cloudflare when Cloudflare is meant to front it,
-and validation emits a warning. For an HTTPS tunnel origin use a loopback
+and `connect validate` and `connect render` report a warning. For an HTTPS tunnel origin use a loopback
 address, for example `127.0.0.1:19443`, with provided certificates. This disables
 implicit public redirect listeners while retaining TLS. Configure the upstream
 tunnel to verify that certificate and its expected server name. Use `":443"`

@@ -12,7 +12,6 @@ import os
 import posixpath
 import re
 import stat
-import warnings
 from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
@@ -648,6 +647,15 @@ def _authelia_secret_files(auth: dict[str, Any]) -> list[str]:
     ] + ([auth["smtp"]["password_file"]] if "smtp" in auth else [])
 
 
+def manifest_warnings(data: dict[str, Any]) -> list[str]:
+    """Advisories for a validated manifest; library code returns them, the CLI prints."""
+    if "listen" in data["caddy"]:
+        return []
+    return ["$.caddy.listen is omitted: the edge listens on :443 on all interfaces, which bypasses "
+            "Cloudflare when Cloudflare is meant to front it. Set caddy.listen explicitly "
+            "(loopback for tunnel origins, \":443\" for deliberate direct exposure)."]
+
+
 def validate_manifest(value: Any) -> dict[str, Any]:
     """Validate and normalize a closed deployment manifest without side effects."""
     _reject_literal_credentials(value)
@@ -1020,12 +1028,6 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if isinstance(raw["caddy"], dict) and "origin_proxy" in raw["caddy"]:
         caddy_fields.add("origin_proxy")
     caddy_raw = _mapping(raw["caddy"], "$.caddy", caddy_fields)
-    if "listen" not in caddy_raw:
-        warnings.warn(
-            "$.caddy.listen is omitted: the edge listens on :443 on all interfaces, which bypasses "
-            "Cloudflare when Cloudflare is meant to front it. Set caddy.listen explicitly "
-            "(loopback for tunnel origins, \":443\" for deliberate direct exposure).",
-            UserWarning, stacklevel=2)
     caddy_listen = caddy_raw.get("listen", ":443")
     if caddy_listen != ":443":
         caddy_listen = _loopback(caddy_listen, "$.caddy.listen")
