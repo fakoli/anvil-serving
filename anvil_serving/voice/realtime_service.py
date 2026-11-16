@@ -33,7 +33,7 @@ class ProxyProcessConfig:
     profile: str | None
     host: str
     port: int
-    owner: str = "mini"
+    owner: str = "companion"
     command_host: str | None = None
     command_runtime: str | None = None
     target: str | None = None

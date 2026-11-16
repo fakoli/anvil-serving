@@ -17,7 +17,7 @@
 #
 #   anvil-serving serves up --manifest examples/primary-node/serves.toml heavy-qwen35-122b-mxfp4 --confirm
 #   anvil-serving eval preflight --base-url http://127.0.0.1:30004/v1 --model qwen35-122b-mxfp4 --no-thinking --needle-ctx 128000 --confirm
-name: fakoli-flexibility
+name: anvil-flexibility
 services:
   qwen35-122b:
     image: ${QWEN35_MXFP4_VLLM_IMAGE:-vllm/vllm-openai@sha256:e4f88a835143cd22aee2397a26ec6bb80b3a4a6fe0c882bcbc63822904766089}
