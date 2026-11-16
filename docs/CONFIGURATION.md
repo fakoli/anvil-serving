@@ -337,6 +337,14 @@ must set `[server].auth_env` and the container must receive that variable. The
 packaged `example-docker.toml` does this. A container seeded with a config that
 has no `[server]` token exits at startup and names `[server].auth_env`.
 
+The same `Host` rule protects the other listeners that can run without a
+token: the telemetry server behind `anvil-serving dashboard serve` when no
+`--auth-env` token is set and no web console is attached (the console keeps
+its own Host, Origin and CSRF checks), the model-swap multiplexer, and the
+Anvil Voice Realtime server when `voice.realtime_token_env` is unset. The
+Realtime server also refuses browser origins that are not allowlisted; see
+[Browser origins and Host checks](VOICE.md#browser-origins-and-host-checks).
+
 ### Token persistence contract
 
 Token configuration names environment variables; the values must also survive a

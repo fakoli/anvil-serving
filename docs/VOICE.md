@@ -683,6 +683,32 @@ or 5xx response blocks startup.
 Loopback binds may omit `realtime_token_env` for trusted local development.
 Non-loopback binds require a bearer token env var in the manifest.
 
+### Browser origins and Host checks
+
+WebSockets are exempt from the browser same-origin policy, so a web page could
+otherwise open `ws://127.0.0.1:8765/v1/realtime` from the operator's browser.
+The server therefore answers 403 before the upgrade when the request carries
+an `Origin` header that is not listed in `voice.realtime_allowed_origins`. The
+list defaults to empty, and the check runs whether or not a token is
+configured. Requests without `Origin` are accepted: native clients such as
+the OpenClaw Gateway `anvil` relay, the Mini-side proxy, and the Realtime SDK
+demo do not send one, so the reference OpenClaw Talk path needs no entry.
+
+Add an entry only for a browser application you serve and trust to open the
+socket directly. Each entry is the exact origin the browser sends,
+`scheme://host[:port]` with no path:
+
+```toml
+[voice]
+realtime_allowed_origins = ["https://talk.example.ts.net"]
+```
+
+Without `realtime_token_env`, every request must also carry a `Host` header
+that names `127.0.0.1`, `[::1]`, or the configured bind host, the same rule the
+router applies. This blocks DNS rebinding. Clients of the Docker-managed proxy
+reach it through the `127.0.0.1` publish and are unaffected; if you publish it
+on another address, configure `realtime_token_env`.
+
 ### Assistant transcript events
 
 Audio-only sessions keep the established event stream. A client that explicitly

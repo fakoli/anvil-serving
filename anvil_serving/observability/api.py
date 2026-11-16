@@ -17,6 +17,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+from ..http_host import request_host_allowed
 from .probes.containers import collect_containers
 from .probes.gpu_nvidia import collect_nvidia_gpus
 from .probes.gpu_shared_memory import collect_windows_shared_gpu_memory
@@ -240,6 +241,23 @@ def create_server(
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "AnvilTelemetry/1"
+
+        def parse_request(self) -> bool:
+            if not super().parse_request():
+                return False
+            # DNS rebinding: an unauthenticated listener answers only Host
+            # names a page on another origin cannot produce. An attached web
+            # console (dashboard/console.py) enforces its own configured
+            # Host/Origin/CSRF policy instead.
+            if (
+                not token
+                and getattr(self.server, "observatory", None) is None
+                and not request_host_allowed(self.headers, host)
+            ):
+                self.close_connection = True
+                self._json(HTTPStatus.FORBIDDEN, {"ok": False, "error": "forbidden-host"})
+                return False
+            return True
 
         def _workload_target(self):
             raw_target = self.path

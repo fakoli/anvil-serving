@@ -19,6 +19,19 @@ All notable changes to this project are documented here. The format is based on
   the configured bind host. This blocks DNS-rebinding pages from driving
   inference through a loopback router. `Host: localhost` is also refused; use
   `127.0.0.1`. Authenticated routers are unchanged.
+- **BREAKING:** the Anvil Voice Realtime WebSocket answers 403 to an upgrade
+  whose `Origin` header is not listed in the new
+  `voice.realtime_allowed_origins` manifest key (default empty), whether or not
+  a bearer token is configured. Browsers always send `Origin` and are not
+  bound by the same-origin policy for WebSockets, so any page could otherwise
+  open a voice session on `ws://127.0.0.1:8765`. Native clients, including the
+  OpenClaw Gateway relay, send no `Origin` and are unaffected. Without
+  `voice.realtime_token_env` the server also applies the router's `Host` rule.
+- **BREAKING:** the telemetry server behind `dashboard serve` (when no
+  `--auth-env` token is configured and no web console is attached) and the
+  model-swap multiplexer answer 403 unless the request's `Host` names
+  `127.0.0.1`, `[::1]`, or the configured bind host, blocking DNS rebinding.
+  The web console keeps its own Host, Origin and CSRF checks.
 
 ### Fixed
 

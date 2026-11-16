@@ -37,6 +37,7 @@ import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from .http_host import request_host_allowed
 from .gpus import gpu_uuid  # noqa: F401 (re-exported; shared with `deploy` — T007)
 
 # --- REGISTRY TABLE: single source of truth for /v1/models AND the loader ----
@@ -710,10 +711,18 @@ def make_handler(mux):
 
         def parse_request(self):
             try:
-                return super().parse_request()
+                if not super().parse_request():
+                    return False
             finally:
                 # Body reads have their own budget; inference/relay has neither.
                 self._request_reader.deadline = None
+            # No token exists here, so always block DNS rebinding: accept only
+            # loopback or the configured bind host (anvil_serving/http_host.py).
+            if not request_host_allowed(self.headers, self.server.server_address[0]):
+                self.close_connection = True
+                self._err(403, "forbidden", "Host header not allowed")
+                return False
+            return True
 
         def _send(self, status, obj=None, raw=None):
             payload = raw if raw is not None else json.dumps(obj).encode()
