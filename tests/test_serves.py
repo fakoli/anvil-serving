@@ -14,7 +14,7 @@ from anvil_serving import serves
 from anvil_serving.router.config import load_bytes as load_router_config_bytes
 from anvil_serving.router.route_updates import route_digest
 from tests.conftest import enabled_cache_policy as _enabled_cache_policy
-from tests.conftest import proc
+from tests.conftest import isolated_case, proc
 
 
 @pytest.fixture(autouse=True)
@@ -584,16 +584,25 @@ def test_load_promotions_resolves_direct_router_configs(tmp_path):
     assert plan["rollback_gate"][0]["thinking_mode"] == "unsupported"
 
 
-def test_load_promotions_rejects_missing_media_before_transition(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    (tmp_path / "fixture.png").unlink()
+def test_load_promotions_rejects_missing_referenced_files(subtests, tmp_path, monkeypatch):
+    # A rollback profile that does not exist must fail at manifest load, not at
+    # promotion time — see .tickets/2026-08-08-promotion-router-profiles-not-
+    # existence-validated.md. Every read-only surface loads the manifest, so
+    # this is where an unusable rollback becomes visible.
+    for index, (missing, error) in enumerate([
+        ("fixture.png",
+         "promotion gate 'functional' has invalid image_path: image path is not a regular file"),
+        ("router-rollback.toml", "rollback_router_config does not exist"),
+    ]):
+        with (
+            subtests.test(missing=missing),
+            isolated_case(tmp_path, monkeypatch, index) as (case, _mp),
+        ):
+            path = _promotion_manifest(case)
+            (case / missing).unlink()
 
-    with pytest.raises(
-        ValueError,
-        match="promotion gate 'functional' has invalid image_path: "
-        "image path is not a regular file",
-    ):
-        serves.load_promotions(path)
+            with pytest.raises(ValueError, match=error):
+                serves.load_promotions(path)
 
 
 @pytest.mark.parametrize(
@@ -620,28 +629,36 @@ def test_load_promotions_rejects_incomplete_image_gate_before_transition(
         serves.load_promotions(path)
 
 
-def test_load_promotions_rejects_incomplete_video_gate_before_transition(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    manifest = tmp_path / "serves.toml"
-    text = manifest.read_text(encoding="utf-8").replace(
-        'checks = "smoke,json,needle,tools"', 'checks = "video"', 1
-    )
-    manifest.write_text(text, encoding="utf-8")
+_INVALID_PROMOTION_EDITS = [
+    # Incomplete video gate, unknown check, token budget, reasoning conflict, unwritable output.
+    ('checks = "smoke,json,needle,tools"', 'checks = "video"', "has no video_path"),
+    ('checks = "smoke,json,needle,tools"', 'checks = "smoke,bogus"',
+     r"invalid checks.*unknown=\['bogus'\]"),
+    ("reasoning_headroom_tokens = 0", "reasoning_headroom_tokens = 65536",
+     "combined completion allocation"),
+    ('thinking_mode = "disabled"', 'thinking_mode = "disabled"\nreasoning_effort = "high"',
+     "cannot combine reasoning_effort"),
+    ('checks = "smoke,json,needle,tools"',
+     'checks = "smoke,json,needle,tools"\njson_out = "{dir}/missing/evidence.json"',
+     "invalid json_out.*directory does not exist"),
+]
 
-    with pytest.raises(ValueError, match="has no video_path"):
-        serves.load_promotions(path)
 
+def test_load_promotions_rejects_invalid_gate_settings_before_transition(
+    subtests, tmp_path, monkeypatch
+):
+    for index, (before, after, error) in enumerate(_INVALID_PROMOTION_EDITS):
+        with (
+            subtests.test(error=error),
+            isolated_case(tmp_path, monkeypatch, index) as (case, _mp),
+        ):
+            path = _promotion_manifest(case)
+            manifest = case / "serves.toml"
+            text = manifest.read_text(encoding="utf-8").replace(before, after, 1)
+            manifest.write_text(text, encoding="utf-8")
 
-def test_load_promotions_rejects_unknown_check_before_transition(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    manifest = tmp_path / "serves.toml"
-    text = manifest.read_text(encoding="utf-8").replace(
-        'checks = "smoke,json,needle,tools"', 'checks = "smoke,bogus"', 1
-    )
-    manifest.write_text(text, encoding="utf-8")
-
-    with pytest.raises(ValueError, match=r"invalid checks.*unknown=\['bogus'\]"):
-        serves.load_promotions(path)
+            with pytest.raises(ValueError, match=error):
+                serves.load_promotions(path)
 
 
 @pytest.mark.parametrize(
@@ -662,46 +679,6 @@ def test_load_promotions_rejects_invalid_preflight_plan_ranges(
     manifest.write_text(text, encoding="utf-8")
 
     with pytest.raises(ValueError, match=expected):
-        serves.load_promotions(path)
-
-
-def test_load_promotions_rejects_invalid_preflight_token_budget(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    manifest = tmp_path / "serves.toml"
-    text = manifest.read_text(encoding="utf-8").replace(
-        "reasoning_headroom_tokens = 0", "reasoning_headroom_tokens = 65536", 1
-    )
-    manifest.write_text(text, encoding="utf-8")
-
-    with pytest.raises(ValueError, match="combined completion allocation"):
-        serves.load_promotions(path)
-
-
-def test_load_promotions_rejects_conflicting_reasoning_controls(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    manifest = tmp_path / "serves.toml"
-    text = manifest.read_text(encoding="utf-8").replace(
-        'thinking_mode = "disabled"',
-        'thinking_mode = "disabled"\nreasoning_effort = "high"',
-        1,
-    )
-    manifest.write_text(text, encoding="utf-8")
-
-    with pytest.raises(ValueError, match="cannot combine reasoning_effort"):
-        serves.load_promotions(path)
-
-
-def test_load_promotions_rejects_unwritable_preflight_output(tmp_path):
-    path = _promotion_manifest(tmp_path)
-    manifest = tmp_path / "serves.toml"
-    text = manifest.read_text(encoding="utf-8").replace(
-        'checks = "smoke,json,needle,tools"',
-        'checks = "smoke,json,needle,tools"\njson_out = "{dir}/missing/evidence.json"',
-        1,
-    )
-    manifest.write_text(text, encoding="utf-8")
-
-    with pytest.raises(ValueError, match="invalid json_out.*directory does not exist"):
         serves.load_promotions(path)
 
 
@@ -730,18 +707,6 @@ def test_load_promotions_rejects_removed_profile_fields(tmp_path):
     )
 
     with pytest.raises(ValueError, match="removed profile field"):
-        serves.load_promotions(path)
-
-
-def test_load_promotions_rejects_missing_rollback_router_config(tmp_path):
-    # A rollback profile that does not exist must fail at manifest load, not at
-    # promotion time — see .tickets/2026-08-08-promotion-router-profiles-not-
-    # existence-validated.md. Every read-only surface loads the manifest, so
-    # this is where an unusable rollback becomes visible.
-    path = _promotion_manifest(tmp_path)
-    (tmp_path / "router-rollback.toml").unlink()
-
-    with pytest.raises(ValueError, match="rollback_router_config does not exist"):
         serves.load_promotions(path)
 
 

@@ -1,7 +1,6 @@
 """OpenAI-compatible reasoning aliases share one response and history contract."""
+import itertools
 import json
-
-import pytest
 
 from anvil_serving.router.backends.relay import RelayBackend
 from anvil_serving.router.dialects.openai import OpenAIDialect
@@ -9,10 +8,10 @@ from anvil_serving.router.internal import ModelDelta
 from tests.router.helpers import make_tier
 from tests.router.test_reasoning_content import _parse_openai_sse, _request
 from tests.router.test_streaming_relay import FakeStreamTransport, _openai_sse
+from tests.conftest import isolated_case
 
 
-@pytest.mark.parametrize("mode", ["buffered", "sse", "json-stream-fallback"])
-@pytest.mark.parametrize(("fields", "expected"), [
+_RESPONSE_ALIASES_EMIT_ONE_CANONICAL_FIELD_FIELDS_EXPECTED = [
     ({"reasoning_content": "Canonical"}, "Canonical"),
     ({"reasoning": "Alternate"}, "Alternate"),
     ({"reasoning_text": "Text alias"}, "Text alias"),
@@ -24,8 +23,21 @@ from tests.router.test_streaming_relay import FakeStreamTransport, _openai_sse
      "Third"),
     ({"reasoning_content": None, "reasoning": False, "reasoning_text": 42}, None),
     ({"reasoning_content": " ", "reasoning": "Do not trim stream whitespace"}, " "),
-])
-def test_response_aliases_emit_one_canonical_field(mode, fields, expected):
+]
+_RESPONSE_ALIASES_EMIT_ONE_CANONICAL_FIELD_MODE = ["buffered", "sse", "json-stream-fallback"]
+
+
+def test_response_aliases_emit_one_canonical_field(subtests, tmp_path, monkeypatch):
+    cases = itertools.product(_RESPONSE_ALIASES_EMIT_ONE_CANONICAL_FIELD_FIELDS_EXPECTED, _RESPONSE_ALIASES_EMIT_ONE_CANONICAL_FIELD_MODE)
+    for index, ((fields, expected), mode) in enumerate(cases):
+        with (
+            subtests.test(mode=mode, fields=fields, expected=expected),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _response_aliases_emit_one_canonical_field(mode=mode, fields=fields, expected=expected)
+
+
+def _response_aliases_emit_one_canonical_field(mode, fields, expected):
     message = {"content": "Visible answer", **fields}
     upstream = json.dumps({"choices": [{"message": message, "finish_reason": "stop"}]}).encode()
     backend_kwargs = {}

@@ -13,6 +13,7 @@ import pytest
 from anvil_serving.control_plane import bootstrap_shim as shim
 from anvil_serving.fleet_bootstrap import BootstrapPermissionVerdict as Verdict
 from tests.bootstrap_windows_fixtures import windows_fixture_tree
+from tests.conftest import isolated_case
 
 
 def _sid(authority: int, *subauthorities: int) -> bytes:
@@ -37,9 +38,7 @@ def _acl(*aces: bytes) -> bytes:
     return struct.pack("<BBHHH", 2, 0, 8 + len(payload), len(aces), 0) + payload
 
 
-@pytest.mark.parametrize(
-    ("mode", "owner", "uid", "ancestor", "expected"),
-    (
+_LINUX_CLASSIFIER_USES_ONLY_FSTAT_MODE_AND_EFFECTIVE_UID_CASES = (
         (stat.S_IFREG | 0o400, 1000, 1000, False, Verdict.OWNER_READONLY),
         (stat.S_IFREG | 0o600, 1000, 1000, False, Verdict.OWNER_WRITABLE),
         (stat.S_IFREG | 0o600, 0, 1000, False, Verdict.OWNER_WRITABLE),
@@ -56,9 +55,19 @@ def _acl(*aces: bytes) -> bytes:
         (stat.S_IFDIR | stat.S_IWGRP | 0o500, 1000, 1000, True, Verdict.UNTRUSTED_WRITABLE),
         (stat.S_IFREG | 0o400, 1000, 1000, True, Verdict.INDETERMINATE),
         (stat.S_IFIFO | 0o600, 1000, 1000, False, Verdict.INDETERMINATE),
-    ),
-)
-def test_linux_classifier_uses_only_fstat_mode_and_effective_uid(
+    )
+
+
+def test_linux_classifier_uses_only_fstat_mode_and_effective_uid(subtests, tmp_path, monkeypatch):
+    for index, (mode, owner, uid, ancestor, expected) in enumerate(_LINUX_CLASSIFIER_USES_ONLY_FSTAT_MODE_AND_EFFECTIVE_UID_CASES):
+        with (
+            subtests.test(mode=mode, owner=owner, uid=uid, ancestor=ancestor, expected=expected),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _linux_classifier_uses_only_fstat_mode_and_effective_uid(mode=mode, owner=owner, uid=uid, ancestor=ancestor, expected=expected)
+
+
+def _linux_classifier_uses_only_fstat_mode_and_effective_uid(
     mode: int, owner: int, uid: int, ancestor: bool, expected: Verdict
 ) -> None:
     assert shim._classify_linux_mode(mode, owner, uid, ancestor=ancestor) is expected
@@ -72,9 +81,7 @@ def test_linux_classifier_rejects_malformed_metadata(bad: object) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "mask",
-    (
+_WINDOWS_CLASSIFIER_REJECTS_EVERY_UNTRUSTED_MUTATION_GRANT_CASES = (
         shim._FILE_WRITE_DATA,
         shim._FILE_APPEND_DATA,
         shim._FILE_WRITE_EA,
@@ -85,9 +92,19 @@ def test_linux_classifier_rejects_malformed_metadata(bad: object) -> None:
         shim._WRITE_OWNER,
         shim._GENERIC_WRITE,
         shim._GENERIC_ALL,
-    ),
-)
-def test_windows_classifier_rejects_every_untrusted_mutation_grant(mask: int) -> None:
+    )
+
+
+def test_windows_classifier_rejects_every_untrusted_mutation_grant(subtests, tmp_path, monkeypatch):
+    for index, mask in enumerate(_WINDOWS_CLASSIFIER_REJECTS_EVERY_UNTRUSTED_MUTATION_GRANT_CASES):
+        with (
+            subtests.test(mask=mask),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _windows_classifier_rejects_every_untrusted_mutation_grant(mask=mask)
+
+
+def _windows_classifier_rejects_every_untrusted_mutation_grant(mask: int) -> None:
     dacl = _acl(_ace(shim._ACCESS_ALLOWED_ACE_TYPE, OTHER, mask))
     assert (
         shim._classify_windows_acl(CURRENT, CURRENT, dacl, ancestor=False)

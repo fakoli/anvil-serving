@@ -2,6 +2,7 @@
 import json
 
 import pytest
+from tests.conftest import isolated_case
 
 
 def manifest_file(tmp_path, **changes):
@@ -57,15 +58,26 @@ def retained_row(**changes):
     return row
 
 
-@pytest.mark.parametrize("changes", [
+_RETAINED_CONTAINER_REJECTS_AMBIGUOUS_OR_INCOMPLETE_CUSTODY_CASES = [
     {"external_compose": True}, {"container_id": "bad"}, {"dependencies": ["other"]},
     {"engine": "generic"}, {"restart_count": -1}, {"restart_policy": "unknown"},
     {"writable_mounts_sha256": "bad"}, {"serve": "anything"},
     {"endpoint": "http://127.0.0.1:9000"}, {"api_key_env": "SERVICE_TOKEN"},
     {"shutdown_grace_seconds": 0}, {"shutdown_grace_seconds": 301},
     {"healthcheck_required": False}, {"healthcheck_sha256": "bad"},
-])
-def test_retained_container_rejects_ambiguous_or_incomplete_custody(tmp_path, changes):
+]
+
+
+def test_retained_container_rejects_ambiguous_or_incomplete_custody(subtests, tmp_path, monkeypatch):
+    for index, changes in enumerate(_RETAINED_CONTAINER_REJECTS_AMBIGUOUS_OR_INCOMPLETE_CUSTODY_CASES):
+        with (
+            subtests.test(changes=changes),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _retained_container_rejects_ambiguous_or_incomplete_custody(tmp_path=case, changes=changes)
+
+
+def _retained_container_rejects_ambiguous_or_incomplete_custody(tmp_path, changes):
     from anvil_serving.service_runtime.contracts import ServiceError
     from anvil_serving.service_runtime.manifest import validate
 

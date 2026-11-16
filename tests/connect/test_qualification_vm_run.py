@@ -4,6 +4,7 @@ import pytest
 
 from anvil_serving.connect import qualification_vm_run as subject
 from anvil_serving.connect.qualification import QualificationError
+from tests.conftest import isolated_case
 
 
 def result():
@@ -43,11 +44,22 @@ def failure_result():
     return value
 
 
-@pytest.mark.parametrize('mutation', [
+_FAILURE_COORDINATES_REJECT_UNBOUNDED_OR_UNTRUSTED_FIELDS_CASES = [
     'text', 'path', 'kind', 'extra_frame', 'bool_line', 'large_line',
     'bool_errno', 'large_errno', 'large_returncode', 'too_many_frames', 'passed',
-])
-def test_failure_coordinates_reject_unbounded_or_untrusted_fields(mutation):
+]
+
+
+def test_failure_coordinates_reject_unbounded_or_untrusted_fields(subtests, tmp_path, monkeypatch):
+    for index, mutation in enumerate(_FAILURE_COORDINATES_REJECT_UNBOUNDED_OR_UNTRUSTED_FIELDS_CASES):
+        with (
+            subtests.test(mutation=mutation),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _failure_coordinates_reject_unbounded_or_untrusted_fields(mutation=mutation)
+
+
+def _failure_coordinates_reject_unbounded_or_untrusted_fields(mutation):
     value = failure_result()
     case = value['cases'][2]
     failure = case['failure']

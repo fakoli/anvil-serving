@@ -16,6 +16,7 @@ from anvil_serving.media.operations import MediaOperations
 from anvil_serving.media.worker_runtime import FEATURE, REFUSAL_SCHEMA, SCHEMA
 from test_cli import _Registry
 from test_comfyui_adapter import Response
+from tests.conftest import isolated_case
 
 
 RUN_ID = "a" * 32
@@ -151,12 +152,23 @@ def test_correlated_native_refusal_is_failed_without_resubmission(tmp_path, reas
     assert len(harness.posts) == 1
 
 
-@pytest.mark.parametrize("change", [
+_UNCORRELATED_OR_AMBIGUOUS_POST_OUTCOMES_REMAIN_SUBMITTING_AND_RECOVER_CASES = [
     {"schema": "other"}, {"accepted": True}, {"accepted": 0}, {"reason": "other"},
     {"reason": []}, {"requestRunId": "b" * 32}, {"clientId": "anvil-other"}, {"extra": 1},
     "malformed", "nested", "oversize", "duplicate", "wrong_status", "timeout",
-])
-def test_uncorrelated_or_ambiguous_post_outcomes_remain_submitting_and_recover(tmp_path, change):
+]
+
+
+def test_uncorrelated_or_ambiguous_post_outcomes_remain_submitting_and_recover(subtests, tmp_path, monkeypatch):
+    for index, change in enumerate(_UNCORRELATED_OR_AMBIGUOUS_POST_OUTCOMES_REMAIN_SUBMITTING_AND_RECOVER_CASES):
+        with (
+            subtests.test(change=change),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _uncorrelated_or_ambiguous_post_outcomes_remain_submitting_and_recover(tmp_path=case, change=change)
+
+
+def _uncorrelated_or_ambiguous_post_outcomes_remain_submitting_and_recover(tmp_path, change):
     def fail(payload):
         if change == "timeout":
             return urllib.error.URLError("timeout")

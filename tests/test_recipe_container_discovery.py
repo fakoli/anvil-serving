@@ -17,6 +17,7 @@ from anvil_serving.observability.workloads import (
     WorkloadErrorCode,
     WorkloadState,
 )
+from tests.conftest import isolated_case
 
 
 def _completed(argv, *, stdout="", stderr="", returncode=0):
@@ -92,7 +93,7 @@ class _DiscoveryRun:
         return _completed(argv, stdout=json.dumps(self.rows))
 
 
-@pytest.mark.parametrize("tokens,expected", [
+_RECIPE_DISCOVERY_SERVED_IDENTITY_PRESERVES_PRECEDENCE_AND_FALLBACK_CASES = [
     (["--model-id=alias", "--served-model-name=override"], "override"),
     (["--served-model-name", "override", "--model-id", "alias"], "override"),
     (["--model-id=alias", "--served-model-name="], "org/model"),
@@ -104,8 +105,19 @@ class _DiscoveryRun:
     (["--model-id=bad\nname"], "org/model"),
     (["--model-identifier=other"], "org/model"),
     ([], "org/model"),
-])
-def test_recipe_discovery_served_identity_preserves_precedence_and_fallback(tokens, expected):
+]
+
+
+def test_recipe_discovery_served_identity_preserves_precedence_and_fallback(subtests, tmp_path, monkeypatch):
+    for index, (tokens, expected) in enumerate(_RECIPE_DISCOVERY_SERVED_IDENTITY_PRESERVES_PRECEDENCE_AND_FALLBACK_CASES):
+        with (
+            subtests.test(tokens=tokens, expected=expected),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _recipe_discovery_served_identity_preserves_precedence_and_fallback(tokens=tokens, expected=expected)
+
+
+def _recipe_discovery_served_identity_preserves_precedence_and_fallback(tokens, expected):
     row = _row("candidate")
     row["Args"] = tokens
     # An explicit Args list, including empty, still takes precedence over Cmd.

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.benchmarking.report import build_report, main, render_markdown
+from tests.conftest import isolated_case
 
 
 def fixture(tmp_path):
@@ -213,7 +214,7 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     return plan
 
 
-@pytest.mark.parametrize(("change", "expected"), [
+_CAMPAIGN_CANCELLED_AIDER_RETENTION_PROJECTS_ONLY_HASH_BOUND_RAW_GRADES_CASES = [
     ("pass", [{"first_attempt_passed": True, "second_attempt_passed": None, "resolved": True}]),
     ("fail", [{"first_attempt_passed": False, "second_attempt_passed": False, "resolved": False}]),
     ("missing", None),
@@ -225,8 +226,19 @@ def cancelled_aider_retention(manifest, store, *, change=None):
     ("swapped_task", None),
     ("nested", None),
     ("missing_native", None),
-])
-def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path, change, expected):
+]
+
+
+def test_campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(subtests, tmp_path, monkeypatch):
+    for index, (change, expected) in enumerate(_CAMPAIGN_CANCELLED_AIDER_RETENTION_PROJECTS_ONLY_HASH_BOUND_RAW_GRADES_CASES):
+        with (
+            subtests.test(change=change, expected=expected),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path=case, change=change, expected=expected)
+
+
+def _campaign_cancelled_aider_retention_projects_only_hash_bound_raw_grades(tmp_path, change, expected):
     from anvil_serving.benchmarking.campaign_report import report_campaign
     manifest, store = campaign_fixture(tmp_path, suite="aider")
     cancelled_aider_retention(manifest, store, change=change)

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving import recipe_memory as rm, serve_recipes as sr
+from tests.conftest import isolated_case
 
 
 def serve():
@@ -36,7 +37,7 @@ def test_cgroup_observation_and_stopped_oom(tmp_path):
     assert json.loads(json.dumps(result)) == result
 
 
-@pytest.mark.parametrize('fault,expected', [
+_WINDOWS_DESKTOP_CONTAINMENT_CHECKS_BOTH_MEMORY_BOUNDARIES_CASES = [
     (None, None),
     ('remote-pipe', 'local Linux'),
     ('wrong-engine', 'Docker Desktop'),
@@ -55,8 +56,19 @@ def test_cgroup_observation_and_stopped_oom(tmp_path):
     ('cgroup-v1', 'cgroup v2'),
     ('missing-swap-limit', 'cgroup v2'),
     ('declared-windows-reserve', 'Windows host reserve'),
-])
-def test_windows_desktop_containment_checks_both_memory_boundaries(monkeypatch, fault, expected):
+]
+
+
+def test_windows_desktop_containment_checks_both_memory_boundaries(subtests, tmp_path, monkeypatch):
+    for index, (fault, expected) in enumerate(_WINDOWS_DESKTOP_CONTAINMENT_CHECKS_BOTH_MEMORY_BOUNDARIES_CASES):
+        with (
+            subtests.test(fault=fault, expected=expected),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _windows_desktop_containment_checks_both_memory_boundaries(monkeypatch=mp, fault=fault, expected=expected)
+
+
+def _windows_desktop_containment_checks_both_memory_boundaries(monkeypatch, fault, expected):
     from anvil_serving import host
 
     monkeypatch.setattr(rm.sys, 'platform', 'win32')
