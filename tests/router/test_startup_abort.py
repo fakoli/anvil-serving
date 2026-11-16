@@ -3,6 +3,7 @@ from copy import deepcopy
 import hashlib
 import json
 import os
+from pathlib import Path
 import time
 
 import pytest
@@ -13,6 +14,9 @@ from anvil_serving import router_manage, router_startup_abort
 from tests.router.test_container_owner import record as record
 from tests.router.test_owner_recovery import config as config
 from tests.router.test_reboot import acknowledgment, retained as retained
+
+# Startup-abort custody compares Linux PID namespaces under /proc.
+pytestmark = pytest.mark.skipif(not Path('/proc/self/ns/pid').exists(), reason='startup abort requires Linux /proc PID namespaces')
 
 
 def failed_successor(f):

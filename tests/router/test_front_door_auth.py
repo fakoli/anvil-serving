@@ -472,6 +472,36 @@ def test_member_drain_endpoint_preserves_scope_quiesce_and_timeout_requirements(
         assert routing._availability.calls == []
 
 
+def test_back_to_back_transitions_never_see_their_own_busy_slot(monkeypatch):
+    # A late-scheduled handler thread must not still hold a management slot
+    # after the client already has its reply; the next request follows at once.
+    import time
+    from anvil_serving.router import front_door
+
+    class SlowRelease:
+        def __init__(self):
+            self._inner = threading.BoundedSemaphore(1)
+
+        def acquire(self, *args, **kwargs):
+            return self._inner.acquire(*args, **kwargs)
+
+        def release(self):
+            time.sleep(0.05)
+            self._inner.release()
+
+    monkeypatch.setattr(front_door, "_MANAGEMENT_LIMIT", SlowRelease())
+    monkeypatch.setattr(front_door, "_MANAGEMENT_MUTATION_LIMIT", SlowRelease())
+    headers = {"x-api-key": TOKEN}
+    with _member_transition_server() as (tier, routing, host, port):
+        body = {"action": "drain", "tier_id": tier.id, "member_id": "member-a", "timeout": 1}
+        routing.quiesce_tier(tier.id, member_id="member-a")
+        for timeout in (None, "1", -1):
+            status, _, _ = _post(host, port, TRANSITION_ENDPOINT, {**body, "timeout": timeout}, headers)
+            assert status == 400
+        status, _, raw = _post(host, port, TRANSITION_ENDPOINT, body, headers)
+        assert status == 200 and json.loads(raw)["result"]["drained"]
+
+
 # --------------------------------------------------------------------------- #
 # Scoped operator routes: distinct from ordinary router bearer authentication
 # --------------------------------------------------------------------------- #

@@ -1,16 +1,31 @@
 from dataclasses import replace
 from pathlib import Path
 import json
+import tempfile
+import types
 
 import pytest
 
 from anvil_serving import cli
+from anvil_serving.connect import manage
 from anvil_serving.native_agents import local_check
 from anvil_serving.native_agents.types import Directory, Workspace
 
+# `connect native-agents-check` is refused by the Connect CLI outside Linux amd64.
+connect_cli = pytest.mark.skipif(not manage.supported_platform(), reason="Connect native operations require Linux amd64")
 
-def test_local_http_check_needs_no_login_and_cleans_state(capsys):
-    before = set(Path.home().glob(".anvil-agents-check-*"))
+
+@connect_cli
+def test_local_http_check_needs_no_login_and_cleans_state(capsys, monkeypatch):
+    # Track only the directory this check creates; HOME is shared with other runs.
+    created = []
+
+    def recording_temporary_directory(*args, **kwargs):
+        directory = tempfile.TemporaryDirectory(*args, **kwargs)
+        created.append(Path(directory.name))
+        return directory
+
+    monkeypatch.setattr(local_check, "tempfile", types.SimpleNamespace(TemporaryDirectory=recording_temporary_directory))
     assert cli.main(["connect", "native-agents-check", "--json"]) == 0
     result = json.loads(capsys.readouterr().out)["data"]
     assert result["ok"] and result["mode"] == "synthetic-owner-check"
@@ -18,7 +33,8 @@ def test_local_http_check_needs_no_login_and_cleans_state(capsys):
             "missing-token-denied", "unknown-token-denied", "local-admission-revoked",
             "other-admission-preserved", "create", "own-stop"} <= set(result["checks"])
     assert not any(result[key] for key in ("oauth_tested", "runtime_isolation_tested", "model_tested"))
-    assert set(Path.home().glob(".anvil-agents-check-*")) == before
+    assert len(created) == 1 and created[0].parent == Path.home()
+    assert created[0].name.startswith(".anvil-agents-check-") and not created[0].exists()
 
 
 def guest_workspaces(root):
@@ -56,6 +72,7 @@ def test_failure_keeps_request_and_session_ids_without_error_text(monkeypatch, t
     assert "private-error-sentinel" not in json.dumps(result)
 
 
+@connect_cli
 def test_cli_confirm_and_dry_run(monkeypatch, capsys):
     calls = []
     monkeypatch.setattr(local_check, "check", lambda path, *, apply: calls.append((path, apply)) or {"ok": True})
@@ -75,6 +92,7 @@ def test_configured_control_check_does_not_prompt(monkeypatch, tmp_path):
     assert all(len(owner.sessions_by_id) == 1 for owner in owners.values())
 
 
+@connect_cli
 def test_failed_check_cli_preserves_safe_audit_and_nonzero_exit(monkeypatch, capsys):
     result = {"ok": False, "sessions": [{"session_id": "empty-test-session"}],
               "create_requests": [{"request_id": "audit-request"}]}
