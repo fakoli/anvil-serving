@@ -5,12 +5,27 @@ vulnerability, see [SECURITY.md](https://github.com/fakoli/anvil-serving/blob/ma
 
 ## Transport: no TLS
 
-The first-party HTTP services (router, controller, dashboard telemetry server, voice
+The first-party HTTP services (router, controller, Anvil Workbench (`dashboard serve`) telemetry server, voice
 Realtime server, model-swap multiplexer) speak plain HTTP and do not terminate TLS. Traffic that
 crosses a host boundary must ride a private mesh such as Tailscale or a TLS-terminating
 proxy. Prefer publishing a loopback listener with Tailscale Serve over binding every
 interface; see [Private networking with Tailscale](TAILSCALE-NETWORKING.md). Network identity is
 defense in depth on top of tokens, not a replacement.
+
+## Default binds
+
+| Service | Default bind | Authentication |
+|---|---|---|
+| Router | `127.0.0.1:8000` | Optional `[server].auth_env` |
+| Controller | `127.0.0.1:8765` | Token required unless `--allow-unauthenticated-loopback` |
+| Anvil Workbench (`dashboard serve`) | `127.0.0.1:8766` | Optional `--auth-env` |
+| Voice Realtime | `127.0.0.1:8765` (`voice.realtime_host`/`realtime_port`) | Optional `realtime_token_env` |
+| Model-swap multiplexer | `127.0.0.1:8000` | None |
+
+**Listeners with no token must stay on loopback.** The `Host` checks below stop DNS rebinding
+from a browser; they do not stop a direct peer on the network. The multiplexer has no token at
+all and only prints a warning when bound to a non-loopback address, so any reachable peer can
+load and evict GPU models.
 
 ## Router
 
@@ -22,13 +37,17 @@ defense in depth on top of tokens, not a replacement.
   `127.0.0.1`, `[::1]` or the exact `--host` value. This blocks DNS rebinding. The dashboard
   telemetry server (no token, no web console), the multiplexer, and the voice Realtime
   server (no `voice.realtime_token_env`) apply the same rule.
+- With a wildcard bind (`--host 0.0.0.0`), only loopback `Host` names pass, so remote clients
+  that use a hostname or address get 403 even with `--allow-unauthenticated-public-bind`. Bind
+  a specific address, or set `auth_env`.
 - See [Running without a token](CONFIGURATION.md#running-without-a-token).
 
 ## Voice WebSocket origins
 
 The Realtime server rejects a request carrying a browser `Origin` that is not in
 `voice.realtime_allowed_origins` (empty by default), with or without a token. Requests with no
-`Origin` header, such as native clients, are accepted. See
+`Origin` header, such as native clients, are accepted. The Origin and token checks cover only the
+WebSocket upgrade: the introspection routes `/pool` and `/usage` skip both. See
 [Browser origins and Host checks](VOICE.md#browser-origins-and-host-checks).
 
 ## Controller and MCP
@@ -45,14 +64,23 @@ The Realtime server rejects a request carrying a browser `Origin` that is not in
   Scoped credentials from the authorization policy are limited to their declared scopes
   (for example `workloads:read`). Hand scoped credentials to clients that need less, and keep the
   legacy token to operators.
-- Non-loopback controller binds always require the token; an unauthenticated start is
-  permitted only on strict loopback with `--allow-unauthenticated-loopback`.
+- **No Host guard on the controller (fix in progress).** With
+  `--allow-unauthenticated-loopback` every caller is the full-authority legacy principal. Only
+  `/mcp` checks `Origin`; `POST /tools/call` checks neither Origin nor Host. With the Docker
+  socket mounted, a DNS-rebinding web page in a browser on that host could reach host root.
+  Never use that flag on a host that runs a browser. A code change adding the Host guard is in
+  progress; until it lands, keep the token configured.
+- Bind safety: a public address or wildcard (`0.0.0.0`) needs `--allow-public-bind` even with a
+  token. Non-loopback binds always require the token. `--allow-operation` (repeatable) restricts
+  the controller to declared operations. The reference compose file binds `0.0.0.0` inside the
+  container and publishes `127.0.0.1:8765` on the host (`ANVIL_CONTROLLER_PUBLISH` overrides).
 
 ## Environment files
 
-Token references (`auth_env` and similar) resolve from the process environment, then
-`$ANVIL_SERVING_HOME/.env`, then `~/.env`. `~/.env` is read by default. Set
-`ANVIL_SERVING_NO_HOME_ENV=1` to exclude it. Keep these files out of Git and mode 0600.
+The router and the controller resolve token references from the process environment, then
+`$ANVIL_SERVING_HOME/.env`, then `~/.env`. `~/.env` is read by default; set
+`ANVIL_SERVING_NO_HOME_ENV=1` to exclude it. The Workbench `--auth-env` and voice
+`realtime_token_env` read the process environment only. Keep these files out of Git and mode 0600.
 
 ## Anvil Connect sessions
 
