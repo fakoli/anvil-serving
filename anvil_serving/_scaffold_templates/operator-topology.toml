@@ -2,6 +2,7 @@
 # Addresses and GPU UUIDs are synthetic documentation values.
 schema_version = 1
 id = "primary-node-reference"
+# Set command_host/command_runtime to the host and runtime this machine plays.
 command_host = "host:companion-node"
 command_runtime = "runtime:mini-native"
 
