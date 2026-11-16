@@ -180,7 +180,8 @@ with zero hand-assembly:
 
 ```bash
 anvil-serving init                   # scaffold into ~/.anvil-serving (or --out-dir DIR)
-cp ~/.anvil-serving/.env.example ~/.anvil-serving/.env   # then fill host values + secrets
+# init also wrote ANVIL_ROUTER_TOKEN into ~/.anvil-serving/.env (mode 0600); add the
+# host values and secrets from .env.example to that file. Do not `cp` over it.
 anvil-serving serves groups          # omni-stack / omni-voice-stack / auxiliary-stack / primary-only / llm-stack / voice / comfy
 anvil-serving serves up --group omni-voice-stack --dry-run
 anvil-serving serves up --group omni-voice-stack --confirm
@@ -188,6 +189,22 @@ anvil-serving serves up --group voice --dry-run
 anvil-serving serves up --group voice --confirm
 anvil-serving router run             # uses ~/.anvil-serving/router.toml
 ```
+
+The scaffolded `router.toml` is authenticated: `[server] auth_env = "ANVIL_ROUTER_TOKEN"`. On a
+fresh home, `init` generates a random token into `~/.anvil-serving/.env` (created `0600`) and prints
+only that path. It never overwrites an existing value, and skips generation when the variable is
+already set in your environment. Clients send the token as a bearer header; the router reads the
+same `.env`, so load it into your shell for ad-hoc calls:
+
+```bash
+set -a; . ~/.anvil-serving/.env; set +a
+curl http://127.0.0.1:8000/v1/models -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN"
+```
+
+`x-api-key: $ANVIL_ROUTER_TOKEN` is accepted too. With `--out-dir` pointing elsewhere, `init` writes
+the token beside that `router.toml`, but the router reads `$ANVIL_SERVING_HOME/.env`; `init` says so
+and you must copy the line there (or set `ANVIL_SERVING_HOME` to that directory). `init --single-model` writes an unauthenticated
+loopback `router.toml` into the current directory and does not generate a token.
 
 `init` detects stable NVIDIA GPU UUIDs and total memory, assigns the two largest
 distinct cards to Compute A and Compute B, and resolves this node's Tailscale

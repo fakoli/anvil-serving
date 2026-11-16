@@ -98,7 +98,7 @@ def docker_owner(tmp_path, monkeypatch):
     private = tmp_path / 'private'; private.mkdir(mode=0o700)
     main = tmp_path / 'main.py'; main.write_text(MAIN)
     config = tmp_path / 'router.toml'
-    config.write_text((root / 'configs/example.toml').read_text() + '\n[server]\nauth_env="SYNTHETIC_AUTH"\n'
+    config.write_text((root / 'configs/example.toml').read_text().replace('[server]\nauth_env = "ANVIL_ROUTER_TOKEN"\n', '') + '\n[server]\nauth_env="SYNTHETIC_AUTH"\n'
         'api_keys_path="/fixture/private/keys.sqlite3"\nadmission_state_path="/fixture/private/intent.json"\n'
         'router_owner_backend="managed-container"\nrouter_owner_id="fixture"\nrouter_owner_roster=["fixture"]\n'
         'usage_domain_id="fixture"\nusage_enabled=true\n')

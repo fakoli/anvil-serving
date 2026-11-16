@@ -33,15 +33,14 @@ import argparse
 import importlib.resources as _resources
 import ipaddress
 import json
-import ntpath
 import os
-import posixpath
-import shlex
+import secrets
 import subprocess
 import sys
 import tomllib
 
 from . import deploy as _deploy
+from . import envfile
 from . import edge as _edge
 from . import guard
 from . import gpus as _gpus
@@ -369,24 +368,6 @@ def _personalize_home_text(text, discovery):
     return text
 
 
-def _copy_env_command(out_dir, platform_name=None):
-    platform_name = os.name if platform_name is None else platform_name
-    if platform_name == "nt":
-        source = ntpath.join(out_dir, ".env.example")
-        destination = ntpath.join(out_dir, ".env")
-
-        def quote(value):
-            return "'" + value.replace("'", "''") + "'"
-
-        return "Copy-Item -LiteralPath %s -Destination %s" % (
-            quote(source),
-            quote(destination),
-        )
-    source = posixpath.join(out_dir, ".env.example")
-    destination = posixpath.join(out_dir, ".env")
-    return "cp -- %s %s" % (shlex.quote(source), shlex.quote(destination))
-
-
 def _home_plan(discovery=None):
     """Build the ordered (dest_name, text) list for the home scaffold.
 
@@ -505,6 +486,52 @@ def scaffold_home(
     result = _scaffold_config(out_dir or config_home(), discovery)
     result["discovery"] = discovery
     return result
+
+
+ROUTER_TOKEN_ENV = "ANVIL_ROUTER_TOKEN"
+
+
+def ensure_router_token(out_dir):
+    """Provision ``ANVIL_ROUTER_TOKEN`` in ``out_dir/.env`` unless already defined.
+
+    Defined means: process environment, ``out_dir/.env``, or the operator
+    ``.env`` chain. An existing value is never overwritten; other lines in an
+    existing file are untouched. New files are created 0600. The value is
+    never returned. Result: ``{"status": "present"|"created"|"appended",
+    "path": ..., "tightened": bool}``.
+    """
+    path = os.path.join(os.path.abspath(os.path.expanduser(out_dir)), ".env")
+    if (os.environ.get(ROUTER_TOKEN_ENV) or "").strip():
+        return {"status": "present", "path": "environment", "tightened": False}
+    try:
+        local_value = envfile.read_dotenv(path).get(ROUTER_TOKEN_ENV, "").strip()
+    except (OSError, UnicodeError) as exc:
+        raise InitError("could not read %s (%s)" % (path, exc)) from exc
+    if local_value or envfile.resolve_env_value(ROUTER_TOKEN_ENV)[0]:
+        return {"status": "present", "path": path, "tightened": False}
+    if os.path.islink(path):
+        raise InitError("refusing to write the router token through symlink %s; "
+                        "replace it with a regular file and re-run" % path)
+    line = "%s=%s\n" % (ROUTER_TOKEN_ENV, secrets.token_urlsafe(32))
+    existed = os.path.exists(path)
+    tightened = False
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        prefix = ""
+        flags = os.O_RDWR | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(path, flags, 0o600)
+        with os.fdopen(fd, "a+", encoding="utf-8") as f:
+            if existed and os.name != "nt" and os.fstat(f.fileno()).st_mode & 0o077:
+                os.fchmod(f.fileno(), 0o600)  # before the secret is written
+                tightened = True
+            f.seek(0)
+            text = f.read()
+            prefix = "" if not text or text.endswith("\n") else "\n"
+            f.write(prefix + line)
+    except OSError as exc:
+        raise InitError("could not write %s (%s)" % (path, exc)) from exc
+    return {"status": "appended" if existed else "created", "path": path,
+            "tightened": tightened}
 
 
 def _read_catalog(catalog_dir):
@@ -861,6 +888,12 @@ def _main_home(a):
         print(f"[anvil-serving] {e}", file=sys.stderr)
         return 2
 
+    try:
+        token = ensure_router_token(result["out_dir"])
+    except InitError as e:
+        print(f"[anvil-serving] {e}", file=sys.stderr)
+        return 2
+
     if result["written"]:
         print("scaffolded or updated the config set in %s:" % result["out_dir"])
         for path in result["written"]:
@@ -903,10 +936,24 @@ def _main_home(a):
         print("  Topology command host: %s [detected]" % discovery["topology_host"])
     else:
         print("  Topology command host: not detected; reference default preserved")
-    print("  Secrets: copy .env.example to .env and fill it in (never committed).")
+    if token["status"] == "present":
+        print("  Router token: %s already set; left unchanged." % ROUTER_TOKEN_ENV)
+    else:
+        print("  Router token: generated %s in %s (not shown)."
+              % (ROUTER_TOKEN_ENV, token["path"]))
+        if token["tightened"]:
+            print("  WARNING: %s was readable by other users; permissions set to 0600."
+                  % token["path"], file=sys.stderr)
+        if os.path.dirname(token["path"]) != config_home():
+            print("  NOTE: the router reads %s, not this file; copy %s there or use "
+                  "ANVIL_SERVING_HOME=%s." % (os.path.join(config_home(), ".env"),
+                  ROUTER_TOKEN_ENV, result["out_dir"]))
+    print("  Secrets: add values from .env.example to .env (never committed; do not copy over it).")
     print()
     print("Next steps (zero hand-assembly):")
-    print("  1. %s   # then fill in secrets" % _copy_env_command(result["out_dir"]))
+    print("  1. add host values and secrets from .env.example to %s"
+          "   # do not cp over it: it holds the router token"
+          % os.path.join(result["out_dir"], ".env"))
     print("  2. anvil-serving serves groups          # see the resolvable groups")
     print("     For media, first: anvil-serving host docker-image build media-worker --confirm")
     print("  3. anvil-serving serves up --group voice   # (or llm-stack / comfy / ...)")

@@ -40,7 +40,7 @@ def config(tmp_path, monkeypatch):
     keys = KeyStore.initialize(tmp_path / 'owned' / 'keys.sqlite3')
     ledger.UsageStore(keys).migrate()
     path = tmp_path / 'router.toml'
-    path.write_text(Path('configs/example.toml').read_text() + '\n[server]\nauth_env="SYNTHETIC_AUTH"\n' +
+    path.write_text(Path('configs/example.toml').read_text().replace('[server]\nauth_env = "ANVIL_ROUTER_TOKEN"\n', '') + '\n[server]\nauth_env="SYNTHETIC_AUTH"\n' +
                     'api_keys_path=' + json.dumps(str(keys.path)) + '\nadmission_state_path=' +
                     json.dumps(str(keys.path.parent / 'intent.json')) + '\nrouter_owner_id="fixture"\n' +
                     'router_owner_roster=["fixture"]\nusage_domain_id="fixture"\nusage_enabled=true\n')
