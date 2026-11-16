@@ -35,6 +35,13 @@ All notable changes to this project are documented here. The format is based on
   playback, HEAD and bounded streaming of full files and single byte ranges.
   Reusable MCP credentials remain outside URLs.
 
+- Contributor tooling: the test suite runs in 4 parallel shards in CI and
+  `scripts/pre-submit.sh` (`scripts/run_tests.py --shards N`), a `slow` marker
+  tags tests bound by real waits, Linux-only feature tests skip on other
+  platforms using the product's own checks, real-time sleeps were replaced with
+  deadlines and polling, and large parametrize tables became `subtests` (dev
+  extra now requires `pytest>=9`) (#797, #798, #802, #803).
+
 ### Changed
 
 - **BREAKING:** `router run` refuses a non-loopback `--host` when
@@ -108,10 +115,16 @@ All notable changes to this project are documented here. The format is based on
   and `fakoli-flexibility` compose projects) and `owner="mini"` are accepted for
   one release and emit a `LegacyNameWarning` naming the new value. Compose files
   cannot warn; keep `COMPOSE_PROJECT_NAME=fakoli-experiment` until you migrate.
-  See [docs/MIGRATION-GENERIC-NAMES.md](docs/MIGRATION-GENERIC-NAMES.md) (#777).
+  See [docs/MIGRATION-GENERIC-NAMES.md](https://github.com/fakoli/anvil-serving/blob/main/docs/MIGRATION-GENERIC-NAMES.md) (#777).
 
 ### Fixed
 
+- Router management requests (route updates, router- and tier-scope
+  transitions, member drain) and media asset uploads release their admission
+  slot before writing the response, so a client that sends its next request
+  immediately no longer gets a spurious `503 ... busy` (#798).
+- `docs/TERMINOLOGY.md` covers all seven product families and the optional
+  integrations (OpenClaw, Hermes, Pi runner, Grafana Fleet) (#794).
 - Native Connect gateway restarts preserve exact refused Unix socket leftovers
   under exclusive authority ownership before rebinding, while refusing active
   listeners, unsafe custody and unknown liveness.
@@ -128,6 +141,10 @@ All notable changes to this project are documented here. The format is based on
 - Browser-reachable listeners (router, voice Realtime, dashboard telemetry,
   multiplexer, controller) now reject DNS-rebinding and cross-site requests when
   unauthenticated; see the BREAKING entries under Changed (#767, #769, #778).
+- The public-snapshot hygiene scan also inspects `.gz` contents and rejects
+  tailnet names, CGNAT addresses outside the documentation range, real GPU
+  UUIDs, personal home paths and known lab hostnames; remaining lab identifiers
+  and raw host artifacts were removed from tracked docs (#776).
 
 ## [2.0.2] - 2026-10-27
 
