@@ -21,7 +21,7 @@
 # These replaced the agentic-mode tiers (sglang/qwen35-awq + gpt-oss-20b), which live
 # in git history. The convention also shifted: weights now resolve as HF REPO-IDS from the
 # `vllm-hfcache` docker volume (the `anvil-serving models pull` path) — NOT `/models/<dir>`
-# bind paths from `fakoli-models`. A named volume is native ext4 inside WSL2 (~15s loads); a
+# bind paths from `anvil-models`. A named volume is native ext4 inside WSL2 (~15s loads); a
 # C:/ bind rides 9P and turns a cold load into 20-90 min (CLAUDE.md gotcha #15).
 #
 # `router` is the only service published beyond loopback (ADR-0004). `primary`/`omni` stay
