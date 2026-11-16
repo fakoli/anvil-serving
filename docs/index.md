@@ -12,9 +12,10 @@ hide:
   <div class="anvil-hero__copy">
     <h1 id="anvil-hero-title">Anvil Serving</h1>
     <p class="anvil-hero__tagline">Operate, qualify, and expose local AI capabilities through explicit, reviewable contracts.</p>
-    <p class="anvil-hero__summary">One package and release line for Model Serving, the Capability Gateway, Evaluation &amp; Evidence, Anvil Voice, Anvil Media, and Control Plane &amp; Fleet. Each family has an explicit authority boundary and ordered CLI journey. There is no hidden model substitution.</p>
+    <p class="anvil-hero__summary">One package and release line for Model Serving, the Capability Gateway, Evaluation &amp; Evidence, Anvil Voice, Anvil Media, Anvil Connect, and Control Plane &amp; Fleet. Each family has an explicit authority boundary and ordered CLI journey. There is no hidden model substitution.</p>
     <div class="anvil-actions">
       <a href="benchmarks/" class="md-button md-button--primary md-button--evidence">Browse benchmarks</a>
+      <a href="QUICKSTART-GATEWAY/" class="md-button">Gateway quickstart</a>
       <a href="GETTING-STARTED/" class="md-button">Get started</a>
     </div>
   </div>
@@ -93,7 +94,7 @@ hide:
 
 <section class="anvil-section" aria-labelledby="product-families">
   <div class="anvil-section__heading">
-    <h2 id="product-families">One product, six operating families</h2>
+    <h2 id="product-families">One product, seven operating families</h2>
     <p>The families share one CLI, topology, safety contract, evidence policy, and release line. Each still owns a distinct operator outcome.</p>
   </div>
   <div class="anvil-family-list">
@@ -121,6 +122,11 @@ hide:
       <strong>Anvil Media</strong>
       <span>Run bounded named image and video workflows with durable jobs and artifacts.</span>
       <em>Open media</em>
+    </a>
+    <a href="CONNECT-OVERVIEW/">
+      <strong>Anvil Connect</strong>
+      <span>Publish loopback-bound local surfaces to browsers through one self-hosted, authenticated edge.</span>
+      <em>Open Connect</em>
     </a>
     <a href="cli/control-plane/">
       <strong>Control Plane & Fleet</strong>

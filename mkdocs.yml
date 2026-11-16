@@ -64,6 +64,8 @@ plugins:
 nav:
   - Get started:
       - Overview: index.md
+      - "Quickstart: gateway for your server": QUICKSTART-GATEWAY.md
+      - Support matrix: SUPPORT-MATRIX.md
       - Install and run a first serve: GETTING-STARTED.md
       - Private networking with Tailscale: TAILSCALE-NETWORKING.md
       - Deployment security model: SECURITY-MODEL.md
@@ -113,6 +115,7 @@ nav:
       - Model Serving:
           - Catalog, artifacts, and recipes: MODEL-LIFECYCLE.md
           - Promote and roll back: MODEL-PROMOTION.md
+          - Reference-host qualification runbook: operator/REFERENCE-HOST-RUNBOOK.md
       - Voice and Media:
           - Voice pipeline: VOICE.md
           - Media workflows: cli/media.md
