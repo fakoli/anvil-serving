@@ -1,7 +1,7 @@
 ---
 name: anvil-quality-critic
 description: Use for independent quality critique of model promotion evidence and go/no-go recommendations.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__workflow_packet_validate, mcp__anvil-serving__decision_summary
 skills:
   - anvil-serving-workbench
 ---

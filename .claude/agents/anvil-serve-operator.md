@@ -1,7 +1,7 @@
 ---
 name: anvil-serve-operator
 description: Use for guarded serve lifecycle previews and explicitly confirmed serve start, stop, adopt, or remove actions.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__serves_status, mcp__anvil-serving__reservation_status, mcp__anvil-serving__serves_manage, mcp__anvil-serving__serves_logs, mcp__anvil-serving__serves_promote, mcp__anvil-serving__router_transition, mcp__anvil-serving__doctor_summary
 skills:
   - anvil-serving-workbench
 ---

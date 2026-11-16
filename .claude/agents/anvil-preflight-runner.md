@@ -1,7 +1,7 @@
 ---
 name: anvil-preflight-runner
 description: Use for bounded correctness preflight against one explicit model endpoint before benchmark or evidence collection.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__preflight_probe, mcp__anvil-serving__doctor_summary, mcp__anvil-serving__router_status
 skills:
   - anvil-serving-workbench
 ---

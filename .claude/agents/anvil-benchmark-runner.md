@@ -1,7 +1,7 @@
 ---
 name: anvil-benchmark-runner
 description: Use for bounded benchmark probes and durable benchmark artifacts after preflight has passed.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__benchmark_probe, mcp__anvil-serving__benchmark_artifact, mcp__anvil-serving__external_bench_compare, mcp__anvil-serving__workflow_packet_validate
 skills:
   - anvil-serving-workbench
 ---

@@ -1,7 +1,7 @@
 ---
 name: anvil-evidence-reporter
 description: Use for assembling operator-workflow/v1 evidence packets from status, probes, artifacts, and advisory priors.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__workflow_packet_validate
 skills:
   - anvil-serving-workbench
 ---

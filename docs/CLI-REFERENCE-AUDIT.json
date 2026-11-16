@@ -113,11 +113,11 @@
         "docs": 252,
         "examples": 269,
         "implementation": 515,
-        "skills": 22,
-        "tests": 585,
+        "skills": 32,
+        "tests": 586,
         "tooling": 39
       },
-      "files_scanned": 1682,
+      "files_scanned": 1693,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
@@ -186,9 +186,9 @@
         "voice-sidecar": 6
       },
       "files_by_category": {
-        "skills": 22
+        "skills": 32
       },
-      "files_scanned": 22,
+      "files_scanned": 32,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
