@@ -16,8 +16,10 @@ import time
 from collections import deque
 from typing import Callable, Iterable, Optional
 
+from ..legacy_names import LEGACY_NAMES, warn_legacy
 
-MINI_OWNER = "mini"
+
+COMPANION_OWNER = "companion"
 DEFAULT_STOP_TIMEOUT_SECONDS = 5.0
 DEFAULT_LOG_BYTES = 64 * 1024
 MAX_ACTIVE_CONNECTIONS = 64
@@ -226,13 +228,15 @@ class ForwardingBridgeService:
         self,
         routes: Iterable[TCPBridgeRoute],
         *,
-        owner: str = MINI_OWNER,
+        owner: str = COMPANION_OWNER,
         max_log_bytes: int = DEFAULT_LOG_BYTES,
         serve: Callable[..., None] = serve_until_stopped,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        if owner != MINI_OWNER:
-            raise ValueError("forwarding bridge owner must be %r" % MINI_OWNER)
+        if LEGACY_NAMES.get(owner) == COMPANION_OWNER:  # old deployments pass "mini"; kept for one release
+            warn_legacy(owner, "forwarding bridge owner", stacklevel=2)
+        elif owner != COMPANION_OWNER:
+            raise ValueError("forwarding bridge owner must be %r" % COMPANION_OWNER)
         if max_log_bytes < 1:
             raise ValueError("max_log_bytes must be positive")
         self._routes = tuple(routes)

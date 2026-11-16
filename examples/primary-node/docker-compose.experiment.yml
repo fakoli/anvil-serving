@@ -29,11 +29,11 @@
 #                                         resolves it from (or downloads it once into) the cache (#15).
 #   - GPU pinned by UUID + PCI_BUS_ID     the right card, every time (gotcha #13).
 #
-# A DISTINCT Compose project name (`fakoli-experiment`) keeps experiment `up`/`down` from
+# A DISTINCT Compose project name (`anvil-experiment`) keeps experiment `up`/`down` from
 # touching the production `primary-node` serves: without it both files default their project
 # name to the directory (`primary-node`), so an experiment `down` reports the live tiers as
 # orphans and churns the shared network.
-name: fakoli-experiment
+name: anvil-experiment
 
 x-voice-candidate-env: &voice-candidate-env
   CUDA_DEVICE_ORDER: PCI_BUS_ID

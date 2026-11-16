@@ -45,7 +45,7 @@ def test_forwarding_bridge_lifecycle_is_mini_owned_and_keeps_bounded_logs():
         max_log_bytes=16,
         serve=serve,
     )
-    assert bridge.start().owner == "mini"
+    assert bridge.start().owner == "companion"
     assert started.wait(1)
     assert bridge.stop(timeout=1).running is False
     logs = bridge.logs()
