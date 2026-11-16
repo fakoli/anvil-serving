@@ -1,4 +1,5 @@
 """Resource ceilings and failure boundaries for the managed image builder."""
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -7,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from anvil_serving import image_build
+from tests.proc_helpers import wait_gone
 
 
 @pytest.fixture
@@ -109,23 +111,26 @@ def test_build_arguments_remain_closed_and_existing_declarations_unchanged(confi
         image_build.build_plan("worker", config)
 
 
+@pytest.mark.skipif(sys.platform == "darwin",
+                    reason="macOS refuses killpg (EPERM) on a group whose leader is already reaped")
 def test_timeout_terminates_child_that_inherits_the_output_pipe(tmp_path):
-    import time
     marker = tmp_path / "orphan.txt"
+    pidfile = tmp_path / "orphan.pid"
     child = "import time; from pathlib import Path; time.sleep(1.5); Path(%r).write_text('orphan')" % str(marker)
-    parent = "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',%r]); print('spawned',flush=True); time.sleep(30)" % child
+    parent = ("import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-c',%r]); "
+              "open(%r,'w').write(str(p.pid)); print('spawned',flush=True); time.sleep(30)") % (child, str(pidfile))
     with (tmp_path / "timeout.log").open("wb") as log:
         result = image_build._stream_build([sys.executable, "-c", parent],
                                            source_bytes=b"", log=log, timeout=0.5)
     assert "timed out" in result["error"]
     assert "daemon_state_unverified" in result["cancellation"]
     assert not result.get("output_error")
-    time.sleep(1.6)
+    assert pidfile.exists()
+    wait_gone(int(pidfile.read_text()))
     assert not marker.exists()
 
 
 def test_log_root_is_private_under_shared_umask_and_rejects_unsafe_existing_root(tmp_path):
-    import os
     if os.name == "nt":
         pytest.skip("POSIX directory permissions")
     logs = tmp_path / "logs"

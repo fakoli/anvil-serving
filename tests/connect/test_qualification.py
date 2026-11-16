@@ -163,6 +163,7 @@ def test_procfs_permission_error_fails_closed(monkeypatch: pytest.MonkeyPatch) -
         supervisor._children(os.getpid())
 
 
+@pytest.mark.slow  # SIGTERM-ignoring tree is reaped only after the real grace period
 def test_finite_tree_over_two_small_batches_is_reaped(capsys: pytest.CaptureFixture[str]) -> None:
     code = "import subprocess,sys; c=\"import signal,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); time.sleep(5)\"; [subprocess.Popen([sys.executable,'-c',c]) for _ in range(5)]"
     assert supervisor.run([sys.executable, "-c", code], 0.2, subject._TESTS[0], batch_size=2) == 0
