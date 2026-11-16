@@ -113,7 +113,7 @@ started = time.monotonic()
 try:
     result = transports._run_bounded_process(
         [sys.executable, '-c', grader, mode, pid_file, descendant],
-        timeout=1, max_output_bytes=1024, env={}, owned_process_group=True,
+        timeout=0.5, max_output_bytes=1024, env={}, owned_process_group=True,
     )
     assert result.returncode == 0
     outcome = 'success'

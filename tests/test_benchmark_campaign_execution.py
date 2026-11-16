@@ -13,7 +13,7 @@ from anvil_serving.benchmarking.artifacts import atomic_write_json
 from anvil_serving.benchmarking.campaigns import source_sha256
 from anvil_serving.benchmarking.jobs import BenchmarkJobError, job_spec_sha256
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
-from tests.test_benchmark_worker import spec
+from tests.test_benchmark_worker import requires_boot_id, spec
 
 
 def campaign(tmp_path, monkeypatch, count=1, endpoint=None, drain=None, activation=None, drain_reserve_s=10, timeout_s=10):
@@ -61,6 +61,7 @@ def ready(root, manifest, bound, index=0):
     return value
 
 
+@requires_boot_id
 def test_ready_barrier_union_budget_unknown_closure_and_no_clamp(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch, count=2)
     release_clock = 492.40178837899526  # Reproduces the hosted Python 3.11 binary64 subtraction.
@@ -144,6 +145,7 @@ def test_engine_drain_requires_fresh_resolved_zero(monkeypatch):
     assert execution.observe_drain(policy, deadline=50)['status'] == 'verified'
 
 
+@requires_boot_id
 def test_watchdog_stops_owned_worker_when_job_state_is_unreadable_at_deadline(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch)
     store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
@@ -176,6 +178,7 @@ def test_watchdog_stops_owned_worker_when_job_state_is_unreadable_at_deadline(tm
     assert receipt['status'] == 'ready'  # Unreadable durable state cannot authorize a post-terminal write.
 
 
+@requires_boot_id
 def test_watchdog_stops_owned_worker_when_cancel_fails_after_missing_state(tmp_path, monkeypatch):
     root, manifest, bound = campaign(tmp_path, monkeypatch)
     store = BenchmarkJobStore(str(tmp_path/'jobs.db'), run_root=root)
@@ -216,6 +219,7 @@ def install_test_owned_activation(
     monkeypatch.setenv('PYTHONPATH', str(hook))
 
 
+@requires_boot_id
 def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkeypatch):
     """A child interpreter loads only this test-owned activation seam."""
     from http.server import ThreadingHTTPServer
@@ -271,6 +275,8 @@ def test_real_released_worker_closes_with_test_owned_activation(tmp_path, monkey
         server.shutdown(); server.server_close(); thread.join(timeout=3)
 
 
+@pytest.mark.slow
+@requires_boot_id
 def test_real_released_watchdog_stops_owned_child_at_traffic_deadline(tmp_path, monkeypatch):
     """The released worker and its detached watchdog use the real custody path."""
     from http.server import ThreadingHTTPServer
@@ -364,6 +370,7 @@ def entry_campaign(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize('failure', ['no_ack', 'early_exit', 'spawn', 'activation', 'closure', 'prepared', 'cancel', 'budget'])
+@requires_boot_id
 def test_entry_failure_closes_before_shared_terminal_and_durable_failure(tmp_path, monkeypatch, failure):
     from concurrent.futures import ThreadPoolExecutor
     from anvil_serving.benchmarking import campaign_telemetry as telemetry
@@ -454,6 +461,7 @@ def test_entry_failure_closes_before_shared_terminal_and_durable_failure(tmp_pat
 
 
 @pytest.mark.parametrize('kind', ['receipt', 'release'])
+@requires_boot_id
 def test_entry_failure_fallback_keeps_binding_and_release_guards(tmp_path, monkeypatch, kind):
     store, manifest, child, sampler, release = entry_campaign(tmp_path, monkeypatch)
     store.claim(child['run_id'])

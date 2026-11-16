@@ -25,7 +25,7 @@ def refuse_sleep(monkeypatch):
 
 
 def expire(db):
-    time.sleep(max(0, db.writer_deadline - time.monotonic()) + .03)
+    db.writer_deadline = time.monotonic() - .001  # the deadline is a plain attribute
     assert time.monotonic() > db.writer_deadline
 
 

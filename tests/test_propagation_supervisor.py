@@ -351,6 +351,7 @@ def test_unknown_descendant_custody_never_claims_quiescence():
     assert result == {"outcome": "uncertain", "native_effects": [], "quiescent": False}
 
 
+@pytest.mark.slow  # integer budget_seconds and whole-second heartbeat timestamps
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux native supervisor")
 def test_child_heartbeat_and_deadline_are_real_observations(tmp_path: Path):
     script = "import json,sys,time; json.load(sys.stdin); time.sleep(6); print(json.dumps({'outcome':'applied','native_effects':[],'quiescent':True}))"
