@@ -90,6 +90,18 @@ curl -s http://127.0.0.1:8000/v1/messages \
   -d '{"model":"llm.primary","max_tokens":64,"messages":[{"role":"user","content":"hello"}]}'
 ```
 
+The commands above assume bash (Linux, macOS, WSL, or Git Bash). In Windows
+PowerShell, load the token and call the gateway like this; `curl.exe` avoids
+PowerShell's `curl` alias, and `Invoke-RestMethod` avoids native-command JSON
+quoting:
+
+```powershell
+$envFile = if ($env:ANVIL_SERVING_HOME) { Join-Path $env:ANVIL_SERVING_HOME ".env" } else { Join-Path $HOME ".anvil-serving\.env" }
+$env:ANVIL_ROUTER_TOKEN = (Select-String -Path $envFile -Pattern '^ANVIL_ROUTER_TOKEN=(.*)$').Matches[0].Groups[1].Value
+curl.exe -s http://127.0.0.1:8000/v1/models -H "Authorization: Bearer $env:ANVIL_ROUTER_TOKEN"
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/v1/chat/completions -Headers @{ Authorization = "Bearer $env:ANVIL_ROUTER_TOKEN" } -ContentType "application/json" -Body '{"model":"llm.primary","messages":[{"role":"user","content":"hello"}]}'
+```
+
 Callers always send `llm.primary`. The gateway forwards your server's own
 model name upstream, so you can point the alias at a different model later
 without changing any client.

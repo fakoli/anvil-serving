@@ -18,7 +18,7 @@ func TestRestoredHistoricalGrantCannotMintSessionOrAPIKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	binding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/", binding)
+	challenge, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestRestoredHistoricalGrantCannotMintSessionOrAPIKey(t *testing.T) {
 		t.Fatal("historical API grant allowed new issuance")
 	}
 	binding, _ = NewBinding()
-	challenge, err = next.Begin("dash", "/", binding)
+	challenge, err = next.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestRestoredHistoricalGrantCannotMintSessionOrAPIKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	binding, _ = NewBinding()
-	challenge, err = next.Begin("dash", "/", binding)
+	challenge, err = next.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}

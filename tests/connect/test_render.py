@@ -207,6 +207,25 @@ def test_render_is_stable_secret_free_and_matches_native_contract() -> None:
     assert "/etc/anvil-connect/secrets/oidc-client-secret-hash" in first["files"]["authelia/configuration.yml"]
 
 
+def test_gateway_proxies_set_the_edge_peer_as_the_only_forwarded_client() -> None:
+    # Connect partitions anonymous login and device-start limits by this value.
+    caddy = json.loads(render(isolated_manifest())["files"]["caddy.json"])
+    gateway_proxies = [
+        handler
+        for server in caddy["apps"]["http"]["servers"].values()
+        for route in server["routes"]
+        for handler in route.get("handle", [])
+        if handler.get("handler") == "reverse_proxy" and handler["upstreams"][0]["dial"].endswith("/ingress.sock")
+    ]
+    assert gateway_proxies
+    for route in caddy["apps"]["http"]["servers"]["anvil_connect"]["routes"]:
+        handlers = route.get("handle", [])
+        if any(handler in gateway_proxies for handler in handlers):
+            assert "X-Forwarded-For" in handlers[0]["request"]["delete"]
+    for handler in gateway_proxies:
+        assert handler["headers"]["request"]["set"]["X-Forwarded-For"] == ["{http.request.remote.host}"]
+
+
 def origin_proxy_manifest() -> dict:
     value = isolated_manifest()
     browser = value["gateway"]["gateway"]["resources"][0]["rule"]

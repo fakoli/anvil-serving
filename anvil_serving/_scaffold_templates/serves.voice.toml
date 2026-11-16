@@ -49,6 +49,6 @@ runtime = "docker"
 port = 8765
 model = "anvil-realtime-proxy"
 engine = "audio"
-health = "/usage"              # the proxy's readiness route (pool usage stats)
+health = "/healthz"            # the proxy's token-free readiness route
 groups = ["voice"]             # serve groups (serves up/down/status --group)
 up = "docker compose --project-name anvil-voice-proxy -f {dir}/docker-compose.voice-proxy.yml up -d realtime-proxy"

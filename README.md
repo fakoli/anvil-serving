@@ -50,8 +50,11 @@ anvil-serving router run
 
 `init --gateway-only` writes one `router.toml` that maps `llm.primary` to your
 server, and a random `ANVIL_ROUTER_TOKEN` into `~/.anvil-serving/.env` (mode
-0600, never printed). `router run` serves on `http://127.0.0.1:8000`. In a
-second terminal, load the token without printing it and call the model:
+0600, never printed). `router run` serves on `http://127.0.0.1:8000`; vLLM
+also defaults to 8000, so start vLLM on 8001 or pass `router run --port 8100`.
+In a second terminal, load the token without printing it and call the model.
+These shell steps assume bash; on Windows, use WSL or Git Bash, or the
+PowerShell variant in the [quickstart](docs/QUICKSTART-GATEWAY.md#4-call-it).
 
 ```bash
 export ANVIL_ROUTER_TOKEN="$(sed -n 's/^ANVIL_ROUTER_TOKEN=//p' "${ANVIL_SERVING_HOME:-$HOME/.anvil-serving}/.env")"
@@ -100,17 +103,13 @@ stable capability alias, operators map that alias to exactly one tier, and the
 selected inference service may report bounded facts about the model and context
 it currently serves. The request path remains deliberately thin. There is no
 request classifier, quality-profile router, semantic fallback, cloud
-escalation, or hidden substitute model.
-
-The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
-In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
-reserve Compute A or Compute B independently. In `dual-gpu-exclusive` mode,
-one explicitly declared TP=2 serve owns both cards and every other GPU
-inference workload is offline. Capability aliases remain independent of that
-placement. The gateway keeps authentication, dialect translation, streaming,
-readiness, admission, and decision evidence consistent across those
-capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
-for each authority boundary and its ordered path.
+escalation, or hidden substitute model. The gateway keeps authentication,
+dialect translation, streaming, readiness, admission, and decision evidence
+consistent across capabilities. See
+[Product families and user journeys](docs/PRODUCT-FAMILIES.md) for each
+authority boundary and its ordered path, and [Architecture](docs/ARCHITECTURE.md)
+or the [reference-host runbook](docs/operator/REFERENCE-HOST-RUNBOOK.md) for
+the maintainers' two-GPU reference topology.
 
 ## Anvil Connect exposure contract
 
