@@ -2,7 +2,12 @@
   "schema": "anvil-serving.benchmark-decision-summary/v1",
   "campaign_id": "YYYY-MM-DD-SLUG",
   "complete": false,
-  "identity": {},
+  "identity": {
+    "model": "REPLACE_WITH_SERVED_MODEL_OR_withheld",
+    "engine": "REPLACE_WITH_ENGINE_NAME_AND_VERSION",
+    "quantization": "REPLACE_WITH_WEIGHT_FORMAT_OR_withheld",
+    "hardware": "REPLACE_WITH_ACCELERATOR_MODEL_AND_COUNT"
+  },
   "workload": {},
   "measurement": {
     "path": "REPLACE_WITH_ONLINE_DIRECT_ROUTED_OFFLINE_OR_KERNEL",

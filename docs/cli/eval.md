@@ -368,6 +368,23 @@ fails when the generated file differs, including after a source artifact or
 catalog edit. Files must stay within `--root`; outputs cannot overwrite an
 input. Publication workflow: [Repeatable campaigns](../benchmarks/repeatable-campaigns.md).
 
+## Benchmark records
+
+List every dated finding as one `anvil-serving.benchmark-record/v1` record:
+model, engine, quantization, hardware, context, concurrency, decision, and
+the core fields the retained evidence does not record. Records are read-only
+projections of the finding and its artifact set; the
+[benchmark results page](../benchmarks/results.md) renders the same index.
+
+```bash
+anvil-serving eval benchmark records
+anvil-serving eval benchmark records --record 2026-11-03-rtx5090-campaign
+anvil-serving eval benchmark records --format json > records.json
+```
+
+`--root` defaults to `docs/findings`. The command is offline and does not
+call a model.
+
 ## External benchmarks
 
 External benchmark records are advisory priors. Keep their source and snapshot

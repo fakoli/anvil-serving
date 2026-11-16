@@ -22,6 +22,27 @@ explicit evidence gap; no final artifact set keeps a pending role. Follow
 `skills/anvil-serving-benchmark-docs/references/artifact-set-contract.md` for
 the complete role and hashing contract.
 
+## Benchmark record v1
+
+Every dated finding is also published as one
+`anvil-serving.benchmark-record/v1` record on the
+[benchmark results page](results.md), and as a record card under the
+finding's title. The site builds records from the finding and its artifact
+set at build time; nothing is written into `docs/`. A record states model,
+engine, quantization, hardware, context, concurrency, decision, headline
+results, and limitations, and lists every core field the evidence does not
+record as a gap.
+
+Records read `identity.model`, `identity.engine`, `identity.quantization`,
+and `identity.hardware` from the campaign's `summary.json`, then fall back to
+values observed in retained capacity and quality artifacts. Quantization is
+almost never present in native artifacts, so fill it in the summary or write
+`withheld` when it is private. Preview a record before publishing:
+
+```bash
+anvil-serving eval benchmark records --record YYYY-MM-DD-slug
+```
+
 ## Model dossier presentation v2
 
 Use the

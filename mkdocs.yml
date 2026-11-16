@@ -59,6 +59,10 @@ plugins:
       # automatically - no extra_javascript block needed.
       version: '11.4.1'
 
+# Builds benchmark records from retained findings evidence at site build time.
+hooks:
+  - scripts/mkdocs_benchmark_records.py
+
 # Keep the top level task-oriented and shallow. Dense catalogs remain reachable
 # through their index pages instead of expanding into the global navigator.
 nav:
@@ -76,6 +80,7 @@ nav:
       - Discover the product from the CLI: cli/product.md
   - Benchmarks & evidence:
       - Start here: benchmarks/index.md
+      - Benchmark results: benchmarks/results.md
       - Latest qualification: findings/2026-09-19-glm53-apc-promotion.md
       - Mia runtime functional validation: findings/2026-11-13-tensorfold-mia-runtime-functional.md
       - Choose and compare:

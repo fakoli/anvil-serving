@@ -767,7 +767,8 @@ def discover_artifacts(
         if model_filter and model_filter not in identity_text:
             continue
         suite_names = " ".join(
-            str(item.get("name") or "") for item in summary["quality"]["suites"]
+            # Campaign and external-prior summaries carry no quality block.
+            str(item.get("name") or "") for item in summary.get("quality", {}).get("suites", [])
         ).casefold()
         if suite_filter and suite_filter not in suite_names:
             continue
