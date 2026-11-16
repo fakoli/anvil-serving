@@ -26,11 +26,12 @@ anvil-serving product journey capability-gateway
 anvil-serving product journey evaluation-evidence
 anvil-serving product journey anvil-voice
 anvil-serving product journey anvil-media
+anvil-serving product journey anvil-connect
 anvil-serving product journey control-plane-fleet
 ```
 
-Short aliases such as `serving`, `gateway`, `eval`, `voice`, `media`, and
-`fleet` resolve to those stable ids. An unknown family is a typed usage error;
+Short aliases such as `serving`, `gateway`, `eval`, `voice`, `media`,
+`connect`, and `fleet` resolve to those stable ids. An unknown family is a typed usage error;
 the command never guesses.
 
 Each step names its stage, intent, CLI template, and expected outcome. Angle
@@ -41,7 +42,7 @@ confirmation policy.
 ## Automation contract
 
 `anvil-serving --command-manifest` carries the same umbrella description and
-six-family catalog. Every visible operational command record includes one
+seven-family catalog. Every visible operational command record includes one
 `product_family` id; only the read-only `product` discovery commands have a
 null family. Command-tree validation fails when the operational root surface
 and family partition diverge.

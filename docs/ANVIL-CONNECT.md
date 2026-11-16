@@ -3,8 +3,9 @@
 Anvil Connect provides application access through a self-hosted HTTPS gateway.
 An ordinary browser opens a protected dashboard; an ordinary API SDK supplies a
 base URL and a scoped key. An outbound origin connector carries traffic to an
-explicit local application. It is part of Control Plane & Fleet, alongside the
-existing Tailscale edge tools, and adds no Python runtime dependencies.
+explicit local application. It is the Anvil Connect product family, works
+alongside the Tailscale edge tools that Control Plane & Fleet manages, and adds
+no Python runtime dependencies.
 
 This delivery targets Linux amd64 and one administrative trust domain. The
 [implementation evidence](ANVIL-CONNECT-IMPLEMENTATION.md) distinguishes code,

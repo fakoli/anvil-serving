@@ -1,6 +1,6 @@
 # CLI Reference
 
-`anvil-serving` is the operator interface for all six product families. This
+`anvil-serving` is the operator interface for all seven product families. This
 landing page maps user goals to focused references; the executable source of
 truth is `anvil-serving product`, and the exhaustive command surface comes
 from the validated manifest.
@@ -13,7 +13,7 @@ compact manifest contract are recorded in
 ## Command areas
 
 Product discovery is the CLI's cross-family entry point; the remaining rows
-map to the six product families.
+map to the seven product families.
 
 | Area | Top-level verbs | Reference |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ required operands, choices, and defaults.
 | Command path | Purpose | Class / output | Declared command options |
 |---|---|---|---|
 | `product` | Discover product families, boundaries, and ordered user journeys. | `read` / `bounded` | - |
-| `product families` | List the six product families and their boundaries. | `read` / `bounded` | - |
+| `product families` | List the seven product families and their boundaries. | `read` / `bounded` | - |
 | `product journey` | Show the ordered journey for one product family. | `read` / `bounded` | - |
 | `init` | Scaffold the operational config home (or a single-model bring-up with --single-model). | `mutate` / `bounded` | - |
 | `models` | Manage model catalog, artifacts, and recipes. | `read` / `bounded` | - |

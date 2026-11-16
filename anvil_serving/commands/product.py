@@ -17,7 +17,7 @@ def commands() -> CommandNode:
         children=(
             _node(
                 "families",
-                "List the six product families and their boundaries.",
+                "List the seven product families and their boundaries.",
                 handler=_product_handler(),
             ),
             _node(
