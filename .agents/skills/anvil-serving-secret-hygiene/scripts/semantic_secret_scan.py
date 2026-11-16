@@ -8,16 +8,21 @@ import hashlib
 import ipaddress
 import io
 import json
+import multiprocessing
 import re
 import subprocess
 import sys
 import tarfile
+import gzip
 import tempfile
+import zlib
 from collections import Counter
 from pathlib import Path
 from typing import Iterable
 
 MAX_FILE_BYTES = 20 * 1024 * 1024
+PARALLEL_MIN_ENTRIES = 256  # below this, process startup costs more than it saves
+GZIP_EXPANSION_LIMIT = 8  # decompressed size cap, in multiples of MAX_FILE_BYTES
 TEXT_SUFFIXES = {
     ".conf",
     ".csv",
@@ -55,7 +60,7 @@ GPU_UUID_PATTERN = re.compile(
 )
 GPU_UUID_FRAGMENT_PATTERN = re.compile(
     r"\b(?:GPU-[0-9a-f]{8,}(?:(?:\.\.\.|…)[0-9a-f]{4,})?"
-    r"(?![0-9a-f-])|REDACTED_GPU_UUID_[A-Z0-9_]+"
+    r"(?![0-9a-f])(?!-[0-9a-f]{4}-)|REDACTED_GPU_UUID_[A-Z0-9_]+"
     r"(?:\.\.\.|…)[0-9a-f]{4,})\b",
     re.I,
 )
@@ -82,6 +87,11 @@ LOCAL_HOST_PATTERN = re.compile(
     r"\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.local\b(?![a-z0-9.-])", re.I
 )
 REFERENCE_HOST_EXPRESSION = r"(?:fakoli-(?:dark|mini|mid-mod)(?:-2)?|ai-laptop-node)"
+# Real lab machine names that must never appear in public files, in any context.
+# Word-bounded so `fakoli/anvil-serving` and "Fakoli ·" dashboard titles never match.
+KNOWN_LAB_HOST_PATTERN = re.compile(
+    r"(?<![\w/.-])(?:fakoli-(?:dark|mini|mid-mod)(?:-\d+)?|ai-mbp2" r"5)(?![\w-])", re.I
+)
 NETWORK_CONTEXT_PATTERN = re.compile(
     r"(?:https?://|wss?://|\bssh\b|--gateway-host|\bhostname\b|"
     r"expected_endpoint_host|default_[a-z0-9_]*hosts)",
@@ -241,6 +251,11 @@ def scan_text(text: str, rel_path: str, source: str) -> list[dict[str, object]]:
                             "source": source,
                         }
                     )
+        if KNOWN_LAB_HOST_PATTERN.search(line):
+            findings.append({
+                "kind": "known-lab-hostname", "path": normalized_path,
+                "line": line_number, "source": source,
+            })
         if CONTAINER_ID_PATTERN.search(line):
             findings.append({
                 "kind": "operator-container-id", "path": normalized_path,
@@ -382,35 +397,76 @@ def scan_files(
     *,
     max_file_bytes: int = MAX_FILE_BYTES,
 ) -> tuple[int, list[dict[str, object]]]:
-    scanned = 0
+    entries = list(entries)
+    importable = getattr(sys.modules.get(__name__), "_scan_entry", None) is _scan_entry
+    if (
+        importable
+        and len(entries) > PARALLEL_MIN_ENTRIES
+        and "fork" in multiprocessing.get_all_start_methods()
+    ):
+        # Workers pickle _scan_entry by module name, so the module must be importable
+        # (run as a script or registered in sys.modules); otherwise run serially.
+        with multiprocessing.get_context("fork").Pool() as pool:
+            results = pool.starmap(
+                _scan_entry,
+                [(root, source, rel, max_file_bytes) for source, rel in entries],
+                chunksize=64,
+            )
+    else:
+        results = [_scan_entry(root, s, r, max_file_bytes) for s, r in entries]
+    return (
+        sum(scanned for scanned, _ in results),
+        [finding for _, found in results for finding in found],
+    )
+
+
+def _scan_entry(
+    root: Path, source: str, rel_path: str, max_file_bytes: int
+) -> tuple[int, list[dict[str, object]]]:
     findings: list[dict[str, object]] = []
-    for source, rel_path in entries:
-        path = root / rel_path
-        normalized_path = rel_path.replace("\\", "/")
-        if path.suffix.lower() not in TEXT_SUFFIXES and path.name != ".env.example":
-            continue
-        try:
-            if path.is_symlink():
-                findings.append(
-                    {
-                        "kind": "tracked-text-symlink-unscanned",
-                        "path": normalized_path,
-                        "line": 0,
-                        "source": source,
-                    }
-                )
-                continue
-            if not path.is_file():
-                findings.append(
-                    {
-                        "kind": "tracked-text-file-not-regular",
-                        "path": normalized_path,
-                        "line": 0,
-                        "source": source,
-                    }
-                )
-                continue
-            if path.stat().st_size > max_file_bytes:
+    path = root / rel_path
+    normalized_path = rel_path.replace("\\", "/")
+    is_gzip = path.suffix.lower() == ".gz"
+    inner = Path(path.stem) if is_gzip else path
+    if inner.suffix.lower() not in TEXT_SUFFIXES and path.name != ".env.example":
+        return 0, findings
+    try:
+        if path.is_symlink():
+            findings.append(
+                {
+                    "kind": "tracked-text-symlink-unscanned",
+                    "path": normalized_path,
+                    "line": 0,
+                    "source": source,
+                }
+            )
+            return 0, findings
+        if not path.is_file():
+            findings.append(
+                {
+                    "kind": "tracked-text-file-not-regular",
+                    "path": normalized_path,
+                    "line": 0,
+                    "source": source,
+                }
+            )
+            return 0, findings
+        if path.stat().st_size > max_file_bytes:
+            findings.append(
+                {
+                    "kind": "tracked-text-file-too-large",
+                    "path": normalized_path,
+                    "line": 0,
+                    "source": source,
+                }
+            )
+            return 0, findings
+        data = path.read_bytes()
+        if is_gzip:
+            # Decompress in memory (bounded) so identifiers cannot hide in .gz logs.
+            inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+            data = inflater.decompress(data, max_file_bytes * GZIP_EXPANSION_LIMIT)
+            if inflater.unconsumed_tail:
                 findings.append(
                     {
                         "kind": "tracked-text-file-too-large",
@@ -419,32 +475,30 @@ def scan_files(
                         "source": source,
                     }
                 )
-                continue
-            data = path.read_bytes()
-        except OSError:
-            findings.append(
-                {
-                    "kind": "tracked-text-file-unreadable",
-                    "path": normalized_path,
-                    "line": 0,
-                    "source": source,
-                }
-            )
-            continue
-        if b"\0" in data:
-            findings.append(
-                {
-                    "kind": "tracked-text-file-binary",
-                    "path": normalized_path,
-                    "line": 0,
-                    "source": source,
-                }
-            )
-            continue
-        scanned += 1
-        text = data.decode("utf-8", errors="replace")
-        findings.extend(scan_text(text, normalized_path, source))
-    return scanned, findings
+                return 0, findings
+    except (OSError, zlib.error):
+        findings.append(
+            {
+                "kind": "tracked-text-file-unreadable",
+                "path": normalized_path,
+                "line": 0,
+                "source": source,
+            }
+        )
+        return 0, findings
+    if b"\0" in data:
+        findings.append(
+            {
+                "kind": "tracked-text-file-binary",
+                "path": normalized_path,
+                "line": 0,
+                "source": source,
+            }
+        )
+        return 0, findings
+    text = data.decode("utf-8", errors="replace")
+    findings.extend(scan_text(text, normalized_path, source))
+    return 1, findings
 
 
 def scan_remotes(root: Path) -> list[dict[str, object]]:
@@ -508,6 +562,7 @@ def self_test() -> int:
         f'"safe_tailnet_v6_prefix": "{safe_tailnet_v6_prefix}"\n'
         f'"hostname": "{private_local_host}"\n'
         f'"probe": "ssh {reference_host}"\n'
+        f'"bare": "{reference_host}"\n'
         f'"user": "{private_operator_user}"\n'
         '"username": "<operator-user>"\n'
     )
@@ -516,6 +571,18 @@ def self_test() -> int:
         root = Path(temporary_directory)
         (root / "large.md").write_text("x" * 17, encoding="utf-8")
         (root / "binary.json").write_bytes(b"{}\0")
+        (root / "hidden.log.gz").write_bytes(
+            gzip.compress(f"worker {reference_host}\n".encode())
+        )
+        (root / "clean.log.gz").write_bytes(gzip.compress(b"nothing here\n"))
+        (root / "bomb.log.gz").write_bytes(gzip.compress(b"x" * 4096))
+        _, gzip_findings = scan_files(
+            root,
+            (("self-test", "hidden.log.gz"), ("self-test", "clean.log.gz")),
+        )
+        _, bomb_findings = scan_files(
+            root, (("self-test", "bomb.log.gz"),), max_file_bytes=16
+        )
         _, file_findings = scan_files(
             root,
             (
@@ -536,6 +603,7 @@ def self_test() -> int:
             "openclaw-capability-url": 1,
             "operator-gpu-uuid": 1,
             "operator-gpu-uuid-fragment": 3,
+            "known-lab-hostname": 2,
             "operator-home-path": 3,
             "operator-local-hostname": 1,
             "operator-user-identity": 1,
@@ -582,7 +650,9 @@ def self_test() -> int:
         == 1
     )
     passed = (
-        scoped_constants_safe
+        [f["kind"] for f in gzip_findings] == ["known-lab-hostname"]
+        and [f["kind"] for f in bomb_findings] == ["tracked-text-file-too-large"]
+        and scoped_constants_safe
         and native_constants_safe
         and container_home_safe
         and local_hostname_boundary_safe

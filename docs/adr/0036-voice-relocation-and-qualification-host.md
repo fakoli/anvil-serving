@@ -12,7 +12,7 @@ identities, and route assignments remain private operator state per ADR-0032.
 ## Context
 
 ADR-0034 (2026-08-08) declared voice ownership of the single-GPU host
-(`fakoli-mid-mod` in the reference instance) **sacred**, classified the Apple
+(`mid-mod` in the reference instance) **sacred**, classified the Apple
 Silicon laptop (`ai-laptop-node`) as `native / unified / opportunistic`, and derived
 promotion eligibility from the availability class: only a `continuous` host may
 back a promoted alias.

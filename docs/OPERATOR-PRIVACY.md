@@ -136,6 +136,12 @@ Keep raw logs and session traces private while working. To make a public claim:
 4. run the semantic boundary scan and Gitleaks before review; and
 5. publish the sanitized artifact and narrative together under `docs/findings/`.
 
+Raw evidence no longer goes into `docs/findings/`: container inspect dumps, raw
+service and engine logs, GPU or host inventories, and compressed diagnostics stay
+in private operator storage. Publish a dated summary that links to the private
+location by label instead. Sanitized files already published stay in place, and
+the hygiene scan also decompresses `.gz` files so nothing hides inside them.
+
 ## Current snapshot versus Git history
 
 Cleaning the checked-out files prevents new exposure but does not remove old

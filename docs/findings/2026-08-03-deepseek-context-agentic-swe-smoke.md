@@ -11,7 +11,7 @@ qualification
 ## Outcome
 
 The new Anvil Serving benchmark job surface successfully ran three remote jobs
-from AI-MBP25 against the existing DeepSeek 0731 Primary on Primary Node:
+from benchmark-worker against the existing DeepSeek 0731 Primary on Primary Node:
 
 | Lane | Bounded result | Interpretation |
 |---|---|---|
@@ -33,7 +33,7 @@ change.
   `sha256:48518e91cf87dd0c0483c76ff86e81dfc0f46de7e364b46f7a82c481ce08188f`
 - Serve host: Primary Node, two equivalent RTX PRO 6000 Blackwell Max-Q cards,
   exclusive TP=2 over PCIe without NVLink
-- Worker: AI-MBP25, macOS arm64, Docker Desktop
+- Worker: benchmark-worker, macOS arm64, Docker Desktop
 - Published endpoint: `http://100.64.0.10:8000/v1` (generic tailnet placeholder)
 
 The worker did not host the model. It owned harness checkout, Docker grading,

@@ -512,7 +512,7 @@ services:
       <<: *fast-candidate-env
       # The Gemma 4 support image's model-inspection subprocess currently
       # parses NVIDIA/CUDA-visible device ids as integers, so this one service
-      # uses device 0. On Fakoli-Dark, GPU 0 currently resolves to Compute B;
+      # uses device 0. On primary-node, GPU 0 currently resolves to Compute B;
       # other candidates keep UUID pinning.
       CUDA_VISIBLE_DEVICES: ${FAST_GEMMA4_CUDA_VISIBLE_DEVICES:-0}
     deploy:
