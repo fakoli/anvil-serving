@@ -507,8 +507,11 @@ def ensure_router_token(out_dir):
         local_value = envfile.read_dotenv(path).get(ROUTER_TOKEN_ENV, "").strip()
     except (OSError, UnicodeError) as exc:
         raise InitError("could not read %s (%s)" % (path, exc)) from exc
-    if local_value or envfile.resolve_env_value(ROUTER_TOKEN_ENV)[0]:
+    if local_value:
         return {"status": "present", "path": path, "tightened": False}
+    chain_value, chain_source = envfile.resolve_env_value(ROUTER_TOKEN_ENV)
+    if chain_value:
+        return {"status": "present", "path": chain_source, "tightened": False}
     if os.path.islink(path):
         raise InitError("refusing to write the router token through symlink %s; "
                         "replace it with a regular file and re-run" % path)
@@ -532,6 +535,82 @@ def ensure_router_token(out_dir):
         raise InitError("could not write %s (%s)" % (path, exc)) from exc
     return {"status": "appended" if existed else "created", "path": path,
             "tightened": tightened}
+
+
+def render_gateway_only_config(upstream, model, alias="llm.primary", context_limit=8192):
+    """Minimal router.toml: one openai-dialect local tier, one alias, token auth.
+
+    Validates input and returns ``(text, normalized_alias)``; raises InitError.
+    """
+    import urllib.parse
+    from .router.config import ConfigError, load_bytes
+    try:
+        parsed = urllib.parse.urlsplit(upstream or "")
+        port = parsed.port  # raises ValueError for non-numeric or out-of-range ports
+    except ValueError:
+        raise InitError("--upstream is not a valid URL (check the host and port)") from None
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise InitError("--upstream must be an http:// or https:// URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise InitError("--upstream must not contain credentials; set the upstream API key in "
+                        "the ANVIL_UPSTREAM_API_KEY environment variable instead")
+    if parsed.query or parsed.fragment:
+        raise InitError("--upstream must not contain a query string or fragment")
+    if parsed.hostname.lower() == "localhost":
+        suggested = parsed._replace(netloc="127.0.0.1" + (":%d" % port if port else "")).geturl()
+        raise InitError("--upstream: use 127.0.0.1 instead of localhost, e.g. %s" % suggested)
+    if not (model or "").strip():
+        raise InitError("--model is required with --gateway-only (the model name your server serves)")
+    if not isinstance(context_limit, int) or context_limit < 1:
+        raise InitError("--context-limit must be a positive integer")
+    alias = (alias or "").strip().lower()
+    q = json.dumps  # TOML basic strings accept JSON string escapes
+    text = "\n".join((
+        "# Gateway-only router config written by `anvil-serving init --gateway-only`.",
+        "# One alias -> one tier -> your existing OpenAI-compatible server.",
+        "[server]",
+        'auth_env = "%s"' % ROUTER_TOKEN_ENV,
+        "",
+        "[[router.tiers]]",
+        'id = "upstream"',
+        "base_url = %s" % q(upstream.rstrip("/")),
+        "model = %s" % q(model.strip()),
+        'dialect = "openai"',
+        "context_limit = %d" % context_limit,
+        'privacy = "local"',
+        "tool_support = true",
+        "# Name of the env var holding the upstream API key, if your server needs one.",
+        "# Unset (the usual local case) means no upstream Authorization header is sent.",
+        'auth_env = "ANVIL_UPSTREAM_API_KEY"',
+        "",
+        "[router.model_routes]",
+        '%s = "upstream"' % q(alias),
+        "",
+    ))
+    try:
+        load_bytes(text.encode("utf-8"))
+    except (ConfigError, ValueError) as exc:
+        raise InitError("could not generate a valid gateway config (%s)" % exc) from exc
+    return text, alias
+
+
+def scaffold_gateway_only(out_dir=None, *, upstream, model, alias="llm.primary", context_limit=8192):
+    """Write only ``router.toml`` (backed up if different) and provision the token."""
+    text, alias = render_gateway_only_config(upstream, model, alias, context_limit)
+    target = os.path.abspath(os.path.expanduser(out_dir or config_home()))
+    dest = os.path.join(target, "router.toml")
+    os.makedirs(target, exist_ok=True)
+    backed_up = None
+    try:
+        existing = open(dest, encoding="utf-8").read() if os.path.exists(dest) else None
+        if existing != text:
+            backed_up = guard.backup_file(dest)
+            with open(dest, "w", encoding="utf-8") as f:
+                f.write(text)
+    except OSError as exc:
+        raise InitError("could not write %s (%s)" % (dest, exc)) from exc
+    return {"out_dir": target, "router": dest, "alias": alias, "backed_up": backed_up,
+            "token": ensure_router_token(target)}
 
 
 def _read_catalog(catalog_dir):
@@ -779,8 +858,9 @@ def main(argv):
                     "hand-assembly. Use --single-model for a one-model quick bring-up "
                     "into the CWD instead.")
     ap.add_argument("--model", default=None,
-                    help="local model dir mounted into the container "
-                         "(default: pick the biggest loadable entry from --catalog-dir)")
+                    help="with --single-model: local model dir mounted into the container "
+                         "(default: pick the biggest loadable entry from --catalog-dir); "
+                         "with --gateway-only: the model name your server serves")
     ap.add_argument("--catalog-dir", default="./model-library",
                     help="`anvil-serving models sync` output dir to auto-pick a "
                          "model from (default: %(default)s)")
@@ -802,6 +882,17 @@ def main(argv):
                          "serves.toml + router.toml + operator-topology.toml) into the "
                          "CWD instead of the full operational config home. The --model/"
                          "--catalog-dir/--gpu/--port/etc. flags apply to this mode.")
+    ap.add_argument("--gateway-only", action="store_true",
+                    help="write only router.toml (one alias -> one tier) in front of a server you "
+                         "already run (Ollama, LM Studio, llama-server, vLLM); needs --upstream "
+                         "and --model (the served model name). No topology, serves or Docker files.")
+    ap.add_argument("--upstream", default=None,
+                    help="with --gateway-only: the server's OpenAI-compatible base URL, "
+                         "e.g. http://127.0.0.1:11434/v1")
+    ap.add_argument("--alias", default="llm.primary",
+                    help="with --gateway-only: caller model alias (default: %(default)s)")
+    ap.add_argument("--context-limit", type=int, default=8192,
+                    help="with --gateway-only: the model's context window (default: %(default)s)")
     # Retained as a hidden compatibility alias for the default home scaffold.
     ap.add_argument("--home", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--out-dir", default=None,
@@ -830,6 +921,9 @@ def main(argv):
         help="leave GPU UUID and tailnet IP placeholders instead of probing this host",
     )
     a = ap.parse_args(argv)
+
+    if a.gateway_only:
+        return _main_gateway_only(a)
 
     if not a.single_model:
         if a.home:
@@ -869,6 +963,37 @@ def main(argv):
     print("  5. Point your harness at http://127.0.0.1:8000 (ANTHROPIC_BASE_URL) and set")
     print("     your client model to the capability alias llm.primary.")
     print("     For OpenClaw: see docs/OPENCLAW-INTEGRATION-SPEC.md for the provider adapter.")
+    return 0
+
+
+def _token_source(token):
+    return "process environment" if token["path"] in ("env", "environment") else token["path"]
+
+
+def _main_gateway_only(a):
+    try:
+        r = scaffold_gateway_only(a.out_dir, upstream=a.upstream, model=a.model,
+                                  alias=a.alias, context_limit=a.context_limit)
+    except InitError as e:
+        print(f"[anvil-serving] {e}", file=sys.stderr)
+        return 2
+    token = r["token"]
+    print("wrote %s  (%s -> %s)" % (r["router"], r["alias"], a.upstream))
+    if r["backed_up"]:
+        print("backed up the previous file to %s" % r["backed_up"])
+    if token["status"] == "present":
+        print("Router token: %s already set (%s); left unchanged."
+              % (ROUTER_TOKEN_ENV, _token_source(token)))
+    else:
+        print("Router token: generated %s in %s (not shown)." % (ROUTER_TOKEN_ENV, token["path"]))
+        if token["tightened"]:
+            print("WARNING: %s was readable by other users; permissions set to 0600."
+                  % token["path"], file=sys.stderr)
+    # The router reads .env from the config home, so a custom --out-dir must become the home.
+    home = "" if r["out_dir"] == config_home() else "ANVIL_SERVING_HOME=%s " % r["out_dir"]
+    print()
+    print("Next: %sanvil-serving router run   # front door on 127.0.0.1:8000" % home)
+    print("Clients send `Authorization: Bearer $%s` and model %r." % (ROUTER_TOKEN_ENV, r["alias"]))
     return 0
 
 
@@ -937,7 +1062,8 @@ def _main_home(a):
     else:
         print("  Topology command host: not detected; reference default preserved")
     if token["status"] == "present":
-        print("  Router token: %s already set; left unchanged." % ROUTER_TOKEN_ENV)
+        print("  Router token: %s already set (%s); left unchanged."
+              % (ROUTER_TOKEN_ENV, _token_source(token)))
     else:
         print("  Router token: generated %s in %s (not shown)."
               % (ROUTER_TOKEN_ENV, token["path"]))
@@ -948,6 +1074,12 @@ def _main_home(a):
             print("  NOTE: the router reads %s, not this file; copy %s there or use "
                   "ANVIL_SERVING_HOME=%s." % (os.path.join(config_home(), ".env"),
                   ROUTER_TOKEN_ENV, result["out_dir"]))
+    if not (discovery["compute_a_gpu"] and discovery["compute_b_gpu"]):
+        why = ("was not probed (--no-detect-host)" if a.no_detect_host
+               else "has no detected two-GPU topology")
+        print("  NOTE: this host %s, so the reference config may not run here. "
+              "For an existing server use `init --gateway-only --upstream URL "
+              "--model NAME`; for a local model use `init --single-model`." % why)
     print("  Secrets: add values from .env.example to .env (never committed; do not copy over it).")
     print()
     print("Next steps (zero hand-assembly):")
