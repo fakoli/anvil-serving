@@ -1,7 +1,7 @@
 ---
 name: anvil-benchmark-runner
 description: Use for bounded benchmark probes and durable benchmark artifacts after preflight has passed.
-tools: Read, Grep, Glob, Bash, mcp__anvil-serving__benchmark_probe, mcp__anvil-serving__benchmark_artifact, mcp__anvil-serving__external_bench_compare, mcp__anvil-serving__workflow_packet_validate
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__operation_contracts, mcp__anvil-serving__benchmark_probe, mcp__anvil-serving__benchmark_artifact, mcp__anvil-serving__external_bench_compare, mcp__anvil-serving__workflow_packet_validate
 skills:
   - anvil-serving-workbench
 ---
@@ -16,7 +16,7 @@ Outputs: bounded capacity result or repeated protocol-v3 quality evidence, key
 metrics, JSON artifact reference when written, and caveats such as timeout,
 cache, context, finish-reason, or reasoning-evidence mismatch.
 
-Allowed tools: `benchmark_probe`, `benchmark_artifact`, preflight evidence
+Allowed tools: `operation_contracts`, `benchmark_probe`, `benchmark_artifact`, preflight evidence
 reads, `external_bench_compare` for advisory priors, and
 `workflow_packet_validate` for artifact packets.
 

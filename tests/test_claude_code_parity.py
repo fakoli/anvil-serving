@@ -10,6 +10,8 @@ import re
 import tomllib
 from pathlib import Path
 
+from anvil_serving.control_plane.mcp.tools import TOOLS
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -21,19 +23,21 @@ def _frontmatter(path: Path) -> dict[str, str]:
     )
 
 
-def _canonical_skills() -> dict[str, Path]:
-    found: dict[str, Path] = {}
-    # `skills/` wins over `.agents/skills`, whose shared entries are stubs.
-    for root in (".agents/skills", "skills"):
-        for skill in (ROOT / root).glob("*/SKILL.md"):
-            found[skill.parent.name] = skill
-    return found
+def _names(root: str) -> set[str]:
+    return {skill.parent.name for skill in (ROOT / root).glob("*/SKILL.md")}
 
 
-def test_every_canonical_skill_has_a_claude_stub():
-    for name, canonical in _canonical_skills().items():
+def test_claude_and_codex_discover_the_same_skills():
+    assert _names(".claude/skills") == _names(".agents/skills")
+
+
+def test_every_claude_skill_stub_points_at_its_canonical_skill():
+    for name in _names(".agents/skills"):
+        # `skills/` holds the full text when it exists; `.agents/skills` otherwise.
+        canonical = ROOT / "skills" / name / "SKILL.md"
+        if not canonical.exists():
+            canonical = ROOT / ".agents" / "skills" / name / "SKILL.md"
         stub = ROOT / ".claude" / "skills" / name / "SKILL.md"
-        assert stub.exists(), f"Claude Code cannot discover skill {name}"
         assert _frontmatter(stub) == _frontmatter(canonical), name
         pointer = re.search(r"`(\.\./\.\./\.\./[^`]+/SKILL\.md)`", stub.read_text())
         assert pointer, f"{stub} does not point at its canonical skill"
@@ -50,5 +54,9 @@ def test_every_codex_agent_has_a_claude_agent_with_its_mcp_tools():
             continue  # inherits every tool, including MCP
         tools = {tool.strip() for tool in meta["tools"].split(",")}
         allowed = re.search(r"Allowed tools:(.*?)(?:\n\n|Forbidden)", claude.read_text(), re.S)
-        for name in re.findall(r"`([a-z][a-z0-9_]+)`", allowed.group(1) if allowed else ""):
-            assert f"mcp__anvil-serving__{name}" in tools, f"{claude.name} blocks {name}"
+        for token in re.findall(r"`([a-z][a-z0-9_]*\*?)`", allowed.group(1) if allowed else ""):
+            names = [t for t in TOOLS if t.startswith(token[:-1])] if token.endswith("*") else [token]
+            assert names, f"{claude.name} allows unknown tools {token}"
+            for name in names:
+                assert name in TOOLS, f"{claude.name} allows unknown tool {name}"
+                assert f"mcp__anvil-serving__{name}" in tools, f"{claude.name} blocks {name}"

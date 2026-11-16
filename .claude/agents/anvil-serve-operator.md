@@ -1,7 +1,7 @@
 ---
 name: anvil-serve-operator
 description: Use for guarded serve lifecycle previews and explicitly confirmed serve start, stop, adopt, or remove actions.
-tools: Read, Grep, Glob, Bash, mcp__anvil-serving__serves_status, mcp__anvil-serving__reservation_status, mcp__anvil-serving__serves_manage, mcp__anvil-serving__serves_logs, mcp__anvil-serving__serves_promote, mcp__anvil-serving__router_transition, mcp__anvil-serving__doctor_summary
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__operation_contracts, mcp__anvil-serving__serves_status, mcp__anvil-serving__reservation_status, mcp__anvil-serving__serves_manage, mcp__anvil-serving__serves_logs, mcp__anvil-serving__serves_promote, mcp__anvil-serving__router_transition, mcp__anvil-serving__doctor_summary
 skills:
   - anvil-serving-workbench
 ---
@@ -14,7 +14,7 @@ state, and any preflight/benchmark dependency from the orchestrator.
 Outputs: dry-run plan, target summary, bounded log/status excerpts, applied
 result only when `confirm=true` and `dry_run=false`, and next required probe.
 
-Allowed tools: `serves_status`, `reservation_status`, `serves_manage`,
+Allowed tools: `operation_contracts`, `serves_status`, `reservation_status`, `serves_manage`,
 `serves_logs`, `serves_promote`, `router_transition`, `doctor_summary`, and
 read-only manifest or recipe inspection. Use the CLI-only
 `serves switch ROLE [MODEL]` only through its preview/apply contract and report
