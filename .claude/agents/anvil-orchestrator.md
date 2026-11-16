@@ -1,7 +1,6 @@
 ---
 name: anvil-orchestrator
 description: Use for selecting an anvil-serving playbook, assigning sub-agent roles, and synthesizing the final workflow recommendation.
-tools: Read, Grep, Glob, Bash
 skills:
   - anvil-serving-workbench
 ---

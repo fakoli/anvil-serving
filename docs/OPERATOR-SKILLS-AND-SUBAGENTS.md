@@ -18,6 +18,12 @@ reasoning for general subagents. Explicit task selections override these
 defaults. The existing MCP registration remains checkout-relative. These are
 development settings; Claude Code keeps its separately selected provider.
 
+Claude Code discovers the same project skills and roles from `.claude/skills`
+and `.claude/agents`. Each Claude skill is a thin stub pointing at the
+canonical `skills/` or `.agents/skills` file, and each Claude role grants the
+`mcp__anvil-serving__*` tools its prompt allows. `tests/test_claude_code_parity.py`
+fails when either surface drifts.
+
 Named Codex roles are standalone `.codex/agents/*.toml` files with `name`,
 `description`, and `developer_instructions`. The former Markdown definitions
 are replaced, not retained as a second source of model pins. Their operational
@@ -147,6 +153,16 @@ and `skill-improvement` skills. Install from the configured Fakoli marketplace:
 
 ```bash
 codex plugin add session-improvement-loop@fakoli-agent-plugins
+```
+
+In Claude Code, add the marketplace once and install the same plugin:
+
+```bash
+claude plugin marketplace add fakoli/agent-plugins
+```
+
+```bash
+claude plugin install session-improvement-loop@fakoli-agent-plugins
 ```
 
 For first-time marketplace setup, follow the

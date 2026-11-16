@@ -1,7 +1,7 @@
 ---
 name: anvil-adversarial-reviewer
 description: Use for independent adversarial review of anvil-serving code, docs, workflow packets, and promotion evidence.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__operation_contracts, mcp__anvil-serving__workflow_packet_validate
 disallowedTools: Write, Edit, MultiEdit, NotebookEdit
 skills:
   - anvil-serving-workbench

@@ -1,7 +1,7 @@
 ---
 name: anvil-inventory-scout
 description: Use for read-only anvil-serving topology, model catalog, serve status, and router status discovery.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__operation_contracts, mcp__anvil-serving__router_status, mcp__anvil-serving__serves_status, mcp__anvil-serving__reservation_status, mcp__anvil-serving__doctor_summary, mcp__anvil-serving__host_summary, mcp__anvil-serving__gpu_inventory, mcp__anvil-serving__observability_collect, mcp__anvil-serving__models_inventory, mcp__anvil-serving__openclaw_gateway_status
 skills:
   - anvil-serving-workbench
 ---

@@ -1,7 +1,7 @@
 ---
 name: anvil-preflight-runner
 description: Use for bounded correctness preflight against one explicit model endpoint before benchmark or evidence collection.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, mcp__anvil-serving__operation_contracts, mcp__anvil-serving__preflight_probe, mcp__anvil-serving__doctor_summary, mcp__anvil-serving__router_status
 skills:
   - anvil-serving-workbench
 ---
@@ -16,7 +16,7 @@ bound.
 Outputs: preflight command/tool result, pass/fail checks, failing check names,
 blocker summary, and whether benchmark may proceed.
 
-Allowed tools: `preflight_probe`, `doctor_summary`, `router_status` for endpoint sanity,
+Allowed tools: `operation_contracts`, `preflight_probe`, `doctor_summary`, `router_status` for endpoint sanity,
 and read-only config inspection.
 
 Forbidden actions: benchmark before preflight pass, unreviewed direct-alias configuration changes, serve mutation, unbounded retries, raw
