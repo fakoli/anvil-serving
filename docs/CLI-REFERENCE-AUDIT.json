@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "scopes": {
     "docs": {
       "allowed_legacy_counts": {
@@ -21,32 +21,6 @@
         "voice-sidecar": 1,
         "voice-start-stop": 3
       },
-      "canonical_counts": {
-        "eval-benchmark-external": 17,
-        "eval-benchmark-run": 1,
-        "eval-calibrate": 0,
-        "eval-preflight": 16,
-        "eval-usage": 0,
-        "host-gpus": 2,
-        "init": 28,
-        "mcp-serve": 15,
-        "mcp-tools": 4,
-        "models-cache-prune": 4,
-        "models-recipes": 45,
-        "models-score": 2,
-        "router-run": 20,
-        "serves-multiplex": 1,
-        "serves-render": 2,
-        "voice-audio": 21,
-        "voice-lifecycle": 8,
-        "voice-proxy": 33,
-        "voice-sidecar": 7
-      },
-      "files_by_category": {
-        "docs": 258,
-        "tooling": 6
-      },
-      "files_scanned": 264,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -88,36 +62,6 @@
         "voice-sidecar": 1,
         "voice-start-stop": 3
       },
-      "canonical_counts": {
-        "eval-benchmark-external": 21,
-        "eval-benchmark-run": 3,
-        "eval-calibrate": 0,
-        "eval-preflight": 36,
-        "eval-usage": 8,
-        "host-gpus": 6,
-        "init": 50,
-        "mcp-serve": 19,
-        "mcp-tools": 5,
-        "models-cache-prune": 8,
-        "models-recipes": 78,
-        "models-score": 4,
-        "router-run": 37,
-        "serves-multiplex": 4,
-        "serves-render": 7,
-        "voice-audio": 45,
-        "voice-lifecycle": 8,
-        "voice-proxy": 61,
-        "voice-sidecar": 24
-      },
-      "files_by_category": {
-        "docs": 258,
-        "examples": 269,
-        "implementation": 521,
-        "skills": 33,
-        "tests": 596,
-        "tooling": 41
-      },
-      "files_scanned": 1718,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",
@@ -164,31 +108,6 @@
         "voice-sidecar": 0,
         "voice-start-stop": 0
       },
-      "canonical_counts": {
-        "eval-benchmark-external": 0,
-        "eval-benchmark-run": 0,
-        "eval-calibrate": 0,
-        "eval-preflight": 2,
-        "eval-usage": 0,
-        "host-gpus": 1,
-        "init": 0,
-        "mcp-serve": 0,
-        "mcp-tools": 0,
-        "models-cache-prune": 0,
-        "models-recipes": 7,
-        "models-score": 0,
-        "router-run": 0,
-        "serves-multiplex": 0,
-        "serves-render": 0,
-        "voice-audio": 3,
-        "voice-lifecycle": 0,
-        "voice-proxy": 3,
-        "voice-sidecar": 6
-      },
-      "files_by_category": {
-        "skills": 33
-      },
-      "files_scanned": 33,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

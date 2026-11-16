@@ -4,7 +4,8 @@
 # It enforces the whole-repo invariants that a task-scoped verification cannot
 # see, in order, and exits non-zero on ANY failure:
 #
-#   (a) regenerate the CLI reference audit (docs/CLI-REFERENCE-AUDIT.json,
+#   (a) regenerate the CLI reference audit (docs/CLI-REFERENCE-AUDIT.json —
+#       schema 2: no per-file counts, so it only changes on real drift —
 #       docs/CLI.md generated blocks, and the audit fixture) and FAIL if the
 #       regeneration changes any of those files — that means they were stale
 #       and the regenerated output must be reviewed and committed;
