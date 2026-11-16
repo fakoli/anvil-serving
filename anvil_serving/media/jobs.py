@@ -231,7 +231,7 @@ def read_media_workloads(
 
 
 class MediaJobStore:
-    """Own durable job truth without storing prompts or generated media bytes."""
+    """Own job truth and private pending requests; never generated media bytes."""
 
     def __init__(self, path: str | os.PathLike[str]) -> None:
         self.path = Path(path).expanduser().resolve(strict=False)
@@ -296,6 +296,12 @@ class MediaJobStore:
                 CREATE TABLE IF NOT EXISTS media_job_backends (
                     job_id TEXT PRIMARY KEY REFERENCES media_jobs(id) ON DELETE CASCADE,
                     identity_digest TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS media_job_queue (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    job_id TEXT NOT NULL UNIQUE REFERENCES media_jobs(id) ON DELETE CASCADE,
+                    request_json TEXT,
+                    claimed INTEGER NOT NULL DEFAULT 0
                 );
                 """
             )
@@ -400,6 +406,8 @@ class MediaJobStore:
         max_principal_active: int,
         max_workflow_active: int,
         max_workflow_running: int,
+        queue_request: Mapping[str, Any] | None = None,
+        queue_depth: int = 64,
         now: dt.datetime | None = None,
     ) -> tuple[MediaJob | None, bool, str]:
         """Atomically reserve queue capacity and create one idempotent job."""
@@ -409,6 +417,13 @@ class MediaJobStore:
         if not isinstance(input_digest, str) or len(input_digest) != 64:
             raise MediaError("invalid_input_digest", "input digest is invalid")
         quality_profile = _quality_profile(quality_profile)
+        request_json = None
+        if queue_request is not None:
+            if type(queue_depth) is not int or not 1 <= queue_depth <= 1024:
+                raise MediaError("invalid_admission_policy", "media queue depth is invalid")
+            request_json = json.dumps(queue_request, ensure_ascii=False, allow_nan=False)
+            if len(request_json.encode("utf-8")) > 131072:
+                raise MediaError("invalid_parameters", "queued request exceeds policy", status=413)
         limits = (max_principal_active, max_workflow_active, max_workflow_running)
         if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in limits):
             raise MediaError("invalid_admission_policy", "media admission limits are invalid", status=500)
@@ -460,7 +475,11 @@ class MediaJobStore:
                 (workflow_id, JobState.RUNNING.value),
             ).fetchone()["count"]
             reason = ""
-            if owned >= max_principal_active:
+            if request_json is not None:
+                active = db.execute("SELECT COUNT(*) FROM media_jobs WHERE state NOT IN (?,?,?)", terminal).fetchone()[0]
+                if active >= queue_depth:
+                    reason = "media_queue_full"
+            elif owned >= max_principal_active:
                 reason = "principal_queue_depth"
             elif total >= max_workflow_active:
                 reason = "workflow_queue_depth"
@@ -488,8 +507,76 @@ class MediaJobStore:
                 "INSERT INTO media_job_events(job_id,sequence,state,at,reason) VALUES (?,?,?,?,?)",
                 (candidate.id, 1, candidate.state.value, _iso(candidate.created_at), ""),
             )
+            if request_json is not None:
+                db.execute("INSERT INTO media_job_queue(job_id,request_json) VALUES (?,?)", (job_id, request_json))
             db.execute("COMMIT")
         return self.get(job_id, principal=principal), True, ""
+
+    def queue_request(self, job_id: str):
+        with self._connect() as db:
+            row = db.execute("SELECT request_json FROM media_job_queue WHERE job_id=?", (job_id,)).fetchone()
+        return json.loads(row[0]) if row is not None and row[0] is not None else None
+
+    def queue_info(self, job_id: str):
+        with self._connect() as db:
+            row = db.execute("SELECT q.sequence,q.claimed,j.state FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id WHERE job_id=?", (job_id,)).fetchone()
+            if row is None:
+                return None
+            position = db.execute("SELECT COUNT(*) FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
+                "WHERE q.sequence<=? AND j.state='accepted'", (row[0],)).fetchone()[0]
+            uncertain = db.execute("SELECT 1 FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
+                "WHERE q.claimed=1 AND j.state IN ('failed','canceled') LIMIT 1").fetchone() is not None
+        return {"sequence": row[0], "position": position if row[2] == 'accepted' else 0,
+                "waiting": row[2] == 'accepted', "blockedByUncertainSubmission": uncertain,
+                "terminalConfirmed": row[1] == -1}
+
+    def queue_candidates(self, *, slots: int, workflow_limits: Mapping[str, int]):
+        """Reserve FIFO starts in SQLite, across independent gateway processes."""
+        with self._lock, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            # A lost submission response reserves its slot even after a terminal
+            # facade. Only independent reconciliation can establish remote death.
+            # Older lifecycle controllers can still write terminal states.
+            db.execute("UPDATE media_job_queue SET request_json=NULL,claimed=CASE WHEN EXISTS("
+                "SELECT 1 FROM media_job_events e WHERE e.job_id=media_job_queue.job_id AND e.sequence=("
+                "SELECT MAX(sequence) FROM media_job_events WHERE job_id=e.job_id) AND e.reason IN ("
+                "'backend_submission_recovery_failed','backend_submission_outcome_unknown',"
+                "'backend_submission_recovery_unavailable','backend_prompt_lost','exclusive_running_prompt_interrupted')) "
+                "THEN 1 ELSE 0 END WHERE job_id IN (SELECT id FROM media_jobs WHERE state IN ('completed','failed','canceled')) "
+                "AND (request_json IS NOT NULL OR claimed=1)")
+            active = db.execute("SELECT j.id,j.workflow_id,j.state,q.claimed FROM media_jobs j "
+                "LEFT JOIN media_job_queue q ON q.job_id=j.id WHERE "
+                "(j.state NOT IN ('completed','failed','canceled') AND (q.claimed=1 OR q.job_id IS NULL)) OR q.claimed=1 ORDER BY q.sequence").fetchall()
+            resumes = [r[0] for r in active if r[3] == 1 and r[2] in ('accepted','preparing')]
+            if any(r[2] in ('awaiting_approval','failed','canceled') for r in active):
+                db.execute("COMMIT")
+                return resumes
+            for row in db.execute("SELECT q.job_id,j.workflow_id FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
+                    "WHERE q.claimed=0 AND j.state='accepted' ORDER BY q.sequence").fetchall():
+                limit = workflow_limits.get(row[1], 1)
+                if len(active) >= slots or sum(r[1] == row[1] for r in active) >= limit:
+                    break  # FIFO deliberately does not skip a blocked head.
+                db.execute("UPDATE media_job_queue SET claimed=1 WHERE job_id=?", (row[0],))
+                active.append((row[0], row[1], 'accepted', 1))
+                resumes.append(row[0])
+            db.execute("COMMIT")
+        return resumes
+
+    def queue_uncertain(self):
+        with self._connect() as db:
+            ids = db.execute("SELECT q.job_id FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
+                "WHERE q.claimed=1 AND j.state IN ('failed','canceled') ORDER BY q.sequence").fetchall()
+        return [self.get(row[0]) for row in ids]
+
+    def confirm_queue_terminal(self, job_id, *, principal):
+        with self._lock, self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            job = self.get(job_id, principal=principal)
+            if job.state in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELED}:
+                # -1 records independently confirmed remote termination; the
+                # terminal-state cleanup must not quarantine this claim again.
+                db.execute("UPDATE media_job_queue SET claimed=-1 WHERE job_id=? AND claimed=1", (job_id,))
+            db.execute("COMMIT")
 
     def lookup_idempotency(
         self,
@@ -564,11 +651,14 @@ class MediaJobStore:
         principal: str,
         reason: str = "",
         approval: Mapping[str, Any] | None = None,
+        expected_states: set[JobState] | None = None,
         now: dt.datetime | None = None,
     ) -> MediaJob:
         with self._lock, self._connect() as db:
             db.execute("BEGIN IMMEDIATE")
             current = self.get(job_id, principal=principal)
+            if expected_states is not None and current.state not in expected_states:
+                raise MediaError("invalid_transition", "media job state changed", status=409)
             changed = current.transition(state, reason=reason, at=now)
             approval_json = (
                 json.dumps(dict(approval), sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -584,6 +674,10 @@ class MediaJobStore:
                 "INSERT INTO media_job_events(job_id,sequence,state,at,reason) VALUES (?,?,?,?,?)",
                 (job_id, event.sequence, event.state.value, _iso(event.at), event.reason),
             )
+            if state in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELED}:
+                uncertain = reason in {"backend_submission_recovery_failed", "backend_submission_outcome_unknown",
+                    "backend_submission_recovery_unavailable", "backend_prompt_lost", "exclusive_running_prompt_interrupted"}
+                db.execute("UPDATE media_job_queue SET request_json=NULL,claimed=? WHERE job_id=?", (int(uncertain), job_id))
             db.execute("COMMIT")
         return self.get(job_id, principal=principal)
 

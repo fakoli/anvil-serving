@@ -141,6 +141,7 @@ class MediaJobReconciler:
             elif (
                 job.state == JobState.ACCEPTED
                 and age >= SUBMISSION_RECOVERY_GRACE_SECONDS
+                and self.store.queue_request(job.id) is None
             ):
                 return self.store.transition(
                     job.id,
@@ -216,6 +217,15 @@ class MediaJobReconciler:
                 results.append(self.reconcile(job))
             except MediaError:
                 results.append(job)
+        for job in self.store.queue_uncertain():
+            try:
+                self._check_backend(job)
+                prompt = job.backend_prompt_id or (self.find_prompt(job.id) if self.find_prompt else None)
+                if prompt and self.history(prompt).state in {"completed", "failed"}:
+                    self.store.set_backend_prompt(job.id, prompt, principal=job.principal)
+                    self.store.confirm_queue_terminal(job.id, principal=job.principal)
+            except MediaError:
+                pass  # Missing/unknown history cannot attest remote termination.
         return results
 
     def _advance(self, job: MediaJob, target: JobState) -> MediaJob:
@@ -299,12 +309,14 @@ class MediaReconciliationLoop:
         maintenance: Callable[[], Any] | None = None,
         maintenance_cycles: int = 240,
         router_admission=None,
+        dispatch: Callable[[], Any] | None = None,
     ) -> None:
         if poll_seconds <= 0 or poll_seconds > 5:
             raise MediaError("invalid_worker_policy", "media reconciliation poll interval is invalid")
         if maintenance_cycles < 1:
             raise MediaError("invalid_worker_policy", "media maintenance interval is invalid")
         self.reconciler = reconciler
+        self.dispatch = dispatch
         self.router_admission = router_admission
         self._busy = False
         self._unknown_jobs = set()
@@ -354,11 +366,12 @@ class MediaReconciliationLoop:
                         db.set_progress_handler(lambda:int(time.monotonic() >= deadline), 1000)
                         count = db.execute("SELECT COUNT(*) FROM media_jobs WHERE state NOT IN ('completed','failed','canceled')").fetchone()[0]
                         # Terminal facades and cancellation cannot attest remote death.
-                        ambiguous = db.execute("SELECT 1 FROM media_jobs j WHERE "
+                        ambiguous = db.execute("SELECT 1 FROM media_jobs j WHERE NOT EXISTS("
+                            "SELECT 1 FROM media_job_queue q WHERE q.job_id=j.id AND q.claimed=-1) AND ("
                             "(j.state='canceled' AND j.backend_prompt_id <> '') OR "
                             "EXISTS(SELECT 1 FROM media_job_events e WHERE e.job_id=j.id AND "
                             "e.reason IN ('backend_submission_recovery_failed','backend_submission_outcome_unknown',"
-                            "'backend_submission_recovery_unavailable','backend_prompt_lost','exclusive_running_prompt_interrupted')) LIMIT 1").fetchone() is not None
+                            "'backend_submission_recovery_unavailable','backend_prompt_lost','exclusive_running_prompt_interrupted'))) LIMIT 1").fetchone() is not None
                 finally:
                     store._lock.release()
             else:
@@ -375,9 +388,15 @@ class MediaReconciliationLoop:
                 if job.state == JobState.SUBMITTING and not job.backend_prompt_id:
                     self._unknown_jobs.add(job.id)
             result = self.reconciler.reconcile_all()
+            if self.dispatch is not None:
+                self.dispatch()
             for job in result:
                 if job.backend_prompt_id and job.state in {JobState.COMPLETED, JobState.FAILED} and job.events[-1].reason not in {"backend_submission_recovery_failed", "backend_submission_outcome_unknown", "backend_submission_recovery_unavailable", "backend_prompt_lost"}:
                     self._unknown_jobs.discard(job.id)
+            for job_id in tuple(self._unknown_jobs):
+                info = self.reconciler.store.queue_info(job_id)
+                if info and info["terminalConfirmed"]:
+                    self._unknown_jobs.discard(job_id)
             return result
         finally:
             with self._lock:

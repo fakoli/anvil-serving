@@ -62,11 +62,12 @@ def compile_brief(workflow, parameters: Mapping, brief: Mapping | None) -> dict:
 
 def validate_catalog(value, workflows) -> tuple[dict, ...]:
     """Catalog entries describe recipes; only registered workflows can execute."""
+    from .selection import validate_selection
     if not isinstance(value, list) or len(value) > 128:
         raise MediaError("invalid_contract", "recipe catalog must be a bounded list")
     result = []; seen = set()
     for recipe in value:
-        if (not isinstance(recipe, dict) or set(recipe) - {"id", "title", "category", "status", "notes", "workflow"}
+        if (not isinstance(recipe, dict) or set(recipe) - {"id", "title", "category", "status", "notes", "workflow", "selection"}
                 or any(not isinstance(recipe.get(k), str) or not recipe[k] or len(recipe[k]) > limit
                        for k, limit in (("id", 128), ("title", 128), ("notes", 2048)))
                 or not isinstance(recipe.get("category"), str) or recipe["category"] not in CATEGORIES
@@ -81,5 +82,9 @@ def validate_catalog(value, workflows) -> tuple[dict, ...]:
             raise MediaError("invalid_contract", "ready recipe needs a qualified available workflow")
         if recipe["status"] == "ready" and recipe["category"] != workflows[key].category:
             raise MediaError("invalid_contract", "ready recipe category differs from its workflow")
+        if "selection" in recipe:
+            if not key:
+                raise MediaError("invalid_contract", "recipe selection needs a registered workflow")
+            validate_selection(recipe["selection"], workflows[key])
         seen.add(recipe["id"]); result.append(dict(recipe))
     return tuple(result)

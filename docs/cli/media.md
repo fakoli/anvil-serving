@@ -19,6 +19,7 @@ service and resource owner.
 | Goal | Start here | Then |
 | --- | --- | --- |
 | Discover callable and blocked workflows | `media capabilities` | Inspect the exact version with `media workflow show`. |
+| Choose from an interpreted request | `media workflow select` | Resolve missing inputs or pass the returned run arguments unchanged to submission. |
 | Prepare a media worker | `media bundle inventory` | Preview missing exact assets with `media bundle stage --dry-run`; apply only with `--confirm`. |
 | Check workflow compatibility | `media workflow validate` | Keep the workflow unavailable when any required feature, node, model, or backend fact is unknown. |
 | Compile a shot brief | `media workflow prepare` | Inspect exact run arguments; submit them unchanged through existing admission. |
@@ -51,6 +52,57 @@ meet a perceptual goal, and it does not set `promoted=true` automatically.
 `--registry`, `--state-db`, and `--artifact-root` select operator-owned state.
 Public packaged workflow descriptors remain templates and pinned defaults; real
 deployment values belong in the private operator home.
+
+## Select an approved recipe
+
+Start new media requests with `media_workflow_select` when the tool is advertised.
+The assistant interprets the user's language into `task`: `image-create`,
+`image-edit`, `text-to-video`, `image-to-video`, `keyframe-video`,
+`reference-video`, `audio-reference-video`, `character-mask`, `character-swap`,
+`segmented-video`, or `video-upscale`. The MCP selects only a `ready` recipe
+whose exact registered workflow is available. It uses operator preferences,
+an optional explicit `recipe_id`, a declared `quality_profile`, and an optional
+`duration_seconds` constraint. It does not inspect worker readiness to select a
+different workflow or run a server LLM classifier.
+
+```bash
+anvil-serving media workflow select --task text-to-video --principal caller-1 --idempotency-key shot-01 --parameters '{"prompt":"A blue robot waves.","seed":7}'
+```
+
+Private catalog entries opt in with a bounded `selection` object:
+
+```json
+{
+  "tasks": ["text-to-video"],
+  "priority": 10,
+  "durations": {"short": 5.0, "extended": 12.25}
+}
+```
+
+The profile names must exist in that recipe's workflow. Lower priority numbers
+express the operator's preference. Requested duration filters fixed approved
+profiles within 0.5 seconds, allowing whole-second rounding; the exact selected
+duration is always returned. A duration match ranks before preference. Unsupported
+durations/profiles or tied preferences return `needs_clarification` with explicit
+choices, never a guessed plan. An explicit unavailable recipe is an error with no
+substitute. Durations are operator declarations, not new qualification evidence.
+
+Supply the selected recipe's literal `parameters` or supported `brief` and one
+stable `idempotency_key`. Missing required fields return `needs_inputs` with the
+schema, reference roles and recipe notes; references are not declared checked in
+that state. Preserve multi-stage recipe notes, including required tracking-mask
+review and worker-release boundaries. Do not invent missing references or collapse
+them into prompt text. Fill ordinary scalar choices such as a fresh valid seed
+without asking the user; ask for missing source media or genuinely ambiguous intent.
+
+With complete inputs, selection calls the same preparation operation below,
+checks caller ownership and media bounds, and returns `prepared`, `plan`,
+`runArguments` and `nextTool: media_workflow_run`. It never submits a render,
+starts a worker or bypasses lifecycle approval. Submit the exact returned
+arguments, retain the selected workflow through retries, and stop on an execution
+error rather than selecting an alternative. Existing explicit workflow calls
+remain compatible. Older clients with a fixed tool allowlist can continue using
+the explicit preparation path until they opt into the new selector.
 
 ## Prepare a shot request
 
@@ -418,6 +470,50 @@ login entry and requests its publisher to stop; it preserves its files. A
 running worker will stop when its host signal becomes unsafe. Foreground
 `run --confirm` is available for diagnosis and writes an unsafe signal on exit.
 
+### Shared FIFO and waiting
+
+The persistent gateway queues requests across workflows and callers in SQLite
+commit order. `accepted` means waiting for an execution reservation; `queued`
+means submitted to the backend. Responses include the caller's queue position
+and sequence. A blocked head is never skipped. Cancellation of a waiting job
+is local and releases its place. Retries with the same inputs and idempotency
+key return the same job. Disconnecting does not cancel work.
+
+`ANVIL_MEDIA_QUEUE_DEPTH` bounds total outstanding jobs (default 64, maximum
+1024); a full queue rejects new work. `ANVIL_MEDIA_EXECUTION_SLOTS` controls
+shared execution reservations (default 1, maximum 16), with each workflow's
+qualified concurrency still enforced. Increase slots only after the backend,
+GPU memory, and workload combination have been qualified for that concurrency.
+The single-worker runtime guard may enforce a stricter limit. It is never
+bypassed, and jobs do not extend a worker's lifetime.
+
+Both `media_workflow_run` and `media_job_status` accept optional `wait_seconds`
+from 0 to 20. After validation and enqueue, zero returns without waiting for
+execution; a positive value waits for completion
+or required startup approval, returning current state at the deadline without
+canceling. Repeat status with the same job ID for longer waits, or use
+`media job watch` in a client-owned background process. The CLI run/status
+commands expose the same `--wait-seconds` option. Automatic dispatch requires
+the persistent gateway reconciliation loop using that state database; a
+standalone CLI process is not a daemon.
+
+Cold startup still requires the exact controller approval. Once approved,
+the gateway resumes the stored bounded request without requiring a connected
+caller. Pending parameters live only in private operator state and are cleared
+on terminal completion. Changed contracts, expired/foreign artifacts, or a
+changed backend cannot silently execute. Ambiguous submission outcomes retain
+their slot and report `blockedByUncertainSubmission`. The reconciler releases
+that reservation only when the pinned backend positively reports the exact
+owned prompt completed or failed. Missing or unknown history remains blocked
+and requires independent operational recovery; no submission is repeated.
+
+MCP supports asynchronous tasks when both peers negotiate the
+[Tasks extension](https://modelcontextprotocol.github.io/ext-tasks/specification/2026-07-28/tasks.html).
+This gateway uses ordinary tool results with durable job IDs for existing
+clients; it does not advertise protocol task support or promise unsolicited
+assistant wakeups. A client can continue other work and later retrieve the
+result through status or its background watcher.
+
 ### Connect Codex to the media MCP
 
 Register a dedicated connection to the authenticated gateway after the operator
@@ -447,7 +543,7 @@ authenticated `[server]` media declaration (`auth_env`, `media_principal`,
 deployment. No chat route or chat-model serve is required. An ordinary empty
 router without that media declaration remains invalid.
 
-Verify the connection by listing the nine `media_*` tools, validating an
+Verify the connection by listing the `media_*` tools, selecting and validating an
 available workflow, submitting a named image workflow, polling its job to
 completion, and inspecting the resulting artifact. The image content digest
 must match the artifact metadata. Wrong-token and cross-principal access must

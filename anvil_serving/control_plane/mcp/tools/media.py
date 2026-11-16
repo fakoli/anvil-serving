@@ -16,6 +16,7 @@ from ....media.downloads import ArtifactDownloadLinks
 from ....media.errors import MediaError
 from ....media.jobs import MediaJobStore
 from ....media.operations import MediaOperations
+from ....media.selection import TASKS
 from ....media.workflows import WorkflowRegistry
 from ..arguments import schema as _schema
 from ..arguments import str_arg as _str_arg
@@ -137,6 +138,16 @@ def tool_media_workflow_prepare(args: dict) -> dict:
         brief=args.get("brief"), quality_profile=_str_arg(args, "quality_profile", "")))
 
 
+def tool_media_workflow_select(args: dict) -> dict:
+    caller = require_scope("media:read")
+    operations, _ = _services()
+    return _translate(lambda: operations.workflow_select(
+        _str_arg(args, "task", required=True), args.get("parameters", {}),
+        principal=caller.principal, idempotency_key=_str_arg(args, "idempotency_key", required=True),
+        recipe_id=_str_arg(args, "recipe_id", ""), quality_profile=_str_arg(args, "quality_profile", ""),
+        duration_seconds=args.get("duration_seconds"), brief=args.get("brief")))
+
+
 def tool_media_workflow_run(args: dict) -> dict:
     caller = require_scope("media:submit")
     operations, backend = _services()
@@ -160,6 +171,7 @@ def tool_media_workflow_run(args: dict) -> dict:
             backend=_backend(backend),
             quality_profile=requested_profile,
             plan_digest=plan_digest,
+            wait_seconds=args.get("wait_seconds", 0),
         )
         job = result.get("job")
         if isinstance(job, dict) and job.get("state") == "awaiting_approval":
@@ -210,7 +222,8 @@ def tool_media_job_status(args: dict) -> dict:
     owner = _owner(args, caller)
     return _translate(
         lambda: _services()[0].job_status(
-            _str_arg(args, "job_id", required=True), principal=owner
+            _str_arg(args, "job_id", required=True), principal=owner,
+            wait_seconds=args.get("wait_seconds", 0),
         )
     )
 
@@ -316,8 +329,22 @@ FAMILY = ToolFamily(
             tool_media_workflow_prepare, scope="media:read",
             required=("workflow_id", "version", "idempotency_key"),
         ),
+        "media_workflow_select": _tool(
+            "Start media requests here: interpret the user's request as a task, then select only an approved operator recipe/profile. Read media_capabilities for recipe choices and parameter names. Honor an explicitly requested recipe; otherwise use operator preference. Supply creative prompt/seed and owned artifact IDs as parameters, never paths or graphs. Returns missing inputs, clarification, or exact runArguments for media_workflow_run. Do not submit unless status is prepared. Character replacement notes require tracking-mask review and the existing cold-worker boundary. This tool never starts a worker or submits a job; execution retains all lifecycle gates.",
+            {"task": {"type": "string", "enum": list(TASKS)},
+             "recipe_id": {"type": "string", "maxLength": 128},
+             "quality_profile": {"type": "string", "maxLength": 128},
+             "duration_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 7200,
+                                  "description": "Approximate requested duration. A fixed approved output must be within 0.5 seconds; the exact duration is returned. Other lengths require clarification."},
+             "parameters": {"type": "object", "additionalProperties": True, "maxProperties": 32},
+             "brief": {"type": "object", "additionalProperties": False, "maxProperties": 8,
+                       "properties": {name: {"type": "string", "maxLength": 4096} for name in
+                                      ("scene", "subjects", "action", "setting", "camera", "lighting", "style", "dialogue")}},
+             "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128}},
+            tool_media_workflow_select, scope="media:read", required=("task", "idempotency_key"),
+        ),
         "media_workflow_run": _tool(
-            "Submit one allowlisted named workflow and return an opaque durable job.",
+            "Enqueue one allowlisted workflow in shared FIFO order. Returns its durable job ID and queue position; background execution continues after disconnect. Reuse the idempotency key. Optional bounded wait; poll media_job_status or use the background watcher for eventual completion. A cold worker still requires operator approval.",
             {
                 **_WORKFLOW,
                 "parameters": {
@@ -328,14 +355,16 @@ FAMILY = ToolFamily(
                 },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
                 "plan_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "wait_seconds": {"type": "number", "minimum": 0, "maximum": 20},
             },
             tool_media_workflow_run,
             scope="media:submit",
             required=("workflow_id", "version", "parameters", "idempotency_key"),
         ),
         "media_job_status": _tool(
-            "Inspect one caller-owned durable media job.",
-            {"job_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
+            "Inspect an owned job and FIFO position. wait_seconds optionally blocks up to 20 seconds for completion or required approval. A timeout leaves the job running; repeat with the same job ID or use the background watcher. Never resubmit a new key to poll.",
+            {"job_id": {"type": "string", "minLength": 16, "maxLength": 128},
+             "wait_seconds": {"type": "number", "minimum": 0, "maximum": 20}, **_OWNER},
             tool_media_job_status, scope="media:read", required=("job_id",),
         ),
         "media_job_cancel": _tool(

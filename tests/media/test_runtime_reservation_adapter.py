@@ -92,6 +92,11 @@ def test_reservation_limits_are_checked_before_job_creation(tmp_path, value, rea
     harness = Harness(stats(value))
     assert harness.client.compatibility(configured.descriptor).reasons == (reason,)
     service = operations(tmp_path, configured)
+    if reason == "worker_busy":
+        result = run(service, harness.client)
+        assert result["job"]["state"] == "accepted" and result["queue"]["waiting"]
+        assert not harness.posts
+        return
     with pytest.raises(MediaError):
         run(service, harness.client)
     assert service.jobs.nonterminal() == [] and not harness.posts

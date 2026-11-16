@@ -49,6 +49,7 @@ TOOL_NAMES = [
     "media_workflow_show",
     "media_workflow_validate",
     "media_workflow_prepare",
+    "media_workflow_select",
     "media_workflow_run",
     "media_job_status",
     "media_job_cancel",
