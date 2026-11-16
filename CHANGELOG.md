@@ -6,51 +6,25 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
-### Changed
-
-- **BREAKING:** `router run` refuses a non-loopback `--host` when
-  `[server].auth_env` is not configured and exits with status 2. Configure a
-  router token, bind `127.0.0.1`, or pass `--allow-unauthenticated-public-bind`
-  to accept an open front door (the warning is still printed). The router
-  container binds `0.0.0.0`, so its config must set `[server].auth_env`; the
-  packaged `example-docker.toml` already does.
-- **BREAKING:** a router without `[server].auth_env` answers 403
-  `forbidden_host` unless the request's `Host` names `127.0.0.1`, `[::1]`, or
-  the configured bind host. This blocks DNS-rebinding pages from driving
-  inference through a loopback router. `Host: localhost` is also refused; use
-  `127.0.0.1`. Authenticated routers are unchanged.
-- **BREAKING:** the Anvil Voice Realtime WebSocket answers 403 to an upgrade
-  whose `Origin` header is not listed in the new
-  `voice.realtime_allowed_origins` manifest key (default empty), whether or not
-  a bearer token is configured. Browsers always send `Origin` and are not
-  bound by the same-origin policy for WebSockets, so any page could otherwise
-  open a voice session on `ws://127.0.0.1:8765`. Native clients, including the
-  OpenClaw Gateway relay, send no `Origin` and are unaffected. Without
-  `voice.realtime_token_env` the server also applies the router's `Host` rule.
-- **BREAKING:** the telemetry server behind `dashboard serve` (when no
-  `--auth-env` token is configured and no web console is attached) and the
-  model-swap multiplexer answer 403 unless the request's `Host` names
-  `127.0.0.1`, `[::1]`, or the configured bind host, blocking DNS rebinding.
-  The web console keeps its own Host, Origin and CSRF checks.
-- Set the copyright holder and package author, replaced the placeholder security
-  contact with `security@fakoli.net`, updated supported versions to the 2.x line,
-  and changed the package classifier to `Development Status :: 4 - Beta`.
-
-### Fixed
-
-- Native Connect gateway restarts preserve exact refused Unix socket leftovers
-  under exclusive authority ownership before rebinding, while refusing active
-  listeners, unsafe custody and unknown liveness.
-
-### Changed
-
-- `anvil-serving init` scaffolds an authenticated router: the generated
-  `router.toml` sets `[server] auth_env = "ANVIL_ROUTER_TOKEN"`, and `init`
-  creates a random token in `$ANVIL_SERVING_HOME/.env` (mode 0600) when none is
-  defined, never overwriting an existing value or printing the token.
-
 ### Added
 
+- `anvil-serving init --gateway-only --upstream URL --model NAME` scaffolds the
+  gateway in front of an OpenAI-compatible server you already run (Ollama, LM
+  Studio, llama.cpp, vLLM). It writes only `router.toml` and a router token, with
+  optional `--alias` and `--context-limit`. `localhost` upstreams are rejected;
+  use `127.0.0.1` (#772).
+- Gateway quickstart (`docs/QUICKSTART-GATEWAY.md`) and platform support matrix
+  (`docs/SUPPORT-MATRIX.md`). The README first screen now leads with the gateway
+  path; the maintainer's reference-host runbook moved to
+  `docs/operator/REFERENCE-HOST-RUNBOOK.md` (#783).
+- Deployment security model (`docs/SECURITY-MODEL.md`): what each listener
+  protects, which authentication applies, and what an unauthenticated loopback
+  deployment does and does not defend against (#775).
+- Connect releases (`connect-v*`) are built in GitHub Actions and signed with
+  Sigstore keyless signing. `connect/packaging/install.py --archive` verifies the
+  signature against a pinned workflow identity before extracting; unsigned
+  releases, a missing verifier, or an extracted bundle directory require
+  `--allow-unsigned` and print a warning. See `docs/ANVIL-CONNECT-INSTALL.md` (#787).
 - Approved media recipe selection prepares an exact bounded workflow from the
   requested task, references, and duration, returning missing inputs or clarification.
 - Media requests share a durable FIFO queue with configurable execution slots,
@@ -60,6 +34,117 @@ All notable changes to this project are documented here. The format is based on
 - Opt-in artifact-scoped, expiring read links support direct browser video
   playback, HEAD and bounded streaming of full files and single byte ranges.
   Reusable MCP credentials remain outside URLs.
+
+- Contributor tooling: the test suite runs in 4 parallel shards in CI and
+  `scripts/pre-submit.sh` (`scripts/run_tests.py --shards N`), a `slow` marker
+  tags tests bound by real waits, Linux-only feature tests skip on other
+  platforms using the product's own checks, real-time sleeps were replaced with
+  deadlines and polling, and large parametrize tables became `subtests` (dev
+  extra now requires `pytest>=9`) (#797, #798, #802, #803).
+
+### Changed
+
+- **BREAKING:** `router run` refuses a non-loopback `--host` when
+  `[server].auth_env` is not configured and exits with status 2. Configure a
+  router token, bind `127.0.0.1`, or pass `--allow-unauthenticated-public-bind`
+  to accept an open front door (the warning is still printed). The router
+  container binds `0.0.0.0`, so its config must set `[server].auth_env`; the
+  packaged `example-docker.toml` already does (#767).
+- **BREAKING:** a router without `[server].auth_env` answers 403
+  `forbidden_host` unless the request's `Host` names `127.0.0.1`, `[::1]`, or
+  the configured bind host. This blocks DNS-rebinding pages from driving
+  inference through a loopback router. `Host: localhost` is also refused; use
+  `127.0.0.1`. Authenticated routers are unchanged (#767).
+- **BREAKING:** `anvil-serving init` scaffolds an authenticated router: the
+  generated `router.toml` sets `[server] auth_env = "ANVIL_ROUTER_TOKEN"`, and
+  `init` creates a random token in `$ANVIL_SERVING_HOME/.env` (mode 0600) when
+  none is defined, never overwriting an existing value or printing the token.
+  Clients of a freshly initialized router must now send that token (#768).
+- **BREAKING:** the Anvil Voice Realtime WebSocket answers 403 to an upgrade
+  whose `Origin` header is not listed in the new
+  `voice.realtime_allowed_origins` manifest key (default empty), whether or not
+  a bearer token is configured. Browsers always send `Origin` and are not
+  bound by the same-origin policy for WebSockets, so any page could otherwise
+  open a voice session on `ws://127.0.0.1:8765`. Native clients, including the
+  OpenClaw Gateway relay, send no `Origin` and are unaffected. Without
+  `voice.realtime_token_env` the server also applies the router's `Host` rule (#769).
+- **BREAKING:** the telemetry server behind `dashboard serve` (when no
+  `--auth-env` token is configured and no web console is attached) and the
+  model-swap multiplexer answer 403 unless the request's `Host` names
+  `127.0.0.1`, `[::1]`, or the configured bind host, blocking DNS rebinding.
+  The web console keeps its own Host, Origin and CSRF checks (#769).
+- **BREAKING:** the authenticated controller, when it runs with no token
+  (`--allow-unauthenticated-loopback`), answers 403 `host_not_allowed` for a
+  foreign `Host` and 403 `origin_not_allowed` for a browser `Origin` that is not
+  an explicit loopback origin on every POST except `/mcp`. Voice Realtime `/pool`
+  and `/usage` now require the bearer token when `voice.realtime_token_env` is
+  set. Readiness probes use the new token-free `GET /healthz`, which the proxy's
+  default `ready_url` and the scaffolded `voice.toml` now point at; an explicit
+  `/usage` `ready_url` on a token-protected listener must change (#778).
+- Generic default names replace lab-derived ones: model volume `anvil-models`
+  (override with `ANVIL_MODELS_VOLUME`), compose projects `anvil-experiment` and
+  `anvil-flexibility`, and companion-host owner `companion`. Existing
+  deployments keep working for one release; see Deprecated (#777).
+- `doctor` requires Docker and Compose only when the config home has a
+  non-empty `serves.toml`; otherwise they are reported as optional.
+  `topology validate` lists each validation error in human output, and the
+  untrusted-file permission message names the offending directory and the
+  `chmod g-w,o-w <dir>` fix (#774).
+- A fresh `init` scaffold validates with no spurious errors: it ships the recipe
+  registries `serves.toml` references, contains no literal GPU UUIDs, and reports
+  each unreplaced `GPU-REPLACE-WITH-*` placeholder once, naming the key and
+  `operator-topology.toml`. Detected per-GPU `vram_mib` is recorded, and macOS
+  hosts are no longer classified as model-free companions (#780; closes #384).
+- Connect's device approval, result and logout pages send
+  `Content-Security-Policy: frame-ancestors 'none'` and `X-Frame-Options: DENY`.
+  `connect validate` and `connect render` return a warning when `caddy.listen`
+  is omitted, because the edge then listens on all interfaces; set it explicitly
+  (loopback for tunnel origins, `":443"` for direct exposure). Docs now state
+  that browser sessions last up to `gateway.browser_session_lifetime_seconds`
+  regardless of identity-provider changes (#781).
+- Set the copyright holder and package author, replaced the placeholder security
+  contact with `security@fakoli.net`, updated supported versions to the 2.x line,
+  and changed the package classifier to `Development Status :: 4 - Beta` (#766).
+- CI pins every GitHub Action to a full commit SHA, verifies the bundled MCP
+  bridge reproduces from `mcp_bridge/`, adds Python 3.12 and a `govulncheck`
+  scan of Connect, and updates Actions through Dependabot (#771).
+
+### Deprecated
+
+- Legacy `fakoli-*` names (the `fakoli-models` volume, the `fakoli-experiment`
+  and `fakoli-flexibility` compose projects) and `owner="mini"` are accepted for
+  one release and emit a `LegacyNameWarning` naming the new value. Compose files
+  cannot warn; keep `COMPOSE_PROJECT_NAME=fakoli-experiment` until you migrate.
+  See [docs/MIGRATION-GENERIC-NAMES.md](https://github.com/fakoli/anvil-serving/blob/main/docs/MIGRATION-GENERIC-NAMES.md) (#777).
+
+### Fixed
+
+- Router management requests (route updates, router- and tier-scope
+  transitions, member drain) and media asset uploads release their admission
+  slot before writing the response, so a client that sends its next request
+  immediately no longer gets a spurious `503 ... busy` (#798).
+- `docs/TERMINOLOGY.md` covers all seven product families and the optional
+  integrations (OpenClaw, Hermes, Pi runner, Grafana Fleet) (#794).
+- Native Connect gateway restarts preserve exact refused Unix socket leftovers
+  under exclusive authority ownership before rebinding, while refusing active
+  listeners, unsafe custody and unknown liveness.
+
+### Security
+
+- Connect sign-in and device-start endpoints no longer let one anonymous client
+  starve everyone else. Browser sign-in reuses a valid binding cookie, caps
+  pending flows per client and evicts the oldest instead of refusing, and rates
+  starts per client; device start uses per-client and global limits (#773).
+- Supply chain: Connect release archives carry Sigstore signatures verified at
+  install (#787), and CI actions are pinned by SHA with a reproducibility check
+  on the bundled MCP bridge (#771).
+- Browser-reachable listeners (router, voice Realtime, dashboard telemetry,
+  multiplexer, controller) now reject DNS-rebinding and cross-site requests when
+  unauthenticated; see the BREAKING entries under Changed (#767, #769, #778).
+- The public-snapshot hygiene scan also inspects `.gz` contents and rejects
+  tailnet names, CGNAT addresses outside the documentation range, real GPU
+  UUIDs, personal home paths and known lab hostnames; remaining lab identifiers
+  and raw host artifacts were removed from tracked docs (#776).
 
 ## [2.0.2] - 2026-10-27
 
