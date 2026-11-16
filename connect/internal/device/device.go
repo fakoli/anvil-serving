@@ -29,10 +29,13 @@ var (
 )
 
 const (
-	Lifetime          = 10 * time.Minute
-	PollInterval      = 5 * time.Second
-	CredentialLife    = time.Hour
-	maxPending        = 128
+	Lifetime       = 10 * time.Minute
+	PollInterval   = 5 * time.Second
+	CredentialLife = time.Hour
+	// maxStored bounds every device record, live or terminal, below the
+	// store's 4096-row listing limit. Records live at most Lifetime plus
+	// terminalRetention, so the global start bucket keeps the count lower.
+	maxStored         = 3584
 	maxPolls          = 120
 	maxApprovals      = 4
 	terminalRetention = time.Minute
@@ -88,7 +91,6 @@ type Authority struct {
 	byHash             map[string]Binding
 	mu                 sync.Mutex
 	startClients       limiter
-	startResources     limiter
 	startGlobal        limiter
 	approvals          map[string]approvalCounter
 	terminalRequests   map[string]terminalCounter
@@ -119,7 +121,7 @@ func New(state *store.Store, gateway config.Gateway, sessions HumanAuthority, ke
 	for _, resource := range gateway.Resources {
 		resources[resource.Rule.ID] = resource
 	}
-	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, startClients: newLimiter(startClientBurst, startClientRefill, maxStartClients), startResources: newLimiter(startResourceBurst, startResourceRefill, len(gateway.DeviceAuthorizations)), startGlobal: newLimiter(startGlobalBurst, startGlobalRefill, 1), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
+	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, startClients: newLimiter(startClientBurst, startClientRefill, maxStartClients), startGlobal: newLimiter(startGlobalBurst, startGlobalRefill, 1), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
 	for _, declared := range gateway.DeviceAuthorizations {
 		browser, api := resources[declared.BrowserResource], resources[declared.APIResource]
 		binding := Binding{Browser: browser.Rule, API: api.Rule, Methods: append([]string(nil), declared.Methods...), Label: declared.Label, Principals: map[string]string{}}
@@ -216,18 +218,21 @@ const transactionBucket = "transactions"
 func recordID(digest [32]byte) string { return "device:" + hex.EncodeToString(digest[:]) }
 func userID(digest [32]byte) string   { return "device-user:" + hex.EncodeToString(digest[:]) }
 
-// Device-login start is anonymous, so it is limited per edge-observed client,
-// per browser resource, and globally. A client's own bucket empties long before
-// the shared ones, so one client at any rate cannot starve the others; the
-// global bucket only bounds total work and is sized well above normal use.
+// Device-login start is anonymous, so each edge-observed client has its own
+// bucket and a client within its allowance is refused only when the global
+// bucket is empty. The global bucket bounds work and storage, not fairness: a
+// record lives at most Lifetime plus terminalRetention (11 minutes), so it
+// admits at most 256 + 5/s * 660 s = 3556 records, below maxStored. Keeping it
+// empty takes more than 5 starts per second sustained, which the per-client
+// refill turns into at least 300 distinct clients (IPv4 addresses or IPv6 /56
+// blocks) each starting once a minute. Below that threshold one client, or
+// many, cannot stop another client from starting.
 const (
-	startClientBurst    = 8
-	startClientRefill   = time.Minute
-	maxStartClients     = 4096
-	startResourceBurst  = 64
-	startResourceRefill = 5 * time.Second
-	startGlobalBurst    = 256
-	startGlobalRefill   = time.Second
+	startClientBurst  = 8
+	startClientRefill = time.Minute
+	maxStartClients   = 4096
+	startGlobalBurst  = 256
+	startGlobalRefill = 200 * time.Millisecond
 )
 
 type bucket struct {
@@ -235,9 +240,9 @@ type bucket struct {
 	last   time.Time
 }
 
-// limiter is a keyed token bucket with bounded memory. A bucket that has
-// refilled completely is indistinguishable from an absent one, so it is pruned
-// when the table is full.
+// limiter is a keyed token bucket with bounded memory. When the table is full
+// the least recently used key is forgotten; that key returns with a fresh
+// allowance, which the global bucket still bounds.
 type limiter struct {
 	burst   float64
 	refill  time.Duration
@@ -249,28 +254,31 @@ func newLimiter(burst int, refill time.Duration, max int) limiter {
 	return limiter{burst: float64(burst), refill: refill, max: max, buckets: map[string]bucket{}}
 }
 
-// level returns key's refilled bucket, or false when it has no whole token or
-// a new key cannot be tracked.
+// level returns key's refilled bucket and whether it holds a whole token.
 func (l *limiter) level(key string, now time.Time) (bucket, bool) {
 	current, known := l.buckets[key]
 	if !known {
-		if len(l.buckets) >= l.max {
-			for id, other := range l.buckets {
-				if refilled := l.refilled(other, now); refilled.tokens >= l.burst {
-					delete(l.buckets, id)
-				}
-			}
-			// ponytail: a full table of active clients refuses new ones (the
-			// shared buckets still serve tracked clients); raise maxStartClients
-			// if a deployment legitimately sees more distinct starters.
-			if len(l.buckets) >= l.max {
-				return bucket{}, false
-			}
-		}
 		current = bucket{tokens: l.burst, last: now}
 	}
 	current = l.refilled(current, now)
 	return current, current.tokens >= 1
+}
+
+// store records a key's bucket, forgetting the least recently used key when a
+// new one would exceed the table bound.
+func (l *limiter) store(key string, b bucket) {
+	if _, known := l.buckets[key]; !known && len(l.buckets) >= l.max {
+		// ponytail: O(max) scan per new key on a full table; use a list-backed
+		// LRU if maxStartClients grows well beyond a few thousand.
+		var oldest string
+		for id, other := range l.buckets {
+			if oldest == "" || other.last.Before(l.buckets[oldest].last) {
+				oldest = id
+			}
+		}
+		delete(l.buckets, oldest)
+	}
+	l.buckets[key] = b
 }
 
 func (l *limiter) refilled(b bucket, now time.Time) bucket {
@@ -284,17 +292,17 @@ func (l *limiter) refilled(b bucket, now time.Time) bucket {
 	return b
 }
 
-func (a *Authority) takeStartToken(client, resource string, now time.Time) bool {
+func (a *Authority) takeStartToken(client string, now time.Time) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	c, clientOK := a.startClients.level(client, now)
-	r, resourceOK := a.startResources.level(resource, now)
 	g, globalOK := a.startGlobal.level("", now)
-	if !clientOK || !resourceOK || !globalOK {
+	if !clientOK || !globalOK {
 		return false
 	}
-	c.tokens, r.tokens, g.tokens = c.tokens-1, r.tokens-1, g.tokens-1
-	a.startClients.buckets[client], a.startResources.buckets[resource], a.startGlobal.buckets[""] = c, r, g
+	c.tokens, g.tokens = c.tokens-1, g.tokens-1
+	a.startClients.store(client, c)
+	a.startGlobal.store("", g)
 	return true
 }
 
@@ -334,7 +342,7 @@ func (a *Authority) takeTerminalRequest(id string, expires time.Time, now time.T
 		}
 	}
 	counter := a.terminalRequests[id]
-	if counter.count >= maxPolls || (counter.count == 0 && len(a.terminalRequests) >= maxPending) {
+	if counter.count >= maxPolls || (counter.count == 0 && len(a.terminalRequests) >= maxStored) {
 		return false
 	}
 	counter.count++
@@ -347,7 +355,7 @@ func (a *Authority) takeTerminalRequest(id string, expires time.Time, now time.T
 // identity and only selects a rate-limit bucket.
 func (a *Authority) Start(browserResource, client string) (Start, error) {
 	binding, ok := a.byBrowser[browserResource]
-	if !ok || !a.takeStartToken(client, browserResource, time.Now()) {
+	if !ok || !a.takeStartToken(client, time.Now()) {
 		return Start{}, ErrDenied
 	}
 	for attempt := 0; attempt < 8; attempt++ {
@@ -370,17 +378,13 @@ func (a *Authority) Start(browserResource, client string) (Start, error) {
 			if err != nil {
 				return ErrUnavailable
 			}
-			pending := 0
 			for _, item := range items {
 				var current record
 				if json.Unmarshal(item.Value, &current) != nil || !a.validRecord(current) {
 					return ErrUnavailable
 				}
-				if current.Status == "pending" || current.Status == "approved" {
-					pending++
-				}
 			}
-			if pending >= maxPending {
+			if len(items) >= maxStored {
 				return ErrDenied
 			}
 			id := recordID(d)

@@ -66,8 +66,12 @@ def _headers() -> dict[str, Any]:
 
 
 def _proxy(unix_socket: str, versions: list[str]) -> dict[str, Any]:
+    # The gateway partitions anonymous login and device-start limits by this
+    # single value, so set it explicitly to the edge's own TCP peer instead of
+    # relying on Caddy's default forwarding behavior.
     return {
         "handler": "reverse_proxy",
+        "headers": {"request": {"set": {"X-Forwarded-For": ["{http.request.remote.host}"]}}},
         "upstreams": [{"dial": "unix/" + unix_socket}],
         "transport": {"protocol": "http", "versions": versions},
     }

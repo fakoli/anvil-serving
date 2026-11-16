@@ -122,11 +122,14 @@ with a maximum lifetime of one hour, capped by the approving browser session.
 It is kept only in process memory. There is no refresh token or persisted
 remote credential in this version; start `login` again after expiry or exit.
 
-Starting a request needs no credential, so the gateway rate-limits it per
-client (8 starts, then one per minute), per browser resource (64, then one per
-5 seconds), and overall (256, then one per second), with at most 128 pending
-requests. One client exhausting its own allowance does not affect others. The
-client is identified the same way as for
+Starting a request needs no credential, so the gateway limits it per client
+(8 starts, then one per minute) and overall (256, then five per second). The
+overall bucket bounds gateway work and stored records (at most 3,584). A client
+within its own allowance is refused only when the overall bucket is empty.
+Keeping it empty takes a sustained aggregate above five starts per second,
+which requires at least 300 distinct clients each starting about once a minute.
+Below that rate, other clients cannot stop yours from starting. Clients are
+identified as for
 [browser sign-in](ANVIL-CONNECT.md#three-independent-kinds-of-authority).
 
 The short user code identifies the request; a separate high-entropy device

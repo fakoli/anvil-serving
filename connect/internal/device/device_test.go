@@ -490,36 +490,70 @@ func TestSlowSingleClientCannotStarveOthers(t *testing.T) {
 	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	for minute := 0; minute < 120; minute++ {
 		now = now.Add(time.Minute)
-		for authority.takeStartToken("attacker", "dash", now) {
+		for authority.takeStartToken("attacker", now) {
 		}
-		if !authority.takeStartToken(fmt.Sprintf("user-%d", minute), "dash", now) {
+		if !authority.takeStartToken(fmt.Sprintf("user-%d", minute), now) {
 			t.Fatalf("minute %d: legitimate client starved", minute)
 		}
 	}
 }
 
-// Per-client state is bounded: idle clients are pruned and active ones beyond
-// the table bound are refused rather than growing memory.
-func TestStartClientStateIsBounded(t *testing.T) {
+// Many distinct attacker clients, each using its whole allowance, at a
+// sustained aggregate rate below the documented threshold (5 starts/s) never
+// lock out a fresh client.
+func TestDistributedStartsBelowThresholdDoNotStarveFreshClient(t *testing.T) {
+	authority, _, _, _, _ := fixture(t)
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	const attackers, perSecond = 2000, 4
+	next := 0
+	for second := 0; second < 30*60; second++ {
+		now = now.Add(time.Second)
+		for i := 0; i < perSecond; i++ {
+			authority.takeStartToken(fmt.Sprintf("attacker-%d", next%attackers), now)
+			next++
+		}
+		if second%60 == 59 && !authority.takeStartToken(fmt.Sprintf("victim-%d", second), now) {
+			t.Fatalf("second %d: fresh client refused under a %d/s distributed load", second, perSecond)
+		}
+	}
+}
+
+// The global bucket must keep every record a start can create, alive or
+// terminal, under the stored-record bound.
+func TestGlobalStartBucketBoundsStoredRecords(t *testing.T) {
+	lifetime := Lifetime + terminalRetention
+	admitted := startGlobalBurst + int(lifetime/startGlobalRefill)
+	if admitted >= maxStored || maxStored >= 4096 {
+		t.Fatalf("global bucket admits %d records in %s; bound %d must stay below 4096", admitted, lifetime, maxStored)
+	}
+}
+
+// Per-client state is bounded. A full table of active clients forgets the
+// least recently used one so a new client is still admitted.
+func TestStartClientTableEvictsLeastRecentlyUsed(t *testing.T) {
 	authority, _, _, _, _ := fixture(t)
 	authority.startGlobal = newLimiter(1<<20, time.Nanosecond, 1)
-	authority.startResources = newLimiter(1<<20, time.Nanosecond, 1)
 	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	for i := 0; i < 3*maxStartClients; i++ {
-		authority.takeStartToken(fmt.Sprintf("client-%d", i), "dash", now)
+		now = now.Add(time.Millisecond)
+		if !authority.takeStartToken(fmt.Sprintf("client-%d", i), now) {
+			t.Fatalf("client %d refused", i)
+		}
 		if got := len(authority.startClients.buckets); got > maxStartClients {
 			t.Fatalf("client table grew to %d, bound %d", got, maxStartClients)
 		}
 	}
-	if authority.takeStartToken("new-client", "dash", now) {
-		t.Fatal("full table of active clients admitted an untracked client")
+	oldest := fmt.Sprintf("client-%d", 2*maxStartClients)
+	if _, ok := authority.startClients.buckets[oldest]; !ok {
+		t.Fatal("least recently used survivor missing before eviction")
 	}
-	// Once tracked clients have refilled they are pruned for new ones.
-	later := now.Add(startClientBurst * startClientRefill)
-	if !authority.takeStartToken("new-client", "dash", later) {
-		t.Fatal("refilled clients were not pruned")
+	if !authority.takeStartToken("new-client", now.Add(time.Millisecond)) {
+		t.Fatal("full table of active clients refused a new client")
 	}
-	if got := len(authority.startClients.buckets); got != 1 {
-		t.Fatalf("pruned table holds %d clients, want 1", got)
+	if _, ok := authority.startClients.buckets[oldest]; ok {
+		t.Fatal("full table did not forget its least recently used client")
+	}
+	if got := len(authority.startClients.buckets); got != maxStartClients {
+		t.Fatalf("table holds %d clients, want %d", got, maxStartClients)
 	}
 }
