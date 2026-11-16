@@ -93,6 +93,7 @@ _SANITIZE = (
     ("192.0.2.10", "REPLACE-WITH-YOUR-MINI-TAILNET-IP"),
     # The scaffold is one flat dir: recipe registries ship beside the manifest.
     ("{dir}/../../configs/", "{dir}/"),
+    ("{dir}/../../docs/findings/", "{dir}/findings/"),
 )
 
 _COMPUTE_A_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-COMPUTE-A-UUID"
@@ -369,6 +370,9 @@ def _personalize_home_text(text, discovery):
             'command_runtime = "runtime:mini-native"',
             'command_runtime = "runtime:dark-native"',
         )
+    else:
+        # No GPU role detected: the address belongs to the companion placeholder.
+        replacements.append((_MINI_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]))
     for role_key, placeholder in (
         ("compute_a_gpu", _COMPUTE_A_GPU_PLACEHOLDER),
         ("compute_b_gpu", _COMPUTE_B_GPU_PLACEHOLDER),

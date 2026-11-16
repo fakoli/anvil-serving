@@ -584,3 +584,10 @@ def test_macos_host_is_not_classified_as_companion(monkeypatch):
     monkeypatch.setattr(init.sys, "platform", "darwin")
     discovery = init.discover_host(probe=False)
     assert discovery["topology_host"] is None
+
+
+def test_tailnet_ip_without_gpu_fills_companion_placeholder_and_findings_stay_in_home(tmp_path):
+    init.scaffold_home(out_dir=str(tmp_path), tailnet_ip="100.64.0.7", _gpu_run=_run_missing)
+    topo = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "100.64.0.7" in topo and "REPLACE-WITH-YOUR-MINI-TAILNET-IP" not in topo
+    assert "../.." not in (tmp_path / "serves.toml").read_text(encoding="utf-8")
