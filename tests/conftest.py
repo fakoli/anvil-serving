@@ -2,6 +2,7 @@
 
 Import builders directly: ``from tests.conftest import proc``.
 """
+import contextlib
 import types
 
 import pytest
@@ -10,6 +11,21 @@ import pytest
 @pytest.fixture(autouse=True)
 def isolated_operator_home(tmp_path, monkeypatch):
     monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path / "operator-home"))
+
+
+@contextlib.contextmanager
+def isolated_case(tmp_path, monkeypatch, index):
+    """Give one `subtests` case its own directory, monkeypatch scope, and operator home.
+
+    This keeps a table-driven test as isolated per case as the parametrized cases it replaced.
+    Patch only through the yielded ``mp``: changes made with the test's own ``monkeypatch``
+    are not undone between cases.
+    """
+    case = tmp_path / f"case-{index}"
+    case.mkdir()
+    with monkeypatch.context() as mp:
+        mp.setenv("ANVIL_SERVING_HOME", str(case / "operator-home"))
+        yield case, mp
 
 
 def proc(rc=0, out="", err=""):

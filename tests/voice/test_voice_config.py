@@ -171,11 +171,17 @@ def test_rejects_localhost_in_llm_base_url(bad_host):
         voice_config.validate_manifest(data)
 
 
-def test_rejects_url_embedded_credentials():
-    data = _valid_manifest()
-    data["voice"]["llm"]["base_url"] = "http://user:pass@127.0.0.1:8000/v1"
-    with pytest.raises(voice_config.ConfigError, match="credentials"):
-        voice_config.validate_manifest(data)
+def test_rejects_url_embedded_credentials_and_nonpositive_llm_timeouts(subtests):
+    for key, value, error in [
+        ("base_url", "http://user:pass@127.0.0.1:8000/v1", "credentials"),
+        ("timeout", 0, "positive"),
+        ("tool_result_timeout", 0, "positive"),
+    ]:
+        with subtests.test(key=key):
+            data = _valid_manifest()
+            data["voice"]["llm"][key] = value
+            with pytest.raises(voice_config.ConfigError, match=error):
+                voice_config.validate_manifest(data)
 
 
 @pytest.mark.parametrize("secret_key", ["api_key", "token", "secret", "password"])
@@ -205,37 +211,21 @@ def test_native_audio_lifecycle_rejects_secret_literal_in_command():
         voice_config.validate_manifest(data)
 
 
-def test_rejects_nonpositive_llm_timeout():
-    data = _valid_manifest()
-    data["voice"]["llm"]["timeout"] = 0
-    with pytest.raises(voice_config.ConfigError, match="positive"):
-        voice_config.validate_manifest(data)
-
-
-def test_rejects_nonpositive_llm_tool_result_timeout():
-    data = _valid_manifest()
-    data["voice"]["llm"]["tool_result_timeout"] = 0
-    with pytest.raises(voice_config.ConfigError, match="positive"):
-        voice_config.validate_manifest(data)
-
-
 # --------------------------------------------------------------------------- #
 # [voice.proxy] -- optional managed-container / direct-endpoint proxy config
 # --------------------------------------------------------------------------- #
 
 
-def test_rejects_proxy_ready_url_with_credentials():
-    data = _valid_manifest()
-    data["voice"]["proxy"] = {"ready_url": "http://user:pass@127.0.0.1:8765/usage"}
-    with pytest.raises(voice_config.ConfigError, match="credentials"):
-        voice_config.validate_manifest(data)
-
-
-def test_rejects_nonpositive_proxy_ready_timeout():
-    data = _valid_manifest()
-    data["voice"]["proxy"] = {"ready_timeout": 0}
-    with pytest.raises(voice_config.ConfigError, match="positive"):
-        voice_config.validate_manifest(data)
+def test_rejects_proxy_ready_url_with_credentials_or_nonpositive_timeout(subtests):
+    for proxy, error in [
+        ({"ready_url": "http://user:pass@127.0.0.1:8765/usage"}, "credentials"),
+        ({"ready_timeout": 0}, "positive"),
+    ]:
+        with subtests.test(proxy=proxy):
+            data = _valid_manifest()
+            data["voice"]["proxy"] = proxy
+            with pytest.raises(voice_config.ConfigError, match=error):
+                voice_config.validate_manifest(data)
 
 
 def test_resolve_secret_reads_named_env_var(monkeypatch):

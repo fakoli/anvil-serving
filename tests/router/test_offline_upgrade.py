@@ -8,6 +8,7 @@ import pytest
 from anvil_serving import router_manage
 from anvil_serving.router import keys
 from tests.router.key_fixtures import tmp_path as tmp_path
+from tests.conftest import isolated_case
 
 
 @pytest.fixture(autouse=True)
@@ -110,14 +111,25 @@ def test_offline_custody_refuses_unsupported_platform(tmp_path, monkeypatch):
             pytest.fail('unsupported writer custody')
 
 
-@pytest.mark.skipif(os.name != 'posix', reason='native owner storage uses POSIX mount paths')
-@pytest.mark.parametrize('consumer,scoped,blocked', [
+_OWNER_ROSTER_SEPARATES_MEDIA_BUT_REJECTS_ACCOUNTING_WRITERS_CASES = [
     ('media', True, False), ('media', False, True), ('keys', True, True),
     ('parent', True, True), ('child', True, True), ('alias', True, True),
     ('readonly', True, False), ('tmpfs', True, False), ('bind-alias', True, True),
     ('bind-parent', True, True), ('bind-child', True, True),
-])
-def test_owner_roster_separates_media_but_rejects_accounting_writers(tmp_path, monkeypatch, consumer, scoped, blocked):
+]
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='native owner storage uses POSIX mount paths')
+def test_owner_roster_separates_media_but_rejects_accounting_writers(subtests, tmp_path, monkeypatch):
+    for index, (consumer, scoped, blocked) in enumerate(_OWNER_ROSTER_SEPARATES_MEDIA_BUT_REJECTS_ACCOUNTING_WRITERS_CASES):
+        with (
+            subtests.test(consumer=consumer, scoped=scoped, blocked=blocked),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _owner_roster_separates_media_but_rejects_accounting_writers(tmp_path=case, monkeypatch=mp, consumer=consumer, scoped=scoped, blocked=blocked)
+
+
+def _owner_roster_separates_media_but_rejects_accounting_writers(tmp_path, monkeypatch, consumer, scoped, blocked):
     private = tmp_path/'private'; private.mkdir()
     (private/'subdir').mkdir()
     media = tmp_path/'media'; media.mkdir()

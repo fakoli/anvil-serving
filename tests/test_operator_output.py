@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from anvil_serving import transports
 from anvil_serving.operator_output import (
     error_envelope,
     exit_code,
     redact,
 )
+from tests.conftest import isolated_case
 
 
 def _remote_context() -> dict[str, object]:
@@ -132,7 +131,7 @@ def test_closed_numeric_first_token_histogram_survives_recursive_redaction():
     assert redact({"prefill_to_first_token_copy": _timing_histogram()})["prefill_to_first_token_copy"] == "<redacted>"
 
 
-@pytest.mark.parametrize("replacement", [
+_FIRST_TOKEN_HISTOGRAM_EXCEPTION_REJECTS_SECRET_OR_MALFORMED_PAYLOADS_CASES = [
     "opaque-secret", {"unit": "seconds"},
     _timing_histogram() | {"unit": "Bearer opaque-secret"},
     _timing_histogram() | {"token": "opaque-secret"},
@@ -142,6 +141,17 @@ def test_closed_numeric_first_token_histogram_survives_recursive_redaction():
         {}, {"0.01": "opaque-secret"}, {"0.01": {"token": "opaque-secret"}},
         {"session_token": 8}, {"1" * 33: 8}, {str(index): 8 for index in range(65)},
     )],
-])
-def test_first_token_histogram_exception_rejects_secret_or_malformed_payloads(replacement):
+]
+
+
+def test_first_token_histogram_exception_rejects_secret_or_malformed_payloads(subtests, tmp_path, monkeypatch):
+    for index, replacement in enumerate(_FIRST_TOKEN_HISTOGRAM_EXCEPTION_REJECTS_SECRET_OR_MALFORMED_PAYLOADS_CASES):
+        with (
+            subtests.test(replacement=replacement),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _first_token_histogram_exception_rejects_secret_or_malformed_payloads(replacement=replacement)
+
+
+def _first_token_histogram_exception_rejects_secret_or_malformed_payloads(replacement):
     assert redact({"prefill_to_first_token": replacement}) == {"prefill_to_first_token": "<redacted>"}

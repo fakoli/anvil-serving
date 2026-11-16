@@ -14,6 +14,7 @@ import urllib.error
 import pytest
 
 from anvil_serving import transports
+from tests.conftest import isolated_case
 
 
 TOKEN = "controller-secret-token"
@@ -67,9 +68,7 @@ def test_local_transport_only_calls_declared_typed_handler():
     assert exc.value.execution_state == "not_started"
 
 
-@pytest.mark.parametrize(
-    "key",
-    [
+_OPERATION_REJECTS_RAW_COMMAND_AND_CREDENTIAL_PAYLOADS_CASES = [
         "command",
         "argv",
         "shell",
@@ -84,9 +83,19 @@ def test_local_transport_only_calls_declared_typed_handler():
         "private.key",
         "client_secret",
         "authorization-token",
-    ],
-)
-def test_operation_rejects_raw_command_and_credential_payloads(key):
+    ]
+
+
+def test_operation_rejects_raw_command_and_credential_payloads(subtests, tmp_path, monkeypatch):
+    for index, key in enumerate(_OPERATION_REJECTS_RAW_COMMAND_AND_CREDENTIAL_PAYLOADS_CASES):
+        with (
+            subtests.test(key=key),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _operation_rejects_raw_command_and_credential_payloads(key=key)
+
+
+def _operation_rejects_raw_command_and_credential_payloads(key):
     with pytest.raises(ValueError, match="command or credential"):
         transports.Operation("router-status", {key: "not-allowed"})
 
