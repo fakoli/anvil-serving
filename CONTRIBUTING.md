@@ -139,11 +139,15 @@ silently change direction and never delete an ADR — supersede it.
   directed-import audit as a one-time historical comparison, run
   `python scripts/audit_modularization.py` directly. Its default before-ref is the
   pre-modularization `c3af271` baseline and its default after-ref is the current worktree.
-- CI runs the full Python suite on Ubuntu with Python 3.11 and 3.13, a focused Windows CLI
+- CI runs the full Python suite on Ubuntu with Python 3.11, 3.12 and 3.13 (plus 3.12 on macOS), a focused Windows CLI
   and native credential-custody smoke, native macOS contracts, plus `ruff check .`, the
   deterministic active-reference audit, strict docs, and a wheel-build/clean-install smoke test
   on Ubuntu and macOS. These gates do not read home-directory Anvil state or contact live
   Docker, SSH, Tailscale, GPU, model, or controller endpoints.
+- CI also rebuilds the bundled MCP bridge (`npm ci && npm run build` in `mcp_bridge/`) and fails if
+  `anvil_serving/_node/` differs, so commit the rebuilt bundle with any `mcp_bridge/` change. It
+  runs `govulncheck` on `connect/`. Workflow actions are pinned to commit SHAs; bump them
+  deliberately and keep the version in the trailing comment.
 - To reproduce the package gate, run `python -m build` followed by
   `python scripts/wheel_smoke.py`. The smoke creates and removes a temporary virtual environment,
   installs the single wheel with `--no-deps`, verifies required package data, and invokes the

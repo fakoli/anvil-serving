@@ -3,6 +3,7 @@ package httpedge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sort"
 	"strings"
@@ -30,7 +31,7 @@ type Home struct {
 }
 
 type homeAuthority interface {
-	BeginPortal(string) (session.Challenge, error)
+	BeginPortal(binding, client string) (session.Challenge, error)
 	Complete(context.Context, session.Callback) (session.Completion, error)
 	PortalSession(string, string) (session.Admission, session.Human, error)
 	Logout(string, string) error
@@ -126,7 +127,7 @@ func (h *Home) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case dedicatedHomePath + "/data":
 		h.data(w, r, cookies)
 	case BrowserLoginPath:
-		h.login(w, r)
+		h.login(w, r, cookies)
 	case BrowserCallbackPath:
 		h.callback(w, r, cookies)
 	case BrowserLogoutPath:
@@ -159,7 +160,13 @@ func (h *Home) headers(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	denyFraming(w)
+}
+
+// denyFraming is the shared anti-framing policy for Connect-rendered pages.
+func denyFraming(w http.ResponseWriter) {
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+	w.Header().Set("X-Frame-Options", "DENY")
 }
 
 func (h *Home) page(w http.ResponseWriter, r *http.Request, cookies browserCookies) {
@@ -233,17 +240,21 @@ func (h *Home) data(w http.ResponseWriter, r *http.Request, cookies browserCooki
 	}{h.router != nil, services, account + "/security", account + "/two-factor-authentication", BrowserLogoutPath, adminURL})
 }
 
-func (h *Home) login(w http.ResponseWriter, r *http.Request) {
+func (h *Home) login(w http.ResponseWriter, r *http.Request, cookies browserCookies) {
 	if r.Method != http.MethodGet || !controlRequest(r) || r.URL.RawQuery != "" || r.URL.ForceQuery || (len(values(r.Header, "Origin")) != 0 && !exactBrowserOrigin(r)) {
 		browserFailure(w, http.StatusForbidden)
 		return
 	}
-	binding, err := session.NewBinding()
+	binding, err := transactionBinding(cookies)
 	if err != nil {
 		browserFailure(w, http.StatusServiceUnavailable)
 		return
 	}
-	challenge, err := h.authority.BeginPortal(binding)
+	challenge, err := h.authority.BeginPortal(binding, clientIdentity(r))
+	if errors.Is(err, session.ErrRateLimited) {
+		browserFailure(w, http.StatusTooManyRequests)
+		return
+	}
 	if err != nil || challenge.Binding != binding || !safeAuthorizationURL(challenge.AuthorizationURL) {
 		browserFailure(w, http.StatusUnauthorized)
 		return

@@ -64,8 +64,11 @@ plugins:
 nav:
   - Get started:
       - Overview: index.md
+      - "Quickstart: gateway for your server": QUICKSTART-GATEWAY.md
+      - Support matrix: SUPPORT-MATRIX.md
       - Install and run a first serve: GETTING-STARTED.md
       - Private networking with Tailscale: TAILSCALE-NETWORKING.md
+      - Deployment security model: SECURITY-MODEL.md
       - Anvil Connect: CONNECT-OVERVIEW.md
       - Application access with Anvil Connect: ANVIL-CONNECT.md
       - Password setup and reset link lifetime: CONNECT-RESET-LINK-LIFETIME.md
@@ -112,6 +115,7 @@ nav:
       - Model Serving:
           - Catalog, artifacts, and recipes: MODEL-LIFECYCLE.md
           - Promote and roll back: MODEL-PROMOTION.md
+          - Reference-host qualification runbook: operator/REFERENCE-HOST-RUNBOOK.md
       - Voice and Media:
           - Voice pipeline: VOICE.md
           - Media workflows: cli/media.md
@@ -143,6 +147,7 @@ nav:
           - Architecture: ARCHITECTURE.md
           - Configuration: CONFIGURATION.md
           - Terminology: TERMINOLOGY.md
+          - Migrating to generic names: MIGRATION-GENERIC-NAMES.md
           - Public product and private operator state: OPERATOR-PRIVACY.md
       - Command-line reference:
           - Command index: CLI.md

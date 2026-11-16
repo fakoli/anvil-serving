@@ -338,3 +338,256 @@ def test_init_never_overwrites_existing_token_in_env_file(token_home, capsys):
     output = _init_cli(capsys)
     assert _env_token(token_home) == "operator-value"
     assert "operator-value" not in output
+
+
+# ---- init --gateway-only: gateway in front of an existing server (WP-05) -----------
+
+
+class _StubUpstream:
+    """Stdlib OpenAI-compatible upstream: records the requests it receives."""
+
+    def __init__(self):
+        import http.server
+        import threading
+        seen = self.seen = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def _send(self, payload):
+                data = json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def do_GET(self):
+                self._send({"status": "ok", "data": [{"id": "stub-model"}]})
+
+            def do_POST(self):
+                body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                seen.append(json.loads(body))
+                self._send({"id": "c1", "object": "chat.completion", "model": "stub-model",
+                            "choices": [{"index": 0, "finish_reason": "stop",
+                                         "message": {"role": "assistant", "content": "pong"}}],
+                            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}})
+
+        self.httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = "http://127.0.0.1:%d/v1" % self.httpd.server_address[1]
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+
+def test_gateway_only_end_to_end_without_docker_or_gpu(token_home, capsys):
+    import http.client
+    import threading
+    from anvil_serving import envfile
+    from anvil_serving.router.serve import build_server
+
+    upstream = _StubUpstream()
+    try:
+        output = _init_cli(capsys, "--gateway-only", "--upstream", upstream.url,
+                           "--model", "stub-model")
+        assert sorted(p.name for p in token_home.iterdir()) == [".env", "router.toml"]
+        token = _env_token(token_home)
+        assert token and token not in output
+        server = build_server(
+            str(token_home / "router.toml"), port=0,
+            env={"ANVIL_ROUTER_TOKEN": envfile.read_dotenv(str(token_home / ".env"))["ANVIL_ROUTER_TOKEN"]})
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        thread.start()
+
+        def call(method, path, body=None, auth=True):
+            host, port = server.server_address[:2]
+            conn = http.client.HTTPConnection(host, port, timeout=5)
+            headers = {"Content-Type": "application/json"}
+            if auth:
+                headers["Authorization"] = "Bearer " + token
+            try:
+                conn.request(method, path, json.dumps(body) if body else None, headers)
+                resp = conn.getresponse()
+                return resp.status, resp.read()
+            finally:
+                conn.close()
+
+        try:
+            status, raw = call("GET", "/v1/models")
+            assert status == 200 and b"llm.primary" in raw
+            chat = {"model": "llm.primary", "messages": [{"role": "user", "content": "ping"}]}
+            status, raw = call("POST", "/v1/chat/completions", chat)
+            assert status == 200 and b"pong" in raw
+            assert upstream.seen and upstream.seen[0]["model"] == "stub-model"
+            assert call("POST", "/v1/chat/completions", {**chat, "model": "nope"})[0] == 404
+            assert call("POST", "/v1/chat/completions", chat, auth=False)[0] == 401
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+        # second run: token kept, router.toml unchanged
+        before = _env_token(token_home)
+        output = _init_cli(capsys, "--gateway-only", "--upstream", upstream.url,
+                           "--model", "stub-model")
+        assert _env_token(token_home) == before and before not in output
+    finally:
+        upstream.close()
+
+
+def test_gateway_only_options_alias_and_context_limit(token_home, capsys):
+    import tomllib
+    _init_cli(capsys, "--gateway-only", "--upstream", "https://example.test:8443/v1",
+              "--model", "m", "--alias", "Llm.Fast", "--context-limit", "32768")
+    cfg = tomllib.loads((token_home / "router.toml").read_text(encoding="utf-8"))
+    (tier,) = cfg["router"]["tiers"]
+    assert tier["context_limit"] == 32768 and tier["dialect"] == "openai"
+    assert tier["privacy"] == "local" and tier["tool_support"] is True
+    assert cfg["router"]["model_routes"] == {"llm.fast": tier["id"]}
+    assert cfg["server"]["auth_env"] == "ANVIL_ROUTER_TOKEN"
+
+
+@pytest.mark.parametrize("args,needle", [
+    (["--upstream", "http://localhost:11434/v1", "--model", "m"], "127.0.0.1"),
+    (["--upstream", "ftp://x/v1", "--model", "m"], "http"),
+    (["--model", "m"], "--upstream"),
+    (["--upstream", "http://127.0.0.1:1/v1"], "--model"),
+    (["--upstream", "http://127.0.0.1:1/v1", "--model", "m", "--context-limit", "0"], "context"),
+])
+def test_gateway_only_rejects_bad_input(token_home, capsys, args, needle):
+    from anvil_serving import cli
+    assert cli.main(["init", "--gateway-only", *args]) == 2
+    assert needle in capsys.readouterr().err
+    assert not token_home.exists() or not (token_home / "router.toml").exists()
+
+
+def test_bare_init_hints_gateway_only_when_no_gpu_detected(token_home, capsys):
+    output = _init_cli(capsys)
+    assert "--gateway-only" in output and "--single-model" in output
+
+
+# ---- review fixes for init --gateway-only ------------------------------------------
+
+
+@pytest.mark.parametrize("url", [
+    "http://user:secret@127.0.0.1:1/v1",
+    "http://:secret@127.0.0.1:1/v1",
+    "http://user@127.0.0.1:1/v1",
+    "http://127.0.0.1:1/v1?key=secret",
+    "http://127.0.0.1:1/v1#secret",
+    "http://127.0.0.1:99999/v1",
+    "http://127.0.0.1:abc/v1",
+])
+def test_gateway_only_rejects_credentials_query_fragment_bad_port(token_home, capsys, url):
+    from anvil_serving import cli
+    assert cli.main(["init", "--gateway-only", "--upstream", url, "--model", "m"]) == 2
+    out = capsys.readouterr()
+    assert "secret" not in out.out + out.err
+    assert not (token_home / "router.toml").exists()
+
+
+def test_gateway_only_credentials_error_points_at_auth_env(token_home, capsys):
+    from anvil_serving import cli
+    cli.main(["init", "--gateway-only", "--upstream", "http://u:p@127.0.0.1:1/v1", "--model", "m"])
+    assert "ANVIL_UPSTREAM_API_KEY" in capsys.readouterr().err
+
+
+def test_gateway_only_localhost_suggestion_keeps_port_and_path(token_home, capsys):
+    from anvil_serving import cli
+    cli.main(["init", "--gateway-only", "--upstream", "http://LocalHost:11434/v1", "--model", "m"])
+    assert "http://127.0.0.1:11434/v1" in capsys.readouterr().err
+
+
+def test_gateway_only_out_dir_next_step_sets_home(token_home, tmp_path, capsys):
+    other = tmp_path / "other"
+    output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1",
+                       "--model", "m", "--out-dir", str(other))
+    assert "ANVIL_SERVING_HOME=%s anvil-serving router run" % other in output
+    assert "--config" not in output
+
+
+def test_gateway_only_reports_where_existing_token_came_from(token_home, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "operator-secret")
+    output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m")
+    assert "process environment" in output and "operator-secret" not in output
+    monkeypatch.delenv("ANVIL_ROUTER_TOKEN")
+    token_home.mkdir(exist_ok=True)
+    (token_home / ".env").write_text("ANVIL_ROUTER_TOKEN=file-secret\n", encoding="utf-8")
+    (token_home / ".env").chmod(0o600)
+    output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m")
+    assert str(token_home / ".env") in output and "file-secret" not in output
+
+
+def test_bare_init_hint_wording_when_detection_skipped(token_home, capsys):
+    output = _init_cli(capsys)
+    assert "not probed" in output.split("NOTE:")[1].split("\n")[0]
+
+
+# ---- fresh scaffold is internally consistent (#384) ---------------------------
+
+
+def test_fresh_scaffold_has_no_literal_gpu_uuids_or_dangling_registries(tmp_path):
+    import re
+
+    _scaffold_home(out_dir=str(tmp_path))
+    for path in tmp_path.iterdir():
+        text = path.read_text(encoding="utf-8")
+        found = re.findall(r"GPU-[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}", text)
+        assert not found, (path.name, found)
+    registries = re.findall(
+        r"--registry (\S+)", (tmp_path / "serves.toml").read_text(encoding="utf-8")
+    )
+    assert registries
+    for registry in registries:
+        assert os.path.isfile(registry.replace("{dir}", str(tmp_path))), registry
+
+
+def test_fresh_scaffold_topology_errors_are_only_named_placeholders(tmp_path):
+    import tomllib
+
+    from anvil_serving import topology
+
+    _scaffold_home(out_dir=str(tmp_path))
+    data = tomllib.loads((tmp_path / "operator-topology.toml").read_text(encoding="utf-8"))
+    errors = topology.validate_topology(data).errors
+    assert [e.path for e in errors] == ["gpu_roles[0].uuid", "gpu_roles[1].uuid"]
+    for error in errors:
+        assert "operator-topology.toml" in error.message
+        assert "GPU-REPLACE-WITH-" in error.message
+
+
+def test_scaffold_writes_detected_gpu_memory_into_topology(tmp_path):
+    csv = (
+        "0, GPU-33333333-3333-3333-3333-333333333333, Test GPU, 24576\n"
+        "1, GPU-11111111-1111-1111-1111-111111111111, Test GPU, 49152\n"
+    )
+    init.scaffold_home(
+        out_dir=str(tmp_path), _gpu_run=lambda *a, **k: csv, _tailscale_run=_run_missing
+    )
+    text = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "vram_mib = 49152" in text
+    assert "vram_mib = 24576" in text
+    assert "vram_mib = 97887" not in text
+
+
+def test_scaffold_without_detection_keeps_reference_gpu_memory(tmp_path):
+    _scaffold_home(out_dir=str(tmp_path))
+    text = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "vram_mib = 97887" in text
+
+
+def test_macos_host_is_not_classified_as_companion(monkeypatch):
+    monkeypatch.setattr(init.sys, "platform", "darwin")
+    discovery = init.discover_host(probe=False)
+    assert discovery["topology_host"] is None
+
+
+def test_tailnet_ip_without_gpu_fills_companion_placeholder_and_findings_stay_in_home(tmp_path):
+    init.scaffold_home(out_dir=str(tmp_path), tailnet_ip="100.64.0.7", _gpu_run=_run_missing)
+    topo = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "100.64.0.7" in topo and "REPLACE-WITH-YOUR-MINI-TAILNET-IP" not in topo
+    assert "../.." not in (tmp_path / "serves.toml").read_text(encoding="utf-8")

@@ -1301,6 +1301,17 @@ def _required_string(record: Mapping[str, Any], key: str, path: str, errors: lis
 
 def _required_gpu_uuid(record: Mapping[str, Any], key: str, path: str, errors: list[TopologyError]) -> str | None:
     value = _required_string(record, key, path, errors)
+    if value is not None and value.startswith("GPU-REPLACE-WITH-"):
+        # Unreplaced scaffold placeholder: name the key to edit, and keep the
+        # role so references to it do not cascade into unrelated errors.
+        _error(
+            errors,
+            _field_path(path, key),
+            f"placeholder {value!r} is not replaced: set {key} in "
+            "operator-topology.toml to the real GPU UUID (nvidia-smi -L)",
+            "value",
+        )
+        return value
     if value is not None and (_has_gpu_uuid_whitespace_or_controls(value) or not _GPU_UUID_RE.fullmatch(value)):
         _error(
             errors,

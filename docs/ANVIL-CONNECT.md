@@ -77,6 +77,32 @@ See [RFC 9207](https://www.rfc-editor.org/rfc/rfc9207.html) for issuer compariso
 Authelia's opaque subject identifier must be provisioned as the human grant;
 a username is not an interchangeable identity.
 
+Starting sign-in needs no credential, so pending sign-ins are bounded without
+refusing new ones. A browser that retries reuses its pending-login cookie and
+keeps at most 8 pending flows, one client keeps at most 16 and may start 8
+sign-ins at once and then one every 15 seconds (`429` beyond that), and the pool
+keeps at most 128 for ten minutes. When a bound is full, the oldest pending flow is
+replaced instead of the new sign-in being denied; a full pool takes from the
+client holding the most. One client therefore cannot displace another client's
+sign-in. Many distinct clients can: a pending sign-in is lost if at least 128
+newer ones, from clients each holding at least as many, start before it
+returns from the IdP. Repeat the sign-in if that happens.
+
+Limits are per client. The client is the single `X-Forwarded-For` value that
+the Connect edge sets to its own TCP peer, after deleting any value the request
+supplied. Cloudflare's `Cf-Connecting-Ip` is believed only when that peer is
+loopback, which is how Cloudflare Tunnel reaches the edge. IPv6 addresses are
+grouped by /48 and IPv4 addresses are not grouped. In practice limits apply:
+
+- per real client address behind Cloudflare Tunnel;
+- per Cloudflare edge address when Cloudflare proxies to a public edge
+  listener instead of a tunnel;
+- per connecting address when clients reach the edge directly;
+- to one shared group when a request carries no forwarding header, such as the
+  gateway's local tunnel entry.
+
+These values only partition limits; they never authorize anything.
+
 Connect's cookie is opaque, Secure, HttpOnly and host-only. Native application
 cookies and CSRF headers remain separate. Logout invalidates that human's Connect
 sessions across resources and cancels admitted streams; it does not remove
@@ -107,6 +133,11 @@ The optional `gateway.browser_session_lifetime_seconds` controls the lifetime
 of Connect's opaque browser admission session. It accepts whole seconds from
 60 through 86400 and defaults to 28800 (eight hours) when omitted. It neither
 changes the IdP login lifetime nor native application cookies.
+
+A Connect session lasts up to this lifetime regardless of later identity-provider
+changes. Disabling or deleting a user at the IdP does not end sessions already
+issued, so disable the user in Connect as well for immediate effect. Connect
+logout ends only the Connect session, not the IdP session.
 
 The managed manifest currently requires at least one browser resource and
 renders one Authelia OIDC client with all declared callback URLs. Standalone

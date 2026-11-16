@@ -36,7 +36,7 @@ var ErrBrowserConfiguration = errors.New("invalid browser edge configuration")
 // the HTTP edge. It does not expose OIDC credentials, human records, or store
 // access to a dispatcher.
 type BrowserAuthority interface {
-	Begin(resource, returnPath, binding string) (session.Challenge, error)
+	Begin(resource, returnPath, binding, client string) (session.Challenge, error)
 	Complete(context.Context, session.Callback) (session.Completion, error)
 	Authenticate(raw, host string) (session.Admission, error)
 	PortalSession(raw, host string) (session.Admission, session.Human, error)
@@ -210,6 +210,17 @@ func parseBrowserCookies(header http.Header) (browserCookies, error) {
 		}
 	}
 	return result, nil
+}
+
+// transactionBinding reuses a browser's existing pending-login binding so its
+// retries replace its own flows within the per-browser cap; otherwise it mints
+// a new one. The binding only ties a callback to this browser; state, nonce,
+// and PKCE remain fresh per flow.
+func transactionBinding(cookies browserCookies) (string, error) {
+	if session.ValidBinding(cookies.transaction) {
+		return cookies.transaction, nil
+	}
+	return session.NewBinding()
 }
 
 func setBrowserCookie(w http.ResponseWriter, name, value string, expires time.Time) {
@@ -397,7 +408,7 @@ func (b *Browser) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer release()
-		b.login(w, r, resource)
+		b.login(w, r, resource, cookies)
 		return
 	case BrowserCallbackPath:
 		release, ok := b.controlAdmission(w, resource.control, false)
@@ -538,7 +549,7 @@ func (b *Browser) controlAdmission(w http.ResponseWriter, resource chan struct{}
 	}, true
 }
 
-func (b *Browser) login(w http.ResponseWriter, r *http.Request, resource browserResource) {
+func (b *Browser) login(w http.ResponseWriter, r *http.Request, resource browserResource, cookies browserCookies) {
 	if r.Method != http.MethodGet || !controlRequest(r) || (len(values(r.Header, "Origin")) != 0 && !exactBrowserOrigin(r)) {
 		browserFailure(w, http.StatusForbidden)
 		return
@@ -562,12 +573,16 @@ func (b *Browser) login(w http.ResponseWriter, r *http.Request, resource browser
 		browserFailure(w, http.StatusBadRequest)
 		return
 	}
-	binding, err := session.NewBinding()
+	binding, err := transactionBinding(cookies)
 	if err != nil {
 		browserFailure(w, http.StatusServiceUnavailable)
 		return
 	}
-	challenge, err := b.authority.Begin(resource.declaration.Rule.ID, returnPath, binding)
+	challenge, err := b.authority.Begin(resource.declaration.Rule.ID, returnPath, binding, clientIdentity(r))
+	if errors.Is(err, session.ErrRateLimited) {
+		browserFailure(w, http.StatusTooManyRequests)
+		return
+	}
 	if err != nil || challenge.Binding != binding || !safeAuthorizationURL(challenge.AuthorizationURL) {
 		browserFailure(w, http.StatusUnauthorized)
 		return
@@ -613,6 +628,7 @@ func (b *Browser) logout(w http.ResponseWriter, r *http.Request, resource browse
 	if resource.declaration.Rule.NativeAuth == "signed-identity" {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		denyFraming(w)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("<!doctype html><title>Signed out</title><p>Signed out.</p><p><a href=\"" + html.EscapeString(resource.declaration.Rule.PathPrefix) + "\">Sign in again</a></p>"))
@@ -736,7 +752,7 @@ func (b *Browser) deviceRoute(w http.ResponseWriter, r *http.Request, resource b
 			browserFailure(w, http.StatusForbidden)
 			return
 		}
-		started, err := b.devices.Start(resource.declaration.Rule.ID)
+		started, err := b.devices.Start(resource.declaration.Rule.ID, clientIdentity(r))
 		if err != nil {
 			browserFailure(w, http.StatusTooManyRequests)
 			return
@@ -819,6 +835,7 @@ func (b *Browser) deviceApproval(w http.ResponseWriter, r *http.Request, resourc
 		csrf := b.devices.CSRF(admitted, binding)
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		denyFraming(w)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = io.WriteString(w, "<!doctype html><title>Approve device</title><h1>Approve device</h1><p>"+html.EscapeString(binding.Label)+" requests "+html.EscapeString(binding.API.ID)+" ("+html.EscapeString(strings.Join(binding.Methods, ", "))+")</p><form method=post><label>Code <input name=user_code autocomplete=one-time-code required></label><input type=hidden name=csrf value=\""+html.EscapeString(csrf)+"\"><button name=decision value=approve>Approve</button><button name=decision value=deny>Deny</button></form>")
 		return
@@ -843,6 +860,7 @@ func (b *Browser) deviceApproval(w http.ResponseWriter, r *http.Request, resourc
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	denyFraming(w)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = io.WriteString(w, "<!doctype html><title>Device decision recorded</title><p>Device decision recorded.</p>")
 }

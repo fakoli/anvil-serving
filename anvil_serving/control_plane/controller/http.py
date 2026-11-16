@@ -15,6 +15,7 @@ from http.server import BaseHTTPRequestHandler
 from typing import Any, Callable, Optional, Sequence
 
 from ... import mcp
+from ...http_host import request_host_allowed
 from ...observability.node_workload_collector import NodeWorkloadCollector
 from ...observability.fleet_workload_collector import FleetWorkloadCollector
 from ...observability.workload_tools import (
@@ -1019,17 +1020,34 @@ def make_handler(
                 }
             return {"jsonrpc": "2.0", "id": req_id, "result": result}
 
-        def _auth_or_401(self, *, request_id: str) -> bool:
-            if self._authenticated():
-                return True
+        def _reject_request(self, *, request_id: str) -> Optional[tuple[int, str]]:
+            """Send a rejection and return ``(status, code)``, or None to proceed."""
+            rejection = None
+            # Always resolve the principal first: it resets the per-request
+            # token state that response redaction reads.
+            if not self._authenticated():
+                rejection = (401, "authentication_error", "invalid or missing API key")
+            elif auth_token is None:
+                # DNS rebinding: with no token every caller is the full-authority
+                # legacy principal, so a page on another origin must not reach
+                # routing. See anvil_serving/http_host.py.
+                route = self.path.split("?", 1)[0].rstrip("/") or "/"
+                origins = self.headers.get_all("Origin") or []
+                if not request_host_allowed(self.headers, str(self.server.server_address[0])):
+                    rejection = (403, "host_not_allowed", "Host header is not allowed")
+                elif (
+                    self.command == "POST"
+                    and route != "/mcp"  # /mcp answers a foreign Origin in JSON-RPC form
+                    and origins
+                    and (len(origins) != 1 or not _mcp_origin_allowed(origins[0]))
+                ):
+                    rejection = (403, "origin_not_allowed", "Origin is not allowed by this controller")
+            if rejection is None:
+                return None
+            status, code, message = rejection
             self.close_connection = True
-            self._send_error_json(
-                401,
-                "authentication_error",
-                "invalid or missing API key",
-                request_id=request_id,
-            )
-            return False
+            self._send_error_json(status, code, message, request_id=request_id)
+            return status, code
 
         def _authorize_mcp_headers_before_body(self) -> None:
             methods = self.headers.get_all("Mcp-Method") or []
@@ -1069,9 +1087,9 @@ def make_handler(
             ok = False
             error_code: Optional[str] = None
             try:
-                if not self._auth_or_401(request_id=request_id):
-                    status = 401
-                    error_code = "authentication_error"
+                rejected = self._reject_request(request_id=request_id)
+                if rejected is not None:
+                    status, error_code = rejected
                     return
                 if route in ("/health", "/healthz"):
                     status = 200
@@ -1195,9 +1213,9 @@ def make_handler(
             confirm: Optional[bool] = None
             error_code: Optional[str] = None
             try:
-                if not self._auth_or_401(request_id=request_id):
-                    status = 401
-                    error_code = "authentication_error"
+                rejected = self._reject_request(request_id=request_id)
+                if rejected is not None:
+                    status, error_code = rejected
                     return
                 if route == "/tools/list":
                     self._read_json_body(request_id=request_id)
@@ -1522,9 +1540,9 @@ def make_handler(
             status = 405
             error_code = "method_not_allowed"
             try:
-                if not self._auth_or_401(request_id=request_id):
-                    status = 401
-                    error_code = "authentication_error"
+                rejected = self._reject_request(request_id=request_id)
+                if rejected is not None:
+                    status, error_code = rejected
                     return
                 self._send_error_json(
                     status,

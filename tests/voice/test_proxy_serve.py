@@ -5,7 +5,7 @@ Mirrors ``tests/voice/test_stt_serve.py``'s serve-lifecycle half: docker is
 never invoked (a fake ``_run`` callable stands in for ``subprocess.run``) and
 no socket is opened (a fake ``_open`` stands in for ``urllib``). No GPU, no
 network. The one behavioral difference from STT/TTS is asserted directly: the
-readiness probe defaults to ``{base_url}/usage`` (the proxy's health route),
+readiness probe defaults to ``{base_url}/healthz`` (the proxy's health route),
 not the OpenAI ``/v1/models`` an STT/TTS serve answers.
 """
 from __future__ import annotations

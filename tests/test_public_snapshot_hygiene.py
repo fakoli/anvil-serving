@@ -8,10 +8,13 @@ placeholders, and personal home directories.
 """
 import gzip
 import io
+import os
 import tarfile
 import importlib.util
 import sys
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / ".agents/skills/anvil-serving-secret-hygiene/scripts/semantic_secret_scan.py"
@@ -55,6 +58,10 @@ def test_gzip_contents_are_scanned(tmp_path):
     assert {f["kind"] for f in findings} == {"operator-gpu-uuid-fragment", "known-lab-hostname"}
 
 
+@pytest.mark.skipif(
+    not os.environ.get("ANVIL_FULL_HYGIENE_SCAN"),
+    reason="full-tree scan runs in the `public snapshot hygiene` CI job; set ANVIL_FULL_HYGIENE_SCAN=1 to run it here",
+)
 def test_tracked_snapshot_is_clean():
     entries = scanner.git_paths(ROOT, "tracked")
     scanned, findings = scanner.scan_files(ROOT, entries)

@@ -345,6 +345,9 @@ Anvil Voice Realtime server when `voice.realtime_token_env` is unset. The
 Realtime server also refuses browser origins that are not allowlisted; see
 [Browser origins and Host checks](VOICE.md#browser-origins-and-host-checks).
 
+For transport, controller and session caveats, see the
+[deployment security model](SECURITY-MODEL.md).
+
 ### Token persistence contract
 
 Token configuration names environment variables; the values must also survive a

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving.connect import manage as connect_manage
-from anvil_serving.connect.config import ManifestError, validate_manifest
+from anvil_serving.connect.config import ManifestError, manifest_warnings, validate_manifest
 from anvil_serving.connect.render import MAX_OWNED_FILES, plan, render, stage
 
 
@@ -205,6 +205,25 @@ def test_render_is_stable_secret_free_and_matches_native_contract() -> None:
     assert "do-not-inline" not in joined
     assert "ANVIL_CONNECT_OIDC_CLIENT_SECRET" in first["files"]["gateway.json"]
     assert "/etc/anvil-connect/secrets/oidc-client-secret-hash" in first["files"]["authelia/configuration.yml"]
+
+
+def test_gateway_proxies_set_the_edge_peer_as_the_only_forwarded_client() -> None:
+    # Connect partitions anonymous login and device-start limits by this value.
+    caddy = json.loads(render(isolated_manifest())["files"]["caddy.json"])
+    gateway_proxies = [
+        handler
+        for server in caddy["apps"]["http"]["servers"].values()
+        for route in server["routes"]
+        for handler in route.get("handle", [])
+        if handler.get("handler") == "reverse_proxy" and handler["upstreams"][0]["dial"].endswith("/ingress.sock")
+    ]
+    assert gateway_proxies
+    for route in caddy["apps"]["http"]["servers"]["anvil_connect"]["routes"]:
+        handlers = route.get("handle", [])
+        if any(handler in gateway_proxies for handler in handlers):
+            assert "X-Forwarded-For" in handlers[0]["request"]["delete"]
+    for handler in gateway_proxies:
+        assert handler["headers"]["request"]["set"]["X-Forwarded-For"] == ["{http.request.remote.host}"]
 
 
 def origin_proxy_manifest() -> dict:
@@ -560,6 +579,31 @@ def test_plan_and_stage_reject_symlink_roots_markers_and_staging(tmp_path: Path)
     staging_link.symlink_to(target, target_is_directory=True)
     with pytest.raises(ManifestError, match="staging root"):
         stage(isolated_manifest(), root)
+
+
+def test_edge_listen_omitted_defaults_public_with_warning() -> None:
+    value = isolated_manifest()
+    assert value["caddy"]["listen"] == ":443"
+    assert json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["listen"] == [":443"]
+    del value["caddy"]["listen"]
+    data = validate_manifest(value)
+    assert "listen" not in data["caddy"] and "all interfaces" in manifest_warnings(data)[0]
+    assert manifest_warnings(validate_manifest(manifest())) == []
+    assert json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["listen"] == [":443"]
+
+
+def test_qualification_validate_subprocess_stdout_is_pure_json_without_listen() -> None:
+    # Same form as qualification_vm_run._render_declaration: stderr merged, stdout parsed.
+    import subprocess
+    value = isolated_manifest()
+    del value["caddy"]["listen"]
+    script = ("import json,sys;from anvil_serving.connect.config import validate_manifest;"
+              "from anvil_serving.connect.render import render_for_inspection;"
+              "m=validate_manifest(json.loads(sys.argv[1]));"
+              "print(json.dumps({'manifest':m,'files':render_for_inspection(m)['files']}))")
+    done = subprocess.run([sys.executable, "-I", "-c", script, json.dumps(value)], cwd=ROOT, env={"PYTHONPATH": str(ROOT)},
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=True)
+    assert set(json.loads(done.stdout)) == {"manifest", "files"}
 
 
 def test_loopback_edge_keeps_tls_without_implicit_public_listeners() -> None:

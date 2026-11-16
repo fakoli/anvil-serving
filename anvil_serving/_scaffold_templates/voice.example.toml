@@ -70,7 +70,7 @@ api_key_env = "ANVIL_VOICE_TTS_TOKEN"   # optional; omit if the serve is unauthe
 #   manifest_path = "../primary-node/serves.voice.toml"  # serves manifest declaring it
 #   listen_host  = "127.0.0.1"        # host-side probe address (published loopback mapping)
 #   listen_port  = 8765
-#   # ready_url  = "http://127.0.0.1:8765/usage"   # explicit readiness probe (defaults to {listen}/usage)
+#   # ready_url  = "http://127.0.0.1:8765/healthz" # explicit readiness probe (defaults to {listen}/healthz)
 #   # DIRECT downstream endpoints -- when all three are set, `voice proxy run`
 #   # wires them verbatim and SKIPS topology/forwarder resolution entirely.
 #   # These legitimately point at cross-host tailnet/LAN addresses.
