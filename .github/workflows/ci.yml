@@ -39,9 +39,6 @@ jobs:
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
-    # macOS is informational until its platform-specific failures are fixed
-    # (see the PR description); Ubuntu results stay blocking.
-    continue-on-error: ${{ matrix.os == 'macos-latest' }}
     strategy:
       fail-fast: false
       matrix:

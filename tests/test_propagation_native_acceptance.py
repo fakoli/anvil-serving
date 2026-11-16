@@ -12,6 +12,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from anvil_serving import propagation_native_acceptance as native_acceptance
 from anvil_serving.propagation_native_acceptance import (
     NativeAcceptanceError, NativeFixtureLifecycle, _custody, validate_native_runtime,
 )
@@ -79,7 +80,9 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed,
         assert argv[1:3] == ('-p', 'default')
         assert '--model' not in argv and '--provider' not in argv
         assert environment['HERMES_HOME'] == str(tmp_path)
-        assert environment['PATH'] == str(Path('/usr/bin').resolve())
+        # /bin is distinct on macOS; Linux usrmerge resolves it to /usr/bin.
+        assert environment['PATH'] == os.pathsep.join(dict.fromkeys(
+            str(Path(value).resolve()) for value in ('/usr/bin', '/bin')))
         cap = json.loads(argv[argv.index('--native-output-cap') + 1]) if managed else None
         if managed:
             assert argv.index('--native-output-cap') > argv.index('chat')
@@ -125,6 +128,25 @@ def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed,
     with pytest.raises(NativeAcceptanceError, match='already exists'):
         NativeFixtureLifecycle(profile, contract, run=run).prepare()
     assert len(calls) == 3
+
+
+@requires_temp_custody
+@pytest.mark.skipif(os.name != 'posix', reason='POSIX native custody')
+def test_custody_accepts_only_the_named_sticky_temp_root(monkeypatch, tmp_path):
+    # Simulates macOS, where the canonical shared temp root is /private/tmp.
+    assert (Path('/private/tmp') in native_acceptance._STICKY_TEMP_ROOTS) is (sys.platform == 'darwin')
+    shared = tmp_path / 'shared'
+    shared.mkdir()
+    shared.chmod(0o1777)
+    root = shared / 'root'
+    root.mkdir(mode=0o700)
+    with pytest.raises(NativeAcceptanceError, match='custody differs'):
+        _custody(root, directory=True)
+    monkeypatch.setattr(native_acceptance, '_STICKY_TEMP_ROOTS', native_acceptance._STICKY_TEMP_ROOTS | {shared})
+    assert _custody(root, directory=True) == root
+    shared.chmod(0o777)
+    with pytest.raises(NativeAcceptanceError, match='custody differs'):
+        _custody(root, directory=True)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='managed home is Linux-only')
