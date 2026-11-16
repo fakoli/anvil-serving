@@ -46,6 +46,7 @@ import time
 import urllib.parse
 import uuid
 from ..media.assets import ASSET_PATH, MAX_ASSET_BYTES, MEDIA_FORMATS
+from ..http_host import request_host_allowed
 from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -497,7 +498,8 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                   workload_clock: Optional[Callable[[], datetime]] = None,
                   server_config=None, api_keys=None, connect_keys=None, connect_verifier=None,
                   usage_store=None, usage_run_id=None, usage_authority=None, webui_bindings=(), usage_domain_id=None, usage_metrics=None, router_admission=None,
-                  media_signed_downloads: str | None = None, route_manager=None):
+                  media_signed_downloads: str | None = None, route_manager=None,
+                  bind_host: str = "127.0.0.1"):
     if gateway is not None:
         signed_downloads = (os.environ.get("ANVIL_MEDIA_SIGNED_DOWNLOADS", "0")
                             if media_signed_downloads is None else media_signed_downloads)
@@ -545,6 +547,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         # stdlib HTTP entry retains ownership through its later final flush.
         def dispatch(self, *args, **kwargs):
             try:
+                if auth_token is None and not request_host_allowed(self.headers, bind_host):
+                    # No credential to check: refuse names a rebinding page can send.
+                    self.close_connection = True
+                    self._error(403, "forbidden_host",
+                                "Host header is not allowed without front-door authentication")
+                    return None
                 return operation(self, *args, **kwargs)
             finally:
                 if not getattr(self, "_anvil_handler_active", False):
@@ -3487,7 +3495,7 @@ def make_server(host: str, port: int,
             workload_host, workload_registry, workload_clock,
             server_config, api_keys, connect_keys, connect_verifier,
             usage_store, usage_run_id, usage_authority, webui_bindings, usage_domain_id, usage_metrics, router_admission,
-                    media_signed_downloads, route_manager,
+                    media_signed_downloads, route_manager, bind_host=host,
         ),
     )
     httpd.anvil_router_admission = router_admission
