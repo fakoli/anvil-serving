@@ -53,7 +53,7 @@ class ProxyServeConfig:
 
 class ProxyServe:
     """Bring-up/tear-down + readiness for the Docker-managed realtime proxy
-    container exposing the Realtime WebSocket endpoint plus a ``/usage`` health
+    container exposing the Realtime WebSocket endpoint plus a ``/healthz`` health
     route.
 
     NEVER runs `docker` itself -- delegates to
@@ -70,10 +70,10 @@ class ProxyServe:
         _open: Optional[Callable[..., Any]] = None,
     ) -> None:
         self.config = config
-        # The proxy's health route is `/usage`, not the OpenAI `/v1/models`
+        # The proxy's token-free health route is `/healthz`, not the OpenAI `/v1/models`
         # ServeLifecycle probes by default -- pass an explicit ready_url so the
         # readiness half checks the right endpoint.
-        ready_url = config.ready_url or (config.base_url.rstrip("/") + "/usage")
+        ready_url = config.ready_url or (config.base_url.rstrip("/") + "/healthz")
         self._lifecycle = ServeLifecycle(
             config.serve_name, manifest_path=config.manifest_path,
             ready_url=ready_url, _run=_run, _open=_open,
@@ -89,7 +89,7 @@ class ProxyServe:
         return self._lifecycle.tear_down(dry_run=dry_run)
 
     def wait_ready(self, *, timeout: float = DEFAULT_READY_TIMEOUT) -> ServeReadiness:
-        """Poll docker state plus the proxy's ``/usage`` readiness probe."""
+        """Poll docker state plus the proxy's ``/healthz`` readiness probe."""
         return self._lifecycle.wait_ready(self.config.base_url, timeout=timeout)
 
     @property
