@@ -198,6 +198,10 @@ def commands() -> CommandNode:
                     ),
                     _option("--host", summary="Router bind host.", value_name="ADDRESS"),
                     _option("--port", summary="Router bind port.", value_name="PORT"),
+                    _option(
+                        "--allow-unauthenticated-public-bind",
+                        summary="Start on a non-loopback host without [server].auth_env (not recommended).",
+                    ),
                 ),
             ),
             _resource_node(
