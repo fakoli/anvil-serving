@@ -50,6 +50,11 @@ def _trusted_admin_groups(runtime):
     return frozenset(groups)
 
 
+# The shared sticky temporary root by canonical name: macOS /tmp is a root-owned
+# symlink to /private/tmp, and custody only accepts canonical paths.
+_STICKY_TEMP_ROOTS = frozenset({Path("/tmp"), *([Path("/private/tmp")] if sys.platform == "darwin" else [])})
+
+
 def _custody(path, *, directory=False, digest=None, trusted_admin_groups=frozenset()):
     path = Path(path)
     if not path.is_absolute() or ".." in path.parts or path.resolve() != path:
@@ -59,7 +64,7 @@ def _custody(path, *, directory=False, digest=None, trusted_admin_groups=frozens
         writable = (info.st_mode & 0o002
             or info.st_mode & 0o020 and info.st_gid not in trusted_admin_groups)
         if (stat.S_ISLNK(info.st_mode) or info.st_uid not in {0, os.geteuid()}
-                or writable and not (current == Path('/tmp') and info.st_mode & stat.S_ISVTX)
+                or writable and not (current in _STICKY_TEMP_ROOTS and info.st_mode & stat.S_ISVTX)
                 or current != path and not stat.S_ISDIR(info.st_mode)):
             raise NativeAcceptanceError("native runtime custody differs")
     info = path.stat()

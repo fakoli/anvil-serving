@@ -163,8 +163,9 @@ def test_failed_custody_handoff_stops_real_child_before_claim_or_preparation(mon
     try:
         with monkeypatch.context() as fault:
             fault.setattr(benchmark_worker, "atomic_write_json", fail_write)
-            if failure == "identity":
-                fault.setattr(benchmark_worker, "_process_start_identity", lambda _pid: None)
+            # The write cases need a start identity even where procfs is absent (macOS).
+            fault.setattr(benchmark_worker, "_process_start_identity",
+                          lambda _pid: None if failure == "identity" else "test-start")
             with pytest.raises(BenchmarkJobError) as exc:
                 launch_benchmark_job(
                     path=store.path, run_root=store.run_root, run_id="worker-run", popen=popen,
