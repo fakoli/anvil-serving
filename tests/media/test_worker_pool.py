@@ -289,8 +289,13 @@ time.sleep(60)
         parent.wait(timeout=3)
         deadline = time.monotonic() + 3
         while time.monotonic() < deadline:
-            path = Path(f"/proc/{child}/stat")
-            if not path.exists() or path.read_text().rsplit(")", 1)[1].split()[0] == "Z":
+            try:
+                # The child can exit between checks; reading a vanished /proc
+                # entry raises ESRCH (ProcessLookupError), which means it is gone.
+                state = Path(f"/proc/{child}/stat").read_text().rsplit(")", 1)[1].split()[0]
+            except (FileNotFoundError, ProcessLookupError):
+                break
+            if state == "Z":
                 break
             time.sleep(.05)
         else:

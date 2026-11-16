@@ -35,10 +35,11 @@ type browserAuthorityStub struct {
 type loginCaptureAuthority struct {
 	*browserAuthorityStub
 	returnPaths      []string
+	clients          []string
 	completionReturn string
 }
 
-func (s *loginCaptureAuthority) Begin(resource, returnPath, binding string) (session.Challenge, error) {
+func (s *loginCaptureAuthority) Begin(resource, returnPath, binding, client string) (session.Challenge, error) {
 	if resource != "dash" || binding == "" {
 		return session.Challenge{}, session.ErrDenied
 	}
@@ -46,6 +47,7 @@ func (s *loginCaptureAuthority) Begin(resource, returnPath, binding string) (ses
 	s.begin++
 	s.binding = binding
 	s.returnPaths = append(s.returnPaths, returnPath)
+	s.clients = append(s.clients, client)
 	s.mu.Unlock()
 	return session.Challenge{AuthorizationURL: "https://idp.example.test/authorize?state=opaque", Binding: binding}, nil
 }
@@ -62,7 +64,7 @@ func newBrowserAuthorityStub() *browserAuthorityStub {
 	return &browserAuthorityStub{admitted: session.Admission{SessionID: "session-id", SessionGeneration: 1, Principal: "human-id", PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: "epoch", ExpiresAt: time.Date(2026, 9, 9, 13, 0, 0, 0, time.UTC)}}
 }
 
-func (s *browserAuthorityStub) Begin(resource, returnPath, binding string) (session.Challenge, error) {
+func (s *browserAuthorityStub) Begin(resource, returnPath, binding, client string) (session.Challenge, error) {
 	if resource != "dash" || returnPath != "/report" || binding == "" {
 		return session.Challenge{}, session.ErrDenied
 	}

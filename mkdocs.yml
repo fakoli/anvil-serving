@@ -144,6 +144,7 @@ nav:
           - Architecture: ARCHITECTURE.md
           - Configuration: CONFIGURATION.md
           - Terminology: TERMINOLOGY.md
+          - Migrating to generic names: MIGRATION-GENERIC-NAMES.md
           - Public product and private operator state: OPERATOR-PRIVACY.md
       - Command-line reference:
           - Command index: CLI.md
