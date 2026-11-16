@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -8,6 +9,8 @@ from anvil_serving import model_cache_volume as volumes
 from tests.test_model_cache_volume import Docker, VOLUME, _cache, _home as basic_home
 
 fcntl = pytest.importorskip("fcntl", reason="whole-cache discard requires POSIX locks")
+# Discard reads Linux /proc/self/mountinfo as its mount authority and refuses without it.
+pytestmark = pytest.mark.skipif(not Path("/proc/self/mountinfo").exists(), reason="whole-cache discard requires Linux mountinfo")
 
 def _home(tmp_path):
     return basic_home(tmp_path, 'schema_version = 1\nid = "test"\n')

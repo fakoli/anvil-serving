@@ -11,6 +11,14 @@ from anvil_serving.control_plane.controller.propagation_job_store import Propaga
 from anvil_serving.controller_diagnostics import ChildCapture
 
 
+def _local_docker_supported():
+    try:
+        active.local_docker_prefix()
+    except ValueError:  # the product refuses local Docker observation off Linux and Windows
+        return False
+    return True
+
+
 def _inspect():
     binding = {"HostIp": "127.0.0.1", "HostPort": "9123"}
     return {"Id": "a" * 64, "Image": "sha256:" + "b" * 64,
@@ -39,6 +47,7 @@ class Opener:
         return Response(self.document[0])
 
 
+@pytest.mark.skipif(not _local_docker_supported(), reason="local Docker observation is unsupported on this platform")
 def test_active_identity_requires_exact_runtime_binding(monkeypatch):
     approved = _inspect()
     observed = copy.deepcopy(approved)

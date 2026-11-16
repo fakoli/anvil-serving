@@ -16,6 +16,9 @@ from anvil_serving import memory_access
 from anvil_serving.connect import manage, memory_backend, user_delete, user_memory, users
 from tests.router.key_fixtures import tmp_path as tmp_path
 
+# Connect refuses native user-memory provisioning and its CLI outside Linux amd64.
+connect_native = pytest.mark.skipif(not manage.supported_platform(), reason="Connect native operations require Linux amd64")
+
 
 @pytest.fixture
 def personal_memory(tmp_path, monkeypatch):
@@ -50,6 +53,7 @@ def personal_memory(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("damage", ["missing_receipt", "wrong_principal", "wrong_marker", "missing_bank"])
+@connect_native
 def test_personal_opt_in_requires_existing_exact_receipt_and_live_ownership(personal_memory, monkeypatch, damage):
     fixture = personal_memory
     fixture.data["memory"]["shared_banks"] = {"owner": {fixture.bank: ["list", "invalidate"]}}
@@ -71,6 +75,7 @@ def test_personal_opt_in_requires_existing_exact_receipt_and_live_ownership(pers
     assert all(method == "GET" for _, method in fixture.calls[before:])
 
 
+@connect_native
 def test_other_accounts_personal_bank_remains_an_explicit_shared_grant(personal_memory):
     fixture = personal_memory
     receipt = fixture.receipt.read_bytes()
@@ -120,6 +125,7 @@ def test_permanent_deletion_withdraws_username_grants_before_idp_work(tmp_path, 
         advance(json.loads(declaration.read_text()))
 
 
+@connect_native
 def test_private_installation_resolves_email_and_cli_previews(tmp_path, monkeypatch):
     from anvil_serving.connect import config
     from anvil_serving.connect.cli import dispatch

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -57,6 +58,8 @@ def test_lil_usage_label_does_not_prove_tokens_and_native_defaults_are_unknown()
 
 
 def prepared_plan(tmp_path, monkeypatch, runner="aiperf"):
+    if sys.platform != "linux":  # mirrors verify_performance_plan's own platform refusal
+        pytest.skip("managed performance execution requires Linux")
     from anvil_serving.benchmarking import performance_prepare as prep
     profile = load_profile("pilot-v2")
     cache = tmp_path / "cache"
