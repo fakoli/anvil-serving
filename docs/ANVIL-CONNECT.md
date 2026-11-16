@@ -134,6 +134,11 @@ of Connect's opaque browser admission session. It accepts whole seconds from
 60 through 86400 and defaults to 28800 (eight hours) when omitted. It neither
 changes the IdP login lifetime nor native application cookies.
 
+A Connect session lasts up to this lifetime regardless of later identity-provider
+changes. Disabling or deleting a user at the IdP does not end sessions already
+issued, so disable the user in Connect as well for immediate effect. Connect
+logout ends only the Connect session, not the IdP session.
+
 The managed manifest currently requires at least one browser resource and
 renders one Authelia OIDC client with all declared callback URLs. Standalone
 native API-only declarations are supported by the Go runtime; an API-only

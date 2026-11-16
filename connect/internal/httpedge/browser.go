@@ -628,6 +628,7 @@ func (b *Browser) logout(w http.ResponseWriter, r *http.Request, resource browse
 	if resource.declaration.Rule.NativeAuth == "signed-identity" {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		denyFraming(w)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("<!doctype html><title>Signed out</title><p>Signed out.</p><p><a href=\"" + html.EscapeString(resource.declaration.Rule.PathPrefix) + "\">Sign in again</a></p>"))
@@ -834,6 +835,7 @@ func (b *Browser) deviceApproval(w http.ResponseWriter, r *http.Request, resourc
 		csrf := b.devices.CSRF(admitted, binding)
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		denyFraming(w)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = io.WriteString(w, "<!doctype html><title>Approve device</title><h1>Approve device</h1><p>"+html.EscapeString(binding.Label)+" requests "+html.EscapeString(binding.API.ID)+" ("+html.EscapeString(strings.Join(binding.Methods, ", "))+")</p><form method=post><label>Code <input name=user_code autocomplete=one-time-code required></label><input type=hidden name=csrf value=\""+html.EscapeString(csrf)+"\"><button name=decision value=approve>Approve</button><button name=decision value=deny>Deny</button></form>")
 		return
@@ -858,6 +860,7 @@ func (b *Browser) deviceApproval(w http.ResponseWriter, r *http.Request, resourc
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	denyFraming(w)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = io.WriteString(w, "<!doctype html><title>Device decision recorded</title><p>Device decision recorded.</p>")
 }

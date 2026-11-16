@@ -14,6 +14,7 @@
   },
   "binary": "/usr/local/bin/anvil-connect",
   "caddy": {
+    "listen": ":443",
     "service_name": "anvil-connect-caddy",
     "tls": {
       "certificate_file": "/etc/anvil-connect/tls/service.pem",
