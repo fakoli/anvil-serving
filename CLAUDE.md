@@ -191,9 +191,10 @@ write shell wrappers for normal use. Review documentation against this rule.
    it preserves the selected alias with no substitution, fallback, promotion,
    provider, or configuration change.
 6. Do not claim a local qualification without recorded test evidence.
-7. Do not modify `specs/archive/`.
 
 ## Agent model strategy
+
+This section describes the maintainers' development workflow, not a product requirement for users.
 
 Use model depth at decision boundaries, then reduce it for bounded execution:
 
