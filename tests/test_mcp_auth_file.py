@@ -176,3 +176,21 @@ def test_live_windows_protected_file_is_read_without_exposing_contents():
         assert auth_file.read_private_auth_file(
             str(candidate).replace("\\", "/"), max_bytes=64
         ) == b"credential\r\n"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX ancestor modes")
+def test_group_writable_parent_refusal_names_directory_and_remedy(tmp_path):
+    tmp_path.chmod(0o700)
+    parent = tmp_path / "shared"
+    parent.mkdir()
+    parent.chmod(0o770)
+    token = parent / "controller.token"
+    token.write_text("credential\n", encoding="utf-8")
+    token.chmod(0o600)
+    with pytest.raises(auth_file.AuthFileError) as raised:
+        auth_file.read_private_auth_file(str(token), max_bytes=1024)
+    message = str(raised.value)
+    assert str(parent) in message
+    assert f"chmod g-w,o-w {parent}" in message
+    parent.chmod(0o700)
+    assert auth_file.read_private_auth_file(str(token), max_bytes=1024) == b"credential\n"

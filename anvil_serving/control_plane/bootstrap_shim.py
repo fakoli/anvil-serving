@@ -9,6 +9,7 @@ from __future__ import annotations
 import errno
 import hashlib
 import os
+import shlex
 import stat
 import struct
 import subprocess
@@ -99,6 +100,16 @@ def _reader_refusal(code: BootstrapErrorCode) -> BootstrapContractError:
         BootstrapErrorCode.UNSUPPORTED_PLATFORM: "trusted file platform is unsupported",
     }
     return BootstrapContractError(code.value, messages[code])
+
+
+def writable_directory_refusal(directory: str) -> BootstrapContractError:
+    """Name the offending directory and the fix; the refusal itself is unchanged."""
+
+    return BootstrapContractError(
+        BootstrapErrorCode.PRECONDITION_FAILED.value,
+        f"trusted file ancestor {directory!r} is group- or world-writable; "
+        f"run: chmod g-w,o-w {shlex.quote(directory)}",
+    )
 
 
 def _sid(authority: int, *subauthorities: int) -> bytes:
@@ -684,12 +695,18 @@ def _linux_open_trusted_file(
         _require_permission(root, ancestor=True, require_readonly=False)
         ancestors.append(_LinuxAnchor(root, None, None, _linux_object_identity(root_metadata)))
         parent = root
-        for component in components[:-1]:
+        for index, component in enumerate(components[:-1]):
             descriptor = os.open(component, directory_flags, dir_fd=parent)
             descriptors.append(descriptor)
             metadata = os.fstat(descriptor)
             if not stat.S_ISDIR(metadata.st_mode):
                 raise _reader_refusal(BootstrapErrorCode.UNSAFE_PATH)
+            if (
+                inspect_opened_permissions(descriptor, ancestor=True)
+                is BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
+                and metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+            ):
+                raise writable_directory_refusal("/" + "/".join(components[: index + 1]))
             _require_permission(descriptor, ancestor=True, require_readonly=False)
             ancestors.append(
                 _LinuxAnchor(descriptor, parent, component, _linux_object_identity(metadata))

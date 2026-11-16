@@ -71,6 +71,23 @@ def check_python(min_version=(3, 11)):
     return Check("Python >= %d.%d" % min_version, ok, detail, required=True)
 
 
+def managed_serves_present():
+    """True when the config home declares managed serves (non-empty serves.toml)."""
+    try:
+        with open(config_path("serves.toml"), encoding="utf-8") as f:
+            return bool(f.read().strip())
+    except OSError:
+        return False
+
+
+def _optionalize(check):
+    """Downgrade a failed docker check to optional on gateway-only homes."""
+    if not check.ok:
+        check.required = False
+        check.detail += " (optional: no managed serves in config home)"
+    return check
+
+
 def check_docker(_run=subprocess.run):
     try:
         r = _run(["docker", "--version"], capture_output=True, text=True)
@@ -149,10 +166,12 @@ def run_checks(config_path=None, config_explicit=False, _run=subprocess.run,
     """The full check list. `config_path=None` skips the tier-health section
     entirely; a missing (non-explicit) default config is skipped quietly —
     only an EXPLICITLY requested missing config is a FAILED check."""
+    docker_checks = [check_docker(_run=_run), check_docker_compose(_run=_run)]
+    if not managed_serves_present():
+        docker_checks = [_optionalize(c) for c in docker_checks]
     checks = [
         check_python(),
-        check_docker(_run=_run),
-        check_docker_compose(_run=_run),
+        *docker_checks,
         check_nvidia_runtime(_run=_run),
         check_gpu_visibility(_run=_gpu_run),
     ]

@@ -50,3 +50,44 @@ def test_doctor_cli_required_failure_exits_nonzero(monkeypatch, capsys):
     err_out = capsys.readouterr().out
     assert "[FAIL] x" in err_out
     assert "FAILED" in err_out
+
+
+# ---- docker required only with managed serves ------------------------------------
+
+def _no_docker(*a, **k):
+    raise FileNotFoundError("docker")
+
+
+def _docker_checks(checks):
+    return [c for c in checks if c.name in ("docker", "docker compose v2")]
+
+
+def test_docker_optional_on_gateway_only_home(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    checks = doctor.run_checks(_run=_no_docker, _gpu_run=lambda *a, **k: "")
+    docker = _docker_checks(checks)
+    assert len(docker) == 2
+    assert all(not c.required and not c.ok for c in docker)
+    assert all("optional" in c.detail for c in docker)
+    assert all(c.required is False or c.ok for c in checks if "NVIDIA" in c.name)
+
+
+def test_docker_required_with_managed_serves(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    (tmp_path / "serves.toml").write_text('[serves.a]\nimage = "x"\n', encoding="utf-8")
+    docker = _docker_checks(doctor.run_checks(_run=_no_docker, _gpu_run=lambda *a, **k: ""))
+    assert len(docker) == 2 and all(c.required and not c.ok for c in docker)
+
+
+def test_docker_optional_with_empty_serves_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    (tmp_path / "serves.toml").write_text("  \n", encoding="utf-8")
+    docker = _docker_checks(doctor.run_checks(_run=_no_docker, _gpu_run=lambda *a, **k: ""))
+    assert all(not c.required for c in docker)
+
+
+def test_doctor_cli_exits_zero_without_docker_on_gateway_only_home(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(tmp_path))
+    monkeypatch.setattr(doctor.subprocess, "run", _no_docker)
+    monkeypatch.setattr(doctor._gpus, "list_gpus", lambda **k: [])
+    assert doctor.main(["--no-config"]) == 0
