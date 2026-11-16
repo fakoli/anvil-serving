@@ -105,6 +105,18 @@ anvil-serving init --compute-a-gpu-uuid GPU-... --compute-b-gpu-uuid GPU-... --t
 anvil-serving init --no-detect-host
 ```
 
+To put the gateway in front of a server you already run (Ollama, LM Studio,
+llama-server, vLLM; no Docker, GPU, or model directory needed):
+
+```bash
+anvil-serving init --gateway-only --upstream http://127.0.0.1:11434/v1 --model llama3.2
+```
+
+This writes only `router.toml` (one alias, default `llm.primary`, to one tier;
+`--alias` and `--context-limit`, default 8192, are optional) and generates
+`ANVIL_ROUTER_TOKEN` in `.env` if unset. Use `127.0.0.1`, not `localhost`. If
+the upstream needs an API key, export `ANVIL_UPSTREAM_API_KEY`.
+
 For a one-model configuration:
 
 ```bash
