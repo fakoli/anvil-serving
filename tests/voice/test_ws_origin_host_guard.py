@@ -111,6 +111,77 @@ def test_foreign_host_without_token_cannot_read_introspection(server):
         thread.join(timeout=5)
 
 
+def _get_status(port: int, path: str, extra: str = "") -> int:
+    with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+        sock.settimeout(5)
+        sock.sendall(("GET %s HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n%s\r\n" % (path, port, extra)).encode("ascii"))
+        return int(sock.recv(4096).split(b" ", 2)[1])
+
+
+@pytest.mark.parametrize("path", ["/pool", "/usage"])
+def test_introspection_requires_configured_token(server, monkeypatch, path):
+    monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "fixture-realtime-token")
+    port = server(
+        token_env="ANVIL_TEST_WS_TOKEN",
+        extra_routes={"/pool": lambda: {"size": 1}, "/usage": lambda: {"claims_total": 0}},
+    )
+    assert _get_status(port, path) == 401
+    assert _get_status(port, path, "Authorization: Bearer wrong-token\r\n") == 401
+    assert _get_status(port, path, "Authorization: Bearer fixture-realtime-token\r\n") == 200
+
+
+def _get(port: int, path: str, host: str | None = None) -> bytes:
+    with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+        sock.settimeout(5)
+        request = "GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n" % (path, host or "127.0.0.1:%d" % port)
+        sock.sendall(request.encode("ascii"))
+        chunks = []
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                return b"".join(chunks)
+            chunks.append(chunk)
+
+
+def test_healthz_needs_no_token_and_reveals_nothing(server, monkeypatch):
+    monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "fixture-realtime-token")
+    port = server(
+        token_env="ANVIL_TEST_WS_TOKEN",
+        extra_routes={"/pool": lambda: {"size": 7}, "/usage": lambda: {"claims_total": 42}},
+    )
+    response = _get(port, "/healthz")
+    assert response.startswith(b"HTTP/1.1 200")
+    assert response.split(b"\r\n\r\n", 1)[1] == b'{"ok": true}'
+
+
+def test_healthz_without_token_keeps_host_rule(server):
+    port = server()
+    assert _get(port, "/healthz").startswith(b"HTTP/1.1 200")
+    assert _get(port, "/healthz", host="attacker.example").startswith(b"HTTP/1.1 403")
+
+
+def test_token_configured_proxy_becomes_ready_via_healthz(server, monkeypatch, tmp_path):
+    from anvil_serving.voice.serves.proxy import ProxyServe, ProxyServeConfig
+
+    monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "fixture-realtime-token")
+    port = server(token_env="ANVIL_TEST_WS_TOKEN", extra_routes={"/usage": lambda: {"claims_total": 0}})
+    config = ProxyServeConfig(
+        base_url="http://127.0.0.1:%d" % port, model="proxy", manifest_path=str(tmp_path / "absent.toml")
+    )
+    assert ProxyServe(config).wait_ready(timeout=5).ready is True
+
+
+def test_explicit_usage_ready_url_still_works_without_token(server, tmp_path):
+    from anvil_serving.voice.serves.proxy import ProxyServe, ProxyServeConfig
+
+    port = server(extra_routes={"/usage": lambda: {"claims_total": 0}})
+    config = ProxyServeConfig(
+        base_url="http://127.0.0.1:%d" % port, model="proxy",
+        manifest_path=str(tmp_path / "absent.toml"), ready_url="http://127.0.0.1:%d/usage" % port,
+    )
+    assert ProxyServe(config).wait_ready(timeout=5).ready is True
+
+
 def test_foreign_host_with_valid_token_upgrades(server, monkeypatch):
     monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "fixture-realtime-token")
     port = server(token_env="ANVIL_TEST_WS_TOKEN")
