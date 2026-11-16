@@ -151,14 +151,22 @@ def plan_launches(args: list[str], shards: int, coverage: bool, base: Path) -> l
     for index in range(count):
         work = base / f"shard{index}"
         work.mkdir(mode=0o700)
-        shard_flags = [a.removesuffix(".xml") + f"-shard{index}.xml" if a.startswith("--junitxml=") else a
-                       for a in flags]
+        # JUnit goes under the private dir so the run never dirties the tree; main() copies it out.
+        shard_flags = [f"--junitxml={work / 'junit.xml'}" if a.startswith("--junitxml=") else a for a in flags]
         env = {name: str(work) for name in ("TMPDIR", "TEMP", "TMP")}
         if coverage:
             env["COVERAGE_FILE"] = str(work / ".coverage")
         launches.append(([*runner, *shard_flags, *files[index::count], "--basetemp", str(work / "fixtures")],
                          env, base / f"shard{index}.log"))
     return launches
+
+
+def publish_junit(args: list[str], base: Path) -> None:
+    """Copy each shard's junit file next to the requested --junitxml path as <stem>-shardK.xml."""
+    wanted = next((a.split("=", 1)[1] for a in args if a.startswith("--junitxml=")), None)
+    for source in sorted(base.glob("shard*/junit.xml")):
+        if wanted:
+            shutil.copyfile(source, wanted.removesuffix(".xml") + f"-{source.parent.name}.xml")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -179,6 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     write_receipt(options.receipt, receipt)
     base_temp = None
     processes: list = []
+    printed: set = set()
     previous_handler = signal.getsignal(signal.SIGTERM)
 
     def interrupted(_signum, _frame):
@@ -235,6 +244,7 @@ def main(argv: list[str] | None = None) -> int:
             code = code or shard_code
             if stream:
                 stream.close()
+                printed.add(log)
                 print(f"===== shard {log.name} exit {shard_code} =====", flush=True)
                 print(log.read_text(encoding="utf-8", errors="replace"), end="", flush=True)
         if options.coverage and code == 0:
@@ -276,7 +286,14 @@ def main(argv: list[str] | None = None) -> int:
         signal.signal(signal.SIGTERM, previous_handler)
         receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
         write_receipt(options.receipt, receipt)
+        for _process, log, stream in processes:
+            if log and log not in printed and log.exists():
+                if stream:
+                    stream.close()
+                print(f"===== shard {log.name} (interrupted) =====", flush=True)
+                print(log.read_text(encoding="utf-8", errors="replace"), end="", flush=True)
         if base_temp:
+            publish_junit(args, Path(base_temp))
             shutil.rmtree(base_temp, ignore_errors=True)
 
 
