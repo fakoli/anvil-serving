@@ -581,13 +581,15 @@ def test_plan_and_stage_reject_symlink_roots_markers_and_staging(tmp_path: Path)
         stage(isolated_manifest(), root)
 
 
-def test_edge_listen_address_is_explicit() -> None:
+def test_edge_listen_omitted_defaults_public_with_warning() -> None:
     value = isolated_manifest()
     assert value["caddy"]["listen"] == ":443"
     assert json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["listen"] == [":443"]
     del value["caddy"]["listen"]
-    with pytest.raises(ManifestError, match="listen"):
-        validate_manifest(value)
+    with pytest.warns(UserWarning, match="all interfaces"):
+        assert "listen" not in validate_manifest(value)["caddy"]
+    with pytest.warns(UserWarning, match="all interfaces"):
+        assert json.loads(render(value)["files"]["caddy.json"])["apps"]["http"]["servers"]["anvil_connect"]["listen"] == [":443"]
 
 
 def test_loopback_edge_keeps_tls_without_implicit_public_listeners() -> None:

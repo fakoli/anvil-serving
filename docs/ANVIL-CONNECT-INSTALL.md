@@ -66,13 +66,13 @@ directory. Managed `up --upgrade` checks retained binary identity and preserves
 its own selected-service rollback. Installing a newer bundle only updates the
 CLI links; it does not change a running deployment.
 
-Set `caddy.listen` explicitly; omitting it fails validation so the edge never
-binds publicly by accident. For an HTTPS tunnel origin use a loopback address,
-for example `127.0.0.1:19443`, with provided certificates. This disables
+Set `caddy.listen` explicitly. When it is omitted the edge listens on `:443` on
+all interfaces, which bypasses Cloudflare when Cloudflare is meant to front it,
+and validation emits a warning. For an HTTPS tunnel origin use a loopback
+address, for example `127.0.0.1:19443`, with provided certificates. This disables
 implicit public redirect listeners while retaining TLS. Configure the upstream
 tunnel to verify that certificate and its expected server name. Use `":443"`
-only for deliberate direct exposure on all interfaces, which bypasses any
-tunnel or proxy in front.
+only for deliberate direct exposure on all interfaces.
 
 After connector enrollment, `anvil-connect-ctl identity` can inspect the pending
 public fingerprint before any connector service activation. Approval remains
