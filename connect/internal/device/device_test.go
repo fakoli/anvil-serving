@@ -10,6 +10,7 @@ import (
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/ratelimit"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 )
@@ -532,28 +533,28 @@ func TestGlobalStartBucketBoundsStoredRecords(t *testing.T) {
 // least recently used one so a new client is still admitted.
 func TestStartClientTableEvictsLeastRecentlyUsed(t *testing.T) {
 	authority, _, _, _, _ := fixture(t)
-	authority.startGlobal = newLimiter(1<<20, time.Nanosecond, 1)
+	authority.startGlobal = ratelimit.New(1<<20, time.Nanosecond, 1)
 	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
 	for i := 0; i < 3*maxStartClients; i++ {
 		now = now.Add(time.Millisecond)
 		if !authority.takeStartToken(fmt.Sprintf("client-%d", i), now) {
 			t.Fatalf("client %d refused", i)
 		}
-		if got := len(authority.startClients.buckets); got > maxStartClients {
+		if got := authority.startClients.Len(); got > maxStartClients {
 			t.Fatalf("client table grew to %d, bound %d", got, maxStartClients)
 		}
 	}
 	oldest := fmt.Sprintf("client-%d", 2*maxStartClients)
-	if _, ok := authority.startClients.buckets[oldest]; !ok {
+	if !authority.startClients.Tracked(oldest) {
 		t.Fatal("least recently used survivor missing before eviction")
 	}
 	if !authority.takeStartToken("new-client", now.Add(time.Millisecond)) {
 		t.Fatal("full table of active clients refused a new client")
 	}
-	if _, ok := authority.startClients.buckets[oldest]; ok {
+	if authority.startClients.Tracked(oldest) {
 		t.Fatal("full table did not forget its least recently used client")
 	}
-	if got := len(authority.startClients.buckets); got != maxStartClients {
+	if got := authority.startClients.Len(); got != maxStartClients {
 		t.Fatalf("table holds %d clients, want %d", got, maxStartClients)
 	}
 }

@@ -39,8 +39,8 @@ func has(header http.Header, wanted string) bool {
 // peer. Cloudflare Tunnel reaches that edge only over loopback and Cloudflare
 // overwrites Cf-Connecting-Ip, so that header is believed only when the edge
 // peer is loopback; a client reaching the edge directly cannot spoof either.
-// IPv6 clients are grouped by /56, the block a customer site is commonly
-// delegated, so one /48 yields at most 256 identities.
+// IPv6 clients are grouped by /48, the largest block a site is normally
+// delegated, so an address allocation cannot mint identities cheaply.
 func clientIdentity(r *http.Request) string {
 	peer := singleIP(values(r.Header, "X-Forwarded-For"))
 	if peer == nil {
@@ -59,7 +59,7 @@ func clientIdentity(r *http.Request) string {
 		return ""
 	}
 	if peer.To4() == nil {
-		peer = peer.Mask(net.CIDRMask(56, 128))
+		peer = peer.Mask(net.CIDRMask(48, 128))
 	}
 	return peer.String()
 }

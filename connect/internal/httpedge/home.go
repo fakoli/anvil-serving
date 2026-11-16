@@ -3,6 +3,7 @@ package httpedge
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sort"
 	"strings"
@@ -244,6 +245,10 @@ func (h *Home) login(w http.ResponseWriter, r *http.Request, cookies browserCook
 		return
 	}
 	challenge, err := h.authority.BeginPortal(binding, clientIdentity(r))
+	if errors.Is(err, session.ErrRateLimited) {
+		browserFailure(w, http.StatusTooManyRequests)
+		return
+	}
 	if err != nil || challenge.Binding != binding || !safeAuthorizationURL(challenge.AuthorizationURL) {
 		browserFailure(w, http.StatusUnauthorized)
 		return

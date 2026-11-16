@@ -579,6 +579,10 @@ func (b *Browser) login(w http.ResponseWriter, r *http.Request, resource browser
 		return
 	}
 	challenge, err := b.authority.Begin(resource.declaration.Rule.ID, returnPath, binding, clientIdentity(r))
+	if errors.Is(err, session.ErrRateLimited) {
+		browserFailure(w, http.StatusTooManyRequests)
+		return
+	}
 	if err != nil || challenge.Binding != binding || !safeAuthorizationURL(challenge.AuthorizationURL) {
 		browserFailure(w, http.StatusUnauthorized)
 		return

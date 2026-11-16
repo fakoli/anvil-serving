@@ -18,6 +18,7 @@ import (
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/ratelimit"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 	"golang.org/x/oauth2"
 )
@@ -135,6 +136,23 @@ func ownedOIDCClient(input *http.Client, issuer *url.URL) (*http.Client, error) 
 	clone.TLSHandshakeTimeout = oidcTimeout
 	clone.MaxResponseHeaderBytes = maxOIDCHeaderBytes
 	return &http.Client{Transport: boundedTransport{base: clone, issuer: issuer}, Timeout: oidcTimeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, nil
+}
+
+// takeLogin spends one of client's sign-in starts at the authority clock.
+// ponytail: requests without an edge-set client (only non-edge entries such as
+// the local tunnel entry) are exempt rather than sharing one bucket; the pool's
+// per-client cap and eviction still bound them.
+func (m *Manager) takeLogin(client string) bool {
+	if client == "" {
+		return true
+	}
+	var now time.Time
+	if m.state.View(func(tx *store.Tx) error { now = tx.Now(); return nil }) != nil {
+		return false
+	}
+	m.loginMu.Lock()
+	defer m.loginMu.Unlock()
+	return ratelimit.Take(now, ratelimit.Key{Limiter: m.loginClients, Key: client})
 }
 
 // perClient bounds the pending flows one edge-observed client may hold. It is

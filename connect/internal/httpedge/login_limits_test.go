@@ -50,7 +50,7 @@ func TestClientIdentityTrustsOnlyEdgeSetPeer(t *testing.T) {
 		{"tunnel without header", "@", map[string][]string{"X-Forwarded-For": {"::1"}}, "::"},
 		{"ambiguous forwarded list", "192.0.2.4:443", map[string][]string{"X-Forwarded-For": {"203.0.113.9, 198.51.100.7"}}, "192.0.2.4"},
 		{"repeated forwarded header", "192.0.2.4:443", map[string][]string{"X-Forwarded-For": {"203.0.113.9", "198.51.100.7"}}, "192.0.2.4"},
-		{"ipv6 grouped by /56", "@", map[string][]string{"X-Forwarded-For": {"2001:db8:1:2ff:aaaa::1"}}, "2001:db8:1:200::"},
+		{"ipv6 grouped by /48", "@", map[string][]string{"X-Forwarded-For": {"2001:db8:1:2ff:aaaa::1"}}, "2001:db8:1::"},
 		{"unix socket without edge header", "@", nil, ""},
 	}
 	for _, c := range cases {

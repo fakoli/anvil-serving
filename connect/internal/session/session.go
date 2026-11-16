@@ -17,11 +17,13 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/ratelimit"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 	"golang.org/x/oauth2"
 )
@@ -31,6 +33,7 @@ var (
 	ErrConfiguration = errors.New("invalid browser session configuration")
 	ErrUnavailable   = errors.New("browser session authority unavailable")
 	ErrConflict      = errors.New("browser authority changed")
+	ErrRateLimited   = errors.New("browser sign-in rate limited")
 )
 
 const (
@@ -175,7 +178,18 @@ type Manager struct {
 	endpoint               oauth2.Endpoint
 	client                 *http.Client
 	portalHost             string
+	loginMu                sync.Mutex
+	loginClients           *ratelimit.Limiter
 }
+
+// Each edge-observed client may start a few sign-ins at once and then one per
+// loginClientRefill, so no client can churn the pending pool. The shared
+// pool's eviction order still decides which flow is replaced when full.
+const (
+	loginClientBurst  = 8
+	loginClientRefill = 15 * time.Second
+	maxLoginClients   = 4096
+)
 
 // New discovers the issuer and constructs a strict verifier. It deliberately
 // has no insecure issuer, expiry, signature, or client-ID bypass configuration.
@@ -197,6 +211,7 @@ func New(ctx context.Context, state *store.Store, rules []config.Rule, settings 
 		callbackPath: settings.CallbackPath, transactionLifetime: settings.TransactionLifetime,
 		sessionLifetime: settings.SessionLifetime, maxTransactions: settings.MaxTransactions,
 		maxPerBrowser: settings.MaxPerBrowser, client: client, portalHost: settings.PortalHost,
+		loginClients: ratelimit.New(loginClientBurst, loginClientRefill, maxLoginClients),
 	}
 	hosts := map[string]bool{}
 	for _, rule := range rules {
@@ -567,6 +582,9 @@ func (m *Manager) begin(resource, host, returnPath, binding, client string) (Cha
 	txRecord := transaction{
 		State: hashValue(state), Binding: hashValue(binding), Client: hashValue(client), Nonce: hashValue(nonce), PKCEVerifier: verifier,
 		Resource: resource, Host: host, RedirectURL: callbackURL(host, m.callbackPath), ReturnPath: returnPath,
+	}
+	if !m.takeLogin(client) {
+		return Challenge{}, ErrRateLimited
 	}
 	// Transaction admission is finalized in oidc.go so it can centrally purge
 	// expired records while enforcing both configured transaction caps.

@@ -18,6 +18,7 @@ import (
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/ratelimit"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 )
@@ -90,8 +91,8 @@ type Authority struct {
 	byBrowser          map[string]Binding
 	byHash             map[string]Binding
 	mu                 sync.Mutex
-	startClients       limiter
-	startGlobal        limiter
+	startClients       *ratelimit.Limiter
+	startGlobal        *ratelimit.Limiter
 	approvals          map[string]approvalCounter
 	terminalRequests   map[string]terminalCounter
 	approvalTokens     int
@@ -121,7 +122,7 @@ func New(state *store.Store, gateway config.Gateway, sessions HumanAuthority, ke
 	for _, resource := range gateway.Resources {
 		resources[resource.Rule.ID] = resource
 	}
-	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, startClients: newLimiter(startClientBurst, startClientRefill, maxStartClients), startGlobal: newLimiter(startGlobalBurst, startGlobalRefill, 1), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
+	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, startClients: ratelimit.New(startClientBurst, startClientRefill, maxStartClients), startGlobal: ratelimit.New(startGlobalBurst, startGlobalRefill, 1), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
 	for _, declared := range gateway.DeviceAuthorizations {
 		browser, api := resources[declared.BrowserResource], resources[declared.APIResource]
 		binding := Binding{Browser: browser.Rule, API: api.Rule, Methods: append([]string(nil), declared.Methods...), Label: declared.Label, Principals: map[string]string{}}
@@ -224,7 +225,7 @@ func userID(digest [32]byte) string   { return "device-user:" + hex.EncodeToStri
 // record lives at most Lifetime plus terminalRetention (11 minutes), so it
 // admits at most 256 + 5/s * 660 s = 3556 records, below maxStored. Keeping it
 // empty takes more than 5 starts per second sustained, which the per-client
-// refill turns into at least 300 distinct clients (IPv4 addresses or IPv6 /56
+// refill turns into at least 300 distinct clients (IPv4 addresses or IPv6 /48
 // blocks) each starting once a minute. Below that threshold one client, or
 // many, cannot stop another client from starting.
 const (
@@ -235,75 +236,10 @@ const (
 	startGlobalRefill = 200 * time.Millisecond
 )
 
-type bucket struct {
-	tokens float64
-	last   time.Time
-}
-
-// limiter is a keyed token bucket with bounded memory. When the table is full
-// the least recently used key is forgotten; that key returns with a fresh
-// allowance, which the global bucket still bounds.
-type limiter struct {
-	burst   float64
-	refill  time.Duration
-	max     int
-	buckets map[string]bucket
-}
-
-func newLimiter(burst int, refill time.Duration, max int) limiter {
-	return limiter{burst: float64(burst), refill: refill, max: max, buckets: map[string]bucket{}}
-}
-
-// level returns key's refilled bucket and whether it holds a whole token.
-func (l *limiter) level(key string, now time.Time) (bucket, bool) {
-	current, known := l.buckets[key]
-	if !known {
-		current = bucket{tokens: l.burst, last: now}
-	}
-	current = l.refilled(current, now)
-	return current, current.tokens >= 1
-}
-
-// store records a key's bucket, forgetting the least recently used key when a
-// new one would exceed the table bound.
-func (l *limiter) store(key string, b bucket) {
-	if _, known := l.buckets[key]; !known && len(l.buckets) >= l.max {
-		// ponytail: O(max) scan per new key on a full table; use a list-backed
-		// LRU if maxStartClients grows well beyond a few thousand.
-		var oldest string
-		for id, other := range l.buckets {
-			if oldest == "" || other.last.Before(l.buckets[oldest].last) {
-				oldest = id
-			}
-		}
-		delete(l.buckets, oldest)
-	}
-	l.buckets[key] = b
-}
-
-func (l *limiter) refilled(b bucket, now time.Time) bucket {
-	if now.After(b.last) {
-		b.tokens += float64(now.Sub(b.last)) / float64(l.refill)
-		if b.tokens > l.burst {
-			b.tokens = l.burst
-		}
-		b.last = now
-	}
-	return b
-}
-
 func (a *Authority) takeStartToken(client string, now time.Time) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	c, clientOK := a.startClients.level(client, now)
-	g, globalOK := a.startGlobal.level("", now)
-	if !clientOK || !globalOK {
-		return false
-	}
-	c.tokens, g.tokens = c.tokens-1, g.tokens-1
-	a.startClients.store(client, c)
-	a.startGlobal.store("", g)
-	return true
+	return ratelimit.Take(now, ratelimit.Key{Limiter: a.startClients, Key: client}, ratelimit.Key{Limiter: a.startGlobal})
 }
 
 func (a *Authority) takeApprovalToken(sessionID string, expires time.Time, now time.Time) bool {

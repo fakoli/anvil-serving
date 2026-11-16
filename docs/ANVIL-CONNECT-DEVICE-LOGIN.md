@@ -128,8 +128,11 @@ overall bucket bounds gateway work and stored records (at most 3,584). A client
 within its own allowance is refused only when the overall bucket is empty.
 Keeping it empty takes a sustained aggregate above five starts per second,
 which requires at least 300 distinct clients each starting about once a minute.
-Below that rate, other clients cannot stop yours from starting. Clients are
-identified as for
+A client is one IPv4 address or one IPv6 /48 block. Below that rate, other
+clients cannot stop yours from starting. An anonymous endpoint cannot fully
+prevent a large distributed attacker with that many addresses from exhausting
+the shared bucket; add an edge rate-limit rule if that is in your threat model.
+Clients are identified as for
 [browser sign-in](ANVIL-CONNECT.md#three-independent-kinds-of-authority).
 
 The short user code identifies the request; a separate high-entropy device

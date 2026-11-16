@@ -2,11 +2,19 @@ package session
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/fakoli/anvil-serving/connect/internal/ratelimit"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 )
+
+// unlimitedLogins isolates pool policy from the per-client start rate.
+func unlimitedLogins(manager *Manager) {
+	manager.loginClients = ratelimit.New(1<<20, time.Nanosecond, maxLoginClients)
+}
 
 func pendingTransactions(t *testing.T, manager *Manager) int {
 	t.Helper()
@@ -26,6 +34,7 @@ func pendingTransactions(t *testing.T, manager *Manager) int {
 // when the flood continues while that sign-in is at the IdP.
 func TestLoginFloodFromOneClientDoesNotBlockAnother(t *testing.T) {
 	manager, _, idp, _, _ := sessionFixture(t, 128, 8)
+	unlimitedLogins(manager)
 	if _, err := manager.SetHuman(idp.issuer(), "person-1", []string{"dash"}, false); err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +90,7 @@ func TestLoginRetryReusesBrowserBinding(t *testing.T) {
 // Pending state for any mix of clients is bounded by the global pool.
 func TestLoginPendingStateIsBounded(t *testing.T) {
 	manager, _, _, _, _ := sessionFixture(t, 128, 8)
+	unlimitedLogins(manager)
 	for i := 0; i < 400; i++ {
 		binding, _ := NewBinding()
 		if _, err := manager.Begin("dash", "/", binding, fmt.Sprintf("client-%d", i%40)); err != nil {
@@ -89,5 +99,37 @@ func TestLoginPendingStateIsBounded(t *testing.T) {
 	}
 	if got := pendingTransactions(t, manager); got != 128 {
 		t.Fatalf("pending flows = %d, want the 128 bound", got)
+	}
+}
+
+// Each client may start a few sign-ins and then one per refill interval, so it
+// cannot churn the shared pool; other clients keep their own allowance.
+func TestLoginStartRateIsPerClient(t *testing.T) {
+	manager, _, _, now, _ := sessionFixture(t, 128, 8)
+	begin := func(client string) error {
+		binding, _ := NewBinding()
+		_, err := manager.Begin("dash", "/", binding, client)
+		return err
+	}
+	for i := 0; i < loginClientBurst; i++ {
+		if err := begin("203.0.113.9"); err != nil {
+			t.Fatalf("start %d within the burst failed: %v", i, err)
+		}
+	}
+	if err := begin("203.0.113.9"); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("start beyond the burst = %v, want ErrRateLimited", err)
+	}
+	if err := begin("198.51.100.7"); err != nil {
+		t.Fatalf("one client's rate limit refused another client: %v", err)
+	}
+	*now = now.Add(loginClientRefill)
+	if err := begin("203.0.113.9"); err != nil {
+		t.Fatalf("refilled client refused: %v", err)
+	}
+	if err := begin("203.0.113.9"); !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("client exceeded one start per refill: %v", err)
+	}
+	if got := pendingTransactions(t, manager); got != loginClientBurst+2 {
+		t.Fatalf("pending flows = %d, want %d", got, loginClientBurst+2)
 	}
 }

@@ -79,8 +79,9 @@ a username is not an interchangeable identity.
 
 Starting sign-in needs no credential, so pending sign-ins are bounded without
 refusing new ones. A browser that retries reuses its pending-login cookie and
-keeps at most 8 pending flows, one client keeps at most 16, and the pool keeps
-at most 128 for ten minutes. When a bound is full, the oldest pending flow is
+keeps at most 8 pending flows, one client keeps at most 16 and may start 8
+sign-ins at once and then one every 15 seconds (`429` beyond that), and the pool
+keeps at most 128 for ten minutes. When a bound is full, the oldest pending flow is
 replaced instead of the new sign-in being denied; a full pool takes from the
 client holding the most. One client therefore cannot displace another client's
 sign-in. Many distinct clients can: a pending sign-in is lost if at least 128
@@ -91,7 +92,7 @@ Limits are per client. The client is the single `X-Forwarded-For` value that
 the Connect edge sets to its own TCP peer, after deleting any value the request
 supplied. Cloudflare's `Cf-Connecting-Ip` is believed only when that peer is
 loopback, which is how Cloudflare Tunnel reaches the edge. IPv6 addresses are
-grouped by /56. In practice limits apply:
+grouped by /48 and IPv4 addresses are not grouped. In practice limits apply:
 
 - per real client address behind Cloudflare Tunnel;
 - per Cloudflare edge address when Cloudflare proxies to a public edge
