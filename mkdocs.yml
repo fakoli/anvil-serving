@@ -63,99 +63,106 @@ plugins:
 hooks:
   - scripts/mkdocs_benchmark_records.py
   - scripts/mkdocs_recipe_catalog.py
+  - scripts/mkdocs_product_journeys.py
 
-# Keep the top level task-oriented and shallow. Dense catalogs remain reachable
-# through their index pages instead of expanding into the global navigator.
+# Organize the site by the seven product journeys in product_families.py order.
+# Each journey opens on its overview page; dense catalogs stay reachable through
+# their index pages. Dated findings live in the findings index, not the nav.
 nav:
+  - Home: index.md
   - Get started:
-      - Overview: index.md
+      - Install and run a first serve: GETTING-STARTED.md
       - "Quickstart: gateway for your server": QUICKSTART-GATEWAY.md
       - Support matrix: SUPPORT-MATRIX.md
-      - Install and run a first serve: GETTING-STARTED.md
-      - Private networking with Tailscale: TAILSCALE-NETWORKING.md
-      - Deployment security model: SECURITY-MODEL.md
-      - Anvil Connect: CONNECT-OVERVIEW.md
-      - Application access with Anvil Connect: ANVIL-CONNECT.md
-      - Password setup and reset link lifetime: CONNECT-RESET-LINK-LIFETIME.md
       - Product map and journeys: PRODUCT-FAMILIES.md
       - Discover the product from the CLI: cli/product.md
-  - Benchmarks & evidence:
+      - Private networking with Tailscale: TAILSCALE-NETWORKING.md
+      - Public product and private operator state: OPERATOR-PRIVACY.md
+      - Deployment security model: SECURITY-MODEL.md
+      - Terminology: TERMINOLOGY.md
+      - Troubleshooting: TROUBLESHOOTING.md
+  - Journeys:
+      - Model Serving:
+          - Overview: journeys/model-serving.md
+          - Catalog, artifacts, and recipes: MODEL-LIFECYCLE.md
+          - Host-supervised services: HOST-SERVICES.md
+          - Read workload activity: WORKLOAD-VISIBILITY.md
+          - Promote and roll back: MODEL-PROMOTION.md
+          - Model settings example: MODEL-SETTINGS-EXAMPLE.md
+      - Capability Gateway:
+          - Overview: journeys/capability-gateway.md
+          - Authority model: META-ROUTER.md
+          - Request path: THIN-CAPABILITY-GATEWAY.md
+          - Embeddings and reranking: PURPOSE-MODELS.md
+          - Reliability controls: ROUTER-RELIABILITY.md
+          - Diagnose a request: ROUTER-DIAGNOSTICS.md
+          - Remote tailnet endpoints: REMOTE-TAILNET-ENDPOINTS.md
+      - Evaluation & Evidence:
+          - Overview: journeys/evaluation-evidence.md
+          - Methodology and evidence rules: benchmarks/methodology.md
+          - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
+          - Engine testing: benchmarks/engine-testing.md
+          - Isolated reasoning-limit probe: benchmarks/reasoning-limit-probe.md
+          - External benchmarks: EXTERNAL-BENCHMARKS.md
+          - Finding publication format: benchmarks/finding-format.md
+      - Anvil Voice:
+          - Overview: journeys/anvil-voice.md
+          - Voice pipeline: VOICE.md
+          - Managed MLX Audio runtime: MLX-AUDIO-RUNTIME.md
+      - Anvil Media:
+          - Overview: journeys/anvil-media.md
+          - Operator video workflows: VIDEO-MCP-WORKFLOWS.md
+          - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
+      - Anvil Connect:
+          - Overview: journeys/anvil-connect.md
+          - Why Anvil Connect: CONNECT-OVERVIEW.md
+          - Architecture: ANVIL-CONNECT.md
+          - Install: ANVIL-CONNECT-INSTALL.md
+          - Invite a developer: ANVIL-CONNECT-ONBOARDING.md
+          - Device login: ANVIL-CONNECT-DEVICE-LOGIN.md
+          - Manage access: ANVIL-CONNECT-ACCESS.md
+          - Router keys: ANVIL-CONNECT-ROUTER-KEYS.md
+          - Identity: ANVIL-CONNECT-IDENTITY.md
+          - Transport: ANVIL-CONNECT-TRANSPORT.md
+          - Password setup and reset links: CONNECT-RESET-LINK-LIFETIME.md
+          - Migrate an existing setup: ANVIL-CONNECT-MIGRATION.md
+      - Control Plane & Fleet:
+          - Overview: journeys/control-plane-fleet.md
+          - Device topologies: DEVICE-TOPOLOGIES.md
+          - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
+          - Reference-host qualification runbook: operator/REFERENCE-HOST-RUNBOOK.md
+          - Fleet state and replication: FLEET-STATE.md
+          - Operator playbooks: OPERATOR-PLAYBOOKS.md
+          - Workbench portal: WORKBENCH-PORTAL.md
+          - Agent workbench: WORKBENCH.md
+          - Telemetry collectors: TENSORFOLD-TELEMETRY.md
+          - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
+          - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
+          - Supplemental memory: HINDSIGHT.md
+          - Optional Jev assistance: JEV-ASSISTANCE.md
+  - Benchmarks:
       - Start here: benchmarks/index.md
       - Benchmark results: benchmarks/results.md
-      - Latest qualification: findings/2026-09-19-glm53-apc-promotion.md
-      - Mia runtime functional validation: findings/2026-11-13-tensorfold-mia-runtime-functional.md
-      - Choose and compare:
-          - Find a measured recipe: benchmarks/recipe-results.md
-          - Download serve recipes: recipes/index.md
-          - Compare models: benchmarks/comparison.md
-          - Voice model results: benchmarks/voice-models.md
-          - Model dossiers: benchmarks/models/index.md
-          - Model and quantization selection: benchmarks/selection.md
-          - Reproduce configurations: benchmarks/configurations.md
+      - Serve recipes: recipes/index.md
+      - Find a measured recipe: benchmarks/recipe-results.md
+      - Compare models: benchmarks/comparison.md
+      - Voice model results: benchmarks/voice-models.md
+      - Model dossiers: benchmarks/models/index.md
+      - Model and quantization selection: benchmarks/selection.md
+      - Reproduce configurations: benchmarks/configurations.md
       - Hardware:
           - RTX PRO 6000: benchmarks/hardware/rtx-pro-6000.md
           - RTX 5090: benchmarks/hardware/rtx-5090.md
           - Apple M4 Max: benchmarks/hardware/apple-m4-max.md
-      - Methods:
-          - Shadow Jev evidence pilot: benchmarks/jev-pilot.md
-          - Engine testing: benchmarks/engine-testing.md
-          - Isolated reasoning-limit probe: benchmarks/reasoning-limit-probe.md
-          - Context, agentic, and SWE jobs: benchmarks/context-agentic-swe.md
-          - Methodology and evidence rules: benchmarks/methodology.md
-          - Finding publication format: benchmarks/finding-format.md
-          - External benchmarks: EXTERNAL-BENCHMARKS.md
-      - History and evidence:
-          - "2026-10-25 sampling upstream-tolerance trial": findings/2026-10-25-sampling-upstream-tolerance.md
-          - Sampling upstream-tolerance evidence: findings/2026-10-25-sampling-upstream-tolerance-evidence/README.md
-          - "2026-10-25 sampling-reference diagnostic": findings/2026-10-25-sampling-reference.md
-          - Sampling-reference evidence: findings/2026-10-25-sampling-reference-evidence/README.md
-          - "2026-10-25 sampling-fix kernel trial": findings/2026-10-25-sampling-fix.md
-          - Sampling-fix evidence: findings/2026-10-25-sampling-fix-evidence/README.md
-          - "2026-10-25 GLM Go/Rust diagnostics": findings/2026-10-25-glm-diagnostics.md
-          - GLM diagnostic evidence: findings/2026-10-25-glm-diagnostics-evidence/README.md
-          - Run catalog: benchmarks/runs.md
+      - History:
           - Findings index: findings/README.md
+          - Run catalog: benchmarks/runs.md
           - Chronological results: BENCHMARKS.md
           - RTX PRO 6000 recipe index: benchmarks/models.md
-          - RTX PRO 6000 mention audit: benchmarks/rtx-pro-6000-audit.md
-  - Operate:
-      - Model Serving:
-          - Catalog, artifacts, and recipes: MODEL-LIFECYCLE.md
-          - Promote and roll back: MODEL-PROMOTION.md
-          - Reference-host qualification runbook: operator/REFERENCE-HOST-RUNBOOK.md
-      - Voice and Media:
-          - Voice pipeline: VOICE.md
-          - Media workflows: cli/media.md
-          - Operator video workflows: VIDEO-MCP-WORKFLOWS.md
-          - Podcast component research: research/local-podcast-components-2026-10-26.md
-      - Fleet and host operations:
-          - Operator playbooks: OPERATOR-PLAYBOOKS.md
-          - Read workload activity: WORKLOAD-VISIBILITY.md
-          - Host-supervised services: HOST-SERVICES.md
-          - Fleet state and replication: FLEET-STATE.md
-          - Device topologies: DEVICE-TOPOLOGIES.md
-          - Tailnet endpoint runbook: TAILNET-ENDPOINT-RUNBOOK.md
-  - Integrate:
-      - Capability Gateway:
-          - Gateway overview: META-ROUTER.md
-          - Request path: THIN-CAPABILITY-GATEWAY.md
-          - Diagnose a request: ROUTER-DIAGNOSTICS.md
-          - Remote tailnet endpoints: REMOTE-TAILNET-ENDPOINTS.md
-          - Router delivery roadmap: ROUTER-ROADMAP.md
-          - Embeddings and reranking: PURPOSE-MODELS.md
-      - OpenClaw integration: OPENCLAW-INTEGRATION-SPEC.md
-      - Supplemental memory: HINDSIGHT.md
-      - Agent workbench: WORKBENCH.md
-      - Workbench portal: WORKBENCH-PORTAL.md
-      - Optional Jev assistance: JEV-ASSISTANCE.md
-      - Operator skills and sub-agents: OPERATOR-SKILLS-AND-SUBAGENTS.md
   - Reference:
-      - Product contracts:
-          - Architecture: ARCHITECTURE.md
-          - Configuration: CONFIGURATION.md
-          - Terminology: TERMINOLOGY.md
-          - Migrating to generic names: MIGRATION-GENERIC-NAMES.md
-          - Public product and private operator state: OPERATOR-PRIVACY.md
+      - Architecture: ARCHITECTURE.md
+      - Configuration: CONFIGURATION.md
+      - Migrating to generic names: MIGRATION-GENERIC-NAMES.md
       - Command-line reference:
           - Command index: CLI.md
           - Serve lifecycle: cli/serves.md
@@ -165,28 +172,35 @@ nav:
           - Capability Gateway: cli/router.md
           - Evaluation and benchmarks: cli/eval.md
           - Voice: cli/voice.md
+          - Media: cli/media.md
+          - Anvil Connect: cli/connect.md
+          - Control Plane and Fleet: cli/control-plane.md
           - Host and setup: cli/host.md
+          - Fleet: cli/fleet.md
           - Native Metal memory probe: cli/native-memory-probe.md
           - Native containment canary: cli/native-memory-containment.md
           - Runtime image identity: cli/image-identity.md
           - Bounded image builds: cli/image-build.md
-          - Fleet: cli/fleet.md
-          - Control Plane and Fleet: cli/control-plane.md
-          - Anvil Connect: cli/connect.md
-      - Help and project records:
-          - Troubleshooting: TROUBLESHOOTING.md
-          - Architecture decisions: adr/README.md
-          - Scoped live route reconfiguration: adr/0046-scoped-live-route-reconfiguration.md
-          - Gateway crash socket recovery: adr/0047-gateway-socket-recovery.md
-          - Proposed improvements (PRDs): prds/README.md
-          - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
-          - Test-suite reduction: design/test-suite-reduction.md
-          - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
-          - Strategy - make divergence loud: STRATEGY-MAKE-DIVERGENCE-LOUD.md
-          - Model settings example: MODEL-SETTINGS-EXAMPLE.md
-          - ComfyUI migration runbook: COMFYUI-MIGRATION-RUNBOOK.md
-          - Repository history reset: HISTORY-RESET-RUNBOOK.md
-          - Changelog: changelog.md
+      - Changelog: changelog.md
+  - Project records:
+      - Architecture decisions: adr/README.md
+      - Scoped live route reconfiguration: adr/0046-scoped-live-route-reconfiguration.md
+      - Gateway crash socket recovery: adr/0047-gateway-socket-recovery.md
+      - Proposed improvements (PRDs): prds/README.md
+      - Router delivery roadmap: ROUTER-ROADMAP.md
+      - Router user-usage contract: ROUTER-USER-USAGE.md
+      - Anvil Connect implementation evidence: ANVIL-CONNECT-IMPLEMENTATION.md
+      - Native memory: NATIVE-MEMORY.md
+      - Propagation sessions: PROPAGATION-SESSIONS.md
+      - Propagation native writes: PROPAGATION-NATIVE-WRITES.md
+      - Feature execution playbook: FEATURE-EXECUTION-PLAYBOOK.md
+      - Test-suite reduction: design/test-suite-reduction.md
+      - Product discovery personas: PRODUCT-DISCOVERY-PERSONAS.md
+      - Strategy - make divergence loud: STRATEGY-MAKE-DIVERGENCE-LOUD.md
+      - Repository history reset: HISTORY-RESET-RUNBOOK.md
+      - Shadow Jev evidence pilot: benchmarks/jev-pilot.md
+      - RTX PRO 6000 mention audit: benchmarks/rtx-pro-6000-audit.md
+      - Podcast component research: research/local-podcast-components-2026-10-26.md
 
 markdown_extensions:
   - admonition

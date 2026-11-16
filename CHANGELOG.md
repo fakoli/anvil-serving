@@ -17,6 +17,16 @@ All notable changes to this project are documented here. The format is based on
   as a Serve recipes page with a download, a zip of all recipes, and links to
   the benchmark findings that measured the same served model. The build fails
   on a recipe file that contains a host-specific GPU UUID or personal path.
+- The documentation site is organized around the seven product journeys. Each
+  journey has an overview page whose steps render from the same catalog
+  `anvil-serving product journey` prints, and every Anvil Connect guide is now
+  reachable from navigation. Existing page URLs are unchanged.
+
+### Changed
+
+- `product families` help and the CLI reference describe seven product
+  families; Anvil Connect is its own family rather than part of Control Plane
+  & Fleet.
 
 ### Fixed
 

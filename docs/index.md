@@ -12,11 +12,11 @@ hide:
   <div class="anvil-hero__copy">
     <h1 id="anvil-hero-title">Anvil Serving</h1>
     <p class="anvil-hero__tagline">Operate, qualify, and expose local AI capabilities through explicit, reviewable contracts.</p>
-    <p class="anvil-hero__summary">One package and release line for Model Serving, the Capability Gateway, Evaluation &amp; Evidence, Anvil Voice, Anvil Media, Anvil Connect, and Control Plane &amp; Fleet. Each family has an explicit authority boundary and ordered CLI journey. There is no hidden model substitution.</p>
+    <p class="anvil-hero__summary">One package, one CLI, and one release line for seven journeys: Model Serving, the Capability Gateway, Evaluation &amp; Evidence, Anvil Voice, Anvil Media, Anvil Connect, and Control Plane &amp; Fleet. Every journey has a stated boundary and a sequence of supported commands, and nothing swaps your model behind your back.</p>
     <div class="anvil-actions">
-      <a href="benchmarks/" class="md-button md-button--primary md-button--evidence">Browse benchmarks</a>
+      <a href="GETTING-STARTED/" class="md-button md-button--primary">Get started</a>
       <a href="QUICKSTART-GATEWAY/" class="md-button">Gateway quickstart</a>
-      <a href="GETTING-STARTED/" class="md-button">Get started</a>
+      <a href="benchmarks/results/" class="md-button md-button--evidence">Benchmark results</a>
     </div>
   </div>
   <div class="anvil-hero__visual">
@@ -27,27 +27,46 @@ hide:
   </div>
 </section>
 
-<section class="anvil-section anvil-section--paths" aria-labelledby="choose-your-path">
+<section class="anvil-section" aria-labelledby="product-families">
   <div class="anvil-section__heading">
-    <h2 id="choose-your-path">Choose your path</h2>
-    <p>Start with the outcome you need. Each path leads to current guidance, not a historical implementation record.</p>
+    <h2 id="product-families">Seven journeys, one product</h2>
+    <p>Start with the outcome you need. Each journey page lists its steps as supported commands, states what it will and will not do, and links to the detailed guides.</p>
   </div>
-  <div class="anvil-paths">
-    <a class="anvil-path" href="benchmarks/">
-      <strong>Evaluate</strong>
-      <span>Compare measured models, hardware, and qualification evidence.</span>
+  <div class="anvil-family-list">
+    <a href="journeys/model-serving/">
+      <strong>Model Serving</strong>
+      <span>Run a pinned recipe on your GPUs: preview it, start it, watch it.</span>
+      <em>Serve a model</em>
     </a>
-    <a class="anvil-path" href="MODEL-LIFECYCLE/">
-      <strong>Operate</strong>
-      <span>Run serving, gateway, voice, media, and fleet workflows safely.</span>
+    <a href="journeys/capability-gateway/">
+      <strong>Capability Gateway</strong>
+      <span>Give every client one authenticated endpoint with exact capability aliases.</span>
+      <em>Expose capabilities</em>
     </a>
-    <a class="anvil-path" href="META-ROUTER/">
-      <strong>Integrate</strong>
-      <span>Connect through explicit APIs, aliases, protocols, and contracts.</span>
+    <a href="journeys/evaluation-evidence/">
+      <strong>Evaluation &amp; Evidence</strong>
+      <span>Prove an endpoint works, measure it, and keep the evidence.</span>
+      <em>Qualify a model</em>
     </a>
-    <a class="anvil-path anvil-path--evidence" href="OPERATOR-PRIVACY/">
-      <strong>Verify</strong>
-      <span>Confirm authority, safety, and evidence boundaries before exposure.</span>
+    <a href="journeys/anvil-voice/">
+      <strong>Anvil Voice</strong>
+      <span>Operate speech-to-text, text-to-speech, and realtime voice.</span>
+      <em>Run voice</em>
+    </a>
+    <a href="journeys/anvil-media/">
+      <strong>Anvil Media</strong>
+      <span>Generate images and video through named, durable workflows.</span>
+      <em>Run media workflows</em>
+    </a>
+    <a href="journeys/anvil-connect/">
+      <strong>Anvil Connect</strong>
+      <span>Reach local web apps through one self-hosted, signed-in edge.</span>
+      <em>Publish local apps</em>
+    </a>
+    <a href="journeys/control-plane-fleet/">
+      <strong>Control Plane &amp; Fleet</strong>
+      <span>Declare host ownership, dispatch typed operations, see the whole fleet.</span>
+      <em>Operate the fleet</em>
     </a>
   </div>
 </section>
@@ -64,75 +83,18 @@ hide:
   </div>
 </section>
 
-<section class="anvil-section" aria-labelledby="connect-product">
-  <div class="anvil-section__heading">
-    <h2 id="connect-product">Anvil Connect — one credential for every local surface</h2>
-    <p>The newest product family publishes local applications to browsers through a self-hosted edge: your own TLS certificate authority, the OIDC provider you already run, an outbound-only data plane, and applications that stay loopback-bound and unchanged. Exposure is one declaration, enrolled through an invitation, redemption, and human fingerprint approval — never an implicit publish.</p>
-  </div>
-  <div class="anvil-resource-list">
-    <a href="CONNECT-OVERVIEW/"><strong>Anvil Connect</strong><span>The product story: the access problem, how the pieces fit, one identity three ways, and the boundary it holds.</span></a>
-    <a href="ANVIL-CONNECT/"><strong>Application access guide</strong><span>Declare a resource, render and review the plan, activate, enroll, and approve.</span></a>
-    <a href="cli/connect/"><strong>Connect commands</strong><span>Qualify, validate, render, up, down, status, init, identity, and admin verbs.</span></a>
-  </div>
-</section>
-
 <section class="anvil-section anvil-section--evidence" aria-labelledby="current-evidence">
   <div class="anvil-section__heading">
-    <h2 id="current-evidence">Current benchmark evidence</h2>
-    <p>Model occupants and measurements change faster than capability contracts. Their dated evidence stays discoverable without becoming product documentation or a claim about the currently deployed operator state.</p>
+    <h2 id="current-evidence">Benchmarks and recipes</h2>
+    <p>Every result is a dated finding with its raw artifacts. Results describe what was measured on named hardware; they are not a claim about what any deployment runs today.</p>
   </div>
   <div class="anvil-resource-list">
-    <a class="anvil-path--evidence" href="benchmarks/models/glm53-flash/"><strong>Latest qualified native reference — GLM-5.3-Flash</strong><span>v0.4.3 native Linux recipe: 524,288 shared tokens with C4 four-request scheduling (from 393K/C1), decode +20.5–33% and 4K time-to-first-token −31% versus the previous Windows/WSL2 serving (controlled Sep 8 A/B), unchanged ormandj W4A16/NVFP4 weights, FP8 KV, adaptive EAGLE. 14/14 Pi gates, retrieval through 497,724 measured tokens, human-gated promotion. Boundaries are stated in the dossier.</span></a>
-    <a href="benchmarks/voice-models/"><strong>Voice model results</strong><span>English STT, TTS and answer-model comparisons on Apple M4 Max. Read the October 6 results, failed gates and retained controls.</span></a>
-    <a href="benchmarks/comparison/"><strong>Model comparison</strong><span>Every measured configuration in one table.</span></a>
-    <a href="benchmarks/"><strong>Benchmarks overview</strong><span>Hardware-first recommendations and evidence labels.</span></a>
+    <a class="anvil-path--evidence" href="benchmarks/results/"><strong>Benchmark results</strong><span>Every finding as one record — model, engine, quantization, hardware, context, concurrency, decision — with throughput and latency charts.</span></a>
+    <a href="recipes/"><strong>Serve recipes</strong><span>Every published recipe with a page, a download, and the findings that measured it.</span></a>
+    <a href="benchmarks/comparison/"><strong>Compare models</strong><span>Measured configurations side by side.</span></a>
+    <a href="benchmarks/voice-models/"><strong>Voice model results</strong><span>Speech-to-text, text-to-speech, and answer-model comparisons.</span></a>
     <a href="benchmarks/models/"><strong>Model dossiers</strong><span>Status, recipe, and decision boundary by model.</span></a>
-    <a href="benchmarks/runs/"><strong>Run catalog</strong><span>Reproducible run identities and artifact links.</span></a>
-    <a href="findings/"><strong>Dated findings</strong><span>Sanitized evidence snapshots retained as published.</span></a>
-  </div>
-</section>
-
-<section class="anvil-section" aria-labelledby="product-families">
-  <div class="anvil-section__heading">
-    <h2 id="product-families">One product, seven operating families</h2>
-    <p>The families share one CLI, topology, safety contract, evidence policy, and release line. Each still owns a distinct operator outcome.</p>
-  </div>
-  <div class="anvil-family-list">
-    <a href="MODEL-LIFECYCLE/">
-      <strong>Model Serving</strong>
-      <span>Pin artifacts and recipes, manage lifecycle and reservations, and promote with a human gate.</span>
-      <em>Open model lifecycle</em>
-    </a>
-    <a href="META-ROUTER/">
-      <strong>Capability Gateway</strong>
-      <span>Expose exact authenticated aliases with translation, readiness, admission, and streaming.</span>
-      <em>Open the gateway</em>
-    </a>
-    <a class="anvil-family-list__evidence" href="benchmarks/">
-      <strong>Evaluation & Evidence</strong>
-      <span>Run preflight and comparison-safe benchmarks, then retain the evidence behind each decision.</span>
-      <em>Review evidence</em>
-    </a>
-    <a href="VOICE/">
-      <strong>Anvil Voice</strong>
-      <span>Operate STT, TTS, realtime proxy, profiles, and reproducible voice qualification.</span>
-      <em>Open voice</em>
-    </a>
-    <a href="cli/media/">
-      <strong>Anvil Media</strong>
-      <span>Run bounded named image and video workflows with durable jobs and artifacts.</span>
-      <em>Open media</em>
-    </a>
-    <a href="CONNECT-OVERVIEW/">
-      <strong>Anvil Connect</strong>
-      <span>Publish loopback-bound local surfaces to browsers through one self-hosted, authenticated edge.</span>
-      <em>Open Connect</em>
-    </a>
-    <a href="cli/control-plane/">
-      <strong>Control Plane & Fleet</strong>
-      <span>Resolve topology and ownership, dispatch typed operations, and keep fleet state explicit.</span>
-      <em>Open fleet operations</em>
-    </a>
+    <a href="findings/"><strong>Dated findings</strong><span>Sanitized evidence snapshots, retained as published.</span></a>
   </div>
 </section>
 
