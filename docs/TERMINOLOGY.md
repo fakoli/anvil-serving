@@ -26,8 +26,8 @@
 | Hermes | Optional agent client whose profiles and media-only MCP catalog `anvil-serving harness sync` can reconcile. See [Configuration](CONFIGURATION.md). |
 | NInfer | One compatible local serving engine that can back a tier; the router sees only the declared endpoint contract. See [Benchmarks](BENCHMARKS.md). |
 | Pi runner | Optional isolated Pi agent runner built with `anvil-serving workbench build --runner pi`. See [Anvil Workbench portal](WORKBENCH-PORTAL.md). |
-| Anvil Workbench | This repository's built-in dashboard, served with `anvil-serving dashboard serve` (UI title "Anvil System View"). See [Host and setup CLI](cli/host.md). |
-| Grafana Fleet | Optional, separate Grafana/Prometheus stack kept in the operator repository, with dashboards titled "Fakoli · ...". Not part of this repository. |
+| Anvil Workbench | This repository's built-in dashboard, served with `anvil-serving dashboard serve` on loopback port 8768 (UI title "Anvil System View"). See [Host and setup CLI](cli/host.md). |
+| Grafana Fleet | Optional, separate Grafana/Prometheus stack kept in the operator repository (Grafana on loopback port 3001), with dashboards titled "Fakoli · ...". Not part of this repository. |
 | Operator repository | Private repository selected through `ANVIL_SERVING_HOME` that holds real topology, route assignments, and working evidence. See [Public product and private operator state](OPERATOR-PRIVACY.md). |
 
 Use **capability alias** for a caller-facing model name and **served model** for the backend's
