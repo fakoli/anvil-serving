@@ -32,12 +32,22 @@ All notable changes to this project are documented here. The format is based on
   model-swap multiplexer answer 403 unless the request's `Host` names
   `127.0.0.1`, `[::1]`, or the configured bind host, blocking DNS rebinding.
   The web console keeps its own Host, Origin and CSRF checks.
+- Set the copyright holder and package author, replaced the placeholder security
+  contact with `security@fakoli.net`, updated supported versions to the 2.x line,
+  and changed the package classifier to `Development Status :: 4 - Beta`.
 
 ### Fixed
 
 - Native Connect gateway restarts preserve exact refused Unix socket leftovers
   under exclusive authority ownership before rebinding, while refusing active
   listeners, unsafe custody and unknown liveness.
+
+### Changed
+
+- `anvil-serving init` scaffolds an authenticated router: the generated
+  `router.toml` sets `[server] auth_env = "ANVIL_ROUTER_TOKEN"`, and `init`
+  creates a random token in `$ANVIL_SERVING_HOME/.env` (mode 0600) when none is
+  defined, never overwriting an existing value or printing the token.
 
 ### Added
 

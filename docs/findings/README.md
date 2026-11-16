@@ -1,5 +1,10 @@
 # Findings index
 
+**2026-11-16 media capacity:** [parallel image workers](2026-11-16-media-parallel.md)
+passed three paired image cases and two real MCP clients with the original
+memory/runtime guards. Video remains exclusive. Exact model identities/native
+artifacts remain private; the public projection supports no speed or quality ranking.
+
 **2026-11-13 Mia TensorFold runtime:** [functional validation](2026-11-13-tensorfold-mia-runtime-functional.md) reproduces and fixes a truncated-tool Messages HTTP500, validates128-entry prompt scoring, and preserves tools/image/C4/cache behavior. No speed claim; fleet rollout closure remains separate.
 
 **2026-11-09 numeric-control rollout follow-up:**

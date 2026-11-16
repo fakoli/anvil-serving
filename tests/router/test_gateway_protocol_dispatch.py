@@ -482,7 +482,7 @@ def test_media_lifecycle_preview_uses_bounded_controller_tool_call(monkeypatch):
 def test_media_controller_url_and_token_are_an_atomic_configuration(tmp_path):
     config_path = tmp_path / "router.toml"
     config_path.write_text(
-        CONFIG.read_text(encoding="utf-8")
+        CONFIG.read_text(encoding="utf-8").replace("[server]\nauth_env = \"ANVIL_ROUTER_TOKEN\"\n", "")
         + """
 
 [server]
@@ -551,7 +551,7 @@ def test_build_server_reconciles_submissions_and_stops_worker(tmp_path, monkeypa
     monkeypatch.setattr(router_serve, "ComfyUIClient", CompletingBackend)
     config_path = tmp_path / "router.toml"
     config_path.write_text(
-        CONFIG.read_text(encoding="utf-8")
+        CONFIG.read_text(encoding="utf-8").replace("[server]\nauth_env = \"ANVIL_ROUTER_TOKEN\"\n", "")
         + """
 
 [server]

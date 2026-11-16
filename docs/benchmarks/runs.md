@@ -1,5 +1,11 @@
 # Benchmark run catalog
 
+## 2026-11-16 bounded media worker capacity
+
+| Configuration | Measured hardware / path | Outcome and limits | Evidence |
+|---|---|---|---|
+| Private approved image profiles,768×768/35 steps; two independent13GiB allocator workers; original host/runtime guards | One RTX5090; direct pool and two authenticated MCP clients | `functional`,`capacity`,`no-promotion`: three paired cases decoded with native overlap;24,903MiB peak in edit/edit. Two image slots enabled conditionally; video exclusive. Exact identities/native artifacts private; no speed/quality ranking. | [Dossier](models/private-media-capacity.md) · [Finding](../findings/2026-11-16-media-parallel.md) |
+
 ## 2026-11-13 Mia TensorFold runtime
 
 | Configuration | Measured hardware / path | Outcome and limits | Evidence |

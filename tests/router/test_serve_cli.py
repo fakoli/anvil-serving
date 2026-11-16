@@ -57,7 +57,7 @@ def test_serve_forwards_authorization_policy_to_build_server(monkeypatch):
 def _configured_server(tmp_path):
     config = tmp_path / "router.toml"
     config.write_text(
-        _CONFIG.read_text(encoding="utf-8")
+        _CONFIG.read_text(encoding="utf-8").replace("[server]\nauth_env = \"ANVIL_ROUTER_TOKEN\"\n", "")
         + "\n[server]\nauth_env = 'ROUTER_TEST_TOKEN'\n",
         encoding="utf-8",
     )

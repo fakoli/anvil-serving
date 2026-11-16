@@ -251,13 +251,38 @@ class MediaOperations:
                     if canonical_digest(_base_url(backend.base_url)) != request["endpoint"]:
                         raise MediaError("backend_identity_conflict", "queued backend configuration changed", status=409)
                     self._artifact_inputs(rendered, principal=job.principal)
+                    prepared = backend
+                    prepare = getattr(backend, "prepare_execution", None)
+                    if callable(prepare):
+                        try:
+                            prepared = prepare(rendered, job_id=job.id, sequence=self.jobs.queue_info(job.id)["sequence"])
+                        except MediaError as exc:
+                            if exc.code != "backend_unavailable":
+                                raise
+                            # A failed feature read proves neither a legacy backend nor a lease.
+                            # Check cold lifecycle eligibility, then retry preparation next cycle.
+                            try:
+                                compatibility = (backend.compatibility(rendered.descriptor, qualification=True)
+                                    if request["qualification"] else backend.compatibility(rendered.descriptor))
+                            except MediaError as probe:
+                                if probe.code != "backend_unavailable" or request["qualification"]:
+                                    raise
+                                self._preview_lifecycle(job.id, rendered, principal=job.principal, created=False)
+                            else:
+                                if not compatibility.ready and not request["qualification"]:
+                                    self._preview_lifecycle(job.id, rendered, principal=job.principal, created=False)
+                            break
+                        if prepared is None:
+                            break
                     self._resume_existing(job.id, rendered, principal=job.principal,
-                        backend=backend, qualification=request["qualification"])
+                        backend=prepared, qualification=request["qualification"])
+                    if self.jobs.get(job.id).state in {JobState.ACCEPTED, JobState.PREPARING, JobState.AWAITING_APPROVAL}:
+                        break
                 except MediaError as exc:
                     current = self.jobs.get(job.id)
                     reasons = exc.details.get("compatibility", {}).get("reasons", []) if isinstance(exc.details, Mapping) else []
                     if reasons and set(reasons) == {"worker_busy"}:
-                        continue  # Native queue owns the resource; retry this head, never overlap.
+                        break  # Native queue owns the resource; never skip this FIFO head.
                     if current.state in {JobState.ACCEPTED, JobState.PREPARING} and exc.code != "invalid_transition":
                         try:
                             self.jobs.transition(job.id, JobState.FAILED, principal=job.principal, reason=exc.code,
@@ -715,7 +740,14 @@ class MediaOperations:
                 principal=principal,
             ),
         )
-        return cancellation.cancel(job_id, principal=principal).as_public_dict()
+        result = cancellation.cancel(job_id, principal=principal).as_public_dict()
+        release = getattr(backend, "release_execution", None)
+        if result.get("canceled") and callable(release):
+            try:
+                release(job_id)
+            except MediaError:
+                pass  # An unsent preparation lease also expires without releasing native work.
+        return result
 
     def artifact_inspect(self, artifact_id: str, *, principal: str) -> dict[str, Any]:
         return {"artifact": self.artifacts.metadata(artifact_id, principal=principal).as_public_dict()}
