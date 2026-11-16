@@ -201,3 +201,140 @@ def test_init_cli_config_home_backs_up_existing_operator_file(tmp_path, monkeypa
 
 
 # ---- packaging: the set ships as package data and resolves like an installed tool ----
+
+
+# ---- init: authenticated router by default (WP-04) ---------------------------------
+
+
+@pytest.fixture
+def token_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    monkeypatch.setenv("ANVIL_SERVING_NO_HOME_ENV", "1")
+    monkeypatch.delenv("ANVIL_ROUTER_TOKEN", raising=False)
+    return home
+
+
+def _init_cli(capsys, *extra):
+    from anvil_serving import cli
+    assert cli.main(["init", "--no-detect-host", *extra]) == 0
+    out = capsys.readouterr()
+    return out.out + out.err
+
+
+def _env_token(home):
+    for line in (home / ".env").read_text(encoding="utf-8").splitlines():
+        if line.startswith("ANVIL_ROUTER_TOKEN="):
+            return line.split("=", 1)[1]
+    return None
+
+
+def test_init_scaffold_router_declares_auth_env(token_home, capsys):
+    _init_cli(capsys)
+    import tomllib
+    cfg = tomllib.loads((token_home / "router.toml").read_text(encoding="utf-8"))
+    assert cfg["server"]["auth_env"] == "ANVIL_ROUTER_TOKEN"
+
+
+def test_init_generates_private_token_without_printing_it(token_home, capsys):
+    output = _init_cli(capsys)
+    token = _env_token(token_home)
+    assert token and len(token) >= 32
+    assert (os.stat(token_home / ".env").st_mode & 0o777) == 0o600
+    assert token not in output
+    assert str(token_home / ".env") in output
+
+
+def test_init_twice_keeps_token(token_home, capsys):
+    _init_cli(capsys)
+    first = _env_token(token_home)
+    output = _init_cli(capsys)
+    assert _env_token(token_home) == first
+    assert first not in output
+    assert (token_home / ".env").read_text(encoding="utf-8").count("ANVIL_ROUTER_TOKEN=") == 1
+
+
+def test_init_respects_existing_environment_variable(token_home, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "already-set-by-operator")
+    output = _init_cli(capsys)
+    assert not (token_home / ".env").exists()
+    assert "already-set-by-operator" not in output
+
+
+def test_init_appends_to_existing_env_preserving_lines_and_tightens_loose_mode(
+        token_home, capsys):
+    token_home.mkdir()
+    env = token_home / ".env"
+    env.write_text("OTHER=keep-me\n", encoding="utf-8")
+    env.chmod(0o644)
+    output = _init_cli(capsys)
+    text = env.read_text(encoding="utf-8")
+    assert text.startswith("OTHER=keep-me\n")
+    assert _env_token(token_home) not in output
+    assert "permissions set to 0600" in output
+    assert (os.stat(env).st_mode & 0o777) == 0o600
+
+
+def test_init_refuses_symlinked_env(token_home, tmp_path, capsys):
+    from anvil_serving import cli
+    token_home.mkdir()
+    target = tmp_path / "elsewhere"
+    target.write_text("", encoding="utf-8")
+    (token_home / ".env").symlink_to(target)
+    assert cli.main(["init", "--no-detect-host"]) == 2
+    assert "symlink" in capsys.readouterr().err
+    assert target.read_text(encoding="utf-8") == ""
+
+
+def test_init_out_dir_outside_home_notes_where_router_reads(token_home, tmp_path, capsys):
+    output = _init_cli(capsys, "--out-dir", str(tmp_path / "other"))
+    assert str(token_home / ".env") in output
+    assert _env_token(tmp_path / "other")
+
+
+def test_scaffolded_router_refuses_without_token_and_serves_with_it(token_home, capsys):
+    import http.client
+    import threading
+    from anvil_serving import envfile
+    from anvil_serving.router.serve import build_server
+    from tests.router.helpers import StaticBackend
+
+    output = _init_cli(capsys)
+    token = _env_token(token_home)
+    assert token not in output
+    env = {"ANVIL_ROUTER_TOKEN": envfile.read_dotenv(str(token_home / ".env"))["ANVIL_ROUTER_TOKEN"]}
+    server = build_server(
+        str(token_home / "router.toml"), port=0, env=env,
+        backends={"primary-local": StaticBackend(["ok"]), "omni-local": StaticBackend(["ok"])},
+    )
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    body = json.dumps({"model": "llm.primary", "messages": [{"role": "user", "content": "hi"}]})
+
+    def post(headers):
+        host, port = server.server_address[:2]
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+        try:
+            conn.request("POST", "/v1/chat/completions", body,
+                         {"Content-Type": "application/json", **headers})
+            return conn.getresponse().status
+        finally:
+            conn.close()
+
+    try:
+        assert post({}) == 401
+        assert post({"Authorization": "Bearer wrong"}) == 401
+        assert post({"Authorization": "Bearer " + token}) == 200
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_init_never_overwrites_existing_token_in_env_file(token_home, capsys):
+    token_home.mkdir()
+    (token_home / ".env").write_text("ANVIL_ROUTER_TOKEN=operator-value\n", encoding="utf-8")
+    (token_home / ".env").chmod(0o600)
+    output = _init_cli(capsys)
+    assert _env_token(token_home) == "operator-value"
+    assert "operator-value" not in output
