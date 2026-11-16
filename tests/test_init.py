@@ -468,3 +468,60 @@ def test_gateway_only_rejects_bad_input(token_home, capsys, args, needle):
 def test_bare_init_hints_gateway_only_when_no_gpu_detected(token_home, capsys):
     output = _init_cli(capsys)
     assert "--gateway-only" in output and "--single-model" in output
+
+
+# ---- review fixes for init --gateway-only ------------------------------------------
+
+
+@pytest.mark.parametrize("url", [
+    "http://user:secret@127.0.0.1:1/v1",
+    "http://:secret@127.0.0.1:1/v1",
+    "http://user@127.0.0.1:1/v1",
+    "http://127.0.0.1:1/v1?key=secret",
+    "http://127.0.0.1:1/v1#secret",
+    "http://127.0.0.1:99999/v1",
+    "http://127.0.0.1:abc/v1",
+])
+def test_gateway_only_rejects_credentials_query_fragment_bad_port(token_home, capsys, url):
+    from anvil_serving import cli
+    assert cli.main(["init", "--gateway-only", "--upstream", url, "--model", "m"]) == 2
+    out = capsys.readouterr()
+    assert "secret" not in out.out + out.err
+    assert not (token_home / "router.toml").exists()
+
+
+def test_gateway_only_credentials_error_points_at_auth_env(token_home, capsys):
+    from anvil_serving import cli
+    cli.main(["init", "--gateway-only", "--upstream", "http://u:p@127.0.0.1:1/v1", "--model", "m"])
+    assert "ANVIL_UPSTREAM_API_KEY" in capsys.readouterr().err
+
+
+def test_gateway_only_localhost_suggestion_keeps_port_and_path(token_home, capsys):
+    from anvil_serving import cli
+    cli.main(["init", "--gateway-only", "--upstream", "http://LocalHost:11434/v1", "--model", "m"])
+    assert "http://127.0.0.1:11434/v1" in capsys.readouterr().err
+
+
+def test_gateway_only_out_dir_next_step_sets_home(token_home, tmp_path, capsys):
+    other = tmp_path / "other"
+    output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1",
+                       "--model", "m", "--out-dir", str(other))
+    assert "ANVIL_SERVING_HOME=%s anvil-serving router run" % other in output
+    assert "--config" not in output
+
+
+def test_gateway_only_reports_where_existing_token_came_from(token_home, monkeypatch, capsys):
+    monkeypatch.setenv("ANVIL_ROUTER_TOKEN", "operator-secret")
+    output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m")
+    assert "process environment" in output and "operator-secret" not in output
+    monkeypatch.delenv("ANVIL_ROUTER_TOKEN")
+    token_home.mkdir(exist_ok=True)
+    (token_home / ".env").write_text("ANVIL_ROUTER_TOKEN=file-secret\n", encoding="utf-8")
+    (token_home / ".env").chmod(0o600)
+    output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m")
+    assert str(token_home / ".env") in output and "file-secret" not in output
+
+
+def test_bare_init_hint_wording_when_detection_skipped(token_home, capsys):
+    output = _init_cli(capsys)
+    assert "not probed" in output.split("NOTE:")[1].split("\n")[0]
