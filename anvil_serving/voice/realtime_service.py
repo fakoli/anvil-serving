@@ -70,7 +70,7 @@ class ProxyProcessConfig:
 
     @property
     def health_url(self) -> str:
-        return "http://%s:%d/usage" % (self.host, self.port)
+        return "http://%s:%d/healthz" % (self.host, self.port)
 
     def run_argv(self) -> list[str]:
         argv = [
