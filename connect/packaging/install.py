@@ -11,9 +11,110 @@ import platform
 import re
 import shutil
 import stat
+import subprocess
+import sys
+import tarfile
 import tempfile
 
 SCHEMA = 'anvil-connect.bundle/v1'
+# Release archives are signed keylessly by this repository's release workflow
+# at the matching connect-v* tag. Changing the workflow file name or repository
+# breaks verification of every later release, by design.
+SIGNER = 'https://github.com/fakoli/anvil-serving/.github/workflows/connect-release.yml@refs/tags/connect-v'
+ISSUER = 'https://token.actions.githubusercontent.com'
+ARCHIVE_NAME = r'anvil-connect-([0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?)-(linux-amd64|darwin-arm64|darwin-amd64)\.tar\.gz'
+MAX_ARCHIVE = 1024 * 1024 * 1024
+
+
+class SignatureError(ValueError):
+    """The publisher signature policy refused the release."""
+
+
+def unsigned(reason: str) -> dict:
+    print('WARNING: installing WITHOUT publisher signature verification (--allow-unsigned): ' + reason
+          + '. Only the checksums you supplied protect these bytes.', file=sys.stderr)
+    return {'verified': False, 'reason': reason}
+
+
+def verify_signature(archive: Path, signature: Path, version: str, *, allow_unsigned: bool) -> dict:
+    """Verify a Sigstore bundle with an installed verifier; never skip silently."""
+    identity = SIGNER + version
+    if not signature.is_file():
+        if not allow_unsigned:
+            raise SignatureError('No Sigstore signature at ' + str(signature) + '. Download it from the same release,'
+                                 ' or pass --allow-unsigned to install a release published without one')
+        return unsigned('no signature was published')
+    if shutil.which('cosign'):
+        verifier = 'cosign'
+        command = [shutil.which('cosign'), 'verify-blob', '--bundle', str(signature), '--certificate-identity', identity,
+                   '--certificate-oidc-issuer', ISSUER, str(archive)]
+    elif shutil.which('sigstore'):
+        verifier = 'sigstore'
+        command = [shutil.which('sigstore'), 'verify', 'identity', '--bundle', str(signature), '--cert-identity', identity,
+                   '--cert-oidc-issuer', ISSUER, str(archive)]
+    else:
+        if not allow_unsigned:
+            raise SignatureError('Neither cosign nor sigstore is installed, so the release signature cannot be checked.'
+                                 ' Install one, or pass --allow-unsigned')
+        return unsigned('no Sigstore verifier is installed')
+    try:
+        completed = subprocess.run(command, stdin=subprocess.DEVNULL, capture_output=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise SignatureError('Sigstore verification failed: ' + verifier + ' could not run') from error
+    if completed.returncode != 0:
+        detail = (completed.stderr or b'').decode('utf-8', 'replace').strip().splitlines()[-1:]
+        # An invalid or foreign signature is evidence of tampering: --allow-unsigned never overrides it.
+        raise SignatureError('Sigstore verification failed: the archive is not signed by ' + identity
+                             + ' (issuer ' + ISSUER + ')' + ('; ' + detail[0][:300] if detail else ''))
+    return {'verified': True, 'verifier': verifier, 'identity': identity, 'issuer': ISSUER}
+
+
+def private_copy(source: Path, destination: Path) -> None:
+    """Snapshot the download so the verified bytes are the extracted bytes."""
+    fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream, destination.open('xb') as output:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_ARCHIVE:
+            raise ValueError('Release archive is not a bounded regular file')
+        shutil.copyfileobj(stream, output)
+
+
+def extract_archive(archive: Path, destination: Path, top: str) -> Path:
+    """Extract only regular files and directories beneath the expected top directory."""
+    with tarfile.open(archive, 'r:gz') as source:
+        members = source.getmembers()
+        for member in members:
+            parts = member.name.split('/')
+            if (len(members) > 128 or parts[0] != top or '' in parts or '.' in parts or '..' in parts
+                    or not (member.isfile() or member.isdir()) or member.size > 256 * 1024 * 1024):
+                raise ValueError('Release archive contains an unsafe member')
+        for member in members:
+            target = destination.joinpath(*member.name.split('/'))
+            if member.isdir():
+                target.mkdir(mode=0o755, parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+            with source.extractfile(member) as stream, target.open('xb') as output:
+                shutil.copyfileobj(stream, output)
+            target.chmod(member.mode & 0o755)
+    return destination / top
+
+
+def install_archive(archive: Path, prefix: Path, *, role: str, expected: str, apply: bool, allow_unsigned: bool = False) -> dict:
+    """Verify a downloaded release archive's signature, then extract and install it."""
+    match = re.fullmatch(ARCHIVE_NAME, archive.name)
+    if not match:
+        raise ValueError('Release archive name is not a Connect bundle')
+    version, platform_name = match.groups()
+    with tempfile.TemporaryDirectory(prefix='anvil-connect-verify-') as work:
+        snapshot = Path(work) / archive.name
+        private_copy(archive, snapshot)
+        signature = verify_signature(snapshot, Path(str(archive) + '.sigstore.json'), version, allow_unsigned=allow_unsigned)
+        root = extract_archive(snapshot, Path(work) / 'bundle', archive.name[:-len('.tar.gz')])
+        manifest, _ = load_bundle(root, expected)
+        if manifest['version'] != version or manifest['platform'] != platform_name:
+            raise ValueError('Release archive name does not match its manifest')
+        return {**install(root, prefix, role=role, expected=expected, apply=apply), 'signature': signature}
 
 
 def read_file(path: Path, maximum: int) -> bytes:
@@ -261,14 +362,30 @@ def install(root: Path, prefix: Path, *, role: str, expected: str, apply: bool) 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
-    parser.add_argument('--bundle', type=Path, default=Path(__file__).resolve().parent)
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument('--archive', type=Path, help='Downloaded release .tar.gz; its .sigstore.json must sit beside it')
+    source.add_argument('--bundle', type=Path, default=Path(__file__).resolve().parent,
+                        help='Already-extracted bundle; requires --allow-unsigned')
     parser.add_argument('--prefix', type=Path, required=True)
     parser.add_argument('--role', choices=('gateway', 'connector', 'client'), required=True)
     parser.add_argument('--manifest-sha256', required=True)
+    parser.add_argument('--allow-unsigned', action='store_true',
+                        help='Proceed when no signature is published or no verifier is installed (never on a bad signature)')
     parser.add_argument('--confirm', action='store_true')
     args = parser.parse_args()
     try:
-        result = install(args.bundle, args.prefix, role=args.role, expected=args.manifest_sha256, apply=args.confirm)
+        if args.archive is not None:
+            result = install_archive(args.archive, args.prefix, role=args.role, expected=args.manifest_sha256,
+                                     apply=args.confirm, allow_unsigned=args.allow_unsigned)
+        else:
+            if not args.allow_unsigned:
+                raise SignatureError('An extracted bundle cannot be checked against its release signature.'
+                                     ' Pass --archive with the downloaded .tar.gz, or pass --allow-unsigned')
+            signature = unsigned('installing from an already-extracted bundle')
+            result = {**install(args.bundle, args.prefix, role=args.role, expected=args.manifest_sha256, apply=args.confirm),
+                      'signature': signature}
+    except SignatureError as error:
+        parser.exit(1, 'Connect installation refused: ' + str(error) + '.\n')
     except (OSError, ValueError, KeyError, TypeError):
         parser.exit(1, 'Connect installation failed: check bundle integrity, platform, role and prefix ownership.\n')
     print(json.dumps(result, sort_keys=True))
