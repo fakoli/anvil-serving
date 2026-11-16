@@ -5,6 +5,7 @@ import multiprocessing
 import os
 from pathlib import Path
 import runpy
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -29,6 +30,8 @@ def plan_at(tmp_path, runner="lil", calls=2):
 
 
 def policy_at(tmp_path, runner="lil", calls=2):
+    if sys.platform != "linux":  # mirrors AttemptLedger's own platform refusal
+        pytest.skip("managed performance adapters currently require Linux")
     plan = plan_at(tmp_path, runner, calls)
     ledger = adapter.AttemptLedger(plan)
     return adapter.TransportPolicy(plan, ledger, "test-only-token")

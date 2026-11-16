@@ -21,6 +21,11 @@ requires_safe_project_roots = pytest.mark.skipif(
     not _SAFE_DESCRIPTOR_ROOTS,
     reason="requires safe POSIX project-root descriptors",
 )
+# Git reads run with cwd=/proc/self/fd/<root>; the product refuses them without procfs.
+requires_proc_fd_git = pytest.mark.skipif(
+    not Path("/proc/self/fd").is_dir(),
+    reason="project Git reads require Linux /proc/self/fd",
+)
 requires_safe_fifo = pytest.mark.skipif(
     not (_SAFE_DESCRIPTOR_ROOTS and hasattr(os, "mkfifo")),
     reason="requires safe POSIX project-root descriptors and FIFO support",
@@ -206,6 +211,7 @@ def _git(root, *args):
 
 
 @requires_safe_project_roots
+@requires_proc_fd_git
 def test_diff_uses_literal_safe_regular_files_and_disables_hostile_filters(tmp_path):
     reader, _, root = _reader(tmp_path)
     _git(root, "init", "-q")
