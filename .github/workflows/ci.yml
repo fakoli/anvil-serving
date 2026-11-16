@@ -42,9 +42,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        # Boundary versions of the support envelope only; a middle version
-        # adds a full-suite run without adding coverage for stdlib-only code.
+        # Every supported minor version runs the full suite on Ubuntu; macOS
+        # runs one version (3.12) for platform coverage.
         python-version: ["3.11", "3.12", "3.13"]
+        include:
+          - os: macos-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -52,6 +55,11 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Use a short TMPDIR (macOS)
+        # The default macOS TMPDIR is long enough to break AF_UNIX socket paths.
+        if: runner.os == 'macOS'
+        run: echo "TMPDIR=$(mktemp -d /tmp/t.XXXX)/" >> "$GITHUB_ENV"
 
       - name: Install (editable + dev extras)
         run: python -m pip install -e ".[dev]"
@@ -66,7 +74,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: test-results-${{ github.sha }}-py${{ matrix.python-version }}
+          name: test-results-${{ github.sha }}-${{ matrix.os }}-py${{ matrix.python-version }}
           path: test-results.xml
           if-no-files-found: warn
 
@@ -265,8 +273,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          # Latest 1.26 patch, not the 1.26.0 floor: govulncheck also scans the
-          # standard library of the toolchain that builds connect/.
+          # connect/go.mod only sets the 1.26.0 language floor. govulncheck also
+          # scans the standard library of the toolchain that runs it, so this job
+          # uses the latest 1.26 patch (what a release build should use) rather
+          # than the floor; go.mod is unchanged.
           go-version: "1.26"
           check-latest: true
       - name: Scan connect/ dependencies and stdlib

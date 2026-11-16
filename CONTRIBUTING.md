@@ -139,7 +139,7 @@ silently change direction and never delete an ADR — supersede it.
   directed-import audit as a one-time historical comparison, run
   `python scripts/audit_modularization.py` directly. Its default before-ref is the
   pre-modularization `c3af271` baseline and its default after-ref is the current worktree.
-- CI runs the full Python suite on Ubuntu with Python 3.11, 3.12 and 3.13, a focused Windows CLI
+- CI runs the full Python suite on Ubuntu with Python 3.11, 3.12 and 3.13 (plus 3.12 on macOS), a focused Windows CLI
   and native credential-custody smoke, native macOS contracts, plus `ruff check .`, the
   deterministic active-reference audit, strict docs, and a wheel-build/clean-install smoke test
   on Ubuntu and macOS. These gates do not read home-directory Anvil state or contact live
