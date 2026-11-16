@@ -8,6 +8,7 @@ import pytest
 
 from anvil_serving import reasoning_probe_runtime as probe
 from anvil_serving import reasoning_probe
+from tests.conftest import isolated_case
 
 
 def test_launch_projection_excludes_unselected_secrets():
@@ -25,7 +26,7 @@ def test_launch_projection_excludes_unselected_secrets():
         probe._launch_projection(row)
 
 
-@pytest.mark.parametrize(("drift", "patch_state"), [
+_INSPECTION_BINDS_OWNER_AND_USES_FIXED_PROGRAM_CASES = [
     (False, None), (True, None), (False, "valid"), (True, "valid"),
     (False, "bad_labels"), (False, "bad_source"), (False, "bad_helper"),
     (False, "missing_entrypoint"), (False, "wrong_entrypoint"),
@@ -34,8 +35,19 @@ def test_launch_projection_excludes_unselected_secrets():
     (False, "trace_missing"), (False, "trace_zero"), (False, "trace_duplicate"),
     (False, "marker_valid"), (True, "marker_valid"), (False, "marker_source"),
     (False, "marker_helper"), (False, "marker_label"), (False, "marker_environment"),
-])
-def test_inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, drift, patch_state):
+]
+
+
+def test_inspection_binds_owner_and_uses_fixed_program(subtests, tmp_path, monkeypatch):
+    for index, (drift, patch_state) in enumerate(_INSPECTION_BINDS_OWNER_AND_USES_FIXED_PROGRAM_CASES):
+        with (
+            subtests.test(drift=drift, patch_state=patch_state),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _inspection_binds_owner_and_uses_fixed_program(tmp_path=case, monkeypatch=mp, drift=drift, patch_state=patch_state)
+
+
+def _inspection_binds_owner_and_uses_fixed_program(tmp_path, monkeypatch, drift, patch_state):
     plan = tmp_path / "plan.json"
     plan.write_text(json.dumps({"runtime": {"model_revision": probe.REVISION,
         "image_digest": "sha256:" + "b" * 64, "template_sha256": "c" * 64}}))

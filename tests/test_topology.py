@@ -17,6 +17,7 @@ from anvil_serving.topology import (
     topology_snapshot_identity,
     validate_topology,
 )
+from tests.conftest import isolated_case
 
 
 def _topology() -> dict:
@@ -228,15 +229,32 @@ def test_embedded_url_credentials_and_noncanonical_loopback_do_not_bypass_valida
     assert errors and errors[0].code == "credential"
 
 
-@pytest.mark.parametrize(
-    "endpoint",
-    [
+_ENDPOINT_SEMICOLON_PARAMS_REJECT_CREDENTIAL_PARAMETER_NAMES_CASES = [
         "http://100.64.0.10:8000/v1;token=hidden",
         "http://100.64.0.10:8000/v1;%74oken=hidden/models",
         "http://100.64.0.10:8000/v1;serviceToken=hidden",
-    ],
-)
-def test_endpoint_semicolon_params_reject_credential_parameter_names(endpoint):
+        # Invisible characters inside the credential name.
+        "http://100.64.0.10:8000/v1;to​ken=hidden",
+        "http://100.64.0.10:8000/v1;to%E2%80%8Bken=hidden",
+        "http://100.64.0.10:8000/v1;to%25E2%2580%258Bken=hidden",
+        "http://100.64.0.10:8000/v1;serviceTo​ken=hidden",
+        # Repeated percent-encoding cannot hide the parameter.
+        "http://100.64.0.10:8000/v1;%2574%256f%256b%2565%256e=ordinary",
+        "http://100.64.0.10:8000/v1;%252574%25256f%25256b%252565%25256e=ordinary",
+        "http://100.64.0.10:8000/v1%253Btoken=hidden",
+    ]
+
+
+def test_endpoint_semicolon_params_reject_credential_parameter_names(subtests, tmp_path, monkeypatch):
+    for index, endpoint in enumerate(_ENDPOINT_SEMICOLON_PARAMS_REJECT_CREDENTIAL_PARAMETER_NAMES_CASES):
+        with (
+            subtests.test(endpoint=endpoint),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _endpoint_semicolon_params_reject_credential_parameter_names(endpoint=endpoint)
+
+
+def _endpoint_semicolon_params_reject_credential_parameter_names(endpoint):
     data = _topology()
     data["resources"][0]["endpoint"] = endpoint
 
@@ -257,39 +275,6 @@ def test_endpoint_semicolon_params_reject_compatibility_form_credential_names(pa
     name = urllib.parse.quote(parameter_name, safe="") if percent_encoded else parameter_name
     data = _topology()
     data["resources"][0]["endpoint"] = f"http://100.64.0.10:8000/v1;{name}=hidden"
-
-    errors = [error for error in validate_topology(data).errors if error.path == "resources[0].endpoint"]
-    assert any(error.code == "credential" for error in errors)
-
-
-@pytest.mark.parametrize(
-    "endpoint",
-    [
-        "http://100.64.0.10:8000/v1;to\u200bken=hidden",
-        "http://100.64.0.10:8000/v1;to%E2%80%8Bken=hidden",
-        "http://100.64.0.10:8000/v1;to%25E2%2580%258Bken=hidden",
-        "http://100.64.0.10:8000/v1;serviceTo\u200bken=hidden",
-    ],
-)
-def test_endpoint_semicolon_params_reject_invisible_character_credential_names(endpoint):
-    data = _topology()
-    data["resources"][0]["endpoint"] = endpoint
-
-    errors = [error for error in validate_topology(data).errors if error.path == "resources[0].endpoint"]
-    assert any(error.code == "credential" for error in errors)
-
-
-@pytest.mark.parametrize(
-    "endpoint",
-    [
-        "http://100.64.0.10:8000/v1;%2574%256f%256b%2565%256e=ordinary",
-        "http://100.64.0.10:8000/v1;%252574%25256f%25256b%252565%25256e=ordinary",
-        "http://100.64.0.10:8000/v1%253Btoken=hidden",
-    ],
-)
-def test_repeated_percent_encoding_cannot_hide_endpoint_semicolon_credential_parameters(endpoint):
-    data = _topology()
-    data["resources"][0]["endpoint"] = endpoint
 
     errors = [error for error in validate_topology(data).errors if error.path == "resources[0].endpoint"]
     assert any(error.code == "credential" for error in errors)
@@ -391,29 +376,28 @@ def test_credential_bearing_url_authority_is_rejected(transport_index, endpoint)
     assert any(error.code == "credential" for error in errors)
 
 
-@pytest.mark.parametrize(
-    "userinfo",
-    ["operator%3Apassword", "operator%00", "operator%5Cname", "operator%40name", "operator%C2%80"],
-)
-def test_percent_encoded_ssh_userinfo_cannot_bypass_credential_validation(userinfo):
-    data = _topology()
-    data["transports"][1]["endpoint"] = f"ssh://{userinfo}@100.64.0.10:22/opt/anvil"
-
-    errors = [error for error in validate_topology(data).errors if error.path == "transports[1].endpoint"]
-    assert any(error.code == "credential" for error in errors)
-
-
-@pytest.mark.parametrize(
-    "userinfo",
-    [
+_SSH_USERINFO_REJECTS_ENCODED_AND_SEMICOLON_CREDENTIAL_CARRIERS_CASES = [
+        # Percent-encoded userinfo cannot bypass credential validation.
+        "operator%3Apassword", "operator%00", "operator%5Cname", "operator%40name", "operator%C2%80",
+        # Semicolon credential carriers and repeated invisible characters.
         "operator;token=hidden",
         "operator%3Btoken=hidden",
         "operator%253Btoken=hidden",
         "operator%2500build",
         "operator%25E2%2580%258Bbuild",
-    ],
-)
-def test_ssh_userinfo_rejects_semicolon_credential_carriers_and_repeated_invisible_characters(userinfo):
+    ]
+
+
+def test_ssh_userinfo_rejects_encoded_and_semicolon_credential_carriers(subtests, tmp_path, monkeypatch):
+    for index, userinfo in enumerate(_SSH_USERINFO_REJECTS_ENCODED_AND_SEMICOLON_CREDENTIAL_CARRIERS_CASES):
+        with (
+            subtests.test(userinfo=userinfo),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _ssh_userinfo_rejects_encoded_and_semicolon_credential_carriers(userinfo=userinfo)
+
+
+def _ssh_userinfo_rejects_encoded_and_semicolon_credential_carriers(userinfo):
     data = _topology()
     data["transports"][1]["endpoint"] = f"ssh://{userinfo}@100.64.0.10:22/opt/anvil"
 
@@ -719,9 +703,7 @@ def test_router_config_validation_human_and_module_paths_are_bounded(tmp_path, c
     assert capsys.readouterr().err == "router config topology refused: replica_resource_missing\n"
 
 
-@pytest.mark.parametrize(
-    ("platform", "field", "value"),
-    (
+_HOST_BOOTSTRAP_REJECTS_UNSAFE_PATHS_WITHOUT_HOST_FILESYSTEM_ACCESS_CASES = (
         ("linux", "staging_root", "/"),
         ("linux", "staging_root", "relative/path"),
         ("linux", "staging_root", "/var//stage"),
@@ -736,9 +718,19 @@ def test_router_config_validation_human_and_module_paths_are_bounded(tmp_path, c
         ("windows", "staging_root", "C:\\Anvil\\NUL.txt"),
         ("windows", "staging_root", "C:\\Anvil\\stage. "),
         ("windows", "receiver_path", "C:\\Anvil\\receiver.py:stream"),
-    ),
-)
-def test_host_bootstrap_rejects_unsafe_paths_without_host_filesystem_access(
+    )
+
+
+def test_host_bootstrap_rejects_unsafe_paths_without_host_filesystem_access(subtests, tmp_path, monkeypatch):
+    for index, (platform, field, value) in enumerate(_HOST_BOOTSTRAP_REJECTS_UNSAFE_PATHS_WITHOUT_HOST_FILESYSTEM_ACCESS_CASES):
+        with (
+            subtests.test(platform=platform, field=field, value=value),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _host_bootstrap_rejects_unsafe_paths_without_host_filesystem_access(platform=platform, field=field, value=value)
+
+
+def _host_bootstrap_rejects_unsafe_paths_without_host_filesystem_access(
     platform, field, value
 ):
     data = _topology_with_host_bootstrap(platform)

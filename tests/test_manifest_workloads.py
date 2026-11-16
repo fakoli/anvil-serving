@@ -1,6 +1,7 @@
 """Hermetic bounded manifest workload observation coverage."""
 from __future__ import annotations
 
+import itertools
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -31,6 +32,7 @@ from anvil_serving.observability.workloads import (
     WorkloadOwner, WorkloadQuery, WorkloadState,
     source_result_from_json, source_result_to_json,
 )
+from tests.conftest import isolated_case
 
 
 def _clock():
@@ -131,9 +133,21 @@ def test_same_file_rejects_identity_or_content_mutation_but_not_atime_change():
         assert not _same_file(before, SimpleNamespace(**changed))
 
 
-@pytest.mark.parametrize("runtime", ["native", "docker"])
-@pytest.mark.parametrize("failure", ["nonzero", "throws", "truncated", "wrong-type", "incomplete-line", "empty", "malformed"])
-def test_failed_compose_capture_keeps_unsupported_peer_as_partial(runtime, failure, tmp_path):
+_FAILED_COMPOSE_CAPTURE_KEEPS_UNSUPPORTED_PEER_AS_PARTIAL_FAILURE = ["nonzero", "throws", "truncated", "wrong-type", "incomplete-line", "empty", "malformed"]
+_FAILED_COMPOSE_CAPTURE_KEEPS_UNSUPPORTED_PEER_AS_PARTIAL_RUNTIME = ["native", "docker"]
+
+
+def test_failed_compose_capture_keeps_unsupported_peer_as_partial(subtests, tmp_path, monkeypatch):
+    cases = itertools.product(_FAILED_COMPOSE_CAPTURE_KEEPS_UNSUPPORTED_PEER_AS_PARTIAL_FAILURE, _FAILED_COMPOSE_CAPTURE_KEEPS_UNSUPPORTED_PEER_AS_PARTIAL_RUNTIME)
+    for index, (failure, runtime) in enumerate(cases):
+        with (
+            subtests.test(runtime=runtime, failure=failure),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _failed_compose_capture_keeps_unsupported_peer_as_partial(runtime=runtime, failure=failure, tmp_path=case)
+
+
+def _failed_compose_capture_keeps_unsupported_peer_as_partial(runtime, failure, tmp_path):
     extra = "" if runtime == "native" else 'container = "generic"\nup = "docker run ignored"'
     path = _manifest(tmp_path, f'''\
 [[serve]]

@@ -9,6 +9,7 @@ import os
 import pytest
 
 from anvil_serving import init, deploy
+from tests.conftest import isolated_case
 
 
 def _run_missing(*a, **k):
@@ -159,11 +160,6 @@ def test_scaffold_home_never_writes_secrets_only_env_example(tmp_path):
             assert value.startswith("GPU-REPLACE-WITH-")
         else:
             assert value.strip() == "", f".env.example ships a non-empty secret: {line}"
-
-
-def test_scaffold_home_is_idempotent_no_backup_on_first_run(tmp_path):
-    result = _scaffold_home(out_dir=str(tmp_path))
-    assert result["backed_up"] == []  # clean target: nothing to back up
 
 
 def test_scaffold_home_injects_detected_host_values(tmp_path):
@@ -468,6 +464,8 @@ def test_gateway_only_rejects_bad_input(token_home, capsys, args, needle):
 def test_bare_init_hints_gateway_only_when_no_gpu_detected(token_home, capsys):
     output = _init_cli(capsys)
     assert "--gateway-only" in output and "--single-model" in output
+    # The hint says detection was skipped rather than claiming no GPU exists.
+    assert "not probed" in output.split("NOTE:")[1].split("\n")[0]
 
 
 # ---- review fixes for init --gateway-only ------------------------------------------
@@ -490,16 +488,22 @@ def test_gateway_only_rejects_credentials_query_fragment_bad_port(token_home, ca
     assert not (token_home / "router.toml").exists()
 
 
-def test_gateway_only_credentials_error_points_at_auth_env(token_home, capsys):
+def test_gateway_only_upstream_errors_point_at_the_fix(
+    subtests, token_home, tmp_path, monkeypatch, capsys
+):
     from anvil_serving import cli
-    cli.main(["init", "--gateway-only", "--upstream", "http://u:p@127.0.0.1:1/v1", "--model", "m"])
-    assert "ANVIL_UPSTREAM_API_KEY" in capsys.readouterr().err
-
-
-def test_gateway_only_localhost_suggestion_keeps_port_and_path(token_home, capsys):
-    from anvil_serving import cli
-    cli.main(["init", "--gateway-only", "--upstream", "http://LocalHost:11434/v1", "--model", "m"])
-    assert "http://127.0.0.1:11434/v1" in capsys.readouterr().err
+    for index, (upstream, expected) in enumerate([
+        # Credentials in the URL point at the auth env variable.
+        ("http://u:p@127.0.0.1:1/v1", "ANVIL_UPSTREAM_API_KEY"),
+        # The localhost suggestion keeps the port and path.
+        ("http://LocalHost:11434/v1", "http://127.0.0.1:11434/v1"),
+    ]):
+        with (
+            subtests.test(upstream=upstream),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            cli.main(["init", "--gateway-only", "--upstream", upstream, "--model", "m"])
+            assert expected in capsys.readouterr().err
 
 
 def test_gateway_only_out_dir_next_step_sets_home(token_home, tmp_path, capsys):
@@ -520,11 +524,6 @@ def test_gateway_only_reports_where_existing_token_came_from(token_home, monkeyp
     (token_home / ".env").chmod(0o600)
     output = _init_cli(capsys, "--gateway-only", "--upstream", "http://127.0.0.1:1/v1", "--model", "m")
     assert str(token_home / ".env") in output and "file-secret" not in output
-
-
-def test_bare_init_hint_wording_when_detection_skipped(token_home, capsys):
-    output = _init_cli(capsys)
-    assert "not probed" in output.split("NOTE:")[1].split("\n")[0]
 
 
 # ---- fresh scaffold is internally consistent (#384) ---------------------------
@@ -551,8 +550,11 @@ def test_fresh_scaffold_topology_errors_are_only_named_placeholders(tmp_path):
 
     from anvil_serving import topology
 
-    _scaffold_home(out_dir=str(tmp_path))
-    data = tomllib.loads((tmp_path / "operator-topology.toml").read_text(encoding="utf-8"))
+    result = _scaffold_home(out_dir=str(tmp_path))
+    assert result["backed_up"] == []  # clean target: nothing to back up
+    text = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "vram_mib = 97887" in text  # without detection, keeps the reference GPU memory
+    data = tomllib.loads(text)
     errors = topology.validate_topology(data).errors
     assert [e.path for e in errors] == ["gpu_roles[0].uuid", "gpu_roles[1].uuid"]
     for error in errors:
@@ -572,12 +574,6 @@ def test_scaffold_writes_detected_gpu_memory_into_topology(tmp_path):
     assert "vram_mib = 49152" in text
     assert "vram_mib = 24576" in text
     assert "vram_mib = 97887" not in text
-
-
-def test_scaffold_without_detection_keeps_reference_gpu_memory(tmp_path):
-    _scaffold_home(out_dir=str(tmp_path))
-    text = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
-    assert "vram_mib = 97887" in text
 
 
 def test_macos_host_is_not_classified_as_companion(monkeypatch):

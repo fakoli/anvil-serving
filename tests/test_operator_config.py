@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from anvil_serving import cli, init, mcp, operator_config
+from tests.conftest import isolated_case
 
 
 _PEM_PRIVATE_KEY_TOML = (
@@ -593,10 +594,24 @@ def test_gateway_sanitizer_closes_structural_credential_bypasses(tmp_path):
     assert result["redaction_count"] == 25
 
 
-def test_export_refuses_secret_literal_in_versionable_config(tmp_path):
-    _write(tmp_path / "voice.toml", 'api_key = "raw-secret"\n')
-    with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
-        operator_config.export(str(tmp_path))
+def test_export_refuses_secret_literals_and_invalid_references(subtests, tmp_path, monkeypatch):
+    for index, (name, content, error) in enumerate([
+        ("voice.toml", 'api_key = "raw-secret"\n', "secret-like field"),
+        ("router.toml",
+         "[headers.Authorization]\n"
+         'source = "env"\n'
+         'provider = "default"\n'
+         'id = "literal reusable secret"\n',
+         "invalid SecretRef"),
+        (".env.example", "API_TOKEN=raw-secret\n", "secret-like field"),
+    ]):
+        with (
+            subtests.test(name=name, error=error),
+            isolated_case(tmp_path, monkeypatch, index) as (case, _mp),
+        ):
+            _write(case / name, content)
+            with pytest.raises(operator_config.ConfigExportError, match=error):
+                operator_config.export(str(case))
 
 
 @pytest.mark.parametrize(
@@ -615,23 +630,34 @@ def test_export_refuses_http_credential_literals(tmp_path, content):
         operator_config.export(str(tmp_path))
 
 
-def test_export_accepts_http_credential_secret_reference(tmp_path):
-    _write(
-        tmp_path / "router.toml",
-        "[headers.Authorization]\n"
-        'source = "env"\n'
-        'provider = "default"\n'
-        'id = "ROUTER_AUTHORIZATION"\n',
-    )
+def test_export_accepts_secret_references(subtests, tmp_path, monkeypatch):
+    for index, (shape, content) in enumerate([
+        ("http-credential",
+         "[headers.Authorization]\n"
+         'source = "env"\n'
+         'provider = "default"\n'
+         'id = "ROUTER_AUTHORIZATION"\n'),
+        ("header-pair",
+         "headers = [[\"Authorization\", "
+         '{source = "env", provider = "default", id = "ROUTER_AUTHORIZATION"}]]\n'),
+        ("bounded-file",
+         "[headers.Authorization]\n"
+         'source = "file"\n'
+         'provider = "default"\n'
+         'id = "/gateway/authToken"\n'),
+    ]):
+        with (
+            subtests.test(shape=shape),
+            isolated_case(tmp_path, monkeypatch, index) as (case, _mp),
+        ):
+            _write(case / "router.toml", content)
 
-    result = operator_config.export(str(tmp_path))
+            result = operator_config.export(str(case))
 
-    assert result["files"][0]["content"]
+            assert result["files"][0]["content"]
 
 
-@pytest.mark.parametrize(
-    "content",
-    [
+_EXPORT_REFUSES_ALTERNATE_CREDENTIAL_SHAPES_CASES = [
         'accessToken = "reusable-secret"\n',
         'headers = [["Authorization", "Bearer reusable-secret"]]\n',
         'headers = ["Cookie", "session=reusable-secret"]\n',
@@ -672,38 +698,23 @@ def test_export_accepts_http_credential_secret_reference(tmp_path):
         _PGP_PRIVATE_KEY_TOML,
         _SSH2_PRIVATE_KEY_TOML,
         _PUTTY_PRIVATE_KEY_TOML,
-    ],
-)
-def test_export_refuses_alternate_credential_shapes(tmp_path, content):
+    ]
+
+
+def test_export_refuses_alternate_credential_shapes(subtests, tmp_path, monkeypatch):
+    for index, content in enumerate(_EXPORT_REFUSES_ALTERNATE_CREDENTIAL_SHAPES_CASES):
+        with (
+            subtests.test(content=content),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _export_refuses_alternate_credential_shapes(tmp_path=case, content=content)
+
+
+def _export_refuses_alternate_credential_shapes(tmp_path, content):
     _write(tmp_path / "router.toml", content)
 
     with pytest.raises(operator_config.ConfigExportError):
         operator_config.export(str(tmp_path))
-
-
-def test_export_refuses_invalid_secret_reference(tmp_path):
-    _write(
-        tmp_path / "router.toml",
-        "[headers.Authorization]\n"
-        'source = "env"\n'
-        'provider = "default"\n'
-        'id = "literal reusable secret"\n',
-    )
-
-    with pytest.raises(operator_config.ConfigExportError, match="invalid SecretRef"):
-        operator_config.export(str(tmp_path))
-
-
-def test_export_accepts_header_pair_secret_reference(tmp_path):
-    _write(
-        tmp_path / "router.toml",
-        "headers = [[\"Authorization\", "
-        '{source = "env", provider = "default", id = "ROUTER_AUTHORIZATION"}]]\n',
-    )
-
-    result = operator_config.export(str(tmp_path))
-
-    assert result["files"][0]["content"]
 
 
 @pytest.mark.parametrize("reference_id", ["X", "AB", "_TOKEN"])
@@ -719,26 +730,6 @@ def test_export_accepts_product_valid_env_secret_reference(tmp_path, reference_i
     result = operator_config.export(str(tmp_path))
 
     assert result["files"][0]["content"]
-
-
-def test_export_accepts_bounded_file_secret_reference(tmp_path):
-    _write(
-        tmp_path / "router.toml",
-        "[headers.Authorization]\n"
-        'source = "file"\n'
-        'provider = "default"\n'
-        'id = "/gateway/authToken"\n',
-    )
-
-    result = operator_config.export(str(tmp_path))
-
-    assert result["files"][0]["content"]
-
-
-def test_export_refuses_secret_literals_in_env_example(tmp_path):
-    _write(tmp_path / ".env.example", "API_TOKEN=raw-secret\n")
-    with pytest.raises(operator_config.ConfigExportError, match="secret-like field"):
-        operator_config.export(str(tmp_path))
 
 
 @pytest.mark.parametrize(
