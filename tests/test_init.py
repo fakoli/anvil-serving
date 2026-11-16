@@ -525,3 +525,62 @@ def test_gateway_only_reports_where_existing_token_came_from(token_home, monkeyp
 def test_bare_init_hint_wording_when_detection_skipped(token_home, capsys):
     output = _init_cli(capsys)
     assert "not probed" in output.split("NOTE:")[1].split("\n")[0]
+
+
+# ---- fresh scaffold is internally consistent (#384) ---------------------------
+
+
+def test_fresh_scaffold_has_no_literal_gpu_uuids_or_dangling_registries(tmp_path):
+    import re
+
+    _scaffold_home(out_dir=str(tmp_path))
+    for path in tmp_path.iterdir():
+        text = path.read_text(encoding="utf-8")
+        found = re.findall(r"GPU-[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}", text)
+        assert not found, (path.name, found)
+    registries = re.findall(
+        r"--registry (\S+)", (tmp_path / "serves.toml").read_text(encoding="utf-8")
+    )
+    assert registries
+    for registry in registries:
+        assert os.path.isfile(registry.replace("{dir}", str(tmp_path))), registry
+
+
+def test_fresh_scaffold_topology_errors_are_only_named_placeholders(tmp_path):
+    import tomllib
+
+    from anvil_serving import topology
+
+    _scaffold_home(out_dir=str(tmp_path))
+    data = tomllib.loads((tmp_path / "operator-topology.toml").read_text(encoding="utf-8"))
+    errors = topology.validate_topology(data).errors
+    assert [e.path for e in errors] == ["gpu_roles[0].uuid", "gpu_roles[1].uuid"]
+    for error in errors:
+        assert "operator-topology.toml" in error.message
+        assert "GPU-REPLACE-WITH-" in error.message
+
+
+def test_scaffold_writes_detected_gpu_memory_into_topology(tmp_path):
+    csv = (
+        "0, GPU-33333333-3333-3333-3333-333333333333, Test GPU, 24576\n"
+        "1, GPU-11111111-1111-1111-1111-111111111111, Test GPU, 49152\n"
+    )
+    init.scaffold_home(
+        out_dir=str(tmp_path), _gpu_run=lambda *a, **k: csv, _tailscale_run=_run_missing
+    )
+    text = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "vram_mib = 49152" in text
+    assert "vram_mib = 24576" in text
+    assert "vram_mib = 97887" not in text
+
+
+def test_scaffold_without_detection_keeps_reference_gpu_memory(tmp_path):
+    _scaffold_home(out_dir=str(tmp_path))
+    text = (tmp_path / "operator-topology.toml").read_text(encoding="utf-8")
+    assert "vram_mib = 97887" in text
+
+
+def test_macos_host_is_not_classified_as_companion(monkeypatch):
+    monkeypatch.setattr(init.sys, "platform", "darwin")
+    discovery = init.discover_host(probe=False)
+    assert discovery["topology_host"] is None

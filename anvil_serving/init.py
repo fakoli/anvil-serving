@@ -34,6 +34,7 @@ import importlib.resources as _resources
 import ipaddress
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -90,6 +91,8 @@ _SANITIZE = (
     ("100.64.0.10", "REPLACE-WITH-YOUR-TAILNET-IP"),
     ("192.0.2.20", "REPLACE-WITH-YOUR-TAILNET-IP"),
     ("192.0.2.10", "REPLACE-WITH-YOUR-MINI-TAILNET-IP"),
+    # The scaffold is one flat dir: recipe registries ship beside the manifest.
+    ("{dir}/../../configs/", "{dir}/"),
 )
 
 _COMPUTE_A_GPU_PLACEHOLDER = "GPU-REPLACE-WITH-COMPUTE-A-UUID"
@@ -121,6 +124,13 @@ _SCAFFOLD_TEMPLATES = (
      "examples/primary-node/anvil-router.live.toml"),
     ("anvil-router.qwen35-rollback.toml", "anvil-router.qwen35-rollback.toml",
      "examples/primary-node/anvil-router.qwen35-rollback.toml"),
+    # Recipe registries named by serves.toml `--registry {dir}/...` entries.
+    ("deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml",
+     "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml",
+     "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-650k-recipe.toml"),
+    ("deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml",
+     "deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml",
+     "configs/deepseek-v4-flash-0731-r16-b12x-dspark5-maxseq16-1m-recipe.toml"),
     ("serves.voice.toml", "serves.voice.toml", "examples/primary-node/serves.voice.toml"),
     ("serves.comfyui.toml", "serves.comfyui.toml", "examples/primary-node/serves.comfyui.toml"),
     ("docker-compose.yml", "docker-compose.yml", "examples/primary-node/docker-compose.yml"),
@@ -333,8 +343,7 @@ def discover_host(
     topology_host = None
     if compute_a_gpu or compute_b_gpu:
         topology_host = "primary-node"
-    elif sys.platform == "darwin":
-        topology_host = "companion-node"
+    # A GPU-less host's role (companion, gateway-only, ...) is the operator's choice.
     return {
         "compute_a_gpu": compute_a_gpu,
         "compute_b_gpu": compute_b_gpu,
@@ -360,8 +369,17 @@ def _personalize_home_text(text, discovery):
             'command_runtime = "runtime:mini-native"',
             'command_runtime = "runtime:dark-native"',
         )
-    elif discovery["topology_host"] == "companion-node":
-        replacements.append((_MINI_TAILNET_IP_PLACEHOLDER, discovery["tailnet_ip"]))
+    for role_key, placeholder in (
+        ("compute_a_gpu", _COMPUTE_A_GPU_PLACEHOLDER),
+        ("compute_b_gpu", _COMPUTE_B_GPU_PLACEHOLDER),
+    ):
+        mib = (discovery[role_key] or {}).get("memory_total_mib")
+        if mib:
+            text = re.sub(
+                r'(uuid = "%s"\nvram_mib = )\d+' % re.escape(placeholder),
+                lambda m, mib=mib: "%s%d" % (m.group(1), mib),
+                text,
+            )
     for placeholder, value in replacements:
         if value:
             text = text.replace(placeholder, value)
@@ -1060,7 +1078,8 @@ def _main_home(a):
     if discovery["topology_host"]:
         print("  Topology command host: %s [detected]" % discovery["topology_host"])
     else:
-        print("  Topology command host: not detected; reference default preserved")
+        print("  Topology command host: not detected; set command_host and "
+              "command_runtime in operator-topology.toml to this machine's role")
     if token["status"] == "present":
         print("  Router token: %s already set (%s); left unchanged."
               % (ROUTER_TOKEN_ENV, _token_source(token)))
