@@ -227,6 +227,7 @@ def load_registry(path):
     rows = data["models"] if isinstance(data, dict) else data
     if not isinstance(rows, list) or not rows:
         raise ValueError(f"registry {path!r} must be a non-empty list of rows")
+    legacy_volume = None
     for i, row in enumerate(rows):
         if not isinstance(row, dict):
             raise ValueError(f"registry {path!r} row {i} must be an object, got {type(row).__name__}")
@@ -235,17 +236,29 @@ def load_registry(path):
             raise ValueError(f"registry {path!r} row {i} ({row.get('name', '?')!r}) "
                              f"missing required keys: {missing}")
         if LEGACY_NAMES.get(row.get("volume")) == MODELS_VOLUME:
-            warn_legacy(row["volume"], f"registry {path!r} row {i} volume", stacklevel=2)
+            legacy_volume = row["volume"]
+    if legacy_volume:  # once per registry file
+        warn_legacy(legacy_volume, f"registry {path!r} volume", stacklevel=2)
     return rows
 
 
 def _docker_volume_exists(name):
+    """True/False for present/absent. Raises RuntimeError when Docker cannot answer
+    (daemon down, permission): never guess, `docker run -v` would create an empty volume.
+    No docker CLI at all -> False (nothing could create a volume either)."""
     import subprocess
     try:
-        return subprocess.call(["docker", "volume", "inspect", name],
-                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
-    except OSError:
+        p = subprocess.run(["docker", "volume", "inspect", name],
+                           capture_output=True, text=True)
+    except FileNotFoundError:
         return False
+    if p.returncode == 0:
+        return True
+    if "no such volume" in p.stderr.lower():
+        return False
+    raise RuntimeError(
+        f"cannot determine whether docker volume {name!r} exists ({p.stderr.strip()[:200]}); "
+        "start Docker, or set ANVIL_MODELS_VOLUME to the volume name explicitly")
 
 
 def default_models_volume(volume_exists=_docker_volume_exists):

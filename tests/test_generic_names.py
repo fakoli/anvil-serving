@@ -48,6 +48,35 @@ def test_legacy_volume_host_keeps_working_with_warning(monkeypatch):
         assert multiplexer.default_models_volume(lambda n: n == "fakoli-models") == "fakoli-models"
 
 
+def test_docker_unreachable_fails_loudly_not_new_volume(monkeypatch):
+    import subprocess
+    monkeypatch.delenv("ANVIL_MODELS_VOLUME", raising=False)
+
+    def run(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 1, "", "Cannot connect to the Docker daemon")
+
+    monkeypatch.setattr(subprocess, "run", run)
+    with pytest.raises(RuntimeError, match="ANVIL_MODELS_VOLUME"):
+        multiplexer.default_models_volume()
+
+
+def test_docker_volume_not_found_is_false(monkeypatch):
+    import subprocess
+    monkeypatch.setattr(subprocess, "run", lambda cmd, **kw: subprocess.CompletedProcess(
+        cmd, 1, "", "Error response from daemon: get x: no such volume"))
+    assert multiplexer._docker_volume_exists("x") is False
+
+
+def test_registry_file_warns_once_for_many_legacy_rows(tmp_path):
+    row = ('{"name": "%s", "model_path": "/models/m", "est_weight_gb": 1, '
+           '"gpu": 0, "port": 1, "volume": "fakoli-models"}')
+    reg = tmp_path / "reg.json"
+    reg.write_text("[" + ",".join(row % n for n in ("a", "b", "c")) + "]")
+    with pytest.warns(LegacyNameWarning) as rec:
+        multiplexer.load_registry(str(reg))
+    assert len(rec) == 1
+
+
 def test_env_override_wins_and_legacy_env_warns(monkeypatch):
     monkeypatch.setenv("ANVIL_MODELS_VOLUME", "my-weights")
     with warnings.catch_warnings():
