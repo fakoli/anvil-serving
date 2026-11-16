@@ -28,13 +28,13 @@
         "eval-preflight": 16,
         "eval-usage": 0,
         "host-gpus": 2,
-        "init": 26,
+        "init": 28,
         "mcp-serve": 15,
         "mcp-tools": 4,
         "models-cache-prune": 4,
         "models-recipes": 45,
         "models-score": 2,
-        "router-run": 16,
+        "router-run": 20,
         "serves-multiplex": 1,
         "serves-render": 2,
         "voice-audio": 21,
@@ -43,10 +43,10 @@
         "voice-sidecar": 7
       },
       "files_by_category": {
-        "docs": 254,
+        "docs": 257,
         "tooling": 6
       },
-      "files_scanned": 260,
+      "files_scanned": 263,
       "skill_roots": [],
       "violation_counts": {
         "benchmark": 0,
@@ -95,13 +95,13 @@
         "eval-preflight": 36,
         "eval-usage": 8,
         "host-gpus": 6,
-        "init": 48,
+        "init": 50,
         "mcp-serve": 19,
         "mcp-tools": 5,
         "models-cache-prune": 8,
         "models-recipes": 78,
         "models-score": 4,
-        "router-run": 33,
+        "router-run": 37,
         "serves-multiplex": 4,
         "serves-render": 7,
         "voice-audio": 45,
@@ -110,14 +110,14 @@
         "voice-sidecar": 24
       },
       "files_by_category": {
-        "docs": 254,
+        "docs": 257,
         "examples": 269,
         "implementation": 521,
         "skills": 33,
         "tests": 595,
         "tooling": 41
       },
-      "files_scanned": 1713,
+      "files_scanned": 1716,
       "skill_roots": [
         ".agents/skills",
         ".claude/skills",

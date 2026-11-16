@@ -10,28 +10,73 @@
 [![Source Version](https://img.shields.io/badge/source-2.0.2-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
-[Get started](docs/GETTING-STARTED.md) ·
-[Choose a product journey](docs/PRODUCT-FAMILIES.md) ·
+[Quickstart](docs/QUICKSTART-GATEWAY.md) ·
+[Support matrix](docs/SUPPORT-MATRIX.md) ·
+[Getting started](docs/GETTING-STARTED.md) ·
 [Browse benchmark evidence](docs/benchmarks/index.md) ·
-[Read voice model results](docs/benchmarks/voice-models.md) ·
 [Open the documentation](https://fakoli.github.io/anvil-serving/)
 
 </div>
 
-Anvil Serving is one local-first product for Model Serving, the Capability
-Gateway, Evaluation & Evidence, Anvil Voice, Anvil Media, Anvil Connect, and
-Control Plane & Fleet operations. The seven families share one package, CLI,
-topology, safety contract, evidence policy, and release line while retaining
-explicit authority boundaries. Anvil Voice and Anvil Media are first-class domains inside the
-umbrella, not separate products.
+Anvil Serving is an authenticated gateway for the models you run on your own
+machines. Point it at a local model server and both OpenAI and Anthropic
+clients reach that model through one token-protected endpoint, under a stable
+name such as `llm.primary`. It never substitutes a different model, falls back
+to a cloud API, or guesses which model you meant. The same package can also
+run the model servers for you, qualify them, and benchmark them.
 
-The result is a reproducible path from model artifact to qualified capability:
-operate a declared serve, collect independent evidence, make a human-gated
-exposure decision, and present callers with one exact endpoint. Anvil Serving
-does not hide fallback, cloud escalation, model substitution, or automatic
-promotion behind that path.
+**Who it is for:** people who already run Ollama, LM Studio, llama.cpp
+`llama-server`, vLLM, or another OpenAI-compatible server and want one stable,
+authenticated endpoint for their tools and agents; and operators of NVIDIA GPU
+hosts who want reproducible, evidence-backed model serving.
+
+**Requirements:** Python 3.11+ on Linux, macOS, or Windows for the gateway,
+with nothing else to install. Letting Anvil Serving manage the model servers
+needs Linux or WSL with NVIDIA GPUs and Docker; macOS MLX is experimental. See
+the [support matrix](docs/SUPPORT-MATRIX.md).
+
+## Quick start: a gateway in front of the server you already run
+
+`init --gateway-only` is newer than the latest PyPI release (2.0.2), so install
+from GitHub until the next release. This example fronts Ollama; the
+[quickstart](docs/QUICKSTART-GATEWAY.md) lists the URLs for LM Studio,
+`llama-server`, and vLLM.
+
+```bash
+pip install git+https://github.com/fakoli/anvil-serving
+anvil-serving init --gateway-only --upstream http://127.0.0.1:11434/v1 --model llama3.2
+anvil-serving router run
+```
+
+`init --gateway-only` writes one `router.toml` that maps `llm.primary` to your
+server, and a random `ANVIL_ROUTER_TOKEN` into `~/.anvil-serving/.env` (mode
+0600, never printed). `router run` serves on `http://127.0.0.1:8000`; vLLM
+also defaults to 8000, so start vLLM on 8001 or pass `router run --port 8100`.
+In a second terminal, load the token without printing it and call the model.
+These shell steps assume bash; on Windows, use WSL or Git Bash, or the
+PowerShell variant in the [quickstart](docs/QUICKSTART-GATEWAY.md#4-call-it).
+
+```bash
+export ANVIL_ROUTER_TOKEN="$(sed -n 's/^ANVIL_ROUTER_TOKEN=//p' "${ANVIL_SERVING_HOME:-$HOME/.anvil-serving}/.env")"
+curl -s http://127.0.0.1:8000/v1/chat/completions \
+  -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"model":"llm.primary","messages":[{"role":"user","content":"hello"}]}'
+```
+
+The [quickstart](docs/QUICKSTART-GATEWAY.md) adds Anthropic Messages, OpenAI
+and Anthropic SDK examples, and fixes for 401, 404, and 403 responses.
 
 ## Product families
+
+Beyond the gateway, Anvil Serving is one local-first product with seven
+families that share one package, CLI, topology, safety contract, evidence
+policy, and release line while keeping explicit authority boundaries. Anvil
+Voice and Anvil Media are first-class domains inside the umbrella, not separate
+products. Together they give a reproducible path from model artifact to
+qualified capability: operate a declared serve, collect independent evidence,
+make a human-gated exposure decision, and present callers with one exact
+endpoint.
 
 | Family | User outcome | Primary commands |
 | --- | --- | --- |
@@ -58,17 +103,13 @@ stable capability alias, operators map that alias to exactly one tier, and the
 selected inference service may report bounded facts about the model and context
 it currently serves. The request path remains deliberately thin. There is no
 request classifier, quality-profile router, semantic fallback, cloud
-escalation, or hidden substitute model.
-
-The reference topology has two equivalent RTX PRO 6000 Blackwell Max-Q GPUs.
-In split mode, compatible LLM, Omni, voice, purpose-model, and ComfyUI workloads
-reserve Compute A or Compute B independently. In `dual-gpu-exclusive` mode,
-one explicitly declared TP=2 serve owns both cards and every other GPU
-inference workload is offline. Capability aliases remain independent of that
-placement. The gateway keeps authentication, dialect translation, streaming,
-readiness, admission, and decision evidence consistent across those
-capabilities. See [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
-for each authority boundary and its ordered path.
+escalation, or hidden substitute model. The gateway keeps authentication,
+dialect translation, streaming, readiness, admission, and decision evidence
+consistent across capabilities. See
+[Product families and user journeys](docs/PRODUCT-FAMILIES.md) for each
+authority boundary and its ordered path, and [Architecture](docs/ARCHITECTURE.md)
+or the [reference-host runbook](docs/operator/REFERENCE-HOST-RUNBOOK.md) for
+the maintainers' two-GPU reference topology.
 
 ## Anvil Connect exposure contract
 
@@ -146,14 +187,19 @@ See [Capability meta-router](docs/META-ROUTER.md) for the authority model and
 the product decisions that keep dynamic metadata separate from dynamic route
 selection.
 
-## Quick start
+## Managed serving on an NVIDIA host
+
+This path lets Anvil Serving start and stop the model servers itself. It
+assumes the reference shape: Linux or WSL, NVIDIA GPUs, and Docker. For a
+server you already run, use the [quick start](#quick-start-a-gateway-in-front-of-the-server-you-already-run)
+above instead.
 
 Python 3.11+ is the only CLI prerequisite. On Windows, the native PowerShell
 CLI supports command discovery, offline configuration and topology work, and
-declared typed remote operations. Run service, router, controller, and
-accounting runtimes in Linux containers with Docker Desktop's Linux engine or
-inside Linux in WSL; native Windows deployment of those runtimes is
-unsupported. Model serves additionally need their declared engine: Docker and
+declared typed remote operations. Run service, controller, and accounting
+runtimes in Linux containers with Docker Desktop's Linux engine or inside Linux
+in WSL; native Windows deployment of those runtimes is unsupported (see the
+[support matrix](docs/SUPPORT-MATRIX.md) for the gateway). Model serves additionally need their declared engine: Docker and
 compatible hardware for container recipes, or an installed MLX service on
 Apple Silicon macOS. A single-host installation can stay
 entirely on loopback; the reference multi-device deployment also installs
@@ -165,6 +211,8 @@ installing model engines or starting local services. The bring-up sequence
 below runs in the owning Linux environment, or on a supported macOS owner.
 
 ```bash
+git clone https://github.com/fakoli/anvil-serving
+cd anvil-serving
 pip install -e .
 anvil-serving product families
 anvil-serving init
@@ -187,12 +235,15 @@ models and other manifest-owned resources. Rerunning `init` leaves
 content-identical files untouched; only changed files receive numbered backups
 before replacement. Preview the resolved operation before confirming it.
 
-With the selected serves running, call the gateway:
+With the selected serves running, call the gateway with the token `init`
+provisioned (loaded as in the [quick start](#quick-start-a-gateway-in-front-of-the-server-you-already-run)):
 
 ```bash
-curl -s http://127.0.0.1:8000/v1/models
-curl -s 'http://127.0.0.1:8000/v1/models/capacity?model=llm.primary&images=1&image_tokens=2048'
+curl -s http://127.0.0.1:8000/v1/models -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN"
+curl -s 'http://127.0.0.1:8000/v1/models/capacity?model=llm.primary&images=1&image_tokens=2048' \
+  -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN"
 curl -s http://127.0.0.1:8000/v1/chat/completions \
+  -H "Authorization: Bearer $ANVIL_ROUTER_TOKEN" \
   -H 'content-type: application/json' \
   -d '{"model":"llm.primary","messages":[{"role":"user","content":"hello"}]}'
 ```
@@ -267,8 +318,10 @@ controller, and ordinary CLI remain stdlib-only.
 
 ## Documentation
 
-- [Start here for the next internet model recipe](START_HERE.md)
+- [Quickstart: a gateway in front of the server you already run](docs/QUICKSTART-GATEWAY.md)
+- [Support matrix](docs/SUPPORT-MATRIX.md)
 - [Getting started](docs/GETTING-STARTED.md)
+- [Reference-host runbook for the next internet model recipe](docs/operator/REFERENCE-HOST-RUNBOOK.md)
 - [Private networking with Tailscale](docs/TAILSCALE-NETWORKING.md)
 - [Product families and user journeys](docs/PRODUCT-FAMILIES.md)
 - [Capability meta-router](docs/META-ROUTER.md)
