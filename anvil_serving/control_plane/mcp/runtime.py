@@ -35,11 +35,14 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
                 check=False,
             )
     else:
-        with contextlib.suppress(ProcessLookupError):
+        # macOS reports EPERM, not ESRCH, for a group left with only exited
+        # members. An unsignalable group cannot be killed either way; the
+        # leader fallback below still runs.
+        with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(process.pid, signal.SIGTERM)
         with contextlib.suppress(subprocess.TimeoutExpired):
             process.wait(timeout=2)
-        with contextlib.suppress(ProcessLookupError):
+        with contextlib.suppress(ProcessLookupError, PermissionError):
             os.killpg(process.pid, signal.SIGKILL)
     if process.poll() is None:
         with contextlib.suppress(OSError):
