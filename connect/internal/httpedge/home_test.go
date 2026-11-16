@@ -14,7 +14,7 @@ import (
 
 type homeStub struct{ *portalStub }
 
-func (s *homeStub) BeginPortal(binding string) (session.Challenge, error) {
+func (s *homeStub) BeginPortal(binding, client string) (session.Challenge, error) {
 	s.binding = binding
 	return session.Challenge{AuthorizationURL: "https://idp.example.test/authorize?state=opaque", Binding: binding}, nil
 }
