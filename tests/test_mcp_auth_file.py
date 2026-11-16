@@ -194,3 +194,15 @@ def test_group_writable_parent_refusal_names_directory_and_remedy(tmp_path):
     assert f"chmod g-w,o-w {parent}" in message
     parent.chmod(0o700)
     assert auth_file.read_private_auth_file(str(token), max_bytes=1024) == b"credential\n"
+
+
+def test_writable_directory_message_remedy_depends_on_owner(monkeypatch):
+    from anvil_serving.control_plane import bootstrap_shim as shim
+
+    monkeypatch.setattr(shim.os, "geteuid", lambda: 1000, raising=False)
+    mine = shim.writable_directory_message("/d", 1000, "x")
+    assert "chmod g-w,o-w /d" in mine and "sudo" not in mine
+    root = shim.writable_directory_message("/d", 0, "x")
+    assert "sudo chmod g-w,o-w /d" in root and "root" in root
+    other = shim.writable_directory_message("/d", 4242, "x")
+    assert "chmod" not in other and "another user" in other and "/d" in other

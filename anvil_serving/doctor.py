@@ -72,12 +72,17 @@ def check_python(min_version=(3, 11)):
 
 
 def managed_serves_present():
-    """True when the config home declares managed serves (non-empty serves.toml)."""
-    try:
-        with open(config_path("serves.toml"), encoding="utf-8") as f:
-            return bool(f.read().strip())
-    except OSError:
-        return False
+    """True when any default serves manifest (config home or ./serves.toml) is non-empty."""
+    from . import serves
+
+    for candidate in serves.default_manifest_candidates():
+        try:
+            with open(candidate, encoding="utf-8") as f:
+                if f.read().strip():
+                    return True
+        except OSError:
+            pass
+    return False
 
 
 def _optionalize(check):

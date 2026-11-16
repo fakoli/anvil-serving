@@ -91,3 +91,15 @@ def test_doctor_cli_exits_zero_without_docker_on_gateway_only_home(tmp_path, mon
     monkeypatch.setattr(doctor.subprocess, "run", _no_docker)
     monkeypatch.setattr(doctor._gpus, "list_gpus", lambda **k: [])
     assert doctor.main(["--no-config"]) == 0
+
+
+def test_docker_required_with_cwd_serves_manifest(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "serves.toml").write_text('[serves.a]\nimage = "x"\n', encoding="utf-8")
+    monkeypatch.setenv("ANVIL_SERVING_HOME", str(home))
+    monkeypatch.chdir(work)
+    docker = _docker_checks(doctor.run_checks(_run=_no_docker, _gpu_run=lambda *a, **k: ""))
+    assert len(docker) == 2 and all(c.required and not c.ok for c in docker)
