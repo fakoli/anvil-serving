@@ -60,9 +60,12 @@ def server():
         thread.join(timeout=5)
 
 
-def test_foreign_origin_is_rejected_before_upgrade(server):
+@pytest.mark.parametrize("origin", ["https://attacker.example", "null", ""])
+def test_foreign_origin_is_rejected_before_upgrade(server, origin):
+    # "null" is what a sandboxed iframe or file:// page sends; an empty value
+    # is still a present Origin header and must not count as absent.
     port = server()
-    assert _status(port, extra="Origin: https://attacker.example\r\n") == 403
+    assert _status(port, extra="Origin: %s\r\n" % origin) == 403
 
 
 def test_foreign_origin_is_rejected_even_with_a_valid_token(server, monkeypatch):
