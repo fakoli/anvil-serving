@@ -13,6 +13,10 @@ All notable changes to this project are documented here. The format is based on
   hardware, context, concurrency, decision, and explicit evidence gaps). The
   documentation site renders the same records on a new Benchmark results page
   with throughput/interactivity charts, and as a record card on each finding.
+- The documentation site publishes every serve-recipe file under `configs/`
+  as a Serve recipes page with a download, a zip of all recipes, and links to
+  the benchmark findings that measured the same served model. The build fails
+  on a recipe file that contains a host-specific GPU UUID or personal path.
 
 ### Fixed
 
