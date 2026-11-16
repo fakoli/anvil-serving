@@ -709,6 +709,11 @@ router applies. This blocks DNS rebinding. Clients of the Docker-managed proxy
 reach it through the `127.0.0.1` publish and are unaffected; if you publish it
 on another address, configure `realtime_token_env`.
 
+The `/pool` and `/usage` introspection routes follow the same rules: with
+`realtime_token_env` configured they require the bearer token and answer 401
+without it; without a token they apply the Host check above. A `ready_url`
+that points at `/usage` therefore only works on a token-free listener.
+
 ### Assistant transcript events
 
 Audio-only sessions keep the established event stream. A client that explicitly

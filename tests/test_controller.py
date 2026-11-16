@@ -1426,3 +1426,75 @@ def test_malformed_catalog_scope_fails_closed_without_disabling_legacy_tool():
         assert status == 403 and body["error"]["code"] == "authorization_scope_denied"
         status, _, body, _ = _request(host, port, "POST", "/tools/call", {"name": "legacy.operation"}, headers)
         assert status == 200 and body["ok"] is True
+
+
+# DNS rebinding: an unauthenticated controller is the full-authority legacy
+# principal, so a foreign Host or browser Origin must never reach routing.
+_host_guard_calls: list = []
+
+
+def _host_guard_call(name, arguments=None):
+    _host_guard_calls.append(name)
+    return {"ok": True, "data": {}}
+
+
+@pytest.mark.parametrize("method,path", [("POST", "/tools/call"), ("GET", "/tools/list"), ("GET", "/health")])
+def test_unauthenticated_controller_rejects_foreign_host(method, path):
+    _host_guard_calls.clear()
+    with running_controller(call_tool_func=_host_guard_call) as (host, port):
+        body = {"name": "fake", "arguments": {}} if method == "POST" else None
+        status, _, payload, _ = _request(
+            host, port, method, path, body=body, headers={"Host": f"attacker.example:{port}"}
+        )
+    assert status == 403
+    assert payload["ok"] is False and payload["error"]["code"] == "host_not_allowed"
+    assert _host_guard_calls == []
+
+
+def test_unauthenticated_controller_serves_loopback_host():
+    _host_guard_calls.clear()
+    with running_controller(call_tool_func=_host_guard_call) as (host, port):
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", body={"name": "fake", "arguments": {}},
+            headers={"Host": f"127.0.0.1:{port}"},
+        )
+        assert status == 200 and body["ok"] is True
+        status, _, _, _ = _request(host, port, "GET", "/health", headers={"Host": f"127.0.0.1:{port}"})
+        assert status == 200
+    assert _host_guard_calls == ["fake"]
+
+
+def test_unauthenticated_controller_rejects_foreign_origin_on_tools_call():
+    _host_guard_calls.clear()
+    with running_controller(call_tool_func=_host_guard_call) as (host, port):
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", body={"name": "fake", "arguments": {}},
+            headers={"Origin": "https://attacker.example"},
+        )
+        assert status == 403 and body["error"]["code"] == "origin_not_allowed"
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", body={"name": "fake", "arguments": {}},
+            headers={"Origin": f"http://127.0.0.1:{port}"},
+        )
+        assert status == 200 and body["ok"] is True
+    assert _host_guard_calls == ["fake"]
+
+
+def test_authenticated_controller_ignores_host_with_valid_token():
+    _host_guard_calls.clear()
+    with running_controller(
+        call_tool_func=_host_guard_call,
+        auth_token_env="ANVIL_CONTROLLER_TOKEN",
+        env={"ANVIL_CONTROLLER_TOKEN": TOKEN},
+        allow_unauthenticated_loopback=False,
+    ) as (host, port):
+        status, _, body, _ = _request(
+            host, port, "POST", "/tools/call", body={"name": "fake", "arguments": {}},
+            headers={"Host": "controller.example.ts.net", "Authorization": "Bearer " + TOKEN},
+        )
+        assert status == 200 and body["ok"] is True
+        status, _, body, _ = _request(
+            host, port, "GET", "/health", headers={"Host": "controller.example.ts.net"}
+        )
+        assert status == 401 and body["error"]["code"] == "authentication_error"
+    assert _host_guard_calls == ["fake"]

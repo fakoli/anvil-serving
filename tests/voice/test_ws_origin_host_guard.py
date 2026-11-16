@@ -111,6 +111,25 @@ def test_foreign_host_without_token_cannot_read_introspection(server):
         thread.join(timeout=5)
 
 
+def _get_status(port: int, path: str, extra: str = "") -> int:
+    with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+        sock.settimeout(5)
+        sock.sendall(("GET %s HTTP/1.1\r\nHost: 127.0.0.1:%d\r\n%s\r\n" % (path, port, extra)).encode("ascii"))
+        return int(sock.recv(4096).split(b" ", 2)[1])
+
+
+@pytest.mark.parametrize("path", ["/pool", "/usage"])
+def test_introspection_requires_configured_token(server, monkeypatch, path):
+    monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "fixture-realtime-token")
+    port = server(
+        token_env="ANVIL_TEST_WS_TOKEN",
+        extra_routes={"/pool": lambda: {"size": 1}, "/usage": lambda: {"claims_total": 0}},
+    )
+    assert _get_status(port, path) == 401
+    assert _get_status(port, path, "Authorization: Bearer wrong-token\r\n") == 401
+    assert _get_status(port, path, "Authorization: Bearer fixture-realtime-token\r\n") == 200
+
+
 def test_foreign_host_with_valid_token_upgrades(server, monkeypatch):
     monkeypatch.setenv("ANVIL_TEST_WS_TOKEN", "fixture-realtime-token")
     port = server(token_env="ANVIL_TEST_WS_TOKEN")

@@ -640,6 +640,11 @@ def _make_ws_handler(
             self.send_error(404, "no route %s" % self.path)
 
         def _handle_introspection(self, route_fn: IntrospectionRoute) -> None:
+            # Same credential as the upgrade; with no token, parse_request's
+            # Host rule already applies to these routes.
+            if not self._authenticated():
+                self.send_error(401, "missing or invalid bearer token")
+                return
             payload = json.dumps(route_fn()).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
