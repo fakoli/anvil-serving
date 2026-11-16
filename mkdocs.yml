@@ -62,6 +62,7 @@ plugins:
 # Builds benchmark records from retained findings evidence at site build time.
 hooks:
   - scripts/mkdocs_benchmark_records.py
+  - scripts/mkdocs_recipe_catalog.py
 
 # Keep the top level task-oriented and shallow. Dense catalogs remain reachable
 # through their index pages instead of expanding into the global navigator.
@@ -85,6 +86,7 @@ nav:
       - Mia runtime functional validation: findings/2026-11-13-tensorfold-mia-runtime-functional.md
       - Choose and compare:
           - Find a measured recipe: benchmarks/recipe-results.md
+          - Download serve recipes: recipes/index.md
           - Compare models: benchmarks/comparison.md
           - Voice model results: benchmarks/voice-models.md
           - Model dossiers: benchmarks/models/index.md
