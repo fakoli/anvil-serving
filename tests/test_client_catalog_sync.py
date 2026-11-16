@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import copy
 import json
 import os
@@ -32,6 +33,7 @@ from anvil_serving.client_catalog_sync import (
     sync_hermes_media,
     sync_pi_media,
 )
+from tests.conftest import isolated_case
 
 
 CONFIG_SHA = "a" * 64
@@ -334,9 +336,21 @@ def test_hermes_profile_reads_overlap_with_three_workers_and_keep_key_order():
     assert all(not worker.is_alive() for worker in workers)
 
 
-@pytest.mark.parametrize("key", client_catalog_sync.HERMES_PROFILE_KEYS)
-@pytest.mark.parametrize("invalid_json", [False, True])
-def test_hermes_profile_preserves_required_optional_and_json_errors(key, invalid_json):
+_HERMES_PROFILE_PRESERVES_REQUIRED_OPTIONAL_AND_JSON_ERRORS_INVALID_JSON = [False, True]
+_HERMES_PROFILE_PRESERVES_REQUIRED_OPTIONAL_AND_JSON_ERRORS_KEY = client_catalog_sync.HERMES_PROFILE_KEYS
+
+
+def test_hermes_profile_preserves_required_optional_and_json_errors(subtests, tmp_path, monkeypatch):
+    cases = itertools.product(_HERMES_PROFILE_PRESERVES_REQUIRED_OPTIONAL_AND_JSON_ERRORS_INVALID_JSON, _HERMES_PROFILE_PRESERVES_REQUIRED_OPTIONAL_AND_JSON_ERRORS_KEY)
+    for index, (invalid_json, key) in enumerate(cases):
+        with (
+            subtests.test(key=key, invalid_json=invalid_json),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _hermes_profile_preserves_required_optional_and_json_errors(key=key, invalid_json=invalid_json)
+
+
+def _hermes_profile_preserves_required_optional_and_json_errors(key, invalid_json):
     def run(argv, **_kwargs):
         return _HermesRunner._completed(
             returncode=int(argv[5] == key and not invalid_json),

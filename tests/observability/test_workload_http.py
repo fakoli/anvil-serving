@@ -20,6 +20,7 @@ from anvil_serving.observability.workloads import (
     WorkloadQuery,
     fleet_result_to_dict,
 )
+from tests.conftest import isolated_case
 
 
 NOW = datetime(2026, 9, 5, 12, tzinfo=timezone.utc)
@@ -73,7 +74,7 @@ class _UnreachableSlots:
     release = _explode
 
 
-@pytest.mark.parametrize("headers", [
+_AUTHENTICATION_REJECTED_BEFORE_QUERY_CLOCK_SLOT_OR_READER_CASES = [
     HTTPMessage(), object(),
     _headers(("Authorization", "bearer " + TOKEN)),
     _headers(("Authorization", "Basic " + TOKEN)),
@@ -89,8 +90,19 @@ class _UnreachableSlots:
     _headers(("Authorization", "Bearer " + TOKEN), ("authorization", "Bearer " + TOKEN)),
     _headers(("X-Api-Key", TOKEN)),
     _headers(("Authorization", "Bearer " + TOKEN), ("X-Api-Key", "")),
-])
-def test_authentication_rejected_before_query_clock_slot_or_reader(policy, headers):
+]
+
+
+def test_authentication_rejected_before_query_clock_slot_or_reader(subtests, tmp_path, monkeypatch, policy):
+    for index, headers in enumerate(_AUTHENTICATION_REJECTED_BEFORE_QUERY_CLOCK_SLOT_OR_READER_CASES):
+        with (
+            subtests.test(headers=headers),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _authentication_rejected_before_query_clock_slot_or_reader(policy=policy, headers=headers)
+
+
+def _authentication_rejected_before_query_clock_slot_or_reader(policy, headers):
     service = _service(policy, clock=_explode, reader=_explode)
     service._slots = _UnreachableSlots()
     _error(service.read(object(), headers), 401, "authentication_error", "workload authentication required")

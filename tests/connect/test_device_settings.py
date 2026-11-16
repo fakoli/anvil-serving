@@ -9,6 +9,7 @@ import pytest
 
 from anvil_serving.connect.config import ManifestError, validate_manifest
 from anvil_serving.connect.render import render
+from tests.conftest import isolated_case
 
 
 def declaration() -> dict:
@@ -85,7 +86,7 @@ def test_device_authorization_is_copied_from_the_exact_gateway_binding() -> None
     assert json.loads(files["clients/dashboard-api.json"])["device_authorization"] == client
 
 
-@pytest.mark.parametrize(("path", "replacement"), [
+_DEVICE_AUTHORIZATION_REJECTS_WIDENING_OR_AMBIGUOUS_FIELDS_CASES = [
     (("gateway", "gateway", "device_authorizations", 0, "browser_resource"), "dashboard-api"),
     (("gateway", "gateway", "device_authorizations", 0, "api_resource"), "dashboard"),
     (("gateway", "gateway", "device_authorizations", 0, "methods"), ["POST"]),
@@ -100,8 +101,19 @@ def test_device_authorization_is_copied_from_the_exact_gateway_binding() -> None
     (("clients", 0, "device_authorization", "approval_path"), "/other/_anvil-connect/device"),
     (("clients", 0, "device_authorization", "api_resource"), "other-api"),
     (("clients", 0, "device_authorization", "methods"), ["POST"]),
-])
-def test_device_authorization_rejects_widening_or_ambiguous_fields(path, replacement) -> None:
+]
+
+
+def test_device_authorization_rejects_widening_or_ambiguous_fields(subtests, tmp_path, monkeypatch):
+    for index, (path, replacement) in enumerate(_DEVICE_AUTHORIZATION_REJECTS_WIDENING_OR_AMBIGUOUS_FIELDS_CASES):
+        with (
+            subtests.test(path=path, replacement=replacement),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _device_authorization_rejects_widening_or_ambiguous_fields(path=path, replacement=replacement)
+
+
+def _device_authorization_rejects_widening_or_ambiguous_fields(path, replacement) -> None:
     value = device_declaration()
     target = value
     for key in path[:-1]:

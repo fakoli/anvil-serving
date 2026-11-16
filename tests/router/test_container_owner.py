@@ -14,6 +14,7 @@ from anvil_serving.router import container_owner as custody, usage_store as ledg
 from anvil_serving.router.config import load_server_config
 from anvil_serving.router.keys import KeyStore, KeyStoreError, _bind_router_store
 from tests.router.test_owner_recovery import config as config
+from tests.conftest import isolated_case
 
 pytestmark = pytest.mark.skipif(not sys.platform.startswith('linux'), reason='native custody uses POSIX fences')
 
@@ -88,9 +89,20 @@ def test_native_host_after_failure_does_not_commit_pending_or_leave_runner(tmp_p
     assert not path.exists() or path.read_bytes()==b''
 
 
-@pytest.mark.parametrize('change', ['valid','root','parent','device','filesystem','source','writable','duplicate',
-    'hidepid','subset','unknown_option','optional_field','duplicate_base','boot_descendant','stat_descendant','ns_descendant','pid1_mismatch'])
-def test_managed_procfs_exception_is_exact_and_default_stays_strict(monkeypatch, change):
+_MANAGED_PROCFS_EXCEPTION_IS_EXACT_AND_DEFAULT_STAYS_STRICT_CASES = ['valid','root','parent','device','filesystem','source','writable','duplicate',
+    'hidepid','subset','unknown_option','optional_field','duplicate_base','boot_descendant','stat_descendant','ns_descendant','pid1_mismatch']
+
+
+def test_managed_procfs_exception_is_exact_and_default_stays_strict(subtests, tmp_path, monkeypatch):
+    for index, change in enumerate(_MANAGED_PROCFS_EXCEPTION_IS_EXACT_AND_DEFAULT_STAYS_STRICT_CASES):
+        with (
+            subtests.test(change=change),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _managed_procfs_exception_is_exact_and_default_stays_strict(monkeypatch=mp, change=change)
+
+
+def _managed_procfs_exception_is_exact_and_default_stays_strict(monkeypatch, change):
     from tests.router.test_usage_lifecycle import _ACTUAL_LINUX_OWNER
     actual_read=Path.read_text
     base='1 0 0:1 / /proc rw - proc proc rw'

@@ -11,6 +11,7 @@ from anvil_serving.router.config import (
     load,
     load_server_config,
 )
+from tests.conftest import isolated_case
 
 
 _ROOT = Path(__file__).resolve().parents[2]
@@ -55,7 +56,7 @@ signer_env = "SYNTHETIC_WEBUI_SIGNER"
 """
 
 
-@pytest.mark.parametrize("before,after", [
+_WEBUI_PROFILE_BAD_CONFIGURATION_IS_CLOSED_AND_REDACTED_CASES = [
     ('credential_id = "webui_service"', 'credential_id = "_legacy"'),
     ('credential_id = "webui_service"', 'credential_id = "secret marker"'),
     ('credential_kind = "device_key"', 'credential_kind = "human"'),
@@ -76,8 +77,19 @@ signer_env = "SYNTHETIC_WEBUI_SIGNER"
     ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nclock_skew_seconds = 1.0'),
     ('signer_env = "SYNTHETIC_WEBUI_SIGNER"', 'signer_env = "SYNTHETIC_WEBUI_SIGNER"\nsecret_marker = "private"'),
     ('api_keys_path = "/synthetic/private/keys.sqlite3"', ''),
-])
-def test_webui_profile_bad_configuration_is_closed_and_redacted(tmp_path, before, after):
+]
+
+
+def test_webui_profile_bad_configuration_is_closed_and_redacted(subtests, tmp_path, monkeypatch):
+    for index, (before, after) in enumerate(_WEBUI_PROFILE_BAD_CONFIGURATION_IS_CLOSED_AND_REDACTED_CASES):
+        with (
+            subtests.test(before=before, after=after),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _webui_profile_bad_configuration_is_closed_and_redacted(tmp_path=case, before=before, after=after)
+
+
+def _webui_profile_bad_configuration_is_closed_and_redacted(tmp_path, before, after):
     with pytest.raises(ConfigError) as caught:
         load_server_config(_write(tmp_path, _WEBUI_SERVER.replace(before, after)))
     assert str(caught.value) == "invalid [server].webui_identity profile"
