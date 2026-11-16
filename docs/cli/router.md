@@ -61,8 +61,14 @@ Without `--config`, the router uses `$ANVIL_SERVING_HOME/router.toml` (default
 `~/.anvil-serving/router.toml`) before the legacy `./router.toml`. An explicit
 path selects one exact capability-alias configuration. The router remains a stdlib-only
 foreground service; use the lifecycle commands when the deployment is managed
-by the operator substrate. The default bind is `127.0.0.1`; do not expose a
-non-loopback bind without an operator-provided authentication layer.
+by the operator substrate. The default bind is `127.0.0.1`.
+
+A non-loopback `--host` (including `localhost`) requires `[server].auth_env`;
+without it `router run` exits with status 2. `--allow-unauthenticated-public-bind`
+overrides that refusal for an isolated network and still prints a warning.
+Without a token the router also answers 403 to any request whose `Host` is not
+`127.0.0.1`, `[::1]`, or the bind host; see
+[Running without a token](../CONFIGURATION.md#running-without-a-token).
 
 ## Inspect the deployment
 

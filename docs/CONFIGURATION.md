@@ -312,6 +312,31 @@ auth_env = "ANVIL_ROUTER_TOKEN"
 send its resolved value as a bearer token or `x-api-key`. Expose non-loopback
 routers only with token authentication.
 
+### Running without a token
+
+Without `auth_env` the router accepts a request only when its `Host` header
+names `127.0.0.1`, `[::1]`, or the exact `--host` the router was started with
+(a wildcard such as `0.0.0.0` does not count). Anything else, including a
+missing or duplicated `Host` and `Host: localhost`, returns 403
+`forbidden_host`. This stops a web page from using DNS rebinding to reach a
+loopback router through the operator's browser.
+
+`router run` refuses to bind a non-loopback host without `auth_env` and exits
+with status 2. `--allow-unauthenticated-public-bind` overrides the refusal for
+an isolated network where an open router is intended; the startup warning
+remains, and the `Host` rule above still applies.
+
+LAN or tailnet clients of a previously unauthenticated router should set
+`auth_env`, export the token, and send it as a bearer token. A router bound to a
+specific address with the override can be reached only by the exact value
+passed to `--host` (for example `http://100.64.0.10:8000`), not through another
+name for the same machine.
+
+The router container image binds `0.0.0.0` inside the container, so its config
+must set `[server].auth_env` and the container must receive that variable. The
+packaged `example-docker.toml` does this. A container seeded with a config that
+has no `[server]` token exits at startup and names `[server].auth_env`.
+
 ### Token persistence contract
 
 Token configuration names environment variables; the values must also survive a

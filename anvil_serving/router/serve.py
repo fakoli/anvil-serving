@@ -285,8 +285,13 @@ class RouterWorkloadStream:
 _WILDCARD_HOSTS = {"", "0.0.0.0", "::"}
 
 
-def _warn_if_public_bind(host: str, *, authed: bool = False) -> None:
-    """Warn when the front door is exposed beyond loopback."""
+def _warn_if_public_bind(host: str, *, authed: bool = False,
+                         allow_unauthenticated: bool = False) -> None:
+    """Warn when the front door is exposed beyond loopback.
+
+    An unauthenticated non-loopback bind is refused with :class:`ConfigError`
+    unless ``allow_unauthenticated`` records an explicit operator choice.
+    """
     public = host in _WILDCARD_HOSTS
     if not public:
         try:
@@ -295,6 +300,12 @@ def _warn_if_public_bind(host: str, *, authed: bool = False) -> None:
             public = True
     if not public:
         return
+    if not authed and not allow_unauthenticated:
+        raise ConfigError(
+            f"refusing to bind {host!r} without authentication: use 127.0.0.1 "
+            "(not localhost) or configure [server].auth_env, or pass "
+            "--allow-unauthenticated-public-bind to accept an open front door"
+        )
     if authed:
         message = (
             f"\n[anvil-serving] NOTE: binding to {host!r} exposes the front door "
@@ -2616,13 +2627,13 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8000,
     authorization_policy: Optional[str] = None,
+    allow_unauthenticated_public_bind: bool = False,
 ) -> None:
     """Run a configured thin capability gateway until interrupted."""
-    try:
-        authed = bool(load_server_config(config_path).auth_env)
-    except ConfigError:
-        authed = False
-    _warn_if_public_bind(host, authed=authed)
+    # A config error surfaces here, before any bind decision (fail closed).
+    authed = bool(load_server_config(config_path).auth_env)
+    _warn_if_public_bind(host, authed=authed,
+                         allow_unauthenticated=allow_unauthenticated_public_bind)
     httpd = build_server(
         config_path, host=host, port=port,
         authorization_policy=authorization_policy,
@@ -2684,11 +2695,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--authorization-policy", metavar="PATH",
         help="optional scoped operator authorization policy",
     )
+    ap.add_argument(
+        "--allow-unauthenticated-public-bind", action="store_true",
+        help="start on a non-loopback host without [server].auth_env (not recommended)",
+    )
     args = ap.parse_args(argv)
     try:
         serve(
             resolve_config_path(args.config), host=args.host, port=args.port,
             authorization_policy=args.authorization_policy,
+            allow_unauthenticated_public_bind=args.allow_unauthenticated_public_bind,
         )
     except ConfigError as exc:
         print(f"anvil-serving router run: {exc}", file=sys.stderr)
