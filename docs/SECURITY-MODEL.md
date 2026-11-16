@@ -46,8 +46,9 @@ load and evict GPU models.
 
 The Realtime server rejects a request carrying a browser `Origin` that is not in
 `voice.realtime_allowed_origins` (empty by default), with or without a token. Requests with no
-`Origin` header, such as native clients, are accepted. The Origin and token checks cover only the
-WebSocket upgrade: the introspection routes `/pool` and `/usage` skip both. See
+`Origin` header, such as native clients, are accepted. The introspection routes `/pool` and `/usage` require the token when one is configured.
+`GET /healthz` needs no token and returns a constant `{"ok": true}` for readiness probes; the
+`Host` rule still applies to it. See
 [Browser origins and Host checks](VOICE.md#browser-origins-and-host-checks).
 
 ## Controller and MCP
@@ -64,12 +65,12 @@ WebSocket upgrade: the introspection routes `/pool` and `/usage` skip both. See
   Scoped credentials from the authorization policy are limited to their declared scopes
   (for example `workloads:read`). Hand scoped credentials to clients that need less, and keep the
   legacy token to operators.
-- **No Host guard on the controller (fix in progress).** With
-  `--allow-unauthenticated-loopback` every caller is the full-authority legacy principal. Only
-  `/mcp` checks `Origin`; `POST /tools/call` checks neither Origin nor Host. With the Docker
-  socket mounted, a DNS-rebinding web page in a browser on that host could reach host root.
-  Never use that flag on a host that runs a browser. A code change adding the Host guard is in
-  progress; until it lands, keep the token configured.
+- **Unauthenticated controller mode.** With `--allow-unauthenticated-loopback` every caller is
+  the full-authority legacy principal. The controller applies a Host guard in that mode: a
+  foreign `Host` gets 403 on every route, and a `POST` carrying a non-loopback browser `Origin`
+  (or duplicate `Origin` headers) gets 403. This stops DNS rebinding from a browser, not a
+  direct local process or network peer. Configure the token anyway and avoid the flag on shared
+  hosts.
 - Bind safety: a public address or wildcard (`0.0.0.0`) needs `--allow-public-bind` even with a
   token. Non-loopback binds always require the token. `--allow-operation` (repeatable) restricts
   the controller to declared operations. The reference compose file binds `0.0.0.0` inside the
