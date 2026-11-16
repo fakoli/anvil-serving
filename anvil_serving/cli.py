@@ -1448,6 +1448,12 @@ def _dispatch(
                         )
                         if rendered.stderr:
                             print(rendered.stderr, end="", file=sys.stderr)
+                        for item in data.get("errors", []):
+                            print(
+                                f"  {item.get('path', '')}: {item.get('message', '')}"
+                                f" ({item.get('code', '')})",
+                                file=sys.stderr,
+                            )
                 return error.exit_code
             if execution_meta is not None:
                 execution_meta["plan"] = context
