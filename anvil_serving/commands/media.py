@@ -29,6 +29,15 @@ def commands() -> CommandNode:
         "media",
         "Inspect and run bounded managed media workflows.",
         children=(
+            _node("worker-pool", "Run isolated children inside one supervised media GPU owner.", children=(
+                _node("serve", "Serve the internal bounded worker-pool endpoint.",
+                      handler=_handler("anvil_serving.media.worker_pool", argv_prefix=("serve",), forward_confirm_flag=True),
+                      mutation_class="mutate", output_policy="foreground",
+                      options=CONFIRM_OPTIONS + (_option("--config", summary="Private qualified worker-pool policy.", value_name="PATH"),
+                               _option("--bind", summary="Container interface; publish on host loopback only.", value_name="IP"),
+                               _option("--port", summary="Internal Comfy-compatible port.", value_name="PORT")),
+                      docs_anchor="docs/cli/media.md#isolated-image-workers"),
+            )),
             _node(
                 "memory-guard",
                 "Publish Windows memory safety signals and supervise one worker.",

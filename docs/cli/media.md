@@ -514,6 +514,57 @@ clients; it does not advertise protocol task support or promise unsolicited
 assistant wakeups. A client can continue other work and later retrieve the
 result through status or its background watcher.
 
+### Isolated image workers
+
+An explicitly qualified deployment can place `media worker-pool serve` inside
+one managed Linux worker container, beneath the existing memory supervisor.
+Its private `--config` declares the child command, custody root, qualified
+workflow/version/profile set, image allocator budget, physical GPU reserve,
+and original host-memory policy/signal. Publish only the front door on host
+loopback; native child ports remain container-local. This endpoint is internal
+and does not replace gateway authentication or workflow admission.
+
+The internal `serve` command previews without starting children unless
+`--confirm` is supplied. The managed container entrypoint carries that confirmed
+operator action beneath the existing memory supervisor.
+
+The pool runs two independent single-prompt image processes, or one exclusive
+process for a declared video workflow. Switching waits for native queues and
+all upload/submission reservations to drain, stops the old children, and
+retains their completed output custody. Each child inherits the same supervisor
+run ID and monotonic deadline; switching never renews the worker lifetime.
+Unknown native acceptance retains its assignment and is never resubmitted.
+Exact queued cancellation never broadcasts an interrupt to another child.
+
+The managed image must install the `gpu_budget` hooks in its pinned native
+memory accounting and feature/status endpoints. Image children require the
+native Torch caching allocator, dynamic VRAM disabled, and a measured allocator
+budget. This bounds the caching allocator; direct CUDA/context allocations
+still require physical reserve and observed device/host headroom. An ordinary
+unpatched ComfyUI image cannot be treated as a parallel worker.
+
+Image admission also checks the original fresh, policy-bound host signal.
+`imageCommitReserveGiB` adds a conservative per-image reservation above the
+existing commit floor. A second request waits when this headroom is unavailable,
+even if an execution slot is empty. Used idle image processes can be recycled
+before the next batch to release retained memory; this preserves their output
+files and the original supervisor deadline. Active and uncertain work is never
+recycled to make room.
+
+Native terminal history and output custody are retained for 24 hours, then
+pruned during pool activity. A child directory is removed only after its
+process is gone and no retained job references it. The 4,096-record ledger
+provides bounded backpressure; uncertain assignments never expire through this
+cleanup. Gateway artifacts retain their own declared retention policy. The
+internal `/anvil/workers` diagnostic reports actual per-child native occupancy,
+allocator/runtime receipts and kernel container-memory counters for qualification.
+
+Keep global execution slots at one until paired output decoding, actual native
+render overlap, resource headroom, and exclusive video transitions pass on the
+selected deployment. Workflow concurrency remains independently qualified.
+The caller still receives the durable job/waiting contract described above;
+the pool does not add unsolicited MCP completion callbacks.
+
 ### Connect Codex to the media MCP
 
 Register a dedicated connection to the authenticated gateway after the operator

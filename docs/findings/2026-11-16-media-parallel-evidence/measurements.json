@@ -1,0 +1,3836 @@
+{
+  "schema": "anvil-serving.media-capacity-public-projection/v1",
+  "nativeEvidence": false,
+  "redactions": "Deployed identities, variants, asset fingerprints, prompts, paths, job IDs and network identities withheld. Original native records remain private.",
+  "cases": {
+    "create-create": {
+      "passed": true,
+      "outputCount": 2,
+      "fullDecodeCount": 2,
+      "width": 768,
+      "height": 768,
+      "steps": 35,
+      "overlapSeconds": 94.31199999997625,
+      "bothResidentOverlapSeconds": 30.655999999988126,
+      "peakGpuMiB": 16179,
+      "minimumCommitFreeGiB": 26.122764587402344,
+      "maximumSampleIntervalSeconds": 5,
+      "samples": [
+        {
+          "elapsedSeconds": 2.437000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 55.299278259277344,
+          "commitFreeGiB": 48.12088394165039,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 4.687000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.482913970947266,
+          "commitFreeGiB": 46.360416412353516,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 6.842999999993481,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 52.66710662841797,
+          "commitFreeGiB": 45.66088104248047,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 9.062000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 51.496253967285156,
+          "commitFreeGiB": 44.36158752441406,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 11.21799999999348,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 51.44472885131836,
+          "commitFreeGiB": 44.413394927978516,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 13.421000000002095,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 50.186763763427734,
+          "commitFreeGiB": 43.12492370605469,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 15.655999999988126,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 49.89897918701172,
+          "commitFreeGiB": 42.93519973754883,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 17.85899999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 49.64799118041992,
+          "commitFreeGiB": 42.63175582885742,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 20.0,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 49.28192901611328,
+          "commitFreeGiB": 42.28700256347656,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 22.125,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 48.89680862426758,
+          "commitFreeGiB": 41.96922302246094,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 24.296000000002095,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 48.30391311645508,
+          "commitFreeGiB": 41.397647857666016,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 26.453000000008615,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 47.78282928466797,
+          "commitFreeGiB": 40.8956413269043,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 28.625,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.937801361083984,
+          "commitFreeGiB": 39.99222946166992,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 30.812000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.52750778198242,
+          "commitFreeGiB": 39.68655014038086,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 32.953000000008615,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.19312286376953,
+          "commitFreeGiB": 39.3162727355957,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 35.25,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 45.93083190917969,
+          "commitFreeGiB": 39.12699508666992,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 37.453000000008615,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.8546257019043,
+          "commitFreeGiB": 40.1221809387207,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 39.59299999999348,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.726158142089844,
+          "commitFreeGiB": 39.916160583496094,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 41.76500000001397,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.75327682495117,
+          "commitFreeGiB": 40.01516342163086,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 43.937000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.73162078857422,
+          "commitFreeGiB": 39.995697021484375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 46.10899999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.73645782470703,
+          "commitFreeGiB": 39.997257232666016,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 48.296000000002095,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.74790573120117,
+          "commitFreeGiB": 40.00615692138672,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 50.5,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.71228790283203,
+          "commitFreeGiB": 39.90470886230469,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 52.73399999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.666465759277344,
+          "commitFreeGiB": 39.92483139038086,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 54.937000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.66895294189453,
+          "commitFreeGiB": 39.92848587036133,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 57.578000000008615,
+          "gpuUsedMiB": 1629,
+          "gpuFreeMiB": 30978,
+          "availableGiB": 46.64556884765625,
+          "commitFreeGiB": 39.74095916748047,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            201327616
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 59.71799999999348,
+          "gpuUsedMiB": 3551,
+          "gpuFreeMiB": 29056,
+          "availableGiB": 46.8869743347168,
+          "commitFreeGiB": 37.71247100830078,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            1107301888,
+            1107301888
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 61.85899999999674,
+          "gpuUsedMiB": 5279,
+          "gpuFreeMiB": 27328,
+          "availableGiB": 46.949867248535156,
+          "commitFreeGiB": 36.16078186035156,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            2013276160,
+            2013276160
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 63.98399999999674,
+          "gpuUsedMiB": 7199,
+          "gpuFreeMiB": 25408,
+          "availableGiB": 46.95958709716797,
+          "commitFreeGiB": 34.29622268676758,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3019914240,
+            3019914240
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 66.125,
+          "gpuUsedMiB": 8863,
+          "gpuFreeMiB": 23744,
+          "availableGiB": 46.951454162597656,
+          "commitFreeGiB": 32.65681076049805,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3892337152,
+            3892337152
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 68.25,
+          "gpuUsedMiB": 10591,
+          "gpuFreeMiB": 22016,
+          "availableGiB": 48.29106140136719,
+          "commitFreeGiB": 32.29275131225586,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            4747983872,
+            4747983872
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 70.375,
+          "gpuUsedMiB": 12191,
+          "gpuFreeMiB": 20416,
+          "availableGiB": 48.10123062133789,
+          "commitFreeGiB": 30.441509246826172,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            5637200384,
+            5637200384
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 72.48399999999674,
+          "gpuUsedMiB": 13855,
+          "gpuFreeMiB": 18752,
+          "availableGiB": 47.88206100463867,
+          "commitFreeGiB": 28.68118667602539,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            6492864512,
+            6492864512
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 75.28099999998813,
+          "gpuUsedMiB": 15101,
+          "gpuFreeMiB": 17506,
+          "availableGiB": 47.680057525634766,
+          "commitFreeGiB": 26.949337005615234,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7118195200,
+            7118195200
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 77.4210000000021,
+          "gpuUsedMiB": 15307,
+          "gpuFreeMiB": 17300,
+          "availableGiB": 47.752262115478516,
+          "commitFreeGiB": 26.868793487548828,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7118637568,
+            7118637568
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 79.53099999998813,
+          "gpuUsedMiB": 15311,
+          "gpuFreeMiB": 17296,
+          "availableGiB": 47.73562240600586,
+          "commitFreeGiB": 26.845806121826172,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7118641152,
+            7118641152
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 87.5,
+          "gpuUsedMiB": 15403,
+          "gpuFreeMiB": 17204,
+          "availableGiB": 47.779815673828125,
+          "commitFreeGiB": 26.96691131591797,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7176012800,
+            7176029184
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 89.875,
+          "gpuUsedMiB": 15831,
+          "gpuFreeMiB": 16776,
+          "availableGiB": 47.726524353027344,
+          "commitFreeGiB": 26.410621643066406,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7180763136,
+            7174513664
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 91.98399999999674,
+          "gpuUsedMiB": 16179,
+          "gpuFreeMiB": 16428,
+          "availableGiB": 47.724422454833984,
+          "commitFreeGiB": 26.155437469482422,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7174566912,
+            7175697408
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 94.10899999999674,
+          "gpuUsedMiB": 16179,
+          "gpuFreeMiB": 16428,
+          "availableGiB": 47.72258758544922,
+          "commitFreeGiB": 26.148014068603516,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7200505856,
+            7175697408
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 96.20300000000861,
+          "gpuUsedMiB": 16179,
+          "gpuFreeMiB": 16428,
+          "availableGiB": 47.70191192626953,
+          "commitFreeGiB": 26.122764587402344,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7200505856,
+            7257817600
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 98.32800000000861,
+          "gpuUsedMiB": 16179,
+          "gpuFreeMiB": 16428,
+          "availableGiB": 50.65794372558594,
+          "commitFreeGiB": 31.617748260498047,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7247839744,
+            7201046528
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 100.46799999999348,
+          "gpuUsedMiB": 16179,
+          "gpuFreeMiB": 16428,
+          "availableGiB": 53.08915328979492,
+          "commitFreeGiB": 31.549785614013672,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7200505856,
+            7257817088
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 102.60899999999674,
+          "gpuUsedMiB": 16179,
+          "gpuFreeMiB": 16428,
+          "availableGiB": 53.1196403503418,
+          "commitFreeGiB": 31.65247344970703,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7175156736,
+            7175697408
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 104.71799999999348,
+          "gpuUsedMiB": 5481,
+          "gpuFreeMiB": 27126,
+          "availableGiB": 53.15036392211914,
+          "commitFreeGiB": 42.1036491394043,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            770083840,
+            1308003328
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 106.96799999999348,
+          "gpuUsedMiB": 1783,
+          "gpuFreeMiB": 30824,
+          "availableGiB": 53.144100189208984,
+          "commitFreeGiB": 45.52891540527344,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            33554432
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        }
+      ]
+    },
+    "create-edit": {
+      "passed": true,
+      "outputCount": 2,
+      "fullDecodeCount": 2,
+      "width": 768,
+      "height": 768,
+      "steps": 35,
+      "overlapSeconds": 110.125,
+      "bothResidentOverlapSeconds": 25.780999999988126,
+      "peakGpuMiB": 20541,
+      "minimumCommitFreeGiB": 17.394115447998047,
+      "maximumSampleIntervalSeconds": 5,
+      "samples": [
+        {
+          "elapsedSeconds": 0.375,
+          "gpuUsedMiB": 1783,
+          "gpuFreeMiB": 30824,
+          "availableGiB": 53.14213180541992,
+          "commitFreeGiB": 45.600704193115234,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            33554432
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 2.4530000000086147,
+          "gpuUsedMiB": 445,
+          "gpuFreeMiB": 32162,
+          "availableGiB": 53.12837600708008,
+          "commitFreeGiB": 46.716270446777344,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 4.546999999991385,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.19076919555664,
+          "commitFreeGiB": 45.99510192871094,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 6.625,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.219932556152344,
+          "commitFreeGiB": 46.00431823730469,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 10.828000000008615,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.18830490112305,
+          "commitFreeGiB": 46.036338806152344,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 13.062999999994645,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 52.380455017089844,
+          "commitFreeGiB": 45.198604583740234,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 15.203000000008615,
+          "gpuUsedMiB": 2369,
+          "gpuFreeMiB": 30238,
+          "availableGiB": 51.92985916137695,
+          "commitFreeGiB": 43.99489974975586,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            810278912
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 17.35899999999674,
+          "gpuUsedMiB": 2371,
+          "gpuFreeMiB": 30236,
+          "availableGiB": 51.33259201049805,
+          "commitFreeGiB": 43.430538177490234,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            801118208
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 19.48399999999674,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 51.26995849609375,
+          "commitFreeGiB": 42.767887115478516,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            742428160
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 21.655999999988126,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 50.33094787597656,
+          "commitFreeGiB": 41.77544403076172,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 23.812999999994645,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 50.531707763671875,
+          "commitFreeGiB": 42.11267852783203,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 25.96899999998277,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 49.205162048339844,
+          "commitFreeGiB": 40.75706481933594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 28.125,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 47.52289962768555,
+          "commitFreeGiB": 39.016822814941406,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 30.280999999988126,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 47.439048767089844,
+          "commitFreeGiB": 38.96068572998047,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 32.405999999988126,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 46.69354248046875,
+          "commitFreeGiB": 38.26715087890625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 34.625,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 46.70879364013672,
+          "commitFreeGiB": 38.37722396850586,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 36.828000000008615,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 46.714569091796875,
+          "commitFreeGiB": 38.39628219604492,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 39.0,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 46.50127410888672,
+          "commitFreeGiB": 38.20549392700195,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 41.155999999988126,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 46.22657775878906,
+          "commitFreeGiB": 37.875,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 43.312999999994645,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 45.59394836425781,
+          "commitFreeGiB": 37.35787582397461,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 45.46899999998277,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 45.24344253540039,
+          "commitFreeGiB": 37.00440216064453,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 47.64100000000326,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.16444778442383,
+          "commitFreeGiB": 35.9298210144043,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 49.84399999998277,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.148990631103516,
+          "commitFreeGiB": 35.91315460205078,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 52.046999999991385,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.096458435058594,
+          "commitFreeGiB": 35.791473388671875,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 54.23399999999674,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.55607223510742,
+          "commitFreeGiB": 36.33925247192383,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 56.39100000000326,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 45.3423957824707,
+          "commitFreeGiB": 37.12996292114258,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 58.562999999994645,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.74066162109375,
+          "commitFreeGiB": 36.522727966308594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 60.75,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.737770080566406,
+          "commitFreeGiB": 36.53587341308594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 62.89100000000326,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.70712661743164,
+          "commitFreeGiB": 36.42782974243164,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 65.06299999999464,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.743370056152344,
+          "commitFreeGiB": 36.52975082397461,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 67.23399999999674,
+          "gpuUsedMiB": 3003,
+          "gpuFreeMiB": 29604,
+          "availableGiB": 44.749778747558594,
+          "commitFreeGiB": 36.532840728759766,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 69.39100000000326,
+          "gpuUsedMiB": 3101,
+          "gpuFreeMiB": 29506,
+          "availableGiB": 44.73801803588867,
+          "commitFreeGiB": 36.453956604003906,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            100663808,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 71.54699999999139,
+          "gpuUsedMiB": 3485,
+          "gpuFreeMiB": 29122,
+          "availableGiB": 44.68695831298828,
+          "commitFreeGiB": 35.941009521484375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            503319040,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 73.70300000000861,
+          "gpuUsedMiB": 3869,
+          "gpuFreeMiB": 28738,
+          "availableGiB": 44.65777587890625,
+          "commitFreeGiB": 35.603336334228516,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            905974272,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 75.81299999999464,
+          "gpuUsedMiB": 4157,
+          "gpuFreeMiB": 28450,
+          "availableGiB": 44.71520233154297,
+          "commitFreeGiB": 35.39048385620117,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            1207965696,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 77.93799999999464,
+          "gpuUsedMiB": 4541,
+          "gpuFreeMiB": 28066,
+          "availableGiB": 44.72176742553711,
+          "commitFreeGiB": 35.02933883666992,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            1610620928,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 80.06299999999464,
+          "gpuUsedMiB": 4925,
+          "gpuFreeMiB": 27682,
+          "availableGiB": 44.71051025390625,
+          "commitFreeGiB": 34.646385192871094,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            2013276160,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 82.15599999998813,
+          "gpuUsedMiB": 5213,
+          "gpuFreeMiB": 27394,
+          "availableGiB": 43.919002532958984,
+          "commitFreeGiB": 33.49916458129883,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            2315267584,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 84.31299999999464,
+          "gpuUsedMiB": 5597,
+          "gpuFreeMiB": 27010,
+          "availableGiB": 43.678409576416016,
+          "commitFreeGiB": 32.96068572998047,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            2717922816,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 86.46899999998277,
+          "gpuUsedMiB": 5981,
+          "gpuFreeMiB": 26626,
+          "availableGiB": 43.4249267578125,
+          "commitFreeGiB": 32.33834457397461,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3120578048,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 88.60899999999674,
+          "gpuUsedMiB": 6333,
+          "gpuFreeMiB": 26274,
+          "availableGiB": 42.98682403564453,
+          "commitFreeGiB": 31.582763671875,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3439347712,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 90.89100000000326,
+          "gpuUsedMiB": 6765,
+          "gpuFreeMiB": 25842,
+          "availableGiB": 42.94243621826172,
+          "commitFreeGiB": 31.094406127929688,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3942669312,
+            783519232
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 93.01600000000326,
+          "gpuUsedMiB": 11533,
+          "gpuFreeMiB": 21074,
+          "availableGiB": 43.2742805480957,
+          "commitFreeGiB": 26.33062744140625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            4697651712,
+            5380507136
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 95.15599999998813,
+          "gpuUsedMiB": 13181,
+          "gpuFreeMiB": 19426,
+          "availableGiB": 43.30555725097656,
+          "commitFreeGiB": 24.811744689941406,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            5653978112,
+            6336833536
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 97.28099999998813,
+          "gpuUsedMiB": 15005,
+          "gpuFreeMiB": 17602,
+          "availableGiB": 43.30904006958008,
+          "commitFreeGiB": 23.032958984375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            6610308608,
+            7293164032
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 99.68799999999464,
+          "gpuUsedMiB": 16135,
+          "gpuFreeMiB": 16472,
+          "availableGiB": 43.387901306152344,
+          "commitFreeGiB": 21.784210205078125,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7176012800,
+            7801199104
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 101.79699999999139,
+          "gpuUsedMiB": 16257,
+          "gpuFreeMiB": 16350,
+          "availableGiB": 43.385948181152344,
+          "commitFreeGiB": 21.663265228271484,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7180071936,
+            7878565888
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 103.93799999999464,
+          "gpuUsedMiB": 18737,
+          "gpuFreeMiB": 13870,
+          "availableGiB": 43.376258850097656,
+          "commitFreeGiB": 19.28774642944336,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7196260864,
+            9131363840
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 106.03099999998813,
+          "gpuUsedMiB": 20539,
+          "gpuFreeMiB": 12068,
+          "availableGiB": 43.37260055541992,
+          "commitFreeGiB": 17.5758056640625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7220170752,
+            10286088192
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 108.17199999999139,
+          "gpuUsedMiB": 20541,
+          "gpuFreeMiB": 12066,
+          "availableGiB": 43.359832763671875,
+          "commitFreeGiB": 17.553695678710938,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7175156736,
+            10282548736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 110.31299999999464,
+          "gpuUsedMiB": 20541,
+          "gpuFreeMiB": 12066,
+          "availableGiB": 43.355323791503906,
+          "commitFreeGiB": 17.58431625366211,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7175156736,
+            10329547264
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 112.42199999999139,
+          "gpuUsedMiB": 20541,
+          "gpuFreeMiB": 12066,
+          "availableGiB": 43.24277877807617,
+          "commitFreeGiB": 17.394115447998047,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7200505856,
+            10282548736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 114.54699999999139,
+          "gpuUsedMiB": 20541,
+          "gpuFreeMiB": 12066,
+          "availableGiB": 43.24690628051758,
+          "commitFreeGiB": 17.49505615234375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7200505856,
+            10329547264
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 116.68799999999464,
+          "gpuUsedMiB": 20541,
+          "gpuFreeMiB": 12066,
+          "availableGiB": 43.22648239135742,
+          "commitFreeGiB": 17.48061752319336,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7175156736,
+            10396443648
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 118.79699999999139,
+          "gpuUsedMiB": 20541,
+          "gpuFreeMiB": 12066,
+          "availableGiB": 48.039581298828125,
+          "commitFreeGiB": 24.03500747680664,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7175156736,
+            10282548736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 120.95300000000861,
+          "gpuUsedMiB": 3327,
+          "gpuFreeMiB": 29280,
+          "availableGiB": 49.7841911315918,
+          "commitFreeGiB": 40.84278869628906,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            770083840,
+            770083840
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 123.14100000000326,
+          "gpuUsedMiB": 2553,
+          "gpuFreeMiB": 30054,
+          "availableGiB": 49.740028381347656,
+          "commitFreeGiB": 41.36846160888672,
+          "nativeRunning": [
+            0,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            770083840
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 125.35899999999674,
+          "gpuUsedMiB": 1779,
+          "gpuFreeMiB": 30828,
+          "availableGiB": 49.816871643066406,
+          "commitFreeGiB": 42.27646255493164,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            33554432
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        }
+      ]
+    },
+    "edit-edit": {
+      "passed": true,
+      "outputCount": 2,
+      "fullDecodeCount": 2,
+      "width": 768,
+      "height": 768,
+      "steps": 35,
+      "overlapSeconds": 124.98399999999674,
+      "bothResidentOverlapSeconds": 29.671000000002095,
+      "peakGpuMiB": 24903,
+      "minimumCommitFreeGiB": 16.414627075195312,
+      "maximumSampleIntervalSeconds": 5,
+      "samples": [
+        {
+          "elapsedSeconds": 2.625,
+          "gpuUsedMiB": 1607,
+          "gpuFreeMiB": 31000,
+          "availableGiB": 54.087100982666016,
+          "commitFreeGiB": 47.02789306640625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 4.828000000008615,
+          "gpuUsedMiB": 3977,
+          "gpuFreeMiB": 28630,
+          "availableGiB": 53.46525573730469,
+          "commitFreeGiB": 44.07228469848633,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            810278912
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 6.98399999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 52.41277313232422,
+          "commitFreeGiB": 42.43545150756836,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 9.187999999994645,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 51.91630554199219,
+          "commitFreeGiB": 41.90472412109375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 11.312999999994645,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 51.283878326416016,
+          "commitFreeGiB": 41.3458251953125,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 13.546999999991385,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 49.965721130371094,
+          "commitFreeGiB": 40.05943298339844,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 15.73399999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 49.252723693847656,
+          "commitFreeGiB": 39.337581634521484,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 17.85899999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 49.02305603027344,
+          "commitFreeGiB": 39.12548065185547,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 20.0,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 49.01171112060547,
+          "commitFreeGiB": 39.07360076904297,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 22.10899999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 48.138309478759766,
+          "commitFreeGiB": 38.281639099121094,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 24.21899999998277,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 47.884849548339844,
+          "commitFreeGiB": 38.04601287841797,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 26.437999999994645,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 47.62312698364258,
+          "commitFreeGiB": 37.78046798706055,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 28.625,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 47.525936126708984,
+          "commitFreeGiB": 37.63230514526367,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 30.828000000008615,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 46.794376373291016,
+          "commitFreeGiB": 36.9983024597168,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 33.0,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 46.7675666809082,
+          "commitFreeGiB": 36.98330307006836,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 35.171999999991385,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 46.40785598754883,
+          "commitFreeGiB": 36.648223876953125,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 37.34399999998277,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 45.89140319824219,
+          "commitFreeGiB": 36.13221740722656,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 39.46899999998277,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 45.12187576293945,
+          "commitFreeGiB": 35.31537628173828,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 41.64100000000326,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 45.14773178100586,
+          "commitFreeGiB": 35.42605972290039,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 43.812999999994645,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 44.88990020751953,
+          "commitFreeGiB": 35.209625244140625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 45.98399999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.84280776977539,
+          "commitFreeGiB": 34.172210693359375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 48.125,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.767147064208984,
+          "commitFreeGiB": 34.10436248779297,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 50.26600000000326,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.670440673828125,
+          "commitFreeGiB": 33.958404541015625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 52.453000000008615,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.212242126464844,
+          "commitFreeGiB": 33.596248626708984,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 54.60899999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.14854431152344,
+          "commitFreeGiB": 33.55481719970703,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 56.76600000000326,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.6761474609375,
+          "commitFreeGiB": 33.087303161621094,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 58.921999999991385,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.639102935791016,
+          "commitFreeGiB": 32.96702194213867,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 61.078000000008615,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.6774787902832,
+          "commitFreeGiB": 33.08381271362305,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 63.328000000008615,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.6705436706543,
+          "commitFreeGiB": 33.08001708984375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 65.51600000000326,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.688350677490234,
+          "commitFreeGiB": 33.0782470703125,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 67.67199999999139,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.69009017944336,
+          "commitFreeGiB": 33.083072662353516,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 69.84399999998277,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.6536865234375,
+          "commitFreeGiB": 32.985652923583984,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 72.04699999999139,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.68605422973633,
+          "commitFreeGiB": 33.08809280395508,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 74.23399999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.68349075317383,
+          "commitFreeGiB": 33.096458435058594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 76.34399999998277,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.69696044921875,
+          "commitFreeGiB": 33.09568405151367,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 78.54699999999139,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 42.66069793701172,
+          "commitFreeGiB": 32.98910140991211,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 80.76600000000326,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.447898864746094,
+          "commitFreeGiB": 33.857177734375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 82.95300000000861,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.45100784301758,
+          "commitFreeGiB": 33.86091613769531,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 85.125,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.45810317993164,
+          "commitFreeGiB": 33.87123489379883,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 87.29699999999139,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.48471450805664,
+          "commitFreeGiB": 33.8875617980957,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 89.45300000000861,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.17639923095703,
+          "commitFreeGiB": 33.51120376586914,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 91.59399999998277,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.169376373291016,
+          "commitFreeGiB": 33.58809280395508,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            716409856,
+            682855424
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 93.73399999999674,
+          "gpuUsedMiB": 4611,
+          "gpuFreeMiB": 27996,
+          "availableGiB": 43.16515350341797,
+          "commitFreeGiB": 33.592620849609375,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            1219728896,
+            783519232
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 95.85899999999674,
+          "gpuUsedMiB": 6339,
+          "gpuFreeMiB": 26268,
+          "availableGiB": 43.51161193847656,
+          "commitFreeGiB": 31.90127182006836,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            2125703168,
+            2092148736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 97.93799999999464,
+          "gpuUsedMiB": 8067,
+          "gpuFreeMiB": 24540,
+          "availableGiB": 43.523372650146484,
+          "commitFreeGiB": 30.219680786132812,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3031677440,
+            2998123008
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 100.04699999999139,
+          "gpuUsedMiB": 9795,
+          "gpuFreeMiB": 22812,
+          "availableGiB": 43.61732482910156,
+          "commitFreeGiB": 28.412967681884766,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3937651712,
+            3904097280
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 102.14100000000326,
+          "gpuUsedMiB": 11363,
+          "gpuFreeMiB": 21244,
+          "availableGiB": 43.64174270629883,
+          "commitFreeGiB": 26.96942901611328,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            4810075648,
+            4776521216
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 104.25,
+          "gpuUsedMiB": 12931,
+          "gpuFreeMiB": 19676,
+          "availableGiB": 43.67749786376953,
+          "commitFreeGiB": 25.429927825927734,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            5732834304,
+            5699279872
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 106.34399999998277,
+          "gpuUsedMiB": 14595,
+          "gpuFreeMiB": 18012,
+          "availableGiB": 43.68221664428711,
+          "commitFreeGiB": 23.806758880615234,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            6605276160,
+            6571721728
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 108.42199999999139,
+          "gpuUsedMiB": 16099,
+          "gpuFreeMiB": 16508,
+          "availableGiB": 43.67427444458008,
+          "commitFreeGiB": 22.332260131835938,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7393829376,
+            7360274944
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 110.65599999998813,
+          "gpuUsedMiB": 21531,
+          "gpuFreeMiB": 11076,
+          "availableGiB": 43.96025085449219,
+          "commitFreeGiB": 17.264572143554688,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            8039173632,
+            9729604608
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 112.76600000000326,
+          "gpuUsedMiB": 24901,
+          "gpuFreeMiB": 7706,
+          "availableGiB": 46.33610153198242,
+          "commitFreeGiB": 16.537681579589844,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10282548736,
+            10329547264
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 114.92199999999139,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 46.36461639404297,
+          "commitFreeGiB": 16.528690338134766,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10329942528,
+            10282548736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 117.04699999999139,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 46.36463165283203,
+          "commitFreeGiB": 16.53211212158203,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10329547264,
+            10397280768
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 119.17199999999139,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 46.32654571533203,
+          "commitFreeGiB": 16.414627075195312,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10282548736,
+            10329547264
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 121.26600000000326,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 46.377838134765625,
+          "commitFreeGiB": 16.54958724975586,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10282548736,
+            10282548736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 123.39100000000326,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 46.3868522644043,
+          "commitFreeGiB": 16.542251586914062,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10329547264,
+            10397280768
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 125.5,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 46.956607818603516,
+          "commitFreeGiB": 16.511802673339844,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10282548736,
+            10329547264
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 127.60899999999674,
+          "gpuUsedMiB": 24903,
+          "gpuFreeMiB": 7704,
+          "availableGiB": 48.08870315551758,
+          "commitFreeGiB": 16.49475860595703,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            10378406400,
+            10282548736
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 129.82800000000861,
+          "gpuUsedMiB": 1779,
+          "gpuFreeMiB": 30828,
+          "availableGiB": 48.07193374633789,
+          "commitFreeGiB": 38.82741165161133,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            33554432
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        }
+      ]
+    },
+    "mcp-create-create": {
+      "passed": true,
+      "outputCount": 2,
+      "fullDecodeCount": 2,
+      "width": 768,
+      "height": 768,
+      "steps": 35,
+      "overlapSeconds": 100.23400000002584,
+      "bothResidentOverlapSeconds": 32.0,
+      "peakGpuMiB": 16171,
+      "minimumCommitFreeGiB": 21.846214294433594,
+      "maximumSampleIntervalSeconds": 6,
+      "samples": [
+        {
+          "elapsedSeconds": 0.0,
+          "gpuUsedMiB": 1609,
+          "gpuFreeMiB": 30998,
+          "availableGiB": 52.46699142456055,
+          "commitFreeGiB": 44.480079650878906,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 2.125,
+          "gpuUsedMiB": 445,
+          "gpuFreeMiB": 32162,
+          "availableGiB": 52.599369049072266,
+          "commitFreeGiB": 45.45299530029297,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 4.23399999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 52.63745880126953,
+          "commitFreeGiB": 44.6551513671875,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 6.375,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.80562210083008,
+          "commitFreeGiB": 45.915443420410156,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 8.51600000000326,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.78029251098633,
+          "commitFreeGiB": 45.91132354736328,
+          "nativeRunning": [
+            1,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 10.671999999991385,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 53.164649963378906,
+          "commitFreeGiB": 45.435909271240234,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 13.0,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 50.89070129394531,
+          "commitFreeGiB": 43.1863899230957,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 15.14100000000326,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 49.785682678222656,
+          "commitFreeGiB": 42.07890701293945,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 17.28100000001723,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 49.082725524902344,
+          "commitFreeGiB": 41.30907440185547,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 19.40600000001723,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 49.0130729675293,
+          "commitFreeGiB": 41.31489562988281,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 21.51600000000326,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 48.715816497802734,
+          "commitFreeGiB": 41.05118179321289,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 23.719000000011874,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 47.2213134765625,
+          "commitFreeGiB": 39.57872772216797,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 25.844000000011874,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 47.07582092285156,
+          "commitFreeGiB": 39.44693374633789,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 27.98399999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.761322021484375,
+          "commitFreeGiB": 39.070213317871094,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 30.094000000011874,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.733524322509766,
+          "commitFreeGiB": 39.14977264404297,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 32.203000000008615,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 46.253074645996094,
+          "commitFreeGiB": 38.6939582824707,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 34.296999999991385,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 45.331153869628906,
+          "commitFreeGiB": 37.81358337402344,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 36.437000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 45.464630126953125,
+          "commitFreeGiB": 37.9766845703125,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 38.562000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 44.68422317504883,
+          "commitFreeGiB": 37.150299072265625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 40.687000000005355,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 44.69484329223633,
+          "commitFreeGiB": 37.25413131713867,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 42.78100000001723,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 44.075870513916016,
+          "commitFreeGiB": 36.63666915893555,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 44.90600000001723,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 43.706478118896484,
+          "commitFreeGiB": 36.300201416015625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 47.0,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 43.705753326416016,
+          "commitFreeGiB": 36.309814453125,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 49.10899999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 43.457176208496094,
+          "commitFreeGiB": 35.977272033691406,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 51.23399999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 43.402034759521484,
+          "commitFreeGiB": 36.01868438720703,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 53.35899999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 43.04995346069336,
+          "commitFreeGiB": 35.6724739074707,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 55.48399999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 42.94926834106445,
+          "commitFreeGiB": 35.63804244995117,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 57.703000000008615,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 42.62502670288086,
+          "commitFreeGiB": 35.33967208862305,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 59.844000000011874,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 42.30276107788086,
+          "commitFreeGiB": 35.2741584777832,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 61.98399999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 42.425567626953125,
+          "commitFreeGiB": 35.39716339111328,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 64.125,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 42.56989669799805,
+          "commitFreeGiB": 35.56692123413086,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 66.35899999999674,
+          "gpuUsedMiB": 1435,
+          "gpuFreeMiB": 31172,
+          "availableGiB": 42.644561767578125,
+          "commitFreeGiB": 35.611087799072266,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            0,
+            0
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 68.46900000001187,
+          "gpuUsedMiB": 2591,
+          "gpuFreeMiB": 30016,
+          "availableGiB": 44.179325103759766,
+          "commitFreeGiB": 35.62113571166992,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            603982848,
+            603982848
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 70.53100000001723,
+          "gpuUsedMiB": 4511,
+          "gpuFreeMiB": 28096,
+          "availableGiB": 44.236968994140625,
+          "commitFreeGiB": 33.84970474243164,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            1610620928,
+            1610620928
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 72.60899999999674,
+          "gpuUsedMiB": 6239,
+          "gpuFreeMiB": 26368,
+          "availableGiB": 44.26626968383789,
+          "commitFreeGiB": 32.1722297668457,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            2516595200,
+            2516595200
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 74.73399999999674,
+          "gpuUsedMiB": 7999,
+          "gpuFreeMiB": 24608,
+          "availableGiB": 44.41910171508789,
+          "commitFreeGiB": 30.481220245361328,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            3389015552,
+            3439347712
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 76.81200000000536,
+          "gpuUsedMiB": 9727,
+          "gpuFreeMiB": 22880,
+          "availableGiB": 44.43277359008789,
+          "commitFreeGiB": 28.777267456054688,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            4345326592,
+            4345326592
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 78.90600000001723,
+          "gpuUsedMiB": 11327,
+          "gpuFreeMiB": 21280,
+          "availableGiB": 44.39406967163086,
+          "commitFreeGiB": 27.048206329345703,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            5167424000,
+            5184201728
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 81.03100000001723,
+          "gpuUsedMiB": 12895,
+          "gpuFreeMiB": 19712,
+          "availableGiB": 44.3919792175293,
+          "commitFreeGiB": 25.578147888183594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            6006310400,
+            6006310400
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 83.125,
+          "gpuUsedMiB": 14559,
+          "gpuFreeMiB": 18048,
+          "availableGiB": 44.41849136352539,
+          "commitFreeGiB": 23.970504760742188,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            6878752256,
+            6878752256
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 85.45300000000861,
+          "gpuUsedMiB": 15403,
+          "gpuFreeMiB": 17204,
+          "availableGiB": 44.41049575805664,
+          "commitFreeGiB": 23.191673278808594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7175913984,
+            7175910400
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 87.85899999999674,
+          "gpuUsedMiB": 15487,
+          "gpuFreeMiB": 17120,
+          "availableGiB": 44.49335861206055,
+          "commitFreeGiB": 22.993133544921875,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7180165632,
+            7180265984
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 89.95300000000861,
+          "gpuUsedMiB": 16155,
+          "gpuFreeMiB": 16452,
+          "availableGiB": 44.507442474365234,
+          "commitFreeGiB": 22.446094512939453,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7209785856,
+            7210360832
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 92.06200000000536,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 44.27170944213867,
+          "commitFreeGiB": 22.13573455810547,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7170728960,
+            7197456384
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 94.17199999999139,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 44.336830139160156,
+          "commitFreeGiB": 22.230243682861328,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7171912704,
+            7197802496
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 96.23399999999674,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 44.094966888427734,
+          "commitFreeGiB": 21.846214294433594,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7171912704,
+            7197802496
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 98.31200000000536,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 46.905696868896484,
+          "commitFreeGiB": 26.82412338256836,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7171912704,
+            7198046720
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 100.43700000000536,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 49.071224212646484,
+          "commitFreeGiB": 26.894943237304688,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7171912704,
+            7198046720
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 102.51600000000326,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 48.94780731201172,
+          "commitFreeGiB": 26.67926025390625,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7171912704,
+            7198046720
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 104.60899999999674,
+          "gpuUsedMiB": 16171,
+          "gpuFreeMiB": 16436,
+          "availableGiB": 48.955814361572266,
+          "commitFreeGiB": 26.738418579101562,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            7171912704,
+            7198423552
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 106.70300000000861,
+          "gpuUsedMiB": 3219,
+          "gpuFreeMiB": 29388,
+          "availableGiB": 49.01924133300781,
+          "commitFreeGiB": 39.445430755615234,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            743546880,
+            743546880
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 108.82800000000861,
+          "gpuUsedMiB": 3219,
+          "gpuFreeMiB": 29388,
+          "availableGiB": 48.99737548828125,
+          "commitFreeGiB": 39.2715950012207,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            743546880,
+            743546880
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 110.90600000001723,
+          "gpuUsedMiB": 3327,
+          "gpuFreeMiB": 29280,
+          "availableGiB": 49.02722930908203,
+          "commitFreeGiB": 39.306392669677734,
+          "nativeRunning": [
+            1,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            770083840,
+            770083840
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 113.0,
+          "gpuUsedMiB": 3873,
+          "gpuFreeMiB": 28734,
+          "availableGiB": 49.01789474487305,
+          "commitFreeGiB": 38.5771369934082,
+          "nativeRunning": [
+            0,
+            1
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            1070915072
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 115.07800000000861,
+          "gpuUsedMiB": 1779,
+          "gpuFreeMiB": 30828,
+          "availableGiB": 48.977901458740234,
+          "commitFreeGiB": 40.57360076904297,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            33554432
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        },
+        {
+          "elapsedSeconds": 117.17199999999139,
+          "gpuUsedMiB": 1779,
+          "gpuFreeMiB": 30828,
+          "availableGiB": 48.988616943359375,
+          "commitFreeGiB": 40.77789306640625,
+          "nativeRunning": [
+            0,
+            0
+          ],
+          "cudaAllocatedBytes": [
+            33554432,
+            33554432
+          ],
+          "containerOom": 0,
+          "containerOomKill": 0
+        }
+      ]
+    }
+  },
+  "exclusiveVideo": {
+    "passed": true,
+    "width": 608,
+    "height": 352,
+    "fps": 24,
+    "steps": 20,
+    "segments": 2,
+    "frames": 226,
+    "peakGpuMiB": 31580,
+    "minimumCommitFreeGiB": 17.068126678466797,
+    "fullDecode": true,
+    "capturedAfterChildStopped": true,
+    "returnedToImageMode": true
+  },
+  "mcp": {
+    "enqueueSeconds": [
+      0.07800000000861473,
+      0.0629999999946449
+    ],
+    "secondClientDisconnected": true,
+    "idempotentRetrySameJob": true,
+    "thirdQueuedAndCanceled": true,
+    "boundedStatusWait": true
+  },
+  "regression": {
+    "linuxPassed": 4668,
+    "linuxSkipped": 128,
+    "linuxSubtestsPassed": 20
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set-source/v1",
+  "campaign": {
+    "id": "2026-11-16-media-parallel",
+    "capability": "bounded media worker capacity",
+    "repository_revision": "59a92168374065405f2f93e1b3d08986218cdced",
+    "dirty_state": "Media pool implementation and regression files added above this base; exact source bindings retained privately",
+    "started_at": null,
+    "completed_at": null,
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "observed_dates": [
+      "2026-11-15",
+      "2026-11-16"
+    ],
+    "time_precision": "day; exact campaign boundary timestamps not retained publicly"
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        "README.md"
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        "source-registry.json"
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Native prompts, references and asset fingerprints remain private."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "No pre-execution common public plan was retained; this is bounded engineering acceptance, not a serving comparison."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "missing",
+      "files": [],
+      "reason": "Immutable deployed model, variant, runtime and asset bindings remain private."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "missing",
+      "files": [],
+      "reason": "Native records and outputs remain private; measurements.json is explicitly a redacted derivative."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        "friction-log.md"
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        "restoration.json"
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        "summary.json",
+        "measurements.json"
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social/publication copy was requested."
+    }
+  ]
+}

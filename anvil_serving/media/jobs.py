@@ -550,7 +550,7 @@ class MediaJobStore:
             resumes = [r[0] for r in active if r[3] == 1 and r[2] in ('accepted','preparing')]
             if any(r[2] in ('awaiting_approval','failed','canceled') for r in active):
                 db.execute("COMMIT")
-                return resumes
+                return []  # Preclaimed later jobs cannot bypass approval or an uncertain FIFO head.
             for row in db.execute("SELECT q.job_id,j.workflow_id FROM media_job_queue q JOIN media_jobs j ON j.id=q.job_id "
                     "WHERE q.claimed=0 AND j.state='accepted' ORDER BY q.sequence").fetchall():
                 limit = workflow_limits.get(row[1], 1)

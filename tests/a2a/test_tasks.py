@@ -56,6 +56,12 @@ class Backend(ComfyUIClient):
     def compatibility(self, workflow):
         return WorkflowCompatibility(workflow.id, workflow.version, True, True)
 
+    def prepare_execution(self, workflow, *, job_id, sequence):
+        return self
+
+    def release_execution(self, job_id):
+        pass
+
     def submit(self, workflow, *, job_id):
         return "prompt-one"
 

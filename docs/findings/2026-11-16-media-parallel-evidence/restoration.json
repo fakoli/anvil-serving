@@ -1,0 +1,33 @@
+{
+  "schema": "anvil-serving.benchmark-restoration/v1",
+  "campaign_id": "2026-11-16-media-parallel",
+  "status": "accepted-capacity-change",
+  "mutation_required": true,
+  "starting_state": {
+    "captured": true,
+    "executionSlots": 1,
+    "nativeProcesses": 1
+  },
+  "ending_state": {
+    "captured": true,
+    "executionSlots": 2,
+    "nativeImageProcesses": 2,
+    "videoExclusive": true,
+    "nonterminalJobs": 0,
+    "temporaryQueueDiagnosticRemoved": true,
+    "retainedRollback": true
+  },
+  "differences": [
+    "User-authorized second image execution slot enabled after passing acceptance",
+    "Existing image profile concurrency raised to two; all other workflow/profile approvals unchanged"
+  ],
+  "post_run_checks": [
+    "First real MCP image decoded",
+    "Two independent MCP jobs decoded after overlapping native renders",
+    "Actual pinned worker/gateway images and15 mounted dependencies verified",
+    "No cgroup OOM",
+    "Primary worker and gateway healthy"
+  ],
+  "verified": true,
+  "not_applicable_reason": null
+}
