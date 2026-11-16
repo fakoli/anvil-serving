@@ -34,13 +34,14 @@ def _trusted(
 
 
 @pytest.fixture
-def trusted_tmp() -> Path:
+def trusted_tmp(tmp_path: Path) -> Path:
     """An owned disposable file under trusted native ancestry."""
     if sys.platform == "win32":
         with windows_fixture_tree() as tree:
             yield tree.file("receiver.pyz")
         return
-    descriptor, name = mkstemp(prefix="anvil-opened-file-", suffix=".pyz", dir=Path.cwd())
+    tmp_path.chmod(0o700)  # umask-independent: ancestry must not be group-writable
+    descriptor, name = mkstemp(prefix="anvil-opened-file-", suffix=".pyz", dir=tmp_path)
     os.close(descriptor)
     path = Path(name)
     try:
@@ -182,7 +183,7 @@ def test_reader_rejects_directory_and_hardlinked_leaf(
 ) -> None:
     _refusal(
         BootstrapErrorCode.UNSAFE_PATH,
-        lambda: _enter_and_read(Path.cwd(), max_bytes=64),
+        lambda: _enter_and_read(trusted_tmp.parent, max_bytes=64),
     )
     first = trusted_tmp
     second = trusted_tmp.with_name(trusted_tmp.stem + "-linked.pyz")
