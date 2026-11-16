@@ -180,7 +180,7 @@ Full documentation: **[fakoli.github.io/anvil](https://fakoli.github.io/anvil/)*
 
 Beta (v0.6.5). The full PRD → plan → claim → execute → verify → finish loop
 works today, alongside GitHub Issues sync and multi-provider LLM support.
-Near-term focus is provider expansion, usability, and remaining pre-1.0
+Near-term focus is provider expansion, usability, and remaining
 contract hardening; Linear/Monday providers and webhook sync are on the
 [roadmap](https://fakoli.github.io/anvil/roadmap/).
 

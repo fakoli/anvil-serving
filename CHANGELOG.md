@@ -19,6 +19,9 @@ All notable changes to this project are documented here. The format is based on
   the configured bind host. This blocks DNS-rebinding pages from driving
   inference through a loopback router. `Host: localhost` is also refused; use
   `127.0.0.1`. Authenticated routers are unchanged.
+- Set the copyright holder and package author, replaced the placeholder security
+  contact with `security@fakoli.net`, updated supported versions to the 2.x line,
+  and changed the package classifier to `Development Status :: 4 - Beta`.
 
 ### Fixed
 
