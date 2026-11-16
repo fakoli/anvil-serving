@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-11-16
+
 ### Added
 
 - `anvil-serving init --gateway-only --upstream URL --model NAME` scaffolds the
@@ -2853,7 +2855,8 @@ The `harness-router` PRD (all 18 tasks, milestones M0–M3) landed in this relea
 - **The T017 traffic fixture is synthetic.** Traffic-metrics behavior is exercised against a
   synthetic fixture, not yet against real routed production traffic.
 
-[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v2.0.2...HEAD
+[Unreleased]: https://github.com/fakoli/anvil-serving/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/fakoli/anvil-serving/compare/v2.0.2...v3.0.0
 [2.0.2]: https://github.com/fakoli/anvil-serving/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/fakoli/anvil-serving/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fakoli/anvil-serving/compare/v1.5.0...v2.0.0
