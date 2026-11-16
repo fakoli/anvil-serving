@@ -38,6 +38,7 @@ import urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .http_host import request_host_allowed
+from .legacy_names import LEGACY_NAMES, warn_legacy
 from .gpus import gpu_uuid  # noqa: F401 (re-exported; shared with `deploy` — T007)
 
 # --- REGISTRY TABLE: single source of truth for /v1/models AND the loader ----
@@ -47,11 +48,13 @@ from .gpus import gpu_uuid  # noqa: F401 (re-exported; shared with `deploy` — 
 #   upstream) | args (engine-native flags spliced verbatim into the launch argv).
 # engine/args are OPTIONAL (read with .get() defaults: engine -> 'sglang', args ->
 # []) so REQUIRED_KEYS stays unchanged and old/minimal registries still validate.
+MODELS_VOLUME = "anvil-models"  # override: ANVIL_MODELS_VOLUME
+
 REGISTRY = [
     # heavy (gpu 1): qwen3-coder-30b AWQ via SGLang
     {"name": "qwen3-coder-local", "engine": "sglang",
      "model_path": "/models/qwen3-coder-30b-awq",
-     "volume": "fakoli-models", "est_weight_gb": 18,
+     "volume": MODELS_VOLUME, "est_weight_gb": 18,
      "gpu": 1, "port": 30000,
      "args": ["--attention-backend", "triton", "--tool-call-parser", "qwen3_coder",
               "--kv-cache-dtype", "fp8_e5m2", "--context-length", "131072",
@@ -59,7 +62,7 @@ REGISTRY = [
     # fast/coding (gpu 0, swaps with qwen3-14b): gpt-oss-20b via vLLM (VALIDATED fast pick)
     {"name": "gpt-oss-20b", "engine": "vllm",
      "model_path": "/models/gpt-oss-20b",
-     "volume": "fakoli-models", "est_weight_gb": 13,
+     "volume": MODELS_VOLUME, "est_weight_gb": 13,
      "gpu": 0, "port": 30001,
      "args": ["--max-model-len", "65536", "--gpu-memory-utilization", "0.90",
               "--tool-call-parser", "openai", "--enable-auto-tool-choice"]},
@@ -68,7 +71,7 @@ REGISTRY = [
     # fast/safe (gpu 0, swaps with gpt-oss): qwen3-14b AWQ via SGLang
     {"name": "qwen3-14b-fast", "engine": "sglang",
      "model_path": "/models/qwen3-14b-awq",
-     "volume": "fakoli-models", "est_weight_gb": 9,
+     "volume": MODELS_VOLUME, "est_weight_gb": 9,
      "gpu": 0, "port": 30001,
      "args": ["--quantization", "awq_marlin", "--attention-backend", "flashinfer",
               "--reasoning-parser", "qwen3", "--tool-call-parser", "qwen3_coder",
@@ -162,7 +165,7 @@ def docker_run_cmd(entry):
     volume = entry.get("volume")
     if volume:
         # Named docker volume holding the model dirs, mounted read-only at the PARENT
-        # of model_path (fakoli-models:/models:ro with model_path=/models/<dir>).
+        # of model_path (<models-volume>:/models:ro with model_path=/models/<dir>).
         # NEVER a host bind mount: on Docker Desktop/WSL2 a host bind rides 9P/virtiofs
         # and makes cold loads pathological (~12 MB/s; 20-90 min) -- operator rule
         # 2026-07-02, see examples/primary-node/docker-compose.yml header.
@@ -216,12 +219,15 @@ def load_registry(path):
     Validates required columns so a malformed --registry fails fast with a clear
     error instead of later misrouting to a confusing 404."""
     if not path:
-        return [dict(r) for r in REGISTRY]
+        vol = default_models_volume()
+        return [dict(r, volume=vol) if r.get("volume") == MODELS_VOLUME else dict(r)
+                for r in REGISTRY]
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     rows = data["models"] if isinstance(data, dict) else data
     if not isinstance(rows, list) or not rows:
         raise ValueError(f"registry {path!r} must be a non-empty list of rows")
+    legacy_volume = None
     for i, row in enumerate(rows):
         if not isinstance(row, dict):
             raise ValueError(f"registry {path!r} row {i} must be an object, got {type(row).__name__}")
@@ -229,7 +235,45 @@ def load_registry(path):
         if missing:
             raise ValueError(f"registry {path!r} row {i} ({row.get('name', '?')!r}) "
                              f"missing required keys: {missing}")
+        if LEGACY_NAMES.get(row.get("volume")) == MODELS_VOLUME:
+            legacy_volume = row["volume"]
+    if legacy_volume:  # once per registry file
+        warn_legacy(legacy_volume, f"registry {path!r} volume", stacklevel=2)
     return rows
+
+
+def _docker_volume_exists(name):
+    """True/False for present/absent. Raises RuntimeError when Docker cannot answer
+    (daemon down, permission): never guess, `docker run -v` would create an empty volume.
+    No docker CLI at all -> False (nothing could create a volume either)."""
+    import subprocess
+    try:
+        p = subprocess.run(["docker", "volume", "inspect", name],
+                           capture_output=True, text=True)
+    except FileNotFoundError:
+        return False
+    if p.returncode == 0:
+        return True
+    if "no such volume" in p.stderr.lower():
+        return False
+    raise RuntimeError(
+        f"cannot determine whether docker volume {name!r} exists ({p.stderr.strip()[:200]}); "
+        "start Docker, or set ANVIL_MODELS_VOLUME to the volume name explicitly")
+
+
+def default_models_volume(volume_exists=_docker_volume_exists):
+    """Weights volume for the built-in registry: ANVIL_MODELS_VOLUME, else the generic
+    name; a host that only has the legacy volume keeps using it (with a warning)."""
+    env = os.environ.get("ANVIL_MODELS_VOLUME")
+    if env:
+        if LEGACY_NAMES.get(env) == MODELS_VOLUME:
+            warn_legacy(env, "ANVIL_MODELS_VOLUME", stacklevel=2)
+        return env
+    legacy = next(o for o, n in LEGACY_NAMES.items() if n == MODELS_VOLUME)
+    if not volume_exists(MODELS_VOLUME) and volume_exists(legacy):
+        warn_legacy(legacy, "docker volume", stacklevel=2)
+        return legacy
+    return MODELS_VOLUME
 
 
 def available_ram_gb():
