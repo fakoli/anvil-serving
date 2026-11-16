@@ -27,7 +27,7 @@ import time
 from typing import Any, Callable, Iterator, Literal
 from contextlib import contextmanager
 
-from .config import _issuer, _loopback, ManifestError, canonical_manifest, read_manifest, require_isolated, role_identity
+from .config import _issuer, _loopback, ManifestError, canonical_manifest, manifest_warnings, read_manifest, require_isolated, role_identity
 from .render import (MAX_OWNED_FILES, NOTIFICATION_TEMPLATE_DIRECTORY,
                      notification_template_path, plan, plan_for_inspection,
                      render as render_config, stage)
@@ -917,10 +917,10 @@ def validate(manifest_path: str | Path, target: Target | None = None, *, runner:
         return {
             "schema": "anvil-connect.manage/v1", "action": "validate", "applied": False,
             "targets": [item.text() for item in selected], "migration_required": True,
-            "plan": _inspection_plan(data),
+            "plan": _inspection_plan(data), "warnings": manifest_warnings(data),
         }
     result = _validate_data(data, target, runner)
-    result.update({"schema": "anvil-connect.manage/v1", "action": "validate", "applied": False, "plan": plan(data, data["config_root"])})
+    result.update({"schema": "anvil-connect.manage/v1", "action": "validate", "applied": False, "plan": plan(data, data["config_root"]), "warnings": manifest_warnings(data)})
     return result
 
 
@@ -930,7 +930,7 @@ def render_generation(manifest_path: str | Path, *, apply: bool = False, runner:
     data = read_manifest(manifest_path)
     require_isolated(data)
     checked = _validate_data(data, None, runner)
-    result: dict[str, Any] = {"schema": "anvil-connect.manage/v1", "action": "render", "applied": bool(apply), "plan": plan(data, data["config_root"]), **checked}
+    result: dict[str, Any] = {"schema": "anvil-connect.manage/v1", "action": "render", "applied": bool(apply), "plan": plan(data, data["config_root"]), "warnings": manifest_warnings(data), **checked}
     selected = _targets(data, None)
     result["tunnel_selections"] = [_tunnel_selection(data, target) for target in selected if target.kind != "client"]
     result["activation_blockers"] = []

@@ -160,7 +160,13 @@ func (h *Home) headers(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	denyFraming(w)
+}
+
+// denyFraming is the shared anti-framing policy for Connect-rendered pages.
+func denyFraming(w http.ResponseWriter) {
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+	w.Header().Set("X-Frame-Options", "DENY")
 }
 
 func (h *Home) page(w http.ResponseWriter, r *http.Request, cookies browserCookies) {
