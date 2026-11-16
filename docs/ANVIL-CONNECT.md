@@ -77,6 +77,16 @@ See [RFC 9207](https://www.rfc-editor.org/rfc/rfc9207.html) for issuer compariso
 Authelia's opaque subject identifier must be provisioned as the human grant;
 a username is not an interchangeable identity.
 
+Starting sign-in needs no credential, so pending sign-ins are bounded without
+refusing new ones. A browser that retries reuses its pending-login cookie and
+keeps at most 8 pending flows; one client keeps at most 16; the pool keeps at
+most 128 for ten minutes. A full bound replaces the oldest pending flow (from the
+client holding the most when the pool is full) instead of denying sign-in, so
+an anonymous client cannot lock other people out. "Client" is the peer address
+the Connect edge sets in `X-Forwarded-For`; Cloudflare's `Cf-Connecting-Ip` is
+used only when that peer is loopback, which is how the tunnel reaches the edge.
+IPv6 clients are grouped by /64. These values partition limits only.
+
 Connect's cookie is opaque, Secure, HttpOnly and host-only. Native application
 cookies and CSRF headers remain separate. Logout invalidates that human's Connect
 sessions across resources and cancels admitted streams; it does not remove

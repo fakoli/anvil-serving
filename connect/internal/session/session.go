@@ -145,6 +145,7 @@ type Completion struct {
 type transaction struct {
 	State        [32]byte  `json:"state"`
 	Binding      [32]byte  `json:"binding"`
+	Client       [32]byte  `json:"client"`
 	Nonce        [32]byte  `json:"nonce"`
 	PKCEVerifier string    `json:"pkce_verifier"`
 	Resource     string    `json:"resource"`
@@ -500,6 +501,10 @@ func (m *Manager) AccountURL() string { return m.issuer }
 // NewBinding mints a 256-bit value for a host-only transaction cookie.
 func NewBinding() (string, error) { return randomURLValue(32) }
 
+// ValidBinding reports whether value has the exact shape NewBinding mints, so
+// a browser's existing transaction cookie can be reused instead of replaced.
+func ValidBinding(value string) bool { return validBinding(value) }
+
 func validBinding(value string) bool {
 	if len(value) != 43 {
 		return false
@@ -527,24 +532,26 @@ func underPrefix(prefix, requestPath string) bool {
 // Begin creates a bounded transaction and returns an OIDC authorization URL.
 // The supplied binding is never accepted as a session credential; it only ties
 // the authorization response to the browser which started this transaction.
-func (m *Manager) Begin(resource, returnPath, binding string) (Challenge, error) {
+// client is the edge-observed peer identity used only to partition the pending
+// pool; it is hashed before storage and never grants anything.
+func (m *Manager) Begin(resource, returnPath, binding, client string) (Challenge, error) {
 	rule, exists := m.rules[resource]
 	if !exists || !validBinding(binding) || !config.CanonicalPath(returnPath) || !underPrefix(rule.PathPrefix, returnPath) {
 		return Challenge{}, ErrDenied
 	}
-	return m.begin(resource, rule.Host, returnPath, binding)
+	return m.begin(resource, rule.Host, returnPath, binding, client)
 }
 
 // BeginPortal creates an OIDC transaction tied to the separately declared
 // home host. It has no public resource grant and can never select an app host.
-func (m *Manager) BeginPortal(binding string) (Challenge, error) {
+func (m *Manager) BeginPortal(binding, client string) (Challenge, error) {
 	if m.portalHost == "" || !validBinding(binding) {
 		return Challenge{}, ErrDenied
 	}
-	return m.begin(PortalResource, m.portalHost, portalReturnPath, binding)
+	return m.begin(PortalResource, m.portalHost, portalReturnPath, binding, client)
 }
 
-func (m *Manager) begin(resource, host, returnPath, binding string) (Challenge, error) {
+func (m *Manager) begin(resource, host, returnPath, binding, client string) (Challenge, error) {
 	state, err := randomURLValue(32)
 	if err != nil {
 		return Challenge{}, err
@@ -558,7 +565,7 @@ func (m *Manager) begin(resource, host, returnPath, binding string) (Challenge, 
 		return Challenge{}, err
 	}
 	txRecord := transaction{
-		State: hashValue(state), Binding: hashValue(binding), Nonce: hashValue(nonce), PKCEVerifier: verifier,
+		State: hashValue(state), Binding: hashValue(binding), Client: hashValue(client), Nonce: hashValue(nonce), PKCEVerifier: verifier,
 		Resource: resource, Host: host, RedirectURL: callbackURL(host, m.callbackPath), ReturnPath: returnPath,
 	}
 	// Transaction admission is finalized in oidc.go so it can centrally purge

@@ -30,7 +30,7 @@ type Home struct {
 }
 
 type homeAuthority interface {
-	BeginPortal(string) (session.Challenge, error)
+	BeginPortal(binding, client string) (session.Challenge, error)
 	Complete(context.Context, session.Callback) (session.Completion, error)
 	PortalSession(string, string) (session.Admission, session.Human, error)
 	Logout(string, string) error
@@ -126,7 +126,7 @@ func (h *Home) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case dedicatedHomePath + "/data":
 		h.data(w, r, cookies)
 	case BrowserLoginPath:
-		h.login(w, r)
+		h.login(w, r, cookies)
 	case BrowserCallbackPath:
 		h.callback(w, r, cookies)
 	case BrowserLogoutPath:
@@ -233,17 +233,17 @@ func (h *Home) data(w http.ResponseWriter, r *http.Request, cookies browserCooki
 	}{h.router != nil, services, account + "/security", account + "/two-factor-authentication", BrowserLogoutPath, adminURL})
 }
 
-func (h *Home) login(w http.ResponseWriter, r *http.Request) {
+func (h *Home) login(w http.ResponseWriter, r *http.Request, cookies browserCookies) {
 	if r.Method != http.MethodGet || !controlRequest(r) || r.URL.RawQuery != "" || r.URL.ForceQuery || (len(values(r.Header, "Origin")) != 0 && !exactBrowserOrigin(r)) {
 		browserFailure(w, http.StatusForbidden)
 		return
 	}
-	binding, err := session.NewBinding()
+	binding, err := transactionBinding(cookies)
 	if err != nil {
 		browserFailure(w, http.StatusServiceUnavailable)
 		return
 	}
-	challenge, err := h.authority.BeginPortal(binding)
+	challenge, err := h.authority.BeginPortal(binding, clientIdentity(r))
 	if err != nil || challenge.Binding != binding || !safeAuthorizationURL(challenge.AuthorizationURL) {
 		browserFailure(w, http.StatusUnauthorized)
 		return

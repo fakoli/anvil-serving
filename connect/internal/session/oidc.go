@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -136,6 +137,10 @@ func ownedOIDCClient(input *http.Client, issuer *url.URL) (*http.Client, error) 
 	return &http.Client{Transport: boundedTransport{base: clone, issuer: issuer}, Timeout: oidcTimeout, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, nil
 }
 
+// perClient bounds the pending flows one edge-observed client may hold. It is
+// derived from the global pool so one client can never fill it.
+func (m *Manager) perClient() int { return max(m.maxPerBrowser, m.maxTransactions/8) }
+
 func (m *Manager) putTransaction(record transaction) error {
 	return m.state.Update(func(tx *store.Tx) error {
 		record.IssuedAt = tx.Now()
@@ -150,7 +155,11 @@ func (m *Manager) putTransaction(record transaction) error {
 		if err != nil {
 			return ErrUnavailable
 		}
-		active, forBrowser := 0, 0
+		type pending struct {
+			id     string
+			record transaction
+		}
+		var active []pending
 		for _, item := range records {
 			var existing transaction
 			if json.Unmarshal(item.Value, &existing) != nil {
@@ -162,13 +171,53 @@ func (m *Manager) putTransaction(record transaction) error {
 				}
 				continue
 			}
-			active++
-			if existing.Binding == record.Binding {
-				forBrowser++
-			}
+			active = append(active, pending{item.ID, existing})
 		}
-		if active >= m.maxTransactions || forBrowser >= m.maxPerBrowser {
-			return ErrDenied
+		// Admission never refuses a new sign-in because the pool is full; it
+		// evicts the oldest pending flow instead. A browser retrying login
+		// replaces its own oldest flow, a client (edge-observed peer) replaces
+		// its own oldest flow, and a full global pool takes from whichever
+		// client holds the most. One anonymous client therefore holds at most
+		// perClient slots and cannot displace another client's single flow.
+		sort.Slice(active, func(i, j int) bool { return active[i].record.Sequence < active[j].record.Sequence })
+		evict := func(match func(transaction) bool, limit int) error {
+			count := 0
+			for _, item := range active {
+				if match(item.record) {
+					count++
+				}
+			}
+			for i := 0; count >= limit && i < len(active); {
+				if !match(active[i].record) {
+					i++
+					continue
+				}
+				if tx.Delete("transactions", active[i].id) != nil {
+					return ErrUnavailable
+				}
+				active = append(active[:i], active[i+1:]...)
+				count--
+			}
+			return nil
+		}
+		if err := evict(func(t transaction) bool { return t.Binding == record.Binding }, m.maxPerBrowser); err != nil {
+			return err
+		}
+		if err := evict(func(t transaction) bool { return t.Client == record.Client }, m.perClient()); err != nil {
+			return err
+		}
+		for len(active) >= m.maxTransactions {
+			held := map[[32]byte]int{}
+			largest := active[0].record.Client
+			for _, item := range active {
+				held[item.record.Client]++
+				if held[item.record.Client] > held[largest] {
+					largest = item.record.Client
+				}
+			}
+			if err := evict(func(t transaction) bool { return t.Client == largest }, held[largest]); err != nil {
+				return err
+			}
 		}
 		// No random state is stored in clear. A collision is cryptographically
 		// implausible and still rejected rather than overwriting another flow.

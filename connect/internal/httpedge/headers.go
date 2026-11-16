@@ -2,6 +2,7 @@ package httpedge
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -29,6 +30,44 @@ func has(header http.Header, wanted string) bool {
 		}
 	}
 	return false
+}
+
+// clientIdentity names the peer that pending-login and device-start limits are
+// partitioned by. It is never an authorization input. The public ingress
+// socket admits only the Connect edge (Caddy), which deletes client-supplied
+// forwarding headers and sets exactly one X-Forwarded-For value: its own TCP
+// peer. Cloudflare Tunnel reaches that edge only over loopback and Cloudflare
+// overwrites Cf-Connecting-Ip, so that header is believed only when the edge
+// peer is loopback; a client reaching the edge directly cannot spoof either.
+// IPv6 clients are grouped by /64, the smallest block a client normally holds.
+func clientIdentity(r *http.Request) string {
+	peer := singleIP(values(r.Header, "X-Forwarded-For"))
+	if peer == nil {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			host = r.RemoteAddr
+		}
+		peer = net.ParseIP(host)
+	}
+	if peer != nil && peer.IsLoopback() {
+		if client := singleIP(values(r.Header, "Cf-Connecting-Ip")); client != nil {
+			peer = client
+		}
+	}
+	if peer == nil {
+		return ""
+	}
+	if peer.To4() == nil {
+		peer = peer.Mask(net.CIDRMask(64, 128))
+	}
+	return peer.String()
+}
+
+func singleIP(entries []string) net.IP {
+	if len(entries) != 1 {
+		return nil
+	}
+	return net.ParseIP(strings.TrimSpace(entries[0]))
 }
 
 // ValidateHead supplements net/http's wire parser for callers and proxy hops.

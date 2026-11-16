@@ -87,8 +87,9 @@ type Authority struct {
 	byBrowser          map[string]Binding
 	byHash             map[string]Binding
 	mu                 sync.Mutex
-	tokens             int
-	lastRefill         time.Time
+	startClients       limiter
+	startResources     limiter
+	startGlobal        limiter
 	approvals          map[string]approvalCounter
 	terminalRequests   map[string]terminalCounter
 	approvalTokens     int
@@ -118,7 +119,7 @@ func New(state *store.Store, gateway config.Gateway, sessions HumanAuthority, ke
 	for _, resource := range gateway.Resources {
 		resources[resource.Rule.ID] = resource
 	}
-	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, tokens: 16, lastRefill: time.Now(), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
+	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, startClients: newLimiter(startClientBurst, startClientRefill, maxStartClients), startResources: newLimiter(startResourceBurst, startResourceRefill, len(gateway.DeviceAuthorizations)), startGlobal: newLimiter(startGlobalBurst, startGlobalRefill, 1), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
 	for _, declared := range gateway.DeviceAuthorizations {
 		browser, api := resources[declared.BrowserResource], resources[declared.APIResource]
 		binding := Binding{Browser: browser.Rule, API: api.Rule, Methods: append([]string(nil), declared.Methods...), Label: declared.Label, Principals: map[string]string{}}
@@ -215,18 +216,85 @@ const transactionBucket = "transactions"
 func recordID(digest [32]byte) string { return "device:" + hex.EncodeToString(digest[:]) }
 func userID(digest [32]byte) string   { return "device-user:" + hex.EncodeToString(digest[:]) }
 
-func (a *Authority) takeStartToken(now time.Time) bool {
+// Device-login start is anonymous, so it is limited per edge-observed client,
+// per browser resource, and globally. A client's own bucket empties long before
+// the shared ones, so one client at any rate cannot starve the others; the
+// global bucket only bounds total work and is sized well above normal use.
+const (
+	startClientBurst    = 8
+	startClientRefill   = time.Minute
+	maxStartClients     = 4096
+	startResourceBurst  = 64
+	startResourceRefill = 5 * time.Second
+	startGlobalBurst    = 256
+	startGlobalRefill   = time.Second
+)
+
+type bucket struct {
+	tokens float64
+	last   time.Time
+}
+
+// limiter is a keyed token bucket with bounded memory. A bucket that has
+// refilled completely is indistinguishable from an absent one, so it is pruned
+// when the table is full.
+type limiter struct {
+	burst   float64
+	refill  time.Duration
+	max     int
+	buckets map[string]bucket
+}
+
+func newLimiter(burst int, refill time.Duration, max int) limiter {
+	return limiter{burst: float64(burst), refill: refill, max: max, buckets: map[string]bucket{}}
+}
+
+// level returns key's refilled bucket, or false when it has no whole token or
+// a new key cannot be tracked.
+func (l *limiter) level(key string, now time.Time) (bucket, bool) {
+	current, known := l.buckets[key]
+	if !known {
+		if len(l.buckets) >= l.max {
+			for id, other := range l.buckets {
+				if refilled := l.refilled(other, now); refilled.tokens >= l.burst {
+					delete(l.buckets, id)
+				}
+			}
+			// ponytail: a full table of active clients refuses new ones (the
+			// shared buckets still serve tracked clients); raise maxStartClients
+			// if a deployment legitimately sees more distinct starters.
+			if len(l.buckets) >= l.max {
+				return bucket{}, false
+			}
+		}
+		current = bucket{tokens: l.burst, last: now}
+	}
+	current = l.refilled(current, now)
+	return current, current.tokens >= 1
+}
+
+func (l *limiter) refilled(b bucket, now time.Time) bucket {
+	if now.After(b.last) {
+		b.tokens += float64(now.Sub(b.last)) / float64(l.refill)
+		if b.tokens > l.burst {
+			b.tokens = l.burst
+		}
+		b.last = now
+	}
+	return b
+}
+
+func (a *Authority) takeStartToken(client, resource string, now time.Time) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	add := int(now.Sub(a.lastRefill) / time.Minute)
-	if add > 0 {
-		a.tokens = min(16, a.tokens+add)
-		a.lastRefill = a.lastRefill.Add(time.Duration(add) * time.Minute)
-	}
-	if a.tokens == 0 {
+	c, clientOK := a.startClients.level(client, now)
+	r, resourceOK := a.startResources.level(resource, now)
+	g, globalOK := a.startGlobal.level("", now)
+	if !clientOK || !resourceOK || !globalOK {
 		return false
 	}
-	a.tokens--
+	c.tokens, r.tokens, g.tokens = c.tokens-1, r.tokens-1, g.tokens-1
+	a.startClients.buckets[client], a.startResources.buckets[resource], a.startGlobal.buckets[""] = c, r, g
 	return true
 }
 
@@ -275,9 +343,11 @@ func (a *Authority) takeTerminalRequest(id string, expires time.Time, now time.T
 	return true
 }
 
-func (a *Authority) Start(browserResource string) (Start, error) {
+// Start creates a pending device request. client is the edge-observed peer
+// identity and only selects a rate-limit bucket.
+func (a *Authority) Start(browserResource, client string) (Start, error) {
 	binding, ok := a.byBrowser[browserResource]
-	if !ok || !a.takeStartToken(time.Now()) {
+	if !ok || !a.takeStartToken(client, browserResource, time.Now()) {
 		return Start{}, ErrDenied
 	}
 	for attempt := 0; attempt < 8; attempt++ {

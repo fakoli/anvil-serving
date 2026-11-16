@@ -2,6 +2,7 @@ package device
 
 import (
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -74,7 +75,7 @@ func fixture(t *testing.T) (*Authority, *access.Keys, *humanFixture, *time.Time,
 
 func TestApprovalRedeemsOnceAndLogoutRevokesAPIAdmission(t *testing.T) {
 	authority, keys, humans, _, admitted := fixture(t)
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil || len(started.DeviceCode) < 43 || len(started.UserCode) != 8 {
 		t.Fatal("device start did not mint bounded opaque codes")
 	}
@@ -131,7 +132,7 @@ func TestPollCapsDeviceCredentialAtSourceDeadlineAcrossTransactions(t *testing.T
 		t.Fatal(err)
 	}
 	admitted := session.Admission{SessionID: strings.Repeat("1", 32), SessionGeneration: 1, Principal: "human:" + strings.Repeat("a", 64), PrincipalGeneration: 1, Resource: "dash", Host: "dash.example.test", Epoch: strings.Repeat("b", 64), ExpiresAt: base.Add(2 * time.Minute)}
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,7 @@ func TestPollCapsDeviceCredentialAtSourceDeadlineAcrossTransactions(t *testing.T
 
 func TestMappingDriftInvalidatesExistingDeviceAdmission(t *testing.T) {
 	authority, keys, _, _, admitted := fixture(t)
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +174,7 @@ func TestMappingDriftInvalidatesExistingDeviceAdmission(t *testing.T) {
 
 func TestDevicePollRateDenyAndCancelAreTerminal(t *testing.T) {
 	authority, _, _, now, admitted := fixture(t)
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,14 +190,14 @@ func TestDevicePollRateDenyAndCancelAreTerminal(t *testing.T) {
 	if result, err := authority.Poll(started.DeviceCode); err != nil || result.Status != "denied" || result.Secret != "" {
 		t.Fatal("denied request issued a credential")
 	}
-	started, err = authority.Start("dash")
+	started, err = authority.Start("dash", "")
 	if err != nil || authority.Cancel(started.DeviceCode) != nil {
 		t.Fatal("cancel did not record pending request")
 	}
 	if _, err := authority.Approve(admitted, started.UserCode, true); err == nil {
 		t.Fatal("cancelled request was approved")
 	}
-	started, err = authority.Start("dash")
+	started, err = authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +238,7 @@ func TestStartRetriesLiveUserCodeCollisionAndRejectsCorruptRecord(t *testing.T) 
 		return value, nil
 	}
 	defer func() { codeGenerator = previous }()
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil || started.UserCode != "IJKLMNOP" || len(values) != 0 {
 		t.Fatalf("collision retry start=%+v err=%v remaining=%d", started, err, len(values))
 	}
@@ -258,7 +259,7 @@ func TestStartRetriesLiveUserCodeCollisionAndRejectsCorruptRecord(t *testing.T) 
 
 func TestCancelWinsAgainstApprovedUnredeemedRequest(t *testing.T) {
 	authority, _, _, _, admitted := fixture(t)
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,11 +276,11 @@ func TestCancelWinsAgainstApprovedUnredeemedRequest(t *testing.T) {
 
 func TestApproveRejectsCorruptUserIndexWithoutMutation(t *testing.T) {
 	authority, _, _, _, admitted := fixture(t)
-	first, err := authority.Start("dash")
+	first, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := authority.Start("dash")
+	second, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +308,7 @@ func TestApproveRejectsCorruptUserIndexWithoutMutation(t *testing.T) {
 
 func TestTerminalRequestPastRetentionIsRejected(t *testing.T) {
 	authority, _, _, now, _ := fixture(t)
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -325,11 +326,11 @@ func TestTerminalRequestPastRetentionIsRejected(t *testing.T) {
 
 func TestBindingDriftPurgesOldTransactionsAndRevokesOldCredential(t *testing.T) {
 	authority, keys, _, _, admitted := fixture(t)
-	pending, err := authority.Start("dash")
+	pending, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	approved, err := authority.Start("dash")
+	approved, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +349,7 @@ func TestBindingDriftPurgesOldTransactionsAndRevokesOldCredential(t *testing.T) 
 	binding.Hash = bindingHash(binding)
 	authority.byBrowser = map[string]Binding{"dash": binding}
 	authority.byHash = map[string]Binding{binding.Hash: binding}
-	fresh, err := authority.Start("dash")
+	fresh, err := authority.Start("dash", "")
 	if err != nil || fresh.DeviceCode == "" {
 		t.Fatal("drift did not purge old records and allow fresh start", err)
 	}
@@ -362,7 +363,7 @@ func TestBindingDriftPurgesOldTransactionsAndRevokesOldCredential(t *testing.T) 
 
 func TestBindingDriftPurgesExpiredRecordWithoutUserIndex(t *testing.T) {
 	authority, _, _, now, _ := fixture(t)
-	old, err := authority.Start("dash")
+	old, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -375,14 +376,14 @@ func TestBindingDriftPurgesExpiredRecordWithoutUserIndex(t *testing.T) {
 	binding.Hash = bindingHash(binding)
 	authority.byBrowser = map[string]Binding{"dash": binding}
 	authority.byHash = map[string]Binding{binding.Hash: binding}
-	if fresh, err := authority.Start("dash"); err != nil || fresh.DeviceCode == "" {
+	if fresh, err := authority.Start("dash", ""); err != nil || fresh.DeviceCode == "" {
 		t.Fatal("expired stale record blocked fresh start", err)
 	}
 }
 
 func TestRevokedApprovingSessionCannotRedeem(t *testing.T) {
 	authority, keys, humans, _, admitted := fixture(t)
-	started, err := authority.Start("dash")
+	started, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +406,7 @@ func TestTerminalCleanupDoesNotDeleteReusedUserCodeIndex(t *testing.T) {
 	previous := codeGenerator
 	codeGenerator = func(size int) (string, error) { value := values[0]; values = values[1:]; return value, nil }
 	defer func() { codeGenerator = previous }()
-	old, err := authority.Start("dash")
+	old, err := authority.Start("dash", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,12 +414,12 @@ func TestTerminalCleanupDoesNotDeleteReusedUserCodeIndex(t *testing.T) {
 	if _, err := authority.Poll(old.DeviceCode); err != nil {
 		t.Fatal(err)
 	}
-	fresh, err := authority.Start("dash")
+	fresh, err := authority.Start("dash", "")
 	if err != nil || fresh.UserCode != old.UserCode {
 		t.Fatal("same user code not safely reused", err)
 	}
 	*now = old.ExpiresAt.Add(terminalRetention)
-	if _, err := authority.Start("dash"); err != nil {
+	if _, err := authority.Start("dash", ""); err != nil {
 		t.Fatal(err)
 	}
 	if err := authority.state.View(func(tx *store.Tx) error {
@@ -462,5 +463,63 @@ func TestPurgeUnknownTerminalBindingPreservesDifferentUserIndex(t *testing.T) {
 		return nil
 	}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// One anonymous client draining its own start bucket must not stop another
+// client from starting device login on the same resource.
+func TestStartLimitIsPerClient(t *testing.T) {
+	authority, _, _, _, _ := fixture(t)
+	for i := 0; i < startClientBurst; i++ {
+		if _, err := authority.Start("dash", "203.0.113.9"); err != nil {
+			t.Fatalf("start %d within the client burst failed: %v", i, err)
+		}
+	}
+	if _, err := authority.Start("dash", "203.0.113.9"); err == nil {
+		t.Fatal("client exceeded its start burst")
+	}
+	if _, err := authority.Start("dash", "198.51.100.7"); err != nil {
+		t.Fatalf("one client's exhausted bucket blocked another client: %v", err)
+	}
+}
+
+// The attack in the security review: a sustained ~1 request/minute from one
+// client must leave every other client able to start, indefinitely.
+func TestSlowSingleClientCannotStarveOthers(t *testing.T) {
+	authority, _, _, _, _ := fixture(t)
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	for minute := 0; minute < 120; minute++ {
+		now = now.Add(time.Minute)
+		for authority.takeStartToken("attacker", "dash", now) {
+		}
+		if !authority.takeStartToken(fmt.Sprintf("user-%d", minute), "dash", now) {
+			t.Fatalf("minute %d: legitimate client starved", minute)
+		}
+	}
+}
+
+// Per-client state is bounded: idle clients are pruned and active ones beyond
+// the table bound are refused rather than growing memory.
+func TestStartClientStateIsBounded(t *testing.T) {
+	authority, _, _, _, _ := fixture(t)
+	authority.startGlobal = newLimiter(1<<20, time.Nanosecond, 1)
+	authority.startResources = newLimiter(1<<20, time.Nanosecond, 1)
+	now := time.Date(2026, 9, 9, 12, 0, 0, 0, time.UTC)
+	for i := 0; i < 3*maxStartClients; i++ {
+		authority.takeStartToken(fmt.Sprintf("client-%d", i), "dash", now)
+		if got := len(authority.startClients.buckets); got > maxStartClients {
+			t.Fatalf("client table grew to %d, bound %d", got, maxStartClients)
+		}
+	}
+	if authority.takeStartToken("new-client", "dash", now) {
+		t.Fatal("full table of active clients admitted an untracked client")
+	}
+	// Once tracked clients have refilled they are pruned for new ones.
+	later := now.Add(startClientBurst * startClientRefill)
+	if !authority.takeStartToken("new-client", "dash", later) {
+		t.Fatal("refilled clients were not pruned")
+	}
+	if got := len(authority.startClients.buckets); got != 1 {
+		t.Fatalf("pruned table holds %d clients, want 1", got)
 	}
 }
