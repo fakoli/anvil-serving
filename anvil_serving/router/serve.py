@@ -2100,6 +2100,7 @@ def build_server(
                 ),
                 maintenance=operations.artifacts.prune,
                 router_admission=router_owner,
+                dispatch=lambda: operations.dispatch_queue(backend=media_backend),
             )
         def metadata_drain_readback():
             # Stop scheduling metadata work, then observe actual completion.

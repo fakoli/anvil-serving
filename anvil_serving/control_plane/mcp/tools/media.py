@@ -171,6 +171,7 @@ def tool_media_workflow_run(args: dict) -> dict:
             backend=_backend(backend),
             quality_profile=requested_profile,
             plan_digest=plan_digest,
+            wait_seconds=args.get("wait_seconds", 0),
         )
         job = result.get("job")
         if isinstance(job, dict) and job.get("state") == "awaiting_approval":
@@ -221,7 +222,8 @@ def tool_media_job_status(args: dict) -> dict:
     owner = _owner(args, caller)
     return _translate(
         lambda: _services()[0].job_status(
-            _str_arg(args, "job_id", required=True), principal=owner
+            _str_arg(args, "job_id", required=True), principal=owner,
+            wait_seconds=args.get("wait_seconds", 0),
         )
     )
 
@@ -342,7 +344,7 @@ FAMILY = ToolFamily(
             tool_media_workflow_select, scope="media:read", required=("task", "idempotency_key"),
         ),
         "media_workflow_run": _tool(
-            "Submit one allowlisted named workflow and return an opaque durable job.",
+            "Enqueue one allowlisted workflow in shared FIFO order. Returns its durable job ID and queue position; background execution continues after disconnect. Reuse the idempotency key. Optional bounded wait; poll media_job_status or use the background watcher for eventual completion. A cold worker still requires operator approval.",
             {
                 **_WORKFLOW,
                 "parameters": {
@@ -353,14 +355,16 @@ FAMILY = ToolFamily(
                 },
                 "idempotency_key": {"type": "string", "minLength": 1, "maxLength": 128},
                 "plan_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+                "wait_seconds": {"type": "number", "minimum": 0, "maximum": 20},
             },
             tool_media_workflow_run,
             scope="media:submit",
             required=("workflow_id", "version", "parameters", "idempotency_key"),
         ),
         "media_job_status": _tool(
-            "Inspect one caller-owned durable media job.",
-            {"job_id": {"type": "string", "minLength": 16, "maxLength": 128}, **_OWNER},
+            "Inspect an owned job and FIFO position. wait_seconds optionally blocks up to 20 seconds for completion or required approval. A timeout leaves the job running; repeat with the same job ID or use the background watcher. Never resubmit a new key to poll.",
+            {"job_id": {"type": "string", "minLength": 16, "maxLength": 128},
+             "wait_seconds": {"type": "number", "minimum": 0, "maximum": 20}, **_OWNER},
             tool_media_job_status, scope="media:read", required=("job_id",),
         ),
         "media_job_cancel": _tool(

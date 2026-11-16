@@ -281,6 +281,7 @@ def commands() -> CommandNode:
                                 "--idempotency-key", summary="Caller retry key.", value_name="KEY"
                             ),
                             _option("--plan-digest", summary="Digest returned by workflow preparation.", value_name="SHA256"),
+                            _option("--wait-seconds", summary="Wait up to 20 seconds; timeout preserves the job.", value_name="SECONDS"),
                             _option(
                                 "--backend-url",
                                 summary="Declared adapter endpoint.",
@@ -314,6 +315,7 @@ def commands() -> CommandNode:
                         "anvil_serving.media.cli",
                         role="media-gateway",
                         options=IDENTITY_OPTIONS + (
+                            _option("--wait-seconds", summary="Wait up to 20 seconds; timeout preserves the job.", value_name="SECONDS"),
                             _option(
                                 "--backend-url",
                                 summary="Refresh this owned job from its original backend and retain completed artifacts.",

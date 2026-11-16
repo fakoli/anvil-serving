@@ -177,6 +177,16 @@ def _normalize_benchmark_profile_catalog_delta(public_tools):
 def _normalize_router_config_export_delta(public_tools):
     public_tools[:] = [tool for tool in public_tools
                        if tool["name"] not in {"router_config_export", "media_workflow_select"}]
+    descriptions = {
+        "media_workflow_run": "Submit one allowlisted named workflow and return an opaque durable job.",
+        "media_job_status": "Inspect one caller-owned durable media job.",
+    }
+    for tool in public_tools:
+        if tool["name"] in descriptions:
+            schema = tool["inputSchema"]
+            assert schema["properties"].pop("wait_seconds") == {"type": "number", "minimum": 0, "maximum": 20}
+            schema["maxProperties"] -= 1
+            tool["description"] = descriptions[tool["name"]]
 
 
 def test_public_catalog_names_order_descriptions_schemas_and_metadata_are_stable():

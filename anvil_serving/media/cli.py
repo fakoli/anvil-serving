@@ -99,6 +99,7 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--idempotency-key", default="")
     run.add_argument("--backend-url", required=True)
     run.add_argument("--plan-digest", default=None)
+    run.add_argument("--wait-seconds", type=float, default=0)
     run.add_argument("--dry-run", action="store_true")
 
     job = sub.add_parser("job")
@@ -107,6 +108,7 @@ def _parser() -> argparse.ArgumentParser:
     _storage_options(status)
     _job_identity(status)
     status.add_argument("--backend-url", default="", help="Refresh this owned job from its original backend and retain completed artifacts.")
+    status.add_argument("--wait-seconds", type=float, default=0)
     cancel = job_sub.add_parser("cancel")
     _storage_options(cancel)
     _job_identity(cancel)
@@ -298,6 +300,7 @@ def run(args: argparse.Namespace) -> dict:
             backend=backend,
             quality_profile=args.quality_profile,
             plan_digest=getattr(args, "plan_digest", None),
+            wait_seconds=args.wait_seconds,
         )
     if args.family == "job":
         if args.action == "status":
@@ -319,7 +322,7 @@ def run(args: argparse.Namespace) -> dict:
                     backend_endpoint=backend.base_url,
                 )
                 reconciler.reconcile(job)
-            return operations.job_status(args.job_id, principal=args.principal)
+            return operations.job_status(args.job_id, principal=args.principal, wait_seconds=args.wait_seconds)
         return operations.job_cancel(
             args.job_id,
             principal=args.principal,

@@ -141,6 +141,7 @@ class MediaJobReconciler:
             elif (
                 job.state == JobState.ACCEPTED
                 and age >= SUBMISSION_RECOVERY_GRACE_SECONDS
+                and self.store.queue_request(job.id) is None
             ):
                 return self.store.transition(
                     job.id,
@@ -299,12 +300,14 @@ class MediaReconciliationLoop:
         maintenance: Callable[[], Any] | None = None,
         maintenance_cycles: int = 240,
         router_admission=None,
+        dispatch: Callable[[], Any] | None = None,
     ) -> None:
         if poll_seconds <= 0 or poll_seconds > 5:
             raise MediaError("invalid_worker_policy", "media reconciliation poll interval is invalid")
         if maintenance_cycles < 1:
             raise MediaError("invalid_worker_policy", "media maintenance interval is invalid")
         self.reconciler = reconciler
+        self.dispatch = dispatch
         self.router_admission = router_admission
         self._busy = False
         self._unknown_jobs = set()
@@ -375,6 +378,8 @@ class MediaReconciliationLoop:
                 if job.state == JobState.SUBMITTING and not job.backend_prompt_id:
                     self._unknown_jobs.add(job.id)
             result = self.reconciler.reconcile_all()
+            if self.dispatch is not None:
+                self.dispatch()
             for job in result:
                 if job.backend_prompt_id and job.state in {JobState.COMPLETED, JobState.FAILED} and job.events[-1].reason not in {"backend_submission_recovery_failed", "backend_submission_outcome_unknown", "backend_submission_recovery_unavailable", "backend_prompt_lost"}:
                     self._unknown_jobs.discard(job.id)

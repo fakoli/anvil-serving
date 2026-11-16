@@ -7,6 +7,9 @@ import functools
 import copy
 import hashlib
 import json
+import math
+import os
+import time
 import threading
 from dataclasses import fields, is_dataclass, replace
 from pathlib import Path
@@ -16,8 +19,8 @@ from .admission import MediaAdmissionService
 from .artifacts import ArtifactStore
 from .assets import MAX_ASSET_BYTES, MEDIA_FORMATS, enforce_limits, inspect_media, policy as asset_policy
 from .cancellation import MediaCancellationService
-from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient
-from .contracts import JobState, MediaArtifact, RenderedWorkflow, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
+from .comfyui import MAX_UPLOAD_BYTES, ComfyUIClient, _base_url
+from .contracts import JobState, MediaArtifact, RenderedWorkflow, TERMINAL_STATES, SUBMISSION_RECOVERY_GRACE_SECONDS, utc_now
 from .errors import MediaError, MediaSubmissionRefused
 from .jobs import MAX_IDEMPOTENCY_KEY, MediaJobStore
 from .planning import CATEGORIES, compile_brief
@@ -70,6 +73,14 @@ class MediaOperations:
         self.artifacts = artifacts
         self._lifecycle_preview = lifecycle_preview
         self._submit_lock = threading.RLock()
+        self._dispatch_lock = threading.Lock()
+        try:
+            self.queue_depth = int(os.environ.get("ANVIL_MEDIA_QUEUE_DEPTH", "64"))
+            self.execution_slots = int(os.environ.get("ANVIL_MEDIA_EXECUTION_SLOTS", "1"))
+        except ValueError as exc:
+            raise MediaError("invalid_admission_policy", "media queue configuration is invalid") from exc
+        if not 1 <= self.queue_depth <= 1024 or not 1 <= self.execution_slots <= min(16, self.queue_depth):
+            raise MediaError("invalid_admission_policy", "media queue configuration is invalid")
 
     def capabilities(self) -> dict[str, Any]:
         workflows = self.registry.list()
@@ -78,6 +89,8 @@ class MediaOperations:
             "capabilities": ["image-generation", "video-generation", "named-workflow"],
             "workflows": workflows,
             "assetUpload": asset_policy(),
+            "queue": {"ordering": "fifo", "capacity": self.queue_depth,
+                      "executionSlots": self.execution_slots, "maxWaitSeconds": 20},
             "recipes": recipes,
             "categories": [{"id": key, "description": description,
                             "workflows": [w["id"] + "@" + w["version"] for w in workflows if w.get("category") == key],
@@ -157,7 +170,9 @@ class MediaOperations:
         qualification: bool = False,
         quality_profile: str | None = None,
         plan_digest: str | None = None,
+        wait_seconds: float = 0,
     ) -> dict[str, Any]:
+        self._wait_seconds(wait_seconds)
         _, rendered = render_request(self.registry, workflow_id, version, parameters, quality_profile)
         if plan_digest is not None and plan_digest != self._execution_digest(rendered, principal, idempotency_key):
             raise MediaError("media_plan_changed", "prepared inputs or workflow contract changed; prepare again", status=409)
@@ -173,99 +188,78 @@ class MediaOperations:
             idempotency_key=idempotency_key,
         )
         if existing is not None:
-            return self._resume_existing(
-                existing.id,
-                rendered,
-                principal=principal,
-                backend=backend,
-                qualification=qualification,
-            )
+            if self.jobs.queue_info(existing.id) is None:  # Jobs created before FIFO support.
+                return self._resume_existing(existing.id, rendered, principal=principal,
+                    backend=backend, qualification=qualification)
+            if existing.backend_prompt_id or existing.state == JobState.SUBMITTING:
+                self.jobs.check_backend_endpoint(existing.id, backend.base_url, principal=principal)
+            if existing.state == JobState.SUBMITTING:
+                self._resume_submitting(existing.id, principal=principal, backend=backend)
+            self.dispatch_queue(backend=backend, requested_job=existing.id)
+            return {**self.job_status(existing.id, principal=principal, wait_seconds=wait_seconds), "created": False}
         self._artifact_inputs(rendered, principal=principal)
-        try:
-            compatibility = (
-                backend.compatibility(rendered.descriptor, qualification=True)
-                if qualification
-                else backend.compatibility(rendered.descriptor)
-            )
-        except MediaError as exc:
-            if exc.code != "backend_unavailable" or qualification:
-                raise
-            return self._request_lifecycle_approval(
-                rendered,
-                resolved_parameters,
-                principal=principal,
-                idempotency_key=idempotency_key,
-            )
-        if not compatibility.ready and not qualification:
-            return self._request_lifecycle_approval(
-                rendered,
-                resolved_parameters,
-                principal=principal,
-                idempotency_key=idempotency_key,
-            )
-        decision, job, created = MediaAdmissionService(self.jobs).admit(
-            rendered.descriptor,
-            resolved_parameters,
-            principal=principal,
-            backend_ready=compatibility.available,
-            input_digest=rendered.parameters_digest,
-            idempotency_key=idempotency_key,
-            quality_profile=rendered.quality_profile,
-        )
+        decision = MediaAdmissionService(self.jobs).evaluate(rendered.descriptor, resolved_parameters,
+            principal=principal, backend_ready=True, check_capacity=False)
         if not decision.allowed:
-            raise MediaError(
-                "media_admission_rejected",
-                "media request was not admitted",
-                status=409 if decision.state == "rejected" else 503,
-                details=decision.as_dict(),
-            )
+            raise MediaError("media_admission_rejected", "media request was not admitted", status=409, details=decision.as_dict())
+        request = {"parameters": dict(parameters), "quality_profile": rendered.quality_profile or None,
+                   "qualification": qualification,
+                   "contract": self._queue_contract(rendered),
+                   "endpoint": canonical_digest(_base_url(backend.base_url))}
+        job, created, reason = self.jobs.create_admitted(principal=principal, workflow_id=workflow_id,
+            workflow_version=version, input_digest=rendered.parameters_digest, idempotency_key=idempotency_key,
+            quality_profile=rendered.quality_profile, max_principal_active=2,
+            max_workflow_active=rendered.descriptor.max_queue_depth,
+            max_workflow_running=rendered.descriptor.max_concurrency,
+            queue_request=request, queue_depth=self.queue_depth)
         if job is None:
-            raise MediaError("media_admission_rejected", "media request was not admitted", status=503)
-        if not created:  # a concurrent identical request won the unique key
-            return self._resume_existing(
-                job.id,
-                rendered,
-                principal=principal,
-                backend=backend,
-                qualification=qualification,
-            )
-        job = self._submit_rendered(job.id, rendered, principal=principal, backend=backend)
-        return {"job": job.as_public_dict(), "created": True}
+            raise MediaError("media_admission_rejected", "media queue is full", status=409, details={"reason": reason})
+        self.dispatch_queue(backend=backend, requested_job=job.id)
+        return {**self.job_status(job.id, principal=principal, wait_seconds=wait_seconds), "created": created}
 
-    def _request_lifecycle_approval(
-        self,
-        rendered,
-        parameters: Mapping[str, Any],
-        *,
-        principal: str,
-        idempotency_key: str,
-    ) -> dict[str, Any]:
-        decision, job, created = MediaAdmissionService(self.jobs).admit(
-            rendered.descriptor,
-            parameters,
-            principal=principal,
-            # This branch reserves bounded queue capacity while the selected
-            # worker is cold. It does not claim that the backend is usable.
-            backend_ready=True,
-            input_digest=rendered.parameters_digest,
-            idempotency_key=idempotency_key,
-            quality_profile=rendered.quality_profile,
-        )
-        if not decision.allowed:
-            raise MediaError(
-                "media_admission_rejected",
-                "media request was not admitted",
-                status=409 if decision.state == "rejected" else 503,
-                details=decision.as_dict(),
-            )
-        if job is None:
-            raise MediaError("media_admission_rejected", "media request was not admitted", status=503)
-        return self._preview_lifecycle(
-            job.id,
-            rendered,
-            principal=principal,
-            created=created,
-        )
+    @staticmethod
+    def _queue_contract(rendered):
+        return canonical_digest({"descriptor": _contract_value(rendered.descriptor),
+                                 "graph": canonical_digest(rendered.graph)})
+
+    @_owned_media
+    def dispatch_queue(self, *, backend, requested_job=None):
+        # shortcut: one dispatcher per process; SQLite reservations fence other processes.
+        if not self._dispatch_lock.acquire(blocking=False):
+            return
+        try:
+            limits = {}
+            for workflow in self.registry.list():
+                descriptor = self.registry.get(workflow["id"], workflow["version"])
+                limits[descriptor.id] = min(limits.get(descriptor.id, descriptor.max_concurrency), descriptor.max_concurrency)
+            for job_id in self.jobs.queue_candidates(slots=self.execution_slots, workflow_limits=limits):
+                job = self.jobs.get(job_id)
+                request = self.jobs.queue_request(job_id)
+                if request is None:
+                    continue
+                try:
+                    _, rendered = render_request(self.registry, job.workflow_id, job.workflow_version,
+                        request["parameters"], request["quality_profile"])
+                    if request["qualification"]:
+                        rendered = replace(rendered, descriptor=replace(rendered.descriptor, available=True, unavailable_reasons=()))
+                    if (rendered.parameters_digest != job.input_digest or self._queue_contract(rendered) != request["contract"]):
+                        raise MediaError("media_plan_changed", "queued workflow contract changed; prepare again", status=409)
+                    if canonical_digest(_base_url(backend.base_url)) != request["endpoint"]:
+                        raise MediaError("backend_identity_conflict", "queued backend configuration changed", status=409)
+                    self._artifact_inputs(rendered, principal=job.principal)
+                    self._resume_existing(job.id, rendered, principal=job.principal,
+                        backend=backend, qualification=request["qualification"])
+                except MediaError as exc:
+                    current = self.jobs.get(job.id)
+                    reasons = exc.details.get("compatibility", {}).get("reasons", []) if isinstance(exc.details, Mapping) else []
+                    if reasons and set(reasons) == {"worker_busy"}:
+                        continue  # Native queue owns the resource; retry this head, never overlap.
+                    if current.state in {JobState.ACCEPTED, JobState.PREPARING} and exc.code != "invalid_transition":
+                        self.jobs.transition(job.id, JobState.FAILED, principal=job.principal, reason=exc.code)
+                    if job.id == requested_job:
+                        raise
+        finally:
+            self._dispatch_lock.release()
 
     def _preview_lifecycle(
         self,
@@ -672,8 +666,24 @@ class MediaOperations:
             reason="backend_submission_outcome_unknown",
         )
 
-    def job_status(self, job_id: str, *, principal: str) -> dict[str, Any]:
-        return {"job": self.jobs.get(job_id, principal=principal).as_public_dict()}
+    @staticmethod
+    def _wait_seconds(value):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 <= value <= 20:
+            raise MediaError("invalid_wait", "wait_seconds must be between 0 and 20")
+        return float(value)
+
+    def job_status(self, job_id: str, *, principal: str, wait_seconds: float = 0) -> dict[str, Any]:
+        deadline = time.monotonic() + self._wait_seconds(wait_seconds)
+        while True:
+            job = self.jobs.get(job_id, principal=principal)
+            if job.state in TERMINAL_STATES or job.state == JobState.AWAITING_APPROVAL or time.monotonic() >= deadline:
+                break
+            time.sleep(min(0.25, max(0, deadline - time.monotonic())))
+        result = {"job": job.as_public_dict()}
+        queue = self.jobs.queue_info(job_id)
+        if queue is not None:
+            result["queue"] = {**queue, "executionSlots": self.execution_slots, "capacity": self.queue_depth}
+        return result
 
     @_owned_media
     def job_cancel(
