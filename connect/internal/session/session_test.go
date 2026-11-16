@@ -249,7 +249,7 @@ func TestOIDCBrowserSessionLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	challenge, err := manager.Begin("dash", "/report", binding)
+	challenge, err := manager.Begin("dash", "/report", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestOIDCFailuresAndReplayFailClosed(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			binding, _ := NewBinding()
-			challenge, err := manager.Begin("dash", "/", binding)
+			challenge, err := manager.Begin("dash", "/", binding, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -342,7 +342,7 @@ func TestOIDCFailuresAndReplayFailClosed(t *testing.T) {
 		})
 	}
 	binding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/", binding)
+	challenge, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,17 +358,17 @@ func TestOIDCFailuresAndReplayFailClosed(t *testing.T) {
 		t.Fatal("callback replay accepted")
 	}
 	for _, path := range []string{"https://evil.example/", "//evil.example/", "/../admin", "/%2fadmin", "/report?next=https://evil.example/"} {
-		if _, err := manager.Begin("dash", path, binding); err == nil {
+		if _, err := manager.Begin("dash", path, binding, ""); err == nil {
 			t.Fatalf("redirect escape accepted: %q", path)
 		}
 	}
-	if _, err := manager.Begin("dash", "/", ""); err == nil {
+	if _, err := manager.Begin("dash", "/", "", ""); err == nil {
 		t.Fatal("missing binding accepted")
 	}
-	if _, err := manager.Begin("missing", "/", binding); err == nil {
+	if _, err := manager.Begin("missing", "/", binding, ""); err == nil {
 		t.Fatal("unknown resource accepted")
 	}
-	if _, err := manager.Begin("dash", "/", "not-a-canonical-256-bit-binding"); err == nil {
+	if _, err := manager.Begin("dash", "/", "not-a-canonical-256-bit-binding", ""); err == nil {
 		t.Fatal("noncanonical transaction binding accepted")
 	}
 }
@@ -379,7 +379,7 @@ func TestPKCEStateAndConcurrentCallbackRedemption(t *testing.T) {
 		t.Fatal(err)
 	}
 	binding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/", binding)
+	challenge, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +403,7 @@ func TestPKCEStateAndConcurrentCallbackRedemption(t *testing.T) {
 	}
 
 	binding, _ = NewBinding()
-	challenge, err = manager.Begin("dash", "/", binding)
+	challenge, err = manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +431,7 @@ func TestTransactionEpochAndClockRollback(t *testing.T) {
 		t.Fatal(err)
 	}
 	binding, _ := NewBinding()
-	pending, err := manager.Begin("dash", "/", binding)
+	pending, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +443,7 @@ func TestTransactionEpochAndClockRollback(t *testing.T) {
 		t.Fatal("pre-reset transaction minted a current-epoch session")
 	}
 	binding, _ = NewBinding()
-	rollback, err := manager.Begin("dash", "/", binding)
+	rollback, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +453,7 @@ func TestTransactionEpochAndClockRollback(t *testing.T) {
 	}
 	*now = now.Add(time.Second)
 	binding, _ = NewBinding()
-	duringExchange, err := manager.Begin("dash", "/", binding)
+	duringExchange, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +465,7 @@ func TestTransactionEpochAndClockRollback(t *testing.T) {
 		t.Fatal("reset during OIDC exchange minted a session")
 	}
 	binding, _ = NewBinding()
-	fresh, err := manager.Begin("dash", "/", binding)
+	fresh, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -480,26 +480,35 @@ func TestTransactionBoundsHumanGenerationAndLogout(t *testing.T) {
 		t.Fatal(err)
 	}
 	firstBinding, _ := NewBinding()
-	_, err := manager.Begin("dash", "/", firstBinding)
+	evicted, err := manager.Begin("dash", "/", firstBinding, "client-1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := manager.Begin("dash", "/", firstBinding); err == nil {
-		t.Fatal("per-browser transaction cap ignored")
+	// A browser retrying login replaces its own oldest pending flow.
+	retried, err := manager.Begin("dash", "/", firstBinding, "client-1")
+	if err != nil {
+		t.Fatal("per-browser cap refused a retry instead of replacing the oldest flow")
+	}
+	if _, err := manager.Complete(context.Background(), Callback{Host: "dash.example.test", State: challengeValues(t, evicted).Get("state"), Code: "code", Binding: firstBinding}); err == nil {
+		t.Fatal("per-browser cap kept the replaced flow")
 	}
 	secondBinding, _ := NewBinding()
-	if _, err := manager.Begin("dash", "/", secondBinding); err != nil {
+	if _, err := manager.Begin("dash", "/", secondBinding, "client-2"); err != nil {
 		t.Fatal(err)
 	}
+	// A full global pool evicts the oldest flow rather than refusing sign-in.
 	thirdBinding, _ := NewBinding()
-	if _, err := manager.Begin("dash", "/", thirdBinding); err == nil {
-		t.Fatal("global transaction cap ignored")
+	if _, err := manager.Begin("dash", "/", thirdBinding, "client-3"); err != nil {
+		t.Fatal("full global pool refused a new sign-in")
+	}
+	if _, err := manager.Complete(context.Background(), Callback{Host: "dash.example.test", State: challengeValues(t, retried).Get("state"), Code: "code", Binding: firstBinding}); err == nil {
+		t.Fatal("full global pool kept its oldest flow")
 	}
 	// Simulate a stricter reload after three rows exist. Sweeping must still use
 	// the absolute store bound rather than the newly reduced policy cap.
 	manager.maxTransactions = 1
 	*now = now.Add(DefaultTransactionLifetime)
-	fresh, err := manager.Begin("dash", "/", thirdBinding)
+	fresh, err := manager.Begin("dash", "/", thirdBinding, "")
 	if err != nil {
 		t.Fatal("expired transactions were not reclaimed")
 	}
@@ -516,7 +525,7 @@ func TestTransactionBoundsHumanGenerationAndLogout(t *testing.T) {
 		t.Fatal("principal generation did not invalidate session")
 	}
 	challengeBinding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/", challengeBinding)
+	challenge, err := manager.Begin("dash", "/", challengeBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -539,7 +548,7 @@ func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
 		t.Fatal(err)
 	}
 	portalBinding, _ := NewBinding()
-	portal, err := manager.Begin("dash", "/_anvil-connect/home", portalBinding)
+	portal, err := manager.Begin("dash", "/_anvil-connect/home", portalBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -555,7 +564,7 @@ func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
 		t.Fatal("portal session crossed host boundary")
 	}
 	normalBinding, _ := NewBinding()
-	normal, err := manager.Begin("dash", "/", normalBinding)
+	normal, err := manager.Begin("dash", "/", normalBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -568,7 +577,7 @@ func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
 	// mint the current generation.
 	pendingBinding, _ := NewBinding()
 	*now = now.Add(100 * time.Second)
-	pending, err := manager.Begin("other", "/", pendingBinding)
+	pending, err := manager.Begin("other", "/", pendingBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -598,7 +607,7 @@ func TestPortalSessionAndBrowserTransactionFence(t *testing.T) {
 	}
 	*now = now.Add(time.Second)
 	freshBinding, _ := NewBinding()
-	fresh, err := manager.Begin("other", "/", freshBinding)
+	fresh, err := manager.Begin("other", "/", freshBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -639,7 +648,7 @@ func TestPortalOnlySessionCanLogout(t *testing.T) {
 		t.Fatal(err)
 	}
 	binding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/_anvil-connect/home", binding)
+	challenge, err := manager.Begin("dash", "/_anvil-connect/home", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -661,7 +670,7 @@ func TestDedicatedPortalSessionIsHostBoundAndGrantlessOnlyAtPortalSurface(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	challenge, err := manager.BeginPortal(binding)
+	challenge, err := manager.BeginPortal(binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -690,7 +699,7 @@ func TestDedicatedPortalSessionIsHostBoundAndGrantlessOnlyAtPortalSurface(t *tes
 	// The established per-application chooser exception remains available to an
 	// enabled person without that application's resource grant.
 	appBinding, _ := NewBinding()
-	appChallenge, err := manager.Begin("dash", "/_anvil-connect/home", appBinding)
+	appChallenge, err := manager.Begin("dash", "/_anvil-connect/home", appBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -705,7 +714,7 @@ func TestDedicatedPortalSessionIsHostBoundAndGrantlessOnlyAtPortalSurface(t *tes
 		t.Fatal(err)
 	}
 	disabledBinding, _ := NewBinding()
-	disabledChallenge, err := manager.BeginPortal(disabledBinding)
+	disabledChallenge, err := manager.BeginPortal(disabledBinding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -810,7 +819,7 @@ func TestOwnedOIDCClientBoundsAndOrigin(t *testing.T) {
 func TestUnprovisionedOIDCIdentityIsDenied(t *testing.T) {
 	manager, _, idp, _, _ := sessionFixture(t, 8, 2)
 	binding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/", binding)
+	challenge, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -873,7 +882,7 @@ func TestCheckDeviceSessionFailsClosed(t *testing.T) {
 
 func mustBegin(t *testing.T, manager *Manager, binding, resource string) Challenge {
 	t.Helper()
-	challenge, err := manager.Begin(resource, "/", binding)
+	challenge, err := manager.Begin(resource, "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
