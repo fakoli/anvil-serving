@@ -524,6 +524,17 @@ def commands() -> CommandNode:
                         docs_anchor="docs/cli/eval.md#benchmark-recipe-report",
                     ),
                     _node(
+                        "records",
+                        "List published benchmark records derived from retained findings evidence.",
+                        handler=_handler("anvil_serving.benchmarking.records", argv_prefix=()),
+                        options=(
+                            _option("--root", summary="Findings root to index.", value_name="PATH"),
+                            _option("--record", summary="Show one record by finding id.", value_name="ID"),
+                            _option("--format", summary="Output format: human or json.", value_name="FORMAT"),
+                        ),
+                        docs_anchor="docs/cli/eval.md#benchmark-records",
+                    ),
+                    _node(
                         "external",
                         "Manage external benchmark evidence.",
                         children=(

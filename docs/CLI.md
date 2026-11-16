@@ -205,7 +205,7 @@ required operands, choices, and defaults.
 | `router usage query` | Read exact supported retained history. | `read` / `bounded` | `--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout`<br>`--filters`<br>`--limit`<br>`--granularity`<br>`--from-utc`<br>`--to-utc`<br>`--group-by`<br>`--cursor`<br>`--require-complete` |
 | `router workloads` | Read a bounded canonical workload snapshot from one router. | `read` / `bounded` | `--router-url`<br>`--auth-env`<br>`--expected-node`<br>`--owner`<br>`--kind`<br>`--state`<br>`--host`<br>`--active-only`<br>`--recent-seconds`<br>`--limit` |
 | `router diagnose` | Inspect active requests or retained request/session evidence without replaying it. | `read` / `bounded` | `--request-id`<br>`--session-id`<br>`--active`<br>`--config`<br>`--router-url`<br>`--auth-env`<br>`--timeout` |
-| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port` |
+| `router run` | Run the router in the foreground. | `process` / `foreground` | `--config`<br>`--host`<br>`--port`<br>`--allow-unauthenticated-public-bind` |
 | `router up` | Start the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service`<br>`--env-file`<br>`--recreate`<br>`--startup-abort-config`<br>`--current-stop-receipt`<br>`--rollback-current-stop` |
 | `router down` | Stop the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--compose`<br>`--service` |
 | `router restart` | Restart the deployed router. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--container`<br>`--no-verify` |
@@ -301,6 +301,7 @@ required operands, choices, and defaults.
 | `eval benchmark evidence show` | Show a normalized benchmark artifact summary. | `read` / `bounded` | - |
 | `eval benchmark evidence compare` | Compare artifacts and flag workload mismatches. | `read` / `bounded` | - |
 | `eval benchmark report` | Generate or check an offline recipe report from retained artifacts. | `read` / `bounded` | `--format`<br>`--root`<br>`--output`<br>`--check`<br>`--confirm` |
+| `eval benchmark records` | List published benchmark records derived from retained findings evidence. | `read` / `bounded` | `--root`<br>`--record`<br>`--format` |
 | `eval benchmark external` | Manage external benchmark evidence. | `read` / `bounded` | - |
 | `eval benchmark external init` | Initialize benchmark evidence storage. | `mutate` / `bounded` | `--dry-run`<br>`--confirm` |
 | `eval benchmark external sources` | List benchmark sources. | `read` / `bounded` | - |
@@ -342,6 +343,8 @@ required operands, choices, and defaults.
 | `voice sidecar command` | Render a sidecar command. | `read` / `bounded` | - |
 | `voice sidecar compose` | Render sidecar compose configuration. | `read` / `bounded` | - |
 | `media` | Inspect and run bounded managed media workflows. | `read` / `bounded` | - |
+| `media worker-pool` | Run isolated children inside one supervised media GPU owner. | `read` / `bounded` | - |
+| `media worker-pool serve` | Serve the internal bounded worker-pool endpoint. | `mutate` / `foreground` | `--dry-run`<br>`--confirm`<br>`--config`<br>`--bind`<br>`--port` |
 | `media memory-guard` | Publish Windows memory safety signals and supervise one worker. | `read` / `bounded` | - |
 | `media memory-guard sample` | Read native Windows available RAM and commit headroom. | `read` / `bounded` | `--config` |
 | `media memory-guard status` | Check the configured host memory signal. | `read` / `bounded` | `--config` |
@@ -358,14 +361,15 @@ required operands, choices, and defaults.
 | `media qualify` | Qualify an unavailable pinned workflow without promoting it. | `read` / `bounded` | - |
 | `media qualify run` | Run functional and capacity qualification on the selected worker. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--bundle-lock`<br>`--models-volume`<br>`--models-root`<br>`--parameters`<br>`--quality-profile`<br>`--backend-url`<br>`--gpu-index`<br>`--poll-seconds`<br>`--ffprobe` |
 | `media workflow` | Inspect, validate, and run named workflows. | `read` / `bounded` | - |
+| `media workflow select` | Select an approved recipe from an interpreted media request and prepare its exact plan. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--task`<br>`--recipe-id`<br>`--quality-profile`<br>`--duration-seconds`<br>`--parameters`<br>`--brief`<br>`--idempotency-key` |
 | `media workflow list` | List named workflows. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root` |
 | `media workflow show` | Show one named workflow. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version` |
 | `media workflow validate` | Validate one workflow against its selected worker. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--version`<br>`--backend-url` |
 | `media workflow prepare` | Compile a shot brief and return an exact bounded run request. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--brief`<br>`--quality-profile`<br>`--idempotency-key` |
-| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--quality-profile`<br>`--idempotency-key`<br>`--plan-digest`<br>`--backend-url` |
+| `media workflow run` | Submit one bounded named media workflow. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--version`<br>`--parameters`<br>`--quality-profile`<br>`--idempotency-key`<br>`--plan-digest`<br>`--wait-seconds`<br>`--backend-url` |
 | `media job` | Inspect and cancel durable media jobs. | `read` / `bounded` | - |
 | `media job watch` | Wait for an owned MCP job and return its completed artifacts. | `read` / `foreground` | `--job-id`<br>`--client-config`<br>`--timeout-seconds`<br>`--poll-seconds` |
-| `media job status` | Inspect one durable media job. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
+| `media job status` | Inspect one durable media job. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--wait-seconds`<br>`--backend-url` |
 | `media job cancel` | Cancel one caller-owned media job. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal`<br>`--backend-url` |
 | `media artifact` | Inspect authenticated media artifacts. | `read` / `bounded` | - |
 | `media artifact inspect` | Inspect opaque artifact metadata. | `read` / `bounded` | `--registry`<br>`--state-db`<br>`--artifact-root`<br>`--principal` |

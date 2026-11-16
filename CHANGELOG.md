@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- `eval benchmark records` lists every dated finding as one
+  `anvil-serving.benchmark-record/v1` record (model, engine, quantization,
+  hardware, context, concurrency, decision, and explicit evidence gaps). The
+  documentation site renders the same records on a new Benchmark results page
+  with throughput/interactivity charts, and as a record card on each finding.
+
+### Fixed
+
+- `eval benchmark evidence list` no longer crashes on campaign evidence
+  artifacts.
+
 ## [3.0.0] - 2026-11-16
 
 ### Added
