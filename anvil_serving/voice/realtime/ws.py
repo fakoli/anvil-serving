@@ -632,6 +632,12 @@ def _make_ws_handler(
                 self._handle_upgrade()
                 return
 
+            if path == "/healthz":
+                # Token-free liveness for readiness probes: a constant body, so
+                # it reveals nothing; parse_request's Host rule still applies.
+                self._send_json(b'{"ok": true}')
+                return
+
             route_fn = routes.get(path)
             if route_fn is not None:
                 self._handle_introspection(route_fn)
@@ -645,7 +651,9 @@ def _make_ws_handler(
             if not self._authenticated():
                 self.send_error(401, "missing or invalid bearer token")
                 return
-            payload = json.dumps(route_fn()).encode("utf-8")
+            self._send_json(json.dumps(route_fn()).encode("utf-8"))
+
+        def _send_json(self, payload: bytes) -> None:
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))

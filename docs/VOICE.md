@@ -711,8 +711,11 @@ on another address, configure `realtime_token_env`.
 
 The `/pool` and `/usage` introspection routes follow the same rules: with
 `realtime_token_env` configured they require the bearer token and answer 401
-without it; without a token they apply the Host check above. A `ready_url`
-that points at `/usage` therefore only works on a token-free listener.
+without it; without a token they apply the Host check above. `GET /healthz`
+needs no token and answers only `{"ok": true}` (the Host check still applies
+when no token is configured); it is the default proxy readiness probe. An
+existing `ready_url` that points at `/usage` keeps working on a token-free
+listener.
 
 ### Assistant transcript events
 
