@@ -19,7 +19,11 @@ import tempfile
 from typing import Iterable
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+# ponytail: counts that move with every added file stay out of the committed repo inventory
+# (parallel PRs would conflict on them); they remain in --json output. The static fixture
+# tree keeps the full record as the scanner's regression test.
+VOLATILE_KEYS = ("files_scanned", "files_by_category", "canonical_counts")
 GIT_TIMEOUT_SECONDS = 15
 MAX_GIT_INDEX_BYTES = 16 * 1024 * 1024
 MAX_TEXT_FILE_BYTES = 4 * 1024 * 1024
@@ -717,6 +721,12 @@ def update_generated_docs(root: Path) -> None:
     _atomic_write_text(path, text)
 
 
+def committed_record(record: dict[str, object], scope: str) -> dict[str, object]:
+    if scope == "fixtures":
+        return record
+    return {k: v for k, v in record.items() if k not in VOLATILE_KEYS}
+
+
 def _inventory_path(root: Path, scope: str) -> Path:
     if scope == "fixtures":
         return root / FIXTURE_REL / "expected.json"
@@ -728,6 +738,7 @@ def inventory_matches(root: Path, scope: str, record: dict[str, object]) -> bool
     if not path.exists():
         return False
     value = _load_json(path)
+    record = committed_record(record, scope)
     if scope == "fixtures":
         return value == {"schema_version": SCHEMA_VERSION, "record": record}
     return (
@@ -737,7 +748,10 @@ def inventory_matches(root: Path, scope: str, record: dict[str, object]) -> bool
 
 
 def update_inventories(root: Path) -> None:
-    scopes = {scope: inventory_record(scan(root, scope)) for scope in ("docs", "skills", "full")}
+    scopes = {
+        scope: committed_record(inventory_record(scan(root, scope)), scope)
+        for scope in ("docs", "skills", "full")
+    }
     _write_json(root / INVENTORY_REL, {"schema_version": SCHEMA_VERSION, "scopes": scopes})
     fixture = inventory_record(scan(root, "fixtures"))
     _write_json(
