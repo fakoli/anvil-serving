@@ -2,14 +2,13 @@
 
 ## Supported versions
 
-anvil-serving is pre-1.0. Security fixes target the **latest minor release line** (currently
-`0.21.x`, matching the source tree version in [CHANGELOG.md](CHANGELOG.md)); older minor lines
-are not supported.
+Security fixes target the **latest minor release line** of the current major version (currently
+`2.0.x`, matching the version in [CHANGELOG.md](CHANGELOG.md)); older lines are not supported.
 
 | Version              | Supported          |
 | -------------------- | ------------------ |
-| Latest 0.x minor     | :white_check_mark: |
-| Older 0.x minors     | :x:                |
+| Latest 2.x minor     | :white_check_mark: |
+| Older minors and 0.x/1.x | :x:            |
 
 ## Reporting a vulnerability
 
@@ -18,7 +17,7 @@ are not supported.
 Report privately via GitHub's **private security advisories** on the repository:
 **Security → Advisories → Report a vulnerability**
 (<https://github.com/fakoli/anvil-serving/security/advisories/new>). If that is not available to
-you, contact the maintainer at **operator-account@gmail.com**.
+you, contact the maintainer at **security@fakoli.net**.
 
 Please include a description, reproduction steps, affected version, and impact. We aim to
 acknowledge within a few business days and will coordinate a fix and disclosure timeline with you.

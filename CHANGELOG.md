@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- Set the copyright holder and package author, replaced the placeholder security
+  contact with `security@fakoli.net`, updated supported versions to the 2.x line,
+  and changed the package classifier to `Development Status :: 4 - Beta`.
+
 ### Fixed
 
 - Native Connect gateway restarts preserve exact refused Unix socket leftovers
