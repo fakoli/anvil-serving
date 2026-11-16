@@ -46,7 +46,7 @@ func TestAdvertisedResponseIssuerRequiredBeforeCodeExchange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	challenge, err := manager.Begin("dash", "/report", binding)
+	challenge, err := manager.Begin("dash", "/report", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
