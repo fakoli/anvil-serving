@@ -1011,15 +1011,15 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if len(environment_paths) != len(set(environment_paths)):
         raise _error("$.environment_files", "must not reuse canonical EnvironmentFile paths")
 
-    caddy_fields = {"service_name", "tls"}
-    if isinstance(raw["caddy"], dict) and "listen" in raw["caddy"]:
-        caddy_fields.add("listen")
+    # The edge address is explicit: ":443" is public direct exposure, loopback
+    # is a tunnel origin. Omitting it is refused rather than defaulting public.
+    caddy_fields = {"service_name", "tls", "listen"}
     if isinstance(raw["caddy"], dict) and "state_directory" in raw["caddy"]:
         caddy_fields.add("state_directory")
     if isinstance(raw["caddy"], dict) and "origin_proxy" in raw["caddy"]:
         caddy_fields.add("origin_proxy")
     caddy_raw = _mapping(raw["caddy"], "$.caddy", caddy_fields)
-    caddy_listen = caddy_raw.get("listen", ":443")
+    caddy_listen = caddy_raw["listen"]
     if caddy_listen != ":443":
         caddy_listen = _loopback(caddy_listen, "$.caddy.listen")
         if caddy_listen in all_listens:
@@ -1040,9 +1040,7 @@ def validate_manifest(value: Any) -> dict[str, Any]:
     if caddy_name != "anvil-connect-caddy":
         raise _error("$.caddy.service_name", "must equal anvil-connect-caddy")
     caddy = {"service_name": caddy_name, "tls": {"mode": tls_mode, "certificate_file": certificate_file, "key_file": key_file}}
-    # Preserve existing canonical generations when the optional field is absent.
-    if "listen" in caddy_raw:
-        caddy["listen"] = caddy_listen
+    caddy["listen"] = caddy_listen
     if service_identities is not None:
         if "state_directory" not in caddy_raw:
             raise _error("$.caddy.state_directory", "is required with service_identities")

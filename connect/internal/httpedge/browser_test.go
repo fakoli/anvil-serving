@@ -192,6 +192,13 @@ func signedBrowserFixture(t *testing.T, dispatch BrowserDispatch) (*Browser, *br
 	return browser, authority
 }
 
+func assertNoFraming(t *testing.T, response *httptest.ResponseRecorder, page string) {
+	t.Helper()
+	if !strings.Contains(response.Header().Get("Content-Security-Policy"), "frame-ancestors 'none'") || response.Header().Get("X-Frame-Options") != "DENY" {
+		t.Fatalf("%s page is frameable: %v", page, response.Header())
+	}
+}
+
 func browserRequest(method, target string, body io.Reader) *http.Request {
 	r := httptest.NewRequest(method, target, body)
 	r.Host = "dash.example.test"
@@ -671,6 +678,7 @@ func TestSignedIdentityRequiresSignerAndUsesExplicitLogoutLanding(t *testing.T) 
 	if strings.Contains(response.Body.String(), "<script") || authority.logout != 1 {
 		t.Fatal("signed identity logout landing was unsafe or did not revoke")
 	}
+	assertNoFraming(t, response, "logout")
 	cleared := cookieValue(t, response, BrowserSessionCookie)
 	if cleared.MaxAge >= 0 || !cleared.Secure || !cleared.HttpOnly {
 		t.Fatal("signed identity logout did not clear Connect cookie")
@@ -756,6 +764,14 @@ func TestDeviceApprovalRouteIsReservedAndIssuesOneMemoryOnlyCredential(t *testin
 	if !ok {
 		t.Fatal("device binding unavailable")
 	}
+	page := browserRequest(http.MethodGet, path, nil)
+	page.Header.Set("Cookie", BrowserSessionCookie+"=opaque-session")
+	pageResponse := httptest.NewRecorder()
+	browser.ServeHTTP(pageResponse, page)
+	if pageResponse.Code != http.StatusOK || !strings.Contains(pageResponse.Body.String(), "Approve device") {
+		t.Fatal("approval page did not render")
+	}
+	assertNoFraming(t, pageResponse, "approval")
 	form := url.Values{"user_code": {started.UserCode}, "decision": {"approve"}, "csrf": {devices.CSRF(authority.admitted, binding)}}
 	approve := browserRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	approve.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -766,6 +782,7 @@ func TestDeviceApprovalRouteIsReservedAndIssuesOneMemoryOnlyCredential(t *testin
 	if approved.Code != http.StatusOK || strings.Contains(approved.Body.String(), "<device>") || dispatched.Load() != 0 {
 		t.Fatal("approval escaped or reached dashboard origin")
 	}
+	assertNoFraming(t, approved, "approval result")
 	pollPayload, _ := json.Marshal(map[string]string{"device_code": started.DeviceCode})
 	poll := browserRequest(http.MethodPost, path+"/poll", strings.NewReader(string(pollPayload)))
 	poll.Header.Set("Content-Type", "application/json")
