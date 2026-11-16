@@ -238,3 +238,41 @@ def test_stale_failure_cannot_release_another_dispatchers_submission(tmp_path):
             allow_failure.set()
             allow_response.set()
         submitting.result(timeout=5)
+
+
+def test_preclaimed_jobs_cannot_bypass_a_blocked_pool_head(tmp_path, monkeypatch):
+    monkeypatch.setenv('ANVIL_MEDIA_EXECUTION_SLOTS', '2')
+    backend, ops = Backend(), operations(tmp_path)
+    ops.background_dispatch = True
+    first = submit(ops, backend, 'first', 'image.a')
+    second = submit(ops, backend, 'second', 'image.b')
+    calls = []
+
+    def prepare(rendered, *, job_id, sequence):
+        calls.append(job_id)
+        return None
+
+    backend.prepare_execution = prepare
+    ops.dispatch_queue(backend=backend)
+    assert calls == [first['job']['id']] and not backend.submitted
+    ops.jobs.transition(first['job']['id'], JobState.AWAITING_APPROVAL, principal='caller')
+    backend.prepare_execution = lambda *_args, **_kwargs: backend
+    ops.dispatch_queue(backend=backend)
+    assert not backend.submitted
+    ops.jobs.transition(first['job']['id'], JobState.FAILED, principal='caller', reason='backend_submission_outcome_unknown')
+    ops.dispatch_queue(backend=backend)
+    assert not backend.submitted and ops.jobs.get(second['job']['id']).state == JobState.ACCEPTED
+
+
+def test_failed_feature_probe_waits_before_submission_even_if_readiness_recovers(tmp_path):
+    backend, ops = Backend(), operations(tmp_path)
+    ops.background_dispatch = True
+    job = submit(ops, backend, 'first')
+    def unavailable(*_args, **_kwargs):
+        raise MediaError('backend_unavailable', 'feature probe lost')
+    backend.prepare_execution = unavailable
+    ops.dispatch_queue(backend=backend)
+    assert not backend.submitted and ops.jobs.get(job['job']['id']).state == JobState.ACCEPTED
+    backend.prepare_execution = lambda *_args, **_kwargs: backend
+    ops.dispatch_queue(backend=backend)
+    assert backend.submitted == [job['job']['id']]

@@ -1,5 +1,13 @@
 # Benchmark results
 
+## 2026-11-16 — bounded parallel media capacity
+
+[Independent image workers](findings/2026-11-16-media-parallel.md) passed paired
+create/edit decode and two-client MCP acceptance on one RTX5090 with the
+original memory/runtime guards. The tested deployment enables two image slots;
+video remains exclusive. Exact identities/native artifacts are private, and
+these checks establish no new model quality or comparative speed result.
+
 ## 2026-11-13 — Mia TensorFold functional update
 
 The [same-model runtime check](findings/2026-11-13-tensorfold-mia-runtime-functional.md) reproduces and fixes a truncated Messages tool-call HTTP 500, expands prompt scoring from 20 to 128 alternatives, and passes tools/image/C4/cache regressions. This is a functional comparison, with no speed ranking or full-window concurrency claim.

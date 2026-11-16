@@ -199,6 +199,41 @@ class ComfyUIClient:
             raise MediaError("invalid_backend", "ComfyUI timeout is outside policy")
         self.timeout = timeout
         self._opener = opener or _urlopen_no_proxy_no_redirect
+        self._execution_headers: dict[str, str] = {}
+
+    def prepare_execution(self, workflow: RenderedWorkflow, *, job_id: str, sequence: int):
+        """Reserve one isolated child before uploading inputs; legacy workers stay unchanged."""
+        try:
+            features = self.request_json("GET", "/features")
+        except MediaError as exc:
+            if exc.code == "backend_http_error" and exc.details.get("status") in _BACKEND_UNAVAILABLE_HTTP_STATUSES:
+                raise MediaError("backend_unavailable", "ComfyUI is unavailable", status=503) from exc
+            raise
+        if not isinstance(features, Mapping) or "anvil.media.worker-pool.v1" not in features:
+            return self
+        try:
+            receipt = self.request_json("POST", "/anvil/prepare", {
+                "jobId": job_id, "sequence": sequence, "workflow": workflow.descriptor.id,
+                "version": workflow.descriptor.version, "profile": workflow.quality_profile,
+            })
+        except MediaError as exc:
+            # Once the pool is identified, an unleased legacy submission is forbidden.
+            raise MediaError("worker_pool_preparation_failed", "worker pool could not reserve execution", status=503) from exc
+        if not isinstance(receipt, Mapping) or type(receipt.get("ready")) is not bool:
+            raise MediaError("backend_response_invalid", "worker pool preparation is invalid", status=502)
+        if not receipt["ready"]:
+            return None
+        token = receipt.get("lease")
+        if not isinstance(token, str) or not _PROMPT_ID_RE.fullmatch(token):
+            raise MediaError("backend_response_invalid", "worker pool lease is invalid", status=502)
+        # A request-scoped client prevents concurrent callers from sharing an upload target.
+        prepared = ComfyUIClient(self.base_url, timeout=self.timeout, opener=self._opener)
+        prepared._execution_headers = {"X-Anvil-Execution-Lease": token}
+        return prepared
+
+    def release_execution(self, job_id: str):
+        if self._execution_headers or "anvil.media.worker-pool.v1" in self.request_json("GET", "/features"):
+            self.request_json("POST", "/anvil/release", {"jobId": job_id})
 
     def request_json(
         self,
@@ -211,7 +246,7 @@ class ComfyUIClient:
         if not path.startswith("/") or "?" in path or "#" in path:
             raise MediaError("invalid_backend_request", "ComfyUI request path is invalid")
         data = None
-        headers = {"Accept": "application/json"}
+        headers = {"Accept": "application/json", **self._execution_headers}
         if payload is not None:
             data = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode("utf-8")
             if len(data) > MAX_METADATA_BYTES:
@@ -329,6 +364,9 @@ class ComfyUIClient:
         except MediaError as exc:
             # No /prompt request has been sent; even a failed status read is definite.
             raise MediaSubmissionRefused(exc.code, exc.message, status=exc.status, details=exc.details) from exc
+        system = stats.get("system", {}) if isinstance(stats, Mapping) else {}
+        if isinstance(system, Mapping) and "anvil_pool" in system and not self._execution_headers:
+            raise MediaSubmissionRefused("worker_preparation_required", "worker pool requires an execution lease", status=409)
         runtime = _runtime_reservation(stats, workflow.descriptor)
         payload = {"prompt": workflow.graph, "client_id": client_id}
         if runtime is not None:
@@ -526,7 +564,8 @@ class ComfyUIClient:
             raise MediaError("invalid_backend_request", "ComfyUI request path is invalid")
         if max_bytes < 1 or max_bytes > 1024 * 1024 * 1024:
             raise MediaError("invalid_backend_request", "ComfyUI response byte limit is invalid")
-        request = urllib.request.Request(self.base_url + path, data=body, headers=dict(headers or {}), method=method)
+        request = urllib.request.Request(self.base_url + path, data=body,
+                                         headers={**dict(headers or {}), **self._execution_headers}, method=method)
         try:
             with self._opener(request, timeout=self.timeout) as response:
                 payload = response.read(max_bytes + 1)

@@ -59,3 +59,6 @@ tests/fixtures/eval-data/agents-a1-v1/cc/*.webm -text
 
 # Strata preparation and runtime configs bind exact built/selected bytes.
 configs/runtime/strata-6f32ec0-sm120/** -text
+
+# Capacity projections use byte-bound artifact manifests on Windows and Linux.
+docs/findings/2026-11-16-media-parallel-evidence/** text eol=lf

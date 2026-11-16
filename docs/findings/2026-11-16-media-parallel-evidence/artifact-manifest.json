@@ -1,0 +1,125 @@
+{
+  "schema": "anvil-serving.benchmark-artifact-set/v1",
+  "campaign": {
+    "id": "2026-11-16-media-parallel",
+    "capability": "bounded media worker capacity",
+    "repository_revision": "59a92168374065405f2f93e1b3d08986218cdced",
+    "dirty_state": "Media pool implementation and regression files added above this base; exact source bindings retained privately",
+    "started_at": null,
+    "completed_at": null,
+    "evidence_labels": [
+      "functional",
+      "capacity"
+    ],
+    "decision_labels": [
+      "no-promotion"
+    ],
+    "promotion_authorized": false,
+    "observed_dates": [
+      "2026-11-15",
+      "2026-11-16"
+    ],
+    "time_precision": "day; exact campaign boundary timestamps not retained publicly"
+  },
+  "native_evidence_schemas": [],
+  "artifact_roles": [
+    {
+      "role": "evidence-index",
+      "status": "retained",
+      "files": [
+        {
+          "path": "README.md",
+          "sha256": "fbb11cacf4bb1078e53c8107a40b104bf2ef9ff02530b37062b61cfb140fa6d6",
+          "bytes": 1184
+        }
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "source-registry",
+      "status": "retained",
+      "files": [
+        {
+          "path": "source-registry.json",
+          "sha256": "65631d3236102bab5d12dc92066790c3195b00d2b63826337aad98dd37470131",
+          "bytes": 124
+        }
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "workload-manifest",
+      "status": "missing",
+      "files": [],
+      "reason": "Native prompts, references and asset fingerprints remain private."
+    },
+    {
+      "role": "run-plan",
+      "status": "missing",
+      "files": [],
+      "reason": "No pre-execution common public plan was retained; this is bounded engineering acceptance, not a serving comparison."
+    },
+    {
+      "role": "configuration-and-identity",
+      "status": "missing",
+      "files": [],
+      "reason": "Immutable deployed model, variant, runtime and asset bindings remain private."
+    },
+    {
+      "role": "raw-run-evidence",
+      "status": "missing",
+      "files": [],
+      "reason": "Native records and outputs remain private; measurements.json is explicitly a redacted derivative."
+    },
+    {
+      "role": "failures-and-friction",
+      "status": "retained",
+      "files": [
+        {
+          "path": "friction-log.md",
+          "sha256": "ab0980d1f99ce2ea8a475a15af3a34e4a40e847c429dfdee993da2d33c194f8c",
+          "bytes": 1460
+        }
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "restoration",
+      "status": "retained",
+      "files": [
+        {
+          "path": "restoration.json",
+          "sha256": "a7ad2ebf3feede5069062d251618f10342dcd29ebc8beffef971ab16fe3cc1b9",
+          "bytes": 1044
+        }
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "decision-summary",
+      "status": "retained",
+      "files": [
+        {
+          "path": "summary.json",
+          "sha256": "7a5fa65c0ce60fe98f6611471ba6b4a71deead719ebc3db58a38dce72b7208e6",
+          "bytes": 1671
+        },
+        {
+          "path": "measurements.json",
+          "sha256": "4f8ab124f909088920b8e1b347983d906ef365d207cb224bfb47ba4c98b34954",
+          "bytes": 99021
+        }
+      ],
+      "reason": "Public sanitized material only."
+    },
+    {
+      "role": "publication-summary",
+      "status": "not-applicable",
+      "files": [],
+      "reason": "No social/publication copy was requested."
+    }
+  ],
+  "bundle_size_policy_verified": false,
+  "size_policy": null,
+  "generated_from": "artifact-manifest-source.json"
+}
