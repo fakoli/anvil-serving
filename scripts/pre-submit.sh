@@ -9,14 +9,12 @@
 #       docs/CLI.md generated blocks, and the audit fixture) and FAIL if the
 #       regeneration changes any of those files — that means they were stale
 #       and the regenerated output must be reviewed and committed;
-#   (b) run the full test suite (python -m pytest tests/ -x -q);
+#   (b) run the full test suite (scripts/run_tests.py --shards 4);
 #   (c) mirror CI's ruff lint gate when ruff is available.
 #
-# Root cause it fixes: whole-repo invariants live in a single global test
-# (tests/test_cli_reference_audit.py::test_repository_scope_inventories_match).
-# A contributor/agent who adds or removes a file, forgets to regenerate the
-# audit, and only runs their narrow task tests will pass locally yet red the
-# full suite at the review gate. Running this once before submit closes that gap.
+# Root cause it fixes: a contributor/agent who adds or removes a file, forgets
+# to regenerate the audit, and only runs their narrow task tests will pass
+# locally yet red the review gate. Running this once before submit closes that gap.
 #
 # POSIX sh; portable across Git Bash on Windows and Linux CI. No non-stdlib deps.
 
@@ -81,10 +79,10 @@ else
 fi
 
 # (b) Full test suite — the gate the review runs.
-if $PY -m pytest tests/ -x -q; then
+if $PY scripts/run_tests.py --shards 4 -x -q; then
     pass 'full test suite green'
 else
-    fail 'full test suite red (python -m pytest tests/ -x -q)'
+    fail 'full test suite red (scripts/run_tests.py --shards 4 -x -q)'
 fi
 
 # (c) Ruff lint — a whole-repo gate CI enforces in its own job. Optional here

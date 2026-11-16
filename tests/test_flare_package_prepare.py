@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -229,6 +230,10 @@ def test_unconfirmed_execution_is_refused_before_host_or_docker_checks():
     assert calls == []
 
 
+# The helper mounts the temporary publisher profile and then requires Docker to
+# report its resolved path; a symlinked temp root (macOS /tmp) cannot match.
+@pytest.mark.skipif(Path(tempfile.gettempdir()).resolve() != Path(tempfile.gettempdir()),
+                    reason="the publisher profile mount check needs a canonical temporary root")
 def test_accepted_public_profile_is_copied_mounted_read_only_and_cleaned(tmp_path, monkeypatch):
     key = bytes(range(32))
     fingerprint = __import__("hashlib").sha256(key).hexdigest()

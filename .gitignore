@@ -61,3 +61,6 @@ graphify-out/
 
 # Local test receipts include interpreter and checkout paths.
 .pytest_cache/
+
+# Local agent state
+.claude/*.local.md

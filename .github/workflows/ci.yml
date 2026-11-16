@@ -34,6 +34,7 @@ jobs:
           python scripts/audit_cli_references.py --check --scope docs
           python scripts/audit_cli_references.py --check --scope skills
           python scripts/audit_cli_references.py --check --scope full
+          python scripts/audit_cli_references.py --check --scope fixtures
 
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python-version }})
@@ -71,14 +72,21 @@ jobs:
         run: node --version
 
       - name: Run tests
-        run: python -m ${{ matrix.python-version == '3.13' && 'coverage run -m pytest' || 'pytest' }} tests/ ${{ runner.os == 'Linux' && '-x' || '' }} -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+        # Four parallel pytest shards, one per runner vCPU. The 3.13 leg adds
+        # coverage and runs everything; the others skip tests marked slow.
+        if: runner.os == 'Linux'
+        run: python scripts/run_tests.py --shards 4 ${{ matrix.python-version == '3.13' && '--coverage' || '-m "not slow"' }} -x -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+
+      - name: Run tests (macOS, single process)
+        if: runner.os == 'macOS'
+        run: python -m pytest tests/ -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
 
       - name: Retain test timings and outcomes
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: test-results-${{ github.sha }}-${{ matrix.os }}-py${{ matrix.python-version }}
-          path: test-results.xml
+          path: test-results*.xml
           if-no-files-found: warn
 
       - name: Enforce 70% coverage

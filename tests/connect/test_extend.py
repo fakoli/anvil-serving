@@ -13,19 +13,17 @@ import json
 import os
 import stat
 from pathlib import Path
-import sys
 
 import pytest
 
 from anvil_serving.connect import extend as extend_module
-from anvil_serving.connect.manage import Target
+from anvil_serving.connect.manage import Target, supported_platform
 from tests.connect.test_render import isolated_manifest
 
-# The Connect manifest reader requires POSIX no-follow descriptors; extend
-# runs on POSIX only, like the rest of the family.
+# extend() refuses every host except Linux amd64 (manage.supported_platform).
 pytestmark = pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="the Connect manifest reader requires POSIX no-follow descriptors",
+    not supported_platform(),
+    reason="Connect lifecycle requires Linux amd64",
 )
 
 ENROLLED = ("dashboard", "dashboard-api")

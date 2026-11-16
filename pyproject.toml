@@ -98,6 +98,7 @@ include = ["anvil_serving*"]   # ship subpackages (router, dialects, …) and fu
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["slow: real-time or real-process tests; skipped by -m \"not slow\" on non-coverage CI legs"]
 
 [tool.coverage.run]
 branch = true
