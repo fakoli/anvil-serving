@@ -302,8 +302,8 @@ def _warn_if_public_bind(host: str, *, authed: bool = False,
         return
     if not authed and not allow_unauthenticated:
         raise ConfigError(
-            f"refusing to bind {host!r} without authentication: configure "
-            "[server].auth_env, bind 127.0.0.1, or pass "
+            f"refusing to bind {host!r} without authentication: use 127.0.0.1 "
+            "(not localhost) or configure [server].auth_env, or pass "
             "--allow-unauthenticated-public-bind to accept an open front door"
         )
     if authed:
@@ -2630,10 +2630,8 @@ def serve(
     allow_unauthenticated_public_bind: bool = False,
 ) -> None:
     """Run a configured thin capability gateway until interrupted."""
-    try:
-        authed = bool(load_server_config(config_path).auth_env)
-    except ConfigError:
-        authed = False
+    # A config error surfaces here, before any bind decision (fail closed).
+    authed = bool(load_server_config(config_path).auth_env)
     _warn_if_public_bind(host, authed=authed,
                          allow_unauthenticated=allow_unauthenticated_public_bind)
     httpd = build_server(

@@ -173,3 +173,31 @@ def test_router_run_loopback_without_auth_starts(tmp_path, monkeypatch):
     started = _stub_serve(monkeypatch, None)
     assert router_serve.main(["--config", str(config)]) == 0
     assert len(started) == 1
+
+
+def test_router_run_localhost_without_auth_names_127_0_0_1(tmp_path, monkeypatch, capsys):
+    config = tmp_path / "router.toml"
+    config.write_text("[router]\n", encoding="utf-8")
+    started = _stub_serve(monkeypatch, None)
+    assert router_serve.main(["--config", str(config), "--host", "localhost"]) != 0
+    assert started == []
+    err = capsys.readouterr().err
+    assert "use 127.0.0.1 (not localhost)" in err
+    assert "[server].auth_env" in err
+
+
+def test_router_run_config_error_is_reported_before_bind_refusal(tmp_path, monkeypatch, capsys):
+    config = tmp_path / "router.toml"
+    config.write_text("[router]\n", encoding="utf-8")
+    started = []
+
+    def broken(path):
+        raise router_serve.ConfigError("synthetic malformed [server] table")
+
+    monkeypatch.setattr(router_serve, "load_server_config", broken)
+    monkeypatch.setattr(router_serve, "build_server", lambda path, **kw: started.append(kw))
+    assert router_serve.main(["--config", str(config), "--host", "0.0.0.0"]) == 2
+    assert started == []
+    err = capsys.readouterr().err
+    assert "synthetic malformed [server] table" in err
+    assert "refusing to bind" not in err
