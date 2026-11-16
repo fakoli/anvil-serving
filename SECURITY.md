@@ -22,6 +22,12 @@ you, contact the maintainer at **security@fakoli.net**.
 Please include a description, reproduction steps, affected version, and impact. We aim to
 acknowledge within a few business days and will coordinate a fix and disclosure timeline with you.
 
+## Deployment security model
+
+Operator-facing guidance on transport (no built-in TLS), controller token authority, safety
+gates versus access control, environment files and Connect sessions is in
+[Deployment security model](docs/SECURITY-MODEL.md).
+
 ## Scope and threat model
 
 anvil-serving is a **network-facing server** that proxies coding-harness traffic
