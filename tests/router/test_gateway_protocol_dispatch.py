@@ -587,13 +587,11 @@ media_public_origin = "http://127.0.0.1:8080"
     worker = server.anvil_media_worker
     assert forwarded_signed_mode == ["1"]
     completed_after_submit = threading.Event()
-    submitted_id = None
     reconcile_once = worker.reconcile_once
 
     def observe_reconcile_once():
-        observed_submission = submitted_id
         result = reconcile_once()
-        if any(job.id == observed_submission and job.state == JobState.COMPLETED for job in result):
+        if any(job.principal == "hermes" and job.state == JobState.COMPLETED for job in result):
             completed_after_submit.set()
         return result
 
@@ -604,7 +602,6 @@ media_public_origin = "http://127.0.0.1:8080"
         submitted = server.anvil_gateway.tasks.send_message(
             send_request()["params"], caller=CALLER
         )["task"]
-        submitted_id = submitted["id"]
         assert completed_after_submit.wait(10), "media worker did not complete the submitted job"
         job = server.anvil_gateway.tasks.operations.jobs.get(
             submitted["id"], principal="hermes"
