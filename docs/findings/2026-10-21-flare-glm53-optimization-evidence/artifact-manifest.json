@@ -1871,11 +1871,6 @@
           "bytes": 5412
         },
         {
-          "path": "diagnostics/cap16-failed-preparation-logs.txt.gz",
-          "sha256": "1ba50cc581fb1bfed45dbd8447f24834930d96e81b25517e29c685a8aa43e213",
-          "bytes": 3555
-        },
-        {
           "path": "diagnostics/cap16-fixed1-ctx10240-c1-cold-after-gpu.csv",
           "sha256": "0d8ae49ecc8919ba17ea2c39e793a71d29a10e4562799ee7c286a82688f782f7",
           "bytes": 184
@@ -4779,11 +4774,6 @@
           "path": "diagnostics/cap16-p2048-package-identity.json",
           "sha256": "4e98ec9bbb5fe32c41777f986e80618b9a08a823bd36eedd21f0db3e73bda6c9",
           "bytes": 669
-        },
-        {
-          "path": "diagnostics/cap16-p2048-prep-full.log.gz",
-          "sha256": "f04b2651dfb0cbced400f203d5a2bc16d239fb60ffde222b9c408f7bcf37985e",
-          "bytes": 26496
         },
         {
           "path": "diagnostics/cap16-package-identity.json",

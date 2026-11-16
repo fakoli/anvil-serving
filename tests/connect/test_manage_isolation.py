@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import stat
@@ -11,6 +12,7 @@ import pytest
 
 from anvil_serving.connect import manage
 from anvil_serving.connect.config import ManifestError, validate_manifest
+from tests.conftest import isolated_case
 
 
 pytestmark = pytest.mark.skipif(
@@ -160,9 +162,21 @@ def test_gateway_direct_files_require_role_readability_and_safe_ancestry(tmp_pat
         manage._validate_gateway_files(data)
 
 
-@pytest.mark.parametrize("role", ["gateway", "connector"])
-@pytest.mark.parametrize("fault", [None, "missing", "symlink", "directory", "fifo", "owner", "writable", "unreadable", "empty", "oversized"])
-def test_local_material_metadata_matches_native_owner_contract(tmp_path, monkeypatch, role, fault):
+_LOCAL_MATERIAL_METADATA_MATCHES_NATIVE_OWNER_CONTRACT_FAULT = [None, "missing", "symlink", "directory", "fifo", "owner", "writable", "unreadable", "empty", "oversized"]
+_LOCAL_MATERIAL_METADATA_MATCHES_NATIVE_OWNER_CONTRACT_ROLE = ["gateway", "connector"]
+
+
+def test_local_material_metadata_matches_native_owner_contract(subtests, tmp_path, monkeypatch):
+    cases = itertools.product(_LOCAL_MATERIAL_METADATA_MATCHES_NATIVE_OWNER_CONTRACT_FAULT, _LOCAL_MATERIAL_METADATA_MATCHES_NATIVE_OWNER_CONTRACT_ROLE)
+    for index, (fault, role) in enumerate(cases):
+        with (
+            subtests.test(role=role, fault=fault),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _local_material_metadata_matches_native_owner_contract(tmp_path=case, monkeypatch=mp, role=role, fault=fault)
+
+
+def _local_material_metadata_matches_native_owner_contract(tmp_path, monkeypatch, role, fault):
     from tests.connect.test_render import local_tunnel_manifest
 
     data = local_tunnel_manifest(isolated_data(tmp_path))

@@ -8,6 +8,7 @@ import pytest
 from anvil_serving import collectors
 from anvil_serving.tensorfold_telemetry import BUCKETS, HISTOGRAMS, parse_metrics, parse_request_counts
 from tests.conftest import Response
+from tests.conftest import isolated_case
 
 
 def metrics(*, active=0, complete=1, kv=1, bound=0):
@@ -113,7 +114,7 @@ def test_partitioned_census_preserves_capacity_and_temporary_twin_subset():
         parse_metrics(raw.replace('anvil_full_context_bound_available 0', 'anvil_full_context_bound_available 1'))
 
 
-@pytest.mark.parametrize('replacement', [
+_CONTRADICTORY_OR_INVALID_METRICS_FAIL_CLOSED_CASES = [
     ('anvil_streams_observed 1', 'anvil_streams_observed 2'),
     ('requests_running 1', 'requests_running 0'),
     ('kv_cache_usage_perc{stream="0"} 0.125', 'kv_cache_usage_perc{stream="0"} 0.5'),
@@ -126,8 +127,19 @@ def test_partitioned_census_preserves_capacity_and_temporary_twin_subset():
     ('anvil_streams_active 1', 'anvil_streams_active 9007199254740993'),
     ('anvil_streams_active 1', 'anvil_streams_active 9007199254740990.5'),
     ('anvil_contract_info{version="1"}', 'anvil_contract_info{version="2"}'),
-])
-def test_contradictory_or_invalid_metrics_fail_closed(replacement):
+]
+
+
+def test_contradictory_or_invalid_metrics_fail_closed(subtests, tmp_path, monkeypatch):
+    for index, replacement in enumerate(_CONTRADICTORY_OR_INVALID_METRICS_FAIL_CLOSED_CASES):
+        with (
+            subtests.test(replacement=replacement),
+            isolated_case(tmp_path, monkeypatch, index),
+        ):
+            _contradictory_or_invalid_metrics_fail_closed(replacement=replacement)
+
+
+def _contradictory_or_invalid_metrics_fail_closed(replacement):
     with pytest.raises(ValueError):
         parse_metrics(metrics(active=1).replace(*replacement))
 

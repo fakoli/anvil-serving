@@ -10,7 +10,7 @@
   reference-instance role assignments
 
 This ADR is written for a project intended to be publicly usable. Product
-concepts below are stated generically; Primary Node / Mid-Mod / Mini / AI-MBP25
+concepts below are stated generically; Primary Node / Mid-Mod / Mini / benchmark-worker
 appear only as the reference instance that motivated them, and the concrete
 host names, GPU identities, and route assignments remain private operator state
 per ADR-0032. Backward compatibility is explicitly **not** a constraint on this
@@ -24,7 +24,7 @@ with materially different roles:
 
 - `primary-node` — two RTX PRO 6000 (sm_120), Linux containers under WSL2. The
   serving host and, today, the de facto control host.
-- `fakoli-mid-mod` — RTX 5090. The permanent voice host since 2026-08-07:
+- `mid-mod` — RTX 5090. The permanent voice host since 2026-08-07:
   STT/TTS and the low-latency voice LLM.
 - `companion-node` — OpenClaw gateway and audio proxy. Model-free by capacity
   policy, and already declared `roles = ["gateway", "operator", "proxy"]`.
@@ -36,7 +36,7 @@ Three problems motivated this decision.
 
 **The map disagrees with the territory.** Dark's `operator-topology.toml`
 declares only mini and dark. It never mentions mid-mod, even though Dark's own
-live router routes audio to mid-mod's tailnet address. `fakoli-mid-mod` carries
+live router routes audio to mid-mod's tailnet address. `mid-mod` carries
 a second, independent topology document. There is no fleet-level view, and the
 live router configuration is more accurate than any committed topology.
 
@@ -139,7 +139,7 @@ a claim that any node has been enrolled.
 
 ### 5. No cross-host arbitration
 
-Voice ownership of `fakoli-mid-mod` is **sacred**. Mini may not reclaim mid-mod
+Voice ownership of `mid-mod` is **sacred**. Mini may not reclaim mid-mod
 for general serving.
 
 Consequently the fleet requires no cross-host scheduler. `dual-gpu-exclusive`

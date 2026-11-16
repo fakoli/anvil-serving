@@ -6,6 +6,7 @@ import pytest
 from scripts.validate_hot_route_journeys import (
     CLEANUP_ASSERTIONS, EXPECTED_JOURNEYS, MAX_RECEIPT_BYTES, validate,
 )
+from tests.conftest import isolated_case
 
 
 def campaign_files(root):
@@ -38,12 +39,23 @@ def test_rejects_incomplete_or_false_pass_campaign(tmp_path):
     assert not validate(path)[0]
 
 
-@pytest.mark.parametrize("problem", [
+_REJECTS_INVALID_OR_UNBOUND_EVIDENCE_CASES = [
     "duplicate", "unknown", "malformed", "hash", "failed", "unclean",
     "cleanup-empty", "cleanup-failed", "cleanup-incomplete", "cleanup-false",
     "oversize", "absolute", "traversal", "symlink-file", "symlink-directory",
-])
-def test_rejects_invalid_or_unbound_evidence(tmp_path, problem):
+]
+
+
+def test_rejects_invalid_or_unbound_evidence(subtests, tmp_path, monkeypatch):
+    for index, problem in enumerate(_REJECTS_INVALID_OR_UNBOUND_EVIDENCE_CASES):
+        with (
+            subtests.test(problem=problem),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _rejects_invalid_or_unbound_evidence(tmp_path=case, problem=problem)
+
+
+def _rejects_invalid_or_unbound_evidence(tmp_path, problem):
     path, config, receipt = campaign_files(tmp_path)
     item = config["journeys"][0]
     target = tmp_path / item["receipt"]

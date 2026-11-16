@@ -162,7 +162,7 @@ See the [cross-run interpretation and exact artifact links](../findings/2026-09-
 
 ### Remote coding-agent comparison
 
-Both campaigns used AI-MBP25 as the isolated worker and reached Primary Node
+Both campaigns used benchmark-worker as the isolated worker and reached Primary Node
 through the router. They did not use the same model recipe, GPU count, harness
 revision, or complete workload, so this is a bounded capability comparison—not
 a statistically controlled model ranking.

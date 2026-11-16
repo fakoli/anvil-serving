@@ -12,7 +12,7 @@ instances under the official grader. The SWE result is a five-instance fixed
 sample, not a claim of 100% on the full benchmark.
 
 Every model request used the private router over Tailscale. The worker was
-AI-MBP25 (macOS arm64); official Linux x86-64 SWE evaluation images ran under
+benchmark-worker (macOS arm64); official Linux x86-64 SWE evaluation images ran under
 Docker's `linux/amd64` emulation. No request went directly to the model serve,
 and the campaign did not restart a controller or model, change a route, or
 promote a profile.
@@ -57,7 +57,7 @@ materially different solution costs.
 
 ## Comparison with the earlier DeepSeek worker smoke
 
-The earlier DeepSeek V4 Flash 0731 r16/DSpark campaign used the same AI-MBP25
+The earlier DeepSeek V4 Flash 0731 r16/DSpark campaign used the same benchmark-worker
 worker boundary but an exclusive two-card TP=2 serve and an earlier harness.
 Its `tool-recovery-error` smoke followed the required retry protocol but failed
 to produce the required final answer (0/1); Qwen passed both repetitions of the

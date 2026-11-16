@@ -8,6 +8,7 @@ import pytest
 
 from anvil_serving.benchmarking import aider_containment as containment
 from anvil_serving.benchmarking.jobs import BenchmarkJobError
+from tests.conftest import isolated_case
 
 IMAGE = "sha256:" + "a" * 64
 IDENTITY = "b" * 64
@@ -91,7 +92,7 @@ def setup(tmp_path):
     return run, task, args
 
 
-@pytest.mark.parametrize("section,key,value", [
+_INSPECT_DRIFT_NEVER_STARTS_CASES = [
     ("HostConfig", "NetworkMode", "host"), ("HostConfig", "ReadonlyRootfs", False),
     ("HostConfig", "Privileged", True), ("HostConfig", "DeviceRequests", [{"Capabilities": [["gpu"]]}]),
     ("HostConfig", "Devices", [{"PathOnHost": "/dev/sda"}]), ("HostConfig", "CapAdd", ["SYS_ADMIN"]),
@@ -101,8 +102,19 @@ def setup(tmp_path):
     ("HostConfig", "Runtime", "nvidia"), ("HostConfig", "Binds", ["/var/run/docker.sock:/sock"]),
     ("Config", "Env", ["API_KEY=synthetic"]), ("Config", "User", "0:0"),
     ("Config", "Entrypoint", ["unexpected"]), ("Config", "Cmd", ["unexpected"]),
-])
-def test_inspect_drift_never_starts(tmp_path, section, key, value):
+]
+
+
+def test_inspect_drift_never_starts(subtests, tmp_path, monkeypatch):
+    for index, (section, key, value) in enumerate(_INSPECT_DRIFT_NEVER_STARTS_CASES):
+        with (
+            subtests.test(section=section, key=key, value=value),
+            isolated_case(tmp_path, monkeypatch, index) as (case, mp),
+        ):
+            _inspect_drift_never_starts(tmp_path=case, section=section, key=key, value=value)
+
+
+def _inspect_drift_never_starts(tmp_path, section, key, value):
     run, _, args = setup(tmp_path)
     docker = Docker(run, drift=lambda row: row[section].update({key: value}))
     with pytest.raises(BenchmarkJobError):

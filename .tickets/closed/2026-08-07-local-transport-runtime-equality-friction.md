@@ -46,7 +46,7 @@ runtime — resolution fails with the unhelpful:
 controller transport for operation 'voice-status' on '<host>'/'<host>-docker' has 0 declared owners
 ```
 
-## Reproduction (2026-08-07, fakoli-mid-mod voice bring-up)
+## Reproduction (2026-08-07, mid-mod voice bring-up)
 
 Every `voice audio {up|down|status|logs}` and `voice up|down` invocation on the
 host that owns the serves needs an explicit override:

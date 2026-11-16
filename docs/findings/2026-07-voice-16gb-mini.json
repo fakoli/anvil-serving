@@ -5,7 +5,7 @@
     "platform_node": "Mac",
     "hostname": "Mac",
     "computer_name": "Companion Node",
-    "local_host_name": "Fakoli-Mini-2",
+    "local_host_name": "companion-node",
     "hardware_model": "Mac16,10"
   },
   "target_host_pattern": "(?i)^fakoli[-_. ]?mini(?:[-_. ]?2)?$",

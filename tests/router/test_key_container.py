@@ -1,4 +1,6 @@
 """Container-owned key operations: durable mounts, pipe secrecy, and delivery."""
+import contextlib
+import io
 import json
 import subprocess
 import sys
@@ -27,8 +29,15 @@ def container(tmp_path, monkeypatch):
         assert argv == ["docker", "exec", "-i", "a" * 64, "python", "-m", key_container.__name__]
         payload = json.loads(kwargs["input"])
         payload["store_path"] = str(tmp_path / "store" / "keys.sqlite3")
-        return original([sys.executable, "-m", key_container.__name__],
-                        input=json.dumps(payload), capture_output=True, text=True, timeout=30)
+        if payload["action"] == "create":
+            # One real subprocess pins the stdin-only secret boundary.
+            return original([sys.executable, "-m", key_container.__name__],
+                            input=json.dumps(payload), capture_output=True, text=True, timeout=30)
+        out, err = io.StringIO(), io.StringIO()
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = key_container.main()
+        return SimpleNamespace(returncode=code, stdout=out.getvalue(), stderr=err.getvalue())
 
     monkeypatch.setattr(key_container.subprocess, "run", run)
     return config, row, calls
