@@ -6,6 +6,11 @@ serving-and-gateway path from installation to a capability alias routed to a
 local endpoint. Use the installed product catalog below for Voice, Media,
 evaluation, or fleet-specific journeys.
 
+Already running Ollama, LM Studio, `llama-server`, or vLLM? You only need the
+gateway: follow the [gateway quickstart](QUICKSTART-GATEWAY.md) instead. It
+needs no Docker, GPU, or private operator repository. Platform scope is in the
+[support matrix](SUPPORT-MATRIX.md).
+
 Use `127.0.0.1` in local URLs.
 
 ## Prerequisites
@@ -13,10 +18,10 @@ Use `127.0.0.1` in local URLs.
 - **Python >= 3.11** — the CLI is standard-library only; there are no required
   dependencies to install beyond the package itself. Native PowerShell supports
   command discovery, offline configuration and topology work, and declared
-  typed remote operations. On Windows, run service, router, controller, and
+  typed remote operations. On Windows, run service, controller, and
   accounting runtimes in Linux containers with Docker Desktop's Linux engine
   or inside Linux in WSL. Native Windows deployment of those runtimes is
-  unsupported.
+  unsupported; the [support matrix](SUPPORT-MATRIX.md) covers the gateway.
 - **At least one OpenAI-compatible model serve** for the routed request. SGLang
   and vLLM are common options.
 - **For a managed Docker-backed GPU serve:** Docker, Compose v2, and a supported
@@ -31,9 +36,11 @@ Use `127.0.0.1` in local URLs.
 
 ## Install
 
-For the current `main` documentation and MCP/controller command surface, install from this clone:
+For the current `main` documentation and MCP/controller command surface, install from a clone:
 
 ```bash
+git clone https://github.com/fakoli/anvil-serving
+cd anvil-serving
 pip install -e .
 ```
 
@@ -50,10 +57,12 @@ pip install anvil-serving
 Published packages can lag `main`, so use the editable clone install when a command documented here
 is missing from the package.
 
-Before `anvil-serving init` on a real host, choose a private operator root. For
-example, point `ANVIL_SERVING_HOME` at the `operator-home/` directory of a
-private companion repository. This keeps real topology and active assignments
-out of the public product checkout. See
+A private operator root is optional. On a single host, the default config home
+(`~/.anvil-serving`) is enough and nothing else needs to be set up. When you
+want real topology and active assignments under version control, or you
+operate several hosts, point `ANVIL_SERVING_HOME` at the `operator-home/`
+directory of a private companion repository before `anvil-serving init`. This
+keeps that state out of the public product checkout. See
 [Public product and private operator state](OPERATOR-PRIVACY.md).
 
 Confirm the CLI is available:
@@ -74,7 +83,7 @@ anvil-serving product journey evaluation-evidence
 anvil-serving product journey control-plane-fleet
 ```
 
-The six-family boundary and cross-family handoffs are documented in
+The seven-family boundary and cross-family handoffs are documented in
 [Product families and user journeys](PRODUCT-FAMILIES.md).
 
 ## Windows client
