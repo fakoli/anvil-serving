@@ -9,6 +9,11 @@ model_dirs = []
 gpu_index = 0
 served_model_name = "local-specialist"
 
+# Front-door token auth: the env var NAME only. `anvil-serving init` generates a
+# token into $ANVIL_SERVING_HOME/.env; clients send it as a bearer token.
+[server]
+auth_env = "ANVIL_ROUTER_TOKEN"
+
 [router]
 relay_timeout = 20
 availability_probe_interval = 5

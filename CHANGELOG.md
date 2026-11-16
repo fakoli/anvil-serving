@@ -12,6 +12,13 @@ All notable changes to this project are documented here. The format is based on
   under exclusive authority ownership before rebinding, while refusing active
   listeners, unsafe custody and unknown liveness.
 
+### Changed
+
+- `anvil-serving init` scaffolds an authenticated router: the generated
+  `router.toml` sets `[server] auth_env = "ANVIL_ROUTER_TOKEN"`, and `init`
+  creates a random token in `$ANVIL_SERVING_HOME/.env` (mode 0600) when none is
+  defined, never overwriting an existing value or printing the token.
+
 ### Added
 
 - Approved media recipe selection prepares an exact bounded workflow from the

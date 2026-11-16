@@ -19,7 +19,7 @@ def successor(current_stop, monkeypatch):
     f = current_stop
     root = f['old'].parent
     storage = root / 'storage'; storage.mkdir()
-    raw = Path('configs/example.toml').read_text() + '''
+    raw = Path('configs/example.toml').read_text().replace('[server]\nauth_env = "ANVIL_ROUTER_TOKEN"\n', '') + '''
 [server]
 auth_env="SYNTHETIC_AUTH"
 api_keys_path="/fixture/state/keys.sqlite3"
