@@ -7,6 +7,8 @@ addresses outside 100.64.0.0/24, GPU UUIDs and UUID prefixes that are not
 placeholders, and personal home directories.
 """
 import gzip
+import io
+import tarfile
 import importlib.util
 import sys
 from pathlib import Path
@@ -58,3 +60,31 @@ def test_tracked_snapshot_is_clean():
     scanned, findings = scanner.scan_files(ROOT, entries)
     assert scanned > 0
     assert not findings, [(f["kind"], f["path"], f["line"]) for f in findings[:20]]
+
+
+def test_multi_member_gzip_and_opaque_gzip(tmp_path):
+    members = gzip.compress(b"clean\n") + gzip.compress(f"on {LAB_HOSTS[0]}\n".encode())
+    (tmp_path / "multi.log.gz").write_bytes(members)
+    (tmp_path / "blob.gz").write_bytes(gzip.compress(b"x"))
+    _, findings = scanner.scan_files(tmp_path, [("test", "multi.log.gz"), ("test", "blob.gz")])
+    assert sorted(f["kind"] for f in findings) == ["known-lab-hostname", "tracked-gzip-unscanned"]
+
+
+def test_truncated_uuid_and_url_or_path_hostnames_are_flagged():
+    prefix = "GPU-" + "a1b2" + "c3d4"
+    assert "operator-gpu-uuid-fragment" in kinds(f"{prefix}-0000-0000")
+    assert "operator-gpu-uuid-fragment" in kinds(f"{prefix}-0000-0000-0000")
+    for text in (f"grpc://{LAB_HOSTS[0]}:50051", f"/mnt/{LAB_HOSTS[1]}/data"):
+        assert "known-lab-hostname" in kinds(text)
+
+
+def test_tar_gz_members_are_scanned(tmp_path):
+    payload = f"on {LAB_HOSTS[0]}\n".encode()
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        info = tarfile.TarInfo("inner.log")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+    (tmp_path / "cache.tar.gz").write_bytes(gzip.compress(buffer.getvalue()))
+    _, findings = scanner.scan_files(tmp_path, [("test", "cache.tar.gz")])
+    assert [f["kind"] for f in findings] == ["known-lab-hostname"]
