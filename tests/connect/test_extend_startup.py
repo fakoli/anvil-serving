@@ -2,11 +2,14 @@
 import pytest
 
 from anvil_serving.connect import extend as extension
+from anvil_serving.connect.manage import supported_platform
 from tests.connect.test_extend import (
     environment as environment,
     runner as runner,
     enrollment_log as enrollment_log,
 )
+
+pytestmark = pytest.mark.skipif(not supported_platform(), reason="Connect lifecycle requires Linux amd64")
 
 
 @pytest.mark.parametrize('provider_available', [True, False])

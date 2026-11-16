@@ -108,6 +108,42 @@ def test_authenticated_upload_framing_digest_owner_and_no_scope(tmp_path, monkey
         assert send()[0] == 403
 
 
+def test_back_to_back_uploads_never_see_their_own_busy_slot(tmp_path, monkeypatch):
+    # A late-scheduled handler thread must not still hold the one intake slot
+    # after the client already has its reply; the next upload follows at once.
+    import threading
+    import time
+    from anvil_serving.router import front_door
+
+    class SlowRelease:
+        def __init__(self):
+            self._inner = threading.BoundedSemaphore(1)
+
+        def acquire(self, *args, **kwargs):
+            return self._inner.acquire(*args, **kwargs)
+
+        def release(self):
+            time.sleep(0.05)
+            self._inner.release()
+
+    monkeypatch.setattr(front_door, "_ASSET_CONCURRENCY_LIMIT", SlowRelease())
+    monkeypatch.setattr("anvil_serving.media.operations.inspect_media", lambda *a: dict(INFO))
+    with gateway_server(tmp_path) as (address, _):
+        def send(extra=None):
+            headers = {"Content-Length": str(len(PNG)), "Content-Type": "image/png",
+                       "X-Content-SHA256": hashlib.sha256(PNG).hexdigest(),
+                       "Authorization": "Bearer secret", **(extra or {})}
+            connection = http.client.HTTPConnection(*address, timeout=5)
+            try:
+                connection.request("POST", assets.ASSET_PATH, body=PNG, headers=headers)
+                return connection.getresponse().status
+            finally:
+                connection.close()
+        assert send({"Content-Encoding": "gzip"}) == 400
+        assert send({"Transfer-Encoding": "chunked"}) == 400
+        assert send() == 201
+
+
 def test_real_decoder_rejects_corrupt_and_accepts_single_still(tmp_path):
     if shutil.which("ffprobe") is None:
         pytest.skip("managed ffprobe not installed on this test host")

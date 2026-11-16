@@ -3,6 +3,7 @@ import http.client
 import json
 import os
 import threading
+import time
 
 import pytest
 
@@ -138,6 +139,33 @@ def test_http_auth_confirmation_and_body_boundaries(live_routes):
     status, preview = request(server, "/v1/router/routes/preview", {"config": raw.decode()})
     assert status == 200
     assert request(server, "/v1/router/routes/apply", {"preview_id": preview["preview_id"], "confirm": "true"})[0] == 400
+
+
+def test_back_to_back_management_requests_never_see_their_own_busy_slot(live_routes, monkeypatch):
+    # A late-scheduled handler thread must not hold the one management slot
+    # after the client already has its response: the next request follows at once.
+    from anvil_serving.router import front_door
+
+    class SlowRelease:
+        def __init__(self):
+            self._inner = threading.BoundedSemaphore(1)
+
+        def acquire(self, *args, **kwargs):
+            return self._inner.acquire(*args, **kwargs)
+
+        def release(self):
+            time.sleep(0.05)
+            self._inner.release()
+
+    monkeypatch.setattr(front_door, "_MANAGEMENT_MUTATION_LIMIT", SlowRelease())
+    server, raw = live_routes
+    candidate = raw.replace(b'"llm.primary" = "a"', b'"llm.primary" = "b"')
+    status, preview = request(server, "/v1/router/routes/preview", {"config": candidate.decode()})
+    assert status == 200
+    status, _ = request(server, "/v1/router/routes/apply", {"preview_id": preview["preview_id"], "confirm": "true"})
+    assert status == 400
+    status, result = request(server, "/v1/router/routes/apply", {"preview_id": preview["preview_id"], "confirm": True})
+    assert status == 200 and result["route_revision"] == 1
 
 
 def test_duplicate_confirmation_is_rejected_without_consuming_preview(live_routes):

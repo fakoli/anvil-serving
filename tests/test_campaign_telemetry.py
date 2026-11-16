@@ -1,5 +1,6 @@
 """Offline source-clock, custody, immutable-chain and shared-barrier checks."""
 import json
+from pathlib import Path
 import time
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
@@ -24,6 +25,8 @@ def contract():
 
 
 def setup(tmp_path, monkeypatch, *, count=1, mixed=False):
+    if not Path('/proc/sys/kernel/random/boot_id').exists():  # campaign custody binds the Linux boot id
+        pytest.skip('campaign execution requires Linux /proc boot_id')
     tasks = [('agentic', task) for task in ('structured-edit', 'tool-sequence', 'parallel-tools', 'dependent-result')][:count]
     if mixed:
         tasks[2:] = [('aider', lang + '/exercises/practice/task') for lang in ('cpp', 'go')]
