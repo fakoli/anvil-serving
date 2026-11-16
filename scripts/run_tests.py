@@ -29,6 +29,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -134,11 +135,39 @@ def write_receipt(path: Path, receipt: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def plan_launches(args: list[str], shards: int, coverage: bool, base: Path) -> list[tuple]:
+    """Return (command, extra_env, log) per pytest process; one process when not sharding."""
+    runner = [sys.executable, "-m", *(["coverage", "run", "-p", "-m"] if coverage else []), "pytest"]
+    if shards == 1:
+        env = {"COVERAGE_FILE": str(base / ".coverage")} if coverage else {}
+        return [([*runner, *args, "--basetemp", str(base / "fixtures")], env, None)]
+    # ponytail: option values that are existing paths would be mistaken for roots; none are used today.
+    roots = [a for a in args if not a.startswith("-") and Path(a.split("::")[0]).exists()] or ["tests"]
+    flags = [a for a in args if a not in roots]
+    files = sorted({str(f) for r in roots
+                    for f in (Path(r).rglob("test_*.py") if Path(r).is_dir() else [Path(r)])} | {r for r in roots if "::" in r})
+    count = min(shards, len(files))
+    launches = []
+    for index in range(count):
+        work = base / f"shard{index}"
+        work.mkdir(mode=0o700)
+        shard_flags = [a.removesuffix(".xml") + f"-shard{index}.xml" if a.startswith("--junitxml=") else a
+                       for a in flags]
+        env = {name: str(work) for name in ("TMPDIR", "TEMP", "TMP")}
+        if coverage:
+            env["COVERAGE_FILE"] = str(work / ".coverage")
+        launches.append(([*runner, *shard_flags, *files[index::count], "--basetemp", str(work / "fixtures")],
+                         env, base / f"shard{index}.log"))
+    return launches
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--receipt", type=Path, default=Path(".pytest_cache/run-tests-receipt.json"))
     parser.add_argument("--timeout", type=float)
     parser.add_argument("--preflight", action="store_true")
+    parser.add_argument("--shards", type=int, default=1)
+    parser.add_argument("--coverage", action="store_true")
     options, args = parser.parse_known_args(sys.argv[1:] if argv is None else argv)
     receipt = {
         "schema": "anvil-serving.test-run/v1", "run_id": str(uuid.uuid4()),
@@ -149,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     # Overwrite any stale success before checking inputs or starting tests.
     write_receipt(options.receipt, receipt)
     base_temp = None
-    process = None
+    processes: list = []
     previous_handler = signal.getsignal(signal.SIGTERM)
 
     def interrupted(_signum, _frame):
@@ -164,6 +193,8 @@ def main(argv: list[str] | None = None) -> int:
             problems.append(str(error))
         if any(item == "--basetemp" or item.startswith("--basetemp=") for item in args):
             problems.append("run_tests.py owns --basetemp; remove the explicit option")
+        if options.shards < 1:
+            problems.append("--shards must be at least 1")
         if options.timeout is not None and (not 0 < options.timeout < float("inf")):
             problems.append("--timeout must be finite and positive")
         env = dict(os.environ)
@@ -186,12 +217,31 @@ def main(argv: list[str] | None = None) -> int:
         args = args or ["tests/", "-q"]
         for name in ("TMPDIR", "TEMP", "TMP"):
             env[name] = base_temp
-        # Pytest recreates basetemp; leave the process TEMP root outside that deletion.
-        command = [sys.executable, "-m", "pytest", *args, "--basetemp", str(Path(base_temp) / "fixtures")]
-        receipt.update(state="running", command=command)
+        launches = plan_launches(args, options.shards, options.coverage, Path(base_temp))
+        receipt.update(state="running", command=launches[0][0], commands=[item[0] for item in launches])
         write_receipt(options.receipt, receipt)
-        process = subprocess.Popen(command, env=env, start_new_session=os.name != "nt")
-        code = process.wait(timeout=options.timeout)
+        if options.coverage:
+            subprocess.run([sys.executable, "-m", "coverage", "erase"], env=env, check=True)
+        deadline = None if options.timeout is None else time.monotonic() + options.timeout
+        for command, shard_env, log in launches:
+            stream = open(log, "wb") if log else None
+            process = subprocess.Popen(command, env={**env, **shard_env}, start_new_session=os.name != "nt",
+                                       stdout=stream, stderr=subprocess.STDOUT if stream else None)
+            processes.append((process, log, stream))
+        code = 0
+        for process, log, stream in processes:
+            remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+            shard_code = process.wait(timeout=remaining)
+            code = code or shard_code
+            if stream:
+                stream.close()
+                print(f"===== shard {log.name} exit {shard_code} =====", flush=True)
+                print(log.read_text(encoding="utf-8", errors="replace"), end="", flush=True)
+        if options.coverage and code == 0:
+            # ponytail: combined data lands in cwd/.coverage (gitignored); the report enforces fail_under.
+            data = [os.path.dirname(item[1]["COVERAGE_FILE"]) for item in launches if "COVERAGE_FILE" in item[1]]
+            for step in (["combine", *data], ["report"]):
+                code = code or subprocess.run([sys.executable, "-m", "coverage", *step], env=env).returncode
         try:
             receipt["source_after"] = source_identity()
         except ValueError as error:
@@ -212,16 +262,17 @@ def main(argv: list[str] | None = None) -> int:
         receipt.update(state="failed", exit_code=2, error=str(error))
         return 2
     finally:
-        if process is not None and (process.poll() is None or receipt["state"] in {"timed_out", "interrupted"}):
-            # Stop the entire isolated pytest process group on POSIX.
-            try:
-                if os.name == "nt":
-                    process.kill()
-                else:
-                    os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            process.wait()
+        for process, _log, _stream in processes:
+            if process.poll() is None or receipt["state"] in {"timed_out", "interrupted"}:
+                # Stop the entire isolated pytest process group on POSIX.
+                try:
+                    if os.name == "nt":
+                        process.kill()
+                    else:
+                        os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                process.wait()
         signal.signal(signal.SIGTERM, previous_handler)
         receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
         write_receipt(options.receipt, receipt)
