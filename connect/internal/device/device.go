@@ -18,6 +18,7 @@ import (
 
 	"github.com/fakoli/anvil-serving/connect/internal/access"
 	"github.com/fakoli/anvil-serving/connect/internal/config"
+	"github.com/fakoli/anvil-serving/connect/internal/ratelimit"
 	"github.com/fakoli/anvil-serving/connect/internal/session"
 	"github.com/fakoli/anvil-serving/connect/internal/store"
 )
@@ -29,10 +30,13 @@ var (
 )
 
 const (
-	Lifetime          = 10 * time.Minute
-	PollInterval      = 5 * time.Second
-	CredentialLife    = time.Hour
-	maxPending        = 128
+	Lifetime       = 10 * time.Minute
+	PollInterval   = 5 * time.Second
+	CredentialLife = time.Hour
+	// maxStored bounds every device record, live or terminal, below the
+	// store's 4096-row listing limit. Records live at most Lifetime plus
+	// terminalRetention, so the global start bucket keeps the count lower.
+	maxStored         = 3584
 	maxPolls          = 120
 	maxApprovals      = 4
 	terminalRetention = time.Minute
@@ -87,8 +91,8 @@ type Authority struct {
 	byBrowser          map[string]Binding
 	byHash             map[string]Binding
 	mu                 sync.Mutex
-	tokens             int
-	lastRefill         time.Time
+	startClients       *ratelimit.Limiter
+	startGlobal        *ratelimit.Limiter
 	approvals          map[string]approvalCounter
 	terminalRequests   map[string]terminalCounter
 	approvalTokens     int
@@ -118,7 +122,7 @@ func New(state *store.Store, gateway config.Gateway, sessions HumanAuthority, ke
 	for _, resource := range gateway.Resources {
 		resources[resource.Rule.ID] = resource
 	}
-	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, tokens: 16, lastRefill: time.Now(), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
+	a := &Authority{state: state, keys: keys, sessions: sessions, byBrowser: map[string]Binding{}, byHash: map[string]Binding{}, startClients: ratelimit.New(startClientBurst, startClientRefill, maxStartClients), startGlobal: ratelimit.New(startGlobalBurst, startGlobalRefill, 1), approvals: map[string]approvalCounter{}, terminalRequests: map[string]terminalCounter{}, approvalTokens: 32, lastApprovalRefill: time.Now()}
 	for _, declared := range gateway.DeviceAuthorizations {
 		browser, api := resources[declared.BrowserResource], resources[declared.APIResource]
 		binding := Binding{Browser: browser.Rule, API: api.Rule, Methods: append([]string(nil), declared.Methods...), Label: declared.Label, Principals: map[string]string{}}
@@ -215,19 +219,27 @@ const transactionBucket = "transactions"
 func recordID(digest [32]byte) string { return "device:" + hex.EncodeToString(digest[:]) }
 func userID(digest [32]byte) string   { return "device-user:" + hex.EncodeToString(digest[:]) }
 
-func (a *Authority) takeStartToken(now time.Time) bool {
+// Device-login start is anonymous, so each edge-observed client has its own
+// bucket and a client within its allowance is refused only when the global
+// bucket is empty. The global bucket bounds work and storage, not fairness: a
+// record lives at most Lifetime plus terminalRetention (11 minutes), so it
+// admits at most 256 + 5/s * 660 s = 3556 records, below maxStored. Keeping it
+// empty takes more than 5 starts per second sustained, which the per-client
+// refill turns into at least 300 distinct clients (IPv4 addresses or IPv6 /48
+// blocks) each starting once a minute. Below that threshold one client, or
+// many, cannot stop another client from starting.
+const (
+	startClientBurst  = 8
+	startClientRefill = time.Minute
+	maxStartClients   = 4096
+	startGlobalBurst  = 256
+	startGlobalRefill = 200 * time.Millisecond
+)
+
+func (a *Authority) takeStartToken(client string, now time.Time) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	add := int(now.Sub(a.lastRefill) / time.Minute)
-	if add > 0 {
-		a.tokens = min(16, a.tokens+add)
-		a.lastRefill = a.lastRefill.Add(time.Duration(add) * time.Minute)
-	}
-	if a.tokens == 0 {
-		return false
-	}
-	a.tokens--
-	return true
+	return ratelimit.Take(now, ratelimit.Key{Limiter: a.startClients, Key: client}, ratelimit.Key{Limiter: a.startGlobal})
 }
 
 func (a *Authority) takeApprovalToken(sessionID string, expires time.Time, now time.Time) bool {
@@ -266,7 +278,7 @@ func (a *Authority) takeTerminalRequest(id string, expires time.Time, now time.T
 		}
 	}
 	counter := a.terminalRequests[id]
-	if counter.count >= maxPolls || (counter.count == 0 && len(a.terminalRequests) >= maxPending) {
+	if counter.count >= maxPolls || (counter.count == 0 && len(a.terminalRequests) >= maxStored) {
 		return false
 	}
 	counter.count++
@@ -275,9 +287,11 @@ func (a *Authority) takeTerminalRequest(id string, expires time.Time, now time.T
 	return true
 }
 
-func (a *Authority) Start(browserResource string) (Start, error) {
+// Start creates a pending device request. client is the edge-observed peer
+// identity and only selects a rate-limit bucket.
+func (a *Authority) Start(browserResource, client string) (Start, error) {
 	binding, ok := a.byBrowser[browserResource]
-	if !ok || !a.takeStartToken(time.Now()) {
+	if !ok || !a.takeStartToken(client, time.Now()) {
 		return Start{}, ErrDenied
 	}
 	for attempt := 0; attempt < 8; attempt++ {
@@ -300,17 +314,13 @@ func (a *Authority) Start(browserResource string) (Start, error) {
 			if err != nil {
 				return ErrUnavailable
 			}
-			pending := 0
 			for _, item := range items {
 				var current record
 				if json.Unmarshal(item.Value, &current) != nil || !a.validRecord(current) {
 					return ErrUnavailable
 				}
-				if current.Status == "pending" || current.Status == "approved" {
-					pending++
-				}
 			}
-			if pending >= maxPending {
+			if len(items) >= maxStored {
 				return ErrDenied
 			}
 			id := recordID(d)
