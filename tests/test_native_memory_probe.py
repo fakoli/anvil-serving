@@ -1,29 +1,12 @@
 """Safety contracts for the bounded native Metal accounting probe."""
 import json
-import os
 import subprocess
-import time
 from pathlib import Path
 
 import pytest
 
 from anvil_serving import native_memory_probe as probe
-
-
-def _wait_gone(pid, limit=5.0):
-    """Poll until ``pid`` is gone (or a zombie awaiting reaping)."""
-    deadline = time.monotonic() + limit
-    while time.monotonic() < deadline:
-        try:
-            os.kill(pid, 0)
-            state = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0]
-        except ProcessLookupError:
-            return
-        except OSError:
-            state = ""
-        if state == "Z":
-            return
-        time.sleep(0.01)
+from tests.proc_helpers import wait_gone
 
 
 class Runner:
@@ -107,7 +90,7 @@ def test_timeout_kills_compiler_descendant_before_it_can_write(tmp_path):
     with pytest.raises(subprocess.TimeoutExpired):
         probe._bounded_run([sys.executable, '-c', parent], capture_output=True, text=True, timeout=0.5)
     assert pidfile.exists()
-    _wait_gone(int(pidfile.read_text()))
+    wait_gone(int(pidfile.read_text()))
     assert not marker.exists()
 
 

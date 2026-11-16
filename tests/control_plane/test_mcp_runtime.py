@@ -1,29 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 import sys
-import time
 
 import pytest
 
 from anvil_serving.control_plane.mcp.errors import ToolError
+from tests.proc_helpers import wait_gone
 from anvil_serving.control_plane.mcp.runtime import run_argv
-
-def _wait_gone(pid, limit=5.0):
-    """Poll until ``pid`` is gone (or a zombie awaiting reaping)."""
-    deadline = time.monotonic() + limit
-    while time.monotonic() < deadline:
-        try:
-            os.kill(pid, 0)
-            state = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0]
-        except ProcessLookupError:
-            return
-        except OSError:
-            state = ""
-        if state == "Z":
-            return
-        time.sleep(0.01)
 
 
 def test_bounded_command_timeout_terminates_descendants(tmp_path):
@@ -50,5 +34,5 @@ def test_bounded_command_timeout_terminates_descendants(tmp_path):
     assert error.value.code == "timeout"
     pidfile = tmp_path / "orphan-marker.json.pid"
     assert pidfile.exists()
-    _wait_gone(int(pidfile.read_text()))
+    wait_gone(int(pidfile.read_text()))
     assert not marker.exists()

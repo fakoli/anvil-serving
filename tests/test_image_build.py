@@ -2,29 +2,13 @@
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 from anvil_serving import image_build
-
-
-def _wait_gone(pid, limit=5.0):
-    """Poll until ``pid`` is gone (or a zombie awaiting reaping)."""
-    deadline = time.monotonic() + limit
-    while time.monotonic() < deadline:
-        try:
-            os.kill(pid, 0)
-            state = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0]
-        except ProcessLookupError:
-            return
-        except OSError:
-            state = ""
-        if state == "Z":
-            return
-        time.sleep(0.01)
+from tests.proc_helpers import wait_gone
 
 
 @pytest.fixture
@@ -142,12 +126,11 @@ def test_timeout_terminates_child_that_inherits_the_output_pipe(tmp_path):
     assert "daemon_state_unverified" in result["cancellation"]
     assert not result.get("output_error")
     assert pidfile.exists()
-    _wait_gone(int(pidfile.read_text()))
+    wait_gone(int(pidfile.read_text()))
     assert not marker.exists()
 
 
 def test_log_root_is_private_under_shared_umask_and_rejects_unsafe_existing_root(tmp_path):
-    import os
     if os.name == "nt":
         pytest.skip("POSIX directory permissions")
     logs = tmp_path / "logs"

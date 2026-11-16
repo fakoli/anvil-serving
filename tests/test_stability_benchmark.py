@@ -368,7 +368,11 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
         else:
             # Fault classification does not depend on the CLI process boundary.
             from anvil_serving import cli
-            returncode, stderr = cli.main(argv), ""
+            import contextlib, io
+            captured = io.StringIO()
+            with contextlib.redirect_stderr(captured):
+                returncode = cli.main(argv)
+            stderr = captured.getvalue()
         observed = json.loads(output.read_text())
         assert returncode == (0 if fault is None else 1), stderr + str(observed)
         if fault == "drip":
