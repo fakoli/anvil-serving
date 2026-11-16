@@ -338,3 +338,133 @@ def test_init_never_overwrites_existing_token_in_env_file(token_home, capsys):
     output = _init_cli(capsys)
     assert _env_token(token_home) == "operator-value"
     assert "operator-value" not in output
+
+
+# ---- init --gateway-only: gateway in front of an existing server (WP-05) -----------
+
+
+class _StubUpstream:
+    """Stdlib OpenAI-compatible upstream: records the requests it receives."""
+
+    def __init__(self):
+        import http.server
+        import threading
+        seen = self.seen = []
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def _send(self, payload):
+                data = json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def do_GET(self):
+                self._send({"status": "ok", "data": [{"id": "stub-model"}]})
+
+            def do_POST(self):
+                body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                seen.append(json.loads(body))
+                self._send({"id": "c1", "object": "chat.completion", "model": "stub-model",
+                            "choices": [{"index": 0, "finish_reason": "stop",
+                                         "message": {"role": "assistant", "content": "pong"}}],
+                            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}})
+
+        self.httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.url = "http://127.0.0.1:%d/v1" % self.httpd.server_address[1]
+        self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.httpd.shutdown()
+        self.httpd.server_close()
+
+
+def test_gateway_only_end_to_end_without_docker_or_gpu(token_home, capsys):
+    import http.client
+    import threading
+    from anvil_serving import envfile
+    from anvil_serving.router.serve import build_server
+
+    upstream = _StubUpstream()
+    try:
+        output = _init_cli(capsys, "--gateway-only", "--upstream", upstream.url,
+                           "--model", "stub-model")
+        assert sorted(p.name for p in token_home.iterdir()) == [".env", "router.toml"]
+        token = _env_token(token_home)
+        assert token and token not in output
+        server = build_server(
+            str(token_home / "router.toml"), port=0,
+            env={"ANVIL_ROUTER_TOKEN": envfile.read_dotenv(str(token_home / ".env"))["ANVIL_ROUTER_TOKEN"]})
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        thread.start()
+
+        def call(method, path, body=None, auth=True):
+            host, port = server.server_address[:2]
+            conn = http.client.HTTPConnection(host, port, timeout=5)
+            headers = {"Content-Type": "application/json"}
+            if auth:
+                headers["Authorization"] = "Bearer " + token
+            try:
+                conn.request(method, path, json.dumps(body) if body else None, headers)
+                resp = conn.getresponse()
+                return resp.status, resp.read()
+            finally:
+                conn.close()
+
+        try:
+            status, raw = call("GET", "/v1/models")
+            assert status == 200 and b"llm.primary" in raw
+            chat = {"model": "llm.primary", "messages": [{"role": "user", "content": "ping"}]}
+            status, raw = call("POST", "/v1/chat/completions", chat)
+            assert status == 200 and b"pong" in raw
+            assert upstream.seen and upstream.seen[0]["model"] == "stub-model"
+            assert call("POST", "/v1/chat/completions", {**chat, "model": "nope"})[0] == 404
+            assert call("POST", "/v1/chat/completions", chat, auth=False)[0] == 401
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+        # second run: token kept, router.toml unchanged
+        before = _env_token(token_home)
+        output = _init_cli(capsys, "--gateway-only", "--upstream", upstream.url,
+                           "--model", "stub-model")
+        assert _env_token(token_home) == before and before not in output
+    finally:
+        upstream.close()
+
+
+def test_gateway_only_options_alias_and_context_limit(token_home, capsys):
+    import tomllib
+    _init_cli(capsys, "--gateway-only", "--upstream", "https://example.test:8443/v1",
+              "--model", "m", "--alias", "Llm.Fast", "--context-limit", "32768")
+    cfg = tomllib.loads((token_home / "router.toml").read_text(encoding="utf-8"))
+    (tier,) = cfg["router"]["tiers"]
+    assert tier["context_limit"] == 32768 and tier["dialect"] == "openai"
+    assert tier["privacy"] == "local" and tier["tool_support"] is True
+    assert cfg["router"]["model_routes"] == {"llm.fast": tier["id"]}
+    assert cfg["server"]["auth_env"] == "ANVIL_ROUTER_TOKEN"
+
+
+@pytest.mark.parametrize("args,needle", [
+    (["--upstream", "http://localhost:11434/v1", "--model", "m"], "127.0.0.1"),
+    (["--upstream", "ftp://x/v1", "--model", "m"], "http"),
+    (["--model", "m"], "--upstream"),
+    (["--upstream", "http://127.0.0.1:1/v1"], "--model"),
+    (["--upstream", "http://127.0.0.1:1/v1", "--model", "m", "--context-limit", "0"], "context"),
+])
+def test_gateway_only_rejects_bad_input(token_home, capsys, args, needle):
+    from anvil_serving import cli
+    assert cli.main(["init", "--gateway-only", *args]) == 2
+    assert needle in capsys.readouterr().err
+    assert not token_home.exists() or not (token_home / "router.toml").exists()
+
+
+def test_bare_init_hints_gateway_only_when_no_gpu_detected(token_home, capsys):
+    output = _init_cli(capsys)
+    assert "--gateway-only" in output and "--single-model" in output
