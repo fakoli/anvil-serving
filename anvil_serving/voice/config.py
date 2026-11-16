@@ -913,6 +913,22 @@ def _validate_proxy(data: dict) -> None:
     # unlike voice.realtime_host -- no realtime_token_env is required here.
 
 
+def _validate_allowed_origins(voice: dict) -> None:
+    """``voice.realtime_allowed_origins``: exact browser origins allowed to
+    open the Realtime WebSocket (default empty: only clients that send no
+    ``Origin`` header, i.e. native clients). Each entry is
+    ``http(s)://host[:port]`` with no path, matching what a browser sends.
+    """
+    key = "voice.realtime_allowed_origins"
+    origins = voice.get("realtime_allowed_origins", [])
+    if not isinstance(origins, list) or not all(isinstance(o, str) for o in origins):
+        raise ConfigError("%s must be a list of origin strings" % key)
+    for origin in origins:
+        parsed = _parsed_url(origin, key=key, schemes=("http", "https"))
+        if parsed.path or parsed.params:
+            raise ConfigError("%s entries must be scheme://host[:port] with no path: %r" % (key, origin))
+
+
 def validate_manifest(data: dict, *, tts_benchmark: bool = False) -> None:
     """Validate the voice manifest without touching the network or a filesystem serve."""
     if not isinstance(data, dict):
@@ -948,6 +964,7 @@ def validate_manifest(data: dict, *, tts_benchmark: bool = False) -> None:
             "unauthenticated non-loopback bind -- see realtime/ws.py's F2 guard), or use "
             "127.0.0.1" % realtime_host
         )
+    _validate_allowed_origins(voice)
     _int(voice, "pool_size", 4)
 
     llm = _section(data, "voice", "llm")

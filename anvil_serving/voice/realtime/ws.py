@@ -41,7 +41,9 @@ import socket
 import struct
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, Tuple
+
+from anvil_serving.http_host import request_host_allowed
 
 #: RFC 6455 s1.3 magic GUID appended to the client's Sec-WebSocket-Key before
 #: SHA-1 + base64 to compute Sec-WebSocket-Accept.
@@ -591,12 +593,36 @@ def _make_ws_handler(
     *,
     auth_token: Optional[str] = None,
     idle_timeout: Optional[float] = None,
+    bind_host: str = "127.0.0.1",
+    allowed_origins: Iterable[str] = (),
 ):
     routes = dict(extra_routes or {})
+    origins = frozenset(origin.strip().lower() for origin in allowed_origins)
 
     class WebSocketRequestHandler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         server_version = "anvil-realtime"
+
+        def parse_request(self) -> bool:
+            if not super().parse_request():
+                return False
+            # DNS rebinding: with no token, accept only Host names a page on
+            # another origin cannot produce (see anvil_serving/http_host.py).
+            if auth_token is None and not request_host_allowed(self.headers, bind_host):
+                self.close_connection = True
+                self.send_error(403, "Host header not allowed")
+                return False
+            return True
+
+        def _origin_allowed(self) -> bool:
+            """Browsers always send Origin on a WebSocket upgrade and are not
+            bound by the same-origin policy for it; native clients send none.
+            A present Origin must be exactly one allowlisted value.
+            """
+            values = self.headers.get_all("Origin") or []
+            if not values:
+                return True
+            return len(values) == 1 and values[0].strip().lower() in origins
 
         def do_GET(self) -> None:
             path = self.path.split("?", 1)[0].rstrip("/") or "/"
@@ -635,6 +661,11 @@ def _make_ws_handler(
             return hmac.compare_digest(supplied.encode("utf-8"), auth_token.encode("utf-8"))
 
         def _handle_upgrade(self) -> None:
+            if not self._origin_allowed():
+                # Checked before the token: a valid token in a browser must
+                # not let a foreign page drive the session.
+                self.send_error(403, "Origin not allowed")
+                return
             if not self._authenticated():
                 # Reject BEFORE the 101 upgrade (F2): once we switch protocols
                 # there is no clean way to answer with an HTTP status any more.
@@ -697,6 +728,7 @@ def make_ws_server(
     token_env: Optional[str] = None,
     idle_timeout: Optional[float] = DEFAULT_IDLE_TIMEOUT_SECONDS,
     allow_non_loopback: bool = False,
+    allowed_origins: Iterable[str] = (),
 ) -> ThreadingHTTPServer:
     """Build (but do not start) the Realtime WebSocket server.
 
@@ -737,6 +769,13 @@ def make_ws_server(
     deliberate, caller-supplied override (``anvil-serving voice proxy run
     --host 0.0.0.0`` on the managed direct-endpoint path); the default stays
     fail-closed for every other caller.
+
+    ``allowed_origins`` lists the exact browser origins (``scheme://host[:port]``)
+    that may open the WebSocket. An upgrade carrying any other ``Origin`` is
+    answered ``403`` before the token check; requests without ``Origin``
+    (native clients) are unaffected. When no token is configured, every
+    request must also carry a loopback or bind-host ``Host`` header
+    (:mod:`anvil_serving.http_host`), which blocks DNS rebinding.
     """
     if on_connect is None:
         def on_connect(conn: WebSocketConnection, path: str) -> None:  # pragma: no cover - trivial default
@@ -759,6 +798,7 @@ def make_ws_server(
 
     handler = _make_ws_handler(
         on_connect, ws_path, extra_routes, auth_token=auth_token, idle_timeout=idle_timeout,
+        bind_host=host, allowed_origins=allowed_origins,
     )
     httpd = ThreadingHTTPServer((host, port), handler)
     httpd.daemon_threads = True

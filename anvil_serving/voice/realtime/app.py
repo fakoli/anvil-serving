@@ -211,5 +211,6 @@ def build_realtime_server_from_manifest(
         extra_routes={"/pool": pool.pool_status, "/usage": pool.usage_stats},
         token_env=voice_table.get("realtime_token_env"),
         allow_non_loopback=allow_non_loopback,
+        allowed_origins=voice_table.get("realtime_allowed_origins", ()),
     )
     return server, pool
