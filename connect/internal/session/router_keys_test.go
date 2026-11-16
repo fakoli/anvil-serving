@@ -16,7 +16,7 @@ func TestRouterFenceDeleteRecreateAndRecovery(t *testing.T) {
 			t.Fatal(err)
 		}
 		binding, _ := NewBinding()
-		challenge, err := m.BeginPortal(binding)
+		challenge, err := m.BeginPortal(binding, "")
 		if err != nil {
 			t.Fatal(err)
 		}

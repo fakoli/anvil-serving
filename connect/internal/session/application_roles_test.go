@@ -17,7 +17,7 @@ func TestApplicationRolesInvalidateSessionsAndPreserveOldClientUpdates(t *testin
 		t.Fatal(err)
 	}
 	binding, _ := NewBinding()
-	challenge, err := manager.Begin("dash", "/", binding)
+	challenge, err := manager.Begin("dash", "/", binding, "")
 	if err != nil {
 		t.Fatal(err)
 	}
