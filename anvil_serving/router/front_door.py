@@ -2081,13 +2081,18 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         result = readmit(router_admission)
                     else:
                         raise ValueError("unsupported_action")
-                    self._json(200, {"scope":"router", "action":action, "result":result})
+                    failure = None
                 except ValueError:
-                    self._error(400, "invalid_transition", "invalid router transition")
+                    failure = (400, "invalid_transition", "invalid router transition")
                 except Exception:
-                    self._error(503, "transition_failed", "router transition failed")
+                    failure = (503, "transition_failed", "router transition failed")
                 finally:
+                    # Release before responding so the client's next request finds the slot free.
                     _MANAGEMENT_MUTATION_LIMIT.release()
+                if failure is None:
+                    self._json(200, {"scope":"router", "action":action, "result":result})
+                else:
+                    self._error(*failure)
                 return
             if "scope" in body and body["scope"] != "tier":
                 self._error(400, "invalid_transition", "invalid transition scope")
@@ -2119,6 +2124,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
                 self._error(503, "server_busy", "transition mutation busy")
                 return
+            failure = None
             try:
                 if action == "quiesce":
                     fn = getattr(backend, "quiesce_tier")
@@ -2131,16 +2137,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 elif action == "readmit":
                     result = getattr(backend, "readmit_tier")(tier_id, **member_kwargs)
                 else:
-                    self._error(400, "invalid_transition", "unsupported transition action")
-                    return
+                    failure = (400, "invalid_transition", "unsupported transition action")
             except (AttributeError, KeyError, ValueError):
-                self._error(400, "invalid_transition", "invalid transition request")
-                return
+                failure = (400, "invalid_transition", "invalid transition request")
             except Exception:  # noqa: BLE001 - never expose upstream/container errors
-                self._error(503, "transition_failed", "transition operation failed")
-                return
+                failure = (503, "transition_failed", "transition operation failed")
             finally:
+                # Release before responding so the client's next request finds the slot free.
                 _MANAGEMENT_MUTATION_LIMIT.release()
+            if failure is not None:
+                self._error(*failure)
+                return
             self._json(200, {"applied": True, "action": action, "result": result})
 
         def _handle_route_update(self, route: str, body: dict) -> None:
@@ -2182,13 +2189,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     result = route_manager.status()
                 else:
                     raise RouteUpdateError("route_request_invalid", status=400)
-                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+                failure = None
             except Exception as exc:
-                status = getattr(exc, "status", 503)
-                code = getattr(exc, "code", "route_update_failed")
-                self._error(status, code, "route update could not be completed")
+                failure = (getattr(exc, "status", 503), getattr(exc, "code", "route_update_failed"))
             finally:
+                # The state change is complete; free the slot before the client
+                # can see the response and send its next request.
                 _MANAGEMENT_MUTATION_LIMIT.release()
+            if failure is None:
+                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+            else:
+                self._error(failure[0], failure[1], "route update could not be completed")
 
         # --- routes ----------------------------------------------------------
         @router_entry
