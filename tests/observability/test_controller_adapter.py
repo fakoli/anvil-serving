@@ -125,6 +125,7 @@ def test_benchmark_list_refreshes_only_exact_bounded_status_refs():
         value.list_benchmark_jobs(refresh_refs=[])
 
 
+@pytest.mark.slow  # the real two-second owner budget includes worker spawn/import time
 def test_real_benchmark_owner_header_stall_is_killed_at_the_total_deadline():
     request_started = threading.Event()
 

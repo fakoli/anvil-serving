@@ -159,6 +159,7 @@ def test_scrape_byte_boundary_unavailable_and_denial_before_native_reducer(store
         assert request(address,'/v1/admin/usage/metrics')[0]==500
 
 
+@pytest.mark.slow  # the locked-store half waits out the key store's fixed 1 s SQLite busy timeout
 def test_read_deadline_and_locked_store_fail_closed(store,monkeypatch):
     put(store)
     clock=iter([0,0,10])

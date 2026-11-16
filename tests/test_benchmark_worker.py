@@ -24,6 +24,19 @@ from anvil_serving.benchmarking.worker import cancel_benchmark_job, cleanup_benc
 from anvil_serving.control_plane.controller.store import BenchmarkJobStore
 
 
+def _boot_id_readable():
+    from anvil_serving.benchmarking import campaign_execution as execution
+    try:
+        execution._boot_id()
+    except OSError:
+        return False
+    return True
+
+
+requires_boot_id = pytest.mark.skipif(
+    not _boot_id_readable(), reason="campaign custody needs a readable boot id (Linux procfs)")
+
+
 def declared_identities(**overrides):
     values = {name: {} for name in REQUIRED_MEASURED_IDENTITIES}
     values.update(overrides)
@@ -50,6 +63,7 @@ def spec():
 
 
 @pytest.mark.parametrize('slow_stage', ['preflight', 'prepared_verification'])
+@requires_boot_id
 def test_campaign_requires_full_timeout_after_preflight_and_prepared_verification(monkeypatch, tmp_path, slow_stage):
     from anvil_serving.benchmarking import campaign_execution as execution, aider
     from anvil_serving.benchmarking.submission import bind_submission_spec
@@ -557,6 +571,7 @@ def test_swe_cancel_artifact_failure_then_cleanup_preserves_unanchored_work(monk
 
 
 @pytest.mark.skipif(os.name == "nt", reason="process-group custody is POSIX-specific")
+@requires_boot_id
 def test_competing_deadline_watchdog_stop_is_idempotent_for_campaign_owner(monkeypatch, tmp_path):
     from concurrent.futures import ThreadPoolExecutor
     from anvil_serving.benchmarking import campaign_execution as execution

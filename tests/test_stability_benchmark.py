@@ -344,7 +344,7 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
     thread.start()
-    config = scenario(f"http://127.0.0.1:{server.server_port}/v1", run_timeout_seconds=2 if fault == "drip" else 10)
+    config = scenario(f"http://127.0.0.1:{server.server_port}/v1", run_timeout_seconds=1 if fault == "drip" else 10)
     row = {"Id": "a" * 64, "Name": "/synthetic-model", "Image": config["configuration"]["image_digest"],
            "Config": {"Labels": {recipes.RECIPE_MANAGED_LABEL: recipes.RECIPE_MANAGED_VALUE,
                      recipes.RECIPE_MODEL_LABEL: "test-model", recipes.RECIPE_REVISION_LABEL: "2" * 40,
@@ -359,13 +359,20 @@ def test_real_cli_live_transport_and_hard_deadline(tmp_path, monkeypatch, fault)
     source.write_text(json.dumps(config))
     try:
         start = time.monotonic()
-        completed = subprocess.run([sys.executable, "-m", "anvil_serving.cli", "eval", "benchmark", "stability",
-                                    "--scenario", str(source), "--output", str(output), "--confirm"],
-                                   text=True, capture_output=True, timeout=15)
+        argv = ["eval", "benchmark", "stability", "--scenario", str(source), "--output", str(output), "--confirm"]
+        if fault in (None, "drip"):
+            # Real subprocess: the process boundary and the hard deadline are the subject.
+            completed = subprocess.run([sys.executable, "-m", "anvil_serving.cli", *argv],
+                                       text=True, capture_output=True, timeout=15)
+            returncode, stderr = completed.returncode, completed.stderr
+        else:
+            # Fault classification does not depend on the CLI process boundary.
+            from anvil_serving import cli
+            returncode, stderr = cli.main(argv), ""
         observed = json.loads(output.read_text())
-        assert completed.returncode == (0 if fault is None else 1), completed.stderr + str(observed)
+        assert returncode == (0 if fault is None else 1), stderr + str(observed)
         if fault == "drip":
-            assert time.monotonic() - start < 6
+            assert time.monotonic() - start < 3  # deadline is 1 s; allow spawn and teardown
             assert observed["failure_class"] == "client_timeout"
             assert observed["server_compute_stopped"] == "unknown"
         elif fault:

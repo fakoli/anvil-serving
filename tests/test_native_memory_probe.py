@@ -1,11 +1,29 @@
 """Safety contracts for the bounded native Metal accounting probe."""
 import json
+import os
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
 
 from anvil_serving import native_memory_probe as probe
+
+
+def _wait_gone(pid, limit=5.0):
+    """Poll until ``pid`` is gone (or a zombie awaiting reaping)."""
+    deadline = time.monotonic() + limit
+    while time.monotonic() < deadline:
+        try:
+            os.kill(pid, 0)
+            state = open(f"/proc/{pid}/stat").read().rsplit(")", 1)[1].split()[0]
+        except ProcessLookupError:
+            return
+        except OSError:
+            state = ""
+        if state == "Z":
+            return
+        time.sleep(0.01)
 
 
 class Runner:
@@ -81,13 +99,15 @@ def test_dry_run_preserves_existing_output(monkeypatch, tmp_path, capsys):
 @pytest.mark.skipif(__import__('os').name != 'posix', reason='POSIX process groups')
 def test_timeout_kills_compiler_descendant_before_it_can_write(tmp_path):
     import sys
-    import time
     marker = tmp_path / 'descendant-survived'
+    pidfile = tmp_path / 'descendant.pid'
     child = "import pathlib,time; time.sleep(1.5); pathlib.Path(%r).write_text('bad')" % str(marker)
-    parent = "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',%r]); print('ready',flush=True); time.sleep(30)" % child
+    parent = ("import subprocess,sys,time; p=subprocess.Popen([sys.executable,'-c',%r]); "
+              "open(%r,'w').write(str(p.pid)); print('ready',flush=True); time.sleep(30)") % (child, str(pidfile))
     with pytest.raises(subprocess.TimeoutExpired):
         probe._bounded_run([sys.executable, '-c', parent], capture_output=True, text=True, timeout=0.5)
-    time.sleep(1.6)
+    assert pidfile.exists()
+    _wait_gone(int(pidfile.read_text()))
     assert not marker.exists()
 
 
