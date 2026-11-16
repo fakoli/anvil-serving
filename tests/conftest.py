@@ -18,6 +18,8 @@ def isolated_case(tmp_path, monkeypatch, index):
     """Give one `subtests` case its own directory, monkeypatch scope, and operator home.
 
     This keeps a table-driven test as isolated per case as the parametrized cases it replaced.
+    Patch only through the yielded ``mp``: changes made with the test's own ``monkeypatch``
+    are not undone between cases.
     """
     case = tmp_path / f"case-{index}"
     case.mkdir()

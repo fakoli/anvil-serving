@@ -234,10 +234,10 @@ _ENDPOINT_SEMICOLON_PARAMS_REJECT_CREDENTIAL_PARAMETER_NAMES_CASES = [
         "http://100.64.0.10:8000/v1;%74oken=hidden/models",
         "http://100.64.0.10:8000/v1;serviceToken=hidden",
         # Invisible characters inside the credential name.
-        "http://100.64.0.10:8000/v1;to​ken=hidden",
+        "http://100.64.0.10:8000/v1;to\u200bken=hidden",
         "http://100.64.0.10:8000/v1;to%E2%80%8Bken=hidden",
         "http://100.64.0.10:8000/v1;to%25E2%2580%258Bken=hidden",
-        "http://100.64.0.10:8000/v1;serviceTo​ken=hidden",
+        "http://100.64.0.10:8000/v1;serviceTo\u200bken=hidden",
         # Repeated percent-encoding cannot hide the parameter.
         "http://100.64.0.10:8000/v1;%2574%256f%256b%2565%256e=ordinary",
         "http://100.64.0.10:8000/v1;%252574%25256f%25256b%252565%25256e=ordinary",
