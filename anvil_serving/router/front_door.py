@@ -578,6 +578,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not isinstance(self.wfile, _ResponseWriter):
                 self.wfile = _ResponseWriter(self.wfile)
             self._anvil_handler_active = True
+            self._anvil_denial = b""
             try:
                 super().handle_one_request()
             except _ClientDisconnected as exc:
@@ -597,6 +598,16 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._finish_key_store()
                     self._finish_router()
                     self._anvil_handler_active = False
+                    denial, self._anvil_denial = self._anvil_denial, b""
+                    if denial:
+                        # Every slot and the audit are done; only now may the
+                        # client see the denial and send its next request.
+                        try:
+                            self.wfile.write(denial)
+                        except _ClientDisconnected:
+                            self.close_connection = True
+                        else:
+                            self._flush_closing_response()
 
         def _record_key_audit(self):
             if api_keys is not None and self._anvil_http_status is not None and self._anvil_client_id is not None:
@@ -639,7 +650,15 @@ def _make_handler(backend: Backend, timeout: Optional[float],
         def parse_request(self):
             if not super().parse_request():
                 return False
-            if not self._device_access():
+            # Buffer a device-policy denial; handle_one_request sends it after
+            # the key-store slots, audit and permits are released.
+            wire, self.wfile = self.wfile, io.BytesIO()
+            try:
+                allowed = self._device_access()
+            finally:
+                denial, self.wfile = self.wfile.getvalue(), wire
+            if not allowed:
+                self._anvil_denial = denial
                 return False
             path = self.path.partition("?")[0]
             raw_path = self.requestline.split()[1].partition("?")[0]
@@ -1359,9 +1378,12 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not _OPERATOR_READ_LIMIT.acquire(blocking=False):
                 self._operator_error(503, "server_busy", "operator route busy")
                 return
-            try:
+            payload = None
+
+            def read() -> None:
+                nonlocal payload
                 try:
-                    payload = (
+                    produced = (
                         self._workload_payload(query)
                         if route.path == WORKLOADS_ENDPOINT
                         else self._usage_payload(query) if route.path == USAGE_ENDPOINT
@@ -1389,18 +1411,23 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
                 response_limit = 2 * 1024 * 1024 if route.path == USAGE_METRICS_ENDPOINT else _MAX_OPERATOR_RESPONSE_BYTES
-                if type(payload) is not bytes or len(payload) > response_limit:
+                if type(produced) is not bytes or len(produced) > response_limit:
                     self._operator_error(500, "internal_error", "operator route failed")
                     return
-                self.send_response(200)
-                self.send_header("Content-Type", route.content_type)
-                self.send_header("Content-Length", str(len(payload)))
-                self.send_header("Cache-Control", "no-store")
-                self.end_headers()
-                self.wfile.write(payload)
-                self.wfile.flush()
-            finally:
-                _OPERATOR_READ_LIMIT.release()
+                payload = produced
+
+            # Small errors are buffered; the payload is written once the slot is
+            # free, so neither reply can find this request's slot still held.
+            self._respond_after_release(_OPERATOR_READ_LIMIT, read)
+            if payload is None:
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", route.content_type)
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+            self.wfile.flush()
 
         def _protocol_json_error(self, status: int, code: str, message: str) -> None:
             self._json(status, {"error": {"type": code, "message": message}})
@@ -2240,6 +2267,59 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             finally:
                 _PROTOCOL_CONCURRENCY_LIMIT.release()
 
+        def _management_get(self, route: str) -> None:
+            """Management GET, run under a management slot; its reply is buffered."""
+            has_body_framing = bool(
+                self.headers.get_all("Transfer-Encoding")
+                or self.headers.get_all("Content-Length")
+            )
+            if has_body_framing:
+                self._reject_get_body_framing(
+                    "management GET must not include a body"
+                )
+            elif route in ROUTE_UPDATE_PATHS:
+                if route_manager is None or auth_token is None:
+                    self._error(404, "not_found", f"no route {route}")
+                elif self._anvil_device is not None:
+                    self._error(403, "key_access_denied", "device API keys cannot manage routes")
+                elif not self._management_authenticated():
+                    self._error(401, "authentication_error", "invalid or missing API key")
+                elif route != ROUTE_UPDATE_PREFIX + "/status":
+                    self._json(405, {"error": {"type": "method_not_allowed", "message": "use POST"}},
+                               extra_headers={"Allow": "POST"})
+                elif urllib.parse.urlparse(self.path).query:
+                    self._error(400, "invalid_request", "route status accepts no query")
+                else:
+                    self._json(200, route_manager.status(), extra_headers={"Cache-Control": "no-store"})
+            elif auth_token is None:
+                self._error(404, "not_found", f"no route {route}")
+            elif not self._authenticated():
+                self._error(401, "authentication_error", "invalid or missing API key")
+            else:
+                query = urllib.parse.parse_qs(
+                    urllib.parse.urlparse(self.path).query, keep_blank_values=True,
+                )
+                if "scope" in query:
+                    if query != {"scope":["router"]}:
+                        self._error(400, "invalid_transition", "invalid router scope")
+                        return
+                    self._handle_transition({"scope":"router", "action":"status"})
+                elif "member_id" in query:
+                    if len(query["member_id"]) != 1 or len(query.get("tier_id", [])) != 1:
+                        self._error(400, "invalid_transition", "invalid transition request")
+                        return
+                    # Use the POST status path's scope validation so
+                    # blank/unknown/direct-tier members cannot widen
+                    # to an accidental tier-wide status operation.
+                    self._handle_transition({
+                        "action": "status", "tier_id": query["tier_id"][0],
+                        "member_id": query["member_id"][0],
+                    })
+                else:
+                    # Preserve legacy omission/blank handling exactly.
+                    raw_tier = next((value for value in query.get("tier_id", []) if value), None)
+                    self._transition_status(raw_tier)
+
         @router_entry
         def do_GET(self) -> None:
             if api_keys is None:
@@ -2266,59 +2346,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
                     return
-                try:
-                    has_body_framing = bool(
-                        self.headers.get_all("Transfer-Encoding")
-                        or self.headers.get_all("Content-Length")
-                    )
-                    if has_body_framing:
-                        self._reject_get_body_framing(
-                            "management GET must not include a body"
-                        )
-                    elif route in ROUTE_UPDATE_PATHS:
-                        if route_manager is None or auth_token is None:
-                            self._error(404, "not_found", f"no route {route}")
-                        elif self._anvil_device is not None:
-                            self._error(403, "key_access_denied", "device API keys cannot manage routes")
-                        elif not self._management_authenticated():
-                            self._error(401, "authentication_error", "invalid or missing API key")
-                        elif route != ROUTE_UPDATE_PREFIX + "/status":
-                            self._json(405, {"error": {"type": "method_not_allowed", "message": "use POST"}},
-                                       extra_headers={"Allow": "POST"})
-                        elif urllib.parse.urlparse(self.path).query:
-                            self._error(400, "invalid_request", "route status accepts no query")
-                        else:
-                            self._json(200, route_manager.status(), extra_headers={"Cache-Control": "no-store"})
-                    elif auth_token is None:
-                        self._error(404, "not_found", f"no route {route}")
-                    elif not self._authenticated():
-                        self._error(401, "authentication_error", "invalid or missing API key")
-                    else:
-                        query = urllib.parse.parse_qs(
-                            urllib.parse.urlparse(self.path).query, keep_blank_values=True,
-                        )
-                        if "scope" in query:
-                            if query != {"scope":["router"]}:
-                                self._error(400, "invalid_transition", "invalid router scope")
-                                return
-                            self._handle_transition({"scope":"router", "action":"status"})
-                        elif "member_id" in query:
-                            if len(query["member_id"]) != 1 or len(query.get("tier_id", [])) != 1:
-                                self._error(400, "invalid_transition", "invalid transition request")
-                                return
-                            # Use the POST status path's scope validation so
-                            # blank/unknown/direct-tier members cannot widen
-                            # to an accidental tier-wide status operation.
-                            self._handle_transition({
-                                "action": "status", "tier_id": query["tier_id"][0],
-                                "member_id": query["member_id"][0],
-                            })
-                        else:
-                            # Preserve legacy omission/blank handling exactly.
-                            raw_tier = next((value for value in query.get("tier_id", []) if value), None)
-                            self._transition_status(raw_tier)
-                finally:
-                    _MANAGEMENT_LIMIT.release()
+                self._respond_after_release(_MANAGEMENT_LIMIT, lambda: self._management_get(route))
                 return
             # Acquire the concurrency semaphore FIRST — before draining any body
             # bytes — so a flood of GETs with large bodies is gated here, not
@@ -2702,38 +2730,39 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not connect_slots.acquire(blocking=False):
                 self._device_error(503, "server_busy", "key management busy")
                 return
+            self._respond_after_release(connect_slots, self._connect_keys_inner)
+
+        def _connect_keys_inner(self):
+            """Connect key operation, run under a Connect slot; its reply is buffered."""
+            from ..observability.dashboard.contracts import ObservatoryError
             try:
-                from ..observability.dashboard.contracts import ObservatoryError
-                try:
-                    with self._anvil_key_permit.bind():
-                        assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
-                except ObservatoryError:
-                    self._device_error(401, "authentication_error", "invalid Connect assertion")
-                    return
-                self.connection.settimeout(5)
-                body = self._protocol_body(strict=True)
-                if body is None:
-                    return
-                from .connect_keys import Denied
-                import sqlite3
-                try:
-                    binding = assertion.binding
-                    with self._anvil_key_permit.bind():
-                        result = connect_keys.dispatch({"principal": binding.subject,
-                            "generation": str(binding.policy_generation), "epoch": binding.epoch,
-                            "administrator": binding.role == "admin", "operation": body})
-                except Denied:
-                    self._device_error(403, "access_denied", "access changed or operation not allowed")
-                    return
-                except (sqlite3.Error, KeyStoreError):
-                    self._device_error(503, "key_store_unavailable", "key management unavailable")
-                    return
-                except (ValueError, TypeError):
-                    self._device_error(400, "invalid_request", "key operation could not be completed")
-                    return
-                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
-            finally:
-                connect_slots.release()
+                with self._anvil_key_permit.bind():
+                    assertion = connect_verifier.verify(self.headers, method="POST", target=self.path, consume_replay=True)
+            except ObservatoryError:
+                self._device_error(401, "authentication_error", "invalid Connect assertion")
+                return
+            self.connection.settimeout(5)
+            body = self._protocol_body(strict=True)
+            if body is None:
+                return
+            from .connect_keys import Denied
+            import sqlite3
+            try:
+                binding = assertion.binding
+                with self._anvil_key_permit.bind():
+                    result = connect_keys.dispatch({"principal": binding.subject,
+                        "generation": str(binding.policy_generation), "epoch": binding.epoch,
+                        "administrator": binding.role == "admin", "operation": body})
+            except Denied:
+                self._device_error(403, "access_denied", "access changed or operation not allowed")
+                return
+            except (sqlite3.Error, KeyStoreError):
+                self._device_error(503, "key_store_unavailable", "key management unavailable")
+                return
+            except (ValueError, TypeError):
+                self._device_error(400, "invalid_request", "key operation could not be completed")
+                return
+            self._json(200, result, extra_headers={"Cache-Control": "no-store"})
 
         @router_entry
         def do_POST(self) -> None:

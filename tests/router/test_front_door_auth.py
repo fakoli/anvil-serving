@@ -37,7 +37,7 @@ from anvil_serving.control_plane.authorization import (
     WORKLOADS_READ,
     load_authorization_policy,
 )
-from tests.router.helpers import StaticBackend
+from tests.router.helpers import SlowRelease, StaticBackend
 from anvil_serving.router.front_door import (
     TRANSITION_ENDPOINT,
     WORKLOADS_ENDPOINT,
@@ -475,24 +475,15 @@ def test_member_drain_endpoint_preserves_scope_quiesce_and_timeout_requirements(
 def test_back_to_back_transitions_never_see_their_own_busy_slot(monkeypatch):
     # A late-scheduled handler thread must not still hold a management slot
     # after the client already has its reply; the next request follows at once.
-    import time
     from anvil_serving.router import front_door
-
-    class SlowRelease:
-        def __init__(self):
-            self._inner = threading.BoundedSemaphore(1)
-
-        def acquire(self, *args, **kwargs):
-            return self._inner.acquire(*args, **kwargs)
-
-        def release(self):
-            time.sleep(0.05)
-            self._inner.release()
 
     monkeypatch.setattr(front_door, "_MANAGEMENT_LIMIT", SlowRelease())
     monkeypatch.setattr(front_door, "_MANAGEMENT_MUTATION_LIMIT", SlowRelease())
     headers = {"x-api-key": TOKEN}
     with _member_transition_server() as (tier, routing, host, port):
+        statuses = [_get(host, port, TRANSITION_ENDPOINT + "?" + query, headers)[0]
+                    for query in (f"tier_id={tier.id}", "tier_id=", "scope=other")]
+        assert statuses == [200, 200, 400]
         body = {"action": "drain", "tier_id": tier.id, "member_id": "member-a", "timeout": 1}
         routing.quiesce_tier(tier.id, member_id="member-a")
         for timeout in (None, "1", -1):
@@ -559,6 +550,25 @@ def test_operator_route_requires_exact_workloads_scope_and_preserves_legacy_auth
     assert calls == ["raw=a%2Bb", "post:"]
     assert chat == 401
     assert transition == 401
+
+
+def test_back_to_back_operator_reads_never_see_their_own_busy_slot(tmp_path, monkeypatch):
+    # The read slot is freed before the reply leaves, for payloads and errors.
+    from anvil_serving.router import front_door
+
+    monkeypatch.setattr(front_door, "_OPERATOR_READ_LIMIT", SlowRelease())
+    token = "workloads-token-12345"
+    policy = _scoped_policy(tmp_path, [{
+        "id": "reader", "scopes": [WORKLOADS_READ], "credential_env": "READ", "token": token,
+    }])
+    payloads = iter([b'{"ok":true}', None, b'{"ok":true}'])
+    with running_server(
+        StaticBackend(["ok"]), TOKEN, authorization_policy=policy,
+        operator_routes=[_operator_route(lambda _query: next(payloads))],
+    ) as (host, port):
+        statuses = [_get(host, port, "/v1/operator/workloads", {"Authorization": f"Bearer {token}"})[0]
+                    for _ in range(3)]
+    assert statuses == [200, 500, 200]
 
 
 def test_builtin_workload_route_is_scoped_strict_and_identity_bound(tmp_path):

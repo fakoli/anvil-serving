@@ -15,7 +15,7 @@ from anvil_serving.router import serve as serve_module
 from anvil_serving.router.serve import build_server
 from anvil_serving.router.keys import KeyStore
 from anvil_serving.router.usage_store import UsageStore
-from tests.router.helpers import StaticBackend
+from tests.router.helpers import StaticBackend, slow_per_server_slots
 from tests.router.test_route_state import Runtime, configuration
 
 pytestmark = pytest.mark.skipif(os.name != "posix", reason="route authority requires POSIX durability")
@@ -188,7 +188,12 @@ def test_duplicate_confirmation_is_rejected_without_consuming_preview(live_route
     assert status == 200 and applied["route_revision"] == 1
 
 
-def test_device_key_is_denied_on_every_route_management_endpoint(tmp_path):
+@pytest.mark.parametrize("late_release", [False, True])
+def test_device_key_is_denied_on_every_route_management_endpoint(tmp_path, monkeypatch, late_release):
+    if late_release:
+        # The denial and its audit must free their key-store slot before the
+        # 403 leaves, so back-to-back denials never see a spurious 503.
+        slow_per_server_slots(monkeypatch)
     state_path = tmp_path / "routes.json"
     key_path = tmp_path / "keys.sqlite3"
     raw = configuration().replace(

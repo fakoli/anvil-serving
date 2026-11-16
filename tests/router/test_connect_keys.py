@@ -16,7 +16,7 @@ from anvil_serving.router import connect_keys
 from anvil_serving.router.config import ServerConfig
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.keys import KeyStore, KeyStoreError
-from tests.router.helpers import StaticBackend
+from tests.router.helpers import StaticBackend, slow_per_server_slots
 from tests.router.key_fixtures import tmp_path as tmp_path
 
 CHAT = "/v1/chat/completions"
@@ -167,6 +167,18 @@ def test_broker_signatures_replay_closed_body_and_live_request(portal,monkeypatc
         result=issue(p)
         status,_,_=send_http(address,CHAT,json.dumps({"model":"llm.primary","messages":[{"role":"user","content":"hi"}]}),{"Authorization":"Bearer "+result["secret"]})
         assert status==200
+
+
+def test_back_to_back_broker_calls_never_see_their_own_busy_slot(portal, monkeypatch):
+    # The Connect slot is freed before the reply leaves, for success and denial.
+    slow_per_server_slots(monkeypatch)
+    approve(portal[0])
+    with running(portal, monkeypatch) as (address, secret, _check, _master):
+        statuses = [send_http(address, connect_keys.BROKER_PATH, body,
+                              {"X-Anvil-Connect-Identity": assertion(secret)})[0]
+                    for body in ('{"action":"view"}', '{"action":"view","administrator":true}',
+                                 '{"action":"view"}')]
+    assert statuses == [200, 403, 200]
 
 
 def test_inactive_account_removal_preserves_revision_fence(portal):

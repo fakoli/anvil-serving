@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import http.client
 import threading
+import time
+import types
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from typing import Any, Optional
@@ -11,6 +13,27 @@ from typing import Any, Optional
 from anvil_serving.router.config import Tier
 from anvil_serving.router.front_door import make_server
 from anvil_serving.router.internal import InternalRequest
+
+
+class SlowRelease:
+    """One-permit slot whose release lags, like a late-scheduled handler thread."""
+
+    def __init__(self, _permits: int = 1):
+        self._inner = threading.BoundedSemaphore(1)
+
+    def acquire(self, *args, **kwargs):
+        return self._inner.acquire(*args, **kwargs)
+
+    def release(self):
+        time.sleep(0.05)
+        self._inner.release()
+
+
+def slow_per_server_slots(monkeypatch) -> None:
+    """Make the key-store, owner-check and Connect slots of servers built next one-permit SlowRelease."""
+    from anvil_serving.router import front_door
+
+    monkeypatch.setattr(front_door, "threading", types.SimpleNamespace(BoundedSemaphore=SlowRelease))
 
 
 class StaticBackend:
