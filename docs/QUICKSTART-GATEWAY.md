@@ -12,11 +12,10 @@ GPU driver, or a private operator repository. See the
 
 ## 1. Install
 
-`init --gateway-only` is newer than the latest PyPI release (2.0.2), so install
-from GitHub until the next release is published:
+Install the package from PyPI (version 3.0.0 or later):
 
 ```bash
-pip install git+https://github.com/fakoli/anvil-serving
+pip install anvil-serving
 ```
 
 Use a virtual environment if your system Python refuses global installs.

@@ -129,14 +129,14 @@ test('service home renders current grants and signs out in Chromium', async () =
   await expect(page.locator('#administration')).toBeHidden();
   await expect(page.locator('#account-link')).toHaveAttribute('href','https://idp.example.test/settings/security');
   await expect(page.locator('#passkeys-link')).toHaveAttribute('href','https://idp.example.test/settings/two-factor-authentication');
-  await expect(page.locator('#install-link')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/releases/tag/connect-v0.2.0');
+  await expect(page.locator('#install-link')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/releases/tag/connect-v0.3.0');
   await expect(page.locator('#install-link')).toBeVisible();
   await page.locator('#terminal').click();
   await expect(page.locator('#terminal-help')).toBeVisible();
   await expect(page.locator('#login-command')).toHaveText('anvil-connect login');
   await expect(page.locator('#terminal')).toHaveAttribute('aria-expanded','true');
   await expect(page.locator('#terminal-help')).toContainText('Ctrl+C');
-  await expect(page.locator('#install-guide')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/blob/connect-v0.2.0/docs/ANVIL-CONNECT-INSTALL.md#install-a-bundle');
+  await expect(page.locator('#install-guide')).toHaveAttribute('href','https://github.com/fakoli/anvil-serving/blob/connect-v0.3.0/docs/ANVIL-CONNECT-INSTALL.md#install-a-bundle');
   await page.screenshot({path:test.info().outputPath('connect-home-desktop.png'),fullPage:true});
   await page.setViewportSize({width:390,height:844});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);

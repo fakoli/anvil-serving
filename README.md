@@ -7,7 +7,7 @@
 > **Operate, qualify, and expose local AI capabilities through explicit contracts.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Source Version](https://img.shields.io/badge/source-2.0.2-blue.svg)](CHANGELOG.md)
+[![Source Version](https://img.shields.io/badge/source-3.0.0-blue.svg)](CHANGELOG.md)
 [![Docs](https://img.shields.io/badge/docs-fakoli.github.io%2Fanvil--serving-blue.svg)](https://fakoli.github.io/anvil-serving/)
 
 [Quickstart](docs/QUICKSTART-GATEWAY.md) ·
@@ -37,13 +37,11 @@ the [support matrix](docs/SUPPORT-MATRIX.md).
 
 ## Quick start: a gateway in front of the server you already run
 
-`init --gateway-only` is newer than the latest PyPI release (2.0.2), so install
-from GitHub until the next release. This example fronts Ollama; the
-[quickstart](docs/QUICKSTART-GATEWAY.md) lists the URLs for LM Studio,
-`llama-server`, and vLLM.
+This example fronts Ollama; the [quickstart](docs/QUICKSTART-GATEWAY.md) lists
+the URLs for LM Studio, `llama-server`, and vLLM.
 
 ```bash
-pip install git+https://github.com/fakoli/anvil-serving
+pip install anvil-serving
 anvil-serving init --gateway-only --upstream http://127.0.0.1:11434/v1 --model llama3.2
 anvil-serving router run
 ```
