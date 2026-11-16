@@ -36,6 +36,7 @@ clients (no chunked encoding) get a close-delimited stream instead, mirroring
 from __future__ import annotations
 
 import hmac
+import io
 import json
 import os
 import re
@@ -1783,6 +1784,26 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 self.close_connection = True
             self._error(status, etype, message, dialect=dialect)
 
+        def _respond_after_release(self, slot, handle) -> None:
+            """Run ``handle`` under an acquired ``slot``; free it before the reply leaves.
+
+            All handler work, including any state change, stays inside the slot.
+            Only the socket write waits, so a client that sends its next request
+            as soon as it reads this reply never finds its own slot still held.
+            """
+            # ponytail: buffers the whole reply in memory; only for bounded
+            # non-streaming handlers, never SSE relays.
+            wire, self.wfile = self.wfile, io.BytesIO()
+            try:
+                handle()
+            finally:
+                reply, self.wfile = self.wfile.getvalue(), wire
+                slot.release()
+                if reply:
+                    wire.write(reply)
+                    if self.close_connection:
+                        self._flush_closing_response()
+
         def _flush_closing_response(self) -> None:
             """Let a close-after-response error reach the peer before TCP RST.
 
@@ -2081,13 +2102,18 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                         result = readmit(router_admission)
                     else:
                         raise ValueError("unsupported_action")
-                    self._json(200, {"scope":"router", "action":action, "result":result})
+                    failure = None
                 except ValueError:
-                    self._error(400, "invalid_transition", "invalid router transition")
+                    failure = (400, "invalid_transition", "invalid router transition")
                 except Exception:
-                    self._error(503, "transition_failed", "router transition failed")
+                    failure = (503, "transition_failed", "router transition failed")
                 finally:
+                    # Release before responding so the client's next request finds the slot free.
                     _MANAGEMENT_MUTATION_LIMIT.release()
+                if failure is None:
+                    self._json(200, {"scope":"router", "action":action, "result":result})
+                else:
+                    self._error(*failure)
                 return
             if "scope" in body and body["scope"] != "tier":
                 self._error(400, "invalid_transition", "invalid transition scope")
@@ -2119,6 +2145,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
             if not _MANAGEMENT_MUTATION_LIMIT.acquire(blocking=False):
                 self._error(503, "server_busy", "transition mutation busy")
                 return
+            failure = None
             try:
                 if action == "quiesce":
                     fn = getattr(backend, "quiesce_tier")
@@ -2131,16 +2158,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 elif action == "readmit":
                     result = getattr(backend, "readmit_tier")(tier_id, **member_kwargs)
                 else:
-                    self._error(400, "invalid_transition", "unsupported transition action")
-                    return
+                    failure = (400, "invalid_transition", "unsupported transition action")
             except (AttributeError, KeyError, ValueError):
-                self._error(400, "invalid_transition", "invalid transition request")
-                return
+                failure = (400, "invalid_transition", "invalid transition request")
             except Exception:  # noqa: BLE001 - never expose upstream/container errors
-                self._error(503, "transition_failed", "transition operation failed")
-                return
+                failure = (503, "transition_failed", "transition operation failed")
             finally:
+                # Release before responding so the client's next request finds the slot free.
                 _MANAGEMENT_MUTATION_LIMIT.release()
+            if failure is not None:
+                self._error(*failure)
+                return
             self._json(200, {"applied": True, "action": action, "result": result})
 
         def _handle_route_update(self, route: str, body: dict) -> None:
@@ -2182,13 +2210,17 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     result = route_manager.status()
                 else:
                     raise RouteUpdateError("route_request_invalid", status=400)
-                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+                failure = None
             except Exception as exc:
-                status = getattr(exc, "status", 503)
-                code = getattr(exc, "code", "route_update_failed")
-                self._error(status, code, "route update could not be completed")
+                failure = (getattr(exc, "status", 503), getattr(exc, "code", "route_update_failed"))
             finally:
+                # The state change is complete; free the slot before the client
+                # can see the response and send its next request.
                 _MANAGEMENT_MUTATION_LIMIT.release()
+            if failure is None:
+                self._json(200, result, extra_headers={"Cache-Control": "no-store"})
+            else:
+                self._error(failure[0], failure[1], "route update could not be completed")
 
         # --- routes ----------------------------------------------------------
         @router_entry
@@ -2720,10 +2752,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                     self.close_connection = True
                     self._protocol_json_error(503, "server_busy", "reference intake busy")
                     return
-                try:
-                    self._handle_asset_upload()
-                finally:
-                    _ASSET_CONCURRENCY_LIMIT.release()
+                self._respond_after_release(_ASSET_CONCURRENCY_LIMIT, self._handle_asset_upload)
                 return
             if gateway is not None and route in {MCP_PATH, A2A_PATH}:
                 if not _PROTOCOL_CONCURRENCY_LIMIT.acquire(blocking=False):
@@ -2739,10 +2768,7 @@ def _make_handler(backend: Backend, timeout: Optional[float],
                 if not _MANAGEMENT_LIMIT.acquire(blocking=False):
                     self._error(503, "server_busy", "management busy; try again later")
                     return
-                try:
-                    self._post_inner()
-                finally:
-                    _MANAGEMENT_LIMIT.release()
+                self._respond_after_release(_MANAGEMENT_LIMIT, self._post_inner)
                 return
             # Acquire the concurrency semaphore before doing any work.  The
             # request line and headers are already parsed by handle_one_request,

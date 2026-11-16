@@ -5,12 +5,14 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 import pytest
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "configs/runtime/ninfer-70434721-directio/verify-artifact.sh"
-pytestmark = pytest.mark.skipif(os.name == "nt" or not shutil.which("bash"), reason="Linux runtime verifier")
+# The verifier uses GNU stat -c, sha256sum and dd iflag=direct.
+pytestmark = pytest.mark.skipif(sys.platform != "linux" or not shutil.which("bash"), reason="Linux runtime verifier")
 
 
 def invoke(path, expected, *, env=None):

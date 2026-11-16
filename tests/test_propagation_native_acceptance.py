@@ -7,13 +7,30 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tempfile
 from types import SimpleNamespace
 
 import pytest
 
 from anvil_serving.propagation_native_acceptance import (
-    NativeAcceptanceError, NativeFixtureLifecycle, validate_native_runtime,
+    NativeAcceptanceError, NativeFixtureLifecycle, _custody, validate_native_runtime,
 )
+
+
+def _custody_refuses_temp_root():
+    # Off Linux, skip only where the product's own custody check refuses the
+    # temporary root (macOS runners use /private/tmp). Linux always runs these.
+    if sys.platform == "linux":
+        return False
+    try:
+        _custody(Path(tempfile.gettempdir()).resolve(), directory=True)
+    except (NativeAcceptanceError, OSError):
+        return True
+    return False
+
+
+requires_temp_custody = pytest.mark.skipif(
+    _custody_refuses_temp_root(), reason="native runtime custody refuses this temporary root")
 
 
 def fixture_profile(tmp_path, *, separate_metadata=False):
@@ -49,6 +66,7 @@ def fixture_profile(tmp_path, *, separate_metadata=False):
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
 @pytest.mark.parametrize('managed,separate_metadata', [(False, False), (True, False),
     pytest.param(True, True, marks=pytest.mark.skipif(sys.platform != 'linux', reason='managed home is Linux-only'))])
+@requires_temp_custody
 def test_owned_native_lifecycle_binds_resume_and_new_evidence(tmp_path, managed, separate_metadata):
     profile, contract = fixture_profile(tmp_path, separate_metadata=separate_metadata)
     calls, histories = [], {}
@@ -142,6 +160,7 @@ def test_distinct_hermes_executables_require_managed_identity_and_both_pins(tmp_
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
+@requires_temp_custody
 def test_pi_handle_survives_prepare_and_closes_on_catalog_failure(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     target = profile['targets'][0]
@@ -171,6 +190,7 @@ def test_pi_handle_survives_prepare_and_closes_on_catalog_failure(tmp_path):
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
+@requires_temp_custody
 def test_web_fixture_lifecycle_uses_owned_loopback_adapter_and_closes(tmp_path):
     profile, contract = fixture_profile(tmp_path)
     target = profile['targets'][0]
@@ -243,6 +263,7 @@ def test_cleanup_proof_is_exact_and_requires_completed_owned_cleanup(tmp_path):
 
 
 @pytest.mark.skipif(os.name != "posix", reason="native fixture custody requires POSIX ownership and modes")
+@requires_temp_custody
 def test_openclaw_lost_response_never_proves_gateway_quiescence(tmp_path):
     from anvil_serving.propagation_native_acceptance import NativeQuiescenceError
     profile, contract = fixture_profile(tmp_path)

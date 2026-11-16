@@ -163,6 +163,11 @@ def test_scheduled_backup_requires_canonical_manifest_before_subprocess(monkeypa
         user_schedule.run_backup("/other/deployment.json", runner=lambda *_: pytest.fail("no subprocess allowed"))
 
 
+# The Connect CLI refuses native operations outside Linux amd64.
+connect_cli = pytest.mark.skipif(not manage.supported_platform(), reason="Connect native operations require Linux amd64")
+
+
+@connect_cli
 @pytest.mark.parametrize("flags,applied", [([], False), (["--confirm"], True), (["--confirm", "--dry-run"], False)])
 def test_scheduled_backup_cli_preserves_confirmation(monkeypatch, flags, applied):
     calls = []
@@ -178,6 +183,7 @@ def test_scheduled_backup_cli_rejects_ambiguous_options_before_dispatch(monkeypa
     assert result.error is not None
 
 
+@connect_cli
 def test_product_cli_forwards_scheduled_backup_to_same_guarded_entrypoint(monkeypatch, capsys):
     from anvil_serving import cli as product_cli
     calls = []

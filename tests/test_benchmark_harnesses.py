@@ -57,6 +57,8 @@ class Runner:
         return SimpleNamespace(returncode=0, stdout=b"ok\n", stderr=b"")
 
 
+@pytest.mark.skipif(harnesses.resolve_container_binary() is None,
+                    reason="Docker is required to prepare the digest-pinned harness image")
 def test_preparation_records_exact_assets_and_reuses_cache(tmp_path):
     runner = Runner()
     profile = load_profile("smoke")
