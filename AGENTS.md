@@ -224,6 +224,8 @@ tests against a live local tier require `preflight`.
 
 ## Agent model strategy
 
+This section describes the maintainers' development workflow, not a product requirement for users.
+
 Use model depth at decision boundaries, then reduce it for bounded execution:
 
 - Use **GPT-6 Astra with high reasoning** as the lead development agent for
@@ -271,4 +273,3 @@ attributes, not routing inputs. The OpenClaw adapter contract is documented in
 - Don't make ad hoc lifecycle or operations scripts the way to run the product.
   Scripts may be demos, fixtures, or validation harnesses, but durable operations
   belong behind the `anvil-serving` utility surface.
-- Don't touch `specs/archive/` — those are historical records, not live design docs.
