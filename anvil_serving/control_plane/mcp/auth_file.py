@@ -235,7 +235,9 @@ def _posix_identity(metadata: os.stat_result) -> tuple[int, int, int, int, int]:
     )
 
 
-def _require_posix_private_ancestor(descriptor: int) -> tuple[int, int]:
+def _require_posix_private_ancestor(
+    descriptor: int, directory: str = "/"
+) -> tuple[int, int]:
     """Verify an opened directory can anchor the next credential component."""
 
     try:
@@ -251,6 +253,12 @@ def _require_posix_private_ancestor(descriptor: int) -> tuple[int, int]:
             and not metadata.st_mode & stat.S_ISVTX
         )
     ):
+        if metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+            raise AuthFileError(
+                bootstrap_shim.writable_directory_message(
+                    directory, metadata.st_uid, "auth file ancestor"
+                )
+            )
         raise AuthFileError("auth file ancestor is not a private trusted directory")
     _require_macos_no_extended_acl(descriptor, ancestor_allow_deny_only=True)
     return metadata.st_dev, metadata.st_ino
@@ -286,10 +294,12 @@ def _open_macos_private_auth_file(path: str, *, max_bytes: int) -> Iterator[int]
         root_identity = _require_posix_private_ancestor(root)
         anchors.append((root, *root_identity, None))
         parent = root
-        for component in components[:-1]:
+        for index, component in enumerate(components[:-1]):
             descriptor = os.open(component, directory_flags, dir_fd=parent)
             descriptors.append(descriptor)
-            identity = _require_posix_private_ancestor(descriptor)
+            identity = _require_posix_private_ancestor(
+                descriptor, "/" + "/".join(components[: index + 1])
+            )
             anchors.append((descriptor, *identity, component))
             parent = descriptor
         descriptor = os.open(components[-1], file_flags, dir_fd=parent)
@@ -390,5 +400,9 @@ def read_private_auth_file(path: str, *, max_bytes: int) -> bytes:
             return opened.read_verified(_require_private_descriptor)
     except AuthFileError:
         raise
+    except bootstrap_shim.BootstrapContractError as exc:
+        if "writable" in exc.message:
+            raise AuthFileError(exc.message) from None
+        raise AuthFileError("auth file must be a bounded private regular file") from None
     except Exception:
         raise AuthFileError("auth file must be a bounded private regular file") from None

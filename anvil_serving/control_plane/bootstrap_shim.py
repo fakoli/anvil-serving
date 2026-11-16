@@ -9,6 +9,7 @@ from __future__ import annotations
 import errno
 import hashlib
 import os
+import shlex
 import stat
 import struct
 import subprocess
@@ -99,6 +100,31 @@ def _reader_refusal(code: BootstrapErrorCode) -> BootstrapContractError:
         BootstrapErrorCode.UNSUPPORTED_PLATFORM: "trusted file platform is unsupported",
     }
     return BootstrapContractError(code.value, messages[code])
+
+
+def writable_directory_message(directory: str, owner_uid: int, prefix: str) -> str:
+    """Explain a writable-ancestor refusal; the remedy depends on who owns it."""
+
+    quoted = shlex.quote(directory)
+    euid = os.geteuid()
+    head = f"{prefix} {directory!r} is group- or world-writable"
+    if owner_uid == euid:
+        return f"{head}; run: chmod g-w,o-w {quoted}"
+    if owner_uid == 0:
+        return f"{head} and owned by root; run: sudo chmod g-w,o-w {quoted}"
+    return (
+        f"{head} and owned by another user (uid {owner_uid}); "
+        "keep this file out of that directory"
+    )
+
+
+def writable_directory_refusal(directory: str, owner_uid: int) -> BootstrapContractError:
+    """Name the offending directory and the fix; the refusal itself is unchanged."""
+
+    return BootstrapContractError(
+        BootstrapErrorCode.PRECONDITION_FAILED.value,
+        writable_directory_message(directory, owner_uid, "trusted file ancestor"),
+    )
 
 
 def _sid(authority: int, *subauthorities: int) -> bytes:
@@ -684,12 +710,20 @@ def _linux_open_trusted_file(
         _require_permission(root, ancestor=True, require_readonly=False)
         ancestors.append(_LinuxAnchor(root, None, None, _linux_object_identity(root_metadata)))
         parent = root
-        for component in components[:-1]:
+        for index, component in enumerate(components[:-1]):
             descriptor = os.open(component, directory_flags, dir_fd=parent)
             descriptors.append(descriptor)
             metadata = os.fstat(descriptor)
             if not stat.S_ISDIR(metadata.st_mode):
                 raise _reader_refusal(BootstrapErrorCode.UNSAFE_PATH)
+            if (
+                inspect_opened_permissions(descriptor, ancestor=True)
+                is BootstrapPermissionVerdict.UNTRUSTED_WRITABLE
+                and metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+            ):
+                raise writable_directory_refusal(
+                    "/" + "/".join(components[: index + 1]), metadata.st_uid
+                )
             _require_permission(descriptor, ancestor=True, require_readonly=False)
             ancestors.append(
                 _LinuxAnchor(descriptor, parent, component, _linux_object_identity(metadata))
