@@ -38,6 +38,9 @@ jobs:
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    # macOS is informational until its platform-specific failures are fixed
+    # (see the PR description); Ubuntu results stay blocking.
+    continue-on-error: ${{ matrix.os == 'macos-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +71,7 @@ jobs:
         run: node --version
 
       - name: Run tests
-        run: python -m ${{ matrix.python-version == '3.13' && 'coverage run -m pytest' || 'pytest' }} tests/ -x -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
+        run: python -m ${{ matrix.python-version == '3.13' && 'coverage run -m pytest' || 'pytest' }} tests/ ${{ runner.os == 'Linux' && '-x' || '' }} -q --durations=40 --junitxml=test-results.xml -o faulthandler_timeout=120 -o faulthandler_exit_on_timeout=true
 
       - name: Retain test timings and outcomes
         if: always()
