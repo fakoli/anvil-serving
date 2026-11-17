@@ -1,6 +1,6 @@
 # Find a better model or quantization
 
-**Research reviewed: September 17, 2026.** Start with the workload you need to
+**Research reviewed: September 25, 2026.** Start with the workload you need to
 improve, then compare exact configurations. A smaller checkpoint can make room
 for context or concurrency, but it does not establish better answers or faster
 completed work.
@@ -9,6 +9,7 @@ completed work.
 
 | Goal | Configuration to examine | Measured reason | Limit before replacement |
 |---|---|---|---|
+| Current secondary route on one RTX 5090 | [Swift-1.5 Qwen3.8 27B NInfer](models/swift15-qwen38-27b.md) | Human-authorized 262K/C4 deployment; routed context 18/18 through 257,898 actual tokens, agentic 17/18, frozen official SWE Verified 5/5, image/OCR 12/12 | 128K/C4 completed only 5/10; visible-output throughput is descriptive after 0 exact word-target completions |
 | Reliable coding and tools on two 96 GB cards | [GLM-5.3-Flash EXL3 4-bpw, no speculation](models/glm53-flash.md) | September 14 selection: agentic 30/30, frozen SWE 4/5, context 9/9, strict capacity 120/120 | Text only; no broad intelligence ranking, full-window concurrency soak, or fresh reboot proof |
 | An alternative with image/OCR evidence | [Qwen3.8 Flash Next EXL3 4.05-bpw](models/qwen38-flash-next.md) | Fixed quality sample 91/100, context 9/9, image/OCR 12/12 | Agentic 21/30; strict120 has zero eligible timings because leading line feeds violate the canary contract |
 | Lower warm TTFT on RTX 5090 | [Gittensor Qwen3.8 27B NVFP4, target only](qwen38-27b-rtx5090-quant-comparison.md) | 50.9 ms median warm TTFT and a successful 244,002-token actual prompt | Direct challenger only; calibrated KV, routed clients, broader quality, and endurance remain open |
@@ -85,4 +86,5 @@ reasoning policy, output reserve, concurrency, cache state, and validators
 constant; change one quantization or runtime feature at a time. If that is
 impossible, label the result a comparison of complete configurations. Publish
 failures alongside successes and restore the exact baseline after testing.
-Promotion remains a separate human decision.
+Promotion remains a separate human decision for each new configuration; the
+Swift-1.5 secondary profile above was explicitly authorized on September 25.

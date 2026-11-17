@@ -1,0 +1,150 @@
+{
+  "created_at": "2026-09-25T11:45:28.309437Z",
+  "failure": null,
+  "partial": false,
+  "provenance": {
+    "endpoint": {
+      "auth_env": "ANVIL_ROUTER_TOKEN",
+      "base_url": "https://router.example.test/v1",
+      "model": "llm.secondary"
+    },
+    "finished_at": "2026-09-25T11:45:28.309394Z",
+    "started_at": "2026-09-25T11:37:55.380167Z",
+    "submitted_at": "2026-09-25T11:35:58.1714594Z",
+    "worker": {
+      "id": "isolated-client"
+    }
+  },
+  "results": {
+    "evidence": {
+      "completeness": "completed",
+      "created_at": "2026-09-25T11:45:28.307548Z",
+      "evidence_kind": "measured",
+      "failure": null,
+      "identities": {
+        "concurrency": {
+          "requests": 1,
+          "workers": 1
+        },
+        "context": {
+          "configured_tokens": null,
+          "output_headroom_tokens": "not-applicable",
+          "profile_buckets": "not-applicable",
+          "selected_buckets": "not-applicable"
+        },
+        "dataset": {
+          "name": "SWE-bench_Verified",
+          "split": "test"
+        },
+        "hardware": {
+          "id": "rtx5090-32gb"
+        },
+        "harnesses": {
+          "mini-swe-agent": {
+            "revision": "a83fcae82d2a08f0ee0c688f9d137b3566c097f8",
+            "source": "https://github.com/SWE-agent/mini-swe-agent"
+          },
+          "swe-bench": {
+            "revision": "f7bbbb2ccdf479001d6467c9e34af59e44a840f9",
+            "source": "https://github.com/SWE-bench/SWE-bench"
+          },
+          "swe-bench-verified": {
+            "revision": "c104f840cc67f8b6eec6f759ebc8b2693d585d4a",
+            "source": "https://huggingface.co/datasets/princeton-nlp/SWE-bench_Verified"
+          },
+          "worker-base": {
+            "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de"
+          }
+        },
+        "image": {
+          "image": "python:3.12-slim@sha256:57cd7c3a7a273101a6485ba99423ee568157882804b1124b4dd04266317710de",
+          "kind": "image",
+          "reused": true
+        },
+        "model": {
+          "id": "qwen38-swift15-ninfer-dflash2-c4-262k",
+          "revision": "ff891a1130adfcf46bf745e06f0fa3dcde2e8c82"
+        },
+        "runtime": {
+          "engine": "ninfer",
+          "image": "sha256:59df48dd99f0d177b73de57ba88eb6457ed7e4b0c5771c45e8976adcd9f5ef67",
+          "revision": "bace20dc70249eed6402b66d4852c6c3f9612905"
+        },
+        "served_model": {
+          "configured_context": null,
+          "id": "llm.secondary"
+        },
+        "topology": {
+          "kind": "isolated-benchmark-client",
+          "model_host_id": "rtx5090-host",
+          "worker_id": "isolated-client"
+        }
+      },
+      "promotion": {
+        "authorized": false,
+        "message": "Benchmark evidence does not authorize model promotion; promotion is a separate human decision."
+      },
+      "run": {
+        "ownership_id": "swift15-ninfer-5090-20260925",
+        "profile": "scout",
+        "run_id": "swift15-ninfer-swe-20260925-003",
+        "spec_sha256": "99040be5a585e39411ac57431dac80fa83b9e545065b582388701e2e68b7d0a9",
+        "suite": "swe"
+      },
+      "schema": "anvil-serving.benchmark-evidence/v1",
+      "stages": [
+        {
+          "evidence": [
+            {
+              "bytes": 11102,
+              "path": "evidence/0-assets.json",
+              "sha256": "a2fed4ebaabcc98612eb596fae8c5bdedf2df579a57f3de3a8ab5a5114485b31"
+            }
+          ],
+          "name": "asset_preparation",
+          "sequence": 0,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 2107,
+              "path": "evidence/0-preflight.json",
+              "sha256": "f79a7505dc7eb35ec581315d4732ae520cf42121a50b9bcb5c85bd1985fca590"
+            }
+          ],
+          "name": "preflight",
+          "sequence": 1,
+          "status": "completed"
+        },
+        {
+          "evidence": [
+            {
+              "bytes": 29158,
+              "path": "evidence/2-swe.json",
+              "sha256": "bd794c1250ce23be840da6c3731ab97d85c880b49c0e33534b3bdf2df5c71a74"
+            }
+          ],
+          "name": "swe",
+          "sequence": 2,
+          "status": "completed"
+        }
+      ],
+      "summary": {
+        "attempted": 5,
+        "graded": 5,
+        "resolve_rate": 1.0,
+        "resolved": 5
+      }
+    }
+  },
+  "run": {
+    "ownership_id": "swift15-ninfer-5090-20260925",
+    "profile": "scout",
+    "run_id": "swift15-ninfer-swe-20260925-003",
+    "spec_sha256": "99040be5a585e39411ac57431dac80fa83b9e545065b582388701e2e68b7d0a9",
+    "suite": "swe"
+  },
+  "schema": "anvil-serving.benchmark-result/v1",
+  "status": "completed"
+}
