@@ -1,8 +1,17 @@
+import copy
 import json
+
+import pytest
 
 from scripts import audit_cli_references as audit
 
 VOLATILE = {"files_scanned", "files_by_category", "canonical_counts"}
+
+
+@pytest.fixture(scope="module")
+def full_record():
+    """One whole-repository scan shared by the tests that read it; copy before mutating."""
+    return audit.inventory_record(audit.scan(audit.ROOT, "full"))
 
 
 def test_committed_inventory_omits_volatile_counts():
@@ -22,14 +31,14 @@ def test_fixture_scope_keeps_full_record():
     assert audit.inventory_matches(audit.ROOT, "fixtures", audit.inventory_record(result))
 
 
-def test_json_record_keeps_volatile_counts_and_repo_inventory_matches():
-    record = audit.inventory_record(audit.scan(audit.ROOT, "full"))
+def test_json_record_keeps_volatile_counts_and_repo_inventory_matches(full_record):
+    record = full_record
     assert VOLATILE <= record.keys()
     assert audit.inventory_matches(audit.ROOT, "full", record)
 
 
-def test_new_allowlisted_legacy_reference_is_drift():
-    record = audit.inventory_record(audit.scan(audit.ROOT, "full"))
+def test_new_allowlisted_legacy_reference_is_drift(full_record):
+    record = copy.deepcopy(full_record)
     name = next(iter(audit.LEGACY_PATTERNS))
     record["allowed_legacy_counts"][name] += 1
     assert not audit.inventory_matches(audit.ROOT, "full", record)

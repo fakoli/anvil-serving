@@ -135,6 +135,41 @@ def write_receipt(path: Path, receipt: dict) -> None:
         temporary.unlink(missing_ok=True)
 
 
+# Measured seconds for the slow tail of test files; refresh with --record-weights.
+WEIGHTS = Path("tests/shard_weights.json")
+DEFAULT_WEIGHT = 0.1  # every unlisted file; the listed tail is 0.5 s and up
+
+
+def balance(files: list[str], count: int) -> list[list[str]]:
+    """Longest file first into the lightest shard, so no shard waits on a pile of slow files."""
+    weights = json.loads(WEIGHTS.read_text(encoding="utf-8")) if WEIGHTS.is_file() else {}
+    def weight(item: str) -> float:
+        return weights.get(Path(item.split("::")[0]).as_posix(), DEFAULT_WEIGHT)
+    shards = [[0.0, []] for _ in range(count)]
+    for item in sorted(files, key=lambda item: (-weight(item), item)):
+        lightest = min(shards, key=lambda shard: shard[0])
+        lightest[0] += weight(item)
+        lightest[1].append(item)
+    return [sorted(members) for _load, members in shards]
+
+
+def record_weights(base: Path) -> None:
+    """Rewrite WEIGHTS from this run's JUnit timings, keeping only files of 0.5 s and up."""
+    import xml.etree.ElementTree as ET  # test-authored local files only
+    seconds: dict[str, float] = {}
+    for report in (*base.glob("shard*/junit.xml"), *base.glob("weights.xml")):
+        for case in ET.parse(report).iter("testcase"):
+            parts = (case.get("classname") or "").split(".")
+            while parts and not Path(*parts).with_suffix(".py").is_file():
+                parts.pop()  # drop test-class names
+            if parts:
+                name = Path(*parts).with_suffix(".py").as_posix()
+                seconds[name] = seconds.get(name, 0.0) + float(case.get("time") or 0)
+    slow = {name: round(value, 1) for name, value in sorted(seconds.items()) if value >= 0.5}
+    if slow:  # a run that kept its JUnit elsewhere has nothing to record
+        WEIGHTS.write_text(json.dumps(slow, indent=1) + "\n", encoding="utf-8")
+
+
 def plan_launches(args: list[str], shards: int, coverage: bool, base: Path) -> list[tuple]:
     """Return (command, extra_env, log) per pytest process; one process when not sharding."""
     runner = [sys.executable, "-m", *(["coverage", "run", "-p", "-m"] if coverage else []), "pytest"]
@@ -148,7 +183,7 @@ def plan_launches(args: list[str], shards: int, coverage: bool, base: Path) -> l
                     for f in (Path(r).rglob("test_*.py") if Path(r).is_dir() else [Path(r)])} | {r for r in roots if "::" in r})
     count = min(shards, len(files))
     launches = []
-    for index in range(count):
+    for index, members in enumerate(balance(files, count)):
         work = base / f"shard{index}"
         work.mkdir(mode=0o700)
         # JUnit goes under the private dir so the run never dirties the tree; main() copies it out.
@@ -156,7 +191,7 @@ def plan_launches(args: list[str], shards: int, coverage: bool, base: Path) -> l
         env = {name: str(work) for name in ("TMPDIR", "TEMP", "TMP")}
         if coverage:
             env["COVERAGE_FILE"] = str(work / ".coverage")
-        launches.append(([*runner, *shard_flags, *files[index::count], "--basetemp", str(work / "fixtures")],
+        launches.append(([*runner, *shard_flags, *members, "--basetemp", str(work / "fixtures")],
                          env, base / f"shard{index}.log"))
     return launches
 
@@ -174,7 +209,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--receipt", type=Path, default=Path(".pytest_cache/run-tests-receipt.json"))
     parser.add_argument("--timeout", type=float)
     parser.add_argument("--preflight", action="store_true")
-    parser.add_argument("--shards", type=int, default=1)
+    # ponytail: auto caps at 8; past that the slowest single file sets the wall time.
+    parser.add_argument("--shards", default=1,
+                        type=lambda value: min(os.cpu_count() or 1, 8) if value == "auto" else int(value))
+    parser.add_argument("--record-weights", action="store_true")
     parser.add_argument("--coverage", action="store_true")
     options, args = parser.parse_known_args(sys.argv[1:] if argv is None else argv)
     receipt = {
@@ -224,6 +262,8 @@ def main(argv: list[str] | None = None) -> int:
             receipt.update(state="preflight_passed", exit_code=0)
             return 0
         args = args or ["tests/", "-q"]
+        if options.record_weights and not any(item.startswith("--junitxml=") for item in args):
+            args = [*args, f"--junitxml={Path(base_temp) / 'weights.xml'}"]
         for name in ("TMPDIR", "TEMP", "TMP"):
             env[name] = base_temp
         launches = plan_launches(args, options.shards, options.coverage, Path(base_temp))
@@ -261,6 +301,9 @@ def main(argv: list[str] | None = None) -> int:
             receipt.update(state="source_changed", exit_code=2)
             return 2
         receipt.update(state="passed" if code == 0 else "failed", exit_code=code)
+        if options.record_weights and code == 0:
+            # After the source check: this rewrites a tracked file on purpose.
+            record_weights(Path(base_temp))
         return code
     except subprocess.TimeoutExpired:
         receipt.update(state="timed_out", exit_code=124)
