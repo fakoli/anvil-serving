@@ -101,7 +101,9 @@ silently change direction and never delete an ADR — supersede it.
 
 - Layout: top-level `tests/test_<verb>.py` per CLI verb, a large `tests/router/` suite for the
   data plane, plus `tests/voice/`, `tests/connect/`, and shared `tests/fixtures/`.
-- Run everything: `python scripts/run_tests.py tests/ -q`. Run a slice while
+- Run everything: `python scripts/run_tests.py --shards auto -q` (one pytest process per CPU,
+  up to 8; each shard's output prints when it finishes). Omit `--shards` for a single live
+  process, for example with `--pdb`. Run a slice while
   iterating: `python scripts/run_tests.py tests/router/ -q` or
   `python scripts/run_tests.py tests/test_mcp.py -q`. The wrapper gives each
   process a unique pytest base temp, avoiding cleanup collisions between
@@ -125,6 +127,10 @@ silently change direction and never delete an ADR — supersede it.
   or mock-call choreography. Deletion reviews identify the retained behavior or explicitly
   record the noncritical coverage being dropped. Preserve critical contracts and the 70%
   coverage floor. Moving cases into loops or skips does not count as test reduction.
+- Shards are balanced by the measured seconds in `tests/shard_weights.json`, which lists only
+  files of 0.5 s and up; unlisted files share one small default. After adding, moving or
+  speeding up slow tests, refresh it with `python scripts/run_tests.py --shards auto --record-weights -q`
+  and commit the result. A stale file only unbalances shards; it never drops a test.
 - Inspect slow calls, setup and teardown with `python scripts/run_tests.py tests/ -q --durations=40`.
   CI retains JUnit timings and outcomes for each Python version. Use events for readiness
   instead of arbitrary sleeps; local HTTP test fixtures should use a short `serve_forever`
@@ -244,7 +250,7 @@ the broader machine-local-path and public-artifact audit remains tracked by issu
 
 1. Branch off `main` (e.g. `fix/...`, `feat/...`, `docs/...`).
 2. Make the change; add or update tests alongside it.
-3. Run `python scripts/run_tests.py tests/ -q`, `python -m ruff check .`,
+3. Run `python scripts/run_tests.py --shards auto -q`, `python -m ruff check .`,
    `python scripts/audit_cli_references.py --check --scope full`,
    `python scripts/check_markdown_links.py --root .`, and
    `python -m mkdocs build --strict` locally and make sure they are green.

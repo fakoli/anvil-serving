@@ -188,7 +188,7 @@ examples, tests, tickets, and raw evidence under `docs/findings/`.
 
 ```bash
 pip install -e ".[dev]"
-python scripts/run_tests.py tests/ -x -q  # full suite with an isolated pytest temp root
+python scripts/run_tests.py --shards auto -x -q  # full suite, one balanced shard per CPU (up to 8)
 anvil-serving eval preflight --base-url http://127.0.0.1:30000/v1 --model <name> --confirm  # live gate
 ```
 
