@@ -241,6 +241,8 @@ required operands, choices, and defaults.
 | `eval benchmark campaign run` | Run one frozen arm with bounded C1 or C4 batches. | `mutate` / `bounded` | `--ownership-id`<br>`--arm`<br>`--confirm` |
 | `eval benchmark campaign report` | Report independent scores and matched populations. | `read` / `bounded` | `--ownership-id` |
 | `eval benchmark campaign cancel` | Persist cancellation and stop only campaign-owned children. | `mutate` / `bounded` | `--ownership-id`<br>`--confirm` |
+| `eval benchmark speed` | Plan realistic SPEED-Bench workloads offline. | `read` / `bounded` | - |
+| `eval benchmark speed plan` | Validate prepared JSONL and print a deterministic offline plan. | `read` / `bounded` | `--manifest`<br>`--categories`<br>`--samples-per-category`<br>`--seed` |
 | `eval benchmark jev` | Replay selected evidence through a shadow Jev pilot. | `read` / `bounded` | `--config`<br>`--allow-export`<br>`--no-jev` |
 | `eval benchmark stability` | Replay bounded mixed-load scenarios and retain coverage and failure evidence. | `mutate` / `bounded` | `--dry-run`<br>`--confirm`<br>`--scenario`<br>`--output` |
 | `eval benchmark context` | Measure retrieval and reasoning degradation by context depth. | `read` / `bounded` | `--dry-run`<br>`--profile`<br>`--observed-context` |
